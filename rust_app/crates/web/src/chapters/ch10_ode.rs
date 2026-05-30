@@ -25,6 +25,8 @@ use egui_plot::{Arrows, Legend, Line, MarkerShape, Plot, PlotPoints, Points};
 use engine::Env;
 use numerics::ode::{integrate, Method, OdeError};
 
+use crate::i18n::{self, t, Lang};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Preset {
     Exp,
@@ -45,11 +47,11 @@ impl Preset {
 
     fn label(self) -> &'static str {
         match self {
-            Self::Exp => "y' = y                    (exponential)",
-            Self::Stiff => "y' = -50·y               (stiff)",
-            Self::Logistic => "y' = y·(1 - y)         (logistic)",
-            Self::Oscillating => "y' = sin(t)             (oscillating)",
-            Self::Gaussian => "y' = -2·t·y             (Gaussian decay)",
+            Self::Exp => t("y' = y                    (exponential)", "y' = y                    (exponenciális)"),
+            Self::Stiff => t("y' = -50·y               (stiff)", "y' = -50·y               (merev)"),
+            Self::Logistic => t("y' = y·(1 - y)         (logistic)", "y' = y·(1 - y)         (logisztikus)"),
+            Self::Oscillating => t("y' = sin(t)             (oscillating)", "y' = sin(t)             (oszcilláló)"),
+            Self::Gaussian => t("y' = -2·t·y             (Gaussian decay)", "y' = -2·t·y             (Gauss-lecsengés)"),
         }
     }
 
@@ -187,7 +189,7 @@ pub fn show(ui: &mut Ui, state: &mut Ch10OdeState, _env: &mut Env) {
     egui::CentralPanel::default().show_inside(ui, |ui| {
         ScrollArea::vertical().show(ui, |ui| {
             ui.heading(crate::i18n::t("Chapter 10 — initial-value problems", "10. fejezet — kezdetiérték-feladatok"));
-            ui.label(
+            ui.label(t(
                 "Solve y' = f(t, y), y(t₀) = y₀ with three classic explicit \
                  methods. The slope field shows what the ODE is doing \
                  everywhere; the coloured curves are the numerical \
@@ -195,7 +197,13 @@ pub fn show(ui: &mut Ui, state: &mut Ch10OdeState, _env: &mut Env) {
                  off the true solution (dashed black) while RK4 stays tight \
                  — and confirm the convergence orders in the log–log error \
                  panel below.",
-            );
+                "Oldd meg az y' = f(t, y), y(t₀) = y₀ feladatot három klasszikus \
+                 explicit módszerrel. Az iránymező mindenhol mutatja, mit csinál \
+                 az ODE; a színes görbék a rajta átléptetett numerikus közelítések. \
+                 Figyeld, ahogy az Euler elsodródik a valódi megoldástól (szaggatott \
+                 fekete), míg az RK4 szorosan követi — és igazold a konvergencia \
+                 rendjeit az alábbi log–log hibapanelen.",
+            ));
             ui.add_space(8.0);
             main_view(ui, state);
         });
@@ -204,7 +212,7 @@ pub fn show(ui: &mut Ui, state: &mut Ch10OdeState, _env: &mut Env) {
 
 fn controls(ui: &mut Ui, state: &mut Ch10OdeState) {
     ui.add_space(6.0);
-    ui.label(RichText::new("Equation").strong());
+    ui.label(RichText::new(t("Equation", "Egyenlet")).strong());
     let prev_preset = state.preset;
     for &p in Preset::ALL {
         ui.selectable_value(&mut state.preset, p, p.label());
@@ -219,14 +227,14 @@ fn controls(ui: &mut Ui, state: &mut Ch10OdeState) {
 
     ui.add_space(10.0);
     ui.separator();
-    ui.label(RichText::new("Methods").strong());
+    ui.label(RichText::new(t("Methods", "Módszerek")).strong());
     ui.checkbox(&mut state.methods.euler, method_label_colored(Method::Euler));
     ui.checkbox(&mut state.methods.heun, method_label_colored(Method::Heun));
     ui.checkbox(&mut state.methods.rk4, method_label_colored(Method::Rk4));
 
     ui.add_space(10.0);
     ui.separator();
-    ui.label(RichText::new("Initial value problem").strong());
+    ui.label(RichText::new(t("Initial value problem", "Kezdetiérték-feladat")).strong());
     egui::Grid::new("ch10_ic")
         .num_columns(2)
         .spacing([10.0, 4.0])
@@ -256,16 +264,16 @@ fn controls(ui: &mut Ui, state: &mut Ch10OdeState) {
 
     ui.add_space(10.0);
     ui.separator();
-    ui.label(RichText::new("Display").strong());
-    ui.checkbox(&mut state.show_slope_field, "Slope field arrows");
-    ui.checkbox(&mut state.show_exact, "Exact solution (dashed)");
+    ui.label(RichText::new(t("Display", "Megjelenítés")).strong());
+    ui.checkbox(&mut state.show_slope_field, t("Slope field arrows", "Iránymező nyilak"));
+    ui.checkbox(&mut state.show_exact, t("Exact solution (dashed)", "Pontos megoldás (szaggatott)"));
 
     ui.add_space(6.0);
     ui.horizontal(|ui| {
         let label = if state.animating_h {
-            "⏸  Pause h-shrink"
+            t("⏸  Pause h-shrink", "⏸  h-csökkentés szünet")
         } else {
-            "▶  Animate h → 0"
+            t("▶  Animate h → 0", "▶  Animáció h → 0")
         };
         if ui.button(label).clicked() {
             state.animating_h = !state.animating_h;
@@ -276,18 +284,20 @@ fn controls(ui: &mut Ui, state: &mut Ch10OdeState) {
         }
     });
     ui.label(
-        RichText::new(
+        RichText::new(t(
             "Hit Play to watch h shrink geometrically; the trajectories \
              snap onto the dashed analytical curve in real time.",
-        )
+            "Nyomd meg az Indítást, hogy lásd h mértani csökkenését; a pályák \
+             valós időben rásimulnak a szaggatott analitikus görbére.",
+        ))
         .small()
         .color(Color32::from_rgb(160, 175, 195)),
     );
 
     ui.add_space(10.0);
     ui.separator();
-    ui.label(RichText::new("Hartung presets").strong());
-    if ui.small_button("Ex 10.1   y' = y, y(0)=1, h=0.1").clicked() {
+    ui.label(RichText::new(t("Hartung presets", "Hartung-példák")).strong());
+    if ui.small_button(t("Ex 10.1   y' = y, y(0)=1, h=0.1", "10.1. pl.   y' = y, y(0)=1, h=0.1")).clicked() {
         state.preset = Preset::Exp;
         state.t0 = 0.0;
         state.y0 = 1.0;
@@ -295,7 +305,7 @@ fn controls(ui: &mut Ui, state: &mut Ch10OdeState) {
         state.h = 0.1;
         state.methods = EnabledMethods { euler: true, heun: false, rk4: false };
     }
-    if ui.small_button("Ex 10.2   compare Euler vs RK4").clicked() {
+    if ui.small_button(t("Ex 10.2   compare Euler vs RK4", "10.2. pl.   Euler vs RK4")).clicked() {
         state.preset = Preset::Exp;
         state.t0 = 0.0;
         state.y0 = 1.0;
@@ -303,7 +313,7 @@ fn controls(ui: &mut Ui, state: &mut Ch10OdeState) {
         state.h = 0.2;
         state.methods = EnabledMethods { euler: true, heun: false, rk4: true };
     }
-    if ui.small_button("Ex 10.3   RK4 long-time").clicked() {
+    if ui.small_button(t("Ex 10.3   RK4 long-time", "10.3. pl.   RK4 hosszú időn")).clicked() {
         state.preset = Preset::Exp;
         state.t0 = 0.0;
         state.y0 = 1.0;
@@ -311,7 +321,7 @@ fn controls(ui: &mut Ui, state: &mut Ch10OdeState) {
         state.h = 0.1;
         state.methods = EnabledMethods { euler: false, heun: true, rk4: true };
     }
-    if ui.small_button("Stiff demo  (Euler blows up)").clicked() {
+    if ui.small_button(t("Stiff demo  (Euler blows up)", "Merev demó  (az Euler felrobban)")).clicked() {
         state.preset = Preset::Stiff;
         state.t0 = 0.0;
         state.y0 = 1.0;
@@ -322,14 +332,18 @@ fn controls(ui: &mut Ui, state: &mut Ch10OdeState) {
 
     ui.add_space(10.0);
     ui.separator();
-    ui.label(RichText::new("Tip").strong());
+    ui.label(RichText::new(t("Tip", "Tipp")).strong());
     ui.label(
-        RichText::new(
+        RichText::new(t(
             "Drag h smaller and watch the Euler curve snap toward the dashed \
              exact solution. On the stiff preset, leave h at 0.05 — Euler \
              explodes (|y| → ∞) because the step is larger than the stability \
              radius 2/50 = 0.04. RK4 survives, just barely.",
-        )
+            "Húzd h-t kisebbre, és figyeld, ahogy az Euler-görbe a szaggatott \
+             pontos megoldáshoz simul. A merev példán hagyd h-t 0,05-ön — az \
+             Euler felrobban (|y| → ∞), mert a lépés nagyobb a 2/50 = 0,04 \
+             stabilitási sugárnál. Az RK4 épphogy túléli.",
+        ))
         .small()
         .color(Color32::from_rgb(160, 175, 195)),
     );
@@ -357,14 +371,11 @@ fn main_view(ui: &mut Ui, state: &Ch10OdeState) {
     // Endpoint banner.
     egui::Frame::group(ui.style()).show(ui, |ui| {
         ui.label(
-            RichText::new(format!(
-                "Preset: {}    t₀ = {:.3}, y₀ = {:.3}, t_f = {:.3}, h = {:.4}",
-                state.preset.label(),
-                state.t0,
-                state.y0,
-                state.tf,
-                state.h
-            ))
+            RichText::new({
+                let (lbl, t0, y0, tf, h) = (state.preset.label(), state.t0, state.y0, state.tf, state.h);
+                let word = t("Preset", "Példa");
+                format!("{word}: {lbl}    t₀ = {t0:.3}, y₀ = {y0:.3}, t_f = {tf:.3}, h = {h:.4}")
+            })
             .monospace()
             .color(Color32::from_rgb(180, 200, 220)),
         );
@@ -403,17 +414,17 @@ fn main_view(ui: &mut Ui, state: &Ch10OdeState) {
 
     // ── Trajectory + slope field panel ─────────────────────────────────
     ui.add_space(6.0);
-    ui.label(RichText::new("Slope field + numerical trajectories").strong());
+    ui.label(RichText::new(t("Slope field + numerical trajectories", "Iránymező + numerikus pályák")).strong());
     trajectory_plot(ui, state, &runs);
 
     // ── Error vs h log-log panel ───────────────────────────────────────
     ui.add_space(10.0);
-    ui.label(RichText::new("Error vs step size  (log–log convergence)").strong());
+    ui.label(RichText::new(t("Error vs step size  (log–log convergence)", "Hiba a lépésköz függvényében  (log–log konvergencia)")).strong());
     error_vs_h_plot(ui, state);
 
     // ── Per-method tables ──────────────────────────────────────────────
     ui.add_space(10.0);
-    ui.label(RichText::new("Step table  (first 12 nodes per method)").strong());
+    ui.label(RichText::new(t("Step table  (first 12 nodes per method)", "Lépéstábla  (az első 12 csomópont módszerenként)")).strong());
     for (m, r) in &runs {
         if let Ok(traj) = r {
             method_table(ui, state, *m, traj);
@@ -434,7 +445,7 @@ fn cross_chapter_link(ui: &mut Ui) {
     let dim = Color32::from_rgb(160, 175, 195);
     ui.add_space(10.0);
     egui::CollapsingHeader::new(
-        RichText::new("Under the hood — what this reuses, what it enables").strong(),
+        RichText::new(t("Under the hood — what this reuses, what it enables", "A motorháztető alatt — mit használ újra, mit tesz lehetővé")).strong(),
     )
     .default_open(false)
     .show(ui, |ui| {
@@ -450,47 +461,69 @@ fn cross_chapter_link(ui: &mut Ui) {
         };
         entry(
             ui,
-            "Chapter 1  ·  Taylor expansion",
-            "Every explicit ODE method here is a finite Taylor expansion of \
+            t("Chapter 1  ·  Taylor expansion", "1. fejezet  ·  Taylor-sorfejtés"),
+            t("Every explicit ODE method here is a finite Taylor expansion of \
              y(t+h) around t, truncated and matched to the derivative \
              values f(t, y). Euler keeps the linear term, Heun matches \
              two terms (O(h³) local), RK4 matches four (O(h⁵) local). The \
              whole field is \"how do we sample f cleverly enough to imply \
              higher-order Taylor coefficients we don't actually compute?\"",
+             "Minden itteni explicit ODE-módszer az y(t+h) véges Taylor-sorfejtése \
+             t körül, csonkolva és az f(t, y) deriváltértékekhez illesztve. Az \
+             Euler a lineáris tagot tartja meg, a Heun két tagot illeszt (O(h³) \
+             lokális), az RK4 négyet (O(h⁵) lokális). Az egész terület arról szól: \
+             „hogyan mintázzuk f-et elég ügyesen, hogy olyan magasabb rendű \
+             Taylor-együtthatókat is kifejezzünk, amelyeket nem is számolunk ki?”"),
         );
         entry(
             ui,
-            "Chapter 7  ·  numerical integration",
-            "Heun's method is exactly the composite trapezoid rule applied \
+            t("Chapter 7  ·  numerical integration", "7. fejezet  ·  numerikus integrálás"),
+            t("Heun's method is exactly the composite trapezoid rule applied \
              to ∫f(t, y(t)) dt under the assumption y(t+h) ≈ y + h·f \
              (predictor-corrector). RK4's weights (1, 2, 2, 1)/6 are \
              Simpson's rule weights. The patterns from Ch7 reappear here \
              with a different cover story.",
+             "A Heun-módszer pontosan az összetett trapézszabály a ∫f(t, y(t)) dt-re, \
+             azzal a feltevéssel, hogy y(t+h) ≈ y + h·f (prediktor-korrektor). Az \
+             RK4 (1, 2, 2, 1)/6 súlyai a Simpson-szabály súlyai. A 7. fejezet \
+             mintái itt más történettel térnek vissza."),
         );
         entry(
             ui,
-            "Chapter 2  ·  Newton's method  (for the methods we did NOT implement)",
-            "Implicit methods (backward Euler, trapezoidal rule, Gauss-Radau \
+            t("Chapter 2  ·  Newton's method  (for the methods we did NOT implement)", "2. fejezet  ·  Newton-módszer  (a NEM implementált módszerekhez)"),
+            t("Implicit methods (backward Euler, trapezoidal rule, Gauss-Radau \
              RK) involve solving y_{n+1} = y_n + h·f(t_{n+1}, y_{n+1}) for \
              y_{n+1}, which is a nonlinear root-finding problem in each \
              step. Most stiff-ODE solvers run Chapter 2's Newton at every \
              step. The \"Stiff demo\" preset is exactly the case where \
              explicit methods fail and an implicit one earns its keep.",
+             "Az implicit módszerek (visszafelé Euler, trapézszabály, Gauss–Radau \
+             RK) az y_{n+1} = y_n + h·f(t_{n+1}, y_{n+1}) megoldását igénylik \
+             y_{n+1}-re, ami minden lépésben nemlineáris gyökkeresési feladat. A \
+             merev ODE-megoldók többsége a 2. fejezet Newtonját futtatja minden \
+             lépésben. A „Merev demó” példa pontosan az az eset, ahol az explicit \
+             módszerek elbuknak, és egy implicit megéri a fáradságot."),
         );
         entry(
             ui,
-            "Where this goes next  ·  PDEs",
-            "Discretise space with finite differences (Ch 7) and you turn a \
+            t("Where this goes next  ·  PDEs", "Hova vezet ez tovább  ·  PDE-k"),
+            t("Discretise space with finite differences (Ch 7) and you turn a \
              PDE into a giant system of ODEs (the \"method of lines\"). \
              Then march in time with RK4. PDE solvers are the composition \
              of Chapters 3 (sparse Gauss), 7 (finite differences), and \
              10 (time stepping).",
+             "Diszkretizáld a teret véges differenciákkal (7. fej.), és egy PDE-t \
+             egy óriási ODE-rendszerré alakítasz (a „vonalak módszere”). Aztán \
+             léptess időben RK4-gyel. A PDE-megoldók a 3. (ritka Gauss), 7. (véges \
+             differenciák) és 10. (időléptetés) fejezet kompozíciói."),
         );
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "If you finished the book here, you've now seen every \
                  ingredient of a real-world physics simulator.",
-            )
+                "Ha itt fejezed be a könyvet, most már láttad egy valódi fizikai \
+                 szimulátor minden összetevőjét.",
+            ))
             .small()
             .color(dim),
         );
@@ -528,19 +561,23 @@ fn worked_example_ex_10_1(ui: &mut Ui, state: &Ch10OdeState) {
 
     ui.add_space(10.0);
     egui::CollapsingHeader::new(
-        RichText::new("Worked book example  ·  Hartung Ex 10.1")
+        RichText::new(t("Worked book example  ·  Hartung Ex 10.1", "Kidolgozott könyvi példa  ·  Hartung 10.1. pl."))
             .strong()
             .color(Color32::from_rgb(255, 220, 100)),
     )
     .default_open(true)
     .show(ui, |ui| {
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Euler's method on y' = y, y(0) = 1, h = 0.1. The textbook \
                  writes the recursion as yₙ₊₁ = (1 + h)·yₙ = 1.1·yₙ, so \
                  yₙ = (1.1)ⁿ exactly in real arithmetic. Compare the book's \
                  values below to your live solver and the analytical e^t.",
-            )
+                "Euler-módszer az y' = y, y(0) = 1, h = 0.1 feladaton. A tankönyv a \
+                 rekurziót yₙ₊₁ = (1 + h)·yₙ = 1,1·yₙ alakban írja, így yₙ = (1,1)ⁿ \
+                 pontosan valós aritmetikában. Vesd össze a könyv alábbi értékeit az \
+                 élő megoldóddal és az analitikus e^t-vel.",
+            ))
             .small(),
         );
         ui.add_space(4.0);
@@ -551,13 +588,13 @@ fn worked_example_ex_10_1(ui: &mut Ui, state: &Ch10OdeState) {
                 ui.label(RichText::new("n").monospace().strong());
                 ui.label(RichText::new("tₙ").monospace().strong());
                 ui.label(
-                    RichText::new("yₙ  (Hartung, Euler)")
+                    RichText::new(t("yₙ  (Hartung, Euler)", "yₙ  (Hartung, Euler)"))
                         .monospace()
                         .strong()
                         .color(Color32::from_rgb(240, 130, 130)),
                 );
                 ui.label(
-                    RichText::new("e^tₙ  (exact)")
+                    RichText::new(t("e^tₙ  (exact)", "e^tₙ  (pontos)"))
                         .monospace()
                         .strong()
                         .color(Color32::from_rgb(220, 220, 220)),
@@ -581,12 +618,16 @@ fn worked_example_ex_10_1(ui: &mut Ui, state: &Ch10OdeState) {
             });
         ui.add_space(4.0);
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Final Euler error at t = 1:  e − (1.1)¹⁰ ≈ 2.71828 − 2.59374 \
                  = 0.12454.  Halving h to 0.05 roughly halves the error \
                  (Euler is first-order). Try it — drag h to 0.05 and watch \
                  the error in the banner at the top drop by ~½.",
-            )
+                "Végső Euler-hiba t = 1-nél:  e − (1,1)¹⁰ ≈ 2,71828 − 2,59374 \
+                 = 0,12454.  h felezése 0,05-re nagyjából felezi a hibát (az Euler \
+                 elsőrendű). Próbáld ki — húzd h-t 0,05-re, és figyeld, ahogy a \
+                 felső sávban a hiba ~felére esik.",
+            ))
             .small()
             .color(Color32::from_rgb(160, 175, 195)),
         );
@@ -668,7 +709,7 @@ fn trajectory_plot(
                     Arrows::new(PlotPoints::from(origins), PlotPoints::from(tips))
                         .color(Color32::from_rgba_unmultiplied(120, 140, 180, 110))
                         .tip_length(4.0)
-                        .name("slope field"),
+                        .name(t("slope field", "iránymező")),
                 );
             }
 
@@ -685,7 +726,7 @@ fn trajectory_plot(
                         Line::new(PlotPoints::from(seg))
                             .color(Color32::from_rgb(220, 220, 220))
                             .stroke(Stroke::new(1.5, Color32::from_rgb(220, 220, 220)))
-                            .name("exact"),
+                            .name(t("exact", "pontos")),
                     );
                     i += pts_per_dash;
                 }
@@ -793,10 +834,12 @@ fn error_vs_h_plot(ui: &mut Ui, state: &Ch10OdeState) {
             }
         });
     ui.label(
-        RichText::new(
+        RichText::new(t(
             "Slope of each line is the empirical convergence order. \
              Theory predicts 1.00 (Euler), 2.00 (Heun), 4.00 (RK4).",
-        )
+            "Minden vonal meredeksége az empirikus konvergenciarend. Az elmélet \
+             1,00-t (Euler), 2,00-t (Heun), 4,00-t (RK4) jósol.",
+        ))
         .small()
         .color(Color32::from_rgb(160, 175, 195)),
     );
@@ -815,7 +858,7 @@ fn method_table(ui: &mut Ui, state: &Ch10OdeState, m: Method, traj: &[(f64, f64)
                 ui.label(RichText::new("i").monospace().strong());
                 ui.label(RichText::new("tᵢ").monospace().strong());
                 ui.label(RichText::new("yᵢ").monospace().strong());
-                ui.label(RichText::new("y_true").monospace().strong());
+                ui.label(RichText::new(t("y_true", "y_valódi")).monospace().strong());
                 ui.label(RichText::new("|error|").monospace().strong());
                 ui.end_row();
                 let n_show = traj.len().min(12);
@@ -844,7 +887,10 @@ fn method_table(ui: &mut Ui, state: &Ch10OdeState, m: Method, traj: &[(f64, f64)
                     ui.label("");
                     ui.label("");
                     ui.label(
-                        RichText::new(format!("({} steps total)", traj.len() - 1))
+                        RichText::new({
+                            let s = traj.len() - 1;
+                            if i18n::lang() == Lang::Hu { format!("(összesen {s} lépés)") } else { format!("({s} steps total)") }
+                        })
                             .small()
                             .weak(),
                     );
