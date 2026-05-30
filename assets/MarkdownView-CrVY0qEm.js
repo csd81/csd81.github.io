@@ -1,1 +1,0 @@
-import{j as e}from"./index-BVjo4Ri0.js";import{M as a,r as o,b as t,a as n}from"./index-m7Mx08ky.js";function p({markdown:s,className:r}){return e.jsx("div",{className:`prose-lesson${r?` ${r}`:""}`,children:e.jsx(a,{remarkPlugins:[t,n],rehypePlugins:[[o,{throwOnError:!1,trust:!0}]],children:s})})}export{p as M};
