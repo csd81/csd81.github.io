@@ -6,6 +6,7 @@ use engine::{ast::Expr, parse_expr_str, Env};
 use numerics::{mesh, Matrix};
 
 use crate::plot3d::{self, ViewState};
+use crate::i18n::{self, t, Lang};
 
 const DEFAULT_FORMULA: &str = "sin(sqrt(x*x + y*y)) / (sqrt(x*x + y*y) + 0.01)";
 
@@ -60,10 +61,10 @@ impl Ch6State {
 
     fn compute_surface(&mut self, env: &mut Env) -> Result<SurfaceResult, String> {
         if self.grid_n < 2 {
-            return Err("grid size must be at least 2".into());
+            return Err(t("grid size must be at least 2", "a rács mérete legalább 2 legyen").into());
         }
         if !(self.x_min < self.x_max && self.y_min < self.y_max) {
-            return Err("ranges must have min < max".into());
+            return Err(t("ranges must have min < max", "a tartományoknál min < max kell").into());
         }
         let expr: Expr = parse_expr_str(&self.formula).map_err(|e| e.to_string())?;
         let xs = mesh::linspace(self.x_min, self.x_max, self.grid_n);
@@ -77,11 +78,12 @@ impl Ch6State {
                 env.set("y", Matrix::scalar(y));
                 let v = env.eval(&expr).map_err(|e| e.to_string())?;
                 let s = v.as_scalar().ok_or_else(|| {
-                    format!(
-                        "formula must return a scalar; got {}x{} at x={x}, y={y}",
-                        v.rows(),
-                        v.cols()
-                    )
+                    let (r, c) = (v.rows(), v.cols());
+                    if i18n::lang() == Lang::Hu {
+                        format!("a képletnek skalárt kell adnia; {r}x{c} jött x={x}, y={y}-nál")
+                    } else {
+                        format!("formula must return a scalar; got {r}x{c} at x={x}, y={y}")
+                    }
                 })?;
                 data.push(s);
             }
@@ -125,7 +127,7 @@ pub fn show(ui: &mut Ui, state: &mut Ch6State, env: &mut Env) {
             );
         } else {
             ui.centered_and_justified(|ui| {
-                ui.label("(no surface — fix the formula and click Apply)");
+                ui.label(t("(no surface — fix the formula and click Apply)", "(nincs felület — javítsd a képletet és kattints az Alkalmaz gombra)"));
             });
         }
     });
@@ -133,7 +135,7 @@ pub fn show(ui: &mut Ui, state: &mut Ch6State, env: &mut Env) {
 
 fn controls(ui: &mut Ui, state: &mut Ch6State, env: &mut Env) {
     ui.add_space(6.0);
-    ui.label(RichText::new("Surface formula").strong());
+    ui.label(RichText::new(t("Surface formula", "Felület képlete")).strong());
     ui.add(
         TextEdit::multiline(&mut state.formula)
             .desired_rows(3)
@@ -155,17 +157,17 @@ fn controls(ui: &mut Ui, state: &mut Ch6State, env: &mut Env) {
         ui.add(egui::DragValue::new(&mut state.y_max).speed(0.1));
     });
     ui.horizontal(|ui| {
-        ui.label("grid");
+        ui.label(t("grid", "rács"));
         ui.add(egui::DragValue::new(&mut state.grid_n).range(4..=200).speed(1));
-        ui.label("(per axis)");
+        ui.label(t("(per axis)", "(tengelyenként)"));
     });
 
     ui.add_space(8.0);
     ui.horizontal(|ui| {
-        if ui.button("Apply").clicked() {
+        if ui.button(t("Apply", "Alkalmaz")).clicked() {
             state.apply_formula(env);
         }
-        if ui.button("Reset view").clicked() {
+        if ui.button(t("Reset view", "Nézet visszaállítása")).clicked() {
             state.view = ViewState::default();
         }
     });
@@ -173,7 +175,7 @@ fn controls(ui: &mut Ui, state: &mut Ch6State, env: &mut Env) {
     if let Some(err) = &state.formula_error {
         ui.add_space(6.0);
         ui.label(
-            RichText::new(format!("formula error: {err}"))
+            RichText::new(if i18n::lang() == Lang::Hu { format!("képlethiba: {err}") } else { format!("formula error: {err}") })
                 .color(Color32::from_rgb(240, 120, 120))
                 .monospace(),
         );
@@ -181,7 +183,7 @@ fn controls(ui: &mut Ui, state: &mut Ch6State, env: &mut Env) {
 
     ui.add_space(12.0);
     ui.separator();
-    ui.label(RichText::new("Presets").strong());
+    ui.label(RichText::new(t("Presets", "Példák")).strong());
     ui.horizontal_wrapped(|ui| {
         for (name, expr, range) in PRESETS {
             if ui.small_button(*name).clicked() {
