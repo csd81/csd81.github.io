@@ -23,10 +23,11 @@ enum Strategy {
 
 impl Strategy {
     fn label(&self) -> &'static str {
+        use crate::i18n::t;
         match self {
-            Self::Naive => "Naive (no pivot)",
-            Self::PartialPivot => "Partial pivot",
-            Self::ScaledPartialPivot => "Scaled partial pivot",
+            Self::Naive => t("Naive (no pivot)", "Naiv (pivot nélkül)"),
+            Self::PartialPivot => t("Partial pivot", "Részleges pivotálás"),
+            Self::ScaledPartialPivot => t("Scaled partial pivot", "Skálázott részleges pivot"),
         }
     }
     fn short(&self) -> &'static str {
@@ -91,7 +92,7 @@ pub fn show(ui: &mut Ui, state: &mut Ch3State, _env: &mut Env) {
 
     egui::CentralPanel::default().show_inside(ui, |ui| {
         ScrollArea::vertical().show(ui, |ui| {
-            ui.heading("Chapter 3 — Gaussian elimination, animated");
+            ui.heading(crate::i18n::t("Chapter 3 — Gaussian elimination, animated", "3. fejezet — Gauss-elimináció, animálva"));
             ui.label(
                 "Scrub through each elimination step. The current pivot is highlighted; \
                 row swaps are noted. Compare the three pivoting strategies' final \

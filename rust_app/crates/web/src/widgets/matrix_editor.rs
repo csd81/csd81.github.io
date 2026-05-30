@@ -7,6 +7,8 @@
 use egui::{DragValue, Ui};
 use numerics::Matrix;
 
+use crate::i18n::t;
+
 #[derive(Debug, Clone, Copy)]
 pub struct MatrixEditorOptions {
     pub min_dim: usize,
@@ -36,7 +38,7 @@ pub fn matrix_editor(ui: &mut Ui, label: &str, mat: &mut Matrix, opts: MatrixEdi
     if opts.allow_resize {
         ui.horizontal(|ui| {
             let (rows, cols) = mat.shape();
-            ui.label("size:");
+            ui.label(t("size:", "méret:"));
             let mut new_rows = rows;
             let mut new_cols = cols;
             ui.add(
@@ -101,7 +103,7 @@ pub fn vector_editor(
     } else {
         ui.horizontal(|ui| {
             let mut n = v.len();
-            ui.label("length:");
+            ui.label(t("length:", "hossz:"));
             ui.add(DragValue::new(&mut n).range(1usize..=64).speed(0.05));
             if n != v.len() {
                 v.resize(n, 0.0);

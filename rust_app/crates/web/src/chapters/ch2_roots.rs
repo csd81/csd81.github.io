@@ -14,6 +14,8 @@ use egui_plot::{Legend, Line, MarkerShape, Plot, PlotPoints, Points, VLine};
 use engine::{ast::Expr, parse_expr_str, Env};
 use numerics::Matrix;
 
+use crate::i18n::t;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Method {
     Bisection,
@@ -25,12 +27,13 @@ enum Method {
 
 impl Method {
     fn label(&self) -> &'static str {
+        use crate::i18n::t;
         match self {
-            Self::Bisection => "Bisection",
-            Self::FalsePosition => "False position",
-            Self::Newton => "Newton (num. f′)",
-            Self::Secant => "Secant",
-            Self::FixedPoint => "Fixed-point g(x)",
+            Self::Bisection => t("Bisection", "Felezés"),
+            Self::FalsePosition => t("False position", "Húrmódszer"),
+            Self::Newton => t("Newton (num. f′)", "Newton (num. f′)"),
+            Self::Secant => t("Secant", "Szelőmódszer"),
+            Self::FixedPoint => t("Fixed-point g(x)", "Fixpont g(x)"),
         }
     }
     fn uses_bracket(&self) -> bool {
@@ -95,11 +98,12 @@ pub fn show(ui: &mut Ui, state: &mut Ch2State, env: &mut Env) {
 
     egui::CentralPanel::default().show_inside(ui, |ui| {
         ScrollArea::vertical().show(ui, |ui| {
-            ui.heading("Chapter 2 — root finding");
+            ui.heading(t("Chapter 2 — root finding", "2. fejezet — gyökkeresés"));
             intuition_callout(ui);
             ui.add_space(6.0);
             if let Some(err) = &state.error {
-                ui.colored_label(Color32::from_rgb(240, 130, 130), format!("error: {err}"));
+                let prefix = t("error: ", "hiba: ");
+                ui.colored_label(Color32::from_rgb(240, 130, 130), format!("{prefix}{err}"));
             }
             if let Some(note) = &state.note {
                 ui.colored_label(Color32::from_rgb(240, 200, 120), note);
@@ -126,7 +130,8 @@ fn controls(ui: &mut Ui, state: &mut Ch2State, env: &mut Env) {
         "f(x)"
     };
     ui.add_space(6.0);
-    ui.label(RichText::new(format!("Function {var_name}")).strong());
+    let func_word = t("Function", "Függvény");
+    ui.label(RichText::new(format!("{func_word} {var_name}")).strong());
     let resp = ui.add(
         TextEdit::singleline(&mut state.formula)
             .font(egui::TextStyle::Monospace)
@@ -137,7 +142,7 @@ fn controls(ui: &mut Ui, state: &mut Ch2State, env: &mut Env) {
     }
 
     ui.add_space(6.0);
-    ui.label(RichText::new("Method").strong());
+    ui.label(RichText::new(t("Method", "Módszer")).strong());
     for &m in &[
         Method::Bisection,
         Method::FalsePosition,
@@ -157,21 +162,21 @@ fn controls(ui: &mut Ui, state: &mut Ch2State, env: &mut Env) {
     ui.add_space(8.0);
     let mut changed = false;
     if state.method.uses_bracket() {
-        ui.label(RichText::new("Bracket  [a, b]").strong());
+        ui.label(RichText::new(t("Bracket  [a, b]", "Beágyazás  [a, b]")).strong());
         ui.horizontal(|ui| {
             let r1 = ui.add(egui::DragValue::new(&mut state.a).speed(0.05));
             let r2 = ui.add(egui::DragValue::new(&mut state.b).speed(0.05));
             changed |= r1.changed() || r2.changed();
         });
     } else {
-        ui.label(RichText::new("View range  [a, b]").strong());
+        ui.label(RichText::new(t("View range  [a, b]", "Nézet  [a, b]")).strong());
         ui.horizontal(|ui| {
             let r1 = ui.add(egui::DragValue::new(&mut state.a).speed(0.05));
             let r2 = ui.add(egui::DragValue::new(&mut state.b).speed(0.05));
             changed |= r1.changed() || r2.changed();
         });
         ui.add_space(2.0);
-        ui.label("Initial guess(es):");
+        ui.label(t("Initial guess(es):", "Kezdőérték(ek):"));
         ui.horizontal(|ui| {
             ui.label("p₀");
             let r = ui.add(egui::DragValue::new(&mut state.p0).speed(0.05));
@@ -186,14 +191,14 @@ fn controls(ui: &mut Ui, state: &mut Ch2State, env: &mut Env) {
 
     ui.add_space(8.0);
     ui.horizontal(|ui| {
-        ui.label("tol");
+        ui.label(t("tol", "tűrés"));
         let r = ui.add(
             egui::DragValue::new(&mut state.tol)
                 .range(1e-15..=1.0)
                 .speed(1e-3),
         );
         changed |= r.changed();
-        ui.label("max iter");
+        ui.label(t("max iter", "max. iter."));
         let r = ui.add(egui::DragValue::new(&mut state.max_iter).range(1..=500));
         changed |= r.changed();
     });
@@ -204,7 +209,7 @@ fn controls(ui: &mut Ui, state: &mut Ch2State, env: &mut Env) {
 
     ui.add_space(12.0);
     ui.separator();
-    ui.label(RichText::new("Presets").strong());
+    ui.label(RichText::new(t("Presets", "Példák")).strong());
     ui.vertical(|ui| {
         for (name, expr, lo, hi) in PRESETS {
             if ui.small_button(*name).clicked() {
@@ -282,13 +287,13 @@ fn function_plot(ui: &mut Ui, state: &Ch2State, env: &mut Env) {
                         .shape(MarkerShape::Circle)
                         .radius(4.5)
                         .color(Color32::from_rgb(255, 200, 80))
-                        .name("iterates pₖ"),
+                        .name(t("iterates pₖ", "iteráltak pₖ")),
                 );
                 if let Some(&last) = state.trace.last() {
                     plot_ui.vline(
                         VLine::new(last)
                             .color(Color32::from_rgb(120, 220, 140))
-                            .name("final pₖ"),
+                            .name(t("final pₖ", "végső pₖ")),
                     );
                 }
             }
@@ -316,13 +321,13 @@ fn convergence_plot(ui: &mut Ui, state: &Ch2State) {
         .collect();
     Plot::new("ch2_convergence")
         .height(200.0)
-        .x_axis_label("iteration k")
+        .x_axis_label(t("iteration k", "iteráció k"))
         .y_axis_label("log₁₀ |pₖ − p*|")
         .show(ui, |plot_ui| {
             plot_ui.line(
                 Line::new(PlotPoints::from(pts.clone()))
                     .color(Color32::from_rgb(120, 220, 140))
-                    .name("error"),
+                    .name(t("error", "hiba")),
             );
         });
 
@@ -352,20 +357,25 @@ fn convergence_plot(ui: &mut Ui, state: &Ch2State) {
     let den: f64 = x.iter().map(|a| (a - mx).powi(2)).sum::<f64>().max(1e-18);
     let q = num / den;
     let expected = match state.method {
-        Method::Bisection => "≈ 1 (linear, rate ½)",
-        Method::FalsePosition => "≈ 1 (linear)",
-        Method::Newton => "≈ 2 (quadratic)",
+        Method::Bisection => t("≈ 1 (linear, rate ½)", "≈ 1 (lineáris, ráta ½)"),
+        Method::FalsePosition => t("≈ 1 (linear)", "≈ 1 (lineáris)"),
+        Method::Newton => t("≈ 2 (quadratic)", "≈ 2 (kvadratikus)"),
         Method::Secant => "≈ φ ≈ 1.618",
-        Method::FixedPoint => "depends on |g′(p)|; 1 if |g′|>0, 2 if g′(p)=0",
+        Method::FixedPoint => t(
+            "depends on |g′(p)|; 1 if |g′|>0, 2 if g′(p)=0",
+            "|g′(p)|-től függ; 1 ha |g′|>0, 2 ha g′(p)=0",
+        ),
     };
     let color = if q.is_finite() && q > 0.0 {
         Color32::from_rgb(220, 220, 180)
     } else {
         Color32::from_rgb(160, 175, 195)
     };
+    let order_word = t("Empirical order", "Empirikus rend");
+    let theory_word = t("theory", "elmélet");
     ui.label(
         RichText::new(format!(
-            "Empirical order  q̂ ≈ {q:.3}     (theory: {expected})"
+            "{order_word}  q̂ ≈ {q:.3}     ({theory_word}: {expected})"
         ))
         .monospace()
         .color(color),
@@ -383,14 +393,14 @@ fn convergence_plot(ui: &mut Ui, state: &Ch2State) {
 /// machinery wearing other costumes later.
 fn intuition_callout(ui: &mut Ui) {
     egui::CollapsingHeader::new(
-        RichText::new("Why this chapter matters")
+        RichText::new(t("Why this chapter matters", "Miért fontos ez a fejezet"))
             .strong()
             .color(Color32::from_rgb(220, 200, 120)),
     )
     .default_open(false)
     .show(ui, |ui| {
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Root finding is the most-reused primitive in scientific \
                  computing. Every method in this chapter (with its strengths \
                  and pitfalls) becomes a building block downstream: implicit \
@@ -398,18 +408,30 @@ fn intuition_callout(ui: &mut Ui) {
                  line-search optimisers (Ch 8) bisect along the gradient \
                  direction; root-finding under uncertainty becomes the basis \
                  of statistical estimation.",
-            )
+                "A gyökkeresés a tudományos számítás legtöbbet újrahasznált \
+                 építőeleme. E fejezet minden módszere (erősségeivel és \
+                 csapdáival) később építőkockává válik: az implicit ODE-megoldók \
+                 (10. fej.) minden időlépésben Newtont hívnak; a vonalmenti \
+                 optimalizálók (8. fej.) a gradiens mentén feleznek; a \
+                 bizonytalanság melletti gyökkeresés a statisztikai becslés alapja.",
+            ))
             .small(),
         );
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Two competing pressures shape the algorithms: cost per \
                  iteration (one f, two f, f+f') and convergence order. \
                  Bisection is dirt-cheap but linear; Newton uses derivative \
                  info to land quadratically; secant approximates the \
                  derivative and lands at the golden-ratio order φ ≈ 1.618. \
                  Every chapter past this one revisits the same tradeoff.",
-            )
+                "Két versengő szempont alakítja az algoritmusokat: a lépésenkénti \
+                 költség (egy f, két f, f+f') és a konvergencia rendje. A felezés \
+                 fillérekbe kerül, de lineáris; a Newton a derivált információját \
+                 használva kvadratikusan ér célba; a szelő közelíti a deriváltat, \
+                 és az aranymetszés φ ≈ 1.618 rendjén landol. Minden további \
+                 fejezet ugyanezt a kompromisszumot járja körül.",
+            ))
             .small()
             .color(Color32::from_rgb(160, 175, 195)),
         );
@@ -424,39 +446,67 @@ fn intuition_callout(ui: &mut Ui) {
 fn pitfall_callout(ui: &mut Ui, state: &Ch2State) {
     let body = match state.method {
         Method::Bisection | Method::FalsePosition => (
-            "Bracketing methods always converge.",
-            "Given f(a)·f(b) < 0 and continuous f, IVT guarantees a root \
-             inside and bisection halves the bracket every step. The cost is \
-             that convergence is only linear (rate ½), and you must already \
-             have a bracket — finding one can be the hard part.",
+            t("Bracketing methods always converge.", "A beágyazó módszerek mindig konvergálnak."),
+            t(
+                "Given f(a)·f(b) < 0 and continuous f, IVT guarantees a root \
+                 inside and bisection halves the bracket every step. The cost is \
+                 that convergence is only linear (rate ½), and you must already \
+                 have a bracket — finding one can be the hard part.",
+                "Ha f(a)·f(b) < 0 és f folytonos, a Bolzano-tétel gyököt garantál \
+                 belül, és a felezés minden lépésben felezi az intervallumot. Az ár, \
+                 hogy a konvergencia csak lineáris (ráta ½), és már kell legyen \
+                 beágyazásod — ennek megtalálása lehet a nehéz rész.",
+            ),
         ),
         Method::Newton => (
-            "Newton diverges when f'(pₖ) is small or wrong sign.",
-            "Try the \"0.5·atan x  (Newton diverges)\" preset with p₀ = 1.6. \
-             The tangent line at x = 1.6 crosses the x-axis far on the other \
-             side (at ≈ −1.8), and the next tangent crosses at +2.3, then \
-             −3.6 … the iterates run away to ±∞. Same pathology: f(x) = x³ \
-             from x₀ near 0, where f'(0) = 0 traps the iterate.",
+            t("Newton diverges when f'(pₖ) is small or wrong sign.", "A Newton divergál, ha f'(pₖ) kicsi vagy rossz előjelű."),
+            t(
+                "Try the \"0.5·atan x  (Newton diverges)\" preset with p₀ = 1.6. \
+                 The tangent line at x = 1.6 crosses the x-axis far on the other \
+                 side (at ≈ −1.8), and the next tangent crosses at +2.3, then \
+                 −3.6 … the iterates run away to ±∞. Same pathology: f(x) = x³ \
+                 from x₀ near 0, where f'(0) = 0 traps the iterate.",
+                "Próbáld a „0.5·atan x  (Newton divergál)” példát p₀ = 1.6-tal. Az \
+                 érintő x = 1.6-nál messze a túloldalon metszi a tengelyt (≈ −1.8), \
+                 a következő +2.3-nál, majd −3.6-nál … az iteráltak ±∞-be szöknek. \
+                 Ugyanez a kórkép: f(x) = x³ 0-hoz közeli x₀-ból, ahol f'(0) = 0 \
+                 csapdába ejt.",
+            ),
         ),
         Method::Secant => (
-            "Secant inherits Newton's pathologies + new ones.",
-            "Order is φ ≈ 1.618, between bisection (1) and Newton (2). It \
-             fails when f(pₖ₋₁) ≈ f(pₖ): the secant line is nearly \
-             horizontal, the next iterate is wildly far away. Mitigation: \
-             keep p₀ and p₁ close, on the same side of the root.",
+            t("Secant inherits Newton's pathologies + new ones.", "A szelő örökli a Newton kórképeit + újakat."),
+            t(
+                "Order is φ ≈ 1.618, between bisection (1) and Newton (2). It \
+                 fails when f(pₖ₋₁) ≈ f(pₖ): the secant line is nearly \
+                 horizontal, the next iterate is wildly far away. Mitigation: \
+                 keep p₀ and p₁ close, on the same side of the root.",
+                "A rend φ ≈ 1.618, a felezés (1) és a Newton (2) között. Akkor \
+                 hibázik, ha f(pₖ₋₁) ≈ f(pₖ): a szelő majdnem vízszintes, a \
+                 következő iterált vadul messze kerül. Megoldás: tartsd p₀-t és \
+                 p₁-et közel, a gyök ugyanazon oldalán.",
+            ),
         ),
         Method::FixedPoint => (
-            "Fixed-point converges only if |g'(p)| < 1 near the root.",
-            "If |g'(p)| > 1 the error gets multiplied each step and the \
-             iterates fly away (even if they start on the root!). |g'(p)| = 0 \
-             gives quadratic convergence — equivalent to Newton in disguise. \
-             The line y = x on the plot is the cobweb mirror; geometrically, \
-             convergence ↔ the function lies between y = x − k and y = x + k \
-             with |k| growing slower than the iterates approach.",
+            t("Fixed-point converges only if |g'(p)| < 1 near the root.", "A fixpont csak akkor konvergál, ha |g'(p)| < 1 a gyök közelében."),
+            t(
+                "If |g'(p)| > 1 the error gets multiplied each step and the \
+                 iterates fly away (even if they start on the root!). |g'(p)| = 0 \
+                 gives quadratic convergence — equivalent to Newton in disguise. \
+                 The line y = x on the plot is the cobweb mirror; geometrically, \
+                 convergence ↔ the function lies between y = x − k and y = x + k \
+                 with |k| growing slower than the iterates approach.",
+                "Ha |g'(p)| > 1, a hiba minden lépésben szorzódik, és az iteráltak \
+                 elszállnak (még ha a gyökről indulnak is!). |g'(p)| = 0 \
+                 kvadratikus konvergenciát ad — ez a Newton álruhában. Az ábra \
+                 y = x egyenese a lépcsős tükör; geometriailag a konvergencia ↔ a \
+                 függvény az y = x − k és y = x + k között fut, ahol |k| lassabban \
+                 nő, mint ahogy az iteráltak közelednek.",
+            ),
         ),
     };
+    let pitfall_word = t("Pitfall", "Csapda");
     egui::CollapsingHeader::new(
-        RichText::new(format!("Pitfall — {}", body.0))
+        RichText::new(format!("{pitfall_word} — {}", body.0))
             .strong()
             .color(Color32::from_rgb(240, 130, 130)),
     )
@@ -473,15 +523,20 @@ fn iterate_table(ui: &mut Ui, state: &Ch2State, env: &mut Env) {
     // Re-parse formula so we can show the residual f(pₖ) per row. If the
     // formula is bad, fall back to the bare trace.
     let expr = parse_expr_str(&state.formula).ok();
+    let trace_word = t("Step trace", "Lépésnapló");
+    let iter_word = t("iterates", "iterált");
     ui.collapsing(
-        RichText::new(format!("Step trace  ({} iterates)", state.trace.len())),
+        RichText::new(format!("{trace_word}  ({} {iter_word})", state.trace.len())),
         |ui| {
             ui.label(
-                RichText::new(
+                RichText::new(t(
                     "Columns: k = iteration index, pₖ = current estimate, \
                      |Δpₖ| = step from the previous estimate (Cauchy proxy), \
                      f(pₖ) = residual (should drive toward 0).",
-                )
+                    "Oszlopok: k = iterációs index, pₖ = aktuális becslés, \
+                     |Δpₖ| = lépés az előző becsléstől (Cauchy-közelítés), \
+                     f(pₖ) = reziduum (0 felé kell tartania).",
+                ))
                 .small()
                 .color(Color32::from_rgb(160, 175, 195)),
             );

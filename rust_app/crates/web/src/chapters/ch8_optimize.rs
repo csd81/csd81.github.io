@@ -23,13 +23,14 @@ enum Method {
 
 impl Method {
     fn label(&self) -> &'static str {
+        use crate::i18n::t;
         match self {
-            Self::GoldenSection => "Golden section  (1D)",
-            Self::Simplex => "Simplex method",
+            Self::GoldenSection => t("Golden section  (1D)", "Aranymetszés  (1D)"),
+            Self::Simplex => t("Simplex method", "Szimplex módszer"),
             Self::NelderMead => "Nelder-Mead",
-            Self::GradientConstant => "Gradient descent  (constant step)",
-            Self::GradientOptimal => "Gradient descent  (optimal step)",
-            Self::Newton => "Newton's method",
+            Self::GradientConstant => t("Gradient descent  (constant step)", "Gradiens-módszer  (állandó lépés)"),
+            Self::GradientOptimal => t("Gradient descent  (optimal step)", "Gradiens-módszer  (optimális lépés)"),
+            Self::Newton => t("Newton's method", "Newton-módszer"),
         }
     }
 }
@@ -87,7 +88,7 @@ pub fn show(ui: &mut Ui, state: &mut Ch8State, env: &mut Env) {
 
     egui::CentralPanel::default().show_inside(ui, |ui| {
         ScrollArea::vertical().show(ui, |ui| {
-            ui.heading("Chapter 8 — minimization");
+            ui.heading(crate::i18n::t("Chapter 8 — minimization", "8. fejezet — szélsőértékszámítás"));
             ui.label(
                 "Pick a method on the left and watch its iterates trace out a \
                 path over the contour plot of f(x, y). The simplex methods \

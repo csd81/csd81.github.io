@@ -91,7 +91,7 @@ pub fn show(ui: &mut Ui, state: &mut Ch6InterpState, _env: &mut Env) {
 
     egui::CentralPanel::default().show_inside(ui, |ui| {
         ScrollArea::vertical().show(ui, |ui| {
-            ui.heading("Chapter 6 — interpolation");
+            ui.heading(crate::i18n::t("Chapter 6 — interpolation", "6. fejezet — interpoláció"));
             ui.label(
                 "Compare polynomial vs piecewise-cubic interpolation. The Runge \
                 preset is the classic warning: equidistant Lagrange interpolation \

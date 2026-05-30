@@ -186,7 +186,7 @@ pub fn show(ui: &mut Ui, state: &mut Ch10OdeState, _env: &mut Env) {
 
     egui::CentralPanel::default().show_inside(ui, |ui| {
         ScrollArea::vertical().show(ui, |ui| {
-            ui.heading("Chapter 10 — initial-value problems");
+            ui.heading(crate::i18n::t("Chapter 10 — initial-value problems", "10. fejezet — kezdetiérték-feladatok"));
             ui.label(
                 "Solve y' = f(t, y), y(t₀) = y₀ with three classic explicit \
                  methods. The slope field shows what the ODE is doing \

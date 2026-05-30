@@ -65,7 +65,7 @@ pub fn show(ui: &mut Ui, state: &mut Ch5State, _env: &mut Env) {
 
     egui::CentralPanel::default().show_inside(ui, |ui| {
         ScrollArea::vertical().show(ui, |ui| {
-            ui.heading("Chapter 5 — LU & Cholesky factorization");
+            ui.heading(crate::i18n::t("Chapter 5 — LU & Cholesky factorization", "5. fejezet — LU- és Cholesky-felbontás"));
             ui.label(
                 "Once A is factored, every subsequent solve is two triangular \
                 substitutions (O(n²)) — the n³ → n² per-RHS win that makes this \

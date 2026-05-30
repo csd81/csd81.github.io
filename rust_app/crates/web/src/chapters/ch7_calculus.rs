@@ -36,10 +36,11 @@ enum Mode {
 
 impl Mode {
     fn label(&self) -> &'static str {
+        use crate::i18n::t;
         match self {
-            Self::Diff => "1.   Differentiation",
-            Self::NewtonCotes => "2.   Newton-Cotes integration",
-            Self::Gauss => "3.   Gaussian quadrature",
+            Self::Diff => t("1.   Differentiation", "1.   Deriválás"),
+            Self::NewtonCotes => t("2.   Newton-Cotes integration", "2.   Newton–Cotes integrálás"),
+            Self::Gauss => t("3.   Gaussian quadrature", "3.   Gauss-kvadratúra"),
         }
     }
 }
@@ -90,7 +91,7 @@ pub fn show(ui: &mut Ui, state: &mut Ch7State, env: &mut Env) {
 
     egui::CentralPanel::default().show_inside(ui, |ui| {
         ScrollArea::vertical().show(ui, |ui| {
-            ui.heading("Chapter 7 — numerical calculus");
+            ui.heading(crate::i18n::t("Chapter 7 — numerical calculus", "7. fejezet — numerikus deriválás és integrálás"));
             intuition_callout(ui);
             ui.add_space(8.0);
             match state.mode {

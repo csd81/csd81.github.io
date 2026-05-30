@@ -66,7 +66,7 @@ pub fn show(ui: &mut Ui, state: &mut Ch4State, _env: &mut Env) {
 
     egui::CentralPanel::default().show_inside(ui, |ui| {
         ScrollArea::vertical().show(ui, |ui| {
-            ui.heading("Chapter 4 — iterative methods & conditioning");
+            ui.heading(crate::i18n::t("Chapter 4 — iterative methods & conditioning", "4. fejezet — iterációs módszerek és kondicionáltság"));
             ui.label(
                 "Edit A and b on the left. Jacobi and Gauss-Seidel both iterate from \
                 x⁽⁰⁾ = 0; their successive-difference norms are plotted side by side. \

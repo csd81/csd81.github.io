@@ -8,6 +8,8 @@ use egui::{Color32, RichText, ScrollArea, TextEdit, Ui};
 use engine::Env;
 use numerics::Matrix;
 
+use crate::i18n::{self, t, Lang};
+
 #[derive(Default)]
 pub struct ReplState {
     pub input: String,
@@ -48,8 +50,13 @@ impl ReplState {
                 }
             }
             Err(e) => {
+                let text = if i18n::lang() == Lang::Hu {
+                    format!("hiba: {e}")
+                } else {
+                    format!("error: {e}")
+                };
                 self.log.push(LogEntry {
-                    text: format!("error: {e}"),
+                    text,
                     is_error: true,
                 });
             }
@@ -61,8 +68,11 @@ pub fn repl_panel(ui: &mut Ui, env: &mut Env, state: &mut ReplState) {
     ui.horizontal(|ui| {
         ui.label(RichText::new("REPL").strong());
         ui.separator();
-        ui.label("Shared variable scope across all tabs. Try: A = [1,2;3,4]");
-        if ui.small_button("clear").clicked() {
+        ui.label(t(
+            "Shared variable scope across all tabs. Try: A = [1,2;3,4]",
+            "Közös változókörnyezet minden fülön. Próbáld: A = [1,2;3,4]",
+        ));
+        if ui.small_button(t("clear", "törlés")).clicked() {
             state.log.clear();
         }
     });
@@ -93,7 +103,10 @@ pub fn repl_panel(ui: &mut Ui, env: &mut Env, state: &mut ReplState) {
             TextEdit::singleline(&mut state.input)
                 .font(egui::TextStyle::Monospace)
                 .desired_width(f32::INFINITY)
-                .hint_text("e.g.  A = [1, 2; 3, 4]   then   eig = cond_inf(A)"),
+                .hint_text(t(
+                    "e.g.  A = [1, 2; 3, 4]   then   eig = cond_inf(A)",
+                    "pl.  A = [1, 2; 3, 4]   majd   eig = cond_inf(A)",
+                )),
         );
         let pressed_enter =
             resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));

@@ -7,6 +7,7 @@
 
 mod app;
 mod chapters;
+mod i18n;
 mod plot3d;
 mod widgets;
 

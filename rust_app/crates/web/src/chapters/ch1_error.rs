@@ -15,6 +15,8 @@ use egui_plot::{Legend, Line, MarkerShape, Plot, PlotPoints, Points};
 use engine::Env;
 use numerics::error as num_error;
 
+use crate::i18n::{self, t, Lang};
+
 pub struct Ch1State {
     /// log10(x) for the cancellation experiment.
     pub log_x: f64,
@@ -39,12 +41,18 @@ impl Default for Ch1State {
 
 pub fn show(ui: &mut Ui, state: &mut Ch1State, _env: &mut Env) {
     ScrollArea::vertical().show(ui, |ui| {
-        ui.heading("Chapter 1 — error analysis & floating-point");
-        ui.label(
+        ui.heading(t(
+            "Chapter 1 — error analysis & floating-point",
+            "1. fejezet — hibaszámítás és lebegőpont",
+        ));
+        ui.label(t(
             "Three live experiments from Hartung §1.1–1.4. Drag the sliders \
             and watch how algebraically equivalent formulas diverge under \
             f64 rounding.",
-        );
+            "Három élő kísérlet Hartung §1.1–1.4 alapján. Húzd a csúszkákat, \
+            és figyeld, hogyan térnek el az algebrailag azonos képletek az \
+            f64 kerekítés hatására.",
+        ));
         ui.add_space(6.0);
         intuition_callout(ui);
         ui.add_space(8.0);
@@ -73,7 +81,7 @@ fn cross_chapter_link(ui: &mut Ui) {
     let blue = Color32::from_rgb(120, 200, 255);
     let dim = Color32::from_rgb(160, 175, 195);
     egui::CollapsingHeader::new(
-        RichText::new("Where these errors come back").strong(),
+        RichText::new(t("Where these errors come back", "Hol térnek vissza ezek a hibák")).strong(),
     )
     .default_open(false)
     .show(ui, |ui| {
@@ -89,30 +97,45 @@ fn cross_chapter_link(ui: &mut Ui) {
         };
         entry(
             ui,
-            "Ch 3  ·  Gaussian elimination",
-            "The \"4-digit catastrophe\" preset is cancellation from this chapter applied to a single matrix entry: a tiny pivot turns a small subtraction into a huge multiplier, which then wipes meaningful digits when it scales the next row.",
+            t("Ch 3  ·  Gaussian elimination", "3. fej.  ·  Gauss-elimináció"),
+            t(
+                "The \"4-digit catastrophe\" preset is cancellation from this chapter applied to a single matrix entry: a tiny pivot turns a small subtraction into a huge multiplier, which then wipes meaningful digits when it scales the next row.",
+                "A „4 jegyű katasztrófa” példa ennek a fejezetnek a kiejtését alkalmazza egyetlen mátrixelemre: egy aprócska pivot a kis kivonást óriási szorzóvá alakítja, ami aztán a következő sor skálázásakor letörli az értékes jegyeket.",
+            ),
         );
         entry(
             ui,
-            "Ch 4  ·  Hilbert matrices",
-            "cond∞(H_n) explodes from 2·10¹ to 1·10⁷ as n grows. Same number of f64 bits but most of them are useless after the first few digits.",
+            t("Ch 4  ·  Hilbert matrices", "4. fej.  ·  Hilbert-mátrixok"),
+            t(
+                "cond∞(H_n) explodes from 2·10¹ to 1·10⁷ as n grows. Same number of f64 bits but most of them are useless after the first few digits.",
+                "cond∞(H_n) 2·10¹-ről 1·10⁷-re robban, ahogy n nő. Ugyanannyi f64 bit, de a többségük az első néhány jegy után használhatatlan.",
+            ),
         );
         entry(
             ui,
-            "Ch 7  ·  numerical differentiation",
-            "Forward-difference error has the V-shape — truncation O(h) plus round-off O(εₘ/h). Identical to the cancellation experiment in this chapter, dressed up with a tangent.",
+            t("Ch 7  ·  numerical differentiation", "7. fej.  ·  numerikus deriválás"),
+            t(
+                "Forward-difference error has the V-shape — truncation O(h) plus round-off O(εₘ/h). Identical to the cancellation experiment in this chapter, dressed up with a tangent.",
+                "A jobb oldali differencia hibája V-alakú — O(h) képlethiba plusz O(εₘ/h) kerekítés. Ugyanaz, mint az itteni kiejtéses kísérlet, csak érintővel feldíszítve.",
+            ),
         );
         entry(
             ui,
-            "Ch 9  ·  least-squares normal equations",
-            "Aᵀ·A is a Hilbert-like matrix when m is high. Same conditioning explosion drives the polynomial-overfitting pitfall.",
+            t("Ch 9  ·  least-squares normal equations", "9. fej.  ·  legkisebb négyzetek normálegyenletei"),
+            t(
+                "Aᵀ·A is a Hilbert-like matrix when m is high. Same conditioning explosion drives the polynomial-overfitting pitfall.",
+                "Aᵀ·A Hilbert-szerű mátrix nagy m esetén. Ugyanaz a kondíciórobbanás okozza a polinomos túlillesztés csapdáját.",
+            ),
         );
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Lesson: when something \"converges to the wrong answer\" \
                  down the road, it is almost always one of the three \
                  pitfalls in this chapter wearing a costume.",
-            )
+                "Tanulság: ha valami később „rossz értékhez konvergál”, \
+                 az szinte mindig e fejezet három csapdájának egyike \
+                 jelmezben.",
+            ))
             .small()
             .color(dim),
         );
@@ -130,12 +153,15 @@ fn kahan_formula_card(ui: &mut Ui) {
     let gold = Color32::from_rgb(255, 220, 100);
     let dim = Color32::from_rgb(200, 215, 230);
     egui::CollapsingHeader::new(
-        RichText::new("Formula card  ·  Kahan compensated summation").strong(),
+        RichText::new(t(
+            "Formula card  ·  Kahan compensated summation",
+            "Képletkártya  ·  Kahan-féle kompenzált összegzés",
+        )).strong(),
     )
     .default_open(false)
     .show(ui, |ui| {
         ui.label(
-            RichText::new("for each xᵢ:")
+            RichText::new(t("for each xᵢ:", "minden xᵢ-re:"))
                 .monospace()
                 .color(dim),
         );
@@ -147,7 +173,10 @@ fn kahan_formula_card(ui: &mut Ui) {
                 ui.label(RichText::new("−").monospace().color(dim));
                 ui.label(RichText::new("c").monospace().color(gold));
                 ui.label(
-                    RichText::new("       // recover lost low bits")
+                    RichText::new(t(
+                        "       // recover lost low bits",
+                        "       // az elveszett alsó bitek visszanyerése",
+                    ))
                         .small()
                         .color(dim),
                 );
@@ -159,7 +188,10 @@ fn kahan_formula_card(ui: &mut Ui) {
                 ui.label(RichText::new("+").monospace().color(dim));
                 ui.label(RichText::new("y").monospace());
                 ui.label(
-                    RichText::new("       // big-magnitude add, rounds")
+                    RichText::new(t(
+                        "       // big-magnitude add, rounds",
+                        "       // nagy nagyságrendű összeadás, kerekít",
+                    ))
                         .small()
                         .color(dim),
                 );
@@ -169,7 +201,10 @@ fn kahan_formula_card(ui: &mut Ui) {
                 ui.label(RichText::new("=").monospace().color(dim));
                 ui.label(RichText::new("(t − sum) − y").monospace());
                 ui.label(
-                    RichText::new("       // what rounding ate")
+                    RichText::new(t(
+                        "       // what rounding ate",
+                        "       // amit a kerekítés megevett",
+                    ))
                         .small()
                         .color(dim),
                 );
@@ -181,11 +216,14 @@ fn kahan_formula_card(ui: &mut Ui) {
             });
         });
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Knuth's compensation: `c` always holds the residual that \
                  disappeared in the last `sum += y`. On the next iteration we \
                  subtract it back. Result: total error is independent of n.",
-            )
+                "Knuth kompenzációja: `c` mindig azt a maradékot tartja, amely \
+                 az utolsó `sum += y`-ban eltűnt. A következő lépésben \
+                 visszavonjuk. Eredmény: a teljes hiba független n-től.",
+            ))
             .small()
             .color(Color32::from_rgb(160, 175, 195)),
         );
@@ -202,7 +240,7 @@ fn try_this_challenges(ui: &mut Ui) {
         .unwrap_or(None);
     egui::Frame::group(ui.style()).show(ui, |ui| {
         ui.label(
-            RichText::new("Try this")
+            RichText::new(t("Try this", "Próbáld ki"))
                 .strong()
                 .color(Color32::from_rgb(255, 220, 100)),
         );
@@ -214,7 +252,7 @@ fn try_this_challenges(ui: &mut Ui) {
                         .color(Color32::from_rgb(240, 200, 120)),
                 );
                 ui.label(q);
-                let btn = if open == Some(idx) { "hide answer" } else { "answer" };
+                let btn = if open == Some(idx) { t("hide answer", "válasz elrejtése") } else { t("answer", "válasz") };
                 if ui.small_button(btn).clicked() {
                     open = if open == Some(idx) { None } else { Some(idx) };
                 }
@@ -231,35 +269,66 @@ fn try_this_challenges(ui: &mut Ui) {
         item(
             ui,
             0,
-            "Set log₁₀ x = −8 in the cancellation experiment. How many decimal \
-             digits of 1 − cos x are correct in the naive formula? In the \
-             stable one?",
-            "At x ≈ 1e-8, 1 − cos x ≈ 5e-17 which is below εₘ — naive returns \
-             0 (or a few wrong digits). 2·sin²(x/2) computes 5e-17 to ~15 \
-             correct digits. The difference is the same value, computed two \
-             ways.",
+            t(
+                "Set log₁₀ x = −8 in the cancellation experiment. How many decimal \
+                 digits of 1 − cos x are correct in the naive formula? In the \
+                 stable one?",
+                "Állítsd log₁₀ x = −8-ra a kiejtéses kísérletben. Az 1 − cos x \
+                 hány tizedesjegye helyes a naiv képletben? És a stabilban?",
+            ),
+            t(
+                "At x ≈ 1e-8, 1 − cos x ≈ 5e-17 which is below εₘ — naive returns \
+                 0 (or a few wrong digits). 2·sin²(x/2) computes 5e-17 to ~15 \
+                 correct digits. The difference is the same value, computed two \
+                 ways.",
+                "x ≈ 1e-8-nál 1 − cos x ≈ 5e-17, ami εₘ alatt van — a naiv 0-t \
+                 ad (vagy néhány hibás jegyet). A 2·sin²(x/2) ~15 helyes jegyre \
+                 számolja az 5e-17-et. Ugyanaz az érték, kétféleképpen számolva.",
+            ),
         );
         item(
             ui,
             1,
-            "In the summation experiment set the big-term magnitude to 1e20 \
-             and the count of small terms to 1e5. Predict the naive sum, the \
-             sorted sum, and the Kahan sum before running.",
-            "Naive: exactly 1e20 — every small +1 disappears, since 1e20 + 1 \
-             rounds back to 1e20. Sorted: also 1e20 for the same reason (the \
-             big term still swallows the running total). Kahan: 1e20 + 1e5 — \
-             the running compensation term `c` catches the lost low bits.",
+            t(
+                "In the summation experiment set the big-term magnitude to 1e20 \
+                 and the count of small terms to 1e5. Predict the naive sum, the \
+                 sorted sum, and the Kahan sum before running.",
+                "Az összegzéses kísérletben állítsd a nagy tag nagyságát 1e20-ra, \
+                 a kis tagok számát 1e5-re. Jósold meg a naiv, a rendezett és a \
+                 Kahan-összeget, mielőtt futtatnád.",
+            ),
+            t(
+                "Naive: exactly 1e20 — every small +1 disappears, since 1e20 + 1 \
+                 rounds back to 1e20. Sorted: also 1e20 for the same reason (the \
+                 big term still swallows the running total). Kahan: 1e20 + 1e5 — \
+                 the running compensation term `c` catches the lost low bits.",
+                "Naiv: pontosan 1e20 — minden kis +1 eltűnik, mert 1e20 + 1 \
+                 visszakerekül 1e20-ra. Rendezett: szintén 1e20 ugyanezért (a \
+                 nagy tag elnyeli a futó összeget). Kahan: 1e20 + 1e5 — a futó \
+                 `c` kompenzációs tag elkapja az elveszett alsó biteket.",
+            ),
         );
         item(
             ui,
             2,
-            "In the unstable recurrence, push N up to 60 and watch the naive \
-             formula. What does the error look like on a semilog plot? Why?",
-            "The error grows geometrically (a straight line on semilog) at \
-             rate ≈ 11 per step, because the recursion 11·xₙ − xₙ₋₁/3 has a \
-             dominant eigenvalue 11 that amplifies any tiny initial error \
-             from finite f64 precision. The other two recurrences avoid the \
-             growing component.",
+            t(
+                "In the unstable recurrence, push N up to 60 and watch the naive \
+                 formula. What does the error look like on a semilog plot? Why?",
+                "Az instabil rekurzióban told fel N-et 60-ra, és figyeld a naiv \
+                 képletet. Hogy néz ki a hiba féllogaritmikus ábrán? Miért?",
+            ),
+            t(
+                "The error grows geometrically (a straight line on semilog) at \
+                 rate ≈ 11 per step, because the recursion 11·xₙ − xₙ₋₁/3 has a \
+                 dominant eigenvalue 11 that amplifies any tiny initial error \
+                 from finite f64 precision. The other two recurrences avoid the \
+                 growing component.",
+                "A hiba mértani sorként nő (egyenes a féllog ábrán) ≈ 11-es \
+                 lépésenkénti rátával, mert a 11·xₙ − xₙ₋₁/3 rekurzió domináns \
+                 sajátértéke 11, ami felerősíti a véges f64 pontosságból eredő \
+                 apró kezdeti hibát. A másik két rekurzió elkerüli a növekvő \
+                 komponenst.",
+            ),
         );
         ui.ctx().data_mut(|d| d.insert_temp(id_open, open));
     });
@@ -271,47 +340,64 @@ fn try_this_challenges(ui: &mut Ui) {
 /// that in every panel below.
 fn intuition_callout(ui: &mut Ui) {
     egui::CollapsingHeader::new(
-        RichText::new("Why this chapter matters")
+        RichText::new(t("Why this chapter matters", "Miért fontos ez a fejezet"))
             .strong()
             .color(Color32::from_rgb(220, 200, 120)),
     )
     .default_open(true)
     .show(ui, |ui| {
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "A computer does not do real arithmetic. It does f64 arithmetic, \
                  which rounds every intermediate result to ~16 decimal digits. \
                  Most of the time you cannot tell the difference. But three \
                  patterns reliably break that illusion:",
-            )
+                "A számítógép nem valós aritmetikát végez, hanem f64-eset, amely \
+                 minden részeredményt ~16 tizedesjegyre kerekít. Legtöbbször nem \
+                 veszed észre a különbséget. De három minta megbízhatóan \
+                 szétfeszíti ezt az illúziót:",
+            ))
             .small(),
         );
         ui.add_space(4.0);
         ui.indent("ch1_intuition_bullets", |ui| {
             ui.label(
-                RichText::new("• Cancellation — subtracting two nearly equal numbers wipes out the meaningful digits, leaving only noise.")
+                RichText::new(t(
+                    "• Cancellation — subtracting two nearly equal numbers wipes out the meaningful digits, leaving only noise.",
+                    "• Kiejtés — két majdnem egyenlő szám kivonása letörli az értékes jegyeket, csak a zaj marad.",
+                ))
                     .small()
                     .color(Color32::from_rgb(240, 200, 120)),
             );
             ui.label(
-                RichText::new("• Summation order — adding tiny numbers into a huge running sum just throws them away; reorder, or use Kahan, and they survive.")
+                RichText::new(t(
+                    "• Summation order — adding tiny numbers into a huge running sum just throws them away; reorder, or use Kahan, and they survive.",
+                    "• Összegzési sorrend — apró számokat egy hatalmas futó összeghez adva azok elvesznek; rendezd át, vagy használj Kahant, és megmaradnak.",
+                ))
                     .small()
                     .color(Color32::from_rgb(240, 200, 120)),
             );
             ui.label(
-                RichText::new("• Unstable recurrence — a tiny initial error can amplify exponentially if the recurrence has a growing component.")
+                RichText::new(t(
+                    "• Unstable recurrence — a tiny initial error can amplify exponentially if the recurrence has a growing component.",
+                    "• Instabil rekurzió — egy apró kezdeti hiba exponenciálisan felerősödhet, ha a rekurziónak van növekvő komponense.",
+                ))
                     .small()
                     .color(Color32::from_rgb(240, 200, 120)),
             );
         });
         ui.add_space(4.0);
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Each experiment below shows you the same calculation done two \
                  ways: the naive textbook way (which fails) and the stable \
                  reformulation (which works). The difference is never in the \
                  math — only in the order of operations.",
-            )
+                "Az alábbi kísérletek mindegyike ugyanazt a számítást mutatja két \
+                 módon: a naiv tankönyvi úton (ami elromlik) és a stabil \
+                 átfogalmazással (ami működik). A különbség sosem a matekban van \
+                 — csak a műveletek sorrendjében.",
+            ))
             .small()
             .color(Color32::from_rgb(160, 175, 195)),
         );
@@ -325,27 +411,32 @@ fn intuition_callout(ui: &mut Ui) {
 fn machine_epsilon_card(ui: &mut Ui) {
     let eps = num_error::machine_epsilon();
     egui::Frame::group(ui.style()).show(ui, |ui| {
-        ui.label(RichText::new("Machine epsilon").strong());
+        ui.label(RichText::new(t("Machine epsilon", "Gépi epszilon")).strong());
         ui.horizontal_wrapped(|ui| {
             ui.label(
                 RichText::new(format!("εₘ = {eps:e}"))
                     .monospace()
                     .color(Color32::from_rgb(120, 200, 255)),
             );
+            let bits = -eps.log2() as i32;
+            let digits = -eps.log10();
+            let detail = if i18n::lang() == Lang::Hu {
+                format!("  =  2^-{bits}  =  ~{digits:.0} tizedesjegyi pontosság")
+            } else {
+                format!("  =  2^-{bits}  =  ~{digits:.0} decimal digits of precision")
+            };
             ui.label(
-                RichText::new(format!(
-                    "  =  2^-{}  =  ~{:.0} decimal digits of precision",
-                    -eps.log2() as i32,
-                    -eps.log10()
-                ))
-                .monospace()
-                .color(Color32::from_rgb(180, 195, 210)),
+                RichText::new(detail)
+                    .monospace()
+                    .color(Color32::from_rgb(180, 195, 210)),
             );
         });
-        ui.label(
+        ui.label(t(
             "Hartung Theorem 1.10: for base b with t mantissa bits, εₘ = b^(1−t). \
             For f64: t = 53 → εₘ = 2^−52.",
-        );
+            "Hartung 1.10. tétel: b alapnál t mantisszabittel εₘ = b^(1−t). \
+            f64-re: t = 53 → εₘ = 2^−52.",
+        ));
     });
 }
 
@@ -355,18 +446,26 @@ fn machine_epsilon_card(ui: &mut Ui) {
 
 fn cancellation_experiment(ui: &mut Ui, state: &mut Ch1State) {
     egui::Frame::group(ui.style()).show(ui, |ui| {
-        ui.label(RichText::new("1. Cancellation:  1 − cos(x)  vs  2·sin²(x/2)").strong());
-        ui.label(
+        ui.label(RichText::new(t(
+            "1. Cancellation:  1 − cos(x)  vs  2·sin²(x/2)",
+            "1. Kiejtés:  1 − cos(x)  vs  2·sin²(x/2)",
+        )).strong());
+        ui.label(t(
             "For small x, cos(x) → 1, so 1 − cos(x) subtracts two near-equal numbers. \
             The algebraic identity 2·sin²(x/2) avoids the subtraction.",
-        );
+            "Kis x-re cos(x) → 1, így az 1 − cos(x) két majdnem egyenlő számot von ki. \
+            A 2·sin²(x/2) algebrai azonosság elkerüli a kivonást.",
+        ));
 
         ui.horizontal(|ui| {
             ui.label("log₁₀(x):");
             ui.add(
                 egui::Slider::new(&mut state.log_x, -15.0..=0.0)
                     .step_by(0.25)
-                    .text("(more negative ⇒ smaller x ⇒ worse cancellation)"),
+                    .text(t(
+                        "(more negative ⇒ smaller x ⇒ worse cancellation)",
+                        "(negatívabb ⇒ kisebb x ⇒ rosszabb kiejtés)",
+                    )),
             );
         });
 
@@ -386,17 +485,17 @@ fn cancellation_experiment(ui: &mut Ui, state: &mut Ch1State) {
                 ui.label(RichText::new("x").monospace());
                 ui.label(RichText::new(format!("{x:e}")).monospace());
                 ui.end_row();
-                ui.label(RichText::new("naive  1 − cos(x)").monospace());
+                ui.label(RichText::new(t("naive  1 − cos(x)", "naiv  1 − cos(x)")).monospace());
                 ui.label(RichText::new(format!("{naive:e}")).monospace());
                 ui.end_row();
-                ui.label(RichText::new("stable 2·sin²(x/2)").monospace());
+                ui.label(RichText::new(t("stable 2·sin²(x/2)", "stabil 2·sin²(x/2)")).monospace());
                 ui.label(RichText::new(format!("{stable:e}")).monospace());
                 ui.end_row();
-                ui.label(RichText::new("exact (Taylor)").monospace());
+                ui.label(RichText::new(t("exact (Taylor)", "pontos (Taylor)")).monospace());
                 ui.label(RichText::new(format!("{exact:e}")).monospace());
                 ui.end_row();
                 ui.label(
-                    RichText::new("naive rel-err")
+                    RichText::new(t("naive rel-err", "naiv rel. hiba"))
                         .monospace()
                         .color(Color32::from_rgb(240, 130, 130)),
                 );
@@ -407,7 +506,7 @@ fn cancellation_experiment(ui: &mut Ui, state: &mut Ch1State) {
                 );
                 ui.end_row();
                 ui.label(
-                    RichText::new("stable rel-err")
+                    RichText::new(t("stable rel-err", "stabil rel. hiba"))
                         .monospace()
                         .color(Color32::from_rgb(120, 220, 140)),
                 );
@@ -425,7 +524,7 @@ fn cancellation_experiment(ui: &mut Ui, state: &mut Ch1State) {
             .height(200.0)
             .legend(Legend::default())
             .x_axis_label("log₁₀(x)")
-            .y_axis_label("log₁₀(relative error)")
+            .y_axis_label(t("log₁₀(relative error)", "log₁₀(relatív hiba)"))
             .show(ui, |plot_ui| {
                 let mut naive_pts = Vec::new();
                 let mut stable_pts = Vec::new();
@@ -444,12 +543,12 @@ fn cancellation_experiment(ui: &mut Ui, state: &mut Ch1State) {
                 plot_ui.line(
                     Line::new(PlotPoints::from(naive_pts))
                         .color(Color32::from_rgb(240, 130, 130))
-                        .name("naive  1 − cos(x)"),
+                        .name(t("naive  1 − cos(x)", "naiv  1 − cos(x)")),
                 );
                 plot_ui.line(
                     Line::new(PlotPoints::from(stable_pts))
                         .color(Color32::from_rgb(120, 220, 140))
-                        .name("stable 2·sin²(x/2)"),
+                        .name(t("stable 2·sin²(x/2)", "stabil 2·sin²(x/2)")),
                 );
                 // Vertical marker at current slider value.
                 plot_ui.points(
@@ -457,7 +556,7 @@ fn cancellation_experiment(ui: &mut Ui, state: &mut Ch1State) {
                         .shape(MarkerShape::Diamond)
                         .radius(6.0)
                         .color(Color32::from_rgb(255, 220, 100))
-                        .name("current x"),
+                        .name(t("current x", "aktuális x")),
                 );
             });
     });
@@ -469,18 +568,25 @@ fn cancellation_experiment(ui: &mut Ui, state: &mut Ch1State) {
 
 fn summation_experiment(ui: &mut Ui, state: &mut Ch1State) {
     egui::Frame::group(ui.style()).show(ui, |ui| {
-        ui.label(RichText::new("2. Summation order (Hartung Example 1.24)").strong());
-        ui.label(
+        ui.label(RichText::new(t(
+            "2. Summation order (Hartung Example 1.24)",
+            "2. Összegzési sorrend (Hartung 1.24. példa)",
+        )).strong());
+        ui.label(t(
             "Float addition is not commutative numerically. Adding a huge value first, \
             then many tiny ones, loses every tiny contribution to rounding. Sorting \
             ascending helps; Kahan compensated summation eliminates the loss.",
-        );
+            "A lebegőpontos összeadás numerikusan nem kommutatív. Ha előbb egy óriási \
+            értéket adunk hozzá, majd sok aprót, minden apró járulék elvész a \
+            kerekítésben. A növekvő rendezés segít; a Kahan-kompenzált összegzés \
+            teljesen kiküszöböli a veszteséget.",
+        ));
 
         ui.horizontal(|ui| {
-            ui.label("big term 10^");
+            ui.label(t("big term 10^", "nagy tag 10^"));
             ui.add(egui::Slider::new(&mut state.big_log, 0.0..=18.0).step_by(0.5));
             ui.separator();
-            ui.label("number of small (=1.0) terms:");
+            ui.label(t("number of small (=1.0) terms:", "kis (=1.0) tagok száma:"));
             ui.add(egui::Slider::new(&mut state.n_small, 10..=200_000).logarithmic(true));
         });
 
@@ -505,20 +611,20 @@ fn summation_experiment(ui: &mut Ui, state: &mut Ch1State) {
             .num_columns(3)
             .spacing([12.0, 4.0])
             .show(ui, |ui| {
-                ui.label(RichText::new("method").monospace().strong());
-                ui.label(RichText::new("sum").monospace().strong());
-                ui.label(RichText::new("relative error").monospace().strong());
+                ui.label(RichText::new(t("method", "módszer")).monospace().strong());
+                ui.label(RichText::new(t("sum", "összeg")).monospace().strong());
+                ui.label(RichText::new(t("relative error", "relatív hiba")).monospace().strong());
                 ui.end_row();
-                row(ui, "naive (left → right)", s_naive, e_naive, RED);
-                row(ui, "sorted ascending", s_sorted, e_sorted, AMBER);
-                row(ui, "Kahan compensated", s_kahan, e_kahan, GREEN);
+                row(ui, t("naive (left → right)", "naiv (balról → jobbra)"), s_naive, e_naive, RED);
+                row(ui, t("sorted ascending", "növekvő rendezés"), s_sorted, e_sorted, AMBER);
+                row(ui, t("Kahan compensated", "Kahan-kompenzált"), s_kahan, e_kahan, GREEN);
             });
 
         // Bar chart of relative errors (log scale).
         ui.add_space(6.0);
         Plot::new("sum_bars")
             .height(180.0)
-            .y_axis_label("log₁₀(relative error)")
+            .y_axis_label(t("log₁₀(relative error)", "log₁₀(relatív hiba)"))
             .show_x(false)
             .show(ui, |plot_ui| {
                 use egui_plot::Bar;
@@ -530,7 +636,10 @@ fn summation_experiment(ui: &mut Ui, state: &mut Ch1State) {
                 plot_ui.bar_chart(egui_plot::BarChart::new(bars).width(0.7));
             });
         ui.label(
-            RichText::new("← naive          sorted          kahan →")
+            RichText::new(t(
+                "← naive          sorted          kahan →",
+                "← naiv          rendezett          kahan →",
+            ))
                 .monospace()
                 .size(11.0)
                 .color(Color32::from_rgb(160, 175, 195)),
@@ -555,17 +664,25 @@ fn row(ui: &mut Ui, label: &str, value: f64, err: f64, color: Color32) {
 
 fn unstable_recurrence_experiment(ui: &mut Ui, state: &mut Ch1State) {
     egui::Frame::group(ui.style()).show(ui, |ui| {
-        ui.label(RichText::new("3. Unstable recurrence (Hartung Example 1.3)").strong());
-        ui.label(
+        ui.label(RichText::new(t(
+            "3. Unstable recurrence (Hartung Example 1.3)",
+            "3. Instabil rekurzió (Hartung 1.3. példa)",
+        )).strong());
+        ui.label(t(
             "Three algebraically equivalent recurrences for 1/3ⁿ:  \n  \
             • xₙ = (1/3)·xₙ₋₁   — stable  \n  \
             • yₙ = 2·yₙ₋₁ − (5/9)·yₙ₋₂   — moderate  \n  \
             • zₙ = (13/3)·zₙ₋₁ − (4/3)·zₙ₋₂   — wildly unstable  \n\
             Same algebra, very different rounding-error amplification.",
-        );
+            "Három algebrailag azonos rekurzió 1/3ⁿ-re:  \n  \
+            • xₙ = (1/3)·xₙ₋₁   — stabil  \n  \
+            • yₙ = 2·yₙ₋₁ − (5/9)·yₙ₋₂   — mérsékelt  \n  \
+            • zₙ = (13/3)·zₙ₋₁ − (4/3)·zₙ₋₂   — vadul instabil  \n\
+            Ugyanaz az algebra, nagyon eltérő kerekítési hiba felerősödés.",
+        ));
 
         ui.horizontal(|ui| {
-            ui.label("steps n:");
+            ui.label(t("steps n:", "lépések n:"));
             ui.add(egui::Slider::new(&mut state.recurrence_n, 5..=120));
         });
 
@@ -607,22 +724,22 @@ fn unstable_recurrence_experiment(ui: &mut Ui, state: &mut Ch1State) {
             .height(220.0)
             .legend(Legend::default())
             .x_axis_label("n")
-            .y_axis_label("log₁₀ |seq − 1/3ⁿ|")
+            .y_axis_label(t("log₁₀ |seq − 1/3ⁿ|", "log₁₀ |sorozat − 1/3ⁿ|"))
             .show(ui, |plot_ui| {
                 plot_ui.line(
                     Line::new(PlotPoints::from(x_pts))
                         .color(GREEN)
-                        .name("xₙ (stable)"),
+                        .name(t("xₙ (stable)", "xₙ (stabil)")),
                 );
                 plot_ui.line(
                     Line::new(PlotPoints::from(y_pts))
                         .color(AMBER)
-                        .name("yₙ (moderate)"),
+                        .name(t("yₙ (moderate)", "yₙ (mérsékelt)")),
                 );
                 plot_ui.line(
                     Line::new(PlotPoints::from(z_pts))
                         .color(RED)
-                        .name("zₙ (unstable)"),
+                        .name(t("zₙ (unstable)", "zₙ (instabil)")),
                 );
             });
     });

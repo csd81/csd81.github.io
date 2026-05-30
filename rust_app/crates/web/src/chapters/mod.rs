@@ -44,18 +44,19 @@ impl Chapter {
     ];
 
     pub fn label(&self) -> &'static str {
+        use crate::i18n::t;
         match self {
-            Self::Ch1Error => "1 · error analysis",
-            Self::Ch2Roots => "2 · root finding",
-            Self::Ch3Gauss => "3 · Gaussian elim",
-            Self::Ch4Iterative => "4 · iterative",
-            Self::Ch5Factor => "5 · LU & Cholesky",
-            Self::Ch6Interp => "6 · interpolation",
-            Self::Ch7Calculus => "7 · diff & integration",
-            Self::Ch8Optimize => "8 · minimization",
-            Self::Ch9Lsq => "9 · least squares",
-            Self::Ch10Ode => "10 · ODEs",
-            Self::Ch6Surface => "surface plot",
+            Self::Ch1Error => t("1 · error analysis", "1 · hibaszámítás"),
+            Self::Ch2Roots => t("2 · root finding", "2 · gyökkeresés"),
+            Self::Ch3Gauss => t("3 · Gaussian elim", "3 · Gauss-elimináció"),
+            Self::Ch4Iterative => t("4 · iterative", "4 · iterációs"),
+            Self::Ch5Factor => t("5 · LU & Cholesky", "5 · LU és Cholesky"),
+            Self::Ch6Interp => t("6 · interpolation", "6 · interpoláció"),
+            Self::Ch7Calculus => t("7 · diff & integration", "7 · deriválás és integrálás"),
+            Self::Ch8Optimize => t("8 · minimization", "8 · szélsőérték"),
+            Self::Ch9Lsq => t("9 · least squares", "9 · legkisebb négyzetek"),
+            Self::Ch10Ode => t("10 · ODEs", "10 · differenciálegyenletek"),
+            Self::Ch6Surface => t("surface plot", "felületábra"),
         }
     }
 }

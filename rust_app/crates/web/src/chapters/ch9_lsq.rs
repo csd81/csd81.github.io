@@ -22,11 +22,12 @@ enum FitKind {
 
 impl FitKind {
     fn label(&self) -> &'static str {
+        use crate::i18n::t;
         match self {
-            Self::Line => "Line  y = a·x + b",
-            Self::Polynomial => "Polynomial  y = Σ aₖ·xᵏ",
-            Self::Exponential => "Exponential  y = b·e^(a·x)",
-            Self::Power => "Power  y = b·x^a",
+            Self::Line => t("Line  y = a·x + b", "Egyenes  y = a·x + b"),
+            Self::Polynomial => t("Polynomial  y = Σ aₖ·xᵏ", "Polinom  y = Σ aₖ·xᵏ"),
+            Self::Exponential => t("Exponential  y = b·e^(a·x)", "Exponenciális  y = b·e^(a·x)"),
+            Self::Power => t("Power  y = b·x^a", "Hatvány  y = b·x^a"),
         }
     }
 }
@@ -65,7 +66,7 @@ pub fn show(ui: &mut Ui, state: &mut Ch9State, _env: &mut Env) {
 
     egui::CentralPanel::default().show_inside(ui, |ui| {
         ScrollArea::vertical().show(ui, |ui| {
-            ui.heading("Chapter 9 — least squares");
+            ui.heading(crate::i18n::t("Chapter 9 — least squares", "9. fejezet — legkisebb négyzetek"));
             ui.label(
                 "Fit a curve through scattered data by minimizing Σ(model − y)². \
                 Edit points on the left, switch fit types, watch the curve \

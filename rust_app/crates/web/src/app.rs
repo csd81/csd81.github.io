@@ -15,9 +15,11 @@
 //! ```
 
 use eframe::{App, CreationContext, Frame};
-use egui::{Context, RichText};
+use egui::{Context, RichText, Visuals};
 
 use engine::Env;
+
+use crate::i18n::{self, Lang};
 
 use crate::chapters::{
     ch10_ode::Ch10OdeState, ch1_error::Ch1State, ch2_roots::Ch2State, ch3_gauss::Ch3State,
@@ -34,6 +36,10 @@ pub struct SandboxApp {
     /// When true (set via the URL hash `#chN/embed`), the global tab bar is
     /// hidden so the app can be embedded inside one textbook chapter page.
     embedded: bool,
+    /// UI language (EN/HU); applied to the i18n global each frame.
+    lang: Lang,
+    /// Dark vs light egui visuals.
+    dark: bool,
 
     ch1: Ch1State,
     ch2: Ch2State,
@@ -53,43 +59,62 @@ pub struct SandboxApp {
 /// Parse `(initial chapter, embedded?)` from the page URL hash, e.g.
 /// `#ch2` selects chapter 2, `#ch2/embed` also hides the tab bar. On native
 /// (or with no hash) this is `(Ch1Error, false)`.
-fn initial_view() -> (Chapter, bool) {
+struct InitialView {
+    chapter: Chapter,
+    embedded: bool,
+    lang: Lang,
+    dark: bool,
+}
+
+/// Parse the page URL hash, e.g. `#ch2`, `#ch2/embed`, `#ch5/embed/hu/dark`.
+/// Tokens: chapter id, `embed`, `en`/`hu`, `dark`/`light`. On native (or no
+/// hash) this is chapter 1, not embedded, English, dark.
+fn initial_view() -> InitialView {
+    #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
+    let mut view = InitialView {
+        chapter: Chapter::Ch1Error,
+        embedded: false,
+        lang: Lang::En,
+        dark: true,
+    };
     #[cfg(target_arch = "wasm32")]
     {
         if let Some(hash) = web_sys::window().and_then(|w| w.location().hash().ok()) {
-            let hash = hash.trim_start_matches('#');
-            let mut chapter = Chapter::Ch1Error;
-            let mut embedded = false;
-            for tok in hash.split('/').filter(|t| !t.is_empty()) {
+            for tok in hash.trim_start_matches('#').split('/').filter(|t| !t.is_empty()) {
                 match tok {
-                    "ch1" => chapter = Chapter::Ch1Error,
-                    "ch2" => chapter = Chapter::Ch2Roots,
-                    "ch3" => chapter = Chapter::Ch3Gauss,
-                    "ch4" => chapter = Chapter::Ch4Iterative,
-                    "ch5" => chapter = Chapter::Ch5Factor,
-                    "ch6" => chapter = Chapter::Ch6Interp,
-                    "ch7" => chapter = Chapter::Ch7Calculus,
-                    "ch8" => chapter = Chapter::Ch8Optimize,
-                    "ch9" => chapter = Chapter::Ch9Lsq,
-                    "ch10" => chapter = Chapter::Ch10Ode,
-                    "surface" => chapter = Chapter::Ch6Surface,
-                    "embed" => embedded = true,
+                    "ch1" => view.chapter = Chapter::Ch1Error,
+                    "ch2" => view.chapter = Chapter::Ch2Roots,
+                    "ch3" => view.chapter = Chapter::Ch3Gauss,
+                    "ch4" => view.chapter = Chapter::Ch4Iterative,
+                    "ch5" => view.chapter = Chapter::Ch5Factor,
+                    "ch6" => view.chapter = Chapter::Ch6Interp,
+                    "ch7" => view.chapter = Chapter::Ch7Calculus,
+                    "ch8" => view.chapter = Chapter::Ch8Optimize,
+                    "ch9" => view.chapter = Chapter::Ch9Lsq,
+                    "ch10" => view.chapter = Chapter::Ch10Ode,
+                    "surface" => view.chapter = Chapter::Ch6Surface,
+                    "embed" => view.embedded = true,
+                    "hu" => view.lang = Lang::Hu,
+                    "en" => view.lang = Lang::En,
+                    "dark" => view.dark = true,
+                    "light" => view.dark = false,
                     _ => {}
                 }
             }
-            return (chapter, embedded);
         }
     }
-    (Chapter::Ch1Error, false)
+    view
 }
 
 impl SandboxApp {
     pub fn new(_cc: &CreationContext<'_>) -> Self {
-        let (active_tab, embedded) = initial_view();
+        let view = initial_view();
         Self {
             env: Env::new(),
-            active_tab,
-            embedded,
+            active_tab: view.chapter,
+            embedded: view.embedded,
+            lang: view.lang,
+            dark: view.dark,
             ch1: Ch1State::default(),
             ch2: Ch2State::default(),
             ch3: Ch3State::default(),
@@ -108,20 +133,49 @@ impl SandboxApp {
 
 impl App for SandboxApp {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
-        // ── Header + tab bar (hidden in embedded / per-chapter mode) ────
-        if !self.embedded {
-            egui::TopBottomPanel::top("topbar").show(ctx, |ui| {
-                ui.add_space(4.0);
-                ui.horizontal(|ui| {
+        // Apply language + theme for this frame before any panel is built.
+        i18n::set_lang(self.lang);
+        ctx.set_visuals(if self.dark { Visuals::dark() } else { Visuals::light() });
+
+        // ── Top toolbar: tab bar (standalone) + language/theme toggles ──
+        egui::TopBottomPanel::top("topbar").show(ctx, |ui| {
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                if !self.embedded {
                     ui.label(RichText::new("rmath sandbox").heading());
                     ui.separator();
                     for &c in Chapter::ALL {
                         ui.selectable_value(&mut self.active_tab, c, c.label());
                     }
+                }
+                // Toggles pinned to the right (always visible, incl. embed mode).
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let theme_icon = if self.dark { "☀ light" } else { "🌙 dark" };
+                    if ui
+                        .button(theme_icon)
+                        .on_hover_text(i18n::t("Toggle theme", "Téma váltása"))
+                        .clicked()
+                    {
+                        self.dark = !self.dark;
+                    }
+                    let lang_label = match self.lang {
+                        Lang::En => "🇬🇧 EN",
+                        Lang::Hu => "🇭🇺 HU",
+                    };
+                    if ui
+                        .button(lang_label)
+                        .on_hover_text(i18n::t("Switch language", "Nyelvváltás"))
+                        .clicked()
+                    {
+                        self.lang = match self.lang {
+                            Lang::En => Lang::Hu,
+                            Lang::Hu => Lang::En,
+                        };
+                    }
                 });
-                ui.add_space(2.0);
             });
-        }
+            ui.add_space(2.0);
+        });
 
         // ── Persistent REPL at the bottom ───────────────────────────────
         egui::TopBottomPanel::bottom("repl_dock")
