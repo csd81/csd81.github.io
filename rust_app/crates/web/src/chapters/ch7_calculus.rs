@@ -27,6 +27,8 @@ use egui_plot::{
 use engine::{ast::Expr, parse_expr_str, Env};
 use numerics::{calculus as calc, Matrix};
 
+use crate::i18n::{self, t, Lang};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Mode {
     Diff,
@@ -114,8 +116,8 @@ pub fn show(ui: &mut Ui, state: &mut Ch7State, env: &mut Env) {
 fn pitfall_callout(ui: &mut Ui, mode: Mode) {
     let (title, body) = match mode {
         Mode::Diff => (
-            "Pitfall — chase truncation, hit round-off",
-            "Forward / central differences subtract two close numbers. Halving \
+            t("Pitfall — chase truncation, hit round-off", "Csapda — a képlethibát üldözve a kerekítésbe ütközöl"),
+            t("Forward / central differences subtract two close numbers. Halving \
              h cuts truncation but doubles relative round-off, so total error \
              is V-shaped vs h. Pushing the slider below the V's bottom \
              *increases* error. Multi-point stencils (5-pt central) push the \
@@ -123,23 +125,42 @@ fn pitfall_callout(ui: &mut Ui, mode: Mode) {
              accurate digits, differentiate the formula symbolically or use \
              complex-step differentiation Im(f(x+ih))/h, which avoids the \
              subtractive cancellation entirely.",
+             "A jobb oldali / centrális differenciák két közeli számot vonnak ki. \
+             h felezése csökkenti a képlethibát, de megduplázza a relatív \
+             kerekítést, így a teljes hiba V-alakú h függvényében. A csúszkát a V \
+             alja alá tolva a hiba *nő*. A többpontos sablonok (5 pontos centrális) \
+             mélyebbre és balra tolják a V-t, de a V megmarad. Ha sok pontos jegy \
+             kell, deriváld a képletet szimbolikusan, vagy használj komplex-lépéses \
+             deriválást Im(f(x+ih))/h, ami teljesen elkerüli a kivonásos kiejtést."),
         ),
         Mode::NewtonCotes => (
-            "Pitfall — Newton-Cotes wants smoothness",
-            "Composite trapezoid is O(h²), Simpson O(h⁴), Boole O(h⁶) — \
+            t("Pitfall — Newton-Cotes wants smoothness", "Csapda — a Newton–Cotes simaságot kíván"),
+            t("Composite trapezoid is O(h²), Simpson O(h⁴), Boole O(h⁶) — \
              but only when f is sufficiently smooth (more derivatives = \
              higher order). On |x|, ⌊x⌋, or √(1−x²) the order collapses \
              back to O(h) or worse. Adaptive quadrature or specialised \
              rules (Gauss-Chebyshev for √-singularities) recover.",
+             "Az összetett trapéz O(h²), a Simpson O(h⁴), a Boole O(h⁶) — de \
+             csak ha f elég sima (több derivált = magasabb rend). |x|-en, ⌊x⌋-en \
+             vagy √(1−x²)-en a rend visszaesik O(h)-ra vagy rosszabbra. Adaptív \
+             kvadratúra vagy speciális szabályok (Gauss–Csebisev a √-szingularitásokra) \
+             segítenek."),
         ),
         Mode::Gauss => (
-            "Pitfall — Gauss is exponential, not magical",
-            "Gauss-Legendre converges geometrically *only* for functions \
+            t("Pitfall — Gauss is exponential, not magical", "Csapda — a Gauss exponenciális, nem varázslat"),
+            t("Gauss-Legendre converges geometrically *only* for functions \
              analytic on a Bernstein ellipse around the integration \
              interval. A pole of f close to the interval (say 1/(1+25x²) on \
              [−1,1]) shrinks the ellipse and slows convergence dramatically \
              — same Runge phenomenon as Lagrange interpolation, dressed as \
              quadrature. Move the interval, change variables, or split it.",
+             "A Gauss–Legendre geometriailag *csak* olyan függvényekre konvergál, \
+             amelyek analitikusak az integrálási intervallum körüli Bernstein-\
+             ellipszisen. Az f egy, az intervallumhoz közeli pólusa (pl. 1/(1+25x²) \
+             [−1,1]-en) zsugorítja az ellipszist, és drámaian lassítja a \
+             konvergenciát — ugyanaz a Runge-jelenség, mint a Lagrange-\
+             interpolációnál, kvadratúrának öltözve. Told el az intervallumot, \
+             válts változót, vagy oszd fel."),
         ),
     };
     egui::CollapsingHeader::new(
@@ -170,38 +191,50 @@ fn try_this_challenges(ui: &mut Ui, mode: Mode) {
     let entries: &[(&str, &str)] = match mode {
         Mode::Diff => &[
             (
-                "Push log₁₀ h down to −14. What happens to the forward, central, and 5-point errors?",
-                "Forward and central errors blow up due to round-off (subtracting nearly-equal numbers). 5-point is more resistant because its coefficients cancel some round-off, but it eventually fails too. The total error is V-shaped: truncation falls, then round-off rises.",
+                t("Push log₁₀ h down to −14. What happens to the forward, central, and 5-point errors?",
+                  "Told le log₁₀ h-t −14-re. Mi történik a jobb oldali, a centrális és az 5 pontos hibával?"),
+                t("Forward and central errors blow up due to round-off (subtracting nearly-equal numbers). 5-point is more resistant because its coefficients cancel some round-off, but it eventually fails too. The total error is V-shaped: truncation falls, then round-off rises.",
+                  "A jobb oldali és centrális hiba felrobban a kerekítés miatt (majdnem egyenlő számok kivonása). Az 5 pontos ellenállóbb, mert együtthatói kioltanak némi kerekítést, de végül az is elromlik. A teljes hiba V-alakú: a képlethiba csökken, majd a kerekítés nő."),
             ),
             (
-                "Set f = abs(x) and x₀ = 0. Predict the derivatives.",
-                "f is not differentiable at 0 — forward gives +1, backward gives −1, central averages to 0. The finite differences cannot detect the kink; they hand back whatever combination of slopes they sample.",
+                t("Set f = abs(x) and x₀ = 0. Predict the derivatives.",
+                  "Állítsd f = abs(x), x₀ = 0. Jósold meg a deriváltakat."),
+                t("f is not differentiable at 0 — forward gives +1, backward gives −1, central averages to 0. The finite differences cannot detect the kink; they hand back whatever combination of slopes they sample.",
+                  "f nem differenciálható 0-ban — a jobb oldali +1-et, a bal oldali −1-et ad, a centrális 0-ra átlagol. A véges differenciák nem érzékelik a törést; azt a meredekség-kombinációt adják vissza, amit mintáznak."),
             ),
         ],
         Mode::NewtonCotes => &[
             (
-                "Set f = x³ on [0, 1] with n = 1 panel. Trapezoid gives 0.5, Simpson gives 0.25 (exact). Why is Simpson exact?",
-                "Simpson 1/3 integrates any polynomial up to degree 3 exactly because it fits a parabola but the parabola's error vanishes on cubics by symmetry. That extra degree of freedom is why Simpson is O(h⁴) instead of O(h³).",
+                t("Set f = x³ on [0, 1] with n = 1 panel. Trapezoid gives 0.5, Simpson gives 0.25 (exact). Why is Simpson exact?",
+                  "Állítsd f = x³-t [0, 1]-en n = 1 panellel. A trapéz 0,5-öt, a Simpson 0,25-öt ad (pontos). Miért pontos a Simpson?"),
+                t("Simpson 1/3 integrates any polynomial up to degree 3 exactly because it fits a parabola but the parabola's error vanishes on cubics by symmetry. That extra degree of freedom is why Simpson is O(h⁴) instead of O(h³).",
+                  "A Simpson 1/3 minden 3-adfokig terjedő polinomot pontosan integrál, mert parabolát illeszt, de a parabola hibája harmadfokúakra szimmetriából eltűnik. Ez az extra szabadsági fok az oka, hogy a Simpson O(h⁴) az O(h³) helyett."),
             ),
             (
-                "Set f = √(1 − x²) on [−1, 1] (area of unit half-disk). Bump n and watch how slowly the trapezoid error decays.",
-                "Endpoint singularities in f' destroy the smoothness Simpson relies on, so the order drops. Specialised quadratures (Gauss-Chebyshev for √-type endpoints) are dramatically better here.",
+                t("Set f = √(1 − x²) on [−1, 1] (area of unit half-disk). Bump n and watch how slowly the trapezoid error decays.",
+                  "Állítsd f = √(1 − x²)-t [−1, 1]-en (az egységkör fél területe). Növeld n-et, és figyeld, milyen lassan csökken a trapézhiba."),
+                t("Endpoint singularities in f' destroy the smoothness Simpson relies on, so the order drops. Specialised quadratures (Gauss-Chebyshev for √-type endpoints) are dramatically better here.",
+                  "Az f' végpontbeli szingularitásai tönkreteszik a simaságot, amire a Simpson épít, így a rend leesik. A speciális kvadratúrák (Gauss–Csebisev a √-típusú végpontokra) itt drámaian jobbak."),
             ),
         ],
         Mode::Gauss => &[
             (
-                "Set n = 4 nodes. Polynomials up to which degree are exact?",
-                "Gauss-Legendre with n nodes is exact for polynomials up to degree 2n−1. So 4 nodes integrates degree-7 polynomials exactly — better than Simpson's degree-3 exactness with the same node count.",
+                t("Set n = 4 nodes. Polynomials up to which degree are exact?",
+                  "Állíts n = 4 csomópontot. Hányadfokú polinomokig pontos?"),
+                t("Gauss-Legendre with n nodes is exact for polynomials up to degree 2n−1. So 4 nodes integrates degree-7 polynomials exactly — better than Simpson's degree-3 exactness with the same node count.",
+                  "A Gauss–Legendre n csomóponttal 2n−1 fokig pontos a polinomokra. Tehát 4 csomópont a 7-edfokú polinomokat pontosan integrálja — jobb, mint a Simpson 3-adfokú pontossága ugyanannyi csomóponttal."),
             ),
             (
-                "Switch to a non-polynomial like f = 1/(1 + x²) on [−1, 1] (= 2 arctan 1 = π/2). How many nodes get you below 1e-10?",
-                "Around n = 8–10. Gauss converges exponentially fast for analytic integrands; the convergence rate depends on the location of the nearest singularity of f in the complex plane.",
+                t("Switch to a non-polynomial like f = 1/(1 + x²) on [−1, 1] (= 2 arctan 1 = π/2). How many nodes get you below 1e-10?",
+                  "Válts nem polinomra, pl. f = 1/(1 + x²) [−1, 1]-en (= 2 arctan 1 = π/2). Hány csomóponttal jutsz 1e-10 alá?"),
+                t("Around n = 8–10. Gauss converges exponentially fast for analytic integrands; the convergence rate depends on the location of the nearest singularity of f in the complex plane.",
+                  "Kb. n = 8–10. A Gauss analitikus integrandusokra exponenciálisan gyorsan konvergál; a konvergencia rátája az f legközelebbi komplex szingularitásának helyétől függ."),
             ),
         ],
     };
     egui::Frame::group(ui.style()).show(ui, |ui| {
         ui.label(
-            RichText::new("Try this")
+            RichText::new(t("Try this", "Próbáld ki"))
                 .strong()
                 .color(Color32::from_rgb(255, 220, 100)),
         );
@@ -213,7 +246,7 @@ fn try_this_challenges(ui: &mut Ui, mode: Mode) {
                         .color(Color32::from_rgb(240, 200, 120)),
                 );
                 ui.label(*q);
-                let btn = if open == Some(idx) { "hide answer" } else { "answer" };
+                let btn = if open == Some(idx) { t("hide answer", "válasz elrejtése") } else { t("answer", "válasz") };
                 if ui.small_button(btn).clicked() {
                     open = if open == Some(idx) { None } else { Some(idx) };
                 }
@@ -238,48 +271,61 @@ fn try_this_challenges(ui: &mut Ui, mode: Mode) {
 /// the Differentiation tab.
 fn intuition_callout(ui: &mut Ui) {
     egui::CollapsingHeader::new(
-        RichText::new("Why this chapter matters")
+        RichText::new(t("Why this chapter matters", "Miért fontos ez a fejezet"))
             .strong()
             .color(Color32::from_rgb(220, 200, 120)),
     )
     .default_open(false)
     .show(ui, |ui| {
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Numerical calculus answers two questions about a function f \
                  you can only sample: what is f'(x₀), and what is ∫ₐᵇ f? Both \
                  hide a tradeoff between two opposing errors.",
-            )
+                "A numerikus deriválás és integrálás két kérdésre felel egy olyan \
+                 f függvényről, amelyet csak mintázni tudsz: mi f'(x₀), és mi ∫ₐᵇ f? \
+                 Mindkettő két ellentétes hiba közötti kompromisszumot rejt.",
+            ))
             .small(),
         );
         ui.add_space(3.0);
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "• Truncation error — replacing the limit-as-h→0 with a finite \
                  difference introduces a Taylor-series remainder term that \
                  vanishes as h^p (p = method order). Smaller h is better.",
-            )
+                "• Képlethiba — a h→0 határérték véges differenciával való \
+                 helyettesítése egy Taylor-maradéktagot hoz be, amely h^p-ként \
+                 tűnik el (p = a módszer rendje). Kisebb h jobb.",
+            ))
             .small()
             .color(Color32::from_rgb(200, 215, 230)),
         );
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "• Round-off error — subtracting two close numbers loses \
                  significant digits (Ch 1). For f64 the loss is ≈ ε / h. \
                  Smaller h is worse.",
-            )
+                "• Kerekítési hiba — két közeli szám kivonása értékes jegyeket \
+                 veszít (1. fej.). f64-re a veszteség ≈ ε / h. Kisebb h rosszabb.",
+            ))
             .small()
             .color(Color32::from_rgb(240, 130, 130)),
         );
         ui.add_space(3.0);
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "The two curves intersect at the optimum h. Drag the log h \
                  slider in the Differentiation tab and watch the central \
                  difference's total error trace out a V shape. Integration is \
                  friendlier: averaging is a smoothing operator, so round-off \
                  doesn't dominate — you can keep refining h almost to εₘ.",
-            )
+                "A két görbe az optimális h-nál metszi egymást. Húzd a log h \
+                 csúszkát a Deriválás fülön, és figyeld, ahogy a centrális \
+                 differencia teljes hibája V-alakot rajzol. Az integrálás \
+                 barátságosabb: az átlagolás simító operátor, így a kerekítés nem \
+                 dominál — h-t majdnem εₘ-ig finomíthatod.",
+            ))
             .small()
             .color(Color32::from_rgb(160, 175, 195)),
         );
@@ -292,7 +338,7 @@ fn intuition_callout(ui: &mut Ui) {
 
 fn controls(ui: &mut Ui, state: &mut Ch7State) {
     ui.add_space(6.0);
-    ui.label(RichText::new("Topic").strong());
+    ui.label(RichText::new(t("Topic", "Téma")).strong());
     for &m in &[Mode::Diff, Mode::NewtonCotes, Mode::Gauss] {
         ui.selectable_value(&mut state.mode, m, m.label());
     }
@@ -317,12 +363,12 @@ fn controls(ui: &mut Ui, state: &mut Ch7State) {
                 );
             });
             ui.label(
-                RichText::new("Tip: small h shrinks truncation error but inflates rounding error.")
+                RichText::new(t("Tip: small h shrinks truncation error but inflates rounding error.", "Tipp: a kis h csökkenti a képlethibát, de felfújja a kerekítési hibát."))
                     .small()
                     .color(Color32::from_rgb(160, 175, 195)),
             );
             ui.add_space(10.0);
-            ui.label(RichText::new("Presets").strong());
+            ui.label(RichText::new(t("Presets", "Példák")).strong());
             for (label, expr, x) in &[
                 ("eˣ²⁺ˣ  at  x = 0", "exp(x*x + x)", 0.0_f64),
                 ("eˣ  at  x = 1", "exp(x)", 1.0),
@@ -345,11 +391,11 @@ fn controls(ui: &mut Ui, state: &mut Ch7State) {
                 ui.add(egui::DragValue::new(&mut state.int_b).speed(0.1));
             });
             ui.horizontal(|ui| {
-                ui.label("panels n");
+                ui.label(t("panels n", "panelek n"));
                 ui.add(egui::Slider::new(&mut state.int_n_panels, 2..=64));
             });
             ui.add_space(8.0);
-            ui.label(RichText::new("Presets").strong());
+            ui.label(RichText::new(t("Presets", "Példák")).strong());
             if ui.small_button("∫₀¹ x²eˣ dx  (Hartung 7.7 / 7.8)").clicked() {
                 state.int_formula = "x*x*exp(x)".into();
                 state.int_a = 0.0;
@@ -370,25 +416,25 @@ fn controls(ui: &mut Ui, state: &mut Ch7State) {
             }
         }
         Mode::Gauss => {
-            ui.label(RichText::new("Number of nodes n").strong());
+            ui.label(RichText::new(t("Number of nodes n", "Csomópontok száma n")).strong());
             ui.add(egui::Slider::new(&mut state.gauss_n, 1..=8));
             ui.label(
-                RichText::new(format!(
-                    "→ degree of precision 2n − 1 = {}",
-                    2 * state.gauss_n - 1
-                ))
+                RichText::new({
+                    let d = 2 * state.gauss_n - 1;
+                    if i18n::lang() == Lang::Hu { format!("→ pontossági fok 2n − 1 = {d}") } else { format!("→ degree of precision 2n − 1 = {d}") }
+                })
                 .small()
                 .color(Color32::from_rgb(120, 220, 140)),
             );
             ui.add_space(10.0);
-            ui.label(RichText::new("Test polynomial xᵖ").strong());
+            ui.label(RichText::new(t("Test polynomial xᵖ", "Tesztpolinom xᵖ")).strong());
             ui.add(egui::Slider::new(&mut state.gauss_test_degree, 0..=20));
             ui.add_space(10.0);
             ui.separator();
-            ui.label(RichText::new("Or a custom f(x):").strong());
+            ui.label(RichText::new(t("Or a custom f(x):", "Vagy egyéni f(x):")).strong());
             ui.text_edit_singleline(&mut state.gauss_formula);
             ui.label(
-                RichText::new("(applies on [−1, 1] for the Gauss formula)")
+                RichText::new(t("(applies on [−1, 1] for the Gauss formula)", "(a Gauss-képletnél [−1, 1]-en érvényes)"))
                     .small()
                     .color(Color32::from_rgb(160, 175, 195)),
             );
@@ -419,12 +465,14 @@ fn diff_view(ui: &mut Ui, state: &Ch7State, env: &mut Env) {
 
     egui::Frame::group(ui.style()).show(ui, |ui| {
         ui.label(
-            RichText::new(format!(
-                "f({:.4}) ≈ {:.10}   ·   reference f′ ≈ {:.10}   (5-pt central with h = 1e-3)",
-                state.diff_x,
-                f(state.diff_x),
-                truth
-            ))
+            RichText::new({
+                let (fx, fval) = (state.diff_x, f(state.diff_x));
+                if i18n::lang() == Lang::Hu {
+                    format!("f({fx:.4}) ≈ {fval:.10}   ·   referencia f′ ≈ {truth:.10}   (5 pontos centrális, h = 1e-3)")
+                } else {
+                    format!("f({fx:.4}) ≈ {fval:.10}   ·   reference f′ ≈ {truth:.10}   (5-pt central with h = 1e-3)")
+                }
+            })
             .monospace()
             .color(Color32::from_rgb(180, 200, 220)),
         );
@@ -437,25 +485,25 @@ fn diff_view(ui: &mut Ui, state: &Ch7State, env: &mut Env) {
 
     ui.add_space(6.0);
     egui::Frame::group(ui.style()).show(ui, |ui| {
-        ui.label(RichText::new("Approximations to f′(x₀)").strong());
+        ui.label(RichText::new(t("Approximations to f′(x₀)", "Közelítések f′(x₀)-ra")).strong());
         egui::Grid::new("ch7_diff_table")
             .num_columns(4)
             .spacing([14.0, 4.0])
             .show(ui, |ui| {
-                ui.label(RichText::new("formula").monospace().strong());
-                ui.label(RichText::new("order").monospace().strong());
-                ui.label(RichText::new("value").monospace().strong());
+                ui.label(RichText::new(t("formula", "képlet")).monospace().strong());
+                ui.label(RichText::new(t("order", "rend")).monospace().strong());
+                ui.label(RichText::new(t("value", "érték")).monospace().strong());
                 ui.label(RichText::new("|error|").monospace().strong());
                 ui.end_row();
-                diff_row(ui, "forward      (f(x+h) − f(x))/h", "O(h)",  forward, truth);
-                diff_row(ui, "backward    (f(x) − f(x−h))/h",  "O(h)",  backward, truth);
-                diff_row(ui, "central     (f(x+h)−f(x−h))/(2h)", "O(h²)", central, truth);
-                diff_row(ui, "5-point central                  ", "O(h⁴)", central5, truth);
+                diff_row(ui, t("forward      (f(x+h) − f(x))/h", "jobb oldali  (f(x+h) − f(x))/h"), "O(h)",  forward, truth);
+                diff_row(ui, t("backward    (f(x) − f(x−h))/h", "bal oldali   (f(x) − f(x−h))/h"),  "O(h)",  backward, truth);
+                diff_row(ui, t("central     (f(x+h)−f(x−h))/(2h)", "centrális    (f(x+h)−f(x−h))/(2h)"), "O(h²)", central, truth);
+                diff_row(ui, t("5-point central                  ", "5 pontos centrális               "), "O(h⁴)", central5, truth);
             });
     });
     ui.add_space(6.0);
     egui::Frame::group(ui.style()).show(ui, |ui| {
-        ui.label(RichText::new("Second derivative").strong());
+        ui.label(RichText::new(t("Second derivative", "Második derivált")).strong());
         let truth2 = (calc::diff_central(&mut f, state.diff_x + 1e-3, 1e-3)
             - calc::diff_central(&mut f, state.diff_x - 1e-3, 1e-3))
             / 2.0e-3;
@@ -469,13 +517,16 @@ fn diff_view(ui: &mut Ui, state: &Ch7State, env: &mut Env) {
 
     // ─── the killer plot ───────────────────────────────────────────────
     ui.add_space(10.0);
-    ui.label(RichText::new("Error vs step size (log-log)").strong());
+    ui.label(RichText::new(t("Error vs step size (log-log)", "Hiba a lépésköz függvényében (log-log)")).strong());
     ui.label(
-        RichText::new(
+        RichText::new(t(
             "Truncation error decreases as h shrinks, but rounding error \
              grows. Watch each curve hit a U-shape — the minimum is the \
              optimal h for that formula.",
-        )
+            "A képlethiba csökken, ahogy h zsugorodik, de a kerekítési hiba nő. \
+             Figyeld, ahogy minden görbe U-alakot vesz fel — a minimum az adott \
+             képlet optimális h-ja.",
+        ))
         .small()
         .color(Color32::from_rgb(160, 175, 195)),
     );
@@ -503,23 +554,23 @@ fn diff_view(ui: &mut Ui, state: &Ch7State, env: &mut Env) {
             plot_ui.line(
                 Line::new(PlotPoints::from(fwd))
                     .color(Color32::from_rgb(240, 130, 130))
-                    .name("forward  O(h)"),
+                    .name(t("forward  O(h)", "jobb oldali  O(h)")),
             );
             plot_ui.line(
                 Line::new(PlotPoints::from(cen))
                     .color(Color32::from_rgb(120, 220, 140))
-                    .name("central  O(h²)"),
+                    .name(t("central  O(h²)", "centrális  O(h²)")),
             );
             plot_ui.line(
                 Line::new(PlotPoints::from(c5))
                     .color(Color32::from_rgb(120, 180, 255))
-                    .name("5-point  O(h⁴)"),
+                    .name(t("5-point  O(h⁴)", "5 pontos  O(h⁴)")),
             );
             // Vertical marker at current slider h.
             plot_ui.vline(
                 VLine::new(state.diff_log_h)
                     .color(Color32::from_rgb(255, 220, 100))
-                    .name("current h"),
+                    .name(t("current h", "aktuális h")),
             );
         });
 }
@@ -555,12 +606,12 @@ fn formula_card_newton_cotes(ui: &mut Ui) {
     let gold = Color32::from_rgb(255, 220, 100);
     let dim = Color32::from_rgb(200, 215, 230);
     egui::CollapsingHeader::new(
-        RichText::new("Formula card  ·  composite Newton–Cotes").strong(),
+        RichText::new(t("Formula card  ·  composite Newton–Cotes", "Képletkártya  ·  összetett Newton–Cotes")).strong(),
     )
     .default_open(true)
     .show(ui, |ui| {
         ui.horizontal(|ui| {
-            ui.label(RichText::new("Trapezoid:").monospace().color(orange));
+            ui.label(RichText::new(t("Trapezoid:", "Trapéz:")).monospace().color(orange));
             ui.label(
                 RichText::new("T(h) = ")
                     .monospace()
@@ -584,11 +635,14 @@ fn formula_card_newton_cotes(ui: &mut Ui) {
             );
         });
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "h = (b − a) / n is the panel width. Trapezoid has error O(h²); \
                  Simpson is O(h⁴). Doubling n cuts the Trapezoid error by 4× \
                  and the Simpson error by 16× — read it off in the table below.",
-            )
+                "h = (b − a) / n a panel szélessége. A trapéz hibája O(h²); a \
+                 Simpson O(h⁴). n megduplázása a trapézhibát 4×-ére, a Simpson-\
+                 hibát 16×-ára csökkenti — olvasd le az alábbi táblázatban.",
+            ))
             .small()
             .color(Color32::from_rgb(160, 175, 195)),
         );
@@ -608,7 +662,7 @@ fn newton_cotes_view(ui: &mut Ui, state: &Ch7State, env: &mut Env) {
     if !(a < b) {
         ui.colored_label(
             Color32::from_rgb(240, 130, 130),
-            "Require a < b.",
+            t("Require a < b.", "a < b szükséges."),
         );
         return;
     }
@@ -631,9 +685,11 @@ fn newton_cotes_view(ui: &mut Ui, state: &Ch7State, env: &mut Env) {
 
     egui::Frame::group(ui.style()).show(ui, |ui| {
         ui.label(
-            RichText::new(format!(
-                "Reference ∫ₐᵇ f(x) dx ≈ {reference:.10}   (Romberg level 8)"
-            ))
+            RichText::new(if i18n::lang() == Lang::Hu {
+                format!("Referencia ∫ₐᵇ f(x) dx ≈ {reference:.10}   (Romberg 8. szint)")
+            } else {
+                format!("Reference ∫ₐᵇ f(x) dx ≈ {reference:.10}   (Romberg level 8)")
+            })
             .monospace()
             .color(Color32::from_rgb(180, 200, 220)),
         );
@@ -641,22 +697,22 @@ fn newton_cotes_view(ui: &mut Ui, state: &Ch7State, env: &mut Env) {
             .num_columns(4)
             .spacing([14.0, 4.0])
             .show(ui, |ui| {
-                ui.label(RichText::new("method").monospace().strong());
-                ui.label(RichText::new("nodes").monospace().strong());
-                ui.label(RichText::new("approx").monospace().strong());
+                ui.label(RichText::new(t("method", "módszer")).monospace().strong());
+                ui.label(RichText::new(t("nodes", "csomópont")).monospace().strong());
+                ui.label(RichText::new(t("approx", "közelítés")).monospace().strong());
                 ui.label(RichText::new("|error|").monospace().strong());
                 ui.end_row();
-                int_row(ui, "Trapezoid  (composite)", format!("{}", n + 1), trap, reference);
+                int_row(ui, t("Trapezoid  (composite)", "Trapéz  (összetett)"), format!("{}", n + 1), trap, reference);
                 int_row(
                     ui,
-                    "Simpson 1/3  (composite)",
+                    t("Simpson 1/3  (composite)", "Simpson 1/3  (összetett)"),
                     format!("{}", n_simpson + 1),
                     simp,
                     reference,
                 );
                 int_row(
                     ui,
-                    "Boole  (basic, 5 nodes)",
+                    t("Boole  (basic, 5 nodes)", "Boole  (alap, 5 csomópont)"),
                     "5".to_string(),
                     boole_val,
                     reference,
@@ -666,7 +722,7 @@ fn newton_cotes_view(ui: &mut Ui, state: &Ch7State, env: &mut Env) {
 
     // ─── shaded-panel illustration ───────────────────────────────────────
     ui.add_space(8.0);
-    ui.label(RichText::new("Trapezoid panels (orange) vs f(x)").strong());
+    ui.label(RichText::new(t("Trapezoid panels (orange) vs f(x)", "Trapézpanelek (narancs) vs f(x)")).strong());
     Plot::new("ch7_int_panels")
         .height(280.0)
         .legend(Legend::default())
@@ -704,13 +760,16 @@ fn newton_cotes_view(ui: &mut Ui, state: &Ch7State, env: &mut Env) {
 
     // ─── convergence plot ────────────────────────────────────────────────
     ui.add_space(8.0);
-    ui.label(RichText::new("Convergence:  log₁₀|error| vs log₁₀ h").strong());
+    ui.label(RichText::new(t("Convergence:  log₁₀|error| vs log₁₀ h", "Konvergencia:  log₁₀|hiba| vs log₁₀ h")).strong());
     ui.label(
-        RichText::new(
+        RichText::new(t(
             "Slopes are exactly the book's theoretical orders: −2 for \
              trapezoid, −4 for Simpson. (Boole reaches −6 but with only 5 \
              nodes is shown as a single point.)",
-        )
+            "A meredekségek pontosan a könyv elméleti rendjei: −2 a trapézra, \
+             −4 a Simpsonra. (A Boole eléri a −6-ot, de mindössze 5 csomóponttal \
+             egyetlen pontként jelenik meg.)",
+        ))
         .small()
         .color(Color32::from_rgb(160, 175, 195)),
     );
@@ -738,7 +797,7 @@ fn newton_cotes_view(ui: &mut Ui, state: &Ch7State, env: &mut Env) {
             plot_ui.line(
                 Line::new(PlotPoints::from(trap_pts))
                     .color(Color32::from_rgb(240, 180, 100))
-                    .name("trapezoid"),
+                    .name(t("trapezoid", "trapéz")),
             );
             plot_ui.line(
                 Line::new(PlotPoints::from(simp_pts))
@@ -773,18 +832,22 @@ fn gauss_view(ui: &mut Ui, state: &Ch7State, env: &mut Env) {
     let (nodes, weights) = match calc::gauss_legendre_table(n) {
         Ok(t) => t,
         Err(e) => {
-            ui.colored_label(Color32::from_rgb(240, 130, 130), format!("error: {e}"));
+            let m = if i18n::lang() == Lang::Hu { format!("hiba: {e}") } else { format!("error: {e}") };
+            ui.colored_label(Color32::from_rgb(240, 130, 130), m);
             return;
         }
     };
 
     egui::Frame::group(ui.style()).show(ui, |ui| {
         ui.label(
-            RichText::new(format!(
-                "n = {n} nodes  →  exact for polynomials up to degree {} \
-                 (book Thm 7.10).",
-                2 * n - 1
-            ))
+            RichText::new({
+                let d = 2 * n - 1;
+                if i18n::lang() == Lang::Hu {
+                    format!("n = {n} csomópont  →  pontos a {d}-edfokig terjedő polinomokra (könyv 7.10. tétel).")
+                } else {
+                    format!("n = {n} nodes  →  exact for polynomials up to degree {d} (book Thm 7.10).")
+                }
+            })
             .strong(),
         );
         egui::Grid::new("ch7_gauss_table")
@@ -792,7 +855,7 @@ fn gauss_view(ui: &mut Ui, state: &Ch7State, env: &mut Env) {
             .spacing([16.0, 2.0])
             .show(ui, |ui| {
                 ui.label(RichText::new("i").monospace().strong());
-                ui.label(RichText::new("xᵢ (root of Pₙ)").monospace().strong());
+                ui.label(RichText::new(t("xᵢ (root of Pₙ)", "xᵢ (Pₙ gyöke)")).monospace().strong());
                 ui.label(RichText::new("wᵢ").monospace().strong());
                 ui.end_row();
                 for i in 0..n {
@@ -805,7 +868,7 @@ fn gauss_view(ui: &mut Ui, state: &Ch7State, env: &mut Env) {
                 ui.label(RichText::new("Σwᵢ").monospace().strong());
                 ui.label("");
                 ui.label(
-                    RichText::new(format!("{wsum:.6}    (must equal 2)"))
+                    RichText::new(if i18n::lang() == Lang::Hu { format!("{wsum:.6}    (2-nek kell lennie)") } else { format!("{wsum:.6}    (must equal 2)") })
                         .monospace()
                         .color(Color32::from_rgb(120, 220, 140)),
                 );
@@ -815,7 +878,7 @@ fn gauss_view(ui: &mut Ui, state: &Ch7State, env: &mut Env) {
 
     // ─── Legendre polynomial Pₙ with roots highlighted ───────────────────
     ui.add_space(8.0);
-    ui.label(RichText::new(format!("Legendre polynomial Pₙ(x), n = {n}")).strong());
+    ui.label(RichText::new(if i18n::lang() == Lang::Hu { format!("Legendre-polinom Pₙ(x), n = {n}") } else { format!("Legendre polynomial Pₙ(x), n = {n}") }).strong());
     Plot::new("ch7_legendre")
         .height(280.0)
         .legend(Legend::default())
@@ -840,7 +903,7 @@ fn gauss_view(ui: &mut Ui, state: &Ch7State, env: &mut Env) {
                     .shape(MarkerShape::Diamond)
                     .radius(6.0)
                     .color(Color32::from_rgb(255, 220, 100))
-                    .name("Gauss nodes"),
+                    .name(t("Gauss nodes", "Gauss-csomópontok")),
             );
             // Reference y = 0.
             plot_ui.line(
@@ -875,13 +938,13 @@ fn gauss_view(ui: &mut Ui, state: &Ch7State, env: &mut Env) {
     let err = (gauss_xp - exact_xp).abs();
 
     egui::Frame::group(ui.style()).show(ui, |ui| {
-        ui.label(RichText::new("Degree-of-precision check").strong());
+        ui.label(RichText::new(t("Degree-of-precision check", "Pontossági fok ellenőrzés")).strong());
         ui.label(
-            RichText::new(format!(
-                "Try ∫₋₁¹ xᵖ dx with p = {p}.  \
-                 Exact answer = {exact_xp:.10}.  \
-                 Gauss result = {gauss_xp:.10}."
-            ))
+            RichText::new(if i18n::lang() == Lang::Hu {
+                format!("Próbáld ∫₋₁¹ xᵖ dx-et p = {p}-val.  Pontos válasz = {exact_xp:.10}.  Gauss-eredmény = {gauss_xp:.10}.")
+            } else {
+                format!("Try ∫₋₁¹ xᵖ dx with p = {p}.  Exact answer = {exact_xp:.10}.  Gauss result = {gauss_xp:.10}.")
+            })
             .monospace(),
         );
         let color = if err < 1e-12 {
@@ -890,11 +953,15 @@ fn gauss_view(ui: &mut Ui, state: &Ch7State, env: &mut Env) {
             Color32::from_rgb(240, 130, 130)
         };
         ui.label(
-            RichText::new(format!(
-                "|error| = {err:.3e}   →   {}    (theory: exact iff p ≤ 2n − 1 = {})",
-                if err < 1e-10 { "EXACT" } else { "approximate" },
-                2 * n - 1
-            ))
+            RichText::new({
+                let verdict = if err < 1e-10 { t("EXACT", "PONTOS") } else { t("approximate", "közelítő") };
+                let d = 2 * n - 1;
+                if i18n::lang() == Lang::Hu {
+                    format!("|hiba| = {err:.3e}   →   {verdict}    (elmélet: pontos akkor és csak akkor, ha p ≤ 2n − 1 = {d})")
+                } else {
+                    format!("|error| = {err:.3e}   →   {verdict}    (theory: exact iff p ≤ 2n − 1 = {d})")
+                }
+            })
             .monospace()
             .color(color),
         );
@@ -916,7 +983,7 @@ fn gauss_view(ui: &mut Ui, state: &Ch7State, env: &mut Env) {
             Color32::from_rgb(240, 130, 130)
         };
         egui::Frame::group(ui.style()).show(ui, |ui| {
-            ui.label(RichText::new("Custom integrand on [−1, 1]").strong());
+            ui.label(RichText::new(t("Custom integrand on [−1, 1]", "Egyéni integrandus [−1, 1]-en")).strong());
             ui.label(
                 RichText::new(format!(
                     "∫₋₁¹ {} dx :  Gauss-{n} = {gauss:.10},  Romberg ref = {reference:.10},  |err| = {err:.3e}",
@@ -937,10 +1004,8 @@ fn parse_or_warn(ui: &mut Ui, src: &str, _env: &mut Env) -> Option<Expr> {
     match parse_expr_str(src) {
         Ok(e) => Some(e),
         Err(err) => {
-            ui.colored_label(
-                Color32::from_rgb(240, 130, 130),
-                format!("formula error: {err}"),
-            );
+            let m = if i18n::lang() == Lang::Hu { format!("képlethiba: {err}") } else { format!("formula error: {err}") };
+            ui.colored_label(Color32::from_rgb(240, 130, 130), m);
             None
         }
     }
