@@ -10,6 +10,7 @@ import { MachineNumbers } from './sections/MachineNumbers';
 import { ErrorBasics } from './sections/ErrorBasics';
 import { ErrorPropagation } from './sections/ErrorPropagation';
 import { FloatingConsequences } from './sections/FloatingConsequences';
+import { Glossary } from './sections/Glossary';
 import { Quiz } from './sections/Quiz';
 import { useLang } from './context/LangContext';
 import './styles/global.css';
@@ -35,6 +36,7 @@ export default function Chapter() {
       <ErrorBasics />
       <ErrorPropagation />
       <FloatingConsequences />
+      <Glossary />
       <Quiz />
       <footer className="footer">{t('footer.text')}</footer>
     </div>

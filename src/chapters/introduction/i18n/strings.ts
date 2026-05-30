@@ -103,6 +103,11 @@ export const en = {
   'cx.atX': 'value at x',
   'cx.point': 'x',
   'cx.opsLabel': 'operation count',
+  'cx.space.title': 'Space complexity',
+  'cx.space.body': 'Besides run time we also care about space complexity — the worst-case amount of memory an algorithm needs. For a 10×10 linear system storage is irrelevant, but a 10000×10000 dense matrix already holds 10⁸ numbers (~800 MB in double precision); for large data we prefer methods that use less memory.',
+  'gl.tag': '1.1 · Reference',
+  'gl.title': 'Glossary of key terms',
+  'gl.lead': 'The core notions of §1.1 in one place. Tap a term to reveal its definition.',
 
   // --- 1.2 integers ---
   'int.tag': '1.2 · Integer storage',
@@ -336,6 +341,11 @@ export const hu: Record<StringKey, string> = {
   'cx.atX': 'érték x-ben',
   'cx.point': 'x',
   'cx.opsLabel': 'műveletszám',
+  'cx.space.title': 'Tárigény (helyigény)',
+  'cx.space.body': 'A futási idő mellett a tárigény is fontos — az a memória, amennyit egy algoritmus a legrosszabb esetben igényel. Egy 10×10-es lineáris rendszernél a tárolás közömbös, de egy 10000×10000-es sűrű mátrix már 10⁸ számot tartalmaz (~800 MB dupla pontosságban); nagy adatoknál a kevesebb memóriát igénylő módszert részesítjük előnyben.',
+  'gl.tag': '1.1 · Kézikönyv',
+  'gl.title': 'Fogalomtár',
+  'gl.lead': 'Az §1.1 alapfogalmai egy helyen. Koppints egy fogalomra a definícióért.',
 
   'int.tag': '1.2 · Egészek tárolása',
   'int.title': 'Előjeles-érték vs. kettes komplemens',

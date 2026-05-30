@@ -78,6 +78,11 @@ export function Complexity() {
           />
         </div>
       </div>
+
+      <div className="callout" style={{ marginTop: 18 }}>
+        <strong>{t('cx.space.title')}</strong>
+        <p style={{ margin: '6px 0 0' }}>{t('cx.space.body')}</p>
+      </div>
     </Section>
   )
 }
