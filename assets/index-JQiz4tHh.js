@@ -1,4 +1,4 @@
-import{r as g,j as o,u as Ki}from"./index-VgaeM5qD.js";import{k as Ui,S as Gi}from"./katex-ILaIKLEi.js";import{M as nn}from"./MarkdownView-Bgy1_YH5.js";import"./normalizeMath-BFgg5gmL.js";import"./index-C4XRUA_l.js";const an=g.createContext({});function sn(e){const t=g.useRef(null);return t.current===null&&(t.current=e()),t.current}const ot=g.createContext(null),rn=g.createContext({transformPagePoint:e=>e,isStatic:!1,reducedMotion:"never"});class Xi extends g.Component{getSnapshotBeforeUpdate(t){const n=this.props.childRef.current;if(n&&t.isPresent&&!this.props.isPresent){const a=this.props.sizeRef.current;a.height=n.offsetHeight||0,a.width=n.offsetWidth||0,a.top=n.offsetTop,a.left=n.offsetLeft}return null}componentDidUpdate(){}render(){return this.props.children}}function Yi({children:e,isPresent:t}){const n=g.useId(),a=g.useRef(null),s=g.useRef({width:0,height:0,top:0,left:0}),{nonce:r}=g.useContext(rn);return g.useInsertionEffect(()=>{const{width:i,height:l,top:c,left:d}=s.current;if(t||!a.current||!i||!l)return;a.current.dataset.motionPopId=n;const h=document.createElement("style");return r&&(h.nonce=r),document.head.appendChild(h),h.sheet&&h.sheet.insertRule(`
+import{r as g,j as o,u as Ki}from"./index-Cx_zQDbR.js";import{k as Ui,S as Gi}from"./katex-DsWXJGzd.js";import{M as nn}from"./MarkdownView-IpZVWoqP.js";import"./normalizeMath-BFgg5gmL.js";import"./index-hZ6k7nim.js";const an=g.createContext({});function sn(e){const t=g.useRef(null);return t.current===null&&(t.current=e()),t.current}const ot=g.createContext(null),rn=g.createContext({transformPagePoint:e=>e,isStatic:!1,reducedMotion:"never"});class Xi extends g.Component{getSnapshotBeforeUpdate(t){const n=this.props.childRef.current;if(n&&t.isPresent&&!this.props.isPresent){const a=this.props.sizeRef.current;a.height=n.offsetHeight||0,a.width=n.offsetWidth||0,a.top=n.offsetTop,a.left=n.offsetLeft}return null}componentDidUpdate(){}render(){return this.props.children}}function Yi({children:e,isPresent:t}){const n=g.useId(),a=g.useRef(null),s=g.useRef({width:0,height:0,top:0,left:0}),{nonce:r}=g.useContext(rn);return g.useInsertionEffect(()=>{const{width:i,height:l,top:c,left:d}=s.current;if(t||!a.current||!i||!l)return;a.current.dataset.motionPopId=n;const h=document.createElement("style");return r&&(h.nonce=r),document.head.appendChild(h),h.sheet&&h.sheet.insertRule(`
           [data-motion-pop-id="${n}"] {
             position: absolute !important;
             width: ${i}px !important;
@@ -11,18 +11,6 @@ import{r as g,j as o,u as Ki}from"./index-VgaeM5qD.js";import{k as Ui,S as Gi}fr
 In scientific computations the first step is the mathematical modeling of the physical process. This is the task of the particular scientific discipline (physics, chemistry, biology, economics, etc.). The resulting model frequently contains parameters, constants, initial data which are typically determined by observations or measurements. If the mathematical model and its parameters are given, then we can use it to answer some questions related to the physical problem. We can ask qualitative questions (Does the problem have a unique solution? Does the solution have a limit as the time goes to infinity? Is the solution periodic? etc.), or we can ask quantitative questions (What is the value of the physical variable at a certain time? What is the approximate solution of the model?). The qualitative questions are discussed in the related mathematical discipline, but the quantitative questions are the main topics of numerical analysis. The main objective of numerical analysis is to give exact or approximate solutions of a mathematical problem using arithmetic operations (addition, subtraction, multiplication and division). See Figure 1.1 below for the schematic steps of the scientific computation of physical processes.
 
 The numerical value of a physical quantity computed by a process described in Figure 1.1 is, in general, not equal to the real value of the physical quantity. The sources of error we get is divided into the following two main categories: *inherited error* and *computational error*. The mathematical modeling is frequently a simplification of the physical reality, so we generate an inherited error when we replace the physical problem by a mathematical model. This kind of error is called *modeling error*. An other subclass of the inherited error is what we get when we determine the parameters of the mathematical model by measurements, so we use an approximate parameter value instead of the true one. This is called *measurement error*.
-
-\`\`\`
-                        ┌─────────────────────┐
-┌──────────────────┐    │ mathematical model  │    ┌─────────────────────┐
-│ physical problem │ →  │   - parameters      │ →  │ numerical solution  │
-└──────────────────┘    │   - constants       │    └─────────────────────┘
-                        │   - initial values  │
-                        └─────────────────────┘
-       inherited error:                      computational error:
-         - modeling error                      - truncation error
-         - measurement error                   - rounding error
-\`\`\`
 
 **Figure 1.1: Scientific computations**
 
@@ -122,18 +110,6 @@ It is also important to know the *space complexity* of an algorithm, which is th
 `,Ed=`## 1.1. A numerikus analízis feladata, alapfogalmak
 
 A fizikai valóság folyamatainak leírására és a vizsgált fizikai változók jelen ill. jövőbeli értékének meghatározására szolgáló matematikai számítások vázlatos menetét az 1.1. ábrával lehet szemléltetni.
-
-\`\`\`
-                        ┌─────────────────────┐
-┌──────────────────┐    │ matematikai modell  │    ┌─────────────────────┐
-│ fizikai folyamat │ →  │   paraméterek       │ →  │ numerikus megoldás  │
-└──────────────────┘    │   állandók          │    └─────────────────────┘
-                        │   kezdeti értékek   │
-                        └─────────────────────┘
-        örökölt hiba:                       számítási hiba:
-          - modellhiba                        - képlethiba
-          - mérési hiba                       - kerekítési hiba
-\`\`\`
 
 **1.1. ábra.**
 
@@ -338,11 +314,6 @@ We can see that, using any floating point representation, we can store only fini
 | 0 | 1 | 01 | $(1.01)_2 \\cdot 2^0 = 1 + \\frac{1}{4} = \\frac{10}{8}$ |
 | 0 | 1 | 10 | $(1.10)_2 \\cdot 2^0 = 1 + \\frac{1}{2} = \\frac{12}{8}$ |
 | 0 | 1 | 11 | $(1.11)_2 \\cdot 2^0 = 1 + \\frac{1}{2} + \\frac{1}{4} = \\frac{7}{4} = \\frac{14}{8}$ |
-
-\`\`\`
- ⊕─┼─┼─┼─┼─⊕─⊕─⊕─⊕─┼─⊕─┼─⊕─┼─⊕─┼─┼─⊕
- 0           1/2       1        3/2       2
-\`\`\`
 
 **Figure 1.2: Nonnegative machine numbers on 4 bits.**
 
@@ -552,11 +523,6 @@ Az \`Inf\` szimbólumot a programok használhatják olyan matematikai művelet e
 | 0 | 1 | 01 | $(1.01)_2 \\cdot 2^0 = 1 + \\frac{1}{4} = \\frac{10}{8}$ |
 | 0 | 1 | 10 | $(1.10)_2 \\cdot 2^0 = 1 + \\frac{1}{2} = \\frac{12}{8}$ |
 | 0 | 1 | 11 | $(1.11)_2 \\cdot 2^0 = 1 + \\frac{1}{2} + \\frac{1}{4} = \\frac{7}{4} = \\frac{14}{8}$ |
-
-\`\`\`
- ⊕─┼─┼─┼─┼─⊕─⊕─⊕─⊕─┼─⊕─┼─⊕─┼─⊕─┼─┼─⊕
- 0           1/2       1        3/2       2
-\`\`\`
 
 **1.2. ábra. Nemnegatív gépi számok 4 bites tárolás esetében**
 
