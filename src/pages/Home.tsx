@@ -33,6 +33,21 @@ export default function Home() {
             </Link>
           </li>
         ))}
+        <li>
+          <a href="/sandbox/" className="chcard chcard--sandbox">
+            <span className="chcard__num">🦀</span>
+            <span className="chcard__body">
+              <span className="chcard__title">
+                {lang === 'hu' ? 'Interaktív homokozó' : 'Interactive Sandbox'}
+              </span>
+              <span className="chcard__blurb">
+                {lang === 'hu'
+                  ? 'Rust→WebAssembly numerikus homokozó mátrixnyelv-REPL-lel, fejezetenkénti demókkal.'
+                  : 'A Rust→WebAssembly numerics playground with a matrix-language REPL and per-chapter demos.'}
+              </span>
+            </span>
+          </a>
+        </li>
       </ul>
     </div>
   );

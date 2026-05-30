@@ -2,6 +2,7 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useLang } from './shared/providers/LanguageProvider';
 import { useTheme } from './shared/providers/ThemeProvider';
 import { CHAPTERS } from './chapters/registry';
+import { RustSandbox } from './shared/ui/RustSandbox';
 
 function ChapterJump() {
   const { lang } = useLang();
@@ -30,6 +31,8 @@ function ChapterJump() {
 export default function App() {
   const { lang, toggle: toggleLang } = useLang();
   const { theme, toggle: toggleTheme } = useTheme();
+  const loc = useLocation();
+  const current = CHAPTERS.find((c) => loc.pathname.startsWith(`/${c.slug}`));
 
   return (
     <>
@@ -39,6 +42,13 @@ export default function App() {
         </Link>
         <span className="app-nav__spacer" />
         <ChapterJump />
+        <a
+          className="btn btn--icon"
+          href="/sandbox/"
+          title={lang === 'hu' ? 'Interaktív homokozó (Rust/WASM)' : 'Interactive sandbox (Rust/WASM)'}
+        >
+          🦀
+        </a>
         <button
           className="btn btn--icon"
           onClick={toggleLang}
@@ -58,6 +68,7 @@ export default function App() {
       </nav>
       <main className="site-main">
         <Outlet />
+        {current && <RustSandbox key={current.slug} chapter={`ch${current.num}`} />}
       </main>
     </>
   );

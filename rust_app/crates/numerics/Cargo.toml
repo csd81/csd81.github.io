@@ -1,0 +1,10 @@
+[package]
+name = "numerics"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Matrix type, root-finders, and surface helpers for the rust_app math engine"
+
+[dependencies]
+thiserror.workspace = true

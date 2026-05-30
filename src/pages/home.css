@@ -72,3 +72,12 @@
   font-size: 0.9rem;
   color: var(--text-muted);
 }
+
+.chcard--sandbox {
+  border-style: dashed;
+  border-color: var(--brand-400);
+  background: linear-gradient(180deg, var(--brand-50), var(--surface));
+}
+.chcard--sandbox .chcard__num {
+  font-size: 1.4rem;
+}

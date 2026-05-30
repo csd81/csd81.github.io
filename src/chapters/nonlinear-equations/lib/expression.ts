@@ -62,6 +62,36 @@ export function validateScalar(expr: string, varName = 'x'): string | null {
   }
 }
 
+export interface CompiledScalarXY {
+  expr: string
+  eval: (x: number, y: number) => number
+  /** analytic gradient (∂f/∂x, ∂f/∂y) */
+  grad: (x: number, y: number) => [number, number]
+}
+
+/**
+ * Compile a scalar field f(x, y) → number together with its analytic gradient,
+ * used by the GradientExplorer (§2.9) contour + gradient-vector widget.
+ */
+export function compileScalarXY(
+  expr: string,
+  vars: [string, string] = ['x', 'y'],
+): CompiledScalarXY {
+  const [a, b] = vars
+  const node = math.parse(expr)
+  const code = node.compile()
+  const dx = math.derivative(node, a).compile()
+  const dy = math.derivative(node, b).compile()
+  return {
+    expr,
+    eval: (x, y) => Number(code.evaluate({ [a]: x, [b]: y })),
+    grad: (x, y) => [
+      Number(dx.evaluate({ [a]: x, [b]: y })),
+      Number(dy.evaluate({ [a]: x, [b]: y })),
+    ],
+  }
+}
+
 /** Compile a vector-valued function R² → R² from two scalar expressions. */
 export function compileVec2(
   f1: string,

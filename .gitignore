@@ -6,8 +6,10 @@ dist/
 .env
 .env.local
 
-# Unrelated 3.8GB Rust project living in this folder — not part of the book.
-rust_app/
+# Rust sandbox: keep the source, but never the 3.8GB build artifacts.
+rust_app/target/
+rust_app/crates/web/dist/
+rust_app/**/*.pdf
 
 # legacy per-chapter app build artifacts (kept as migration sources, not built)
 0*/**/node_modules/

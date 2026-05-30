@@ -7,6 +7,7 @@ import { compileScalar } from '../../lib/expression'
 import { fpi } from '../../lib/methods'
 import { fpiPresets } from '../../lib/presets'
 import { FunctionInput } from '../FunctionInput'
+import { useWidgetT } from './i18n'
 
 interface CobwebPlotProps {
   /** initial preset id; defaults to Hartung Example 2.10 */
@@ -22,6 +23,7 @@ interface CobwebPlotProps {
  * iterations.
  */
 export function CobwebPlot({ defaultPreset = 'cubic-cobweb' }: CobwebPlotProps) {
+  const t = useWidgetT()
   const initial = fpiPresets.find((p) => p.id === defaultPreset) ?? fpiPresets[0]
   const [gExpr, setGExpr] = useState(initial.g)
   const [p0, setP0] = useState(initial.p0)
@@ -62,7 +64,7 @@ export function CobwebPlot({ defaultPreset = 'cubic-cobweb' }: CobwebPlotProps) 
     <div className="my-6 rounded-lg border border-ink-200 dark:border-ink-800 p-4">
       <div className="grid md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium mb-1">Preset</label>
+          <label className="block text-sm font-medium mb-1">{t.preset}</label>
           <select
             value={fpiPresets.find((p) => p.g === gExpr)?.id ?? ''}
             onChange={(e) => {
@@ -79,7 +81,7 @@ export function CobwebPlot({ defaultPreset = 'cubic-cobweb' }: CobwebPlotProps) 
               <option key={p.id} value={p.id}>{p.label}</option>
             ))}
             {!fpiPresets.find((p) => p.g === gExpr) && (
-              <option value="" disabled>custom</option>
+              <option value="" disabled>{t.custom}</option>
             )}
           </select>
 
@@ -97,7 +99,7 @@ export function CobwebPlot({ defaultPreset = 'cubic-cobweb' }: CobwebPlotProps) 
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">max iterations</label>
+              <label className="block text-sm font-medium mb-1">{t.maxIter}</label>
               <input
                 type="number"
                 min={1}
@@ -146,7 +148,7 @@ export function CobwebPlot({ defaultPreset = 'cubic-cobweb' }: CobwebPlotProps) 
       </div>
 
       <details className="mt-4">
-        <summary className="cursor-pointer text-sm font-medium">Iterate table</summary>
+        <summary className="cursor-pointer text-sm font-medium">{t.table}</summary>
         <div className="mt-2 max-h-64 overflow-y-auto">
           <table className="w-full text-sm">
             <thead><tr><th>k</th><th>pₖ</th><th>g(pₖ)</th></tr></thead>
@@ -162,10 +164,9 @@ export function CobwebPlot({ defaultPreset = 'cubic-cobweb' }: CobwebPlotProps) 
           </table>
         </div>
         <p className="text-xs mt-2 text-ink-500 dark:text-ink-400">
-          Convergence:{' '}
           {trace?.converged
-            ? `yes (${trace.reason}) in ${trace.trace.length - 1} step${trace.trace.length === 2 ? '' : 's'}`
-            : `no (${trace?.reason ?? '—'})`}
+            ? `✓ ${t.converged} (${trace.reason}) · ${trace.trace.length - 1} ${t.steps}`
+            : `${t.diverged} (${trace?.reason ?? '—'})`}
         </p>
       </details>
     </div>

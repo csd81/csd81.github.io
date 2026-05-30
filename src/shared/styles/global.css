@@ -281,6 +281,40 @@ pre {
   padding: 0.25rem 0;
 }
 
+/* ---------- Rust/WASM sandbox embed ---------- */
+.rust-embed {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 2px dashed var(--border-strong);
+}
+.rust-embed__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.rust-embed__title {
+  margin: 0;
+  font-size: 1.15rem;
+}
+.rust-embed__pop {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.rust-embed__note {
+  margin: 0.35rem 0 0.9rem;
+  font-size: 0.92rem;
+}
+.rust-embed__frame {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #0a0f15;
+  box-shadow: var(--shadow);
+  display: block;
+}
+
 /* ---------- Misc helpers ---------- */
 .muted {
   color: var(--text-muted);
