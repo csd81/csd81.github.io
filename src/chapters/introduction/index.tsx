@@ -11,6 +11,7 @@ import { ErrorBasics } from './sections/ErrorBasics';
 import { ErrorPropagation } from './sections/ErrorPropagation';
 import { FloatingConsequences } from './sections/FloatingConsequences';
 import { Glossary } from './sections/Glossary';
+import { Flashcards } from './sections/Flashcards';
 import { Quiz } from './sections/Quiz';
 import { useLang } from './context/LangContext';
 import './styles/global.css';
@@ -37,6 +38,7 @@ export default function Chapter() {
       <ErrorPropagation />
       <FloatingConsequences />
       <Glossary />
+      <Flashcards />
       <Quiz />
       <footer className="footer">{t('footer.text')}</footer>
     </div>
