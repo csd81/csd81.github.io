@@ -14,6 +14,7 @@ use numerics::{
 };
 
 use crate::widgets::matrix_editor::{matrix_editor, vector_editor, MatrixEditorOptions};
+use crate::i18n::{self, t, Lang};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Mode {
@@ -66,11 +67,14 @@ pub fn show(ui: &mut Ui, state: &mut Ch5State, _env: &mut Env) {
     egui::CentralPanel::default().show_inside(ui, |ui| {
         ScrollArea::vertical().show(ui, |ui| {
             ui.heading(crate::i18n::t("Chapter 5 — LU & Cholesky factorization", "5. fejezet — LU- és Cholesky-felbontás"));
-            ui.label(
+            ui.label(t(
                 "Once A is factored, every subsequent solve is two triangular \
                 substitutions (O(n²)) — the n³ → n² per-RHS win that makes this \
                 the workhorse for repeated solves.",
-            );
+                "Ha A egyszer felbontott, minden további megoldás két háromszög \
+                visszahelyettesítés (O(n²)) — az n³ → n² nyereség jobboldalanként, \
+                ami emiatt az ismételt megoldások igáslova.",
+            ));
             ui.add_space(4.0);
             intuition_callout(ui);
             ui.add_space(4.0);
@@ -99,16 +103,16 @@ fn controls(ui: &mut Ui, state: &mut Ch5State) {
     ui.add_space(6.0);
     let mut needs_recompute = false;
 
-    ui.label(RichText::new("Mode").strong());
+    ui.label(RichText::new(t("Mode", "Mód")).strong());
     if ui
-        .selectable_label(state.mode == Mode::Lu, "LU  (any nonsingular A)")
+        .selectable_label(state.mode == Mode::Lu, t("LU  (any nonsingular A)", "LU  (bármely nemszinguláris A)"))
         .clicked()
     {
         state.mode = Mode::Lu;
         needs_recompute = true;
     }
     if ui
-        .selectable_label(state.mode == Mode::Cholesky, "Cholesky  (symmetric PD)")
+        .selectable_label(state.mode == Mode::Cholesky, t("Cholesky  (symmetric PD)", "Cholesky  (szimmetrikus PD)"))
         .clicked()
     {
         state.mode = Mode::Cholesky;
@@ -134,8 +138,8 @@ fn controls(ui: &mut Ui, state: &mut Ch5State) {
 
     ui.add_space(10.0);
     ui.separator();
-    ui.label(RichText::new("Presets").strong());
-    if ui.small_button("Hartung Ex 5.3  (LU of 4×4 from Ex 3.22)").clicked() {
+    ui.label(RichText::new(t("Presets", "Példák")).strong());
+    if ui.small_button(t("Hartung Ex 5.3  (LU of 4×4 from Ex 3.22)", "Hartung 5.3. pl.  (4×4 LU a 3.22-ből)")).clicked() {
         state.a = Matrix::new(
             4,
             4,
@@ -151,7 +155,7 @@ fn controls(ui: &mut Ui, state: &mut Ch5State) {
         needs_recompute = true;
     }
     if ui
-        .small_button("Hartung Ex 5.7  (Cholesky 3×3 SPD)")
+        .small_button(t("Hartung Ex 5.7  (Cholesky 3×3 SPD)", "Hartung 5.7. pl.  (Cholesky 3×3 SPD)"))
         .clicked()
     {
         state.a = Matrix::new(
@@ -164,7 +168,7 @@ fn controls(ui: &mut Ui, state: &mut Ch5State) {
         needs_recompute = true;
     }
     if ui
-        .small_button("Pitfall  (Cholesky fails on non-SPD)")
+        .small_button(t("Pitfall  (Cholesky fails on non-SPD)", "Csapda  (Cholesky elbukik nem-SPD-n)"))
         .clicked()
     {
         // Symmetric but not positive definite: a²−bc has both signs across
@@ -180,7 +184,7 @@ fn controls(ui: &mut Ui, state: &mut Ch5State) {
         needs_recompute = true;
     }
     if ui
-        .small_button("AᵀA from random A  (SPD, for Cholesky)")
+        .small_button(t("AᵀA from random A  (SPD, for Cholesky)", "AᵀA véletlen A-ból  (SPD, Cholesky-hez)"))
         .clicked()
     {
         // Build a small SPD matrix by symmetrizing a known matrix.
@@ -206,7 +210,7 @@ fn controls(ui: &mut Ui, state: &mut Ch5State) {
 
 fn lu_view(ui: &mut Ui, state: &Ch5State) {
     egui::Frame::group(ui.style()).show(ui, |ui| {
-        ui.label(RichText::new("LU factorization with partial pivoting").strong());
+        ui.label(RichText::new(t("LU factorization with partial pivoting", "LU-felbontás részleges pivotálással")).strong());
         match &state.lu {
             Some(Ok(f)) => {
                 let l = f.l();
@@ -226,10 +230,7 @@ fn lu_view(ui: &mut Ui, state: &Ch5State) {
                 ui.add_space(6.0);
                 let det = f.det();
                 ui.label(
-                    RichText::new(format!(
-                        "det(A) = sign(P) · ∏Uᵢᵢ = {:.6e}",
-                        det
-                    ))
+                    RichText::new(format!("det(A) = sign(P) · ∏Uᵢᵢ = {det:.6e}"))
                     .monospace()
                     .color(Color32::from_rgb(180, 200, 220)),
                 );
@@ -248,10 +249,11 @@ fn lu_view(ui: &mut Ui, state: &Ch5State) {
                 }
             }
             Some(Err(e)) => {
-                ui.colored_label(Color32::from_rgb(240, 130, 130), format!("LU failed: {e}"));
+                let m = if i18n::lang() == Lang::Hu { format!("LU sikertelen: {e}") } else { format!("LU failed: {e}") };
+                ui.colored_label(Color32::from_rgb(240, 130, 130), m);
             }
             None => {
-                ui.label("(factor pending)");
+                ui.label(t("(factor pending)", "(felbontás folyamatban)"));
             }
         }
     });
@@ -263,7 +265,7 @@ fn lu_view(ui: &mut Ui, state: &Ch5State) {
 
 fn chol_view(ui: &mut Ui, state: &Ch5State) {
     egui::Frame::group(ui.style()).show(ui, |ui| {
-        ui.label(RichText::new("Cholesky factorization (Algorithm 5.8)").strong());
+        ui.label(RichText::new(t("Cholesky factorization (Algorithm 5.8)", "Cholesky-felbontás (5.8. algoritmus)")).strong());
         match &state.chol {
             Some(Ok(f)) => {
                 ui.horizontal_top(|ui| {
@@ -281,10 +283,11 @@ fn chol_view(ui: &mut Ui, state: &Ch5State) {
                 ui.add_space(6.0);
                 let det = f.det();
                 ui.label(
-                    RichText::new(format!(
-                        "det(A) = (∏Lᵢᵢ)² = {:.6e}     ←  half the work of LU",
-                        det
-                    ))
+                    RichText::new(if i18n::lang() == Lang::Hu {
+                        format!("det(A) = (∏Lᵢᵢ)² = {det:.6e}     ←  fele annyi munka, mint az LU")
+                    } else {
+                        format!("det(A) = (∏Lᵢᵢ)² = {det:.6e}     ←  half the work of LU")
+                    })
                     .monospace()
                     .color(Color32::from_rgb(180, 200, 220)),
                 );
@@ -301,14 +304,15 @@ fn chol_view(ui: &mut Ui, state: &Ch5State) {
                 }
             }
             Some(Err(e)) => {
-                ui.colored_label(
-                    Color32::from_rgb(240, 130, 130),
-                    format!("Cholesky failed: {e}"),
-                );
-                ui.label("Cholesky needs A to be symmetric and positive definite. Try the SPD preset.");
+                let m = if i18n::lang() == Lang::Hu { format!("Cholesky sikertelen: {e}") } else { format!("Cholesky failed: {e}") };
+                ui.colored_label(Color32::from_rgb(240, 130, 130), m);
+                ui.label(t(
+                    "Cholesky needs A to be symmetric and positive definite. Try the SPD preset.",
+                    "A Choleskyhez A-nak szimmetrikusnak és pozitív definitnek kell lennie. Próbáld az SPD példát.",
+                ));
             }
             None => {
-                ui.label("(factor pending)");
+                ui.label(t("(factor pending)", "(felbontás folyamatban)"));
             }
         }
     });
@@ -321,10 +325,11 @@ fn chol_view(ui: &mut Ui, state: &Ch5State) {
 fn solve_view(ui: &mut Ui, state: &Ch5State) {
     egui::Frame::group(ui.style()).show(ui, |ui| {
         ui.label(
-            RichText::new("Solve A x = b using the factorization (O(n²) per RHS)").strong(),
+            RichText::new(t("Solve A x = b using the factorization (O(n²) per RHS)", "Az A x = b megoldása a felbontással (O(n²) jobboldalanként)")).strong(),
         );
         if let Some(err) = &state.solution_error {
-            ui.colored_label(Color32::from_rgb(240, 130, 130), format!("solve failed: {err}"));
+            let m = if i18n::lang() == Lang::Hu { format!("megoldás sikertelen: {err}") } else { format!("solve failed: {err}") };
+            ui.colored_label(Color32::from_rgb(240, 130, 130), m);
         }
         if let Some(x) = &state.solution {
             ui.horizontal_wrapped(|ui| {
@@ -403,7 +408,7 @@ fn formula_card_lu_chol(ui: &mut Ui) {
     let gold = Color32::from_rgb(255, 220, 100);
     let dim = Color32::from_rgb(200, 215, 230);
     egui::CollapsingHeader::new(
-        RichText::new("Formula card  ·  LU and Cholesky").strong(),
+        RichText::new(t("Formula card  ·  LU and Cholesky", "Képletkártya  ·  LU és Cholesky")).strong(),
     )
     .default_open(false)
     .show(ui, |ui| {
@@ -415,9 +420,10 @@ fn formula_card_lu_chol(ui: &mut Ui) {
             ui.label(RichText::new("·").monospace().color(dim));
             ui.label(RichText::new("U").monospace().color(gold));
             ui.label(
-                RichText::new(
+                RichText::new(t(
                     "    Lᵢⱼ = mᵢⱼ for i > j   (multipliers from Ch3),   Uᵢⱼ = aᵢⱼ^(j) after elimination",
-                )
+                    "    Lᵢⱼ = mᵢⱼ ha i > j   (szorzók a 3. fej.-ből),   Uᵢⱼ = aᵢⱼ^(j) az elimináció után",
+                ))
                 .small()
                 .color(dim),
             );
@@ -430,13 +436,13 @@ fn formula_card_lu_chol(ui: &mut Ui) {
             ui.label(RichText::new("·").monospace().color(dim));
             ui.label(RichText::new("Lᵀ").monospace().color(green));
             ui.label(
-                RichText::new("    (A SPD,  L lower-triangular,  Lₖₖ > 0)")
+                RichText::new(t("    (A SPD,  L lower-triangular,  Lₖₖ > 0)", "    (A SPD,  L alsó háromszög,  Lₖₖ > 0)"))
                     .small()
                     .color(dim),
             );
         });
         ui.add_space(2.0);
-        ui.label(RichText::new("Cholesky recursion:").small().color(dim));
+        ui.label(RichText::new(t("Cholesky recursion:", "Cholesky-rekurzió:")).small().color(dim));
         ui.indent("chol_body", |ui| {
             ui.label(
                 RichText::new("Lₖₖ = √( Aₖₖ − Σᵢ<k Lₖᵢ² )")
@@ -448,12 +454,16 @@ fn formula_card_lu_chol(ui: &mut Ui) {
             );
         });
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Read the second line and you see why SPD matters: the only \
                  division is by Lₖₖ, which we just computed as √(…). If that \
                  argument is negative the algorithm cannot continue — that \
                  is the indefinite-matrix pitfall.",
-            )
+                "Olvasd el a második sort, és látod, miért számít az SPD: az \
+                 egyetlen osztás Lₖₖ-val történik, amit épp √(…)-ként számoltunk. \
+                 Ha ez az argumentum negatív, az algoritmus nem folytatható — ez \
+                 az indefinit mátrix csapdája.",
+            ))
             .small()
             .color(Color32::from_rgb(160, 175, 195)),
         );
@@ -467,14 +477,14 @@ fn formula_card_lu_chol(ui: &mut Ui) {
 /// solve is O(n²). That is the whole game.
 fn intuition_callout(ui: &mut Ui) {
     egui::CollapsingHeader::new(
-        RichText::new("Why this chapter matters")
+        RichText::new(t("Why this chapter matters", "Miért fontos ez a fejezet"))
             .strong()
             .color(Color32::from_rgb(220, 200, 120)),
     )
     .default_open(false)
     .show(ui, |ui| {
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Gaussian elimination from Chapter 3 takes O(n³) flops. If \
                  you have to solve A x = b for 100 different right-hand-sides \
                  with the same A, naive Gauss costs 100 · n³ — wasteful. \
@@ -483,17 +493,28 @@ fn intuition_callout(ui: &mut Ui) {
                  subsequent solve is two triangular sweeps at O(n²) each. \
                  For n = 1000, factor + 100 solves is ~1.1 GFLOP instead of \
                  ~100 GFLOP.",
-            )
+                "A 3. fejezet Gauss-eliminációja O(n³) műveletet igényel. Ha \
+                 ugyanazzal az A-val 100 különböző jobboldalra kell A x = b-t \
+                 megoldani, a naiv Gauss 100 · n³-be kerül — pazarló. A felbontás \
+                 kettéosztja a munkát: végezd el az O(n³) eliminációt *egyszer*, \
+                 tárold L-ként és U-ként, utána minden további megoldás két \
+                 háromszög-menet, egyenként O(n²). n = 1000-re a felbontás + 100 \
+                 megoldás ~1,1 GFLOP a ~100 GFLOP helyett.",
+            ))
             .small(),
         );
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Same observation underlies the determinant (det A = det L · \
                  det U = ±∏ Uᵢᵢ — free from the factorisation), the inverse \
                  (n column-solves, n³ total instead of n⁴), and any \
                  sensitivity analysis where A is fixed by physics and b is \
                  the perturbation.",
-            )
+                "Ugyanez áll a determináns mögött (det A = det L · det U = ±∏ Uᵢᵢ \
+                 — ingyen a felbontásból), az inverz mögött (n oszlopmegoldás, \
+                 összesen n³ az n⁴ helyett), és minden érzékenységvizsgálat mögött, \
+                 ahol A-t a fizika rögzíti, b pedig a perturbáció.",
+            ))
             .small()
             .color(Color32::from_rgb(160, 175, 195)),
         );
@@ -532,14 +553,16 @@ fn side_by_side_compare(ui: &mut Ui, state: &Ch5State) {
     };
     egui::Frame::group(ui.style()).show(ui, |ui| {
         ui.label(
-            RichText::new("Side-by-side  LU  vs  Cholesky").strong(),
+            RichText::new(t("Side-by-side  LU  vs  Cholesky", "Egymás mellett  LU  vs  Cholesky")).strong(),
         );
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Both succeeded on this matrix (so it is SPD). Compare the cost \
                  and the two independent determinant calculations — they must \
                  agree.",
-            )
+                "Mindkettő sikeres ezen a mátrixon (tehát SPD). Hasonlítsd össze a \
+                 költséget és a két független determinánsszámítást — egyezniük kell.",
+            ))
             .small()
             .color(Color32::from_rgb(160, 175, 195)),
         );
@@ -548,9 +571,9 @@ fn side_by_side_compare(ui: &mut Ui, state: &Ch5State) {
             .num_columns(3)
             .spacing([20.0, 4.0])
             .show(ui, |ui| {
-                ui.label(RichText::new("metric").monospace().strong());
+                ui.label(RichText::new(t("metric", "mérőszám")).monospace().strong());
                 ui.label(
-                    RichText::new("LU (partial pivot)")
+                    RichText::new(t("LU (partial pivot)", "LU (részleges pivot)"))
                         .monospace()
                         .color(Color32::from_rgb(120, 180, 255))
                         .strong(),
@@ -563,7 +586,7 @@ fn side_by_side_compare(ui: &mut Ui, state: &Ch5State) {
                 );
                 ui.end_row();
 
-                ui.label(RichText::new("flops (factor)").monospace());
+                ui.label(RichText::new(t("flops (factor)", "flops (felbontás)")).monospace());
                 ui.label(RichText::new(format!("≈ {lu_flops:.0}    (2n³/3)")).monospace());
                 ui.label(
                     RichText::new(format!("≈ {chol_flops:.0}    (n³/3)"))
@@ -572,18 +595,18 @@ fn side_by_side_compare(ui: &mut Ui, state: &Ch5State) {
                 );
                 ui.end_row();
 
-                ui.label(RichText::new("storage").monospace());
+                ui.label(RichText::new(t("storage", "tárolás")).monospace());
                 ui.label(RichText::new("L + U + P  (n² + O(n))").monospace());
                 ui.label(
-                    RichText::new("L only  (n(n+1)/2)")
+                    RichText::new(t("L only  (n(n+1)/2)", "csak L  (n(n+1)/2)"))
                         .monospace()
                         .color(Color32::from_rgb(120, 220, 140)),
                 );
                 ui.end_row();
 
-                ui.label(RichText::new("solve cost / RHS").monospace());
-                ui.label(RichText::new("2 tri-solves   2·n²").monospace());
-                ui.label(RichText::new("2 tri-solves   2·n²").monospace());
+                ui.label(RichText::new(t("solve cost / RHS", "megoldás költsége / jobboldal")).monospace());
+                ui.label(RichText::new(t("2 tri-solves   2·n²", "2 háromszög-megoldás   2·n²")).monospace());
+                ui.label(RichText::new(t("2 tri-solves   2·n²", "2 háromszög-megoldás   2·n²")).monospace());
                 ui.end_row();
 
                 ui.label(RichText::new("det(A)").monospace());
@@ -602,12 +625,16 @@ fn side_by_side_compare(ui: &mut Ui, state: &Ch5State) {
                 ui.end_row();
             });
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Cholesky exploits symmetry to do exactly half the work and \
                  store half the data. Use it whenever you know A is symmetric \
                  positive definite — covariance matrices, normal-equations \
                  (AᵀA), discretised elliptic operators.",
-            )
+                "A Cholesky kihasználja a szimmetriát, hogy pontosan feleannyi \
+                 munkát végezzen és feleannyi adatot tároljon. Használd, amikor \
+                 tudod, hogy A szimmetrikus pozitív definit — kovarianciamátrixok, \
+                 normálegyenletek (AᵀA), diszkretizált elliptikus operátorok.",
+            ))
             .small()
             .color(Color32::from_rgb(180, 200, 220)),
         );
@@ -625,31 +652,41 @@ fn pitfall_callout(ui: &mut Ui, state: &Ch5State) {
         return;
     }
     egui::CollapsingHeader::new(
-        RichText::new("Pitfall — Cholesky needs positive definite, not just symmetric")
+        RichText::new(t("Pitfall — Cholesky needs positive definite, not just symmetric", "Csapda — a Cholesky pozitív definitséget kíván, nem csak szimmetriát"))
             .strong()
             .color(Color32::from_rgb(240, 130, 130)),
     )
     .default_open(true)
     .show(ui, |ui| {
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Cholesky walks down the diagonal: at row k it sets \
                  Lₖₖ = √(Aₖₖ − Σᵢ<k Lₖᵢ²). If that argument turns out to be \
                  negative or zero, the algorithm cannot proceed. A symmetric \
                  matrix where this happens is indefinite (eigenvalues of \
                  mixed sign) — symmetry alone is not enough.",
-            )
+                "A Cholesky végigmegy az átlón: a k. sorban Lₖₖ = √(Aₖₖ − Σᵢ<k Lₖᵢ²). \
+                 Ha ez az argumentum negatív vagy nulla, az algoritmus nem \
+                 folytatható. Az ilyen szimmetrikus mátrix indefinit (vegyes \
+                 előjelű sajátértékek) — a szimmetria önmagában nem elég.",
+            ))
             .small(),
         );
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Two ways to confirm A is SPD before applying Cholesky:  (a) \
                  Sylvester's criterion — every leading principal minor is \
                  strictly positive;  (b) any factorisation of the form \
                  A = BᵀB with B nonsingular (the most common construction in \
                  practice — covariance matrices, normal equations, mass \
                  matrices). The \"AᵀA from random A\" preset shows route (b).",
-            )
+                "Két mód annak igazolására, hogy A SPD, mielőtt Choleskyt \
+                 alkalmaznál:  (a) Sylvester-kritérium — minden vezető \
+                 főminor szigorúan pozitív;  (b) bármely A = BᵀB alakú felbontás \
+                 nemszinguláris B-vel (a gyakorlatban a leggyakoribb konstrukció — \
+                 kovarianciamátrixok, normálegyenletek, tömegmátrixok). Az „AᵀA \
+                 véletlen A-ból” példa a (b) utat mutatja.",
+            ))
             .small()
             .color(Color32::from_rgb(160, 175, 195)),
         );

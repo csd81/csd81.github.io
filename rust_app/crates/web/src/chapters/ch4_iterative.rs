@@ -18,6 +18,8 @@ use numerics::{
     Matrix,
 };
 
+use crate::i18n::t;
+
 use crate::widgets::matrix_editor::{matrix_editor, vector_editor, MatrixEditorOptions};
 
 pub struct Ch4State {
@@ -67,11 +69,15 @@ pub fn show(ui: &mut Ui, state: &mut Ch4State, _env: &mut Env) {
     egui::CentralPanel::default().show_inside(ui, |ui| {
         ScrollArea::vertical().show(ui, |ui| {
             ui.heading(crate::i18n::t("Chapter 4 — iterative methods & conditioning", "4. fejezet — iterációs módszerek és kondicionáltság"));
-            ui.label(
+            ui.label(t(
                 "Edit A and b on the left. Jacobi and Gauss-Seidel both iterate from \
                 x⁽⁰⁾ = 0; their successive-difference norms are plotted side by side. \
                 Diagonal dominance (Thms 4.11 / 4.15) guarantees convergence.",
-            );
+                "Szerkeszd A-t és b-t balra. A Jacobi és a Gauss–Seidel egyaránt \
+                x⁽⁰⁾ = 0-ból indul; az egymást követő különbségek normáit egymás \
+                mellett ábrázoljuk. Az átlós dominancia (4.11 / 4.15. tétel) \
+                garantálja a konvergenciát.",
+            ));
             ui.add_space(4.0);
             intuition_callout(ui);
 
@@ -119,7 +125,7 @@ fn controls(ui: &mut Ui, state: &mut Ch4State) {
 
     ui.add_space(10.0);
     ui.horizontal(|ui| {
-        ui.label("tol");
+        ui.label(t("tol", "tűrés"));
         let r = ui.add(
             egui::DragValue::new(&mut state.tol)
                 .range(1e-15..=1.0)
@@ -128,7 +134,7 @@ fn controls(ui: &mut Ui, state: &mut Ch4State) {
         if r.changed() {
             needs_recompute = true;
         }
-        ui.label("max iter");
+        ui.label(t("max iter", "max. iter."));
         let r = ui.add(egui::DragValue::new(&mut state.max_iter).range(1..=2000));
         if r.changed() {
             needs_recompute = true;
@@ -137,8 +143,8 @@ fn controls(ui: &mut Ui, state: &mut Ch4State) {
 
     ui.add_space(10.0);
     ui.separator();
-    ui.label(RichText::new("Presets").strong());
-    if ui.small_button("Hartung Ex 4.8  (dominant, converges)").clicked() {
+    ui.label(RichText::new(t("Presets", "Példák")).strong());
+    if ui.small_button(t("Hartung Ex 4.8  (dominant, converges)", "Hartung 4.8. pl.  (domináns, konvergens)")).clicked() {
         state.a = Matrix::new(
             3,
             3,
@@ -147,12 +153,12 @@ fn controls(ui: &mut Ui, state: &mut Ch4State) {
         state.b = vec![-4.0, 25.0, -47.0];
         needs_recompute = true;
     }
-    if ui.small_button("Indominant  (diverges)").clicked() {
+    if ui.small_button(t("Indominant  (diverges)", "Nem domináns  (divergál)")).clicked() {
         state.a = Matrix::new(2, 2, vec![1.0, 2.0, 3.0, 1.0]);
         state.b = vec![3.0, 5.0];
         needs_recompute = true;
     }
-    if ui.small_button("Strong dominance  (fast)").clicked() {
+    if ui.small_button(t("Strong dominance  (fast)", "Erős dominancia  (gyors)")).clicked() {
         state.a = Matrix::new(
             3,
             3,
@@ -176,12 +182,14 @@ fn status_strip(ui: &mut Ui, state: &Ch4State) {
         ui.horizontal(|ui| {
             let (text, color) = if state.diag_dominant {
                 (
-                    "✓ A is diagonally dominant — Jacobi & G-S converge (Thm 4.11 / 4.15).",
+                    t("✓ A is diagonally dominant — Jacobi & G-S converge (Thm 4.11 / 4.15).",
+                      "✓ Az A átlósan domináns — Jacobi és G–S konvergál (4.11 / 4.15. tétel)."),
                     Color32::from_rgb(120, 220, 140),
                 )
             } else {
                 (
-                    "⚠ A is not diagonally dominant — convergence not guaranteed.",
+                    t("⚠ A is not diagonally dominant — convergence not guaranteed.",
+                      "⚠ Az A nem átlósan domináns — a konvergencia nem garantált."),
                     Color32::from_rgb(240, 200, 120),
                 )
             };
@@ -190,13 +198,13 @@ fn status_strip(ui: &mut Ui, state: &Ch4State) {
 
         if let Some(c) = state.cond {
             let (label, color) = if c < 10.0 {
-                ("well-conditioned", Color32::from_rgb(120, 220, 140))
+                (t("well-conditioned", "jól kondicionált"), Color32::from_rgb(120, 220, 140))
             } else if c < 100.0 {
-                ("mild", Color32::from_rgb(180, 220, 140))
+                (t("mild", "enyhe"), Color32::from_rgb(180, 220, 140))
             } else if c < 1000.0 {
-                ("moderate", Color32::from_rgb(240, 200, 120))
+                (t("moderate", "mérsékelt"), Color32::from_rgb(240, 200, 120))
             } else {
-                ("ill-conditioned", Color32::from_rgb(240, 130, 130))
+                (t("ill-conditioned", "rosszul kondicionált"), Color32::from_rgb(240, 130, 130))
             };
             ui.horizontal(|ui| {
                 ui.label(RichText::new("cond∞(A) =").strong());
@@ -209,7 +217,7 @@ fn status_strip(ui: &mut Ui, state: &Ch4State) {
             });
         } else {
             ui.label(
-                RichText::new("cond∞(A) unavailable (singular)")
+                RichText::new(t("cond∞(A) unavailable (singular)", "cond∞(A) nem elérhető (szinguláris)"))
                     .color(Color32::from_rgb(240, 130, 130)),
             );
         }
@@ -224,7 +232,7 @@ fn convergence_plot(ui: &mut Ui, state: &Ch4State) {
     Plot::new("ch4_convergence")
         .height(280.0)
         .legend(Legend::default())
-        .x_axis_label("iteration k")
+        .x_axis_label(t("iteration k", "iteráció k"))
         .y_axis_label("log₁₀ ‖xₖ₊₁ − xₖ‖∞")
         .show(ui, |plot_ui| {
             if let Some(Ok(r)) = &state.jacobi_report {
@@ -237,7 +245,7 @@ fn convergence_plot(ui: &mut Ui, state: &Ch4State) {
                 plot_ui.line(
                     Line::new(PlotPoints::from(pts))
                         .color(Color32::from_rgb(120, 180, 255))
-                        .name(format!("Jacobi ({} iter)", r.iterations)),
+                        .name(format!("Jacobi ({} {})", r.iterations, t("iter", "iter."))),
                 );
             }
             if let Some(Ok(r)) = &state.gs_report {
@@ -250,7 +258,7 @@ fn convergence_plot(ui: &mut Ui, state: &Ch4State) {
                 plot_ui.line(
                     Line::new(PlotPoints::from(pts))
                         .color(Color32::from_rgb(120, 220, 140))
-                        .name(format!("Gauss-Seidel ({} iter)", r.iterations)),
+                        .name(format!("Gauss-Seidel ({} {})", r.iterations, t("iter", "iter."))),
                 );
             }
         });
@@ -272,14 +280,14 @@ fn convergence_plot(ui: &mut Ui, state: &Ch4State) {
 /// changes when A is nearly singular.
 fn intuition_callout(ui: &mut Ui) {
     egui::CollapsingHeader::new(
-        RichText::new("Why this chapter matters")
+        RichText::new(t("Why this chapter matters", "Miért fontos ez a fejezet"))
             .strong()
             .color(Color32::from_rgb(220, 200, 120)),
     )
     .default_open(false)
     .show(ui, |ui| {
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Chapter 3 gave a finite-step direct solver. Why bother with \
                  these never-terminating iterations? Because real-world A is \
                  often huge and sparse (a million unknowns, twenty nonzeros \
@@ -287,17 +295,29 @@ fn intuition_callout(ui: &mut Ui) {
                  of memory. Jacobi and Gauss-Seidel cost O(nnz) per step and \
                  keep A sparse forever — at the price of needing convergence \
                  conditions like diagonal dominance.",
-            )
+                "A 3. fejezet véges lépéses direkt megoldót adott. Miért \
+                 vesződnénk ezekkel a soha véget nem érő iterációkkal? Mert a \
+                 valós A gyakran hatalmas és ritka (millió ismeretlen, soronként \
+                 húsz nemnulla). A direkt Gauss O(n²) feltöltődést okoz, és \
+                 elfogy a memória. A Jacobi és a Gauss–Seidel lépésenként O(nnz), \
+                 és örökre ritkán tartja A-t — cserébe konvergenciafeltételek \
+                 kellenek, mint az átlós dominancia.",
+            ))
             .small(),
         );
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Conditioning is the second theme: cond∞(A) measures how \
                  much relative error in A or b can amplify in the answer x. \
                  Ill-conditioned A makes every solver — direct or iterative \
                  — return garbage faithfully. The Hilbert explorer at the \
                  bottom of this chapter is the canonical example.",
-            )
+                "A második téma a kondicionáltság: a cond∞(A) azt méri, mennyire \
+                 erősödhet fel az A-ban vagy b-ben lévő relatív hiba az x \
+                 válaszban. A rosszul kondicionált A minden megoldót — direktet \
+                 vagy iteratívat — hűségesen szeméttel tölt meg. A fejezet alján \
+                 lévő Hilbert-felfedező a kanonikus példa.",
+            ))
             .small()
             .color(Color32::from_rgb(160, 175, 195)),
         );
@@ -313,7 +333,7 @@ fn formula_card_jacobi_gs(ui: &mut Ui) {
     let green = Color32::from_rgb(120, 220, 140);
     let dim = Color32::from_rgb(200, 215, 230);
     egui::CollapsingHeader::new(
-        RichText::new("Formula card  ·  Jacobi vs Gauss–Seidel").strong(),
+        RichText::new(t("Formula card  ·  Jacobi vs Gauss–Seidel", "Képletkártya  ·  Jacobi vs Gauss–Seidel")).strong(),
     )
     .default_open(false)
     .show(ui, |ui| {
@@ -332,13 +352,18 @@ fn formula_card_jacobi_gs(ui: &mut Ui) {
             ui.label(RichText::new(" ]").monospace());
         });
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Jacobi reads only the previous iterate. Gauss–Seidel reads \
                  already-updated entries (xⱼ for j < i are the newer (k+1) \
                  values). On a diagonally-dominant matrix Gauss–Seidel \
                  converges roughly twice as fast — its iteration matrix has \
                  spectral radius ρ(B_GS) ≈ ρ(B_J)².",
-            )
+                "A Jacobi csak az előző iteráltat olvassa. A Gauss–Seidel a már \
+                 frissített elemeket olvassa (xⱼ j < i esetén az újabb (k+1) \
+                 érték). Átlósan domináns mátrixon a Gauss–Seidel nagyjából \
+                 kétszer gyorsabban konvergál — iterációs mátrixának spektrálsugara \
+                 ρ(B_GS) ≈ ρ(B_J)².",
+            ))
             .small()
             .color(dim),
         );
@@ -355,31 +380,40 @@ fn pitfall_callout(ui: &mut Ui, state: &Ch4State) {
         return;
     }
     egui::CollapsingHeader::new(
-        RichText::new("Pitfall — diagonal dominance lost")
+        RichText::new(t("Pitfall — diagonal dominance lost", "Csapda — elveszett átlós dominancia"))
             .strong()
             .color(Color32::from_rgb(240, 130, 130)),
     )
     .default_open(true)
     .show(ui, |ui| {
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "A is not strictly diagonally dominant, so Thm 4.11 / 4.15 \
                  give no convergence guarantee. The iteration may still \
                  converge if the spectral radius ρ(B) of the iteration \
                  matrix is < 1, but you cannot tell from the matrix entries \
                  alone — check the empirical ρ̂ in the panel above.",
-            )
+                "Az A nem szigorúan átlósan domináns, így a 4.11 / 4.15. tétel \
+                 nem ad konvergenciagaranciát. Az iteráció még konvergálhat, ha \
+                 az iterációs mátrix ρ(B) spektrálsugara < 1, de ezt a mátrix \
+                 elemeiből önmagában nem lehet megmondani — nézd meg a fenti \
+                 panel empirikus ρ̂-jét.",
+            ))
             .small()
             .color(Color32::from_rgb(200, 215, 230)),
         );
         ui.add_space(2.0);
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Rescue paths: re-order equations to push dominant entries \
                  onto the diagonal, switch to SOR with relaxation, or just \
                  use a direct solver (Chapter 3) — iterative methods earn \
                  their keep only when A is sparse or huge.",
-            )
+                "Megoldási utak: rendezd át az egyenleteket, hogy a domináns \
+                 elemek az átlóra kerüljenek, válts SOR-ra relaxációval, vagy \
+                 használj direkt megoldót (3. fejezet) — az iterációs módszerek \
+                 csak akkor érik meg, ha A ritka vagy hatalmas.",
+            ))
             .small()
             .color(Color32::from_rgb(160, 175, 195)),
         );
@@ -420,24 +454,28 @@ fn contraction_ratio_panel(ui: &mut Ui, state: &Ch4State) {
     };
     let label = |rho: f64| -> (&'static str, Color32) {
         if rho >= 1.0 {
-            ("diverges (ρ ≥ 1)", Color32::from_rgb(240, 130, 130))
+            (t("diverges (ρ ≥ 1)", "divergál (ρ ≥ 1)"), Color32::from_rgb(240, 130, 130))
         } else if rho > 0.9 {
-            ("very slow", Color32::from_rgb(240, 200, 120))
+            (t("very slow", "nagyon lassú"), Color32::from_rgb(240, 200, 120))
         } else if rho > 0.5 {
-            ("ok", Color32::from_rgb(200, 215, 230))
+            (t("ok", "elfogadható"), Color32::from_rgb(200, 215, 230))
         } else {
-            ("fast", Color32::from_rgb(120, 220, 140))
+            (t("fast", "gyors"), Color32::from_rgb(120, 220, 140))
         }
     };
     egui::Frame::group(ui.style()).show(ui, |ui| {
-        ui.label(RichText::new("Empirical contraction ratio  ρ̂").strong());
+        ui.label(RichText::new(t("Empirical contraction ratio  ρ̂", "Empirikus kontrakciós arány  ρ̂")).strong());
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Geometric mean of |xₖ₊₁ − xₖ| / |xₖ − xₖ₋₁| over the tail of \
                  the iteration. ρ̂ < 1 means linear convergence with rate ρ̂; \
                  smaller is faster. Theorem 4.11/4.15 guarantees ρ̂ < 1 when \
                  A is strictly diagonally dominant.",
-            )
+                "A |xₖ₊₁ − xₖ| / |xₖ − xₖ₋₁| mértani közepe az iteráció végén. \
+                 ρ̂ < 1 lineáris konvergenciát jelent ρ̂ rátával; a kisebb \
+                 gyorsabb. A 4.11/4.15. tétel ρ̂ < 1-et garantál, ha A szigorúan \
+                 átlósan domináns.",
+            ))
             .small()
             .color(Color32::from_rgb(160, 175, 195)),
         );
@@ -445,7 +483,7 @@ fn contraction_ratio_panel(ui: &mut Ui, state: &Ch4State) {
             if let Some(rho) = geo_ratio(&r.history) {
                 let (lbl, col) = label(rho);
                 ui.label(
-                    RichText::new(format!("Jacobi        ρ̂ ≈ {rho:.4}   ({lbl})"))
+                    RichText::new(format!("Jacobi        ρ̂ ≈ {rho:.4}   ({lbl})", lbl = lbl))
                         .monospace()
                         .color(col),
                 );
@@ -470,7 +508,7 @@ fn contraction_ratio_panel(ui: &mut Ui, state: &Ch4State) {
 
 fn solution_table(ui: &mut Ui, state: &Ch4State) {
     egui::Frame::group(ui.style()).show(ui, |ui| {
-        ui.label(RichText::new("Final solutions").strong());
+        ui.label(RichText::new(t("Final solutions", "Végső megoldások")).strong());
         egui::Grid::new("ch4_solution")
             .num_columns(3)
             .spacing([16.0, 4.0])
@@ -514,16 +552,18 @@ fn solution_table(ui: &mut Ui, state: &Ch4State) {
 
 fn hilbert_explorer(ui: &mut Ui, state: &mut Ch4State) {
     egui::Frame::group(ui.style()).show(ui, |ui| {
-        ui.label(RichText::new("Hilbert matrix ill-conditioning (Table 4.3)").strong());
-        ui.label(
+        ui.label(RichText::new(t("Hilbert matrix ill-conditioning (Table 4.3)", "Hilbert-mátrix rossz kondicionáltsága (4.3. táblázat)")).strong());
+        ui.label(t(
             "H_ij = 1/(i+j−1). cond∞(Hₙ) grows roughly like (1+√2)^(4n). \
             By n = 10, f64's 16-digit precision is almost completely consumed.",
-        );
+            "H_ij = 1/(i+j−1). A cond∞(Hₙ) nagyjából (1+√2)^(4n)-ként nő. \
+            n = 10-re az f64 16 jegyű pontossága majdnem teljesen elfogy.",
+        ));
 
         ui.horizontal(|ui| {
             ui.label("n:");
             ui.add(egui::Slider::new(&mut state.hilbert_n, 2..=12));
-            if ui.button("Load Hₙ as A").clicked() {
+            if ui.button(t("Load Hₙ as A", "Hₙ betöltése A-ként")).clicked() {
                 let n = state.hilbert_n;
                 state.a = hilbert(n);
                 state.b = vec![1.0; n];
@@ -555,7 +595,7 @@ fn hilbert_explorer(ui: &mut Ui, state: &mut Ch4State) {
                             .shape(egui_plot::MarkerShape::Diamond)
                             .radius(6.0)
                             .color(Color32::from_rgb(255, 220, 100))
-                            .name("current n"),
+                            .name(t("current n", "aktuális n")),
                     );
                 }
             });

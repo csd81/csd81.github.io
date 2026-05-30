@@ -13,6 +13,7 @@ use engine::Env;
 use numerics::{linear, norms::vec_norm_inf, Matrix};
 
 use crate::widgets::matrix_editor::{matrix_editor, vector_editor, MatrixEditorOptions};
+use crate::i18n::{self, t, Lang};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Strategy {
@@ -23,7 +24,6 @@ enum Strategy {
 
 impl Strategy {
     fn label(&self) -> &'static str {
-        use crate::i18n::t;
         match self {
             Self::Naive => t("Naive (no pivot)", "Naiv (pivot nélkül)"),
             Self::PartialPivot => t("Partial pivot", "Részleges pivotálás"),
@@ -93,16 +93,20 @@ pub fn show(ui: &mut Ui, state: &mut Ch3State, _env: &mut Env) {
     egui::CentralPanel::default().show_inside(ui, |ui| {
         ScrollArea::vertical().show(ui, |ui| {
             ui.heading(crate::i18n::t("Chapter 3 — Gaussian elimination, animated", "3. fejezet — Gauss-elimináció, animálva"));
-            ui.label(
+            ui.label(t(
                 "Scrub through each elimination step. The current pivot is highlighted; \
                 row swaps are noted. Compare the three pivoting strategies' final \
                 residuals against one another below.",
-            );
+                "Lépkedj végig minden eliminációs lépésen. Az aktuális pivot kiemelve; \
+                a sorcserék jelölve. Hasonlítsd össze lent a három pivotálási stratégia \
+                végső reziduumát.",
+            ));
             ui.add_space(4.0);
             intuition_callout(ui);
 
             if let Some(err) = &state.error {
-                ui.colored_label(Color32::from_rgb(240, 130, 130), format!("error: {err}"));
+                let prefix = t("error: ", "hiba: ");
+                ui.colored_label(Color32::from_rgb(240, 130, 130), format!("{prefix}{err}"));
             }
 
             ui.add_space(6.0);
@@ -150,7 +154,7 @@ fn controls(ui: &mut Ui, state: &mut Ch3State) {
     }
 
     ui.add_space(10.0);
-    ui.label(RichText::new("Strategy").strong());
+    ui.label(RichText::new(t("Strategy", "Stratégia")).strong());
     for &s in &[Strategy::Naive, Strategy::PartialPivot, Strategy::ScaledPartialPivot] {
         if ui.selectable_label(state.strategy == s, s.label()).clicked() {
             state.strategy = s;
@@ -161,8 +165,8 @@ fn controls(ui: &mut Ui, state: &mut Ch3State) {
 
     ui.add_space(10.0);
     ui.separator();
-    ui.label(RichText::new("Presets").strong());
-    if ui.small_button("Hartung Ex 3.22  (x = -3, 2, 4, -2)").clicked() {
+    ui.label(RichText::new(t("Presets", "Példák")).strong());
+    if ui.small_button(t("Hartung Ex 3.22  (x = -3, 2, 4, -2)", "Hartung 3.22. pl.  (x = -3, 2, 4, -2)")).clicked() {
         state.a = Matrix::new(
             4,
             4,
@@ -177,7 +181,7 @@ fn controls(ui: &mut Ui, state: &mut Ch3State) {
         state.step = 0;
         needs_recompute = true;
     }
-    if ui.small_button("Hartung Ex 3.24  (zero-pivot at step 2)").clicked() {
+    if ui.small_button(t("Hartung Ex 3.24  (zero-pivot at step 2)", "Hartung 3.24. pl.  (nulla pivot a 2. lépésben)")).clicked() {
         state.a = Matrix::new(
             4,
             4,
@@ -192,13 +196,13 @@ fn controls(ui: &mut Ui, state: &mut Ch3State) {
         state.step = 0;
         needs_recompute = true;
     }
-    if ui.small_button("Hartung Ex 3.25  (4-digit catastrophe)").clicked() {
+    if ui.small_button(t("Hartung Ex 3.25  (4-digit catastrophe)", "Hartung 3.25. pl.  (4 jegyű katasztrófa)")).clicked() {
         state.a = Matrix::new(2, 2, vec![0.0002, -30.5, 5.06, -1.05]);
         state.b = vec![-60.99, 250.9];
         state.step = 0;
         needs_recompute = true;
     }
-    if ui.small_button("Pitfall  (scaled beats partial)").clicked() {
+    if ui.small_button(t("Pitfall  (scaled beats partial)", "Csapda  (a skálázott veri a részlegest)")).clicked() {
         // A = [[1, 1e5], [1, 1]] · x = [1e5, 2]  →  exact x ≈ (1.00001, 0.99999).
         // Partial pivoting sees |1| = |1| in column 0 and keeps row order;
         // the multiplier 1.0 then subtracts a 1e5-scale row from a 1-scale row,
@@ -224,14 +228,14 @@ fn controls(ui: &mut Ui, state: &mut Ch3State) {
 /// the rest of the chapter exists.
 fn intuition_callout(ui: &mut Ui) {
     egui::CollapsingHeader::new(
-        RichText::new("Why this chapter matters")
+        RichText::new(t("Why this chapter matters", "Miért fontos ez a fejezet"))
             .strong()
             .color(Color32::from_rgb(220, 200, 120)),
     )
     .default_open(false)
     .show(ui, |ui| {
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Solving A·x = b is the bread-and-butter operation of \
                  scientific computing. Discretised PDEs, normal equations \
                  for least squares (Ch 9), Newton steps inside every \
@@ -240,17 +244,29 @@ fn intuition_callout(ui: &mut Ui) {
                  textbook teaches you in two hours, but the engineering \
                  around it — pivoting, conditioning, residual checks — is \
                  what separates a toy from a tool.",
-            )
+                "Az A·x = b megoldása a tudományos számítás mindennapi művelete. \
+                 Diszkretizált PDE-k, a legkisebb négyzetek normálegyenletei \
+                 (9. fej.), Newton-lépések minden optimalizáló módszerben — mind \
+                 egy lineáris megoldásra vezet. Maga az algoritmus (Gauss-elimináció) \
+                 az, amit minden tankönyv két óra alatt megtanít, de a köré épülő \
+                 mérnöki munka — pivotálás, kondicionáltság, reziduum-ellenőrzés — \
+                 választja el a játékszert az eszköztől.",
+            ))
             .small(),
         );
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Two pictures to carry forward:  (1) eliminating a column \
                  means subtracting the right multiple of the pivot row from \
                  every row below it.  (2) The condition number of A bounds \
                  how much round-off error in A and b can grow on its way to \
                  x. We meet conditioning in earnest in Chapter 4.",
-            )
+                "Két kép, amit vigyél magaddal:  (1) egy oszlop eliminálása azt \
+                 jelenti, hogy a pivotsor megfelelő többszörösét kivonod minden \
+                 alatta lévő sorból.  (2) Az A kondíciószáma korlátozza, mennyire \
+                 nőhet az A-ban és b-ben lévő kerekítési hiba az x felé vezető úton. \
+                 A kondicionáltsággal komolyan a 4. fejezetben találkozunk.",
+            ))
             .small()
             .color(Color32::from_rgb(160, 175, 195)),
         );
@@ -266,12 +282,12 @@ fn formula_card_gauss(ui: &mut Ui) {
     let gold = Color32::from_rgb(255, 220, 100);
     let dim = Color32::from_rgb(200, 215, 230);
     egui::CollapsingHeader::new(
-        RichText::new("Formula card  ·  one elimination step").strong(),
+        RichText::new(t("Formula card  ·  one elimination step", "Képletkártya  ·  egy eliminációs lépés")).strong(),
     )
     .default_open(false)
     .show(ui, |ui| {
         ui.horizontal(|ui| {
-            ui.label(RichText::new("multiplier   ").monospace().color(dim));
+            ui.label(RichText::new(t("multiplier   ", "szorzó   ")).monospace().color(dim));
             ui.label(RichText::new("mᵢⱼ").monospace().color(cyan));
             ui.label(RichText::new("=").monospace().color(dim));
             ui.label(RichText::new("aᵢⱼ").monospace());
@@ -279,24 +295,27 @@ fn formula_card_gauss(ui: &mut Ui) {
             ui.label(RichText::new("aⱼⱼ").monospace().color(gold));
         });
         ui.horizontal(|ui| {
-            ui.label(RichText::new("row update  ").monospace().color(dim));
+            ui.label(RichText::new(t("row update  ", "sorfrissítés  ")).monospace().color(dim));
             ui.label(RichText::new("aᵢₖ ← aᵢₖ − ").monospace());
             ui.label(RichText::new("mᵢⱼ").monospace().color(cyan));
             ui.label(RichText::new("· aⱼₖ").monospace());
             ui.label(RichText::new("    (k = j..n)").monospace().color(dim));
         });
         ui.horizontal(|ui| {
-            ui.label(RichText::new("rhs update  ").monospace().color(dim));
+            ui.label(RichText::new(t("rhs update  ", "jobb oldal  ")).monospace().color(dim));
             ui.label(RichText::new("bᵢ ← bᵢ − ").monospace());
             ui.label(RichText::new("mᵢⱼ").monospace().color(cyan));
             ui.label(RichText::new("· bⱼ").monospace());
         });
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Pivot small ⇒ multiplier huge ⇒ subtraction wipes \
                  significant digits from the target row. Pivoting strategies \
                  (next callout) keep |mᵢⱼ| ≤ 1.",
-            )
+                "Kis pivot ⇒ óriási szorzó ⇒ a kivonás letörli a célsor értékes \
+                 jegyeit. A pivotálási stratégiák (következő panel) |mᵢⱼ| ≤ 1-en \
+                 tartják.",
+            ))
             .small()
             .color(Color32::from_rgb(160, 175, 195)),
         );
@@ -308,26 +327,31 @@ fn formula_card_gauss(ui: &mut Ui) {
 /// strategy comparison below this panel makes the words quantitative.
 fn pitfall_callout(ui: &mut Ui) {
     egui::CollapsingHeader::new(
-        RichText::new("Pitfall — why pivoting matters")
+        RichText::new(t("Pitfall — why pivoting matters", "Csapda — miért számít a pivotálás"))
             .strong()
             .color(Color32::from_rgb(240, 130, 130)),
     )
     .default_open(true)
     .show(ui, |ui| {
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Naive Gaussian elimination divides by the diagonal entry of \
                  each column in turn. If that pivot happens to be small in \
                  magnitude — even if it is nonzero — the multipliers \
                  mᵢⱼ = aᵢⱼ / aⱼⱼ blow up, and subtracting a huge scaled row \
                  from a moderate one annihilates the moderate row's \
                  significant digits.",
-            )
+                "A naiv Gauss-elimináció sorra az egyes oszlopok átlós elemével \
+                 oszt. Ha ez a pivot véletlenül kicsi nagyságú — még ha nem is \
+                 nulla —, az mᵢⱼ = aᵢⱼ / aⱼⱼ szorzók felrobbannak, és egy óriási \
+                 skálázott sort egy mérsékeltből kivonva megsemmisülnek a mérsékelt \
+                 sor értékes jegyei.",
+            ))
             .small(),
         );
         ui.add_space(4.0);
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Partial pivoting fixes this by picking, at each step, the row \
                  with the largest |aᵢⱼ| in the current column. That works \
                  unless the rows have wildly different scales — then a row \
@@ -336,7 +360,15 @@ fn pitfall_callout(ui: &mut Ui) {
                  each row by its row-max before picking; on the \"Pitfall\" \
                  preset it lands within 1e-15 of the true solution while \
                  partial pivot loses ~5 digits.",
-            )
+                "A részleges pivotálás ezt úgy javítja, hogy minden lépésben az \
+                 aktuális oszlopban a legnagyobb |aᵢⱼ|-jű sort választja. Ez addig \
+                 működik, amíg a sorok skálái nem nagyon eltérőek — ekkor egy sor, \
+                 amelynek eleme abszolút értékben nagy, a saját skálájához képest \
+                 még kicsi lehet. A skálázott részleges pivotálás minden sort a \
+                 sormaximumával normál a választás előtt; a „Csapda” példán 1e-15-en \
+                 belül eltalálja a valódi megoldást, míg a részleges pivot ~5 jegyet \
+                 veszít.",
+            ))
             .small()
             .color(Color32::from_rgb(160, 175, 195)),
         );
@@ -353,7 +385,7 @@ fn step_slider(ui: &mut Ui, state: &mut Ch3State) {
     }
     let last = state.snapshots.len() - 1;
     ui.horizontal(|ui| {
-        ui.label("step:");
+        ui.label(t("step:", "lépés:"));
         ui.add(egui::Slider::new(&mut state.step, 0..=last));
         if ui.small_button("⏮").clicked() {
             state.step = 0;
@@ -410,13 +442,13 @@ fn augmented_view(ui: &mut Ui, state: &Ch3State) {
     let cols = snap.aug[0].len();
 
     egui::Frame::group(ui.style()).show(ui, |ui| {
-        ui.label(RichText::new("Augmented matrix [A | b]").strong());
+        ui.label(RichText::new(t("Augmented matrix [A | b]", "Bővített mátrix [A | b]")).strong());
         egui::Grid::new("ch3_aug")
             .num_columns(cols + 1) // +1 for the "|" between A and b
             .spacing([6.0, 4.0])
             .show(ui, |ui| {
                 // Header row
-                ui.label(RichText::new("row").small().italics());
+                ui.label(RichText::new(t("row", "sor")).small().italics());
                 for j in 0..(cols - 1) {
                     ui.label(
                         RichText::new(format!("x{j}")).small().italics().color(
@@ -492,7 +524,7 @@ fn format_cell(v: f64) -> String {
 fn solution_view(ui: &mut Ui, state: &Ch3State) {
     if let Some(x) = &state.solution {
         egui::Frame::group(ui.style()).show(ui, |ui| {
-            ui.label(RichText::new("Solution x").strong());
+            ui.label(RichText::new(t("Solution x", "Megoldás x")).strong());
             ui.horizontal_wrapped(|ui| {
                 for (i, v) in x.iter().enumerate() {
                     ui.label(
@@ -513,17 +545,18 @@ fn solution_view(ui: &mut Ui, state: &Ch3State) {
 
 fn strategy_comparison(ui: &mut Ui, state: &Ch3State) {
     egui::Frame::group(ui.style()).show(ui, |ui| {
-        ui.label(RichText::new("Residual ‖b − A·x‖∞ across strategies").strong());
-        ui.label(
+        ui.label(RichText::new(t("Residual ‖b − A·x‖∞ across strategies", "Reziduum ‖b − A·x‖∞ stratégiánként")).strong());
+        ui.label(t(
             "Lower is better. Watch the naive solver explode on the Hartung Ex 3.25 preset.",
-        );
+            "Kisebb a jobb. Figyeld, ahogy a naiv megoldó felrobban a Hartung 3.25. példán.",
+        ));
         egui::Grid::new("ch3_strat_table")
             .num_columns(3)
             .spacing([12.0, 4.0])
             .show(ui, |ui| {
-                ui.label(RichText::new("strategy").monospace().strong());
+                ui.label(RichText::new(t("strategy", "stratégia")).monospace().strong());
                 ui.label(RichText::new("‖r‖∞").monospace().strong());
-                ui.label(RichText::new("relative to best").monospace().strong());
+                ui.label(RichText::new(t("relative to best", "a legjobbhoz képest")).monospace().strong());
                 ui.end_row();
                 let best = state
                     .residual_per_strategy
@@ -551,7 +584,7 @@ fn strategy_comparison(ui: &mut Ui, state: &Ch3State) {
                         }
                         None => {
                             ui.label(
-                                RichText::new("failed")
+                                RichText::new(t("failed", "sikertelen"))
                                     .monospace()
                                     .color(Color32::from_rgb(240, 130, 130)),
                             );
@@ -602,11 +635,20 @@ impl Ch3State {
 
         let (rows, cols) = self.a.shape();
         if rows != cols {
-            self.error = Some(format!("A must be square; got {rows}x{cols}"));
+            self.error = Some(if i18n::lang() == Lang::Hu {
+                format!("Az A-nak négyzetesnek kell lennie; kaptam {rows}x{cols}")
+            } else {
+                format!("A must be square; got {rows}x{cols}")
+            });
             return;
         }
         if self.b.len() != rows {
-            self.error = Some(format!("b length {} must equal A's row count {rows}", self.b.len()));
+            let bl = self.b.len();
+            self.error = Some(if i18n::lang() == Lang::Hu {
+                format!("a b hossza {bl} egyezzen meg A sorszámával: {rows}")
+            } else {
+                format!("b length {bl} must equal A's row count {rows}")
+            });
             return;
         }
 
@@ -680,7 +722,7 @@ fn run_naive(a: &Matrix, b: &[f64], out: &mut Vec<Snapshot>) {
         pivot_row: None,
         pivot_col: None,
         swapped_with: None,
-        description: "Initial augmented matrix [A | b].".into(),
+        description: t("Initial augmented matrix [A | b].", "Kezdeti bővített mátrix [A | b].").into(),
     });
     for k in 0..n.saturating_sub(1) {
         let pivot = aug[k][k];
@@ -690,7 +732,11 @@ fn run_naive(a: &Matrix, b: &[f64], out: &mut Vec<Snapshot>) {
                 pivot_row: Some(k),
                 pivot_col: Some(k),
                 swapped_with: None,
-                description: format!("step {}: zero pivot at A[{k},{k}] — naive cannot continue", k + 1),
+                description: if i18n::lang() == Lang::Hu {
+                    format!("{}. lépés: nulla pivot A[{k},{k}]-nál — a naiv nem folytatható", k + 1)
+                } else {
+                    format!("step {}: zero pivot at A[{k},{k}] — naive cannot continue", k + 1)
+                },
             });
             return;
         }
@@ -705,10 +751,11 @@ fn run_naive(a: &Matrix, b: &[f64], out: &mut Vec<Snapshot>) {
             pivot_row: Some(k),
             pivot_col: Some(k),
             swapped_with: None,
-            description: format!(
-                "step {}: eliminate column {} below A[{},{}] = {pivot:.4}",
-                k + 1, k, k, k
-            ),
+            description: if i18n::lang() == Lang::Hu {
+                format!("{}. lépés: {} oszlop eliminálása A[{},{}] = {pivot:.4} alatt", k + 1, k, k, k)
+            } else {
+                format!("step {}: eliminate column {} below A[{},{}] = {pivot:.4}", k + 1, k, k, k)
+            },
         });
     }
 }
@@ -721,7 +768,7 @@ fn run_partial(a: &Matrix, b: &[f64], out: &mut Vec<Snapshot>) {
         pivot_row: None,
         pivot_col: None,
         swapped_with: None,
-        description: "Initial augmented matrix [A | b].".into(),
+        description: t("Initial augmented matrix [A | b].", "Kezdeti bővített mátrix [A | b].").into(),
     });
     for k in 0..n.saturating_sub(1) {
         // Choose pivot row.
@@ -747,7 +794,11 @@ fn run_partial(a: &Matrix, b: &[f64], out: &mut Vec<Snapshot>) {
                 pivot_row: Some(k),
                 pivot_col: Some(k),
                 swapped_with: swapped,
-                description: format!("step {}: singular — no nonzero pivot below row {k}", k + 1),
+                description: if i18n::lang() == Lang::Hu {
+                    format!("{}. lépés: szinguláris — nincs nemnulla pivot a(z) {k}. sor alatt", k + 1)
+                } else {
+                    format!("step {}: singular — no nonzero pivot below row {k}", k + 1)
+                },
             });
             return;
         }
@@ -757,15 +808,18 @@ fn run_partial(a: &Matrix, b: &[f64], out: &mut Vec<Snapshot>) {
                 aug[i][j] -= factor * aug[k][j];
             }
         }
+        let hu = i18n::lang() == Lang::Hu;
         let desc = match swapped {
-            Some(l) => format!(
-                "step {}: swap rows {k} ↔ {l}, then eliminate col {k} (pivot {pivot:.4})",
-                k + 1
-            ),
-            None => format!(
-                "step {}: pivot already largest in col {k} (= {pivot:.4}), eliminate below",
-                k + 1
-            ),
+            Some(l) => if hu {
+                format!("{}. lépés: {k} ↔ {l} sorcsere, majd a {k} oszlop eliminálása (pivot {pivot:.4})", k + 1)
+            } else {
+                format!("step {}: swap rows {k} ↔ {l}, then eliminate col {k} (pivot {pivot:.4})", k + 1)
+            },
+            None => if hu {
+                format!("{}. lépés: a pivot már a legnagyobb a {k} oszlopban (= {pivot:.4}), eliminálás alatta", k + 1)
+            } else {
+                format!("step {}: pivot already largest in col {k} (= {pivot:.4}), eliminate below", k + 1)
+            },
         };
         out.push(Snapshot {
             aug: aug.clone(),
@@ -793,10 +847,14 @@ fn run_scaled(a: &Matrix, b: &[f64], out: &mut Vec<Snapshot>) {
         pivot_row: None,
         pivot_col: None,
         swapped_with: None,
-        description: format!(
-            "Initial augmented matrix. Row scale factors sᵢ = max|aᵢⱼ| = {:?}",
-            s.iter().map(|v| format!("{v:.4}")).collect::<Vec<_>>()
-        ),
+        description: {
+            let scales = s.iter().map(|v| format!("{v:.4}")).collect::<Vec<_>>();
+            if i18n::lang() == Lang::Hu {
+                format!("Kezdeti bővített mátrix. Sor-skálatényezők sᵢ = max|aᵢⱼ| = {scales:?}")
+            } else {
+                format!("Initial augmented matrix. Row scale factors sᵢ = max|aᵢⱼ| = {scales:?}")
+            }
+        },
     });
     for k in 0..n.saturating_sub(1) {
         let mut best = k;
@@ -822,7 +880,11 @@ fn run_scaled(a: &Matrix, b: &[f64], out: &mut Vec<Snapshot>) {
                 pivot_row: Some(k),
                 pivot_col: Some(k),
                 swapped_with: swapped,
-                description: format!("step {}: singular — no nonzero scaled pivot", k + 1),
+                description: if i18n::lang() == Lang::Hu {
+                    format!("{}. lépés: szinguláris — nincs nemnulla skálázott pivot", k + 1)
+                } else {
+                    format!("step {}: singular — no nonzero scaled pivot", k + 1)
+                },
             });
             return;
         }
@@ -832,15 +894,18 @@ fn run_scaled(a: &Matrix, b: &[f64], out: &mut Vec<Snapshot>) {
                 aug[i][j] -= factor * aug[k][j];
             }
         }
+        let hu = i18n::lang() == Lang::Hu;
         let desc = match swapped {
-            Some(l) => format!(
-                "step {}: swap rows {k} ↔ {l} (|a/s| max), eliminate col {k}",
-                k + 1
-            ),
-            None => format!(
-                "step {}: row {k} already has max |a/s|, eliminate col {k}",
-                k + 1
-            ),
+            Some(l) => if hu {
+                format!("{}. lépés: {k} ↔ {l} sorcsere (|a/s| max), {k} oszlop eliminálása", k + 1)
+            } else {
+                format!("step {}: swap rows {k} ↔ {l} (|a/s| max), eliminate col {k}", k + 1)
+            },
+            None => if hu {
+                format!("{}. lépés: a(z) {k}. sornak már max |a/s|-e van, {k} oszlop eliminálása", k + 1)
+            } else {
+                format!("step {}: row {k} already has max |a/s|, eliminate col {k}", k + 1)
+            },
         };
         out.push(Snapshot {
             aug: aug.clone(),
