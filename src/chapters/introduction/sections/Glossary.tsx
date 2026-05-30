@@ -107,6 +107,106 @@ const GLOSSARY: Entry[] = [
       hu: 'Hatékony polinom-kiértékelés, amely n-edfokú polinomhoz csak n szorzást és n összeadást igényel.',
     },
   },
+
+  // §1.2 — computer representation of integers and reals
+  {
+    term: { en: 'Sign bit', hu: 'Előjelbit' },
+    def: {
+      en: 'The (usually leftmost) bit indicating whether a number is positive (0) or negative (1).',
+      hu: 'A (rendszerint bal szélső) bit, amely jelzi, hogy a szám pozitív (0) vagy negatív (1).',
+    },
+  },
+  {
+    term: { en: 'Two’s complement', hu: 'Kettes komplemens' },
+    def: {
+      en: 'A signed-integer encoding where a negative I is stored as 2ᵐ + I, turning subtraction into addition and giving zero a single form.',
+      hu: 'Előjeles egész kódolás, ahol a negatív I tárolt alakja 2ᵐ + I; a kivonás összeadássá válik, és a nullának egyetlen alakja van.',
+    },
+  },
+  {
+    term: { en: 'Floating-point number (normal form)', hu: 'Lebegőpontos szám (normál alak)' },
+    def: {
+      en: 'A real number written as ± mantissa · bᵏ with 1 ≤ mantissa < b — a signed mantissa and an exponent.',
+      hu: 'Valós szám ± mantissza · bᵏ alakban, ahol 1 ≤ mantissza < b — előjeles mantissza és kitevő.',
+    },
+  },
+  {
+    term: { en: 'Mantissa', hu: 'Mantissza' },
+    def: {
+      en: 'The significant-digits part m of a number in normal form, with 1 ≤ m < b.',
+      hu: 'A normál alakú szám értékes jegyeit tartalmazó m rész, ahol 1 ≤ m < b.',
+    },
+  },
+  {
+    term: { en: 'Exponent', hu: 'Kitevő' },
+    def: {
+      en: 'The power k to which the base b is raised in the normal form of a real number.',
+      hu: 'Az a k hatvány, amelyre a b alapot emeljük a valós szám normál alakjában.',
+    },
+  },
+  {
+    term: { en: 'Shifted exponent (bias)', hu: 'Eltolt kitevő (bias)' },
+    def: {
+      en: 'A constant (e.g. 127 for single precision) added to the true exponent k so the stored exponent e = k + bias is non-negative.',
+      hu: 'A valódi k kitevőhöz adott állandó (pl. 127 egyszeres pontosságnál), hogy a tárolt e = k + bias kitevő nemnegatív legyen.',
+    },
+  },
+  {
+    term: { en: 'Machine number', hu: 'Gépi szám' },
+    def: {
+      en: 'A real number that the given floating-point format can store exactly, with no representation error.',
+      hu: 'Olyan valós szám, amelyet az adott lebegőpontos formátum pontosan, tárolási hiba nélkül tárol.',
+    },
+  },
+  {
+    term: { en: 'Machine epsilon (εₘ)', hu: 'Gépi epszilon (εₘ)' },
+    def: {
+      en: 'The gap between 1 and the next larger machine number; the smallest power of 2 with 1 + εₘ > 1 (2⁻²³ single, 2⁻⁵² double).',
+      hu: 'Az 1 és a következő nagyobb gépi szám közötti rés; a legkisebb 2-hatvány, amelyre 1 + εₘ > 1 (2⁻²³ egyszeres, 2⁻⁵² dupla).',
+    },
+  },
+  {
+    term: { en: 'Single / double precision', hu: 'Egyszeres / dupla pontosság' },
+    def: {
+      en: 'IEEE 754 formats: single = 32 bits (1 sign, 8 exponent, 23 mantissa); double = 64 bits (1, 11, 52).',
+      hu: 'IEEE 754 formátumok: egyszeres = 32 bit (1 előjel, 8 kitevő, 23 mantissza); dupla = 64 bit (1, 11, 52).',
+    },
+  },
+  {
+    term: { en: 'Rounding vs chopping', hu: 'Kerekítés vs levágás' },
+    def: {
+      en: 'Two ways to define fl(x): rounding picks the nearest machine number; chopping discards the mantissa bits that do not fit.',
+      hu: 'Az fl(x) két megadási módja: a kerekítés a legközelebbi gépi számot választja; a levágás eldobja a be nem férő mantisszabiteket.',
+    },
+  },
+  {
+    term: { en: 'fl(x) and unit roundoff (u)', hu: 'fl(x) és egységnyi kerekítés (u)' },
+    def: {
+      en: 'fl(x) is the stored machine number; fl(x) = x(1+δ) with |δ| ≤ u, where u = ½·b¹⁻ᵗ for rounding (= εₘ/2).',
+      hu: 'Az fl(x) a tárolt gépi szám; fl(x) = x(1+δ), |δ| ≤ u, ahol u = ½·b¹⁻ᵗ kerekítésnél (= εₘ/2).',
+    },
+  },
+  {
+    term: { en: 'NaN / Inf', hu: 'NaN / Inf' },
+    def: {
+      en: 'Special IEEE values: Inf for overflow/division by zero, NaN (“not a number”) for undefined results like 0/0 or √(−1).',
+      hu: 'Speciális IEEE értékek: Inf a túlcsorduláshoz/nullával osztáshoz, NaN („nem szám”) a meghatározatlan eredményekhez, pl. 0/0 vagy √(−1).',
+    },
+  },
+  {
+    term: { en: 'Absolute error', hu: 'Abszolút hiba' },
+    def: {
+      en: 'The difference |x − x̃| between an exact value x and its approximation x̃.',
+      hu: 'Az x pontos érték és x̃ közelítése közötti |x − x̃| különbség.',
+    },
+  },
+  {
+    term: { en: 'Relative error', hu: 'Relatív hiba' },
+    def: {
+      en: 'The absolute error scaled by the magnitude: |x − x̃| / |x|; x̃ is exact in n digits when it is ≤ ½·10¹⁻ⁿ.',
+      hu: 'Az abszolút hiba a nagysághoz viszonyítva: |x − x̃| / |x|; x̃ n jegyre pontos, ha ez ≤ ½·10¹⁻ⁿ.',
+    },
+  },
 ]
 
 export function Glossary() {

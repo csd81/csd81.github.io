@@ -37,6 +37,12 @@ export function MachineNumbers() {
               </div>
             </div>
           </div>
+
+          <div className="callout" style={{ marginTop: 12 }}>
+            <strong>{t('mach.thmTitle')}</strong>
+            <Tex block>{`\\frac{|\\mathrm{fl}(x) - x|}{|x|} \\le u, \\qquad u = \\tfrac12 b^{1-t}\\ \\text{(rounding)}`}</Tex>
+            <p style={{ margin: '6px 0 0', fontSize: '0.9rem' }}>{t('mach.thmBody')}</p>
+          </div>
         </div>
 
         <div className="panel">
