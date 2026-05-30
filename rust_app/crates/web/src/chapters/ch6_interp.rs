@@ -16,6 +16,8 @@ use egui_plot::{Legend, Line, MarkerShape, Plot, PlotPoints, Points};
 use engine::Env;
 use numerics::interpolation::{CubicSpline, HermiteInterp, NewtonInterp};
 
+use crate::i18n::t;
+
 #[derive(Clone, Debug)]
 struct DataPoint {
     x: f64,
@@ -92,12 +94,16 @@ pub fn show(ui: &mut Ui, state: &mut Ch6InterpState, _env: &mut Env) {
     egui::CentralPanel::default().show_inside(ui, |ui| {
         ScrollArea::vertical().show(ui, |ui| {
             ui.heading(crate::i18n::t("Chapter 6 — interpolation", "6. fejezet — interpoláció"));
-            ui.label(
+            ui.label(t(
                 "Compare polynomial vs piecewise-cubic interpolation. The Runge \
                 preset is the classic warning: equidistant Lagrange interpolation \
                 of 1/(1+25x²) oscillates worse and worse as n grows, while the \
                 cubic spline stays under control.",
-            );
+                "Hasonlítsd össze a polinomos és a szakaszonként harmadfokú \
+                interpolációt. A Runge-példa a klasszikus intés: az 1/(1+25x²) \
+                ekvidisztáns Lagrange-interpolációja egyre rosszabbul oszcillál, \
+                ahogy n nő, miközben a köbös spline kézben marad.",
+            ));
             ui.add_space(6.0);
             intuition_callout(ui);
             ui.add_space(4.0);
@@ -118,14 +124,14 @@ pub fn show(ui: &mut Ui, state: &mut Ch6InterpState, _env: &mut Env) {
 
 fn controls(ui: &mut Ui, state: &mut Ch6InterpState) {
     ui.add_space(6.0);
-    ui.label(RichText::new("Preset").strong());
+    ui.label(RichText::new(t("Preset", "Példa")).strong());
     let mut changed = false;
     for &p in &[Preset::Custom, Preset::Runge, Preset::Cos, Preset::Step] {
         let label = match p {
-            Preset::Custom => "Custom (edit below)",
-            Preset::Runge => "Runge   f = 1/(1 + 25x²)",
-            Preset::Cos => "Cosine   f = cos(πx)",
-            Preset::Step => "Discontinuous step",
+            Preset::Custom => t("Custom (edit below)", "Egyéni (lent szerkeszthető)"),
+            Preset::Runge => t("Runge   f = 1/(1 + 25x²)", "Runge   f = 1/(1 + 25x²)"),
+            Preset::Cos => t("Cosine   f = cos(πx)", "Koszinusz   f = cos(πx)"),
+            Preset::Step => t("Discontinuous step", "Szakadásos lépcső"),
         };
         if ui.selectable_label(state.preset == p, label).clicked() {
             state.preset = p;
@@ -137,7 +143,7 @@ fn controls(ui: &mut Ui, state: &mut Ch6InterpState) {
     if state.preset != Preset::Custom {
         ui.add_space(4.0);
         ui.horizontal(|ui| {
-            ui.label("nodes n:");
+            ui.label(t("nodes n:", "csomópontok n:"));
             if ui
                 .add(egui::Slider::new(&mut state.runge_n, 3..=21))
                 .changed()
@@ -147,13 +153,13 @@ fn controls(ui: &mut Ui, state: &mut Ch6InterpState) {
             }
         });
         ui.horizontal(|ui| {
-            let btn = if state.animating { "⏸  Pause" } else { "▶  Play" };
+            let btn = if state.animating { t("⏸  Pause", "⏸  Szünet") } else { t("▶  Play", "▶  Indítás") };
             if ui.button(btn).clicked() {
                 state.animating = !state.animating;
                 state.last_anim_step = ui.ctx().input(|i| i.time);
             }
             ui.label(
-                RichText::new("auto-advance n so you can watch the Runge oscillations grow")
+                RichText::new(t("auto-advance n so you can watch the Runge oscillations grow", "n automatikus léptetése, hogy lásd nőni a Runge-oszcillációkat"))
                     .small()
                     .color(Color32::from_rgb(160, 175, 195)),
             );
@@ -164,12 +170,12 @@ fn controls(ui: &mut Ui, state: &mut Ch6InterpState) {
 
     ui.add_space(8.0);
     ui.separator();
-    ui.label(RichText::new("Overlays").strong());
-    ui.checkbox(&mut state.show_lagrange, "Lagrange  L_n(x)");
-    ui.checkbox(&mut state.show_newton, "Newton form (same curve)");
-    ui.checkbox(&mut state.show_hermite, "Hermite  H_{2n+1}(x)");
-    ui.checkbox(&mut state.show_spline, "Natural cubic spline");
-    ui.checkbox(&mut state.show_clamped, "Clamped cubic spline");
+    ui.label(RichText::new(t("Overlays", "Rétegek")).strong());
+    ui.checkbox(&mut state.show_lagrange, t("Lagrange  L_n(x)", "Lagrange  L_n(x)"));
+    ui.checkbox(&mut state.show_newton, t("Newton form (same curve)", "Newton-alak (ugyanaz a görbe)"));
+    ui.checkbox(&mut state.show_hermite, t("Hermite  H_{2n+1}(x)", "Hermite  H_{2n+1}(x)"));
+    ui.checkbox(&mut state.show_spline, t("Natural cubic spline", "Természetes köbös spline"));
+    ui.checkbox(&mut state.show_clamped, t("Clamped cubic spline", "Rögzített köbös spline"));
 
     if state.show_clamped {
         ui.horizontal(|ui| {
@@ -182,22 +188,22 @@ fn controls(ui: &mut Ui, state: &mut Ch6InterpState) {
 
     ui.add_space(8.0);
     ui.horizontal(|ui| {
-        ui.label("view x ∈");
+        ui.label(t("view x ∈", "nézet x ∈"));
         ui.add(egui::DragValue::new(&mut state.x_min).speed(0.05));
         ui.label("…");
         ui.add(egui::DragValue::new(&mut state.x_max).speed(0.05));
     });
     ui.horizontal(|ui| {
-        ui.label("plot resolution:");
+        ui.label(t("plot resolution:", "ábra felbontása:"));
         ui.add(egui::Slider::new(&mut state.plot_n, 50..=2000));
     });
 
     ui.add_space(10.0);
     ui.separator();
-    ui.label(RichText::new("Points (xᵢ, yᵢ, y'ᵢ)").strong());
+    ui.label(RichText::new(t("Points (xᵢ, yᵢ, y'ᵢ)", "Pontok (xᵢ, yᵢ, y'ᵢ)")).strong());
     if state.preset != Preset::Custom {
         ui.label(
-            RichText::new("Preset locked — switch to Custom to edit.")
+            RichText::new(t("Preset locked — switch to Custom to edit.", "Példa zárolva — válts Egyénire a szerkesztéshez."))
                 .small()
                 .color(Color32::from_rgb(160, 175, 195)),
         );
@@ -274,30 +280,34 @@ fn formula_card(ui: &mut Ui) {
     let green = Color32::from_rgb(120, 220, 140);
     let dim = Color32::from_rgb(200, 215, 230);
     egui::CollapsingHeader::new(
-        RichText::new("Formula card  ·  three faces of interpolation").strong(),
+        RichText::new(t("Formula card  ·  three faces of interpolation", "Képletkártya  ·  az interpoláció három arca")).strong(),
     )
     .default_open(false)
     .show(ui, |ui| {
         ui.horizontal(|ui| {
             ui.label(RichText::new("Lagrange:  ").monospace().color(blue).strong());
             ui.label(RichText::new("L(x) = Σₖ yₖ · ℓₖ(x)").monospace());
-            ui.label(RichText::new("    where  ℓₖ(x) = Πⱼ≠ₖ (x − xⱼ)/(xₖ − xⱼ)").monospace().color(dim));
+            ui.label(RichText::new(t("    where  ℓₖ(x) = Πⱼ≠ₖ (x − xⱼ)/(xₖ − xⱼ)", "    ahol  ℓₖ(x) = Πⱼ≠ₖ (x − xⱼ)/(xₖ − xⱼ)")).monospace().color(dim));
         });
         ui.horizontal(|ui| {
             ui.label(RichText::new("Newton:     ").monospace().color(amber).strong());
             ui.label(RichText::new("L(x) = Σₖ f[x₀,…,xₖ] · Πⱼ<ₖ (x − xⱼ)").monospace());
         });
         ui.horizontal(|ui| {
-            ui.label(RichText::new("Cubic spline:  ").monospace().color(green).strong());
+            ui.label(RichText::new(t("Cubic spline:  ", "Köbös spline:  ")).monospace().color(green).strong());
             ui.label(RichText::new("Sᵢ(x) = aᵢ + bᵢ(x−xᵢ) + cᵢ(x−xᵢ)² + dᵢ(x−xᵢ)³").monospace());
         });
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Lagrange and Newton produce the same polynomial — Newton's \
                  form just allows incremental updates when a new (xₙ₊₁, yₙ₊₁) \
                  arrives. The cubic spline is fundamentally different: it is \
                  n separate cubics glued by C²-continuity at the joins.",
-            )
+                "A Lagrange és a Newton ugyanazt a polinomot adja — a Newton-alak \
+                 csak inkrementális frissítést tesz lehetővé, ha új (xₙ₊₁, yₙ₊₁) \
+                 érkezik. A köbös spline alapvetően más: n külön köbös függvény, \
+                 amelyeket C²-folytonossággal ragasztunk össze a csomópontokban.",
+            ))
             .small()
             .color(Color32::from_rgb(160, 175, 195)),
         );
@@ -314,7 +324,7 @@ fn try_this_challenges(ui: &mut Ui) {
         .unwrap_or(None);
     egui::Frame::group(ui.style()).show(ui, |ui| {
         ui.label(
-            RichText::new("Try this")
+            RichText::new(t("Try this", "Próbáld ki"))
                 .strong()
                 .color(Color32::from_rgb(255, 220, 100)),
         );
@@ -326,7 +336,7 @@ fn try_this_challenges(ui: &mut Ui) {
                         .color(Color32::from_rgb(240, 200, 120)),
                 );
                 ui.label(q);
-                let btn = if open == Some(idx) { "hide answer" } else { "answer" };
+                let btn = if open == Some(idx) { t("hide answer", "válasz elrejtése") } else { t("answer", "válasz") };
                 if ui.small_button(btn).clicked() {
                     open = if open == Some(idx) { None } else { Some(idx) };
                 }
@@ -343,33 +353,51 @@ fn try_this_challenges(ui: &mut Ui) {
         item(
             ui,
             0,
-            "Switch to the Runge preset, push n to 21. Where do the worst \
-             Lagrange oscillations occur — near the centre x = 0, or near \
-             the ends x = ±1?",
-            "Near the ends. Equidistant Chebyshev-like sampling would tame \
-             this; the cure is non-uniform nodes clustered toward the \
-             endpoints (Chebyshev abscissae).",
+            t("Switch to the Runge preset, push n to 21. Where do the worst \
+               Lagrange oscillations occur — near the centre x = 0, or near \
+               the ends x = ±1?",
+              "Válts a Runge-példára, told n-et 21-re. Hol a legrosszabbak a \
+               Lagrange-oszcillációk — a középen x = 0 körül, vagy a végeken \
+               x = ±1 körül?"),
+            t("Near the ends. Equidistant Chebyshev-like sampling would tame \
+               this; the cure is non-uniform nodes clustered toward the \
+               endpoints (Chebyshev abscissae).",
+              "A végek közelében. Az egyenletes helyett a végek felé sűrűsödő, \
+               nem egyenletes csomópontok (Csebisev-abszcisszák) szelídítik meg."),
         );
         item(
             ui,
             1,
-            "On the Cosine preset, the spline and Lagrange agree to ~6 \
-             digits at n = 11. Why doesn't Lagrange go Runge here?",
-            "cos(πx) is analytic on the entire complex plane — its Taylor \
-             series has infinite radius of convergence. Runge requires a \
-             real-axis pole inside the convergence disc; 1/(1+25x²) has \
-             poles at ±i/5 which are very close to [−1, 1].",
+            t("On the Cosine preset, the spline and Lagrange agree to ~6 \
+               digits at n = 11. Why doesn't Lagrange go Runge here?",
+              "A koszinusz-példán a spline és a Lagrange ~6 jegyre egyezik \
+               n = 11-nél. Miért nem lép fel itt a Runge-jelenség?"),
+            t("cos(πx) is analytic on the entire complex plane — its Taylor \
+               series has infinite radius of convergence. Runge requires a \
+               real-axis pole inside the convergence disc; 1/(1+25x²) has \
+               poles at ±i/5 which are very close to [−1, 1].",
+              "A cos(πx) az egész komplex síkon analitikus — Taylor-sorának \
+               végtelen a konvergenciasugara. A Runge-jelenséghez pólus kell a \
+               konvergenciakörön belül; az 1/(1+25x²)-nek ±i/5-nél van pólusa, \
+               nagyon közel a [−1, 1]-hez."),
         );
         item(
             ui,
             2,
-            "On the Step preset (a discontinuous jump), turn off the spline \
-             and enable Lagrange with n = 9. Look at the y-axis range. \
-             What's happening between the data points?",
-            "Lagrange tries to fit a degree-8 polynomial through a step \
-             function — it overshoots ±2× the jump and oscillates between \
-             every pair of nodes. Splines clamp the oscillation by design \
-             (the second-derivative continuity constraint).",
+            t("On the Step preset (a discontinuous jump), turn off the spline \
+               and enable Lagrange with n = 9. Look at the y-axis range. \
+               What's happening between the data points?",
+              "A lépcső-példán (szakadásos ugrás) kapcsold ki a spline-t, és \
+               engedélyezd a Lagrange-t n = 9-cel. Nézd az y-tengely tartományát. \
+               Mi történik az adatpontok között?"),
+            t("Lagrange tries to fit a degree-8 polynomial through a step \
+               function — it overshoots ±2× the jump and oscillates between \
+               every pair of nodes. Splines clamp the oscillation by design \
+               (the second-derivative continuity constraint).",
+              "A Lagrange egy 8-adfokú polinomot próbál átfűzni egy lépcsőfüggvényen \
+               — ±2× túllövi az ugrást, és minden csomópontpár között oszcillál. A \
+               spline-ok eleve korlátozzák az oszcillációt (a második derivált \
+               folytonossági feltétele)."),
         );
         ui.ctx().data_mut(|d| d.insert_temp(id_open, open));
     });
@@ -381,14 +409,14 @@ fn try_this_challenges(ui: &mut Ui) {
 /// trap, and what the cubic spline buys.
 fn intuition_callout(ui: &mut Ui) {
     egui::CollapsingHeader::new(
-        RichText::new("Why this chapter matters")
+        RichText::new(t("Why this chapter matters", "Miért fontos ez a fejezet"))
             .strong()
             .color(Color32::from_rgb(220, 200, 120)),
     )
     .default_open(false)
     .show(ui, |ui| {
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Interpolation: given n+1 samples (xᵢ, yᵢ), produce a continuous \
                  function that passes through every one. Why care? Because almost \
                  every numerical method that integrates, differentiates, or \
@@ -396,30 +424,47 @@ fn intuition_callout(ui: &mut Ui) {
                  hood — Chapter 7's Simpson rule is just trapezoid on a \
                  piecewise-quadratic interpolant, Newton's method (Chapter 2) \
                  is local quadratic interpolation of f.",
-            )
+                "Interpoláció: adott n+1 minta (xᵢ, yᵢ), állíts elő egy folytonos \
+                 függvényt, amely mindegyiken átmegy. Miért fontos? Mert szinte \
+                 minden numerikus módszer, amely egy fekete doboz függvényt \
+                 integrál, derivál vagy optimalizál, a háttérben egy interpolánst \
+                 használ — a 7. fejezet Simpson-szabálya csak trapéz egy \
+                 szakaszonként másodfokú interpolánson, a Newton-módszer (2. fej.) \
+                 az f lokális másodfokú interpolációja.",
+            ))
             .small(),
         );
         ui.add_space(3.0);
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "The polynomial-trap: it is tempting to fit a single polynomial \
                  of degree n through n+1 points. The polynomial exists and is \
                  unique, but as n grows it oscillates wildly between nodes \
                  (Runge 1901) and the entire scheme blows up. Increasing the \
                  degree is the *wrong* answer to needing more accuracy.",
-            )
+                "A polinom-csapda: csábító egyetlen n-edfokú polinomot átfűzni n+1 \
+                 ponton. A polinom létezik és egyértelmű, de ahogy n nő, vadul \
+                 oszcillál a csomópontok között (Runge, 1901), és az egész szétesik. \
+                 A fokszám növelése *rossz* válasz a nagyobb pontosság igényére.",
+            ))
             .small()
             .color(Color32::from_rgb(240, 200, 120)),
         );
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "The cubic-spline cure: stop trying to fit one polynomial. \
                  Stitch a separate cubic to each consecutive pair of nodes, \
                  with continuity of value and first-and-second derivatives at \
                  the joins. Result: a curve as smooth as a quartic but \
                  bounded by the data. Same idea recurs every chapter where \
                  \"more degree\" goes nowhere.",
-            )
+                "A köbös spline gyógyír: ne próbálj egyetlen polinomot illeszteni. \
+                 Varrj külön köbös függvényt minden szomszédos csomópontpárhoz, az \
+                 érték, valamint az első és második derivált folytonosságával a \
+                 csatlakozásoknál. Eredmény: egy negyedfokúként sima, de az adat \
+                 által korlátozott görbe. Ugyanez az ötlet visszatér minden \
+                 fejezetben, ahol a „több fok” sehová sem vezet.",
+            ))
             .small()
             .color(Color32::from_rgb(120, 220, 140)),
         );
@@ -510,7 +555,7 @@ fn plot_view(ui: &mut Ui, state: &Ch6InterpState) {
                         Line::new(PlotPoints::from(pts))
                             .color(Color32::from_rgb(255, 200, 80))
                             .style(egui_plot::LineStyle::Dashed { length: 4.0 })
-                            .name("Newton form"),
+                            .name(t("Newton form", "Newton-alak")),
                     );
                 }
             }
@@ -528,7 +573,7 @@ fn plot_view(ui: &mut Ui, state: &Ch6InterpState) {
                     plot_ui.line(
                         Line::new(PlotPoints::from(pts))
                             .color(Color32::from_rgb(120, 220, 140))
-                            .name("Natural cubic spline"),
+                            .name(t("Natural cubic spline", "Természetes köbös spline")),
                     );
                 }
             }
@@ -537,7 +582,7 @@ fn plot_view(ui: &mut Ui, state: &Ch6InterpState) {
                 plot_ui.line(
                     Line::new(PlotPoints::from(pts))
                         .color(Color32::from_rgb(120, 180, 255))
-                        .name("Clamped spline"),
+                        .name(t("Clamped spline", "Rögzített spline")),
                 );
             }
 
@@ -549,7 +594,7 @@ fn plot_view(ui: &mut Ui, state: &Ch6InterpState) {
                         .shape(MarkerShape::Circle)
                         .radius(5.0)
                         .color(Color32::from_rgb(255, 220, 100))
-                        .name("data"),
+                        .name(t("data", "adat")),
                 );
             }
         });
@@ -589,7 +634,7 @@ fn error_table(ui: &mut Ui, state: &Ch6InterpState) {
     }
 
     egui::Frame::group(ui.style()).show(ui, |ui| {
-        ui.label(RichText::new("Max |error| against the reference function").strong());
+        ui.label(RichText::new(t("Max |error| against the reference function", "Max |hiba| a referenciafüggvényhez képest")).strong());
         egui::Grid::new("ch6_err_table")
             .num_columns(2)
             .spacing([16.0, 4.0])
@@ -597,11 +642,11 @@ fn error_table(ui: &mut Ui, state: &Ch6InterpState) {
                 ui.label(RichText::new("Lagrange").monospace().color(Color32::from_rgb(240, 130, 130)));
                 ui.label(RichText::new(format!("{max_lag:.4e}")).monospace());
                 ui.end_row();
-                ui.label(RichText::new("Cubic spline").monospace().color(Color32::from_rgb(120, 220, 140)));
+                ui.label(RichText::new(t("Cubic spline", "Köbös spline")).monospace().color(Color32::from_rgb(120, 220, 140)));
                 ui.label(RichText::new(format!("{max_spl:.4e}")).monospace());
                 ui.end_row();
                 let ratio = if max_spl > 0.0 { max_lag / max_spl } else { 0.0 };
-                ui.label(RichText::new("Lagrange / spline ratio").monospace());
+                ui.label(RichText::new(t("Lagrange / spline ratio", "Lagrange / spline arány")).monospace());
                 let color = if ratio > 100.0 {
                     Color32::from_rgb(240, 130, 130)
                 } else if ratio > 5.0 {

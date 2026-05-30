@@ -12,6 +12,8 @@ use egui_plot::{Legend, Line, MarkerShape, Plot, PlotPoints, Points};
 use engine::Env;
 use numerics::least_squares as ls;
 
+use crate::i18n::{self, t, Lang};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum FitKind {
     Line,
@@ -22,7 +24,6 @@ enum FitKind {
 
 impl FitKind {
     fn label(&self) -> &'static str {
-        use crate::i18n::t;
         match self {
             Self::Line => t("Line  y = a·x + b", "Egyenes  y = a·x + b"),
             Self::Polynomial => t("Polynomial  y = Σ aₖ·xᵏ", "Polinom  y = Σ aₖ·xᵏ"),
@@ -67,13 +68,18 @@ pub fn show(ui: &mut Ui, state: &mut Ch9State, _env: &mut Env) {
     egui::CentralPanel::default().show_inside(ui, |ui| {
         ScrollArea::vertical().show(ui, |ui| {
             ui.heading(crate::i18n::t("Chapter 9 — least squares", "9. fejezet — legkisebb négyzetek"));
-            ui.label(
+            ui.label(t(
                 "Fit a curve through scattered data by minimizing Σ(model − y)². \
                 Edit points on the left, switch fit types, watch the curve \
                 redraw. Exponential and power fits use the linearization \
                 trick (§9.3) — both error metrics are reported so you can see \
                 they differ.",
-            );
+                "Illessz görbét szórt adatra a Σ(modell − y)² minimalizálásával. \
+                Szerkeszd a pontokat balra, válts illesztéstípust, figyeld az \
+                újrarajzolt görbét. Az exponenciális és hatvány illesztés a \
+                linearizálási trükköt (§9.3) használja — mindkét hibamutató \
+                megjelenik, hogy lásd, eltérnek.",
+            ));
             ui.add_space(4.0);
             intuition_callout(ui);
             ui.add_space(4.0);
@@ -84,13 +90,13 @@ pub fn show(ui: &mut Ui, state: &mut Ch9State, _env: &mut Env) {
 
 fn controls(ui: &mut Ui, state: &mut Ch9State) {
     ui.add_space(6.0);
-    ui.label(RichText::new("Fit type").strong());
+    ui.label(RichText::new(t("Fit type", "Illesztés típusa")).strong());
     for &k in &[FitKind::Line, FitKind::Polynomial, FitKind::Exponential, FitKind::Power] {
         ui.selectable_value(&mut state.kind, k, k.label());
     }
     if state.kind == FitKind::Polynomial {
         ui.horizontal(|ui| {
-            ui.label("degree m");
+            ui.label(t("degree m", "fokszám m"));
             let max = state.points.len().saturating_sub(1).max(1);
             ui.add(egui::Slider::new(&mut state.poly_degree, 1..=max));
         });
@@ -98,33 +104,33 @@ fn controls(ui: &mut Ui, state: &mut Ch9State) {
 
     ui.add_space(10.0);
     ui.separator();
-    ui.label(RichText::new("Presets").strong());
-    if ui.small_button("Hartung Ex 9.2  (line)").clicked() {
+    ui.label(RichText::new(t("Presets", "Példák")).strong());
+    if ui.small_button(t("Hartung Ex 9.2  (line)", "Hartung 9.2. pl.  (egyenes)")).clicked() {
         let xs = [-1.0_f64, 1.0, 2.5, 3.0, 4.0, 4.5, 6.0];
         let ys = [0.0_f64, 1.2, 1.9, 2.5, 3.1, 3.2, 4.5];
         state.points = xs.iter().zip(ys.iter()).map(|(&x, &y)| DataPoint { x, y }).collect();
         state.kind = FitKind::Line;
     }
-    if ui.small_button("Hartung Ex 9.4  (parabola)").clicked() {
+    if ui.small_button(t("Hartung Ex 9.4  (parabola)", "Hartung 9.4. pl.  (parabola)")).clicked() {
         let xs = [-1.0_f64, -0.5, 0.0, 1.0, 2.0, 3.0, 3.5];
         let ys = [1.6_f64, 1.7, 1.9, 1.5, 0.6, -0.1, -1.0];
         state.points = xs.iter().zip(ys.iter()).map(|(&x, &y)| DataPoint { x, y }).collect();
         state.kind = FitKind::Polynomial;
         state.poly_degree = 2;
     }
-    if ui.small_button("Hartung Ex 9.5  (exponential)").clicked() {
+    if ui.small_button(t("Hartung Ex 9.5  (exponential)", "Hartung 9.5. pl.  (exponenciális)")).clicked() {
         let xs = [0.0_f64, 1.0, 1.5, 2.0, 3.0, 4.0];
         let ys = [0.3_f64, 0.7, 0.9, 1.2, 1.8, 2.7];
         state.points = xs.iter().zip(ys.iter()).map(|(&x, &y)| DataPoint { x, y }).collect();
         state.kind = FitKind::Exponential;
     }
-    if ui.small_button("Hartung Ex 9.6  (power)").clicked() {
+    if ui.small_button(t("Hartung Ex 9.6  (power)", "Hartung 9.6. pl.  (hatvány)")).clicked() {
         let xs = [0.5_f64, 1.0, 1.5, 2.5, 3.0];
         let ys = [0.7_f64, 1.1, 1.6, 2.1, 2.3];
         state.points = xs.iter().zip(ys.iter()).map(|(&x, &y)| DataPoint { x, y }).collect();
         state.kind = FitKind::Power;
     }
-    if ui.small_button("Pitfall  (over-fit a linear trend)").clicked() {
+    if ui.small_button(t("Pitfall  (over-fit a linear trend)", "Csapda  (lineáris trend túlillesztése)")).clicked() {
         // 12 points on y ≈ 0.5·x + noise. A line fits beautifully; a
         // degree-10 polynomial will pass through every point at the cost
         // of wild oscillation between them.
@@ -137,7 +143,7 @@ fn controls(ui: &mut Ui, state: &mut Ch9State) {
 
     ui.add_space(10.0);
     ui.separator();
-    ui.label(RichText::new("Data (xᵢ, yᵢ)").strong());
+    ui.label(RichText::new(t("Data (xᵢ, yᵢ)", "Adat (xᵢ, yᵢ)")).strong());
     egui::Grid::new("ch9_data")
         .num_columns(3)
         .spacing([6.0, 2.0])
@@ -154,7 +160,7 @@ fn controls(ui: &mut Ui, state: &mut Ch9State) {
             }
         });
     ui.horizontal(|ui| {
-        if ui.small_button("+ point").clicked() {
+        if ui.small_button(t("+ point", "+ pont")).clicked() {
             let n = state.points.len();
             let x_new = if n >= 2 {
                 state.points[n - 1].x + 1.0
@@ -165,7 +171,7 @@ fn controls(ui: &mut Ui, state: &mut Ch9State) {
             };
             state.points.push(DataPoint { x: x_new, y: 0.0 });
         }
-        if ui.small_button("− last").clicked() && state.points.len() > 2 {
+        if ui.small_button(t("− last", "− utolsó")).clicked() && state.points.len() > 2 {
             state.points.pop();
         }
     });
@@ -239,7 +245,7 @@ fn main_view(ui: &mut Ui, state: &Ch9State) {
                 .color(Color32::from_rgb(120, 220, 140)),
             );
             ui.label(
-                RichText::new("ε_lin minimizes residuals on ln y; ε_orig measures residuals in the original units (always bigger).")
+                RichText::new(t("ε_lin minimizes residuals on ln y; ε_orig measures residuals in the original units (always bigger).", "ε_lin az ln y-on minimalizálja a reziduumokat; ε_orig az eredeti egységben méri (mindig nagyobb)."))
                     .small()
                     .color(Color32::from_rgb(160, 175, 195)),
             );
@@ -255,7 +261,8 @@ fn main_view(ui: &mut Ui, state: &Ch9State) {
             );
         }
         FitResult::Err(s) => {
-            ui.colored_label(Color32::from_rgb(240, 130, 130), format!("fit error: {s}"));
+            let m = if i18n::lang() == Lang::Hu { format!("illesztési hiba: {s}") } else { format!("fit error: {s}") };
+            ui.colored_label(Color32::from_rgb(240, 130, 130), m);
         }
     });
 
@@ -283,7 +290,7 @@ fn main_view(ui: &mut Ui, state: &Ch9State) {
                     .shape(MarkerShape::Circle)
                     .radius(5.0)
                     .color(Color32::from_rgb(120, 180, 255))
-                    .name("data"),
+                    .name(t("data", "adat")),
             );
 
             // Fitted curve.
@@ -303,7 +310,7 @@ fn main_view(ui: &mut Ui, state: &Ch9State) {
                     Line::new(PlotPoints::from(curve))
                         .color(Color32::from_rgb(240, 130, 130))
                         .stroke(Stroke::new(2.0, Color32::from_rgb(240, 130, 130)))
-                        .name("fit"),
+                        .name(t("fit", "illesztés")),
                 );
 
                 // Residual lines.
@@ -323,7 +330,7 @@ fn main_view(ui: &mut Ui, state: &Ch9State) {
     if fit.is_ok() {
         ui.add_space(8.0);
         egui::Frame::group(ui.style()).show(ui, |ui| {
-            ui.label(RichText::new("Residuals").strong());
+            ui.label(RichText::new(t("Residuals", "Reziduumok")).strong());
             egui::Grid::new("ch9_resid_table")
                 .num_columns(4)
                 .spacing([16.0, 2.0])
@@ -331,7 +338,7 @@ fn main_view(ui: &mut Ui, state: &Ch9State) {
                     ui.label(RichText::new("i").monospace().strong());
                     ui.label(RichText::new("xᵢ").monospace().strong());
                     ui.label(RichText::new("yᵢ").monospace().strong());
-                    ui.label(RichText::new("model − yᵢ").monospace().strong());
+                    ui.label(RichText::new(t("model − yᵢ", "modell − yᵢ")).monospace().strong());
                     ui.end_row();
                     for (i, p) in state.points.iter().enumerate() {
                         let yhat = fit.eval(p.x).unwrap_or(f64::NAN);
@@ -362,24 +369,29 @@ fn main_view(ui: &mut Ui, state: &Ch9State) {
 /// recognise the chapter as a composition, not a one-off trick.
 fn intuition_callout(ui: &mut Ui) {
     egui::CollapsingHeader::new(
-        RichText::new("Why this chapter matters")
+        RichText::new(t("Why this chapter matters", "Miért fontos ez a fejezet"))
             .strong()
             .color(Color32::from_rgb(220, 200, 120)),
     )
     .default_open(false)
     .show(ui, |ui| {
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Real data is noisy. Interpolation (Ch 6) tries to honour \
                  every data point — which means honouring the noise, not the \
                  underlying signal. Least squares answers the obvious \
                  question: \"give me the model that minimises total \
                  disagreement instead of fitting every point\".",
-            )
+                "A valós adat zajos. Az interpoláció (6. fej.) minden adatpontot \
+                 tisztel — vagyis a zajt tiszteli, nem a mögöttes jelet. A \
+                 legkisebb négyzetek a kézenfekvő kérdésre válaszol: „add a \
+                 modellt, amely a teljes eltérést minimalizálja, ahelyett hogy \
+                 minden pontot eltalálna”.",
+            ))
             .small(),
         );
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "It is the workhorse of every empirical science: physics \
                  calibration curves, biology dose-response fits, the entire \
                  statistics literature. Connections both ways: Ch 6's \
@@ -387,7 +399,14 @@ fn intuition_callout(ui: &mut Ui) {
                  squares (zero residual), and Ch 8's minimisation framework \
                  is exactly what's running under the hood (just with a \
                  closed-form solution for linear models).",
-            )
+                "Minden empirikus tudomány igáslova: fizikai kalibrációs görbék, \
+                 biológiai dózis-válasz illesztések, a teljes statisztikai \
+                 irodalom. Kapcsolat mindkét irányba: a 6. fejezet Lagrange-bázisa \
+                 a polinomos legkisebb négyzetek m = n−1 határesete (nulla \
+                 reziduum), a 8. fejezet minimalizálási kerete pedig pontosan az, \
+                 ami a háttérben fut (csak zárt alakú megoldással a lineáris \
+                 modellekre).",
+            ))
             .small()
             .color(Color32::from_rgb(160, 175, 195)),
         );
@@ -405,25 +424,30 @@ fn pitfall_callout(ui: &mut Ui, state: &Ch9State) {
         return;
     }
     egui::CollapsingHeader::new(
-        RichText::new("Pitfall — high-degree polynomial fit")
+        RichText::new(t("Pitfall — high-degree polynomial fit", "Csapda — magas fokszámú polinomillesztés"))
             .strong()
             .color(Color32::from_rgb(240, 130, 130)),
     )
     .default_open(true)
     .show(ui, |ui| {
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "As the polynomial degree m approaches n−1, the fit \
                  interpolates the data exactly — Σ(model − y)² → 0 — and \
                  every wiggle of measurement noise lands on the curve. Try \
                  the \"Pitfall\" preset: a line is hiding under that data, \
                  but a degree-10 polynomial passes through every point with \
                  violent oscillations between them.",
-            )
+                "Ahogy az m fokszám n−1-hez közelít, az illesztés pontosan \
+                 interpolálja az adatot — Σ(modell − y)² → 0 —, és a mérési zaj \
+                 minden rezdülése a görbére kerül. Próbáld a „Csapda” példát: egy \
+                 egyenes bújik az adat alatt, de egy 10-edfokú polinom minden \
+                 ponton átmegy, közöttük heves oszcillációval.",
+            ))
             .small(),
         );
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Two structural problems compound: (a) the normal-equations \
                  matrix Aᵀ·A becomes Hilbert-like as m grows (Chapter 4's \
                  \"Hilbert explorer\" — condition number explodes; \
@@ -431,7 +455,14 @@ fn pitfall_callout(ui: &mut Ui, state: &Ch9State) {
                  polynomial has no predictive value outside the data range \
                  — extrapolation diverges. Lesson: keep m small, use \
                  regularisation (ridge), or switch to splines (Chapter 6).",
-            )
+                "Két szerkezeti probléma adódik össze: (a) az Aᵀ·A normálegyenlet-\
+                 mátrix Hilbert-szerűvé válik, ahogy m nő (a 4. fejezet „Hilbert-\
+                 felfedezője” — a kondíciószám felrobban, a kerekítés rontja az \
+                 együtthatókat);  (b) a kapott polinomnak nincs előrejelző értéke \
+                 az adattartományon kívül — az extrapoláció divergál. Tanulság: \
+                 tartsd m-et kicsin, használj regularizációt (ridge), vagy válts \
+                 spline-okra (6. fejezet).",
+            ))
             .small()
             .color(Color32::from_rgb(160, 175, 195)),
         );
@@ -444,7 +475,7 @@ fn pitfall_callout(ui: &mut Ui, state: &Ch9State) {
 /// treating every chapter as an island.
 fn cross_chapter_link(ui: &mut Ui, state: &Ch9State) {
     egui::CollapsingHeader::new(
-        RichText::new("Under the hood — what this reuses").strong(),
+        RichText::new(t("Under the hood — what this reuses", "A motorháztető alatt — mit használ újra")).strong(),
     )
     .default_open(false)
     .show(ui, |ui| {
@@ -462,34 +493,39 @@ fn cross_chapter_link(ui: &mut Ui, state: &Ch9State) {
             FitKind::Line => {
                 bullet(
                     ui,
-                    "closed-form normal equations",
-                    "Two equations in (a, b), solved without any iteration. Just sums of xᵢ, yᵢ, xᵢ², xᵢyᵢ — see eq. (9.3) in Hartung.",
+                    t("closed-form normal equations", "zárt alakú normálegyenletek"),
+                    t("Two equations in (a, b), solved without any iteration. Just sums of xᵢ, yᵢ, xᵢ², xᵢyᵢ — see eq. (9.3) in Hartung.",
+                      "Két egyenlet (a, b)-ben, iteráció nélkül megoldva. Csak xᵢ, yᵢ, xᵢ², xᵢyᵢ összegek — lásd Hartung (9.3) egyenlet."),
                 );
             }
             FitKind::Polynomial => {
                 bullet(
                     ui,
-                    "Chapter 3  ·  Gauss elimination with partial pivoting",
-                    "We assemble the (m+1)×(m+1) normal-equations matrix Σxᵢ^(j+k) and right-hand side Σxᵢ^j·yᵢ, then call `solve_partial_pivot` — the same routine you watched scrub through column-by-column in the Ch3 tab.",
+                    t("Chapter 3  ·  Gauss elimination with partial pivoting", "3. fejezet  ·  Gauss-elimináció részleges pivotálással"),
+                    t("We assemble the (m+1)×(m+1) normal-equations matrix Σxᵢ^(j+k) and right-hand side Σxᵢ^j·yᵢ, then call `solve_partial_pivot` — the same routine you watched scrub through column-by-column in the Ch3 tab.",
+                      "Összeállítjuk az (m+1)×(m+1) normálegyenlet-mátrixot Σxᵢ^(j+k) és a Σxᵢ^j·yᵢ jobb oldalt, majd meghívjuk a `solve_partial_pivot`-ot — ugyanaz a rutin, amit a 3. fülön oszloponként végignéztél."),
                 );
                 bullet(
                     ui,
-                    "warning",
-                    "As m grows, the normal-equations matrix becomes a Hilbert-like matrix (Ch4 'Hilbert explorer') and its condition number explodes. That is the practical reason real-world polynomial fits use QR or SVD instead.",
+                    t("warning", "figyelmeztetés"),
+                    t("As m grows, the normal-equations matrix becomes a Hilbert-like matrix (Ch4 'Hilbert explorer') and its condition number explodes. That is the practical reason real-world polynomial fits use QR or SVD instead.",
+                      "Ahogy m nő, a normálegyenlet-mátrix Hilbert-szerűvé válik (4. fej. „Hilbert-felfedező”), és a kondíciószáma felrobban. Ez a gyakorlati oka, hogy a valós polinomillesztések inkább QR-t vagy SVD-t használnak."),
                 );
             }
             FitKind::Exponential => {
                 bullet(
                     ui,
-                    "Chapter 1  ·  log identity",
-                    "Take log y to linearise: ln(b·e^{ax}) = ln b + a·x. Then fall back to the line-fit machinery above. Different problem to minimise, hence ε_lin ≠ ε_orig.",
+                    t("Chapter 1  ·  log identity", "1. fejezet  ·  logaritmus-azonosság"),
+                    t("Take log y to linearise: ln(b·e^{ax}) = ln b + a·x. Then fall back to the line-fit machinery above. Different problem to minimise, hence ε_lin ≠ ε_orig.",
+                      "Vedd log y-t a linearizáláshoz: ln(b·e^{ax}) = ln b + a·x. Aztán térj vissza a fenti egyenes-illesztéshez. Más a minimalizálandó feladat, ezért ε_lin ≠ ε_orig."),
                 );
             }
             FitKind::Power => {
                 bullet(
                     ui,
-                    "Chapter 1  ·  log-log identity",
-                    "Take log of both sides: ln(b·x^a) = ln b + a·ln x. Linearise both axes, then fit a line.",
+                    t("Chapter 1  ·  log-log identity", "1. fejezet  ·  log-log azonosság"),
+                    t("Take log of both sides: ln(b·x^a) = ln b + a·ln x. Linearise both axes, then fit a line.",
+                      "Vedd mindkét oldal logaritmusát: ln(b·x^a) = ln b + a·ln x. Linearizáld mindkét tengelyt, majd illessz egyenest."),
                 );
             }
         }
@@ -502,18 +538,21 @@ fn cross_chapter_link(ui: &mut Ui, state: &Ch9State) {
 /// the textbook to ~5 decimal places.
 fn worked_book_examples(ui: &mut Ui) {
     egui::CollapsingHeader::new(
-        RichText::new("Hartung textbook values (for verification)")
+        RichText::new(t("Hartung textbook values (for verification)", "Hartung tankönyvi értékek (ellenőrzéshez)"))
             .strong()
             .color(Color32::from_rgb(255, 220, 100)),
     )
     .default_open(false)
     .show(ui, |ui| {
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Load any of the four book presets on the left and compare \
                  the live coefficients in the banner above with the textbook \
                  values below.",
-            )
+                "Tölts be balra a négy könyvbeli példa bármelyikét, és hasonlítsd \
+                 össze a fenti sávban élőben látható együtthatókat az alábbi \
+                 tankönyvi értékekkel.",
+            ))
             .small()
             .color(Color32::from_rgb(160, 175, 195)),
         );
@@ -522,12 +561,12 @@ fn worked_book_examples(ui: &mut Ui) {
             .num_columns(3)
             .spacing([18.0, 4.0])
             .show(ui, |ui| {
-                ui.label(RichText::new("example").monospace().strong());
-                ui.label(RichText::new("fit type").monospace().strong());
-                ui.label(RichText::new("coefficients").monospace().strong());
+                ui.label(RichText::new(t("example", "példa")).monospace().strong());
+                ui.label(RichText::new(t("fit type", "illesztés típusa")).monospace().strong());
+                ui.label(RichText::new(t("coefficients", "együtthatók")).monospace().strong());
                 ui.end_row();
                 ui.label(RichText::new("9.2").monospace());
-                ui.label(RichText::new("line").monospace());
+                ui.label(RichText::new(t("line", "egyenes")).monospace());
                 ui.label(
                     RichText::new("a = 0.630243   b = 0.542163   err = 0.124691")
                         .monospace()
@@ -535,7 +574,7 @@ fn worked_book_examples(ui: &mut Ui) {
                 );
                 ui.end_row();
                 ui.label(RichText::new("9.4").monospace());
-                ui.label(RichText::new("parabola").monospace());
+                ui.label(RichText::new(t("parabola", "parabola")).monospace());
                 ui.label(
                     RichText::new("a₂ = −0.196021   a₁ = −0.084748   a₀ = 1.752653   err = 0.0964456")
                         .monospace()
@@ -543,7 +582,7 @@ fn worked_book_examples(ui: &mut Ui) {
                 );
                 ui.end_row();
                 ui.label(RichText::new("9.5").monospace());
-                ui.label(RichText::new("exp").monospace());
+                ui.label(RichText::new(t("exp", "exp")).monospace());
                 ui.label(
                     RichText::new("a = 0.528951   b = 0.368765   ε_lin = 0.095396   ε_orig = 0.165543")
                         .monospace()
@@ -551,7 +590,7 @@ fn worked_book_examples(ui: &mut Ui) {
                 );
                 ui.end_row();
                 ui.label(RichText::new("9.6").monospace());
-                ui.label(RichText::new("power").monospace());
+                ui.label(RichText::new(t("power", "hatvány")).monospace());
                 ui.label(
                     RichText::new("a = 0.676257   b = 1.130984   ε_lin = 0.007279   ε_orig = 0.019616")
                         .monospace()
