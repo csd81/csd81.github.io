@@ -11,6 +11,8 @@ use egui_plot::{Legend, Line, MarkerShape, Plot, PlotPoints, Points, Polygon};
 use engine::{ast::Expr, parse_expr_str, Env};
 use numerics::{optimize as opt, Matrix};
 
+use crate::i18n::{self, t, Lang};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Method {
     GoldenSection,
@@ -23,7 +25,6 @@ enum Method {
 
 impl Method {
     fn label(&self) -> &'static str {
-        use crate::i18n::t;
         match self {
             Self::GoldenSection => t("Golden section  (1D)", "Aranymetszés  (1D)"),
             Self::Simplex => t("Simplex method", "Szimplex módszer"),
@@ -89,11 +90,14 @@ pub fn show(ui: &mut Ui, state: &mut Ch8State, env: &mut Env) {
     egui::CentralPanel::default().show_inside(ui, |ui| {
         ScrollArea::vertical().show(ui, |ui| {
             ui.heading(crate::i18n::t("Chapter 8 — minimization", "8. fejezet — szélsőértékszámítás"));
-            ui.label(
+            ui.label(t(
                 "Pick a method on the left and watch its iterates trace out a \
                 path over the contour plot of f(x, y). The simplex methods \
                 show every triangle in their history.",
-            );
+                "Válassz módszert balra, és figyeld, ahogy iteráltjai utat rajzolnak \
+                az f(x, y) szintvonalas ábrája felett. A szimplex módszerek minden \
+                háromszöget megmutatnak az előzményeikből.",
+            ));
             ui.add_space(4.0);
             intuition_callout(ui);
             ui.add_space(8.0);
@@ -112,25 +116,31 @@ pub fn show(ui: &mut Ui, state: &mut Ch8State, env: &mut Env) {
 /// shrinking) to keep iterates inside the basin of attraction.
 fn intuition_callout(ui: &mut Ui) {
     egui::CollapsingHeader::new(
-        RichText::new("Why this chapter matters")
+        RichText::new(t("Why this chapter matters", "Miért fontos ez a fejezet"))
             .strong()
             .color(Color32::from_rgb(220, 200, 120)),
     )
     .default_open(false)
     .show(ui, |ui| {
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Minimisation appears everywhere science needs to fit a model \
                  to data, design a structure, or steer an autopilot: maximum \
                  likelihood, neural-net training, control, inverse problems. \
                  The unifying picture is simple — at any minimum the gradient \
                  vanishes, so minimising f is the same problem as finding a \
                  root of ∇f. That is the link to Chapter 2.",
-            )
+                "A minimalizálás mindenhol megjelenik, ahol a tudomány modellt \
+                 illeszt adatra, szerkezetet tervez vagy robotpilótát vezérel: \
+                 maximum likelihood, neurális háló tanítása, szabályozás, inverz \
+                 feladatok. Az egységesítő kép egyszerű — minden minimumban a \
+                 gradiens eltűnik, így f minimalizálása ugyanaz a feladat, mint \
+                 ∇f egy gyökének megkeresése. Ez a kapocs a 2. fejezethez.",
+            ))
             .small(),
         );
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Two flavours of methods are on display here. \
                  *Derivative-free* (golden section, simplex, Nelder-Mead) — \
                  robust, no calculus required, slow. *Derivative-using* \
@@ -138,7 +148,13 @@ fn intuition_callout(ui: &mut Ui) {
                  informative, fragile when the step overshoots the basin. \
                  Stochastic and constrained optimisation grow out of these \
                  same pictures.",
-            )
+                "Kétféle módszer látható itt. *Derivált nélküli* (aranymetszés, \
+                 szimplex, Nelder–Mead) — robusztus, nem kell analízis, lassú. \
+                 *Deriváltat használó* (gradiens-módszer, Newton) — gyors, ha a \
+                 gradiens informatív, törékeny, ha a lépés túllövi a medencét. A \
+                 sztochasztikus és feltételes optimalizálás ugyanezekből a \
+                 képekből nő ki.",
+            ))
             .small()
             .color(Color32::from_rgb(160, 175, 195)),
         );
@@ -152,7 +168,7 @@ fn cross_chapter_link(ui: &mut Ui, state: &Ch8State) {
     let blue = Color32::from_rgb(120, 200, 255);
     let dim = Color32::from_rgb(160, 175, 195);
     egui::CollapsingHeader::new(
-        RichText::new("Under the hood — what this reuses").strong(),
+        RichText::new(t("Under the hood — what this reuses", "A motorháztető alatt — mit használ újra")).strong(),
     )
     .default_open(false)
     .show(ui, |ui| {
@@ -169,46 +185,54 @@ fn cross_chapter_link(ui: &mut Ui, state: &Ch8State) {
         match state.method {
             Method::GoldenSection => entry(
                 ui,
-                "Chapter 2  ·  bracketing",
-                "Same idea as bisection on f' = 0: keep a bracket that contains the minimum and shrink it. The contraction ratio is 1/φ ≈ 0.618 instead of bisection's ½.",
+                t("Chapter 2  ·  bracketing", "2. fejezet  ·  beágyazás"),
+                t("Same idea as bisection on f' = 0: keep a bracket that contains the minimum and shrink it. The contraction ratio is 1/φ ≈ 0.618 instead of bisection's ½.",
+                  "Ugyanaz az ötlet, mint a felezés f' = 0-n: tarts egy intervallumot, amely tartalmazza a minimumot, és zsugorítsd. A kontrakciós arány 1/φ ≈ 0,618 a felezés ½-e helyett."),
             ),
             Method::Simplex | Method::NelderMead => {
                 entry(
                     ui,
-                    "no derivatives",
-                    "Pure function evaluations. Useful when you can not differentiate (noisy data, black-box simulator). Trade-off: slower asymptotic convergence, immune to derivative inaccuracies.",
+                    t("no derivatives", "deriváltak nélkül"),
+                    t("Pure function evaluations. Useful when you can not differentiate (noisy data, black-box simulator). Trade-off: slower asymptotic convergence, immune to derivative inaccuracies.",
+                      "Tiszta függvénykiértékelések. Hasznos, ha nem tudsz deriválni (zajos adat, fekete doboz szimulátor). Csere: lassabb aszimptotikus konvergencia, érzéketlen a derivált pontatlanságaira."),
                 );
             }
             Method::GradientConstant | Method::GradientOptimal => {
                 entry(
                     ui,
-                    "Chapter 7  ·  numerical gradient",
-                    "We don't get analytic ∇f; the central-difference machinery from the differentiation tab computes it for us. The optimal-step variant runs golden section on a 1D minimisation along the gradient direction — i.e. it nests Chapter 2 inside Chapter 8.",
+                    t("Chapter 7  ·  numerical gradient", "7. fejezet  ·  numerikus gradiens"),
+                    t("We don't get analytic ∇f; the central-difference machinery from the differentiation tab computes it for us. The optimal-step variant runs golden section on a 1D minimisation along the gradient direction — i.e. it nests Chapter 2 inside Chapter 8.",
+                      "Nincs analitikus ∇f-ünk; a deriválás fül centrális differencia gépezete számolja ki nekünk. Az optimális lépéses változat aranymetszést futtat egy 1D minimalizáláson a gradiens irányában — vagyis a 2. fejezetet ágyazza a 8.-ba."),
                 );
             }
             Method::Newton => {
                 entry(
                     ui,
-                    "Chapter 7  ·  numerical Hessian",
-                    "The second derivative matrix is built by finite-differencing the gradient (a chained finite difference).",
+                    t("Chapter 7  ·  numerical Hessian", "7. fejezet  ·  numerikus Hesse-mátrix"),
+                    t("The second derivative matrix is built by finite-differencing the gradient (a chained finite difference).",
+                      "A második derivált mátrixot a gradiens véges differenciálásával építjük (láncolt véges differencia)."),
                 );
                 entry(
                     ui,
-                    "Chapter 3  ·  Gauss elimination",
-                    "Each Newton step solves H · Δx = −∇f for Δx using `solve_partial_pivot` — the same pivoting walk you watched in Ch3. When H is SPD (true at a minimum), Chapter 5's Cholesky would be 2× cheaper.",
+                    t("Chapter 3  ·  Gauss elimination", "3. fejezet  ·  Gauss-elimináció"),
+                    t("Each Newton step solves H · Δx = −∇f for Δx using `solve_partial_pivot` — the same pivoting walk you watched in Ch3. When H is SPD (true at a minimum), Chapter 5's Cholesky would be 2× cheaper.",
+                      "Minden Newton-lépés megoldja a H · Δx = −∇f-et Δx-re a `solve_partial_pivot`-tal — ugyanaz a pivotálás, amit a 3. fejben láttál. Ha H SPD (minimumban igaz), az 5. fejezet Choleskyje 2×- szer olcsóbb lenne."),
                 );
                 entry(
                     ui,
-                    "Chapter 2  ·  Newton's method (1-D)",
-                    "Exact same algorithm in disguise: linearise f around xₖ via Taylor, set the linear model to zero, step. In 1D this is f/f'; in n-D this is H⁻¹∇f.",
+                    t("Chapter 2  ·  Newton's method (1-D)", "2. fejezet  ·  Newton-módszer (1D)"),
+                    t("Exact same algorithm in disguise: linearise f around xₖ via Taylor, set the linear model to zero, step. In 1D this is f/f'; in n-D this is H⁻¹∇f.",
+                      "Pontosan ugyanaz az algoritmus álruhában: linearizáld f-et xₖ körül Taylorral, állítsd a lineáris modellt nullára, lépj. 1D-ben ez f/f'; n-D-ben H⁻¹∇f."),
                 );
             }
         }
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Lesson: numerical analysis is composable. Almost every \
                  \"new\" method here is an old method nested inside another.",
-            )
+                "Tanulság: a numerikus analízis komponálható. Szinte minden „új” \
+                 módszer itt egy régi módszer, egy másikba ágyazva.",
+            ))
             .small()
             .color(dim),
         );
@@ -226,15 +250,18 @@ fn try_this(ui: &mut Ui, state: &mut Ch8State) {
         .unwrap_or(None);
     egui::Frame::group(ui.style()).show(ui, |ui| {
         ui.label(
-            RichText::new("Try this")
+            RichText::new(t("Try this", "Próbáld ki"))
                 .strong()
                 .color(Color32::from_rgb(255, 220, 100)),
         );
         ui.label(
-            RichText::new(
+            RichText::new(t(
                 "Each challenge changes one input and asks you to predict the \
                  result before pressing Run. Click \"hint\" if you get stuck.",
-            )
+                "Minden feladat egy bemenetet változtat meg, és arra kér, hogy \
+                 jósold meg az eredményt a Futtatás előtt. Kattints a „tipp”-re, \
+                 ha elakadsz.",
+            ))
             .small()
             .color(Color32::from_rgb(160, 175, 195)),
         );
@@ -249,9 +276,9 @@ fn try_this(ui: &mut Ui, state: &mut Ch8State) {
                 );
                 ui.label(prompt);
                 if ui.small_button(if open_hint == Some(idx) {
-                    "hide hint"
+                    t("hide hint", "tipp elrejtése")
                 } else {
-                    "hint"
+                    t("hint", "tipp")
                 }).clicked() {
                     open_hint = if open_hint == Some(idx) { None } else { Some(idx) };
                 }
@@ -269,35 +296,54 @@ fn try_this(ui: &mut Ui, state: &mut Ch8State) {
         item(
             ui,
             0,
-            "Pick Gradient descent (constant step) on the running quartic. \
-             Bump the step from 0.30 to 1.20. Predict what the iterate path \
-             looks like. Then run.",
-            "Steps that big overshoot the valley floor and the iterates \
-             oscillate; on a quadratic that grows, the iterates diverge \
-             outright. The optimal-step variant fixes this by line search.",
+            t("Pick Gradient descent (constant step) on the running quartic. \
+               Bump the step from 0.30 to 1.20. Predict what the iterate path \
+               looks like. Then run.",
+              "Válaszd a Gradiens-módszert (állandó lépés) a futó negyedfokún. \
+               Növeld a lépést 0,30-ról 1,20-ra. Jósold meg, hogy néz ki az \
+               iterált pálya. Aztán futtasd."),
+            t("Steps that big overshoot the valley floor and the iterates \
+               oscillate; on a quadratic that grows, the iterates diverge \
+               outright. The optimal-step variant fixes this by line search.",
+              "Ekkora lépések túllövik a völgy fenekét, az iteráltak oszcillálnak; \
+               egy növekvő másodfokún egyenesen divergálnak. Az optimális lépéses \
+               változat vonalmenti kereséssel javítja ezt."),
         );
         item(
             ui,
             1,
-            "Switch to Nelder-Mead on the same function but start at \
-             (1.5, 3.5). Compare the simplex motion to Newton's method's \
-             two-step convergence. Why is Nelder-Mead slower?",
-            "Newton uses second-derivative information (the Hessian) and \
-             jumps straight to the minimum of a local quadratic model. \
-             Nelder-Mead only evaluates f — no gradient, no curvature — so it \
-             walks downhill in shapes the user can see (reflect, expand, \
-             contract, shrink).",
+            t("Switch to Nelder-Mead on the same function but start at \
+               (1.5, 3.5). Compare the simplex motion to Newton's method's \
+               two-step convergence. Why is Nelder-Mead slower?",
+              "Válts Nelder–Meadre ugyanazon a függvényen, de (1,5, 3,5)-ből indulva. \
+               Vesd össze a szimplex mozgását a Newton kétlépéses konvergenciájával. \
+               Miért lassabb a Nelder–Mead?"),
+            t("Newton uses second-derivative information (the Hessian) and \
+               jumps straight to the minimum of a local quadratic model. \
+               Nelder-Mead only evaluates f — no gradient, no curvature — so it \
+               walks downhill in shapes the user can see (reflect, expand, \
+               contract, shrink).",
+              "A Newton a második derivált információt (a Hesse-mátrixot) használja, \
+               és egyenesen egy lokális másodfokú modell minimumába ugrik. A \
+               Nelder–Mead csak f-et értékel ki — nincs gradiens, nincs görbület —, \
+               így látható alakzatokban megy lefelé (tükröz, tágít, összehúz, zsugorít)."),
         );
         item(
             ui,
             2,
-            "Set the formula to  x*x*x*x − 4*x*x + x + 6  in 1D Golden section \
-             over [−3, 3]. Two local minima. Run it. Which minimum does \
-             golden section land in? Is that a feature or a bug?",
-            "Golden section only guarantees a *local* minimum inside the \
-             bracket. Re-running with [−3, 0] vs [0, 3] gives different \
-             answers. This is why global optimisation is its own field — \
-             every method here is local.",
+            t("Set the formula to  x*x*x*x − 4*x*x + x + 6  in 1D Golden section \
+               over [−3, 3]. Two local minima. Run it. Which minimum does \
+               golden section land in? Is that a feature or a bug?",
+              "Állítsd a képletet  x*x*x*x − 4*x*x + x + 6-ra 1D aranymetszésben \
+               [−3, 3]-on. Két lokális minimum. Futtasd. Melyik minimumba ér az \
+               aranymetszés? Ez funkció vagy hiba?"),
+            t("Golden section only guarantees a *local* minimum inside the \
+               bracket. Re-running with [−3, 0] vs [0, 3] gives different \
+               answers. This is why global optimisation is its own field — \
+               every method here is local.",
+              "Az aranymetszés csak egy *lokális* minimumot garantál az intervallumon \
+               belül. Újrafuttatva [−3, 0]-val vs [0, 3]-mal más választ ad. Ezért \
+               önálló terület a globális optimalizálás — minden módszer itt lokális."),
         );
         // Persist the open hint across frames.
         ui.ctx().data_mut(|d| d.insert_temp(id_hint, open_hint));
@@ -312,7 +358,7 @@ fn try_this(ui: &mut Ui, state: &mut Ch8State) {
 
 fn controls(ui: &mut Ui, state: &mut Ch8State) {
     ui.add_space(6.0);
-    ui.label(RichText::new("Method").strong());
+    ui.label(RichText::new(t("Method", "Módszer")).strong());
     for &m in &[
         Method::GoldenSection,
         Method::Simplex,
@@ -327,10 +373,10 @@ fn controls(ui: &mut Ui, state: &mut Ch8State) {
     ui.separator();
 
     if state.method == Method::GoldenSection {
-        ui.label(RichText::new("Function  f(x)").strong());
+        ui.label(RichText::new(t("Function  f(x)", "Függvény  f(x)")).strong());
         ui.text_edit_singleline(&mut state.formula);
         ui.label(
-            RichText::new("Edit to be a single-variable function. Default: x² − 0.8x + 1.")
+            RichText::new(t("Edit to be a single-variable function. Default: x² − 0.8x + 1.", "Egyváltozós függvényre szerkeszd. Alapértelmezett: x² − 0,8x + 1."))
                 .small()
                 .color(Color32::from_rgb(160, 175, 195)),
         );
@@ -341,28 +387,28 @@ fn controls(ui: &mut Ui, state: &mut Ch8State) {
             ui.add(egui::DragValue::new(&mut state.golden_b).speed(0.05));
         });
         ui.add_space(6.0);
-        if ui.small_button("Hartung Ex 8.5  (x² − 0.8x + 1)").clicked() {
+        if ui.small_button(t("Hartung Ex 8.5  (x² − 0.8x + 1)", "Hartung 8.5. pl.  (x² − 0,8x + 1)")).clicked() {
             state.formula = "x*x - 0.8*x + 1".to_string();
             state.golden_a = -1.0;
             state.golden_b = 2.0;
         }
     } else {
-        ui.label(RichText::new("Function  f(x, y)").strong());
+        ui.label(RichText::new(t("Function  f(x, y)", "Függvény  f(x, y)")).strong());
         ui.text_edit_singleline(&mut state.formula);
         ui.horizontal(|ui| {
-            ui.label("view x");
+            ui.label(t("view x", "nézet x"));
             ui.add(egui::DragValue::new(&mut state.x_min).speed(0.1));
             ui.label("…");
             ui.add(egui::DragValue::new(&mut state.x_max).speed(0.1));
         });
         ui.horizontal(|ui| {
-            ui.label("view y");
+            ui.label(t("view y", "nézet y"));
             ui.add(egui::DragValue::new(&mut state.y_min).speed(0.1));
             ui.label("…");
             ui.add(egui::DragValue::new(&mut state.y_max).speed(0.1));
         });
         ui.horizontal(|ui| {
-            ui.label("start  x₀");
+            ui.label(t("start  x₀", "start  x₀"));
             ui.add(egui::DragValue::new(&mut state.x0).speed(0.05));
             ui.label("y₀");
             ui.add(egui::DragValue::new(&mut state.y0).speed(0.05));
@@ -370,15 +416,15 @@ fn controls(ui: &mut Ui, state: &mut Ch8State) {
         match state.method {
             Method::GradientConstant => {
                 ui.horizontal(|ui| {
-                    ui.label("step h");
+                    ui.label(t("step h", "lépés h"));
                     ui.add(egui::DragValue::new(&mut state.grad_step).speed(0.01).range(0.001..=2.0));
                 });
             }
             Method::NelderMead => {
                 ui.horizontal(|ui| {
-                    ui.label("α (expand)");
+                    ui.label(t("α (expand)", "α (tágít)"));
                     ui.add(egui::DragValue::new(&mut state.nm_alpha).speed(0.05).range(1.0..=3.0));
-                    ui.label("β (contract)");
+                    ui.label(t("β (contract)", "β (összehúz)"));
                     ui.add(egui::DragValue::new(&mut state.nm_beta).speed(0.05).range(0.05..=0.95));
                 });
             }
@@ -388,16 +434,16 @@ fn controls(ui: &mut Ui, state: &mut Ch8State) {
 
     ui.add_space(8.0);
     ui.horizontal(|ui| {
-        ui.label("tol");
+        ui.label(t("tol", "tűrés"));
         ui.add(egui::DragValue::new(&mut state.tol).speed(1e-3).range(1e-15..=1.0));
-        ui.label("max iter");
+        ui.label(t("max iter", "max. iter."));
         ui.add(egui::DragValue::new(&mut state.max_iter).range(5..=2000));
     });
 
     ui.add_space(10.0);
     ui.separator();
-    ui.label(RichText::new("Presets").strong());
-    if ui.small_button("Banana  (x² − 2y)² + 2(x − 1)²").clicked() {
+    ui.label(RichText::new(t("Presets", "Példák")).strong());
+    if ui.small_button(t("Banana  (x² − 2y)² + 2(x − 1)²", "Banán  (x² − 2y)² + 2(x − 1)²")).clicked() {
         state.formula = "(x*x - 2*y)*(x*x - 2*y) + 2*(x - 1)*(x - 1)".to_string();
         state.x_min = -2.5;
         state.x_max = 2.0;
@@ -407,7 +453,7 @@ fn controls(ui: &mut Ui, state: &mut Ch8State) {
         state.y0 = 4.0;
         state.method = Method::Newton;
     }
-    if ui.small_button("Quadratic bowl  x² + 5y²").clicked() {
+    if ui.small_button(t("Quadratic bowl  x² + 5y²", "Másodfokú tál  x² + 5y²")).clicked() {
         state.formula = "x*x + 5*y*y".to_string();
         state.x_min = -3.0;
         state.x_max = 3.0;
@@ -416,7 +462,7 @@ fn controls(ui: &mut Ui, state: &mut Ch8State) {
         state.x0 = -2.0;
         state.y0 = 1.5;
     }
-    if ui.small_button("Saddle  x² − y²  (not unimodal)").clicked() {
+    if ui.small_button(t("Saddle  x² − y²  (not unimodal)", "Nyereg  x² − y²  (nem unimodális)")).clicked() {
         state.formula = "x*x - y*y".to_string();
         state.x_min = -2.0;
         state.x_max = 2.0;
@@ -425,7 +471,7 @@ fn controls(ui: &mut Ui, state: &mut Ch8State) {
         state.x0 = 0.5;
         state.y0 = 0.5;
     }
-    if ui.small_button("Rosenbrock  100(y − x²)² + (1 − x)²").clicked() {
+    if ui.small_button(t("Rosenbrock  100(y − x²)² + (1 − x)²", "Rosenbrock  100(y − x²)² + (1 − x)²")).clicked() {
         state.formula = "100*(y - x*x)*(y - x*x) + (1 - x)*(1 - x)".to_string();
         state.x_min = -2.0;
         state.x_max = 2.0;
@@ -456,10 +502,8 @@ fn parse_or_warn(ui: &mut Ui, src: &str, _env: &mut Env) -> Option<Expr> {
     match parse_expr_str(src) {
         Ok(e) => Some(e),
         Err(err) => {
-            ui.colored_label(
-                Color32::from_rgb(240, 130, 130),
-                format!("formula error: {err}"),
-            );
+            let m = if i18n::lang() == Lang::Hu { format!("képlethiba: {err}") } else { format!("formula error: {err}") };
+            ui.colored_label(Color32::from_rgb(240, 130, 130), m);
             None
         }
     }
@@ -471,15 +515,18 @@ fn golden_section_view(ui: &mut Ui, state: &Ch8State, env: &mut Env, expr: Expr)
     let mut f = |x: f64| eval_1d(&expr, env, x);
     let result = opt::golden_section(&mut f, state.golden_a, state.golden_b, state.tol, state.max_iter);
     let Ok(r) = result else {
-        ui.colored_label(Color32::from_rgb(240, 130, 130), format!("error: {:?}", result.err().unwrap()));
+        let e = result.err().unwrap();
+        let m = if i18n::lang() == Lang::Hu { format!("hiba: {e:?}") } else { format!("error: {e:?}") };
+        ui.colored_label(Color32::from_rgb(240, 130, 130), m);
         return;
     };
 
     egui::Frame::group(ui.style()).show(ui, |ui| {
-        ui.label(RichText::new(format!(
-            "x_min ≈ {:.10}     f(x_min) ≈ {:.6e}     iterations = {}",
-            r.x_min, r.f_min, r.iterations
-        )).monospace().color(Color32::from_rgb(120, 220, 140)));
+        ui.label(RichText::new(if i18n::lang() == Lang::Hu {
+            format!("x_min ≈ {:.10}     f(x_min) ≈ {:.6e}     iterációk = {}", r.x_min, r.f_min, r.iterations)
+        } else {
+            format!("x_min ≈ {:.10}     f(x_min) ≈ {:.6e}     iterations = {}", r.x_min, r.f_min, r.iterations)
+        }).monospace().color(Color32::from_rgb(120, 220, 140)));
     });
 
     Plot::new("ch8_golden_plot")
@@ -520,16 +567,19 @@ fn golden_section_view(ui: &mut Ui, state: &Ch8State, env: &mut Env, expr: Expr)
                     .shape(MarkerShape::Diamond)
                     .radius(7.0)
                     .color(Color32::from_rgb(120, 220, 140))
-                    .name("minimum"),
+                    .name(t("minimum", "minimum")),
             );
         });
 
     ui.label(
-        RichText::new(format!(
-            "Each yellow row above the x-axis is the bracket [aₖ, bₖ] at step k. \
-            Interval contracts by r = {GOLDEN:.6} per step.",
-            GOLDEN = opt::GOLDEN_R
-        ))
+        RichText::new({
+            let g = opt::GOLDEN_R;
+            if i18n::lang() == Lang::Hu {
+                format!("Minden sárga sor az x-tengely felett a [aₖ, bₖ] intervallum a k. lépésben. Az intervallum lépésenként r = {g:.6}-szeresére húzódik össze.")
+            } else {
+                format!("Each yellow row above the x-axis is the bracket [aₖ, bₖ] at step k. Interval contracts by r = {g:.6} per step.")
+            }
+        })
         .small()
         .color(Color32::from_rgb(160, 175, 195)),
     );
@@ -542,7 +592,8 @@ fn two_d_view(ui: &mut Ui, state: &Ch8State, env: &mut Env, expr: Expr) {
     let (trail, simplex_history, summary, f_history) = match run_method(state, env, &expr) {
         Ok(t) => t,
         Err(e) => {
-            ui.colored_label(Color32::from_rgb(240, 130, 130), format!("error: {e}"));
+            let m = if i18n::lang() == Lang::Hu { format!("hiba: {e}") } else { format!("error: {e}") };
+            ui.colored_label(Color32::from_rgb(240, 130, 130), m);
             return;
         }
     };
@@ -609,7 +660,7 @@ fn two_d_view(ui: &mut Ui, state: &Ch8State, env: &mut Env, expr: Expr) {
                     Line::new(PlotPoints::from(trail.clone()))
                         .color(Color32::from_rgb(255, 220, 100))
                         .stroke(Stroke::new(1.6, Color32::from_rgb(255, 220, 100)))
-                        .name("trail"),
+                        .name(t("trail", "nyom")),
                 );
             }
 
@@ -622,28 +673,28 @@ fn two_d_view(ui: &mut Ui, state: &Ch8State, env: &mut Env, expr: Expr) {
                         .shape(MarkerShape::Circle)
                         .radius(3.0)
                         .color(Color32::from_rgb(255, 200, 80))
-                        .name("iterates"),
+                        .name(t("iterates", "iteráltak")),
                 );
                 plot_ui.points(
                     Points::new(PlotPoints::from(vec![start]))
                         .shape(MarkerShape::Cross)
                         .radius(6.0)
                         .color(Color32::from_rgb(120, 180, 255))
-                        .name("start"),
+                        .name(t("start", "start")),
                 );
                 plot_ui.points(
                     Points::new(PlotPoints::from(vec![end]))
                         .shape(MarkerShape::Diamond)
                         .radius(7.0)
                         .color(Color32::from_rgb(120, 220, 140))
-                        .name("end"),
+                        .name(t("end", "vég")),
                 );
             }
         });
 
     // ── Convergence plot: f vs iteration ──
     ui.add_space(8.0);
-    ui.label(RichText::new("Convergence: log₁₀ f(xₖ) vs k").strong());
+    ui.label(RichText::new(t("Convergence: log₁₀ f(xₖ) vs k", "Konvergencia: log₁₀ f(xₖ) vs k")).strong());
     Plot::new("ch8_conv")
         .height(180.0)
         .x_axis_label("iteration k")
@@ -691,29 +742,34 @@ fn convergence_rate_strip(ui: &mut Ui, f_history: &[f64]) {
     let (label, color) = if !rho.is_finite() {
         ("—", Color32::from_rgb(160, 175, 195))
     } else if rho < 1e-2 {
-        ("super-linear / quadratic", Color32::from_rgb(120, 220, 140))
+        (t("super-linear / quadratic", "szuperlineáris / kvadratikus"), Color32::from_rgb(120, 220, 140))
     } else if rho < 0.3 {
-        ("fast linear", Color32::from_rgb(120, 220, 140))
+        (t("fast linear", "gyors lineáris"), Color32::from_rgb(120, 220, 140))
     } else if rho < 0.9 {
-        ("linear", Color32::from_rgb(200, 215, 230))
+        (t("linear", "lineáris"), Color32::from_rgb(200, 215, 230))
     } else if rho < 1.0 {
-        ("very slow", Color32::from_rgb(240, 200, 120))
+        (t("very slow", "nagyon lassú"), Color32::from_rgb(240, 200, 120))
     } else {
-        ("stagnant / diverging", Color32::from_rgb(240, 130, 130))
+        (t("stagnant / diverging", "stagnál / divergál"), Color32::from_rgb(240, 130, 130))
     };
     ui.label(
-        RichText::new(format!(
-            "tail slope ≈ {slope:+.3} dec/iter   →   ρ̂ ≈ {rho:.4}   ({label})"
-        ))
+        RichText::new(if i18n::lang() == Lang::Hu {
+            format!("végső meredekség ≈ {slope:+.3} dekád/iter   →   ρ̂ ≈ {rho:.4}   ({label})")
+        } else {
+            format!("tail slope ≈ {slope:+.3} dec/iter   →   ρ̂ ≈ {rho:.4}   ({label})")
+        })
         .monospace()
         .color(color),
     );
     ui.label(
-        RichText::new(
+        RichText::new(t(
             "Quadratic Newton bends the curve sharply downward; constant-step \
              gradient draws a straight line; Nelder-Mead's contraction phase \
              is also linear but with a wider rate.",
-        )
+            "A kvadratikus Newton élesen lefelé hajlítja a görbét; az állandó \
+             lépéses gradiens egyenest rajzol; a Nelder–Mead összehúzó fázisa \
+             szintén lineáris, de szélesebb rátával.",
+        ))
         .small()
         .color(Color32::from_rgb(160, 175, 195)),
     );
@@ -768,10 +824,13 @@ fn run_method(state: &Ch8State, env: &mut Env, expr: &Expr) -> Result<RunOutput,
             // f at each centroid — needs another env borrow, do it explicitly.
             let f_hist: Vec<f64> =
                 trail.iter().map(|p| eval_2d(expr, env, p[0], p[1])).collect();
-            let summary = format!(
-                "best x = ({:.6}, {:.6})   f = {:.6e}   iter = {}   converged = {}",
-                r.x_best[0], r.x_best[1], r.f_best, r.iterations, r.converged
-            );
+            let summary = if i18n::lang() == Lang::Hu {
+                format!("legjobb x = ({:.6}, {:.6})   f = {:.6e}   iter = {}   konvergens = {}",
+                    r.x_best[0], r.x_best[1], r.f_best, r.iterations, r.converged)
+            } else {
+                format!("best x = ({:.6}, {:.6})   f = {:.6e}   iter = {}   converged = {}",
+                    r.x_best[0], r.x_best[1], r.f_best, r.iterations, r.converged)
+            };
             Ok((trail, Some(r.history), summary, f_hist))
         }
         // Gradient and Newton can't reuse the library functions directly
@@ -788,6 +847,16 @@ fn run_method(state: &Ch8State, env: &mut Env, expr: &Expr) -> Result<RunOutput,
         let _ = start;
         out
     })
+}
+
+/// Bilingual one-line result summary shared by the 2-D point methods.
+fn summary_2d(x0: f64, x1: f64, f: f64, iter: usize, converged: bool) -> String {
+    let tail = if converged {
+        t("converged = true", "konvergens = igaz")
+    } else {
+        t("converged = false (max iter)", "konvergens = hamis (max iter)")
+    };
+    format!("x = ({x0:.6}, {x1:.6})   f = {f:.6e}   iter = {iter}   {tail}")
 }
 
 /// Replication of `opt::gradient_descent_constant` but evaluating f and ∇f
@@ -813,20 +882,11 @@ fn run_gradient_descent_constant(
         trail.push([x[0], x[1]]);
         f_hist.push(eval_2d(expr, env, x[0], x[1]));
         if diff < state.tol {
-            let summary = format!(
-                "x = ({:.6}, {:.6})   f = {:.6e}   iter = {}   converged = true",
-                x[0], x[1], f_hist.last().unwrap(), k
-            );
+            let summary = summary_2d(x[0], x[1], *f_hist.last().unwrap(), k, true);
             return Ok((trail, None, summary, f_hist));
         }
     }
-    let summary = format!(
-        "x = ({:.6}, {:.6})   f = {:.6e}   iter = {}   converged = false (max iter)",
-        x[0],
-        x[1],
-        f_hist.last().unwrap(),
-        state.max_iter
-    );
+    let summary = summary_2d(x[0], x[1], *f_hist.last().unwrap(), state.max_iter, false);
     Ok((trail, None, summary, f_hist))
 }
 
@@ -861,20 +921,11 @@ fn run_gradient_descent_optimal(
         trail.push([x[0], x[1]]);
         f_hist.push(eval_2d(expr, env, x[0], x[1]));
         if diff < state.tol {
-            let summary = format!(
-                "x = ({:.6}, {:.6})   f = {:.6e}   iter = {}   converged = true",
-                x[0], x[1], f_hist.last().unwrap(), k
-            );
+            let summary = summary_2d(x[0], x[1], *f_hist.last().unwrap(), k, true);
             return Ok((trail, None, summary, f_hist));
         }
     }
-    let summary = format!(
-        "x = ({:.6}, {:.6})   f = {:.6e}   iter = {}   converged = false (max iter)",
-        x[0],
-        x[1],
-        f_hist.last().unwrap(),
-        state.max_iter
-    );
+    let summary = summary_2d(x[0], x[1], *f_hist.last().unwrap(), state.max_iter, false);
     Ok((trail, None, summary, f_hist))
 }
 
@@ -886,27 +937,18 @@ fn run_newton(state: &Ch8State, env: &mut Env, expr: &Expr) -> Result<RunOutput,
     for k in 1..=state.max_iter {
         let g = opt::numerical_gradient(|p: &[f64]| eval_2d(expr, env, p[0], p[1]), &x, 1e-5);
         let h = opt::numerical_hessian(|p: &[f64]| eval_2d(expr, env, p[0], p[1]), &x, 1e-3);
-        let step = linear::solve_partial_pivot(&h, &g).map_err(|e| format!("Hessian: {e}"))?;
+        let step = linear::solve_partial_pivot(&h, &g).map_err(|e| if i18n::lang() == Lang::Hu { format!("Hesse-mátrix: {e}") } else { format!("Hessian: {e}") })?;
         let x_next = vec![x[0] - step[0], x[1] - step[1]];
         let diff = (x_next[0] - x[0]).abs().max((x_next[1] - x[1]).abs());
         x = x_next;
         trail.push([x[0], x[1]]);
         f_hist.push(eval_2d(expr, env, x[0], x[1]));
         if diff < state.tol {
-            let summary = format!(
-                "x = ({:.6}, {:.6})   f = {:.6e}   iter = {}   converged = true",
-                x[0], x[1], f_hist.last().unwrap(), k
-            );
+            let summary = summary_2d(x[0], x[1], *f_hist.last().unwrap(), k, true);
             return Ok((trail, None, summary, f_hist));
         }
     }
-    let summary = format!(
-        "x = ({:.6}, {:.6})   f = {:.6e}   iter = {}   converged = false (max iter)",
-        x[0],
-        x[1],
-        f_hist.last().unwrap(),
-        state.max_iter
-    );
+    let summary = summary_2d(x[0], x[1], *f_hist.last().unwrap(), state.max_iter, false);
     Ok((trail, None, summary, f_hist))
 }
 
