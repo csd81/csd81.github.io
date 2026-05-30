@@ -8,8 +8,8 @@
 
     
 <script type="module">
-import init, * as bindings from '/sandbox/web-bab923e97d7df0e0.js';
-const wasm = await init({ module_or_path: '/sandbox/web-bab923e97d7df0e0_bg.wasm' });
+import init, * as bindings from '/sandbox/web-aca476fee4dce23d.js';
+const wasm = await init({ module_or_path: '/sandbox/web-aca476fee4dce23d_bg.wasm' });
 
 
 window.wasmBindings = bindings;
@@ -51,7 +51,7 @@ dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
             pointer-events: none;
         }
     </style>
-<link rel="modulepreload" href="/sandbox/web-bab923e97d7df0e0.js" crossorigin="anonymous" integrity="sha384-TjhfjqhcVReO9GclOaxKzn2XXz04zB3PBszqKKneEcaw4IjY4MHTYxv0jxGaq+7e"><link rel="preload" href="/sandbox/web-bab923e97d7df0e0_bg.wasm" crossorigin="anonymous" integrity="sha384-wSwJ274VpvwT7r0aziCyemnphXFcyH4IVptC5lPIhn8fByKU3FliwX7sIHcJQA4D" as="fetch" type="application/wasm"></head>
+<link rel="modulepreload" href="/sandbox/web-aca476fee4dce23d.js" crossorigin="anonymous" integrity="sha384-TjhfjqhcVReO9GclOaxKzn2XXz04zB3PBszqKKneEcaw4IjY4MHTYxv0jxGaq+7e"><link rel="preload" href="/sandbox/web-aca476fee4dce23d_bg.wasm" crossorigin="anonymous" integrity="sha384-KazCi1Q3D2ddeamYB/yy+7t8dqsfJT4kJbMpRhk+RfzjTVDtMmNMD2gRFag59iXW" as="fetch" type="application/wasm"></head>
 <body>
     <div id="loading">loading rmath sandbox…</div>
     <canvas id="the_canvas_id"></canvas>
