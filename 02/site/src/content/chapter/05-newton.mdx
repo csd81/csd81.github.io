@@ -1,0 +1,24 @@
+---
+title: "Newton's Method"
+order: 5
+summary: "p_{k+1} = p_k − f(p_k)/f'(p_k). Locally quadratic at simple roots; the pathological arctan example shows local convergence is genuinely local."
+theorems:
+  - { number: "2.23", title: "local convergence" }
+  - { number: "2.34", title: "quadratic at simple roots, linear at multiple roots" }
+---
+
+import TheoremBox from '~/components/TheoremBox.astro'
+
+# §2.5 Newton's Method
+
+> 🚧 **Status:** content stub. **Widgets to build:** `NewtonStepper`, `NewtonArctanDemo`. Copy prose from `/home/csd81/Desktop/02/Chapter_2_full.md` §2.5.
+
+Replace $f$ near $p_0$ by its first-order Taylor approximation $f(p_0) + f'(p_0)(x - p_0)$, set it to zero, solve for $x$. Iterate from there.
+
+$$p_{k+1} = p_k - \frac{f(p_k)}{f'(p_k)}. \tag{2.7}$$
+
+<TheoremBox kind="theorem" number="2.23">
+  Let $f \in C^2[a,b]$ and $p \in (a,b)$ with $f(p) = 0$ and $f'(p) \neq 0$. Then Newton's method converges locally to $p$.
+</TheoremBox>
+
+The pathological example $f(x) = 0.5 \arctan x$ has $f'(0) = 0.5 \neq 0$, so Newton's method converges locally — but for $|p_0| > p^* \approx 1.3918$ it diverges, and at $p_0 = p^*$ it cycles $p^*, -p^*, p^*, \ldots$. The `NewtonArctanDemo` widget visualises all three regimes with a single slider.

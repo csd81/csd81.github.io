@@ -1,0 +1,29 @@
+---
+type Kind = 'theorem' | 'corollary' | 'definition' | 'example' | 'algorithm' | 'proof'
+
+interface Props {
+  kind: Kind
+  number?: string
+  title?: string
+}
+
+const { kind, number, title } = Astro.props
+
+const headings: Record<Kind, string> = {
+  theorem: 'Theorem',
+  corollary: 'Corollary',
+  definition: 'Definition',
+  example: 'Example',
+  algorithm: 'Algorithm',
+  proof: 'Proof',
+}
+const heading = headings[kind]
+const className = `theorem-box theorem-${kind}`
+---
+
+<aside class={className} role="note" aria-label={`${heading}${number ? ' ' + number : ''}`}>
+  <div class="theorem-label">
+    {heading}{number ? ` ${number}` : ''}{title ? ` — ${title}` : ''}
+  </div>
+  <slot />
+</aside>

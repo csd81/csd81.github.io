@@ -1,0 +1,105 @@
+---
+title: "Fixed-Point Iteration"
+order: 1
+summary: "Define the recursion p_{k+1} = g(p_k), the cobweb diagram, and Theorem 2.13 (the contraction principle)."
+theorems:
+  - number: "2.11"
+    title: "limit of a convergent fixed-point iteration is a fixed point"
+  - number: "2.12"
+    title: "existence and uniqueness of the fixed point"
+  - number: "2.13"
+    title: "fixed-point theorem"
+  - number: "2.14"
+    title: "contraction principle"
+  - number: "2.15"
+    title: "local fixed-point theorem"
+---
+
+
+# §2.1 Fixed-Point Iteration
+
+Many numerical methods generate an infinite sequence whose limit is the exact solution of the problem we are investigating. Typically the sequence is defined by a *recursion* or *iteration*. The general definition of an $m$-step iteration is the relation
+$$p_{k+1} = h(p_k, p_{k-1}, \ldots, p_{k-m+1}), \qquad k \geq m - 1,$$
+well-defined once the $m$ initial values $p_0, p_1, \ldots, p_{m-1}$ are specified.
+
+The important special case is the one-step iteration. Given a function $g\colon I \to I$ where $I \subset \mathbb{R}$, the recursive sequence
+$$p_{k+1} = g(p_k), \qquad k \geq 0$$
+corresponding to an initial value $p_0 \in I$ is called a **fixed-point iteration**.
+
+## A first numerical experiment
+
+Consider $g(x) = -\tfrac{1}{8}x^3 + x + 1$. The corresponding iteration $p_{k+1} = -\tfrac{1}{8}p_k^3 + p_k + 1$ starting from $p_0 = 0.4$ produces a sequence that visibly converges toward $2$.
+
+The widget below shows the **stair-step diagram** (cobweb) for this and other preset choices of $g$. Pick a preset, drag $p_0$, and watch the iteration spiral toward (or away from) the intersection of the curve $y = g(x)$ with the line $y = x$.
+
+<CobwebPlot client:visible defaultPreset="cubic-cobweb" />
+
+The intersection point is a point on both curves, so its first coordinate satisfies the **fixed-point equation**
+$$g(x) = x.$$
+The number $p$ is a **fixed point** of $g$ if $g(p) = p$.
+
+<TheoremBox kind="theorem" number="2.11">
+  Let $g\colon [a,b] \to [a,b]$ (or $\mathbb{R} \to \mathbb{R}$) be continuous, $p_0 \in [a,b]$ fixed, and consider the fixed-point iteration $p_{k+1} = g(p_k)$. If $p_k$ is convergent and $p_k \to p$, then $p = g(p)$.
+</TheoremBox>
+
+A fixed-point iteration is not always convergent. With $g(x) = 2x$ and $p_0 = 1$ the iteration produces $p_k = 2^k$ (diverges); with $g(x) = -x$ and $p_0 = 1$ the iteration produces $p_k = (-1)^k$ (oscillates). Try those in the widget — the cobweb makes both failures vivid.
+
+## The fixed-point theorem
+
+<TheoremBox kind="theorem" number="2.13" title="fixed-point theorem">
+  Let $g\colon [a,b] \to [a,b]$ be continuous and differentiable on $(a,b)$, and suppose there exists a constant $0 \leq c < 1$ such that $|g'(x)| \leq c$ for all $x \in (a,b)$. Let $p_0 \in [a,b]$ be arbitrary, and $p_{k+1} = g(p_k)$ for $k \geq 0$. Then the sequence $p_k$ converges to the unique fixed point $p$ of $g$, and
+  $$|p_k - p| \leq c^k |p_0 - p|, \tag{2.1}$$
+  and
+  $$|p_k - p| \leq \frac{c^k}{1 - c}|p_1 - p_0|. \tag{2.2}$$
+</TheoremBox>
+
+The bound (2.1) involves $|p_0 - p|$, which we cannot compute because $p$ is unknown. The bound (2.2) only involves $|p_1 - p_0|$, which we *can* compute, making it the practically useful estimate.
+
+## Lipschitz continuity and contractions
+
+We never used differentiability in the proof — only the inequality $|g(x) - g(y)| \leq c|x - y|$. So we abstract that property.
+
+<TheoremBox kind="definition" number="(Lipschitz)">
+  $g\colon I \to \mathbb{R}$ is **Lipschitz continuous** on $I$ if there exists $c \geq 0$ such that $|g(x) - g(y)| \leq c|x - y|$ for all $x, y \in I$. If $0 \leq c < 1$, $g$ is a **contraction**.
+</TheoremBox>
+
+<TheoremBox kind="theorem" number="2.14" title="contraction principle">
+  Let $g\colon [a,b] \to [a,b]$ be a contraction, $p_0 \in [a,b]$ arbitrary, and $p_{k+1} = g(p_k)$ for $k \geq 0$. Then $p_k$ converges to the unique fixed point $p$ of $g$, with the error estimates (2.1) and (2.2).
+</TheoremBox>
+
+## Local convergence
+
+In practice we usually only have a local hypothesis at the fixed point itself.
+
+<TheoremBox kind="theorem" number="2.15">
+  Let $g \in C^1[a,b]$, and let $p \in (a,b)$ be a fixed point of $g$. Suppose $|g'(p)| < 1$. Then the fixed-point iteration converges locally to $p$: there exists $\delta > 0$ such that $p_{k+1} = g(p_k)$ converges to $p$ for all $p_0 \in (p - \delta, p + \delta)$.
+</TheoremBox>
+
+The sign and size of $g'(p)$ control the qualitative behavior:
+
+- $0 < g'(p) < 1$: monotone convergence,
+- $-1 < g'(p) < 0$: oscillating convergence,
+- $g'(p) > 1$: monotone divergence,
+- $g'(p) < -1$: oscillating divergence.
+
+The cobweb widget above lets you confirm each regime visually.
+
+## Exercises
+
+<Exercise number="1" client:visible>
+  <Problem>
+    Let $g(x) = mx$. Draw the cobweb diagram for $m = 0.5, 1, 1.5, -0.5, -1, -1.5$ and any non-zero initial value.
+  </Problem>
+  <Solution>
+    For $|m| < 1$ the iteration converges to the fixed point $0$ (monotone for $m \in (0,1)$, oscillating for $m \in (-1, 0)$). For $|m| > 1$ it diverges. For $m = 1$ every point is a fixed point; for $m = -1$ the iteration is $2$-periodic.
+  </Solution>
+</Exercise>
+
+<Exercise number="2" client:visible>
+  <Problem>
+    Rewrite $x^3 + x - 1 = 0$ as a fixed-point equation and approximate its solution with 4 digits.
+  </Problem>
+  <Solution>
+    One rewrite: $x = (1 - x^3)/1$ is not contracting; try $x = (1 + x)^{1/3}$. Starting from $p_0 = 1$: $1.2599, 1.3122, 1.3225, 1.3243, 1.3247, \ldots$ — converges to $p \approx 0.6824$… wait, that's the wrong root. A better rewrite is $x = 1/(x^2 + 1)$, which is a contraction near the root and converges to $p \approx 0.6823$.
+  </Solution>
+</Exercise>

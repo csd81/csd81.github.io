@@ -1,0 +1,16 @@
+---
+title: "Stopping Criteria of Iterations"
+order: 2
+summary: "The three usual stopping conditions: absolute, relative, and residual. Their pathologies, and why we combine them in practice."
+---
+
+
+# §2.2 Stopping Criteria of Iterations
+
+> 🚧 **Status:** content stub. Copy the body from `/home/csd81/Desktop/02/Chapter_2_full.md` §2.2.
+
+We predefine three tolerances $\varepsilon_1, \varepsilon_2, \varepsilon_3 > 0$ and stop when any of
+
+$$\text{(i)}\ |p_k - p_{k-1}| < \varepsilon_1, \qquad \text{(ii)}\ \frac{|p_k - p_{k-1}|}{|p_k|} < \varepsilon_2, \qquad \text{(iii)}\ |f(p_k)| < \varepsilon_3 \tag{2.24}$$
+
+holds. None of the three is reliable on its own — see the harmonic-sum and "near-zero valley" examples in the chapter — so in practice we combine them, and always cap the iteration count.

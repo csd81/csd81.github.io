@@ -1,0 +1,102 @@
+{
+  "app": {
+    "title": "NumCalc",
+    "subtitle": "Numerical Differentiation & Integration",
+    "tagline": "Learn it. Play with it. Test yourself.",
+    "footer": "Built for Chapter 7 · Numerical Analysis"
+  },
+  "nav": {
+    "home": "Home",
+    "lessons": "Lessons",
+    "playground": "Playground",
+    "quiz": "Quiz"
+  },
+  "theme": {
+    "toggle": "Toggle theme",
+    "light": "Light",
+    "dark": "Dark"
+  },
+  "lang": {
+    "label": "Language",
+    "en": "English",
+    "hu": "Magyar"
+  },
+  "home": {
+    "heading": "Numerical Calculus, made interactive",
+    "lead": "Read the chapter with beautifully typeset math, experiment with the real difference and quadrature formulas, then quiz yourself — in English or Hungarian.",
+    "cta_lessons": "Start reading",
+    "cta_playground": "Open the playground",
+    "card_lessons_title": "Lessons",
+    "card_lessons_desc": "Sections 7.1–7.4 with rendered formulas and tables.",
+    "card_playground_title": "Playground",
+    "card_playground_desc": "Tweak step sizes and methods; watch the error live.",
+    "card_quiz_title": "Quiz",
+    "card_quiz_desc": "Check your understanding with instant feedback."
+  },
+  "lessons": {
+    "title": "Lessons",
+    "intro": "Pick a section to read.",
+    "loading": "Loading lesson…",
+    "error": "Could not load this lesson.",
+    "back": "All lessons",
+    "read": "Read"
+  },
+  "playground": {
+    "title": "Interactive playground",
+    "lead": "Choose a function and a method, then drag the sliders.",
+    "tab_diff": "Differentiation",
+    "tab_int": "Integration",
+    "function": "Function f(x)",
+    "custom": "Custom expression",
+    "custom_hint": "Use x as the variable, e.g. exp(x) * sin(x)",
+    "method": "Method",
+    "x0": "Point x₀",
+    "h": "Step size h",
+    "a": "Lower limit a",
+    "b": "Upper limit b",
+    "n": "Subintervals n",
+    "approx": "Approximation",
+    "reference": "Reference (exact)",
+    "error": "Absolute error",
+    "invalid": "Invalid expression — check your syntax.",
+    "methods": {
+      "forward": "Forward difference (1st order)",
+      "backward": "Backward difference (1st order)",
+      "central": "Central difference (2nd order)",
+      "five-point": "5-point central (4th order)",
+      "second": "Second derivative",
+      "trapezoid": "Composite trapezoidal",
+      "simpson": "Composite Simpson",
+      "gauss2": "Gauss 2-point",
+      "gauss3": "Gauss 3-point",
+      "gauss4": "Gauss 4-point",
+      "gauss5": "Gauss 5-point"
+    },
+    "computing_derivative": "Approximating f{order}(x₀)",
+    "computing_integral": "Approximating ∫f(x) dx"
+  },
+  "quiz": {
+    "title": "Quiz",
+    "lead": "Answer the questions — you get instant feedback.",
+    "start": "Start quiz",
+    "loading": "Loading questions…",
+    "question": "Question",
+    "of": "of",
+    "score": "Score",
+    "streak": "Streak",
+    "check": "Check",
+    "next": "Next",
+    "finish": "See results",
+    "true": "True",
+    "false": "False",
+    "your_answer": "Your answer",
+    "correct": "Correct!",
+    "incorrect": "Not quite.",
+    "numeric_placeholder": "Type a number",
+    "results_title": "Your results",
+    "results_score": "You scored {{correct}} / {{total}}",
+    "retry": "Try again",
+    "to_lessons": "Review the lessons",
+    "topic": "Topic"
+  }
+}

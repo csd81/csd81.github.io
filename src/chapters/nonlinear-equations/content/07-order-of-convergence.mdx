@@ -1,0 +1,21 @@
+---
+title: "Order of Convergence"
+order: 7
+summary: "Define linear, superlinear, quadratic order via the inequality |p_{k+1} - p| ≤ c |p_k - p|^α. Asymptotic error constant; multiple roots."
+theorems:
+  - { number: "2.30", title: "high-order ⇒ local convergence" }
+  - { number: "2.32", title: "fixed-point convergence order" }
+  - { number: "2.34", title: "Newton: quadratic vs linear" }
+---
+
+# §2.7 Order of Convergence
+
+> 🚧 **Status:** content stub. **Widget to build:** `ConvergenceComparison` (semilog plot of $|p_k - p|$ for bisection / false-position / Newton / secant on the same problem). Copy prose from `/home/csd81/Desktop/02/Chapter_2_full.md` §2.7.
+
+A convergent sequence $p_k \to p$ has order $\alpha$ if
+$$|p_{k+1} - p| \leq c|p_k - p|^{\alpha} \tag{2.16}$$
+for some constant $c$ (with $c < 1$ when $\alpha = 1$).
+
+Linear: $\alpha = 1$. Quadratic: $\alpha = 2$. Superlinear: linear with asymptotic error constant 0.
+
+The book's bisection vs. Newton vs. secant tables make the orders empirically clear by comparing $|p_{k+1} - p|/|p_k - p|^\alpha$ across $\alpha = 1, 2, 3$ — that's exactly what the `ConvergenceComparison` widget will plot, in semilog.

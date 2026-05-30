@@ -1,0 +1,17 @@
+---
+title: "Newton's Method in n Dimensions"
+order: 11
+summary: "p^(k+1) = p^(k) − J(p^(k))^(-1) f(p^(k)). In practice solve J·s = −f. Locally quadratic when J(p) is invertible."
+theorems:
+  - { number: "2.56", title: "n-d Newton local quadratic convergence" }
+---
+
+# §2.11 Newton's Method in $n$ Dimensions
+
+> 🚧 **Status:** content stub. The `Newton2DContour` widget (built for §2.10) reuses the same system here. Copy prose from `/home/csd81/Desktop/02/Chapter_2_full.md` §2.11.
+
+Define the iteration by
+$$\mathbf{p}^{(k+1)} = \mathbf{p}^{(k)} - \bigl(\mathbf{f}'(\mathbf{p}^{(k)})\bigr)^{-1}\mathbf{f}(\mathbf{p}^{(k)}).$$
+In practice we never invert the Jacobian; we solve the linear system $\mathbf{f}'(\mathbf{p}^{(k)})\mathbf{s}^{(k)} = -\mathbf{f}(\mathbf{p}^{(k)})$ and update $\mathbf{p}^{(k+1)} = \mathbf{p}^{(k)} + \mathbf{s}^{(k)}$.
+
+On the example system from §2.10, starting at $(-1.5, -1.5)^T$, the iteration reaches the solution $(1, 0)^T$ within four steps to error $\sim 10^{-6}$.

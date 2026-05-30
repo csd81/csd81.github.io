@@ -1,0 +1,86 @@
+/* ---- Design tokens: light + dark via [data-theme] ---- */
+:root {
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-serif: Georgia, "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+
+  --radius: 14px;
+  --radius-sm: 9px;
+  --maxw: 980px;
+
+  /* light theme */
+  --bg: #f4f5fb;
+  --bg-grad-1: #eef1ff;
+  --bg-grad-2: #f7f3ff;
+  --surface: #ffffff;
+  --surface-2: #f3f4fc;
+  --surface-3: #e9ebf7;
+  --border: #e2e4f0;
+  --text: #1c2030;
+  --text-soft: #51566b;
+  --text-faint: #868aa0;
+
+  --primary: #4f46e5;
+  --primary-soft: #eef0ff;
+  --primary-text: #ffffff;
+
+  --accent: #0ea5a3;
+  --warn: #d97706;
+  --danger: #dc2626;
+  --ok: #16a34a;
+
+  /* callout colors */
+  --thm: #4f46e5;
+  --thm-bg: #eef0ff;
+  --proof: #d97706;
+  --proof-bg: #fff5e8;
+  --example: #16a34a;
+  --example-bg: #eafaf0;
+  --algo: #0ea5a3;
+  --algo-bg: #e6faf9;
+
+  --shadow: 0 6px 24px rgba(31, 35, 71, 0.08);
+  --shadow-lg: 0 16px 48px rgba(31, 35, 71, 0.16);
+
+  --cell-highlight: #fde68a;
+  --cell-active: #a7f3d0;
+  --cell-done: #e0e7ff;
+}
+
+[data-theme="dark"] {
+  --bg: #0d0f1a;
+  --bg-grad-1: #141733;
+  --bg-grad-2: #1a1230;
+  --surface: #161a2c;
+  --surface-2: #1d2138;
+  --surface-3: #262b46;
+  --border: #2c3150;
+  --text: #e8eaf6;
+  --text-soft: #aeb4d0;
+  --text-faint: #7c829e;
+
+  --primary: #7c83ff;
+  --primary-soft: #21264a;
+  --primary-text: #0d0f1a;
+
+  --accent: #2dd4bf;
+  --warn: #fbbf24;
+  --danger: #f87171;
+  --ok: #4ade80;
+
+  --thm: #9aa0ff;
+  --thm-bg: #1c2147;
+  --proof: #fbbf24;
+  --proof-bg: #2c2410;
+  --example: #4ade80;
+  --example-bg: #122a1c;
+  --algo: #2dd4bf;
+  --algo-bg: #0f2a29;
+
+  --shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.55);
+
+  --cell-highlight: #6b5d18;
+  --cell-active: #14583f;
+  --cell-done: #25305c;
+}

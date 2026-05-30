@@ -1,0 +1,16 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.vite/
+.DS_Store
+.env
+.env.local
+
+# Unrelated 3.8GB Rust project living in this folder — not part of the book.
+rust_app/
+
+# legacy per-chapter app build artifacts (kept as migration sources, not built)
+0*/**/node_modules/
+0*/**/dist/
+10/**/node_modules/
+10/**/dist/

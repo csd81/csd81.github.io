@@ -1,0 +1,6 @@
+/* Tailwind utilities for the chapters that were authored with them (02, 04, 07).
+   Preflight (base reset) is disabled in tailwind.config.js so this does not
+   disturb the non-Tailwind chapters. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

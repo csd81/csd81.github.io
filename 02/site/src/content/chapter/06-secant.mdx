@@ -1,0 +1,24 @@
+---
+title: "Secant Method"
+order: 6
+summary: "Replace f'(p_k) with a finite-difference approximation. Two-step iteration; order φ = (1+√5)/2 ≈ 1.618."
+theorems:
+  - { number: "2.27", title: "local convergence" }
+  - { number: "2.36", title: "order of convergence = (1+√5)/2" }
+---
+
+import TheoremBox from '~/components/TheoremBox.astro'
+
+# §2.6 Secant Method
+
+> 🚧 **Status:** content stub. **Widget to build:** `SecantStepper`. Copy prose from `/home/csd81/Desktop/02/Chapter_2_full.md` §2.6.
+
+$$p_{k+1} = p_k - \frac{p_k - p_{k-1}}{f(p_k) - f(p_{k-1})} f(p_k). \tag{2.10}$$
+
+The secant method is a Newton iteration where $f'(p_k)$ is replaced by the difference quotient $(f(p_k) - f(p_{k-1}))/(p_k - p_{k-1})$. Two-step, not one-step.
+
+<TheoremBox kind="theorem" number="2.36">
+  If $p$ is a simple root of $f$, then the secant method converges locally to $p$ of order $\alpha = (1 + \sqrt{5})/2 \approx 1.618$.
+</TheoremBox>
+
+The order is genuinely irrational — a striking demonstration that order-of-convergence theory for multi-step iterations differs from the integer-only world of fixed-point iterations.

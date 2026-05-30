@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* KaTeX inline math shouldn't break lines mid-expression */
+.katex { font-size: 1em; }
+.katex-display { overflow-x: auto; overflow-y: hidden; padding: 0.25em 0; }
+.katex-display > .katex { white-space: normal; }
+
+@layer base {
+  :root {
+    color-scheme: light dark;
+  }
+
+  html {
+    @apply antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  body {
+    @apply bg-white text-ink-900 dark:bg-ink-950 dark:text-ink-100;
+  }
+
+  h1, h2, h3, h4 { @apply font-semibold tracking-tight; }
+  h1 { @apply text-4xl mt-8 mb-4; }
+  h2 { @apply text-2xl mt-10 mb-3 border-b border-ink-200 dark:border-ink-800 pb-2; }
+  h3 { @apply text-xl mt-6 mb-2; }
+  p  { @apply my-3 leading-7; }
+
+  a { @apply text-accent hover:underline; }
+
+  code:not(pre code) {
+    @apply rounded bg-ink-100 dark:bg-ink-800 px-1.5 py-0.5 text-[0.92em] font-mono;
+  }
+
+  pre {
+    @apply rounded-lg bg-ink-900 dark:bg-ink-950 text-ink-100 p-4 overflow-x-auto text-sm font-mono my-4 ring-1 ring-ink-800;
+  }
+
+  table {
+    @apply w-full text-sm my-4 border-collapse;
+  }
+  th, td {
+    @apply border-b border-ink-200 dark:border-ink-800 px-3 py-1.5 text-left align-top;
+  }
+  th { @apply font-medium text-ink-700 dark:text-ink-300 bg-ink-50 dark:bg-ink-900; }
+}
+
+@layer components {
+  .prose-numa {
+    @apply max-w-[72ch] mx-auto px-4;
+  }
+
+  .theorem-box {
+    @apply my-5 rounded-md border-l-4 px-5 py-3;
+  }
+  .theorem-theorem    { @apply border-l-blue-500   bg-blue-50    dark:bg-blue-950/30; }
+  .theorem-corollary  { @apply border-l-sky-500    bg-sky-50     dark:bg-sky-950/30; }
+  .theorem-definition { @apply border-l-emerald-500 bg-emerald-50 dark:bg-emerald-950/30; }
+  .theorem-example    { @apply border-l-amber-500  bg-amber-50   dark:bg-amber-950/30; }
+  .theorem-algorithm  { @apply border-l-purple-500 bg-purple-50  dark:bg-purple-950/30; }
+  .theorem-proof      { @apply border-l-ink-400    bg-ink-50     dark:bg-ink-900/40; }
+
+  .theorem-label {
+    @apply text-xs uppercase tracking-wider font-semibold text-ink-600 dark:text-ink-400 mb-1;
+  }
+}

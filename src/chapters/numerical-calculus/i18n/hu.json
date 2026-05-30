@@ -1,0 +1,102 @@
+{
+  "app": {
+    "title": "NumCalc",
+    "subtitle": "Numerikus differenciálás és integrálás",
+    "tagline": "Tanuld meg. Játssz vele. Teszteld magad.",
+    "footer": "A 7. fejezethez · Numerikus analízis"
+  },
+  "nav": {
+    "home": "Kezdőlap",
+    "lessons": "Leckék",
+    "playground": "Játéktér",
+    "quiz": "Kvíz"
+  },
+  "theme": {
+    "toggle": "Téma váltása",
+    "light": "Világos",
+    "dark": "Sötét"
+  },
+  "lang": {
+    "label": "Nyelv",
+    "en": "English",
+    "hu": "Magyar"
+  },
+  "home": {
+    "heading": "A numerikus analízis, interaktívan",
+    "lead": "Olvasd a fejezetet szépen szedett képletekkel, kísérletezz a valódi differencia- és kvadratúraképletekkel, majd teszteld magad — angolul vagy magyarul.",
+    "cta_lessons": "Kezdj olvasni",
+    "cta_playground": "Nyisd meg a játékteret",
+    "card_lessons_title": "Leckék",
+    "card_lessons_desc": "7.1–7.4. szakaszok képletekkel és táblázatokkal.",
+    "card_playground_title": "Játéktér",
+    "card_playground_desc": "Állítsd a lépésközt és a módszert; nézd a hibát élőben.",
+    "card_quiz_title": "Kvíz",
+    "card_quiz_desc": "Ellenőrizd a tudásod azonnali visszajelzéssel."
+  },
+  "lessons": {
+    "title": "Leckék",
+    "intro": "Válassz egy szakaszt olvasásra.",
+    "loading": "Lecke betöltése…",
+    "error": "Nem sikerült betölteni ezt a leckét.",
+    "back": "Összes lecke",
+    "read": "Olvasás"
+  },
+  "playground": {
+    "title": "Interaktív játéktér",
+    "lead": "Válassz függvényt és módszert, majd húzd a csúszkákat.",
+    "tab_diff": "Differenciálás",
+    "tab_int": "Integrálás",
+    "function": "Függvény f(x)",
+    "custom": "Egyéni kifejezés",
+    "custom_hint": "Használd az x változót, pl. exp(x) * sin(x)",
+    "method": "Módszer",
+    "x0": "Pont x₀",
+    "h": "Lépésköz h",
+    "a": "Alsó határ a",
+    "b": "Felső határ b",
+    "n": "Részintervallumok n",
+    "approx": "Közelítés",
+    "reference": "Referencia (pontos)",
+    "error": "Abszolút hiba",
+    "invalid": "Hibás kifejezés — ellenőrizd a szintaxist.",
+    "methods": {
+      "forward": "Jobb oldali differencia (1. rendű)",
+      "backward": "Bal oldali differencia (1. rendű)",
+      "central": "Centrális differencia (2. rendű)",
+      "five-point": "5-pontos centrális (4. rendű)",
+      "second": "Második derivált",
+      "trapezoid": "Összetett trapéz",
+      "simpson": "Összetett Simpson",
+      "gauss2": "Gauss 2-pontos",
+      "gauss3": "Gauss 3-pontos",
+      "gauss4": "Gauss 4-pontos",
+      "gauss5": "Gauss 5-pontos"
+    },
+    "computing_derivative": "f{order}(x₀) közelítése",
+    "computing_integral": "∫f(x) dx közelítése"
+  },
+  "quiz": {
+    "title": "Kvíz",
+    "lead": "Válaszolj a kérdésekre — azonnali visszajelzést kapsz.",
+    "start": "Kvíz indítása",
+    "loading": "Kérdések betöltése…",
+    "question": "Kérdés",
+    "of": "/",
+    "score": "Pontszám",
+    "streak": "Sorozat",
+    "check": "Ellenőrzés",
+    "next": "Következő",
+    "finish": "Eredmények",
+    "true": "Igaz",
+    "false": "Hamis",
+    "your_answer": "A válaszod",
+    "correct": "Helyes!",
+    "incorrect": "Nem egészen.",
+    "numeric_placeholder": "Írj be egy számot",
+    "results_title": "Az eredményed",
+    "results_score": "Eredményed: {{correct}} / {{total}}",
+    "retry": "Újra",
+    "to_lessons": "Nézd át a leckéket",
+    "topic": "Téma"
+  }
+}

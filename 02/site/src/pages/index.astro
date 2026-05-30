@@ -1,0 +1,74 @@
+---
+import { getCollection } from 'astro:content'
+import Layout from '~/components/Layout.astro'
+
+const entries = (await getCollection('chapter')).sort((a, b) => a.data.order - b.data.order)
+---
+
+<Layout title="Chapter 2 — Nonlinear Algebraic Equations and Systems">
+  <header class="mt-4 mb-10">
+    <p class="text-sm font-medium text-accent tracking-wider uppercase">Numerical Analysis</p>
+    <h1 class="text-5xl font-bold tracking-tight mt-1">Chapter 2 — Nonlinear Algebraic Equations &amp; Systems</h1>
+    <p class="mt-4 text-lg text-ink-700 dark:text-ink-300 max-w-3xl">
+      An interactive companion to F. Hartung's Chapter 2.  Read theorem, proof, and worked example, then play with the same iteration in a live widget: drag initial values, type your own functions, watch convergence (or divergence) unfold in real time.
+    </p>
+    <div class="mt-6 flex gap-3">
+      <a
+        href="/chapter/01-fixed-point"
+        class="rounded-md bg-accent px-4 py-2 text-white text-sm font-medium no-underline hover:bg-blue-700"
+      >Start with §2.1 →</a>
+      <a
+        href="/playground"
+        class="rounded-md border border-ink-300 dark:border-ink-700 px-4 py-2 text-sm font-medium no-underline hover:border-accent"
+      >Open playground</a>
+    </div>
+  </header>
+
+  <h2>Contents</h2>
+  <div class="grid sm:grid-cols-2 gap-3 mt-4 not-prose">
+    {entries.map((e) => (
+      <a
+        href={`/chapter/${e.slug}`}
+        class="block rounded-md border border-ink-200 dark:border-ink-800 p-4 hover:border-accent transition"
+      >
+        <div class="text-xs uppercase tracking-wider text-ink-500 dark:text-ink-400">
+          §{e.data.order === 0 ? '0 — Preliminaries' : `2.${e.data.order}`}
+        </div>
+        <div class="font-medium mt-0.5">{e.data.title}</div>
+        <p class="text-sm text-ink-600 dark:text-ink-400 mt-1 leading-snug">
+          {e.data.summary}
+        </p>
+      </a>
+    ))}
+  </div>
+
+  <h2>Topics & widgets</h2>
+  <ul>
+    <li><strong>Fixed-point iteration</strong> — cobweb diagram you can drag.</li>
+    <li><strong>Bisection</strong> — animated shrinking interval.</li>
+    <li><strong>False position</strong> — secant chord at each step.</li>
+    <li><strong>Newton's method</strong> — tangent lines and the pathological arctan example.</li>
+    <li><strong>Secant method</strong> — chord iteration from two starting points.</li>
+    <li><strong>Order of convergence</strong> — semilog error plot comparing four methods.</li>
+    <li><strong>Vector norms</strong> — unit balls for p = 1, 2, ∞ and continuous p.</li>
+    <li><strong>Newton in 2D</strong> — contour plot, click to set starting point, watch the trajectory.</li>
+    <li><strong>Broyden</strong> — side-by-side superlinear vs quadratic convergence.</li>
+  </ul>
+
+  <h2>Built with</h2>
+  <p>
+    <a href="https://astro.build" target="_blank" rel="noopener">Astro 4</a>
+    {' · '}
+    <a href="https://react.dev" target="_blank" rel="noopener">React 18</a>
+    {' · '}
+    <a href="https://mafs.dev" target="_blank" rel="noopener">Mafs</a>
+    {' · '}
+    <a href="https://katex.org" target="_blank" rel="noopener">KaTeX</a>
+    {' · '}
+    <a href="https://mathjs.org" target="_blank" rel="noopener">math.js</a>
+    {' · '}
+    <a href="https://observablehq.com/plot/" target="_blank" rel="noopener">Observable Plot</a>
+    {' · '}
+    <a href="https://tailwindcss.com" target="_blank" rel="noopener">Tailwind CSS</a>.
+  </p>
+</Layout>

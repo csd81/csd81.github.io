@@ -1,0 +1,128 @@
+/* Chapter 2 styles. Theorem boxes ported from 02/site/styles/global.css
+   (@layer wrappers removed — the @tailwind directives live in the shared
+   tailwind.css). Mafs widget CSS is imported by the widgets themselves. */
+.theorem-box {
+  @apply my-5 rounded-md border-l-4 px-5 py-3;
+}
+.theorem-theorem {
+  @apply border-l-blue-500 bg-blue-50 dark:bg-blue-950/30;
+}
+.theorem-corollary {
+  @apply border-l-sky-500 bg-sky-50 dark:bg-sky-950/30;
+}
+.theorem-definition {
+  @apply border-l-emerald-500 bg-emerald-50 dark:bg-emerald-950/30;
+}
+.theorem-example {
+  @apply border-l-amber-500 bg-amber-50 dark:bg-amber-950/30;
+}
+.theorem-algorithm {
+  @apply border-l-purple-500 bg-purple-50 dark:bg-purple-950/30;
+}
+.theorem-proof {
+  @apply border-l-ink-400 bg-ink-50 dark:bg-ink-900/40;
+}
+.theorem-label {
+  @apply mb-1 text-xs font-semibold uppercase tracking-wider text-ink-600 dark:text-ink-400;
+}
+
+/* ---- Chapter layout (two-column: sticky section list + content) ---- */
+.ne-layout {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+@media (max-width: 820px) {
+  .ne-layout {
+    grid-template-columns: 1fr;
+  }
+}
+.ne-sidebar {
+  position: sticky;
+  top: calc(var(--nav-h) + 1rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  max-height: calc(100vh - var(--nav-h) - 2rem);
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+@media (max-width: 820px) {
+  .ne-sidebar {
+    position: static;
+    max-height: none;
+    flex-flow: row wrap;
+  }
+}
+.ne-sidelink {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+.ne-sidelink:hover {
+  background: var(--surface-2);
+  text-decoration: none;
+}
+.ne-sidelink.is-active {
+  background: var(--brand-50);
+  color: var(--brand-700);
+  font-weight: 600;
+}
+.ne-sidelink__no {
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.ne-kicker {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--brand-600);
+}
+.ne-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.85rem;
+  margin-top: 1.25rem;
+}
+.ne-card {
+  display: block;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.ne-card:hover {
+  border-color: var(--brand-400);
+  text-decoration: none;
+}
+.ne-card__no {
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.ne-card__title {
+  font-weight: 600;
+  margin-top: 0.15rem;
+}
+.ne-card__sum {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 0.3rem;
+}
+
+.ne-pager {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 2.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  font-weight: 600;
+}

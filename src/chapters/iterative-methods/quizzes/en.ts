@@ -1,0 +1,150 @@
+import type { QuizQuestion } from '../components/Quiz';
+import type { ModuleId } from '../context/ProgressContext';
+
+export const quizzesEn: Record<ModuleId, QuizQuestion[]> = {
+  'fixed-point': [
+    {
+      id: 'fp1',
+      prompt: 'The iteration xₖ₊₁ = T xₖ + c converges for every starting point if and only if:',
+      options: ['‖T‖∞ < 1', 'ρ(T) < 1', 'det(T) = 0', 'T is symmetric'],
+      answer: 1,
+      explanation: 'Convergence for all x⁽⁰⁾ is equivalent to the spectral radius ρ(T) < 1.',
+    },
+    {
+      id: 'fp2',
+      prompt: 'The Neumann series I + A + A² + ⋯ converges to (I − A)⁻¹ when:',
+      options: ['ρ(A) < 1', 'ρ(A) > 1', 'A is invertible', 'A = 0 only'],
+      answer: 0,
+      explanation: 'It is the matrix analogue of the geometric series, valid for ρ(A) < 1.',
+    },
+    {
+      id: 'fp3',
+      prompt: 'A norm bound gives ‖x − xₖ‖ ≤ ‖T‖ᵏ‖x − x₀‖. A smaller ‖T‖ therefore means:',
+      tex: '\\|x - x^{(k)}\\| \\le \\|T\\|^k\\,\\|x - x^{(0)}\\|',
+      options: ['Slower convergence', 'Faster convergence', 'No effect', 'Divergence'],
+      answer: 1,
+      explanation: 'The error is multiplied by ‖T‖ each step, so a smaller value shrinks it faster.',
+    },
+    {
+      id: 'fp4',
+      prompt: 'If ρ(T) = 1.4, the fixed-point iteration will generally:',
+      options: ['Converge', 'Diverge', 'Oscillate forever bounded', 'Converge only sometimes'],
+      answer: 1,
+      explanation: 'ρ(T) ≥ 1 breaks the convergence condition, so iterates blow up in general.',
+    },
+  ],
+  'jacobi-gs': [
+    {
+      id: 'jg1',
+      prompt: 'Which method immediately reuses freshly computed components within the same sweep?',
+      options: ['Jacobi', 'Gauss–Seidel', 'Both', 'Neither'],
+      answer: 1,
+      explanation: 'Gauss–Seidel uses xⱼ^(k+1) for j < i; Jacobi uses only old values x^(k).',
+    },
+    {
+      id: 'jg2',
+      prompt: 'A sufficient condition guaranteeing both methods converge is that A is:',
+      options: ['Singular', 'Diagonally dominant', 'Upper triangular', 'Skew-symmetric'],
+      answer: 1,
+      explanation: 'Diagonal dominance gives ‖T_J‖∞ < 1, which guarantees convergence.',
+    },
+    {
+      id: 'jg3',
+      prompt: 'The Jacobi iteration matrix is:',
+      tex: '\\mathbf{T}_J = -\\mathbf{D}^{-1}(\\mathbf{L}+\\mathbf{U})',
+      options: ['−(D+L)⁻¹U', '−D⁻¹(L+U)', 'D⁻¹(L+U)', '(I−A)⁻¹'],
+      answer: 1,
+      explanation: 'Jacobi splits A = L + D + U and inverts only the diagonal D.',
+    },
+    {
+      id: 'jg4',
+      prompt: 'For the diagonally dominant textbook system, Gauss–Seidel vs Jacobi typically:',
+      options: [
+        'Converges in fewer iterations',
+        'Converges in more iterations',
+        'Never converges',
+        'Gives a different solution',
+      ],
+      answer: 0,
+      explanation: 'Reusing updated values makes Gauss–Seidel converge faster here (≈12 vs ≈18 steps).',
+    },
+  ],
+  spectral: [
+    {
+      id: 'sp1',
+      prompt: 'Geometrically, ρ(T) < 1 means all eigenvalues of T lie:',
+      options: [
+        'On the real axis',
+        'Inside the unit circle',
+        'Outside the unit circle',
+        'At the origin',
+      ],
+      answer: 1,
+      explanation: 'ρ(T) is the max |λ|; ρ(T) < 1 ⇔ every eigenvalue is strictly inside the unit circle.',
+    },
+    {
+      id: 'sp2',
+      prompt: 'For any matrix norm, the spectral radius satisfies:',
+      tex: '\\rho(\\mathbf{T}) \\;?\\; \\|\\mathbf{T}\\|',
+      options: ['ρ(T) ≥ ‖T‖', 'ρ(T) ≤ ‖T‖', 'ρ(T) = ‖T‖ always', 'No relation'],
+      answer: 1,
+      explanation: 'ρ(T) ≤ ‖T‖ for every matrix norm.',
+    },
+    {
+      id: 'sp3',
+      prompt: 'If ‖T‖∞ = 1.2 but ρ(T) = 0.7, the iteration:',
+      options: ['Must diverge', 'Converges (norm test just fails)', 'Cannot be decided', 'Is undefined'],
+      answer: 1,
+      explanation: 'A norm test is only sufficient; ρ(T) < 1 already guarantees convergence.',
+    },
+    {
+      id: 'sp4',
+      prompt: '‖T‖∞ is computed as:',
+      options: [
+        'Largest absolute row sum',
+        'Largest absolute column sum',
+        'Largest eigenvalue',
+        'Sum of all entries',
+      ],
+      answer: 0,
+      explanation: '‖·‖∞ is the maximum absolute row sum (‖·‖₁ is the column-sum version).',
+    },
+  ],
+  condition: [
+    {
+      id: 'co1',
+      prompt: 'The condition number is defined as:',
+      tex: '\\operatorname{cond}(\\mathbf{A}) = \\|\\mathbf{A}\\|\\,\\|\\mathbf{A}^{-1}\\|',
+      options: ['‖A‖ + ‖A⁻¹‖', '‖A‖ · ‖A⁻¹‖', '‖A‖ / ‖A⁻¹‖', 'det(A)'],
+      answer: 1,
+      explanation: 'cond(A) = ‖A‖·‖A⁻¹‖ relative to the chosen norm.',
+    },
+    {
+      id: 'co2',
+      prompt: 'A small residual ‖b − A x̃‖ guarantees a small error only when:',
+      options: [
+        'cond(A) is small',
+        'cond(A) is large',
+        'A is singular',
+        'b = 0',
+      ],
+      answer: 0,
+      explanation: 'The error bound scales with cond(A); ill-conditioning lets a tiny residual hide a big error.',
+    },
+    {
+      id: 'co3',
+      prompt: 'As n grows, the condition number of the Hilbert matrix Hₙ:',
+      options: ['Stays near 1', 'Grows extremely fast', 'Decreases', 'Oscillates'],
+      answer: 1,
+      explanation: 'cond₂(Hₙ) grows roughly exponentially — Hₙ is the classic ill-conditioned example.',
+    },
+    {
+      id: 'co4',
+      prompt: 'Perturbing b by a relative amount δ changes x by at most:',
+      tex: '\\frac{\\|\\Delta x\\|}{\\|x\\|} \\le \\operatorname{cond}(\\mathbf{A})\\,\\delta',
+      options: ['δ', 'cond(A) · δ', 'δ / cond(A)', 'δ²'],
+      answer: 1,
+      explanation: 'The relative error is amplified by at most the condition number.',
+    },
+  ],
+};

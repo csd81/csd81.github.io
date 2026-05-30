@@ -1,0 +1,30 @@
+---
+title: "Preliminaries — Review of Calculus"
+order: 0
+summary: "Max/min on [a,b], IVT, Rolle, MVT, Taylor, Cantor's nested intervals, FTA, and the C^m[a,b] notation."
+theorems:
+  - { number: "2.1" }
+  - { number: "2.2", title: "Intermediate Value Theorem" }
+  - { number: "2.3", title: "Rolle's Theorem" }
+  - { number: "2.4", title: "Lagrange Mean Value Theorem" }
+  - { number: "2.5", title: "Taylor's Theorem" }
+  - { number: "2.7", title: "Cantor's Intersection Theorem" }
+  - { number: "2.9", title: "Fundamental Theorem of Algebra" }
+---
+
+
+# §0 Preliminaries — Review of Calculus
+
+This section collects results from single-variable calculus that recur throughout the chapter. The body matches §0 of `Chapter_2_full.md`; this stub is the page wrapper.
+
+> 🚧 **Status:** content stub. The full text — IVT, MVT, Taylor's Theorem, Cantor's Intersection Theorem, Fundamental Theorem of Algebra, and the $C^m[a,b]$ notation — should be copied here from `/home/csd81/Desktop/02/Chapter_2_full.md` §0.
+
+<TheoremBox kind="theorem" number="2.4" title="Lagrange's Mean Value Theorem">
+  Let $f \in C^1[a,b]$. Then there exists $\xi \in (a,b)$ such that
+  $$f(b) - f(a) = f'(\xi)(b - a).$$
+</TheoremBox>
+
+<TheoremBox kind="theorem" number="2.5" title="Taylor's Theorem">
+  Let $f \in C^{n+1}[a,b]$ and $x_0 \in (a,b)$. For every $x \in (a,b)$, $x \neq x_0$, there exists $\xi \in \langle x, x_0\rangle$ such that
+  $$f(x) = T_n(x) + \frac{f^{(n+1)}(\xi)}{(n+1)!}(x - x_0)^{n+1}.$$
+</TheoremBox>

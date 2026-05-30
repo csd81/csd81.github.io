@@ -1,0 +1,49 @@
+/* Theme tokens. Light is the default; [data-theme="dark"] overrides. */
+:root {
+  --bg: #f4f5fb;
+  --surface: #ffffff;
+  --surface-2: #eef0f8;
+  --fg: #1a1a2e;
+  --fg-muted: #5a5a72;
+  --border: #dfe1ee;
+  --grid: #e2e4f0;
+  --accent: #e63946;
+  --accent-2: #457b9d;
+  --point: #3a6ea5;
+  --ok: #2a9d8f;
+  --bad: #e76f51;
+  --note-bg: #eaf2fb;
+  --note-border: #a8c8ec;
+  --tip-bg: #eafaf1;
+  --tip-border: #98d9b6;
+  --theorem-bg: #eef0fb;
+  --theorem-accent: #5b6bd6;
+  --example-bg: #f0f7ee;
+  --example-accent: #4a9e5c;
+  --shadow: 0 4px 18px rgba(20, 20, 50, 0.08);
+  --radius: 12px;
+}
+
+[data-theme='dark'] {
+  --bg: #12131c;
+  --surface: #1b1d2a;
+  --surface-2: #232636;
+  --fg: #e8e9f3;
+  --fg-muted: #a2a4bd;
+  --border: #2d3042;
+  --grid: #2a2d3e;
+  --accent: #ff6b6b;
+  --accent-2: #6db3d6;
+  --point: #6fa8dc;
+  --ok: #4cc9b0;
+  --bad: #ff9478;
+  --note-bg: #18283a;
+  --note-border: #2f5677;
+  --tip-bg: #142e26;
+  --tip-border: #2f6b51;
+  --theorem-bg: #1e2138;
+  --theorem-accent: #8a96f0;
+  --example-bg: #182617;
+  --example-accent: #5fb872;
+  --shadow: 0 4px 22px rgba(0, 0, 0, 0.4);
+}

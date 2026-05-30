@@ -1,0 +1,62 @@
+{
+  "datasets": [
+    {
+      "id": "ex-6-2",
+      "label": { "en": "Example 6.2 (cubic)", "hu": "6.2. példa (köbös)" },
+      "points": [
+        { "x": -1, "y": -3 },
+        { "x": 1, "y": 1 },
+        { "x": 2, "y": 3 },
+        { "x": 3, "y": 29 }
+      ],
+      "derivatives": [0, 0, 0, 0]
+    },
+    {
+      "id": "ex-slides",
+      "label": { "en": "Slides example", "hu": "Diás példa" },
+      "points": [
+        { "x": -1, "y": -2 },
+        { "x": 1, "y": 0 },
+        { "x": 2, "y": -2 },
+        { "x": 3, "y": 2 }
+      ],
+      "derivatives": [0, 0, 0, 0]
+    },
+    {
+      "id": "ex-6-21-hermite",
+      "label": { "en": "Example 6.21 (Hermite)", "hu": "6.21. példa (Hermite)" },
+      "points": [
+        { "x": -1, "y": 2 },
+        { "x": 1, "y": 4 },
+        { "x": 2, "y": 11 }
+      ],
+      "derivatives": [3, -5, 30]
+    },
+    {
+      "id": "ex-6-23-spline",
+      "label": { "en": "Example 6.23 (spline)", "hu": "6.23. példa (spline)" },
+      "points": [
+        { "x": 0.0, "y": 0.5 },
+        { "x": 1.0, "y": 0.1 },
+        { "x": 1.5, "y": 2.5 },
+        { "x": 2.0, "y": -1.0 },
+        { "x": 3.0, "y": -0.5 },
+        { "x": 4.0, "y": 0.0 }
+      ],
+      "derivatives": [0, 0, 0, 0, 0, 0]
+    },
+    {
+      "id": "runge",
+      "label": { "en": "Runge (1/(1+25x²))", "hu": "Runge (1/(1+25x²))" },
+      "points": [
+        { "x": -1, "y": 0.0385 },
+        { "x": -0.6, "y": 0.1 },
+        { "x": -0.2, "y": 0.5 },
+        { "x": 0.2, "y": 0.5 },
+        { "x": 0.6, "y": 0.1 },
+        { "x": 1, "y": 0.0385 }
+      ],
+      "derivatives": [0, 0, 0, 0, 0, 0]
+    }
+  ]
+}

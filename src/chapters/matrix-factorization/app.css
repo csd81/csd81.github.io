@@ -1,0 +1,23 @@
+.page-narrow {
+  max-width: var(--maxw);
+  margin: 0 auto;
+}
+.page-narrow h2 {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.3em;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 100;
+  background: var(--primary);
+  color: var(--primary-text);
+  font-weight: 700;
+  padding: 0.8em 1.3em;
+  border-radius: 999px;
+  box-shadow: var(--shadow-lg);
+  white-space: nowrap;
+}
