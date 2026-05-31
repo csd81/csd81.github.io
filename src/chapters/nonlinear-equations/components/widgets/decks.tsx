@@ -4,7 +4,8 @@ import { MarkdownView } from '../../../../shared/ui/MarkdownView'
 import type { Bi } from '../../content/sections'
 
 export interface GlossaryEntry { term: Bi; def: Bi }
-export interface Flashcard { q: string; a: string }
+/** A flashcard's question/answer may be a plain string (legacy, EN) or bilingual. */
+export interface Flashcard { q: Bi | string; a: Bi | string }
 
 /** Tap-to-reveal bilingual glossary deck. */
 export function GlossaryDeck({ entries }: { entries: GlossaryEntry[] }) {
@@ -67,6 +68,7 @@ export function FlashcardDeck({ cards }: { cards: Flashcard[] }) {
   const [pos, setPos] = useState(0)
   const [flipped, setFlipped] = useState(false)
   const card = useMemo(() => cards[order[pos]], [cards, order, pos])
+  const pick = (v: Bi | string) => (typeof v === 'string' ? v : v[lang])
 
   const go = (delta: number) => {
     setFlipped(false)
@@ -102,7 +104,7 @@ export function FlashcardDeck({ cards }: { cards: Flashcard[] }) {
         <div className={`text-xs font-bold uppercase tracking-widest mb-2 ${flipped ? 'text-emerald-600 dark:text-emerald-400' : 'text-[var(--brand-500)]'}`}>
           {flipped ? tr('answer') : tr('question')}
         </div>
-        <MarkdownView markdown={flipped ? card.a : card.q} />
+        <MarkdownView markdown={flipped ? pick(card.a) : pick(card.q)} />
       </button>
 
       <div className="flex items-center justify-between gap-3 mt-3">
