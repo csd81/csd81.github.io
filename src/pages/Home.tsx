@@ -60,6 +60,27 @@ export default function Home() {
           </a>
         </li>
       </ul>
+
+      <h2 className="home__section-title">
+        {lang === 'hu' ? 'Diszkrét matematika' : 'Discrete Math'}
+      </h2>
+      <ul className="home__grid">
+        <li>
+          <Link to="/dimat" className="chcard">
+            <span className="chcard__num">🧮</span>
+            <span className="chcard__body">
+              <span className="chcard__title">
+                {lang === 'hu' ? 'Diszkrét matematika' : 'Discrete Mathematics'}
+              </span>
+              <span className="chcard__blurb">
+                {lang === 'hu'
+                  ? 'Kombinatorika és gráfelmélet — 18 témakör elmélettel, megoldásokkal és kvízzel.'
+                  : 'Combinatorics & graph theory — 18 topics with theory, solutions and a quiz.'}
+              </span>
+            </span>
+          </Link>
+        </li>
+      </ul>
     </div>
   );
 }

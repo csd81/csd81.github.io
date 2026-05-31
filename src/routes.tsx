@@ -5,6 +5,7 @@ import Home from './pages/Home';
 import { CHAPTERS } from './chapters/registry';
 
 const Practice = lazy(() => import('./pages/Practice'));
+const Dimat = lazy(() => import('./subjects/dimat'));
 
 function Loading() {
   return (
@@ -24,6 +25,14 @@ export default function AppRoutes() {
           element={
             <Suspense fallback={<Loading />}>
               <Practice />
+            </Suspense>
+          }
+        />
+        <Route
+          path="dimat/*"
+          element={
+            <Suspense fallback={<Loading />}>
+              <Dimat />
             </Suspense>
           }
         />

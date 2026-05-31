@@ -35,6 +35,15 @@
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
 }
 
+.home__section-title {
+  margin: 2.75rem 0 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  border-top: 1px solid var(--border, #21262d);
+  padding-top: 1.5rem;
+}
+
 .chcard {
   display: flex;
   align-items: stretch;
