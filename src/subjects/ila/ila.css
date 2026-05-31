@@ -106,6 +106,16 @@
 .ila .cayley th, .ila .cayley td { padding: 0.3rem 0.55rem; border: 1px solid #30363d; text-align: center; }
 .ila .cayley thead th { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
 
+/* ── proof steps / induction (ch9) ── */
+.ila .warn-box { border-left: 3px solid #f59e0b; background: rgba(245, 158, 11, 0.07); padding: 0.75rem 1rem; border-radius: 0 6px 6px 0; margin: 0.7rem 0; font-size: 0.84rem; color: var(--text, #c4cdd8); line-height: 1.8; }
+.ila .step-row { display: flex; gap: 1rem; padding: 0.45rem 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); align-items: baseline; flex-wrap: wrap; }
+.ila .step-row:last-child { border-bottom: none; }
+.ila .step-eq { min-width: 240px; color: var(--text, #e2e8f0); font-size: 0.84rem; }
+.ila .step-why { font-size: 0.7rem; color: var(--text-muted, #6b7280); }
+.ila .badge-phase { font-size: 0.62rem; font-weight: 700; padding: 0.2rem 0.55rem; border-radius: 0.25rem; letter-spacing: 0.04em; background: rgba(103, 232, 249, 0.12); color: #67e8f9; }
+.ila .ind-step { background: rgba(103, 232, 249, 0.04); border: 1px solid #21262d; border-radius: 0.4rem; padding: 0.65rem 0.9rem; margin: 0.4rem 0; transition: border-color 0.2s, background 0.2s, opacity 0.4s; }
+.ila .ind-step.is-active { border-color: #67e8f9; background: rgba(103, 232, 249, 0.08); }
+
 /* ── select / number controls ── */
 .ila .ila-select { background: var(--panel-2, #161b22); border: 1px solid #30363d; color: var(--text, #e6edf3); border-radius: 0.3rem; padding: 0.3rem 0.5rem; font: inherit; font-size: 0.8rem; max-width: 100%; }
 .ila .ila-num { width: 64px; background: var(--panel-2, #161b22); border: 1px solid #30363d; color: var(--text, #e6edf3); border-radius: 0.3rem; padding: 0.2rem 0.4rem; font: inherit; font-size: 0.8rem; }

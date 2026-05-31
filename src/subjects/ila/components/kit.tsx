@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import renderMathInElement from 'katex/contrib/auto-render';
 
 /** Render an HTML fragment that contains KaTeX `\(…\)` / `\[…\]`, exactly like the source pages. */
-export function RichTex({ html, className }: { html: string; className?: string }) {
+export function RichTex({ html, className, style }: { html: string; className?: string; style?: CSSProperties }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!ref.current) return;
@@ -18,7 +18,7 @@ export function RichTex({ html, className }: { html: string; className?: string 
       /* ignore */
     }
   }, [html]);
-  return <div ref={ref} className={className} dangerouslySetInnerHTML={{ __html: html }} />;
+  return <div ref={ref} className={className} style={style} dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
 type BoxKind = 'def' | 'thm' | 'ex' | 'info';
