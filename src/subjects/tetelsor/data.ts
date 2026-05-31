@@ -11,6 +11,8 @@ export interface ExamTopic {
   n: number;
   /** Hungarian title, verbatim from frontmatter */
   title: string;
+  /** Optional route to the related interactive dimat chapter, e.g. 'ch14' */
+  dimatId?: string;
 }
 
 export interface PathMeta {
@@ -29,39 +31,39 @@ export interface PathMeta {
 
 // ── combo — topics 01–10 ──────────────────────────────────────────────────
 const COMBO: ExamTopic[] = [
-  { n: 1,  title: 'Kombinatorika elemei (P, V, C)' },
-  { n: 2,  title: 'Binomiális és polinomiális tételek' },
-  { n: 3,  title: 'Stirling-formula' },
-  { n: 4,  title: 'Binomiális együtthatók tulajdonságai' },
-  { n: 5,  title: 'Logikai szitaformula' },
-  { n: 6,  title: String.raw`Zárt formula \(\sum i^k\)-ra` },
-  { n: 7,  title: 'Rekurzív sorozatok' },
-  { n: 8,  title: 'Generátorfüggvény módszer' },
-  { n: 9,  title: 'Extremális halmazrendszerek' },
-  { n: 10, title: 'Partíciós problémák' },
+  { n: 1,  title: 'Kombinatorika elemei (P, V, C)',          dimatId: 'ch2' },
+  { n: 2,  title: 'Binomiális és polinomiális tételek',      dimatId: 'ch3' },
+  { n: 3,  title: 'Stirling-formula',                        dimatId: 'ch2' },
+  { n: 4,  title: 'Binomiális együtthatók tulajdonságai',    dimatId: 'ch3' },
+  { n: 5,  title: 'Logikai szitaformula',                    dimatId: 'ch4' },
+  { n: 6,  title: String.raw`Zárt formula \(\sum i^k\)-ra`,  dimatId: 'ch5' },
+  { n: 7,  title: 'Rekurzív sorozatok',                      dimatId: 'ch5' },
+  { n: 8,  title: 'Generátorfüggvény módszer',               dimatId: 'ch6' },
+  { n: 9,  title: 'Extremális halmazrendszerek',             dimatId: 'ch7' },
+  { n: 10, title: 'Partíciós problémák',                     dimatId: 'ch8' },
 ];
 
 // ── graph — topics 11–29 ─────────────────────────────────────────────────
 const GRAPH: ExamTopic[] = [
-  { n: 11, title: 'Gráfelméleti alapfogalmak' },
-  { n: 12, title: 'Speciális gráfok' },
-  { n: 13, title: 'Elemi összefüggések gráfokban' },
-  { n: 14, title: 'Utak és Euler-körök' },
-  { n: 15, title: 'Euler tétele' },
-  { n: 16, title: 'Hamilton-körök' },
-  { n: 17, title: 'Modern eredmények gráfelméletben' },
-  { n: 18, title: 'Utazó ügynök probléma' },
-  { n: 19, title: 'NP-teljesség' },
-  { n: 20, title: 'Fák' },
-  { n: 21, title: 'Élszám és csúcsszám kapcsolata fákban' },
-  { n: 22, title: 'Adjacencia-mátrix' },
-  { n: 23, title: 'Incidencia-mátrix' },
-  { n: 24, title: 'Síkbarajzolhatóság' },
-  { n: 25, title: 'Kuratowsky tétele' },
-  { n: 26, title: 'Euler poliédertétele' },
-  { n: 27, title: 'Gráfizomorfizmus' },
-  { n: 28, title: 'Páros gráfok' },
-  { n: 29, title: 'Kőnig–Hall–Ore tételek' },
+  { n: 11, title: 'Gráfelméleti alapfogalmak',              dimatId: 'ch9' },
+  { n: 12, title: 'Speciális gráfok',                       dimatId: 'ch9' },
+  { n: 13, title: 'Elemi összefüggések gráfokban',          dimatId: 'ch9' },
+  { n: 14, title: 'Utak és Euler-körök',                    dimatId: 'ch10' },
+  { n: 15, title: 'Euler tétele',                           dimatId: 'ch10' },
+  { n: 16, title: 'Hamilton-körök',                         dimatId: 'ch11' },
+  { n: 17, title: 'Modern eredmények gráfelméletben',       dimatId: 'ch11' },
+  { n: 18, title: 'Utazó ügynök probléma',                  dimatId: 'ch13' },
+  { n: 19, title: 'NP-teljesség',                           dimatId: 'ch11' },
+  { n: 20, title: 'Fák',                                    dimatId: 'ch14' },
+  { n: 21, title: 'Élszám és csúcsszám kapcsolata fákban',  dimatId: 'ch14' },
+  { n: 22, title: 'Adjacencia-mátrix',                      dimatId: 'ch12' },
+  { n: 23, title: 'Incidencia-mátrix',                      dimatId: 'ch12' },
+  { n: 24, title: 'Síkbarajzolhatóság',                     dimatId: 'ch17' },
+  { n: 25, title: 'Kuratowsky tétele',                      dimatId: 'ch17' },
+  { n: 26, title: 'Euler poliédertétele',                   dimatId: 'ch17' },
+  { n: 27, title: 'Gráfizomorfizmus',                       dimatId: 'ch16' },
+  { n: 28, title: 'Páros gráfok',                           dimatId: 'ch19' },
+  { n: 29, title: 'Kőnig–Hall–Ore tételek',                 dimatId: 'ch19' },
 ];
 
 // ── szamelm — topics 30–39 ───────────────────────────────────────────────

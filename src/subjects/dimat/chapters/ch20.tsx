@@ -567,7 +567,7 @@ export default function DimatCh20() {
       <Link to="/dimat" className="ila__back">← Fejezetek</Link>
       <p className="ila__kicker">Diszkrét matematika — 20. fejezet</p>
       <h1 className="ila__title">Extremális gráfok</h1>
-      <p className="ila__cite">Hartung Ferenc · Pannon Egyetem Matematika Tanszék · 2026</p>
+      <p className="ila__cite">Dr. Szalkai István · Pannon Egyetem Matematika Tanszék · 2026</p>
       <Tabs tabs={TABS} />
     </div>
   );

@@ -1,4 +1,4 @@
-/** The 24 interactive dimat chapters ("Kombinatorika és Gráfelmélet", Hartung Ferenc / Pannon Egyetem). Hungarian source. */
+/** The 24 interactive dimat chapters ("Kombinatorika és Gráfelmélet", Dr. Szalkai István / Pannon Egyetem). Hungarian source. */
 export interface DimatChapter {
   id: string; // route segment, e.g. 'ch0'
   group: 'KOMB' | 'GRAF';

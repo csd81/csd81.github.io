@@ -895,7 +895,7 @@ export default function DimatCh15() {
       <Link to="/dimat" className="ila__back">← Fejezetek</Link>
       <p className="ila__kicker">Diszkrét matematika — 15. fejezet</p>
       <h1 className="ila__title">Feszítőfák</h1>
-      <p className="ila__cite">Hartung Ferenc · Pannon Egyetem Matematika Tanszék · 2026</p>
+      <p className="ila__cite">Dr. Szalkai István · Pannon Egyetem Matematika Tanszék · 2026</p>
       <Tabs tabs={TABS} />
     </div>
   );

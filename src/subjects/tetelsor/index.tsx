@@ -92,21 +92,38 @@ function PathCol({ path, query }: PathColProps) {
             Nincs találat
           </p>
         )}
-        {filteredTopics.map((t) => (
-          <div key={t.n} style={ROW_BASE_STYLE}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = '#1f2937'; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
-          >
+        {filteredTopics.map((t) => {
+          const num = (
             <span style={{ color: colour, fontWeight: 700, fontSize: '.72rem', flexShrink: 0 }}>
               {String(t.n).padStart(2, '0')}
             </span>
-            {/* RichTex handles any \(...\) math in the title */}
+          );
+          {/* RichTex handles any \(...\) math in the title */}
+          const label = (
             <RichTex
               html={t.title}
               style={{ color: '#e6edf3', fontSize: '.83rem', lineHeight: 1.5 }}
             />
-          </div>
-        ))}
+          );
+          // Link to the related interactive dimat chapter when one exists; otherwise plain row.
+          return t.dimatId ? (
+            <Link
+              key={t.n}
+              to={`/dimat/${t.dimatId}`}
+              style={ROW_BASE_STYLE}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = '#1f2937'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent'; }}
+            >
+              {num}
+              {label}
+            </Link>
+          ) : (
+            <div key={t.n} style={ROW_BASE_STYLE}>
+              {num}
+              {label}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -204,10 +221,10 @@ export default function Tetelsor() {
         </div>
         <p className="ila__cite" style={{ marginTop: '.5rem' }}>
           A diszkrét matematika vizsgakérdései három útvonalra osztva.
-          Kattints bármely tételre a kapcsolódó ILA fejezet megnyitásához.
+          Kattints egy tételre a kapcsolódó interaktív fejezet megnyitásához.
           &nbsp;&mdash;&nbsp;
           Discrete-mathematics exam topics organised into three paths.
-          Click any foundation topic to open its ILA chapter.
+          Click a topic to open its related interactive chapter.
         </p>
       </header>
 
