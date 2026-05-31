@@ -101,6 +101,11 @@
 .ila .F-cell { color: #f87171; }
 .ila .highlight-row td { background: rgba(167, 139, 250, 0.14) !important; }
 
+/* ── Cayley / comparison tables (ch8) ── */
+.ila .cayley { border-collapse: collapse; font-size: 0.78rem; }
+.ila .cayley th, .ila .cayley td { padding: 0.3rem 0.55rem; border: 1px solid #30363d; text-align: center; }
+.ila .cayley thead th { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+
 /* ── select / number controls ── */
 .ila .ila-select { background: var(--panel-2, #161b22); border: 1px solid #30363d; color: var(--text, #e6edf3); border-radius: 0.3rem; padding: 0.3rem 0.5rem; font: inherit; font-size: 0.8rem; max-width: 100%; }
 .ila .ila-num { width: 64px; background: var(--panel-2, #161b22); border: 1px solid #30363d; color: var(--text, #e6edf3); border-radius: 0.3rem; padding: 0.2rem 0.4rem; font: inherit; font-size: 0.8rem; }
