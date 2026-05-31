@@ -2,7 +2,7 @@
 import type { Bilingual } from '../lib/types'
 
 export interface GlossaryEntry { term: Bilingual; def: Bilingual }
-export interface Flashcard { q: string; a: string }
+export interface Flashcard { q: Bilingual | string; a: Bilingual | string }
 
 export const GLOSSARIES: Record<string, GlossaryEntry[]> = {
   's31': [

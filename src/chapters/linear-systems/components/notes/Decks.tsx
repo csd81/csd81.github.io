@@ -63,6 +63,7 @@ export function FlashcardDeck({ cards }: { cards: Flashcard[] }) {
   const [pos, setPos] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const card = useMemo(() => cards[order[pos]], [cards, order, pos]);
+  const pick = (v: Flashcard['q']) => (typeof v === 'string' ? v : v[lang]);
 
   const go = (delta: number) => {
     setFlipped(false);
@@ -90,7 +91,7 @@ export function FlashcardDeck({ cards }: { cards: Flashcard[] }) {
       >
         <span className="label" style={{ margin: 0 }}>{flipped ? tr('answer') : tr('question')}</span>
         <div style={{ marginTop: 8 }}>
-          <MarkdownView markdown={flipped ? card.a : card.q} />
+          <MarkdownView markdown={flipped ? pick(card.a) : pick(card.q)} />
         </div>
       </button>
 
