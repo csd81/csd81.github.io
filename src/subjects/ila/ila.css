@@ -116,6 +116,15 @@
 .ila .ind-step { background: rgba(103, 232, 249, 0.04); border: 1px solid #21262d; border-radius: 0.4rem; padding: 0.65rem 0.9rem; margin: 0.4rem 0; transition: border-color 0.2s, background 0.2s, opacity 0.4s; }
 .ila .ind-step.is-active { border-color: #67e8f9; background: rgba(103, 232, 249, 0.08); }
 
+/* ── combinatorics (ch10) ── */
+.ila .formula-chip { display: inline-block; background: rgba(52, 211, 153, 0.08); border: 1px solid #34d399; border-radius: 0.4rem; padding: 0.35rem 0.9rem; font-size: 0.85rem; color: #6ee7b7; font-family: monospace; margin: 0.2rem; }
+.ila .pascal-cell { display: flex; align-items: center; justify-content: center; border-radius: 0.3rem; font-size: 0.75rem; font-weight: 700; cursor: pointer; transition: all 0.15s; }
+.ila .pascal-cell:hover { outline: 1px solid #6ee7b7; }
+.ila .combo-chip { font-size: 0.72rem; font-family: monospace; padding: 0.15rem 0.45rem; border-radius: 0.25rem; background: #0c1a10; border: 1px solid #21262d; }
+.ila .sum-tbl { width: 100%; border-collapse: collapse; font-size: 0.79rem; }
+.ila .sum-tbl th { padding: 0.4rem 0.6rem; color: #34d399; }
+.ila .sum-tbl td { padding: 0.3rem 0.6rem; border-bottom: 1px solid #21262d; }
+
 /* ── select / number controls ── */
 .ila .ila-select { background: var(--panel-2, #161b22); border: 1px solid #30363d; color: var(--text, #e6edf3); border-radius: 0.3rem; padding: 0.3rem 0.5rem; font: inherit; font-size: 0.8rem; max-width: 100%; }
 .ila .ila-num { width: 64px; background: var(--panel-2, #161b22); border: 1px solid #30363d; color: var(--text, #e6edf3); border-radius: 0.3rem; padding: 0.2rem 0.4rem; font: inherit; font-size: 0.8rem; }
