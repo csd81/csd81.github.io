@@ -20,7 +20,7 @@ export const ILA_CHAPTERS: IlaChapter[] = [
   { num: 10, id: 'ch10', group: 'DM', title: 'Kombinatorika 1.', ready: true },
   { num: 11, id: 'ch11', group: 'DM', title: 'Kombinatorika 2.', ready: true },
   { num: 12, id: 'ch12', group: 'DM', title: 'Rekurziók 1.', ready: true },
-  { num: 13, id: 'ch13', group: 'DM', title: 'Rekurziók 2.', ready: false },
+  { num: 13, id: 'ch13', group: 'DM', title: 'Rekurziók 2.', ready: true },
   { num: 14, id: 'ch14', group: 'DM', title: 'Gráfelmélet 1.', ready: false },
   { num: 15, id: 'ch15', group: 'DM', title: 'Gráfelmélet 2.', ready: false },
   { num: 16, id: 'ch16', group: 'DM', title: 'Gráfelmélet 3.', ready: false },
