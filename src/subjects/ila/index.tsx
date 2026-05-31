@@ -8,6 +8,7 @@ import './ila.css';
 /** Lazy chapter modules — add an entry here once a chapter's React component exists. */
 const LOADERS: Record<string, () => Promise<{ default: ComponentType }>> = {
   ch1: () => import('./chapters/ch1'),
+  ch2: () => import('./chapters/ch2'),
 };
 
 function Landing() {
