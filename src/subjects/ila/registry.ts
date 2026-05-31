@@ -11,7 +11,7 @@ export const ILA_CHAPTERS: IlaChapter[] = [
   { num: 1, id: 'ch1', group: 'ILA', title: 'Halmazelmélet', ready: true },
   { num: 2, id: 'ch2', group: 'ILA', title: 'Megfeleltetések és leképezések', ready: true },
   { num: 3, id: 'ch3', group: 'ILA', title: 'Permutációk', ready: true },
-  { num: 4, id: 'ch4', group: 'ILA', title: 'Relációk', ready: false },
+  { num: 4, id: 'ch4', group: 'ILA', title: 'Relációk', ready: true },
   { num: 5, id: 'ch5', group: 'ILA', title: 'Halmazok számossága', ready: false },
   { num: 6, id: 'ch6', group: 'ILA', title: 'Matematikai logika alapjai', ready: false },
   { num: 7, id: 'ch7', group: 'ILA', title: 'Komplex számok', ready: false },
