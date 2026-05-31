@@ -18,7 +18,7 @@ export const ILA_CHAPTERS: IlaChapter[] = [
   { num: 8, id: 'ch8', group: 'ILA', title: 'Absztrakt algebra', ready: true },
   { num: 9, id: 'ch9', group: 'DM', title: 'Matematikai bizonyítások', ready: true },
   { num: 10, id: 'ch10', group: 'DM', title: 'Kombinatorika 1.', ready: true },
-  { num: 11, id: 'ch11', group: 'DM', title: 'Kombinatorika 2.', ready: false },
+  { num: 11, id: 'ch11', group: 'DM', title: 'Kombinatorika 2.', ready: true },
   { num: 12, id: 'ch12', group: 'DM', title: 'Rekurziók 1.', ready: false },
   { num: 13, id: 'ch13', group: 'DM', title: 'Rekurziók 2.', ready: false },
   { num: 14, id: 'ch14', group: 'DM', title: 'Gráfelmélet 1.', ready: false },
