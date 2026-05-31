@@ -21,11 +21,11 @@ export const ILA_CHAPTERS: IlaChapter[] = [
   { num: 11, id: 'ch11', group: 'DM', title: 'Kombinatorika 2.', ready: true },
   { num: 12, id: 'ch12', group: 'DM', title: 'Rekurziók 1.', ready: true },
   { num: 13, id: 'ch13', group: 'DM', title: 'Rekurziók 2.', ready: true },
-  { num: 14, id: 'ch14', group: 'DM', title: 'Gráfelmélet 1.', ready: false },
-  { num: 15, id: 'ch15', group: 'DM', title: 'Gráfelmélet 2.', ready: false },
-  { num: 16, id: 'ch16', group: 'DM', title: 'Gráfelmélet 3.', ready: false },
-  { num: 17, id: 'ch17', group: 'NT', title: 'Számelmélet 1.', ready: false },
-  { num: 18, id: 'ch18', group: 'NT', title: 'Számelmélet 2.', ready: false },
+  { num: 14, id: 'ch14', group: 'DM', title: 'Gráfelmélet 1.', ready: true },
+  { num: 15, id: 'ch15', group: 'DM', title: 'Gráfelmélet 2.', ready: true },
+  { num: 16, id: 'ch16', group: 'DM', title: 'Gráfelmélet 3.', ready: true },
+  { num: 17, id: 'ch17', group: 'NT', title: 'Számelmélet 1.', ready: true },
+  { num: 18, id: 'ch18', group: 'NT', title: 'Számelmélet 2.', ready: true },
 ];
 
 export const GROUP_LABEL: Record<IlaChapter['group'], string> = {

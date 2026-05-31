@@ -74,8 +74,8 @@ export default function Home() {
               </span>
               <span className="chcard__blurb">
                 {lang === 'hu'
-                  ? 'Kombinatorika és gráfelmélet — 18 témakör elmélettel, megoldásokkal és kvízzel.'
-                  : 'Combinatorics & graph theory — 18 topics with theory, solutions and a quiz.'}
+                  ? 'Kombinatorika és gráfelmélet — 24 interaktív fejezet + feladatgyűjtemény.'
+                  : 'Combinatorics & graph theory — 24 interactive chapters + exercise collection.'}
               </span>
             </span>
           </Link>
@@ -91,6 +91,36 @@ export default function Home() {
                 {lang === 'hu'
                   ? '18 interaktív fejezet: halmazok, relációk, logika, gráfok, számelmélet.'
                   : '18 interactive chapters: sets, relations, logic, graphs, number theory.'}
+              </span>
+            </span>
+          </Link>
+        </li>
+        <li>
+          <Link to="/algo" className="chcard">
+            <span className="chcard__num">🔢</span>
+            <span className="chcard__body">
+              <span className="chcard__title">
+                {lang === 'hu' ? 'Számelmélet' : 'Number Theory'}
+              </span>
+              <span className="chcard__blurb">
+                {lang === 'hu'
+                  ? '13 fejezet: oszthatóság, kongruenciák, prímek, RSA titkosírás.'
+                  : '13 chapters: divisibility, congruences, primes, RSA cryptography.'}
+              </span>
+            </span>
+          </Link>
+        </li>
+        <li>
+          <Link to="/tetelsor" className="chcard">
+            <span className="chcard__num">🎯</span>
+            <span className="chcard__body">
+              <span className="chcard__title">
+                {lang === 'hu' ? 'Tételsor' : 'Theorem List'}
+              </span>
+              <span className="chcard__blurb">
+                {lang === 'hu'
+                  ? '39 vizsgatétel kombinatorikából, gráfelméletből és számelméletből + 9 ILA alapozó.'
+                  : '39 exam topics in combinatorics, graph theory & number theory + 9 ILA foundations.'}
               </span>
             </span>
           </Link>
