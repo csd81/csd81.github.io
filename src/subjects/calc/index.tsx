@@ -14,11 +14,15 @@ const META: Record<string, { title: string; author: string; blurb: string }> = {
   'anal-tk1b': { title: 'Matematikai analízis I.', author: 'Dr. Szalkai István, Mikó Teréz · Pannon Egyetem', blurb: 'Alapfogalmak, függvények, sorozatok, határérték, deriválás (0–7. fejezet).' },
 };
 
+/** Strip image references (the source PDFs' page scans aren't bundled). */
+const stripImages = (md: string) =>
+  md.replace(/!\[[^\]]*\]\([^)]*\)/g, '').replace(/<img[^>]*>/gi, '');
+
 const BOOKS: Book[] = Object.entries(RAW)
   .map(([path, md]) => {
     const id = path.replace(/^\.\/content\//, '').replace(/\.md$/, '');
     const m = META[id] ?? { title: id, author: '', blurb: '' };
-    return { id, ...m, md };
+    return { id, ...m, md: stripImages(md) };
   })
   .sort((a, b) => a.id.localeCompare(b.id));
 
