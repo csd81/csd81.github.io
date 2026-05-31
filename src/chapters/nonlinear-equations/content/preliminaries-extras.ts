@@ -3,7 +3,7 @@
 import type { Bi } from './sections'
 
 export interface GlossaryEntry { term: Bi; def: Bi }
-export interface Flashcard { q: string; a: string }
+export interface Flashcard { q: Bi | string; a: Bi | string }
 
 export const PRELIM_GLOSSARY: GlossaryEntry[] = [
   {
