@@ -80,6 +80,21 @@ export default function Home() {
             </span>
           </Link>
         </li>
+        <li>
+          <Link to="/ila" className="chcard">
+            <span className="chcard__num">📐</span>
+            <span className="chcard__body">
+              <span className="chcard__title">
+                {lang === 'hu' ? 'ILA — Logikai és algebrai alapok' : 'ILA — Logic & Algebra Foundations'}
+              </span>
+              <span className="chcard__blurb">
+                {lang === 'hu'
+                  ? '18 interaktív fejezet: halmazok, relációk, logika, gráfok, számelmélet.'
+                  : '18 interactive chapters: sets, relations, logic, graphs, number theory.'}
+              </span>
+            </span>
+          </Link>
+        </li>
       </ul>
     </div>
   );

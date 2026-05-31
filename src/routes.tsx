@@ -6,6 +6,7 @@ import { CHAPTERS } from './chapters/registry';
 
 const Practice = lazy(() => import('./pages/Practice'));
 const Dimat = lazy(() => import('./subjects/dimat'));
+const Ila = lazy(() => import('./subjects/ila'));
 
 function Loading() {
   return (
@@ -33,6 +34,14 @@ export default function AppRoutes() {
           element={
             <Suspense fallback={<Loading />}>
               <Dimat />
+            </Suspense>
+          }
+        />
+        <Route
+          path="ila/*"
+          element={
+            <Suspense fallback={<Loading />}>
+              <Ila />
             </Suspense>
           }
         />
