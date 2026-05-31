@@ -93,5 +93,16 @@
 .ila .law-grid--hi { background: rgba(167, 139, 250, 0.06); }
 .ila .law-grid--hi > div { color: #a78bfa; }
 
+/* ── truth tables (ch6) ── */
+.ila .truth-tbl { border-collapse: collapse; font-size: 0.82rem; margin: 0.2rem 0; }
+.ila .truth-tbl th, .ila .truth-tbl td { padding: 0.22rem 0.6rem; border: 1px solid #30363d; text-align: center; }
+.ila .truth-tbl thead th { background: var(--panel-2, #161b22); color: #a78bfa; }
+.ila .T-cell { color: #4ade80; font-weight: 700; }
+.ila .F-cell { color: #f87171; }
+.ila .highlight-row td { background: rgba(167, 139, 250, 0.14) !important; }
+
+/* ── select control ── */
+.ila .ila-select { background: var(--panel-2, #161b22); border: 1px solid #30363d; color: var(--text, #e6edf3); border-radius: 0.3rem; padding: 0.3rem 0.5rem; font: inherit; font-size: 0.8rem; max-width: 100%; }
+
 /* landing grid */
 .ila__grid { list-style: none; padding: 0; margin: 1.5rem 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0.75rem; }
