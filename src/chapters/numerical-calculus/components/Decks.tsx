@@ -72,7 +72,7 @@ function shuffled(n: number): number[] {
   return a;
 }
 
-/** Flip-card self-test deck for a chapter-7 lesson (cards in English). */
+/** Flip-card self-test deck for a chapter-7 lesson (bilingual cards). */
 export function FlashcardDeck({ slug }: { slug: string }) {
   const lang = useLang();
   const cards: Flashcard[] = FLASHCARDS[slug] ?? [];
@@ -80,6 +80,7 @@ export function FlashcardDeck({ slug }: { slug: string }) {
   const [pos, setPos] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const card = useMemo(() => cards[order[pos]], [cards, order, pos]);
+  const pick = (value: Flashcard['q']) => (typeof value === 'string' ? value : value[lang]);
   if (!cards.length) return null;
 
   const go = (delta: number) => {
@@ -106,7 +107,7 @@ export function FlashcardDeck({ slug }: { slug: string }) {
         <div className={`mb-2 text-xs font-bold uppercase tracking-widest ${flipped ? 'text-emerald-600 dark:text-emerald-400' : 'text-brand-600 dark:text-brand-300'}`}>
           {flipped ? T.answer[lang] : T.question[lang]}
         </div>
-        <MarkdownView markdown={flipped ? card.a : card.q} />
+        <MarkdownView markdown={flipped ? pick(card.a) : pick(card.q)} />
       </button>
       <div className="mt-3 flex items-center justify-between gap-3">
         <button className={btn} onClick={() => go(-1)}>{T.prev[lang]}</button>

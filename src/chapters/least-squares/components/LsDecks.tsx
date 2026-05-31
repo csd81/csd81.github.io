@@ -8,8 +8,8 @@ interface GlossaryEntry {
   def: { en: string; hu: string };
 }
 interface Flashcard {
-  q: string;
-  a: string;
+  q: string | { en: string; hu: string };
+  a: string | { en: string; hu: string };
 }
 
 const T = {
@@ -68,12 +68,13 @@ function shuffled(n: number): number[] {
 }
 
 export function FlashcardDeck({ deck }: { deck: string }) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const cards = ((FLASHCARDS as Record<string, Flashcard[]>)[deck] ?? []);
   const [order, setOrder] = useState<number[]>(() => seq(cards.length));
   const [pos, setPos] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const card = useMemo(() => cards[order[pos]], [cards, order, pos]);
+  const pick = (value: Flashcard['q']) => (typeof value === 'string' ? value : value[lang]);
   if (!cards.length) return null;
   const go = (d: number) => {
     setFlipped(false);
@@ -93,7 +94,7 @@ export function FlashcardDeck({ deck }: { deck: string }) {
       </div>
       <button className="deck-card" onClick={() => setFlipped((f) => !f)}>
         <div className="deck-card__tag">{flipped ? t(T.answer) : t(T.question)}</div>
-        <MarkdownView markdown={flipped ? card.a : card.q} />
+        <MarkdownView markdown={flipped ? pick(card.a) : pick(card.q)} />
       </button>
       <div className="deck__nav">
         <button className="btn" onClick={() => go(-1)}>{t(T.prev)}</button>

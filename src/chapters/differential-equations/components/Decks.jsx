@@ -43,6 +43,7 @@ export function GlossaryDeck({ deck }) {
 }
 
 const seq = (n) => Array.from({ length: n }, (_, i) => i);
+const pick = (value, lang) => typeof value === "string" ? value : value[lang];
 function shuffled(n) {
   const a = seq(n);
   for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
@@ -70,7 +71,7 @@ export function FlashcardDeck({ deck }) {
       </div>
       <button className="deck-card" onClick={() => setFlipped((f) => !f)}>
         <div className="deck-card__tag">{flipped ? T.answer[lang] : T.question[lang]}</div>
-        <MarkdownView markdown={flipped ? card.a : card.q} />
+        <MarkdownView markdown={flipped ? pick(card.a, lang) : pick(card.q, lang)} />
       </button>
       <div className="deck__nav">
         <button className="btn" onClick={() => go(-1)}>{T.prev[lang]}</button>

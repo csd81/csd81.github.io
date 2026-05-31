@@ -201,6 +201,7 @@ function renderFlashcards(deck) {
   const cards = FLASHCARDS[deck] || [];
   const wrap = el('div', 'deck flashcard-deck');
   if (!cards.length) return wrap;
+  const pick = (value) => typeof value === 'string' ? value : value[getLang()];
   let order = cards.map((_, i) => i);
   let pos = 0;
   let flipped = false;
@@ -236,7 +237,7 @@ function renderFlashcards(deck) {
     const tag = el('div', 'deck-card__tag', flipped ? t({ hu: 'Válasz', en: 'Answer' }) : t({ hu: 'Kérdés', en: 'Question' }));
     cardEl.appendChild(tag);
     const body = el('div');
-    renderMarkdownMath(body, flipped ? card.a : card.q);
+    renderMarkdownMath(body, flipped ? pick(card.a) : pick(card.q));
     cardEl.appendChild(body);
     flipBtn.textContent = flipped ? t({ hu: 'Kérdés', en: 'Show question' }) : t({ hu: 'Válasz', en: 'Show answer' });
   }

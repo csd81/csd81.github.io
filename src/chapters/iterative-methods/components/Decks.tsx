@@ -75,7 +75,7 @@ function shuffled(n: number): number[] {
   return a;
 }
 
-/** Flip-card self-test deck for a chapter-4 module (cards in English). */
+/** Flip-card self-test deck for a chapter-4 module (bilingual cards). */
 export function FlashcardDeck({ moduleId, title }: { moduleId: ModuleId; title: string }) {
   const { lang } = useLanguage();
   const cards: Flashcard[] = FLASHCARDS[moduleId] ?? [];
@@ -84,6 +84,7 @@ export function FlashcardDeck({ moduleId, title }: { moduleId: ModuleId; title: 
   const [pos, setPos] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const card = useMemo(() => cards[order[pos]], [cards, order, pos]);
+  const pick = (value: Flashcard['q']) => (typeof value === 'string' ? value : value[lang]);
   if (!cards.length) return null;
 
   const go = (delta: number) => {
@@ -121,7 +122,7 @@ export function FlashcardDeck({ moduleId, title }: { moduleId: ModuleId; title: 
         <div className={`mb-2 text-xs font-bold uppercase tracking-widest ${flipped ? 'text-emerald-600 dark:text-emerald-400' : 'text-brand-600 dark:text-brand-300'}`}>
           {flipped ? tr('answer') : tr('question')}
         </div>
-        <Md>{flipped ? card.a : card.q}</Md>
+        <Md>{flipped ? pick(card.a) : pick(card.q)}</Md>
       </button>
 
       <div className="mt-3 flex items-center justify-between gap-3">

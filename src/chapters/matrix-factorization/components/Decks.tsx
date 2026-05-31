@@ -62,7 +62,7 @@ function shuffled(n: number): number[] {
   return a;
 }
 
-/** Flip-card self-test deck for a chapter-5 section (cards in English). */
+/** Flip-card self-test deck for a chapter-5 section (bilingual cards). */
 export function FlashcardDeck({ deck }: { deck: string }) {
   const { lang } = useT();
   const cards: Flashcard[] = FLASHCARDS[deck] ?? [];
@@ -71,6 +71,7 @@ export function FlashcardDeck({ deck }: { deck: string }) {
   const [pos, setPos] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const card = useMemo(() => cards[order[pos]], [cards, order, pos]);
+  const pick = (value: Flashcard["q"]) => (typeof value === "string" ? value : value[lang]);
   if (!cards.length) return null;
 
   const go = (delta: number) => {
@@ -95,7 +96,7 @@ export function FlashcardDeck({ deck }: { deck: string }) {
       >
         <div className="callout__label">{flipped ? tr("answer") : tr("question")}</div>
         <p style={{ marginBottom: 0 }}>
-          <RichText text={flipped ? card.a : card.q} />
+          <RichText text={flipped ? pick(card.a) : pick(card.q)} />
         </p>
       </button>
       <div style={{ display: "flex", gap: 10, marginTop: 10, alignItems: "center" }}>

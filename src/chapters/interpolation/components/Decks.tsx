@@ -61,7 +61,7 @@ function shuffled(n: number): number[] {
   return a;
 }
 
-/** Flip-card self-test deck for an interpolation method (cards in English). */
+/** Flip-card self-test deck for an interpolation method (bilingual cards). */
 export function FlashcardDeck({ deck }: { deck: string }) {
   const { lang } = useLang();
   const cards: Flashcard[] = FLASHCARDS[deck] ?? [];
@@ -70,6 +70,7 @@ export function FlashcardDeck({ deck }: { deck: string }) {
   const [pos, setPos] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const card = useMemo(() => cards[order[pos]], [cards, order, pos]);
+  const pick = (value: Flashcard['q']) => (typeof value === 'string' ? value : value[L]);
   if (!cards.length) return null;
 
   const go = (delta: number) => {
@@ -93,7 +94,7 @@ export function FlashcardDeck({ deck }: { deck: string }) {
         onClick={() => setFlipped((f) => !f)}
       >
         <div className="theorem-tag">{flipped ? T.answer[L] : T.question[L]}</div>
-        <MarkdownView markdown={flipped ? card.a : card.q} />
+        <MarkdownView markdown={flipped ? pick(card.a) : pick(card.q)} />
       </button>
       <div style={{ display: 'flex', gap: 10, marginTop: 10, alignItems: 'center' }}>
         <button className="btn" onClick={() => go(-1)}>{T.prev[L]}</button>

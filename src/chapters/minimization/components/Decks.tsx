@@ -40,14 +40,15 @@ function shuffled(n: number): number[] {
   return a;
 }
 
-/** Flip-card self-test deck for a minimization section (cards in English). */
+/** Flip-card self-test deck for a minimization section (bilingual cards). */
 export function FlashcardDeck({ deck }: { deck: string }) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const cards: Flashcard[] = FLASHCARDS[deck] ?? [];
   const [order, setOrder] = useState<number[]>(() => seq(cards.length));
   const [pos, setPos] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const card = useMemo(() => cards[order[pos]], [cards, order, pos]);
+  const pick = (value: Flashcard['q']) => (typeof value === 'string' ? value : value[lang]);
   if (!cards.length) return null;
 
   const go = (delta: number) => {
@@ -67,7 +68,7 @@ export function FlashcardDeck({ deck }: { deck: string }) {
       </div>
       <button className="deck-card" onClick={() => setFlipped((f) => !f)}>
         <div className="deck-card__tag">{flipped ? t({ en: "Answer", hu: "Válasz" }) : t({ en: "Question", hu: "Kérdés" })}</div>
-        <MarkdownView markdown={flipped ? card.a : card.q} />
+        <MarkdownView markdown={flipped ? pick(card.a) : pick(card.q)} />
       </button>
       <div className="deck__nav">
         <button className="btn" onClick={() => go(-1)}>{t({ en: "‹ Prev", hu: "‹ Előző" })}</button>

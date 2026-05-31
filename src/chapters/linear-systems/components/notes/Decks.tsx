@@ -55,7 +55,7 @@ function shuffled(n: number): number[] {
   return a;
 }
 
-/** Flip-card self-test deck (cards in English; chapter-3 styling). */
+/** Flip-card self-test deck (bilingual cards; chapter-3 styling). */
 export function FlashcardDeck({ cards }: { cards: Flashcard[] }) {
   const { lang } = useI18n();
   const tr = (k: keyof typeof T) => T[k][lang];
