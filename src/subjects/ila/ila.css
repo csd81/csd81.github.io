@@ -125,6 +125,13 @@
 .ila .sum-tbl th { padding: 0.4rem 0.6rem; color: #34d399; }
 .ila .sum-tbl td { padding: 0.3rem 0.6rem; border-bottom: 1px solid #21262d; }
 
+/* ── recursions (ch12/13) ── */
+.ila .case-card { background: #0d1117; border: 1px solid #21262d; border-radius: 0.4rem; padding: 0.8rem 1rem; margin: 0.5rem 0; transition: border-color 0.2s, background 0.2s; }
+.ila .case-card.is-active { border-color: #fbbf24; background: rgba(251, 191, 36, 0.07); }
+.ila .seq-chip { display: inline-block; background: rgba(251, 191, 36, 0.08); border: 1px solid #fbbf24; border-radius: 0.3rem; padding: 0.15rem 0.55rem; font-size: 0.78rem; color: #fde68a; margin: 0.1rem; font-family: monospace; }
+.ila .ex-btn { background: rgba(251, 191, 36, 0.08); color: #fbbf24; border: 1px solid #fbbf24; border-radius: 0.3rem; padding: 0.3rem 0.8rem; font: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer; }
+.ila .ex-btn.is-active { background: #fbbf24; color: #000; }
+
 /* ── select / number controls ── */
 .ila .ila-select { background: var(--panel-2, #161b22); border: 1px solid #30363d; color: var(--text, #e6edf3); border-radius: 0.3rem; padding: 0.3rem 0.5rem; font: inherit; font-size: 0.8rem; max-width: 100%; }
 .ila .ila-num { width: 64px; background: var(--panel-2, #161b22); border: 1px solid #30363d; color: var(--text, #e6edf3); border-radius: 0.3rem; padding: 0.2rem 0.4rem; font: inherit; font-size: 0.8rem; }

@@ -18,6 +18,7 @@ const LOADERS: Record<string, () => Promise<{ default: ComponentType }>> = {
   ch9: () => import('./chapters/ch9'),
   ch10: () => import('./chapters/ch10'),
   ch11: () => import('./chapters/ch11'),
+  ch12: () => import('./chapters/ch12'),
 };
 
 function Landing() {
