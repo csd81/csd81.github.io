@@ -8,6 +8,8 @@ import '../../pages/home.css';
 import '../ila/ila.css';
 import './dimat.css';
 
+const KombFeladatok = lazy(() => import('./KombFeladatok'));
+
 /** Lazy interactive chapter modules. */
 const LOADERS: Record<string, () => Promise<{ default: ComponentType }>> = {
   ch0: () => import('./chapters/ch0'), ch1: () => import('./chapters/ch1'), ch2: () => import('./chapters/ch2'),
@@ -18,6 +20,7 @@ const LOADERS: Record<string, () => Promise<{ default: ComponentType }>> = {
   ch15: () => import('./chapters/ch15'), ch16: () => import('./chapters/ch16'), ch17: () => import('./chapters/ch17'),
   ch18: () => import('./chapters/ch18'), ch19: () => import('./chapters/ch19'), ch20: () => import('./chapters/ch20'),
   ch21: () => import('./chapters/ch21'), ch22: () => import('./chapters/ch22'), ch23: () => import('./chapters/ch23'),
+  appendix: () => import('./chapters/appendix'),
 };
 
 const UI = {
@@ -53,6 +56,11 @@ function Landing() {
         <p className="dimat__kicker">{t(UI.kicker)}</p>
         <h1 className="dimat__title">{t(UI.title)}</h1>
         <p className="dimat__lead">{t(UI.lead)}</p>
+        <div style={{ marginTop: '.75rem' }}>
+          <Link to="/dimat/kombfeladatok" className="op-btn" style={{ display: 'inline-block' }}>
+            📚 {lang === 'hu' ? 'KombFeladatok — 103 megoldott feladat (Szalkai 2023)' : 'KombFeladatok — 103 worked exercises (Szalkai 2023)'}
+          </Link>
+        </div>
       </header>
 
       {groups.map((g) => (
@@ -181,6 +189,7 @@ export default function Dimat() {
   return (
     <Routes>
       <Route index element={<Landing />} />
+      <Route path="kombfeladatok" element={<Suspense fallback={<div className="ila"><p className="ila__cite">…</p></div>}><KombFeladatok /></Suspense>} />
       <Route path=":id" element={<ChapterRoute />} />
     </Routes>
   );

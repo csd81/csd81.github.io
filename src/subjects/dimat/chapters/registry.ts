@@ -31,6 +31,7 @@ export const DIMAT_CHAPTERS: DimatChapter[] = [
   { id: 'ch21', group: 'GRAF', part: 'II.13', title: 'Gráfok spektruma' },
   { id: 'ch22', group: 'GRAF', part: 'II.14', title: 'Hálózati folyamok' },
   { id: 'ch23', group: 'GRAF', part: 'II.15', title: 'Matroidok' },
+  { id: 'appendix', group: 'GRAF', part: 'F', title: 'Függelék — binomiális polinomok, hatványösszegek, parciális törtek' },
 ];
 
 export const DIMAT_GROUP_LABEL: Record<DimatChapter['group'], { hu: string; en: string }> = {

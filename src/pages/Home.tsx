@@ -126,6 +126,39 @@ export default function Home() {
           </Link>
         </li>
       </ul>
+
+      <h2 className="home__section-title">
+        {lang === 'hu' ? 'Analízis · Kalkulus' : 'Calculus · Analysis'}
+      </h2>
+      <ul className="home__grid">
+        <li>
+          <Link to="/calc/kalkulus1" className="chcard">
+            <span className="chcard__num">∫</span>
+            <span className="chcard__body">
+              <span className="chcard__title">Kalkulus informatikusoknak I.</span>
+              <span className="chcard__blurb">Győri István, Pituk Mihály — halmazok, sorozatok, határérték, deriválás.</span>
+            </span>
+          </Link>
+        </li>
+        <li>
+          <Link to="/calc/kalkulus2" className="chcard">
+            <span className="chcard__num">∑</span>
+            <span className="chcard__body">
+              <span className="chcard__title">Kalkulus informatikusoknak II.</span>
+              <span className="chcard__blurb">Győri István, Pituk Mihály — végtelen sorok, integrálszámítás, többváltozós analízis.</span>
+            </span>
+          </Link>
+        </li>
+        <li>
+          <Link to="/calc/anal-tk1b" className="chcard">
+            <span className="chcard__num">📈</span>
+            <span className="chcard__body">
+              <span className="chcard__title">Matematikai analízis I.</span>
+              <span className="chcard__blurb">Dr. Szalkai István, Mikó Teréz · Pannon Egyetem — alapfogalmak, függvények, deriválás.</span>
+            </span>
+          </Link>
+        </li>
+      </ul>
     </div>
   );
 }

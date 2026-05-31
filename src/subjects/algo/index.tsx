@@ -4,6 +4,8 @@ import { ALGO_CHAPTERS, algoChapterById, type AlgoChapter } from './registry';
 import '../../pages/home.css';
 import '../ila/ila.css';
 
+const Exercises = lazy(() => import('./Exercises'));
+
 /** Lazy chapter loaders — one entry per chapter file. */
 const LOADERS: Record<string, () => Promise<{ default: ComponentType }>> = {
   ch1: () => import('./chapters/ch1'),
@@ -30,6 +32,9 @@ function Landing() {
       <p className="ila__cite">
         Szalkai István &amp; Dósa György · Pannon Egyetem Matematika Tanszék · Typotex 2011
       </p>
+      <div style={{ marginTop: '1rem' }}>
+        <Link to="/algo/exercises" className="op-btn">📝 Feladatok (215 feladat, kidolgozott megoldásokkal)</Link>
+      </div>
       <section>
         <h2 className="home__section-title">Fejezetek</h2>
         <ul className="ila__grid">
@@ -92,6 +97,7 @@ export default function Algo() {
   return (
     <Routes>
       <Route index element={<Landing />} />
+      <Route path="exercises" element={<Suspense fallback={<div className="ila"><p className="ila__cite">…</p></div>}><Exercises /></Suspense>} />
       <Route path=":id" element={<ChapterRoute />} />
     </Routes>
   );
