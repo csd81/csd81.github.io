@@ -17,7 +17,7 @@ function shuffled(n: number): number[] {
 }
 
 export function Flashcards() {
-  const { t } = useLang()
+  const { t, lang } = useLang()
   const [order, setOrder] = useState<number[]>(() => seq(FLASHCARDS.length))
   const [pos, setPos] = useState(0)
   const [flipped, setFlipped] = useState(false)
@@ -77,7 +77,7 @@ export function Flashcards() {
           >
             {flipped ? t('flash.answer') : t('flash.question')}
           </div>
-          <MarkdownView markdown={flipped ? card.a : card.q} />
+          <MarkdownView markdown={flipped ? card.a[lang] : card.q[lang]} />
         </motion.button>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginTop: 12 }}>

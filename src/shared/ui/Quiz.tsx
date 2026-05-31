@@ -1,6 +1,29 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
+import katex from 'katex';
 import { Math } from './Math';
 import { useLang, type Bi } from '../providers/LanguageProvider';
+
+/** Render a string with $...$ inline math via KaTeX. */
+function Inline({ text }: { text: string }): ReactNode {
+  if (!text.includes('$')) return text;
+  const parts: ReactNode[] = [];
+  const re = /\$([^$]+)\$/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let k = 0;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) parts.push(text.slice(last, m.index));
+    try {
+      const html = katex.renderToString(m[1], { throwOnError: false });
+      parts.push(<span key={k++} dangerouslySetInnerHTML={{ __html: html }} />);
+    } catch {
+      parts.push(m[0]);
+    }
+    last = re.lastIndex;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return <>{parts}</>;
+}
 
 export interface QuizQuestion {
   id: string;
@@ -57,7 +80,7 @@ export function Quiz({ questions, title, onScore }: QuizProps) {
           return (
             <li key={q.id} className="quiz__q">
               <p className="quiz__prompt">
-                <span className="quiz__num">{qi + 1}.</span> {tx(q.prompt)}
+                <span className="quiz__num">{qi + 1}.</span> <Inline text={tx(q.prompt)} />
               </p>
               {q.tex && (
                 <div className="quiz__tex">
@@ -81,7 +104,7 @@ export function Quiz({ questions, title, onScore }: QuizProps) {
                       className={`quiz__opt ${state}`}
                       onClick={() => setPicked((p) => ({ ...p, [q.id]: oi }))}
                     >
-                      {tx(opt)}
+                      <Inline text={tx(opt)} />
                     </button>
                   );
                 })}
@@ -89,7 +112,7 @@ export function Quiz({ questions, title, onScore }: QuizProps) {
               {submitted && q.explanation && (
                 <p className={`quiz__explain ${sel === q.answer ? 'is-correct' : 'is-wrong'}`}>
                   <strong>{sel === q.answer ? t(STRINGS.correct) : t(STRINGS.incorrect)}</strong> —{' '}
-                  {t(STRINGS.explanation)}: {tx(q.explanation)}
+                  {t(STRINGS.explanation)}: <Inline text={tx(q.explanation)} />
                 </p>
               )}
             </li>

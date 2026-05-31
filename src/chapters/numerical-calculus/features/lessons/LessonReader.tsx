@@ -5,9 +5,16 @@ import { motion } from 'framer-motion';
 import { fetchLesson, type Lesson } from '../../lib/api';
 import type { Lang } from '../../i18n';
 import MarkdownView from '../../components/MarkdownView';
+import { GlossaryDeck, FlashcardDeck } from '../../components/Decks';
+import { CodeTabs } from '../../../../shared/ui/CodeTabs';
+import { Quiz } from '../../../../shared/ui/Quiz';
+import { getSectionCode } from '../../content/code';
+import { getQuiz } from '../../content/quiz';
 
-export default function LessonReader() {
-  const { slug = '' } = useParams();
+export default function LessonReader({ slug: slugProp }: { slug?: string } = {}) {
+  const params = useParams();
+  const slug = slugProp ?? params.slug ?? '';
+  const embedded = slugProp != null;
   const { t, i18n } = useTranslation();
   const lang = (i18n.language as Lang) === 'hu' ? 'hu' : 'en';
   const [lesson, setLesson] = useState<Lesson | null>(null);
@@ -30,9 +37,11 @@ export default function LessonReader() {
 
   return (
     <article>
-      <Link to="/numerical-calculus/lessons" className="text-sm font-semibold text-brand-600 hover:underline dark:text-brand-300">
-        ← {t('lessons.back')}
-      </Link>
+      {!embedded && (
+        <Link to="/numerical-calculus/lessons" className="text-sm font-semibold text-brand-600 hover:underline dark:text-brand-300">
+          ← {t('lessons.back')}
+        </Link>
+      )}
       {status === 'loading' && <p className="mt-6 text-slate-500">{t('lessons.loading')}</p>}
       {status === 'error' && <p className="mt-6 text-rose-600">{t('lessons.error')}</p>}
       {status === 'ok' && lesson && (
@@ -44,6 +53,19 @@ export default function LessonReader() {
         >
           <MarkdownView markdown={lesson.markdown} />
         </motion.div>
+      )}
+      {status === 'ok' && lesson &&
+        getSectionCode(lesson.slug).map((c) => (
+          <CodeTabs key={c.id} snippets={c.snippets} caption={c.caption} />
+        ))}
+      {status === 'ok' && lesson && getQuiz(lesson.slug).length > 0 && (
+        <Quiz questions={getQuiz(lesson.slug)} />
+      )}
+      {status === 'ok' && lesson && (
+        <>
+          <GlossaryDeck slug={lesson.slug} />
+          <FlashcardDeck slug={lesson.slug} />
+        </>
       )}
     </article>
   );

@@ -3,6 +3,7 @@ import { useLang } from './shared/providers/LanguageProvider';
 import { useTheme } from './shared/providers/ThemeProvider';
 import { CHAPTERS } from './chapters/registry';
 import { RustSandbox } from './shared/ui/RustSandbox';
+import { AppSectionNav } from './shared/scrolly/AppSectionNav';
 
 function ChapterJump() {
   const { lang } = useLang();
@@ -41,6 +42,7 @@ export default function App() {
           {lang === 'hu' ? 'Numerikus módszerek' : 'Numerical Methods'}
         </Link>
         <span className="app-nav__spacer" />
+        <AppSectionNav />
         <ChapterJump />
         <a
           className="btn btn--icon"

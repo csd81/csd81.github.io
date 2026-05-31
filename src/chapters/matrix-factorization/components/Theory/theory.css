@@ -26,6 +26,8 @@
 .callout--example { --c: var(--example); --cbg: var(--example-bg); }
 .callout--algorithm { --c: var(--algo); --cbg: var(--algo-bg); }
 .callout--remark { --c: var(--text-faint); --cbg: var(--surface-2); }
+.callout--exercise { --c: var(--primary); --cbg: var(--surface-2); }
+.callout--solution { --c: var(--ok, #16a34a); --cbg: var(--surface-2); }
 
 .callout__label {
   font-size: 0.74rem;
@@ -37,6 +39,22 @@
 }
 
 .callout--proof .block__body p:last-child { font-style: normal; }
+
+/* Proofs are collapsible: collapsed by default, revealed on click. */
+.proof-details > summary {
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  margin-bottom: 0;
+}
+.proof-details > summary::-webkit-details-marker { display: none; }
+.proof-details > summary::after {
+  content: " ▸";
+  opacity: 0.7;
+  font-weight: 700;
+}
+.proof-details[open] > summary::after { content: " ▾"; }
+.proof-details[open] > summary { margin-bottom: 0.5em; }
 .callout--theorem .block__body p,
 .callout--definition .block__body p { color: var(--text); }
 

@@ -3,10 +3,10 @@ import { useStrings } from '../i18n/useStrings';
 import { useProgress, type ModuleId } from '../context/ProgressContext';
 
 const cards: { id: ModuleId; to: string; emoji: string }[] = [
-  { id: 'fixed-point', to: '/fixed-point', emoji: '🔁' },
-  { id: 'jacobi-gs', to: '/jacobi-gauss-seidel', emoji: '🏁' },
-  { id: 'spectral', to: '/spectral', emoji: '🎯' },
-  { id: 'condition', to: '/condition', emoji: '⚠️' },
+  { id: 'fixed-point', to: '/iterative-methods/fixed-point', emoji: '🔁' },
+  { id: 'jacobi-gs', to: '/iterative-methods/jacobi-gauss-seidel', emoji: '🏁' },
+  { id: 'spectral', to: '/iterative-methods/spectral', emoji: '🎯' },
+  { id: 'condition', to: '/iterative-methods/condition', emoji: '⚠️' },
 ];
 
 export function Home() {

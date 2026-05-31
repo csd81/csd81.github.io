@@ -1,7 +1,10 @@
-import { Link } from 'react-router-dom';
 import { useI18n } from '../../app/LanguageContext';
 import type { Block, Section } from '../../content/sections';
 import { Tex } from '../math/Tex';
+import { GLOSSARIES, FLASHCARDS } from '../../content/decks';
+import { GlossaryDeck, FlashcardDeck } from './Decks';
+import { Quiz } from '../../../../shared/ui/Quiz';
+import { getQuiz } from '../../content/quiz';
 
 function BlockView({ block }: { block: Block }) {
   const { pick, t } = useI18n();
@@ -31,15 +34,23 @@ function BlockView({ block }: { block: Block }) {
       );
     case 'lab':
       return (
-        <Link className="btn" to={block.to}>
+        <button
+          className="btn"
+          onClick={() => document.getElementById('lab')?.scrollIntoView({ behavior: 'smooth' })}
+        >
           {pick(block.label)} →
-        </Link>
+        </button>
       );
+    case 'glossary':
+      return <GlossaryDeck entries={GLOSSARIES[block.deck] ?? []} />;
+    case 'flashcards':
+      return <FlashcardDeck cards={FLASHCARDS[block.deck] ?? []} />;
   }
 }
 
 export function SectionView({ section }: { section: Section }) {
   const { pick } = useI18n();
+  const quiz = getQuiz(section.id);
   return (
     <article className="stack">
       <div>
@@ -54,6 +65,7 @@ export function SectionView({ section }: { section: Section }) {
           <BlockView key={i} block={block} />
         ))}
       </div>
+      {quiz.length > 0 && <Quiz questions={quiz} />}
     </article>
   );
 }

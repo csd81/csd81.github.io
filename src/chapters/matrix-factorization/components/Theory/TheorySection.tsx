@@ -13,6 +13,8 @@ const KIND_LABEL: Record<BlockKind, { en: string; hu: string } | null> = {
   example: { en: "Example", hu: "Példa" },
   algorithm: { en: "Algorithm", hu: "Algoritmus" },
   remark: { en: "Remark", hu: "Megjegyzés" },
+  exercise: { en: "Exercise", hu: "Feladat" },
+  solution: { en: "Show solution", hu: "Megoldás" },
 };
 
 export function TheorySection({ section }: { section: Section }) {
@@ -39,22 +41,40 @@ function Block({ block }: { block: TheoryBlock }) {
   const label =
     block.label?.[lang] ?? (KIND_LABEL[block.kind] ? KIND_LABEL[block.kind]![lang] : undefined);
 
+  const body = (
+    <div className="block__body">
+      {block.body.map((frag, i) => {
+        if (frag.math) return <Math key={i} tex={frag.math} display />;
+        if (frag.rich)
+          return (
+            <p key={i}>
+              <RichText text={tb(frag.rich)} />
+            </p>
+          );
+        if (frag.text) return <p key={i}>{tb(frag.text)}</p>;
+        return null;
+      })}
+    </div>
+  );
+
+  // Proofs and worked solutions are collapsed by default and revealed on click.
+  if (block.kind === "proof" || block.kind === "solution") {
+    const cls =
+      block.kind === "solution"
+        ? "callout callout--solution proof-details solution-details"
+        : "callout callout--proof proof-details";
+    return (
+      <details className={cls}>
+        <summary className="callout__label">{label}</summary>
+        {body}
+      </details>
+    );
+  }
+
   return (
     <div className={isCallout ? `callout callout--${block.kind}` : "block"}>
       {label && <div className="callout__label">{label}</div>}
-      <div className="block__body">
-        {block.body.map((frag, i) => {
-          if (frag.math) return <Math key={i} tex={frag.math} display />;
-          if (frag.rich)
-            return (
-              <p key={i}>
-                <RichText text={tb(frag.rich)} />
-              </p>
-            );
-          if (frag.text) return <p key={i}>{tb(frag.text)}</p>;
-          return null;
-        })}
-      </div>
+      {body}
     </div>
   );
 }

@@ -470,3 +470,27 @@ td.cell-changed {
   gap: 16px;
   margin-top: 36px;
 }
+
+/* Single-page scrollytelling layout (appended) */
+.ch-linear-systems .ls-section {
+  scroll-margin-top: calc(var(--nav-h) + var(--scrolly-topbar-h, 44px) + 8px);
+  padding: 28px 0;
+  border-top: 1px solid var(--border);
+}
+.ch-linear-systems .hero { scroll-margin-top: calc(var(--nav-h) + var(--scrolly-topbar-h, 44px) + 8px); }
+
+/* ---------- Small-screen safety: let flex children shrink + long labels wrap ---------- */
+@media (max-width: 640px) {
+  .ch-linear-systems .card,
+  .ch-linear-systems .row,
+  .ch-linear-systems .row > *,
+  .ch-linear-systems .grid-2 > * {
+    min-width: 0;
+  }
+  .ch-linear-systems .label,
+  .ch-linear-systems .caption,
+  .ch-linear-systems .deck-item,
+  .ch-linear-systems .deck-card {
+    overflow-wrap: anywhere;
+  }
+}

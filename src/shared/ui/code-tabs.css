@@ -1,0 +1,69 @@
+/* Language-switchable code box (shared across all chapters). */
+.code-tabs {
+  margin: 18px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.code-tabs__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 4px 6px 4px 8px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+.code-tabs__langs {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+}
+.code-tabs__lang {
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.code-tabs__lang:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--brand-500) 12%, transparent);
+}
+.code-tabs__lang.is-active {
+  color: #fff;
+  background: var(--brand-600);
+}
+.code-tabs__copy {
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.code-tabs__copy:hover {
+  color: var(--text);
+}
+.code-tabs__body {
+  overflow-x: auto;
+}
+.code-tabs__body pre {
+  margin: 0 !important;
+}
+.code-tabs__caption {
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+}

@@ -1,26 +1,32 @@
 import { useEffect } from 'react';
-import { Route, Routes, Navigate, useLocation } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import i18n from './i18n';
 import { useLang } from '../../shared/providers/LanguageProvider';
-import NavBar from './components/NavBar';
-import Home from './pages/Home';
-import Lessons from './pages/Lessons';
 import LessonReader from './features/lessons/LessonReader';
 import Playground from './pages/Playground';
 import Quiz from './pages/Quiz';
+import lessons from './content/lessons/index.json';
+import { ScrollyTopBar, type SectionMeta } from '../../shared/scrolly';
 import './chapter.css';
 
+type Meta = { id: string; slug: string; title: { en: string; hu: string } };
+const LESSONS = lessons as Meta[];
+
+const SECTIONS: SectionMeta[] = [
+  ...LESSONS.map((l) => ({ id: l.slug, no: l.id === 'intro' ? '7' : l.id, title: l.title, blurb: { en: '', hu: '' } })),
+  { id: 'playground', no: '7·pg', title: { en: 'Playground', hu: 'Játéktér' }, blurb: { en: '', hu: '' } },
+  { id: 'quiz', no: '7·qz', title: { en: 'Quiz', hu: 'Kvíz' }, blurb: { en: '', hu: '' } },
+];
+
 /**
- * Chapter 7 — Numerical Calculus. Ported from 07 (client + server). The Express
- * API is gone: lesson markdown and quizzes are bundled and served by
- * ./lib/api.ts in-browser. Routing is mounted as descendant routes under
- * `/numerical-calculus/*`; the chapter's i18next instance is synced to the
- * shared language toggle, and theme comes from the shared provider.
+ * Chapter 7 — Numerical Calculus, as a single scrollytelling page: every lesson
+ * stacked, then the Playground and Quiz, with the shared top-bar (progress + §
+ * jump). The old NavBar + router are dropped; deep-link paths scroll to the
+ * section.
  */
 export default function Chapter() {
-  const location = useLocation();
+  const loc = useLocation();
   const { t } = useTranslation();
   const { lang } = useLang();
 
@@ -28,28 +34,36 @@ export default function Chapter() {
     void i18n.changeLanguage(lang);
   }, [lang]);
 
+  useEffect(() => {
+    let id = decodeURIComponent(loc.hash.replace(/^#/, ''));
+    if (!id) {
+      const m = loc.pathname.match(/\/lessons\/([^/]+)/);
+      if (m) id = m[1];
+      else {
+        const seg = loc.pathname.split('/').filter(Boolean).pop() ?? '';
+        if (['playground', 'quiz'].includes(seg)) id = seg;
+      }
+    }
+    if (id) requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView());
+  }, [loc.pathname, loc.hash]);
+
+  const ss = { scrollMarginTop: 'calc(var(--nav-h) + var(--scrolly-topbar-h, 44px) + 8px)' };
+
   return (
     <div className="flex min-h-screen flex-col">
-      <NavBar />
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2 }}
-          >
-            <Routes location={location}>
-              <Route index element={<Home />} />
-              <Route path="lessons" element={<Lessons />} />
-              <Route path="lessons/:slug" element={<LessonReader />} />
-              <Route path="playground" element={<Playground />} />
-              <Route path="quiz" element={<Quiz />} />
-              <Route path="*" element={<Navigate to="/numerical-calculus" replace />} />
-            </Routes>
-          </motion.div>
-        </AnimatePresence>
+      <ScrollyTopBar sections={SECTIONS} />
+      <main className="mx-auto w-full max-w-5xl flex-1 space-y-16 px-4 py-8">
+        {LESSONS.map((l) => (
+          <section key={l.slug} id={l.slug} style={ss}>
+            <LessonReader slug={l.slug} />
+          </section>
+        ))}
+        <section id="playground" style={ss}>
+          <Playground />
+        </section>
+        <section id="quiz" style={ss}>
+          <Quiz />
+        </section>
       </main>
       <footer className="border-t border-slate-200 py-6 text-center text-sm text-slate-400 dark:border-slate-800">
         {t('app.footer')}

@@ -4,6 +4,8 @@ import { Section } from '../components/Section'
 import { Slider } from '../components/Controls'
 import { Tex } from '../components/Math'
 import { useLang } from '../context/LangContext'
+import { MarkdownView } from '../../../shared/ui/MarkdownView'
+import { getTheory } from '../content/theory'
 import {
   quadNaive,
   quadStable,
@@ -17,8 +19,9 @@ import {
 type Tab = 'quad' | 'trig' | 'exp' | 'fact' | 'sum'
 
 export function FloatingConsequences() {
-  const { t } = useLang()
+  const { t, lang } = useLang()
   const [tab, setTab] = useState<Tab>('quad')
+  const theory = getTheory('fc', lang)
 
   const tabs: { id: Tab; key: Parameters<typeof t>[0] }[] = [
     { id: 'quad', key: 'fc.tab.quad' },
@@ -44,6 +47,12 @@ export function FloatingConsequences() {
         {tab === 'fact' && <FactTab />}
         {tab === 'sum' && <SumTab />}
       </motion.div>
+      {theory && (
+        <details className="section__theory" open>
+          <summary>{lang === 'hu' ? 'Teljes elmélet' : 'Full theory'}</summary>
+          <MarkdownView markdown={theory} />
+        </details>
+      )}
     </Section>
   )
 }

@@ -9,6 +9,14 @@ body {
   margin: 0;
   padding: 0;
 }
+/* Safety net: never let the whole page scroll sideways. Wide content (math,
+   tables, code, plots) is made to scroll inside its own box elsewhere; this
+   only clips incidental few-pixel overhang (e.g. a single oversized equation)
+   so phones don't get a horizontal jiggle. Applied to html (not body) so
+   position:sticky headers keep working. */
+html {
+  overflow-x: hidden;
+}
 
 body {
   font-family: var(--font-sans);
@@ -49,8 +57,8 @@ pre {
   height: var(--nav-h);
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 0 1.25rem;
+  gap: clamp(0.4rem, 2vw, 1rem);
+  padding: 0 clamp(0.6rem, 3vw, 1.25rem);
   background: color-mix(in srgb, var(--bg-elevated) 86%, transparent);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
@@ -60,12 +68,18 @@ pre {
   letter-spacing: -0.02em;
   color: var(--text);
   white-space: nowrap;
+  /* shrink + ellipsis instead of pushing the controls off-screen */
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .app-nav__brand:hover {
   text-decoration: none;
 }
 .app-nav__spacer {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
 }
 .app-nav__select {
   appearance: none;
@@ -76,6 +90,35 @@ pre {
   padding: 0.4rem 0.7rem;
   font: inherit;
   max-width: 46vw;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* ---------- Small screens (phones) ---------- */
+@media (max-width: 640px) {
+  .app-nav {
+    height: auto;
+    min-height: var(--nav-h);
+  }
+  .app-nav__brand {
+    font-size: 0.95rem;
+  }
+  .app-nav__select {
+    max-width: 40vw;
+    padding: 0.35rem 0.5rem;
+  }
+  .app-nav .btn--icon {
+    padding: 0.4rem 0.45rem;
+  }
+  .site-main {
+    padding: 1rem 0.75rem 3rem;
+  }
+}
+@media (max-width: 380px) {
+  /* below ~iPhone-mini width the brand text would crowd out the controls */
+  .app-nav__brand {
+    display: none;
+  }
 }
 
 .site-main {
@@ -281,6 +324,49 @@ pre {
   padding: 0.25rem 0;
 }
 
+/* ---------- Collapsible proof / solution boxes (markdown <details>) ---------- */
+.prose-lesson details.proof-details,
+.prose-lesson details.reveal-solution {
+  margin: 1rem 0;
+  padding: 0 1rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--brand-500);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.prose-lesson details.reveal-solution {
+  border-left-color: var(--ok, #16a34a);
+}
+.prose-lesson details.proof-details > summary,
+.prose-lesson details.reveal-solution > summary {
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  font-weight: 700;
+  padding: 0.6rem 0;
+  color: var(--brand-700);
+}
+.prose-lesson details.reveal-solution > summary {
+  color: var(--ok, #15803d);
+}
+.prose-lesson details.proof-details > summary::-webkit-details-marker,
+.prose-lesson details.reveal-solution > summary::-webkit-details-marker {
+  display: none;
+}
+.prose-lesson details.proof-details > summary::before,
+.prose-lesson details.reveal-solution > summary::before {
+  content: '▸ ';
+  opacity: 0.65;
+}
+.prose-lesson details[open].proof-details > summary::before,
+.prose-lesson details[open].reveal-solution > summary::before {
+  content: '▾ ';
+}
+.prose-lesson details.proof-details > *:last-child,
+.prose-lesson details.reveal-solution > *:last-child {
+  margin-bottom: 0.85rem;
+}
+
 /* ---------- Rust/WASM sandbox embed ---------- */
 .rust-embed {
   margin-top: 3rem;
@@ -321,4 +407,81 @@ pre {
 }
 .center {
   text-align: center;
+}
+
+/* ---------- Global responsive containment ----------
+   Unscoped safety net so every chapter behaves on small screens regardless of
+   its own wrapper classes: display math scrolls inside its own box (instead of
+   forcing page width), and embedded media never exceeds the viewport. */
+/* Scoped under .site-main so these win over per-chapter `.katex{…}` rules,
+   which are lazy-loaded after this file and would otherwise override at equal
+   specificity. */
+.site-main .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+}
+.site-main .katex-display > .katex {
+  max-width: none;
+}
+.site-main :is(img, video, iframe, canvas) {
+  max-width: 100%;
+}
+/* Code / pseudocode blocks scroll inside their box (a long line otherwise sets
+   a wide min-content on the whole content column). */
+.site-main pre {
+  overflow-x: auto;
+  max-width: 100%;
+}
+/* Plot SVGs scale to fit and clip to their frame (diverging curves draw paths
+   far outside the viewBox, which otherwise forces page-wide horizontal scroll).
+   KaTeX's internal SVGs (stretchy braces, sqrt) keep their intrinsic size. */
+.site-main svg:not(.katex svg) {
+  max-width: 100%;
+  height: auto;
+  overflow: hidden;
+}
+/* On phones, also let wide INLINE math scroll inside its own box instead of
+   widening the page (a long inline matrix/expression otherwise overflows).
+   Scoped to small screens so inline-math baseline alignment is untouched on
+   desktop. */
+@media (max-width: 640px) {
+  .site-main .katex {
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .site-main .katex-display > .katex {
+    max-width: none;
+    overflow: visible;
+  }
+  /* Wide widget/data tables scroll inside their own box instead of forcing the
+     page wider (a multi-column results table otherwise sets a huge min-content). */
+  .site-main table {
+    display: block;
+    overflow-x: auto;
+    max-width: 100%;
+  }
+  /* Form controls never exceed the column. */
+  .site-main :is(select, input, textarea) {
+    max-width: 100%;
+  }
+}
+
+/* ---------- Unified app-nav: in-page section nav + scroll progress ----------
+   (.app-nav is position:sticky, which already establishes the containing block
+   for the absolutely-positioned progress bar — do NOT override to relative.) */
+.app-nav__progress {
+  position: absolute;
+  left: 0;
+  bottom: -1px;            /* sit on the nav's border line */
+  height: 3px;
+  background: var(--brand-500);
+  transition: width 0.1s linear;
+  pointer-events: none;
+}
+.app-nav .scrolly-topbar__active {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 32ch;
 }

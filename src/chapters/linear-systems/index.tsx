@@ -1,28 +1,103 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { Layout } from './components/layout/Layout';
-import { HomePage } from './pages/HomePage';
-import { LessonsPage, LessonPage } from './pages/LessonsPage';
-import { LabPage } from './pages/LabPage';
-import { QuizPage } from './pages/QuizPage';
+import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import { useI18n } from './app/LanguageContext';
+import { sections } from './content/sections';
+import { SectionView } from './components/notes/SectionView';
+import { SectionExercises } from './components/notes/SectionExercises';
+import { CodeTabs } from '../../shared/ui/CodeTabs';
+import { getSectionCode } from './content/code';
+import { EliminationLab } from './components/visualizer/EliminationLab';
+import { QuizRunner } from './components/quiz/QuizRunner';
+import { ScrollyTopBar, type SectionMeta } from '../../shared/scrolly';
 import './styles/global.css';
 
+const SECTIONS: SectionMeta[] = [
+  ...sections.map((s) => ({ id: s.id, no: s.number, title: s.title, blurb: s.summary })),
+  {
+    id: 'lab',
+    no: '3·lab',
+    title: { en: 'Elimination Lab', hu: 'Eliminációs labor' },
+    blurb: {
+      en: 'Step through Gaussian / Gauss–Jordan elimination interactively.',
+      hu: 'Lépkedj végig a Gauss- / Gauss–Jordan-eliminációi lépéseken.',
+    },
+  },
+  {
+    id: 'quiz',
+    no: '3·quiz',
+    title: { en: 'Quiz', hu: 'Kvíz' },
+    blurb: { en: 'Check your understanding.', hu: 'Ellenőrizd a tudásod.' },
+  },
+];
+
 /**
- * Chapter 3 — Linear Systems. Ported from 03/linear-systems-app. Its internal
- * router is mounted as descendant routes under `/linear-systems/*`; the chapter
- * keeps its own Header sub-nav (Home/Lessons/Lab/Quiz). Links were rewritten to
- * the chapter base so they resolve under the unified router.
+ * Chapter 3 — Linear Systems, as a single scrollytelling page: all lesson
+ * sections stacked, then the interactive Elimination Lab and the Quiz, with the
+ * shared top-bar (progress + § jump). The old router (Home/Lessons/:id/Lab/Quiz)
+ * is dropped; old deep-link paths/hashes are scrolled to on load.
  */
 export default function Chapter() {
+  const { t, lang } = useI18n();
+  const loc = useLocation();
+
+  useEffect(() => {
+    let id = decodeURIComponent(loc.hash.replace(/^#/, ''));
+    if (!id) {
+      const m = loc.pathname.match(/\/lessons\/([^/]+)/);
+      if (m) id = m[1];
+      else if (/\/lab$/.test(loc.pathname)) id = 'lab';
+      else if (/\/quiz$/.test(loc.pathname)) id = 'quiz';
+    }
+    if (id) requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView());
+  }, [loc.pathname, loc.hash]);
+
   return (
-    <Layout>
-      <Routes>
-        <Route index element={<HomePage />} />
-        <Route path="lessons" element={<LessonsPage />} />
-        <Route path="lessons/:id" element={<LessonPage />} />
-        <Route path="lab" element={<LabPage />} />
-        <Route path="quiz" element={<QuizPage />} />
-        <Route path="*" element={<Navigate to="/linear-systems" replace />} />
-      </Routes>
-    </Layout>
+    <div className="app-shell ch-linear-systems">
+      <ScrollyTopBar sections={SECTIONS} />
+      <main>
+        <div className="container">
+          <section className="hero" id="top">
+            <span className="section-eyebrow">{t('app.subtitle')}</span>
+            <h1>{t('app.title')}</h1>
+            <p>{t('home.tagline')}</p>
+            <p style={{ marginTop: 4 }}>{t('home.lead')}</p>
+          </section>
+
+          {sections.map((s) => (
+            <section key={s.id} id={s.id} className="ls-section">
+              <SectionView section={s} />
+              {getSectionCode(s.id).map((c) => (
+                <CodeTabs key={c.id} snippets={c.snippets} caption={c.caption} />
+              ))}
+              <SectionExercises sectionNumber={s.number} />
+            </section>
+          ))}
+
+          <section id="lab" className="ls-section stack">
+            <div>
+              <span className="section-eyebrow">{t('nav.lab')}</span>
+              <h1 style={{ margin: '4px 0 2px' }}>{t('nav.lab')}</h1>
+            </div>
+            <EliminationLab initial={{}} />
+          </section>
+
+          <section id="quiz" className="ls-section stack">
+            <div>
+              <span className="section-eyebrow">{t('nav.quiz')}</span>
+              <h1 style={{ margin: '4px 0 2px' }}>{t('quiz.title')}</h1>
+            </div>
+            <QuizRunner />
+          </section>
+        </div>
+      </main>
+
+      <footer className="footer">
+        <div className="container">
+          {lang === 'hu'
+            ? 'Numerikus analízis · 3. fejezet — interaktív tananyag.'
+            : 'Numerical Analysis · Chapter 3 — interactive companion.'}
+        </div>
+      </footer>
+    </div>
   );
 }

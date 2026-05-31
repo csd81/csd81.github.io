@@ -1,27 +1,39 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useLang } from '../../shared/providers/LanguageProvider';
 import { useTheme } from '../../shared/providers/ThemeProvider';
-import { setLang as setVanillaLang, onLangChange } from './state/i18n.js';
-import { setTheme as setVanillaTheme, onThemeChange } from './state/theme.js';
-import { renderSidebar, onProgressChange } from './ui/nav.js';
-import { renderContent } from './ui/render.js';
+import { setLang as setVanillaLang } from './state/i18n.js';
+import { setTheme as setVanillaTheme } from './state/theme.js';
+import { sections } from './content/sections.js';
+import { SectionView } from './components/SectionView';
+import { ScrollyTopBar, type SectionMeta } from '../../shared/scrolly';
 import './styles/themes.css';
 import './styles/main.css';
 
+type Section = { id: string; title: { en: string; hu: string }; blocks: unknown[] };
+const SECS = sections as Section[];
+
+const NO: Record<string, string> = { intro: '9', line: '9.1', polynomial: '9.2', nonlinear: '9.3' };
+const SECTIONS: SectionMeta[] = SECS.map((s) => ({
+  id: `sec-${s.id}`,
+  no: NO[s.id] ?? '9',
+  title: s.title,
+  blurb: { en: '', hu: '' },
+}));
+
 /**
- * Chapter 9 — Least Squares. The original 09 app is vanilla JS that renders into
- * DOM nodes. Rather than rewrite every Plotly demo, we mount its existing
- * `renderSidebar`/`renderContent` into React-owned containers and bridge the
- * shared language/theme into the chapter's own state modules (its header — with
- * duplicate lang/theme toggles — is dropped for the unified shell nav).
+ * Chapter 9 — Least Squares. Fully React now: sections render via <SectionView>
+ * (React port of the old vanilla render.js); the Plotly demos are mounted
+ * imperatively inside <DemoMount>. The shared vanilla i18n/theme stores are kept
+ * in sync only so the (imperative) demos redraw on toggle. Top-bar (progress + §
+ * jump) over a single full-width scrolling page.
  */
 export default function Chapter() {
   const { lang } = useLang();
   const { theme } = useTheme();
-  const sidebarRef = useRef<HTMLElement>(null);
-  const contentRef = useRef<HTMLElement>(null);
+  const loc = useLocation();
 
-  // Keep the chapter's own stores in sync with the shared providers.
+  // Keep the demos' own lang/theme in sync with the shared toggles.
   useEffect(() => {
     setVanillaLang(lang);
   }, [lang]);
@@ -30,41 +42,18 @@ export default function Chapter() {
   }, [theme]);
 
   useEffect(() => {
-    const sidebarEl = sidebarRef.current;
-    const contentEl = contentRef.current;
-    if (!sidebarEl || !contentEl) return;
-
-    const navigateTo = (id: string) => {
-      const target = document.getElementById(`sec-${id}`);
-      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    };
-
-    let teardown: () => void = () => {};
-    const renderAll = () => {
-      renderSidebar(sidebarEl, navigateTo);
-      teardown();
-      teardown = renderContent(contentEl) || (() => {});
-    };
-    renderAll();
-
-    const offLang = onLangChange(renderAll);
-    const offProgress = onProgressChange(() => renderSidebar(sidebarEl, navigateTo));
-    const offTheme = onThemeChange(() => renderSidebar(sidebarEl, navigateTo));
-
-    return () => {
-      offLang();
-      offProgress();
-      offTheme();
-      teardown();
-    };
-  }, []);
+    const id = decodeURIComponent(loc.hash.replace(/^#/, ''));
+    if (id) requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView());
+  }, [loc.hash]);
 
   return (
     <div className="ch-least-squares">
-      <div className="layout">
-        <aside ref={sidebarRef} id="sidebar"></aside>
-        <main ref={contentRef} id="content" className="content"></main>
-      </div>
+      <ScrollyTopBar sections={SECTIONS} />
+      <main className="content content--full">
+        {SECS.map((s) => (
+          <SectionView key={s.id} section={s} />
+        ))}
+      </main>
     </div>
   );
 }

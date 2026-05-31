@@ -4,6 +4,7 @@ import { useLang } from "../contexts/LanguageContext.jsx";
 import { useT } from "../i18n/strings.js";
 import { useContent } from "../lib/useContent.js";
 import MarkdownView from "../components/MarkdownView.jsx";
+import { GlossaryDeck, FlashcardDeck } from "../components/Decks.jsx";
 import FieldDemo from "../components/FieldDemo.jsx";
 import CompareDemo from "../components/CompareDemo.jsx";
 import ConvergenceDemo from "../components/ConvergenceDemo.jsx";
@@ -15,8 +16,10 @@ const DEMO_COMPONENTS = {
   convergence: ConvergenceDemo,
 };
 
-export default function Theory() {
-  const { sectionId } = useParams();
+export default function Theory({ sectionId: sidProp } = {}) {
+  const params = useParams();
+  const sectionId = sidProp ?? params.sectionId;
+  const embedded = sidProp != null;
   const { lang } = useLang();
   const t = useT(lang);
   const [docType, setDocType] = useState("textbook");
@@ -32,25 +35,34 @@ export default function Theory() {
 
   return (
     <div>
-      <div className="controls" style={{ justifyContent: "flex-end" }}>
-        <div className="field">
-          <label>{t.docType}</label>
-          <div className="toggle-group">
-            <button className={`btn ${docType === "textbook" ? "active" : ""}`} onClick={() => setDocType("textbook")}>
-              {t.textbook}
-            </button>
-            <button className={`btn ${docType === "slides" ? "active" : ""}`} onClick={() => setDocType("slides")}>
-              {t.slides}
-            </button>
+      {!embedded && (
+        <div className="controls" style={{ justifyContent: "flex-end" }}>
+          <div className="field">
+            <label>{t.docType}</label>
+            <div className="toggle-group">
+              <button className={`btn ${docType === "textbook" ? "active" : ""}`} onClick={() => setDocType("textbook")}>
+                {t.textbook}
+              </button>
+              <button className={`btn ${docType === "slides" ? "active" : ""}`} onClick={() => setDocType("slides")}>
+                {t.slides}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {error && <div className="err-banner">⚠ {error}</div>}
       {!doc && !error && <div className="loading">…</div>}
       {section && <MarkdownView markdown={section.markdown} />}
 
       {DemoComp && <DemoComp presetId="main" />}
+
+      {meta && (
+        <>
+          <GlossaryDeck deck={meta.id} />
+          <FlashcardDeck deck={meta.id} />
+        </>
+      )}
     </div>
   );
 }

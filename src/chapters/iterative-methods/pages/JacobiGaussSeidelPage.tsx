@@ -3,8 +3,13 @@ import { useStrings } from '../i18n/useStrings';
 import { useLanguage } from '../context/LanguageContext';
 import { getTheory } from '../content';
 import { getQuiz } from '../quizzes';
+import { getQuiz as getBankQuiz } from '../content/quiz';
 import { Theory } from '../components/Theory';
 import { Quiz } from '../components/Quiz';
+import { Quiz as BankQuiz } from '../../../shared/ui/Quiz';
+import { GlossaryDeck, FlashcardDeck } from '../components/Decks';
+import { CodeTabs } from '../../../shared/ui/CodeTabs';
+import { getSectionCode } from '../content/code';
 import { MatrixInput } from '../components/MatrixInput';
 import { VectorInput } from '../components/VectorInput';
 import { MatrixView } from '../components/MatrixView';
@@ -144,6 +149,10 @@ export function JacobiGaussSeidelPage() {
       <PageHeader title={t.modules['jacobi-gs'].title} lead={t.modules['jacobi-gs'].blurb} />
 
       <Theory markdown={getTheory('jacobi-gs', lang)} title={t.common.theory} />
+
+      {getSectionCode('jacobi-gs').map((c) => (
+        <CodeTabs key={c.id} snippets={c.snippets} caption={c.caption} />
+      ))}
 
       {/* Inputs */}
       <Panel>
@@ -311,7 +320,11 @@ export function JacobiGaussSeidelPage() {
         </p>
       </Panel>
 
+      <GlossaryDeck moduleId="jacobi-gs" title={lang === 'hu' ? 'Fogalomtár' : 'Glossary'} />
+      <FlashcardDeck moduleId="jacobi-gs" title={lang === 'hu' ? 'Tanulókártyák' : 'Flashcards'} />
+
       <Quiz moduleId="jacobi-gs" questions={getQuiz('jacobi-gs', lang)} />
+      <BankQuiz questions={getBankQuiz('jacobi-gs')} />
     </div>
   );
 }

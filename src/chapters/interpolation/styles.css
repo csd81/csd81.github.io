@@ -509,3 +509,43 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---- Full textbook theory (imported markdown) ---- */
+.ch-interpolation .lesson__theory {
+  margin: 18px 0;
+  border: 1px solid var(--border, rgba(127,127,127,.25));
+  border-radius: 12px;
+  background: var(--panel, rgba(127,127,127,.05));
+}
+.ch-interpolation .lesson__theory > summary {
+  cursor: pointer;
+  padding: 12px 16px;
+  font-weight: 700;
+  list-style: none;
+  user-select: none;
+}
+.ch-interpolation .lesson__theory > summary::-webkit-details-marker { display: none; }
+.ch-interpolation .lesson__theory > summary::before { content: "▾ "; opacity: .6; }
+.ch-interpolation .lesson__theory:not([open]) > summary::before { content: "▸ "; }
+.ch-interpolation .lesson__theory .prose-lesson {
+  padding: 0 16px 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.ch-interpolation .lesson__theory .prose-lesson :is(h2, h3) { font-size: 1.1rem; margin: 16px 0 8px; }
+.ch-interpolation .lesson__theory .prose-lesson p { margin: 10px 0; }
+.ch-interpolation .lesson__theory .prose-lesson .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 0;
+}
+.ch-interpolation .lesson__theory .prose-lesson table {
+  border-collapse: collapse;
+  margin: 12px 0;
+  display: block;
+  overflow-x: auto;
+}
+.ch-interpolation .lesson__theory .prose-lesson :is(th, td) {
+  border: 1px solid var(--border, rgba(127,127,127,.3));
+  padding: 4px 10px;
+}

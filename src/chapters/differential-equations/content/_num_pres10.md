@@ -1,7 +1,5 @@
 # Numerical Analysis: 10 — Ordinary Differential Equations
 
-**Ferenc Hartung**
-University of Pannonia
 Department of Mathematics
 Veszprém, Hungary
 

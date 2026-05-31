@@ -3,7 +3,8 @@
 
 * { box-sizing: border-box; }
 
-html, body, #root { height: 100%; }
+/* (removed global `html, body, #root { height: 100% }` — standalone-app leftover
+   that broke the unified app-nav's position:sticky for this chapter.) */
 
 body {
   margin: 0;

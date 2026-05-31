@@ -1,9 +1,6 @@
 
-html,
-body,
-#root {
-  height: 100%;
-}
+/* NB: do NOT set `html, body, #root { height: 100% }` here — it turns #root
+   into a fixed-height scroller and breaks the global sticky .app-nav. */
 
 body {
   @apply bg-slate-50 text-ink antialiased transition-colors;

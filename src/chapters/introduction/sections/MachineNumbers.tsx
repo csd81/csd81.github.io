@@ -1,96 +1,117 @@
 import { useMemo, useState } from 'react'
 import { motion } from 'motion/react'
-import { Section } from '../components/Section'
 import { Segmented, Slider } from '../components/Controls'
 import { Tex } from '../components/Math'
 import { useLang } from '../context/LangContext'
 import { flSingle, type FlMode, EPS_SINGLE, EPS_DOUBLE } from '../lib/arithmetic'
+import { ScrollySection, useKick } from './scrolly'
+import type { ScrollyStep } from '../../../shared/scrolly'
+import { Quiz } from '../../../shared/ui/Quiz'
+import { getQuiz } from '../content/quiz'
 
 // 4-bit non-negative machine numbers from the chapter (Fig 1.2)
 const FOURBIT = [0, 5 / 8, 6 / 8, 7 / 8, 8 / 8, 10 / 8, 12 / 8, 14 / 8]
 
 export function MachineNumbers() {
   const { t } = useLang()
+  const k = useKick()
   const [mode, setMode] = useState<FlMode>('round')
   const [x, setX] = useState(12.4)
 
   const fl = useMemo(() => flSingle(x, mode), [x, mode])
 
-  return (
-    <Section id="mach" tag={t('mach.tag')} title={t('mach.title')} lead={t('mach.lead')}>
-      <div className="split">
-        <div className="prose">
-          <p>{t('mach.p1')}</p>
-          <Tex block>{`12.4 = (1.1000110011\\ldots)_2 \\cdot 2^3`}</Tex>
-
-          <div className="panel" style={{ marginTop: 8 }}>
-            <h3>{t('mach.epsTitle')}</h3>
-            <p style={{ fontSize: '0.92rem', color: 'var(--text-soft)' }}>{t('mach.epsExplain')}</p>
-            <div className="readout">
-              <div>
-                <span className="k">{t('mach.epsSingle')}: </span>
-                <span className="v">ε = 2⁻²³ ≈ {EPS_SINGLE.toExponential(4)}</span>
-              </div>
-              <div>
-                <span className="k">{t('mach.epsDouble')}: </span>
-                <span className="v">ε = 2⁻⁵² ≈ {EPS_DOUBLE.toExponential(4)}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="callout" style={{ marginTop: 12 }}>
-            <strong>{t('mach.thmTitle')}</strong>
-            <Tex block>{`\\frac{|\\mathrm{fl}(x) - x|}{|x|} \\le u, \\qquad u = \\tfrac12 b^{1-t}\\ \\text{(rounding)}`}</Tex>
-            <p style={{ margin: '6px 0 0', fontSize: '0.9rem' }}>{t('mach.thmBody')}</p>
-          </div>
-        </div>
-
+  const steps: ScrollyStep[] = [
+    { kicker: k('idea'), body: <p>{t('mach.p1')}</p> },
+    { kicker: k('formula'), body: <Tex block>{`12.4 = (1.1000110011\\ldots)_2 \\cdot 2^3`}</Tex> },
+    {
+      kicker: k('explore'),
+      body: (
         <div className="panel">
-          <Segmented
-            label={t('mach.mode')}
-            value={mode}
-            options={[
-              { value: 'round', label: t('mach.round') },
-              { value: 'chop', label: t('mach.chop') },
-            ]}
-            onChange={setMode}
-          />
-          <Slider
-            label={t('mach.input')}
-            value={x}
-            min={0.1}
-            max={100}
-            step={0.1}
-            onChange={(v) => setX(Number(v.toFixed(2)))}
-            format={(v) => v.toFixed(2)}
-          />
+          <h3>{t('mach.epsTitle')}</h3>
+          <p style={{ fontSize: '0.92rem', color: 'var(--text-soft)' }}>{t('mach.epsExplain')}</p>
           <div className="readout">
             <div>
-              <span className="k">{t('mach.binary')}: </span>
-              <span className="v">{fl.binaryNormal}…₂ · 2^{fl.exponent}</span>
+              <span className="k">{t('mach.epsSingle')}: </span>
+              <span className="v">ε = 2⁻²³ ≈ {EPS_SINGLE.toExponential(4)}</span>
             </div>
             <div>
-              <span className="k">{t('mach.stored')}: </span>
-              <span className="v">{fl.mantissaBits}</span>
-            </div>
-            <div>
-              <span className="k">{t('mach.fl')}: </span>
-              <motion.span key={fl.value} className="v" initial={{ color: 'var(--accent)' }} animate={{ color: 'var(--text)' }}>
-                {fl.value.toPrecision(12)}
-              </motion.span>
-            </div>
-            <div>
-              <span className="k">{t('mach.absErr')}: </span>
-              <span className="v warn">{fl.absError === 0 ? '0 (exact)' : fl.absError.toExponential(4)}</span>
+              <span className="k">{t('mach.epsDouble')}: </span>
+              <span className="v">ε = 2⁻⁵² ≈ {EPS_DOUBLE.toExponential(4)}</span>
             </div>
           </div>
+        </div>
+      ),
+    },
+    {
+      kicker: k('insight'),
+      body: (
+        <div className="callout">
+          <strong>{t('mach.thmTitle')}</strong>
+          <Tex block>{`\\frac{|\\mathrm{fl}(x) - x|}{|x|} \\le u, \\qquad u = \\tfrac12 b^{1-t}\\ \\text{(rounding)}`}</Tex>
+          <p style={{ margin: '6px 0 0', fontSize: '0.9rem' }}>{t('mach.thmBody')}</p>
+        </div>
+      ),
+    },
+  ]
 
-          <h3 style={{ marginTop: 22 }}>{t('mach.numlineTitle')}</h3>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-soft)', marginTop: 0 }}>{t('mach.numlineExplain')}</p>
-          <NumberLine values={FOURBIT} />
+  const graphic = () => (
+    <div className="panel">
+      <Segmented
+        label={t('mach.mode')}
+        value={mode}
+        options={[
+          { value: 'round', label: t('mach.round') },
+          { value: 'chop', label: t('mach.chop') },
+        ]}
+        onChange={setMode}
+      />
+      <Slider
+        label={t('mach.input')}
+        value={x}
+        min={0.1}
+        max={100}
+        step={0.1}
+        onChange={(v) => setX(Number(v.toFixed(2)))}
+        format={(v) => v.toFixed(2)}
+      />
+      <div className="readout">
+        <div>
+          <span className="k">{t('mach.binary')}: </span>
+          <span className="v">{fl.binaryNormal}…₂ · 2^{fl.exponent}</span>
+        </div>
+        <div>
+          <span className="k">{t('mach.stored')}: </span>
+          <span className="v">{fl.mantissaBits}</span>
+        </div>
+        <div>
+          <span className="k">{t('mach.fl')}: </span>
+          <motion.span key={fl.value} className="v" initial={{ color: 'var(--accent)' }} animate={{ color: 'var(--text)' }}>
+            {fl.value.toPrecision(12)}
+          </motion.span>
+        </div>
+        <div>
+          <span className="k">{t('mach.absErr')}: </span>
+          <span className="v warn">{fl.absError === 0 ? '0 (exact)' : fl.absError.toExponential(4)}</span>
         </div>
       </div>
-    </Section>
+
+      <h3 style={{ marginTop: 22 }}>{t('mach.numlineTitle')}</h3>
+      <p style={{ fontSize: '0.85rem', color: 'var(--text-soft)', marginTop: 0 }}>{t('mach.numlineExplain')}</p>
+      <NumberLine values={FOURBIT} />
+    </div>
+  )
+
+  return (
+    <ScrollySection
+      id="mach"
+      tag={t('mach.tag')}
+      title={t('mach.title')}
+      lead={t('mach.lead')}
+      steps={steps}
+      graphic={graphic}
+    >
+      <Quiz questions={getQuiz('mach')} />
+    </ScrollySection>
   )
 }
 

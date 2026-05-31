@@ -1,57 +1,25 @@
-import { Link, Navigate, NavLink, Route, Routes, useParams } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useLang } from '../../shared/providers/LanguageProvider';
 import { MarkdownView } from '../../shared/ui/MarkdownView';
-import { sections, type Section, type Block } from './content/sections';
+import { sections, type Block } from './content/sections';
 import { WIDGETS } from './components/widgets';
 import { TheoremBox } from './components/TheoremBox';
 import { Exercise, Problem, Solution } from './components/Exercise';
+import { InlineTeX } from './components/InlineTeX';
+import { CodeTabs } from '../../shared/ui/CodeTabs';
+import { getSectionCode } from './content/code';
+import { Quiz } from '../../shared/ui/Quiz';
+import { getQuiz } from './content/quiz';
+import { ScrollyTopBar, type SectionMeta } from '../../shared/scrolly';
 import './chapter.css';
 
-function Sidebar() {
-  const { lang } = useLang();
-  return (
-    <nav className="ne-sidebar">
-      {sections.map((s) => (
-        <NavLink
-          key={s.slug}
-          to={`/nonlinear-equations/chapter/${s.slug}`}
-          className={({ isActive }) => `ne-sidelink${isActive ? ' is-active' : ''}`}
-        >
-          <span className="ne-sidelink__no">§{s.section}</span>
-          {s.title[lang]}
-        </NavLink>
-      ))}
-    </nav>
-  );
-}
-
-function Contents() {
-  const { lang } = useLang();
-  return (
-    <div className="ne-contents">
-      <p className="ne-kicker">{lang === 'hu' ? 'Numerikus analízis' : 'Numerical Analysis'}</p>
-      <h1>
-        {lang === 'hu'
-          ? '2. fejezet — Nemlineáris egyenletek és rendszerek'
-          : 'Chapter 2 — Nonlinear Equations & Systems'}
-      </h1>
-      <p className="muted">
-        {lang === 'hu'
-          ? 'Olvasd el a tételt és a kidolgozott példát, majd játssz ugyanazzal az iterációval egy élő widgetben — minden alfejezethez tartozik interaktív eszköz.'
-          : 'Read the theorem and worked example, then play with the same iteration in a live widget — every subsection has its own interactive tool.'}
-      </p>
-      <div className="ne-grid">
-        {sections.map((s) => (
-          <Link key={s.slug} to={`/nonlinear-equations/chapter/${s.slug}`} className="ne-card">
-            <div className="ne-card__no">§{s.section}</div>
-            <div className="ne-card__title">{s.title[lang]}</div>
-            <p className="ne-card__sum">{s.summary[lang]}</p>
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
-}
+const SECTIONS: SectionMeta[] = sections.map((s) => ({
+  id: s.slug,
+  no: s.section,
+  title: s.title,
+  blurb: s.summary,
+}));
 
 function BlockView({ block }: { block: Block }) {
   const { lang } = useLang();
@@ -82,53 +50,60 @@ function BlockView({ block }: { block: Block }) {
   }
 }
 
-function SectionPage() {
-  const { lang } = useLang();
-  const { slug } = useParams();
-  const idx = sections.findIndex((s) => s.slug === slug);
-  if (idx === -1) return <Navigate to="/nonlinear-equations" replace />;
-  const s: Section = sections[idx];
-  const prev = sections[idx - 1];
-  const next = sections[idx + 1];
-  return (
-    <article className="ne-article">
-      <p className="ne-kicker">§{s.section}</p>
-      <h1>{s.title[lang]}</h1>
-      {s.blocks.map((b, i) => (
-        <BlockView key={i} block={b} />
-      ))}
-      <div className="ne-pager">
-        {prev ? (
-          <Link to={`/nonlinear-equations/chapter/${prev.slug}`}>← {prev.title[lang]}</Link>
-        ) : (
-          <span />
-        )}
-        {next ? (
-          <Link to={`/nonlinear-equations/chapter/${next.slug}`}>{next.title[lang]} →</Link>
-        ) : (
-          <span />
-        )}
-      </div>
-    </article>
-  );
-}
-
 /**
- * Chapter 2 — Nonlinear Equations. Bilingual (HU/EN) structured content from
- * content/sections.ts, rendered through the shared MarkdownView with KaTeX; each
- * section embeds a bespoke interactive widget. Routes are descendant routes
- * under `/nonlinear-equations/*`.
+ * Chapter 2 — Nonlinear Equations, as a single scrollytelling page: all 13
+ * sections stacked (each: header + blocks/widgets), with the shared top-bar
+ * (progress + § jump). The old sidebar + router are dropped; old deep-link
+ * paths (/chapter/<slug>) scroll to the section.
  */
 export default function Chapter() {
+  const { lang } = useLang();
+  const loc = useLocation();
+
+  useEffect(() => {
+    let id = decodeURIComponent(loc.hash.replace(/^#/, ''));
+    if (!id) {
+      const m = loc.pathname.match(/\/chapter\/([^/]+)/);
+      if (m) id = m[1];
+    }
+    if (id) requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView());
+  }, [loc.pathname, loc.hash]);
+
+  const ss = { scrollMarginTop: 'calc(var(--nav-h) + var(--scrolly-topbar-h, 44px) + 8px)' };
+
   return (
-    <div className="ne-layout">
-      <Sidebar />
+    <div className="ch-nonlinear">
+      <ScrollyTopBar sections={SECTIONS} />
       <div className="ne-main">
-        <Routes>
-          <Route index element={<Contents />} />
-          <Route path="chapter/:slug" element={<SectionPage />} />
-          <Route path="*" element={<Navigate to="/nonlinear-equations" replace />} />
-        </Routes>
+        <header className="ne-contents" style={ss} id="top">
+          <p className="ne-kicker">{lang === 'hu' ? 'Numerikus analízis' : 'Numerical Analysis'}</p>
+          <h1>
+            {lang === 'hu'
+              ? '2. fejezet — Nemlineáris egyenletek és rendszerek'
+              : 'Chapter 2 — Nonlinear Equations & Systems'}
+          </h1>
+          <p className="muted">
+            {lang === 'hu'
+              ? 'Olvasd el a tételt és a kidolgozott példát, majd játssz ugyanazzal az iterációval egy élő widgetben — minden alfejezethez tartozik interaktív eszköz.'
+              : 'Read the theorem and worked example, then play with the same iteration in a live widget — every subsection has its own interactive tool.'}
+          </p>
+        </header>
+
+        {sections.map((s) => (
+          <article key={s.slug} id={s.slug} className="ne-article" style={ss}>
+            <p className="ne-kicker">§{s.section}</p>
+            <h1>
+              <InlineTeX text={s.title[lang]} />
+            </h1>
+            {s.blocks.map((b, i) => (
+              <BlockView key={i} block={b} />
+            ))}
+            {getSectionCode(s.slug).map((c) => (
+              <CodeTabs key={c.id} snippets={c.snippets} caption={c.caption} />
+            ))}
+            {getQuiz(s.slug).length > 0 && <Quiz questions={getQuiz(s.slug)} />}
+          </article>
+        ))}
       </div>
     </div>
   );

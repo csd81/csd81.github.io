@@ -1,0 +1,24 @@
+.solutions-block {
+  max-width: var(--maxw);
+  margin: 2.5rem auto 1rem;
+  padding: 0 clamp(16px, 4vw, 40px);
+  border-top: 2px dashed var(--border-strong);
+}
+.solutions-block > summary {
+  cursor: pointer;
+  padding: 14px 0 4px;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--brand-700);
+  list-style: none;
+  user-select: none;
+}
+.solutions-block > summary::-webkit-details-marker { display: none; }
+.solutions-block > summary::before { content: '▸ '; opacity: 0.6; }
+.solutions-block[open] > summary::before { content: '▾ '; }
+.solutions-block__body {
+  padding-top: 0.5rem;
+}
+.solutions-block__body .prose-lesson {
+  overflow-wrap: anywhere;
+}

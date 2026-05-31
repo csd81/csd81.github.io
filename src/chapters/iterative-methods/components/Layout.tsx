@@ -71,8 +71,8 @@ export function Layout() {
 
       <footer className="border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
         <div className="mx-auto max-w-6xl px-4 py-4 text-xs text-slate-500 dark:text-slate-400">
-          Based on F. Hartung, <em>Numerical Analysis</em> — Chapter 4: Iterative Techniques for
-          Solving Linear Systems. Built for interactive, in-browser exploration.
+          <em>Numerical Analysis</em> — Chapter 4: Iterative Techniques for Solving Linear Systems.
+          Built for interactive, in-browser exploration.
         </div>
       </footer>
     </div>

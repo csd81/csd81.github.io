@@ -31,11 +31,16 @@ function pagesSpaFallback(): Plugin {
 export default defineConfig({
   base: '/',
   plugins: [
-    // MDX must run before the React plugin (Chapter 2's content is .mdx with
-    // KaTeX math and React widgets provided via MDXProvider).
+    // MDX runs before the React plugin. IMPORTANT: `mdExtensions: []` so it only
+    // claims `.mdx` and NEVER `.md`. Every chapter imports `.md` via `?raw`
+    // (lesson/theory text); if `@mdx-js/rollup` is allowed to handle `.md` it
+    // corrupts those raw imports — they come back as compiled `export default
+    // "..."` modules, which then render empty (ch4 theory, ch7 lessons) or throw
+    // `l.split is not a function` (ch10). No `.mdx` files currently exist.
     {
       enforce: 'pre',
       ...mdx({
+        mdExtensions: [],
         providerImportSource: '@mdx-js/react',
         remarkPlugins: [
           remarkFrontmatter,
@@ -46,7 +51,7 @@ export default defineConfig({
         rehypePlugins: [[rehypeKatex, { throwOnError: false, trust: true }]],
       }),
     },
-    react({ include: /\.(jsx|js|mdx|md|tsx|ts)$/ }),
+    react({ include: /\.(jsx|js|mdx|tsx|ts)$/ }),
     pagesSpaFallback(),
   ],
   build: {

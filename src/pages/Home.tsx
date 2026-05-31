@@ -16,8 +16,8 @@ export default function Home() {
         </h1>
         <p className="home__lead">
           {lang === 'hu'
-            ? 'Tíz fejezet interaktív bemutatókkal, levezetésekkel és kvízekkel — magyarul és angolul.'
-            : 'Ten chapters of interactive demos, derivations and quizzes — in Hungarian and English.'}
+            ? 'Dr. Hartung Ferenc jegyzetei alapján.'
+            : 'Based on notes by Dr. Hartung Ferenc.'}
         </p>
       </header>
 
@@ -33,6 +33,17 @@ export default function Home() {
             </Link>
           </li>
         ))}
+        <li>
+          <Link to="/practice" className="chcard chcard--practice">
+            <span className="chcard__num">📝</span>
+            <span className="chcard__body">
+              <span className="chcard__title">{lang === 'hu' ? 'Gyakorlat' : 'Practice'}</span>
+              <span className="chcard__blurb">
+                {lang === 'hu' ? 'Kidolgozott példák' : 'Worked examples'}
+              </span>
+            </span>
+          </Link>
+        </li>
         <li>
           <a href="/sandbox/" className="chcard chcard--sandbox">
             <span className="chcard__num">🦀</span>

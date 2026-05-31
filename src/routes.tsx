@@ -1,8 +1,10 @@
-import { Suspense } from 'react';
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import App from './App';
 import Home from './pages/Home';
 import { CHAPTERS } from './chapters/registry';
+
+const Practice = lazy(() => import('./pages/Practice'));
 
 function Loading() {
   return (
@@ -17,6 +19,14 @@ export default function AppRoutes() {
     <Routes>
       <Route element={<App />}>
         <Route index element={<Home />} />
+        <Route
+          path="practice"
+          element={
+            <Suspense fallback={<Loading />}>
+              <Practice />
+            </Suspense>
+          }
+        />
         {CHAPTERS.map((c) => {
           const Chapter = c.load;
           return (

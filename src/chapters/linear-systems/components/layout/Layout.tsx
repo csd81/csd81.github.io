@@ -13,8 +13,8 @@ export function Layout({ children }: { children: ReactNode }) {
       <footer className="footer">
         <div className="container">
           {lang === 'hu'
-            ? 'Numerikus analízis · 3. fejezet — interaktív tananyag. F. Hartung nyomán, Pannon Egyetem.'
-            : 'Numerical Analysis · Chapter 3 — interactive companion. After F. Hartung, University of Pannonia.'}
+            ? 'Numerikus analízis · 3. fejezet — interaktív tananyag.'
+            : 'Numerical Analysis · Chapter 3 — interactive companion.'}
         </div>
       </footer>
     </div>

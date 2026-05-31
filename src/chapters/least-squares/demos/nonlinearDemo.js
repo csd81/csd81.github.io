@@ -5,7 +5,7 @@ import { fitExpLinearized, fitPowerLinearized, fitLine, sse } from '../math/lsq.
 import { t, UI } from '../state/i18n.js';
 import { onThemeChange } from '../state/theme.js';
 import { renderMath } from '../ui/katex.js';
-import { themedLayout, accent, pointColor, config } from './plotlyTheme.js';
+import { themedLayout, accent, pointColor, config, autoResize } from './plotlyTheme.js';
 
 const PRESETS = {
   exp: { xs: [0.0, 1.0, 1.5, 2.0, 3.0, 4.0], ys: [0.3, 0.7, 0.9, 1.2, 1.8, 2.7] },
@@ -114,5 +114,6 @@ export function mountNonlinearDemo(host) {
 
   draw();
   const offTheme = onThemeChange(() => draw());
-  return () => offTheme();
+  const stopResize = autoResize(host, [plot1, plot2]);
+  return () => { offTheme(); stopResize(); };
 }

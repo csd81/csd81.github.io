@@ -1,7 +1,5 @@
 # Numerikus analízis: 10. — Közönséges differenciálegyenletek
 
-**Ferenc Hartung**
-Pannon Egyetem
 Matematika Tanszék
 
 2026

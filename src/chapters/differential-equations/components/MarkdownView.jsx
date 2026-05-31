@@ -2,6 +2,8 @@ import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
+import rehypeRaw from "rehype-raw";
+import { normalizeMath } from "../../../shared/ui/normalizeMath";
 
 // Renders converted markdown with KaTeX math and GFM tables.
 export default function MarkdownView({ markdown }) {
@@ -9,9 +11,9 @@ export default function MarkdownView({ markdown }) {
     <div className="markdown">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}
+        rehypePlugins={[rehypeRaw, [rehypeKatex, { throwOnError: false, strict: false }]]}
       >
-        {markdown || ""}
+        {normalizeMath(markdown || "")}
       </ReactMarkdown>
     </div>
   );

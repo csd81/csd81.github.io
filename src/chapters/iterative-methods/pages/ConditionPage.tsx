@@ -3,8 +3,13 @@ import { useStrings } from '../i18n/useStrings';
 import { useLanguage } from '../context/LanguageContext';
 import { getTheory } from '../content';
 import { getQuiz } from '../quizzes';
+import { getQuiz as getBankQuiz } from '../content/quiz';
 import { Theory } from '../components/Theory';
 import { Quiz } from '../components/Quiz';
+import { Quiz as BankQuiz } from '../../../shared/ui/Quiz';
+import { GlossaryDeck, FlashcardDeck } from '../components/Decks';
+import { CodeTabs } from '../../../shared/ui/CodeTabs';
+import { getSectionCode } from '../content/code';
 import { MatrixInput } from '../components/MatrixInput';
 import { VectorInput } from '../components/VectorInput';
 import { Panel, Stat, Verdict, PageHeader } from '../components/ui';
@@ -109,6 +114,10 @@ export function ConditionPage() {
 
       <Theory markdown={getTheory('condition', lang)} title={t.common.theory} />
 
+      {getSectionCode('condition').map((c) => (
+        <CodeTabs key={c.id} snippets={c.snippets} caption={c.caption} />
+      ))}
+
       <Panel>
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{t.common.presets}:</span>
@@ -201,7 +210,11 @@ export function ConditionPage() {
         </table>
       </Panel>
 
+      <GlossaryDeck moduleId="condition" title={lang === 'hu' ? 'Fogalomtár' : 'Glossary'} />
+      <FlashcardDeck moduleId="condition" title={lang === 'hu' ? 'Tanulókártyák' : 'Flashcards'} />
+
       <Quiz moduleId="condition" questions={getQuiz('condition', lang)} />
+      <BankQuiz questions={getBankQuiz('condition')} />
     </div>
   );
 }

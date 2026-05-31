@@ -27,7 +27,7 @@ export const en = {
   'hero.chip2': 'Bilingual EN / HU',
   'hero.chip3': 'Quiz at the end',
   'hero.scroll': 'Scroll to begin ↓',
-  'hero.credit': 'After F. Hartung, University of Pannonia',
+  'hero.credit': '',
 
   // --- 1.1 computation flow ---
   'flow.tag': '1.1 · Objectives',
@@ -108,9 +108,9 @@ export const en = {
   'gl.tag': '1.1–1.2 · Reference',
   'gl.title': 'Glossary of key terms',
   'gl.lead': 'The core notions of §1.1–1.2 in one place — from error types to floating-point representation. Tap a term to reveal its definition.',
-  'flash.tag': '1.2 · Flashcards',
-  'flash.title': 'Flashcards: representation of integers & reals',
-  'flash.lead': 'Self-test deck for §1.2. Read the question, recall the answer, then flip. Shuffle for spaced practice.',
+  'flash.tag': '1.2–1.4 · Flashcards',
+  'flash.title': 'Flashcards: representation, machine numbers, error analysis & FP consequences',
+  'flash.lead': 'Self-test deck for §1.2–1.4. Read the question, recall the answer, then flip. Shuffle for spaced practice.',
   'flash.flipToAnswer': 'Show answer',
   'flash.flipToQuestion': 'Show question',
   'flash.question': 'Question',
@@ -200,6 +200,11 @@ export const en = {
   'ep.actual': 'actual relative error',
   'ep.lossWarn': 'Loss of significance: subtracting nearly equal numbers magnified the relative error.',
   'ep.lossTitle': 'loss of significance',
+  'ep.rulesTitle': 'Propagation rules (worst-case bounds)',
+  'ep.ruleAdd': 'Addition — bounds add; the relative error is no worse than the worse input.',
+  'ep.ruleSub': 'Subtraction — same absolute bound, but the factor x/(x−y) explodes when x ≈ y (loss of significance).',
+  'ep.ruleMul': 'Multiplication — relative bounds add (the product term δₓδᵧ is negligible).',
+  'ep.ruleDiv': 'Division — relative bounds add, divided by (1 − δᵧ); harmless unless δᵧ is close to 1.',
 
   // --- 1.4 consequences ---
   'fc.tag': '1.4 · Consequences',
@@ -253,7 +258,7 @@ export const en = {
   'quiz.result.keep': 'Keep going — scroll back through the demos and retry.',
 
   // --- footer ---
-  'footer.text': 'Built with React, Vite & Motion · Content after F. Hartung, “Introduction to Numerical Analysis”, University of Pannonia.',
+  'footer.text': 'Built with React, Vite & Motion.',
 } as const
 
 export type StringKey = keyof typeof en
@@ -283,7 +288,7 @@ export const hu: Record<StringKey, string> = {
   'hero.chip2': 'Kétnyelvű EN / HU',
   'hero.chip3': 'Kvíz a végén',
   'hero.scroll': 'Görgess a kezdéshez ↓',
-  'hero.credit': 'Hartung Ferenc, Pannon Egyetem nyomán',
+  'hero.credit': '',
 
   'flow.tag': '1.1 · Célok',
   'flow.title': 'Mit csinál a numerikus analízis — és honnan jönnek a hibák',
@@ -359,9 +364,9 @@ export const hu: Record<StringKey, string> = {
   'gl.tag': '1.1–1.2 · Kézikönyv',
   'gl.title': 'Fogalomtár',
   'gl.lead': 'Az §1.1–1.2 alapfogalmai egy helyen — a hibatípusoktól a lebegőpontos ábrázolásig. Koppints egy fogalomra a definícióért.',
-  'flash.tag': '1.2 · Tanulókártyák',
-  'flash.title': 'Tanulókártyák: egészek és valós számok ábrázolása',
-  'flash.lead': 'Önellenőrző pakli a §1.2-höz. Olvasd el a kérdést, idézd fel a választ, majd fordíts. Keverd össze a hatékonyabb gyakorláshoz.',
+  'flash.tag': '1.2–1.4 · Tanulókártyák',
+  'flash.title': 'Tanulókártyák: ábrázolás, gépi számok, hibaanalízis és lebegőpontos következmények',
+  'flash.lead': 'Önellenőrző pakli a §1.2–1.4-hez. Olvasd el a kérdést, idézd fel a választ, majd fordíts. Keverd össze a hatékonyabb gyakorláshoz.',
   'flash.flipToAnswer': 'Válasz mutatása',
   'flash.flipToQuestion': 'Kérdés mutatása',
   'flash.question': 'Kérdés',
@@ -446,6 +451,11 @@ export const hu: Record<StringKey, string> = {
   'ep.actual': 'tényleges relatív hiba',
   'ep.lossWarn': 'Értékes jegyek elvesztése: közel egyenlő számok kivonása felnagyította a relatív hibát.',
   'ep.lossTitle': 'értékes jegyek elvesztése',
+  'ep.rulesTitle': 'Terjedési szabályok (legrosszabb eset korlátai)',
+  'ep.ruleAdd': 'Összeadás — a korlátok összeadódnak; a relatív hiba nem rosszabb a rosszabbik bemenetnél.',
+  'ep.ruleSub': 'Kivonás — ugyanaz az abszolút korlát, de az x/(x−y) tényező felrobban, ha x ≈ y (értékes jegyek elvesztése).',
+  'ep.ruleMul': 'Szorzás — a relatív korlátok összeadódnak (a δₓδᵧ szorzattag elhanyagolható).',
+  'ep.ruleDiv': 'Osztás — a relatív korlátok összege osztva (1 − δᵧ)-nal; ártalmatlan, hacsak δᵧ nem közelít 1-hez.',
 
   'fc.tag': '1.4 · Következmények',
   'fc.title': 'A véges számábrázolás visszaüt',
@@ -496,7 +506,7 @@ export const hu: Record<StringKey, string> = {
   'quiz.result.good': 'Szép munka — nézd át a hibákat, és kész vagy.',
   'quiz.result.keep': 'Csak tovább — görgess vissza a demókhoz, és próbáld újra.',
 
-  'footer.text': 'React, Vite és Motion · A tartalom Hartung Ferenc „Bevezetés a numerikus analízisbe” nyomán, Pannon Egyetem.',
+  'footer.text': 'React, Vite és Motion.',
 }
 
 export const strings = { en, hu }

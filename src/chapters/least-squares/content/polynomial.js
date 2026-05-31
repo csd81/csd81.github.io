@@ -124,7 +124,24 @@ export const polynomial = {
           ],
         },
       ],
+      solution: `**Method.** For a parabola $y=ax^2+bx+c$ form the $3\\times3$ normal equations from the sums $\\sum x_i^k$ ($k=0,\\dots,4$) and $\\sum x_i^k y_i$ ($k=0,1,2$), then solve for $a,b,c$ and evaluate $SSR=\\sum(ax_i^2+bx_i+c-y_i)^2$.
+
+**Example A — data** $x_i:-2,-1,1,2,3$, $\\ y_i:-2.1,1.4,0.5,-2.5,-7.2$.
+
+Sums: $n+1=5$, $\\sum x_i=3$, $\\sum x_i^2=19$, $\\sum x_i^3=27$, $\\sum x_i^4=115$, $\\sum y_i=-9.9$, $\\sum x_iy_i=-23.3$, $\\sum x_i^2y_i=-81.3$.
+
+Normal equations $\\left(\\begin{smallmatrix}115 & 27 & 19\\\\ 27 & 19 & 3\\\\ 19 & 3 & 5\\end{smallmatrix}\\right)\\left(\\begin{smallmatrix}a\\\\ b\\\\ c\\end{smallmatrix}\\right)=\\left(\\begin{smallmatrix}-81.3\\\\ -23.3\\\\ -9.9\\end{smallmatrix}\\right)$ give $a\\approx-0.985$, $b\\approx-0.321$, $c\\approx0.156$, so $y=-0.985x^2-0.321x+0.156$ with $SSR\\approx0.142$.
+
+**Example B — data** $x_i:1,\\dots,6$, $\\ y_i:2.5,1.2,-2.0,3.9,6.2,8.3$.
+
+Sums: $\\sum x_i=21$, $\\sum x_i^2=91$, $\\sum x_i^3=441$, $\\sum x_i^4=2275$, $\\sum y_i=20.1$, $\\sum x_iy_i=106.5$, $\\sum x_i^2y_i=553.5$, giving $a\\approx0.304$, $b\\approx-1.286$, $c\\approx2.929$, i.e. $y=0.304x^2-1.286x+2.929$, $SSR\\approx2.847$.
+
+**Cubic fit** to Example A data ($g(x)=ax^3+bx^2+cx+d$): with $\\sum x_i^5=243$, $\\sum x_i^6=859$, $\\sum x_i^3y_i=-198.5$ the $4\\times4$ system yields $a\\approx-0.053$, $b\\approx-0.893$, $c\\approx-0.175$, $d\\approx0.089$, $SSR\\approx0.128$ (slightly better than the parabola).
+
+**Positive definiteness.** With $A_{jk}=\\sum_i x_i^{2m+2-j-k}$, $\\ \\mathbf z^TA\\mathbf z=\\sum_i\\left(\\sum_j z_j x_i^{m+1-j}\\right)^2\\ge0$; equality forces a degree-$\\le m$ polynomial to vanish at $m+1$ distinct nodes, hence $\\mathbf z=0$. So $A$ is positive definite.`,
     },
+    { type: 'glossary', deck: 'polynomial' },
+    { type: 'flashcards', deck: 'polynomial' },
     { type: 'quiz', ref: 'polynomial' },
   ],
 };

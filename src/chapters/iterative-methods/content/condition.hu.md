@@ -80,3 +80,31 @@ A klasszikus rosszul kondícionált család a **Hilbert-mátrix** $\mathbf{H}_n$
 | 6 | $1.50\cdot 10^7$ | 10 | $1.60\cdot 10^{13}$ |
 
 *(Az értékek megegyeznek az alábbi interaktív számológép és a szokásos szoftverek eredményével; a nyomtatott tankönyvi táblázatban $n=6$-nál elírás van.)*
+
+## Feladatok
+
+1. Számítsa ki $\operatorname{cond}_\infty(\mathbf{A})$ és $\operatorname{cond}_1(\mathbf{A})$ értékét (a) $\mathbf{A} = \left(\begin{smallmatrix} 1 & 2 \\ 2 & -1 \end{smallmatrix}\right)$ és (b) $\mathbf{A} = \left(\begin{smallmatrix} 0 & 2 & 1 \\ 1 & 0 & 1 \\ 1 & -1 & 1 \end{smallmatrix}\right)$ esetén!
+
+   <details class="reveal-solution"><summary>Megoldás</summary>
+
+   **(a)** $\mathbf{A}^{-1} = \tfrac{1}{-5}\left(\begin{smallmatrix} -1 & -2 \\ -2 & 1 \end{smallmatrix}\right) = \left(\begin{smallmatrix} 1/5 & 2/5 \\ 2/5 & -1/5 \end{smallmatrix}\right)$. Then $\|\mathbf{A}\|_\infty = \max\{3,3\} = 3$ and $\|\mathbf{A}^{-1}\|_\infty = \max\{3/5,3/5\} = 3/5$, so $\operatorname{cond}_\infty(\mathbf{A}) = 3 \cdot 3/5 = 1.8$. The same row/column sums give $\operatorname{cond}_1(\mathbf{A}) = 1.8$.
+
+   **(b)** $\mathbf{A}^{-1} = \left(\begin{smallmatrix} -1/2 & 3/2 & -1 \\ 0 & 1/2 & -1/2 \\ 1/2 & -1/2 & 1/2 \end{smallmatrix}\right)$. For the $\infty$-norm, $\|\mathbf{A}\|_\infty = \max\{3,2,3\} = 3$, $\|\mathbf{A}^{-1}\|_\infty = \max\{3,1,1.5\} = 3$, so $\operatorname{cond}_\infty(\mathbf{A}) = 9$. For the $1$-norm, $\|\mathbf{A}\|_1 = \max\{2,3,3\} = 3$, $\|\mathbf{A}^{-1}\|_1 = \max\{1,2.5,2\} = 2.5$, so $\operatorname{cond}_1(\mathbf{A}) = 7.5$.
+
+   </details>
+
+2. Becsülje meg $\operatorname{cond}_\infty(\mathbf{A})$ értékét a $3\times3$-as Hilbert-mátrixra: $\mathbf{A} = \left(\begin{smallmatrix} 1 & 1/2 & 1/3 \\ 1/2 & 1/3 & 1/4 \\ 1/3 & 1/4 & 1/5 \end{smallmatrix}\right)$.
+
+   <details class="reveal-solution"><summary>Megoldás</summary>
+
+   This is the Hilbert matrix $\mathbf{H}_3$, with $\operatorname{cond}_*(\mathbf{H}_3) \approx 5.24 \times 10^2$ from Table 4.3; since $\operatorname{cond}_\infty(\mathbf{A}) \geq \operatorname{cond}_*(\mathbf{A})$ we get $\operatorname{cond}_\infty(\mathbf{A}) \gtrsim 524$. Directly: $\mathbf{A}^{-1} = \left(\begin{smallmatrix} 9 & -36 & 30 \\ -36 & 192 & -180 \\ 30 & -180 & 180 \end{smallmatrix}\right)$, with $\|\mathbf{A}\|_\infty = 1.833$ and $\|\mathbf{A}^{-1}\|_\infty = \max\{75,408,390\} = 408$, hence $\operatorname{cond}_\infty(\mathbf{A}) = 1.833 \times 408 \approx 748$.
+
+   </details>
+
+3. Iteratív finomítással javítsa a $0.009x_1 - 0.52x_2 = -5.191$, $\ 9211x_1 + 21.1x_2 = 9422$ rendszer megoldását (a pontos megoldás $\mathbf{x} = (1,10)^T$)!
+
+   <details class="reveal-solution"><summary>Megoldás</summary>
+
+   Gaussian elimination with partial pivoting (swap rows since $9211 > 0.009$) and 4-digit arithmetic gives the multiplier $l_{21} = 0.009/9211 \approx 9.771\times10^{-7}$, leading to back substitution $x_2 = -5.200/(-0.5200) = 10.00$ and $x_1 = (9422 - 21.1\cdot10)/9211 = 1.000$ — exact here. Suppose rounding gave $\tilde{\mathbf{x}} = (0.99, 10.1)^T$. The residual (double precision) is $\mathbf{r} = \mathbf{b} - \mathbf{A}\tilde{\mathbf{x}} \approx (0.0484, 91.0)^T$. Solving $\mathbf{A}\mathbf{y} = \mathbf{r}$ gives $\mathbf{y} \approx (0.01, -0.09)^T$, so the update is $\mathbf{z} = \tilde{\mathbf{x}} + \mathbf{y} = (1.00, 10.01)^T$. The condition estimate is $\operatorname{cond}(\mathbf{A}) \approx 10^4 \cdot \|\mathbf{y}\|_\infty/\|\tilde{\mathbf{x}}\|_\infty = 10^4 \cdot 0.09/10.1 \approx 89$. After 2–3 refinement steps the solution converges to $(1,10)^T$.
+
+   </details>

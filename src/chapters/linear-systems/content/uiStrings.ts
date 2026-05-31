@@ -92,4 +92,7 @@ export const uiStrings: Record<string, Bilingual> = {
   'common.theorem': { en: 'Theorem', hu: 'Tétel' },
   'common.example': { en: 'Example', hu: 'Példa' },
   'common.notFound': { en: 'Not found.', hu: 'Nem található.' },
+  'common.exercise': { en: 'Exercise', hu: 'Feladat' },
+  'common.exercises': { en: 'Exercises', hu: 'Feladatok' },
+  'common.showSolution': { en: 'Show solution', hu: 'Megoldás' },
 };

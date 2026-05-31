@@ -17,7 +17,7 @@ export interface ScalarPreset {
 export const scalarPresets: ScalarPreset[] = [
   {
     id: 'exp-cos',
-    label: 'e^x − 2·cos(x)   (Hartung §2.3 worked example)',
+    label: 'e^x − 2·cos(x)   (§2.3 worked example)',
     f: 'exp(x) - 2*cos(x)',
     bracket: [0, 1],
     p0: 0.1,
@@ -70,7 +70,7 @@ export interface FpiPreset {
 export const fpiPresets: FpiPreset[] = [
   {
     id: 'cubic-cobweb',
-    label: 'g(x) = −x³/8 + x + 1   (Hartung Example 2.10, converges to 2)',
+    label: 'g(x) = −x³/8 + x + 1   (Example 2.10, converges to 2)',
     g: '-x^3/8 + x + 1',
     xRange: [0, 2.6],
     p0: 0.4,
@@ -100,7 +100,7 @@ export const fpiPresets: FpiPreset[] = [
 
 /** The 2D example system from §2.10–§2.12. */
 export const system226 = {
-  label: '4x₁ − e^(x₁·x₂) − 3 = 0,   x₁ − x₂² − 3x₂ − 1 = 0   (Hartung Example 2.51)',
+  label: '4x₁ − e^(x₁·x₂) − 3 = 0,   x₁ − x₂² − 3x₂ − 1 = 0   (Example 2.51)',
   f1: '4*x - exp(x*y) - 3',
   f2: 'x - y^2 - 3*y - 1',
   pStar: [1, 0] as [number, number],

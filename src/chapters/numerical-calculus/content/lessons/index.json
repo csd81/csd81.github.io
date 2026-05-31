@@ -1,13 +1,5 @@
 [
   {
-    "id": "intro",
-    "slug": "intro",
-    "title": {
-      "en": "Numerical Differentiation and Integration",
-      "hu": "Numerikus differenciálás és integrálás"
-    }
-  },
-  {
     "id": "7.1",
     "slug": "7_1",
     "title": {

@@ -7,6 +7,8 @@ import SectionGradient from './sections/SectionGradient';
 import SectionLinSys from './sections/SectionLinSys';
 import SectionNewton from './sections/SectionNewton';
 import SectionQuasiNewton from './sections/SectionQuasiNewton';
+import { ScrollyTopBar } from '../../shared/scrolly';
+import { SECTIONS } from './sections/registry';
 import './styles/global.css';
 
 /**
@@ -17,6 +19,7 @@ import './styles/global.css';
 export default function Chapter() {
   return (
     <div className="ch-minimization">
+      <ScrollyTopBar sections={SECTIONS} />
       <Hero />
       <SectionCalculus />
       <SectionGolden />

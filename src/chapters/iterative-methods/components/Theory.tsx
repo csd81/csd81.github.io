@@ -3,6 +3,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+import { normalizeMath } from '../../../shared/ui/normalizeMath';
 
 interface TheoryProps {
   markdown: string;
@@ -12,7 +14,8 @@ interface TheoryProps {
 }
 
 export function Theory({ markdown, collapsible = true, title = 'Theory' }: TheoryProps) {
-  const [open, setOpen] = useState(!collapsible);
+  // Theory is shown expanded by default; the toggle stays available to collapse it.
+  const [open, setOpen] = useState(true);
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
@@ -27,8 +30,11 @@ export function Theory({ markdown, collapsible = true, title = 'Theory' }: Theor
       )}
       {open && (
         <div className="prose-math max-w-none px-5 pb-5 pt-1">
-          <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
-            {markdown}
+          <ReactMarkdown
+            remarkPlugins={[remarkMath, remarkGfm]}
+            rehypePlugins={[rehypeRaw, [rehypeKatex, { throwOnError: false, trust: true }]]}
+          >
+            {normalizeMath(markdown)}
           </ReactMarkdown>
         </div>
       )}

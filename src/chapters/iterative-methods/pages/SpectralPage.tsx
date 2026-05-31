@@ -3,8 +3,10 @@ import { useStrings } from '../i18n/useStrings';
 import { useLanguage } from '../context/LanguageContext';
 import { getTheory } from '../content';
 import { getQuiz } from '../quizzes';
+import { getQuiz as getBankQuiz } from '../content/quiz';
 import { Theory } from '../components/Theory';
 import { Quiz } from '../components/Quiz';
+import { Quiz as BankQuiz } from '../../../shared/ui/Quiz';
 import { MatrixInput } from '../components/MatrixInput';
 import { ComplexPlane } from '../components/ComplexPlane';
 import { Panel, Stat, Verdict, PageHeader } from '../components/ui';
@@ -141,6 +143,7 @@ export function SpectralPage() {
       </Panel>
 
       <Quiz moduleId="spectral" questions={getQuiz('spectral', lang)} />
+      <BankQuiz questions={getBankQuiz('spectral')} />
     </div>
   );
 }

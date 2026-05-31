@@ -15,7 +15,9 @@ export type BlockKind =
   | "proof"
   | "example"
   | "algorithm"
-  | "remark";
+  | "remark"
+  | "exercise"
+  | "solution";
 
 /**
  * A theory block. `body` is an array of bilingual fragments which may be plain

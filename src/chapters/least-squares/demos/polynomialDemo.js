@@ -4,7 +4,7 @@ import { fitPolynomial, evalPoly, sse } from '../math/lsq.js';
 import { t, UI } from '../state/i18n.js';
 import { onThemeChange } from '../state/theme.js';
 import { renderMath } from '../ui/katex.js';
-import { themedLayout, accent, pointColor, config } from './plotlyTheme.js';
+import { themedLayout, accent, pointColor, config, autoResize } from './plotlyTheme.js';
 
 const PRESET = {
   xs: [-1.0, 0.0, 0.5, 1.0, 2.0, 2.5, 3.0],
@@ -75,5 +75,6 @@ export function mountPolynomialDemo(host) {
 
   draw();
   const offTheme = onThemeChange(() => draw());
-  return () => offTheme();
+  const stopResize = autoResize(host, [plotEl]);
+  return () => { offTheme(); stopResize(); };
 }

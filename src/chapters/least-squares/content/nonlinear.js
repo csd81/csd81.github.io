@@ -150,7 +150,24 @@ export const nonlinear = {
           ],
         },
       ],
+      solution: `**Exponential fit $y=be^{ax}$.** Linearize with $Y=\\ln y$, $X=x$, $Y=AX+B$ where $A=a$, $B=\\ln b$, then fit a line to $(x_i,\\ln y_i)$.
+
+*Example (a) data* $x_i:-2,-1,1,2,3$, $\\ y_i:0.6,0.9,1.6,2.3,2.9$. Transformed sums: $\\sum X_i=3$, $\\sum X_i^2=19$, $\\sum Y_i=1.752$, $\\sum X_iY_i=6.458$; determinant $d=86$. Then $A=\\dfrac{5(6.458)-3(1.752)}{86}=0.314$, $B=\\dfrac{19(1.752)-3(6.458)}{86}=0.162$, so $a=0.314$, $b=e^{0.162}=1.176$, giving $y=1.176e^{0.314x}$ (linear-space error $\\approx0.0234$, original error $\\approx0.0412$).
+
+*Example (b)* gives $A\\approx0.436$, $B\\approx-0.201$, i.e. $y=0.818e^{0.436x}$.
+
+**Power fit $y=bx^a$.** Linearize with $Y=\\ln y$, $X=\\ln x$.
+
+*Example (c) data* $x_i:1,3,4,5,6,9$, $\\ y_i:1.6,1.9,2.2,2.3,3.4,4.9$. Sums: $\\sum X_i=8.083$, $\\sum X_i^2=14.234$, $\\sum Y_i=5.546$, $\\sum X_iY_i=9.428$, giving $A\\approx0.548$, $B\\approx0.186$, so $a=0.548$, $b=e^{0.186}=1.204$: $y=1.204x^{0.548}$ (error $\\approx0.127$).
+
+*Example (d)* gives $A\\approx1.987\\approx2$, $B\\approx-0.147$: $y=0.863x^{1.987}\\approx0.863x^2$ — the data is essentially quadratic.
+
+**Direct nonlinear minimization (Newton).** Minimize $F(a,b)=\\sum(be^{ax_i}-y_i)^2$ with gradient $\\partial_a F=2\\sum(be^{ax_i}-y_i)be^{ax_i}x_i$, $\\partial_b F=2\\sum(be^{ax_i}-y_i)e^{ax_i}$ and the corresponding Hessian, iterating $\\left(\\begin{smallmatrix}a\\\\ b\\end{smallmatrix}\\right)^{(k+1)}=\\left(\\begin{smallmatrix}a\\\\ b\\end{smallmatrix}\\right)^{(k)}-[F'']^{-1}\\nabla F$ from the linearization guess. For (a): $a\\approx0.318$, $b\\approx1.169$, $SSR\\approx0.0398$ (slightly better than linearization’s $0.0412$ — about a 3% improvement). Linearization is simple and gives an excellent initial guess; its drawback is minimizing log-space error, which is biased for additive noise.
+
+**Reciprocal model $y=1/(a+bx)$.** Linearize as $1/y=a+bx$ and fit a line to $(x_i,1/y_i)$; e.g. data $x_i:1,\\dots,5$, $\\ y_i:0.50,0.33,0.25,0.20,0.17$ transform to $Y_i:2.00,3.03,4.00,5.00,5.88$, giving $Y=0.98+0.99X$, hence $y\\approx1/(1+x)$.`,
     },
+    { type: 'glossary', deck: 'nonlinear' },
+    { type: 'flashcards', deck: 'nonlinear' },
     { type: 'quiz', ref: 'nonlinear' },
   ],
 };

@@ -91,3 +91,59 @@ Diagonálisan domináns mátrixra a Gauss–Seidel általában gyorsabb. Által�
 > 4. $\rho(\mathbf{T}_J) = \rho(\mathbf{T}_G) = 1$.
 
 E feltételek mellett a két módszer együtt konvergál, és akkor a Gauss–Seidel a gyorsabb. Általában viszont bármelyik lehet a gyorsabb.
+
+## Feladatok
+
+1. Oldja meg az alábbi rendszereket a Jacobi-iterációval, $\mathbf{x}^{(0)} = \mathbf{0}$ kezdőpontból indulva:
+
+   (a) $6.2x_1 + 1.1x_2 - 3.4x_3 = 5.1$, $\ -0.6x_1 + 2.9x_2 + 0.3x_3 = -7.2$, $\ 1.1x_1 - 0.6x_2 + 4.4x_3 = 3.1$;
+
+   (b) a $4\times4$-es rendszer $-8x_1 + 3x_2 - 2x_3 - 2x_4 = 6$, $\ 2x_1 + 6x_2 + x_3 - x_4 = 5$, $\ 3x_1 - 3x_2 + 10x_3 + 3x_4 = -17$, $\ x_2 - 3x_3 + 7x_4 = 3$.
+
+   <details class="reveal-solution"><summary>Megoldás</summary>
+
+   **(a)** Check diagonal dominance: Row 1: $6.2 > 1.1 + 3.4 = 4.5$; Row 2: $2.9 > 0.6 + 0.3 = 0.9$; Row 3: $4.4 > 1.1 + 0.6 = 1.7$. Dominant, so Jacobi converges. The iteration formulas are $x_1^{(k+1)} = (5.1 - 1.1x_2^{(k)} + 3.4x_3^{(k)})/6.2$, $x_2^{(k+1)} = (-7.2 + 0.6x_1^{(k)} - 0.3x_3^{(k)})/2.9$, $x_3^{(k+1)} = (3.1 - 1.1x_1^{(k)} + 0.6x_2^{(k)})/4.4$. From $\mathbf{x}^{(0)} = \mathbf{0}$: iteration 1 gives $(0.8226,\ -2.4828,\ 0.7045)$; iteration 2 gives $(1.6502,\ -2.3806,\ 0.1610)$; iteration 3 gives $(1.3350,\ -2.1560,\ -0.0329)$. Continue (about 15–20 iterations for 5-digit accuracy). Exact solution $\mathbf{x} \approx (1,\ -2,\ 0.5)^T$.
+
+   **(b)** Diagonal dominance: $8 > 7$, $6 > 4$, $10 > 9$, $7 > 4$ — all hold, so Jacobi converges. The formulas are $x_1^{(k+1)} = (6 - 3x_2^{(k)} + 2x_3^{(k)} + 2x_4^{(k)})/(-8)$, $x_2^{(k+1)} = (5 - 2x_1^{(k)} - x_3^{(k)} + x_4^{(k)})/6$, $x_3^{(k+1)} = (-17 - 3x_1^{(k)} + 3x_2^{(k)} - 3x_4^{(k)})/10$, $x_4^{(k+1)} = (3 - x_2^{(k)} + 3x_3^{(k)})/7$. From $\mathbf{0}$: iteration 1 gives $(-0.75,\ 0.8333,\ -1.7,\ 0.4286)$; iteration 2 gives $(-0.1197,\ 1.4381,\ -1.3536,\ -0.4190)$. Continue until convergence.
+
+   </details>
+
+2. Igazolja, hogy a Jacobi-iteráció konvergál, ha $\mathbf{A}$ **oszlop** szerint diagonálisan domináns, azaz $|a_{jj}| > \sum_{i\neq j}|a_{ij}|$ minden $j$-re.
+
+   <details class="reveal-solution"><summary>Megoldás</summary>
+
+   The Jacobi iteration matrix is $T_J = -D^{-1}(L + U)$ with $(T_J)_{ij} = -a_{ij}/a_{ii}$ for $i \neq j$ and $0$ on the diagonal. Column diagonal dominance of $\mathbf{A}$ is equivalent to row diagonal dominance of $\mathbf{A}^T$. The Jacobi matrix for $\mathbf{A}^T\mathbf{y} = \mathbf{c}$ is $T_J(\mathbf{A}^T) = -D^{-1}(L^T + U^T) = T_J(\mathbf{A})^T$. Since $\mathbf{A}^T$ is row diagonally dominant, $\|T_J(\mathbf{A}^T)\|_\infty = \max_i \sum_{j\neq i}|a_{ji}|/|a_{ii}| < 1$. Because $\rho(\mathbf{M}) = \rho(\mathbf{M}^T)$, $\rho(T_J(\mathbf{A})) = \rho(T_J(\mathbf{A})^T) \leq \|T_J(\mathbf{A})^T\|_\infty < 1$. Hence the Jacobi iteration converges. $\square$
+
+   </details>
+
+3. Alkalmazza a Gauss–Seidel-iterációt az 1. feladat rendszereire, és hasonlítsa össze az iterációk számát a Jacobi-módszerrel!
+
+   <details class="reveal-solution"><summary>Megoldás</summary>
+
+   Gauss–Seidel reuses new values immediately. For system (a): $x_1^{(k+1)} = (5.1 - 1.1x_2^{(k)} + 3.4x_3^{(k)})/6.2$, $x_2^{(k+1)} = (-7.2 + 0.6x_1^{(k+1)} - 0.3x_3^{(k)})/2.9$, $x_3^{(k+1)} = (3.1 - 1.1x_1^{(k+1)} + 0.6x_2^{(k+1)})/4.4$. From $\mathbf{0}$: iteration 1 gives $(0.8226,\ -2.3172,\ 0.1830)$; iteration 2 gives $(1.3318,\ -2.2296,\ 0.0675)$. Gauss–Seidel typically converges in fewer iterations than Jacobi (here roughly 10–12 versus 15–20). For the $4\times4$ system the analogous formulas give iteration 1 as $(-0.75,\ 1.0833,\ -1.15,\ -0.2190)$, again converging faster than Jacobi.
+
+   </details>
+
+4. Igazolja, hogy a Jacobi- és Gauss–Seidel-iteráció véges sok lépésben megtalálja a pontos megoldást, ha $\mathbf{A}$ felső háromszögmátrix $a_{ii} \neq 0$ átlóval!
+
+   <details class="reveal-solution"><summary>Megoldás</summary>
+
+   For an upper triangular $\mathbf{A}$, $a_{ij} = 0$ for $i > j$ and $L = 0$, so both methods reduce to the same formula $x_i^{(k+1)} = -\sum_{j=i+1}^n \tfrac{a_{ij}}{a_{ii}} x_j^{(k)} + \tfrac{b_i}{a_{ii}}$. For the last row $i = n$, $x_n^{(k+1)} = b_n/a_{nn}$ is the exact value already after iteration 1 (independent of $\mathbf{x}^{(k)}$). For $i = n-1$ the update uses $x_n$, so after iteration 2, $x_{n-1}$ is exact. By induction, after iteration $m$ the components $x_n, x_{n-1}, \dots, x_{n-m+1}$ are exact, so after iteration $n$ all components are exact. Both methods converge in exactly $n$ iterations. $\square$
+
+   </details>
+
+5. Hasonlítsa össze a Jacobi- és Gauss–Seidel-iterációs mátrixokat a $4x_1 - x_2 = 3$, $-x_1 + 4x_2 - x_3 = 2$, $-x_2 + 4x_3 = 3$ rendszerre!
+
+   <details class="reveal-solution"><summary>Megoldás</summary>
+
+   With $D = \operatorname{diag}(4,4,4)$, the Jacobi matrix is $T_J = -D^{-1}(L+U) = \left(\begin{smallmatrix} 0 & 1/4 & 0 \\ 1/4 & 0 & 1/4 \\ 0 & 1/4 & 0 \end{smallmatrix}\right)$ with eigenvalues $0, \pm\sqrt2/4$, so $\rho(T_J) = \sqrt2/4 \approx 0.354$. The Gauss–Seidel matrix is $T_G = -(D+L)^{-1}U = \left(\begin{smallmatrix} 0 & 1/4 & 0 \\ 0 & 1/16 & 1/4 \\ 0 & 1/64 & 1/16 \end{smallmatrix}\right)$ with eigenvalues $0, 1/16, 1/16$, so $\rho(T_G) = 1/16 = 0.0625$. Since $\rho(T_G) < \rho(T_J)$, Gauss–Seidel converges faster — the ratio $\rho(T_J)/\rho(T_G) \approx 5.66$ means it needs about $5$–$6$ times fewer iterations.
+
+   </details>
+
+6. Adjon meg egy rendszert, amelyen a Jacobi-iteráció divergál! Tekintse az $\mathbf{A} = \left(\begin{smallmatrix} 1 & 2 & -2 \\ 1 & 1 & 1 \\ 2 & 2 & 1 \end{smallmatrix}\right)$ mátrixot.
+
+   <details class="reveal-solution"><summary>Megoldás</summary>
+
+   The Jacobi iteration matrix is $T_J = \left(\begin{smallmatrix} 0 & -2 & 2 \\ -1 & 0 & -1 \\ -2 & -2 & 0 \end{smallmatrix}\right)$, which has $\rho(T_J) > 1$, so the Jacobi iteration **diverges** for this matrix. (The Gauss–Seidel iteration may converge or diverge depending on the specific structure — there are matrices for which Jacobi diverges but Gauss–Seidel converges, and vice versa.)
+
+   </details>

@@ -22,18 +22,5 @@ export const introSection: Section = {
         },
       ],
     },
-    {
-      id: "intro-howto",
-      kind: "remark",
-      label: { en: "How to use this site", hu: "Hogyan használd az oldalt" },
-      body: [
-        {
-          text: {
-            en: "Read the theory, then open the interactive solvers to factor your own matrices step by step, watch the guided animations of the textbook examples, and test yourself in the Practice section. Switch language (EN/HU) and theme (light/dark) any time from the header. Your progress and badges are saved in your browser.",
-            hu: "Olvasd el az elméletet, majd nyisd meg az interaktív megoldókat, hogy lépésről lépésre faktorizáld saját mátrixaidat, nézd meg a tankönyvi példák vezetett animációit, és ellenőrizd magad a Gyakorlás részben. A nyelvet (EN/HU) és a témát (világos/sötét) bármikor válthatod a fejlécből. A haladásod és a jelvényeid a böngésződben tárolódnak.",
-          },
-        },
-      ],
-    },
   ],
 };

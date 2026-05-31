@@ -54,11 +54,65 @@ So for simplicity, later we will study only scalar IVPs of the form (10.1), but 
 
    (c) $y''' + 4y'' - 2y' + 5y = t^3, \qquad y(-1) = 2, \quad y'(-1) = -3$.
 
+<details class="reveal-solution"><summary>Show solution</summary>
+
+**(a)** Let $y_1 = y,\ y_2 = y'$. Then $y_1' = y_2$, $y_2' = e^{2t-1} - 5y_2$, giving the system
+
+$$\begin{pmatrix} y_1' \\ y_2' \end{pmatrix} = \begin{pmatrix} y_2 \\ e^{2t-1} - 5y_2 \end{pmatrix}, \quad \begin{pmatrix} y_1(0) \\ y_2(0) \end{pmatrix} = \begin{pmatrix} 3 \\ -1 \end{pmatrix}.$$
+
+**(b)** Let $y_1 = y,\ y_2 = y'$. Then $y_1' = y_2$, $y_2' = t^2 y_2 - t y_1$, giving
+
+$$\begin{pmatrix} y_1' \\ y_2' \end{pmatrix} = \begin{pmatrix} y_2 \\ t^2 y_2 - t y_1 \end{pmatrix}, \quad \begin{pmatrix} y_1(1) \\ y_2(1) \end{pmatrix} = \begin{pmatrix} 1 \\ 0 \end{pmatrix}.$$
+
+**(c)** Let $y_1 = y,\ y_2 = y',\ y_3 = y''$. Then $y_1' = y_2$, $y_2' = y_3$, $y_3' = t^3 - 4y_3 + 2y_2 - 5y_1$, giving
+
+$$\begin{pmatrix} y_1' \\ y_2' \\ y_3' \end{pmatrix} = \begin{pmatrix} y_2 \\ y_3 \\ t^3 - 4y_3 + 2y_2 - 5y_1 \end{pmatrix}, \quad \begin{pmatrix} y_1(-1) \\ y_2(-1) \\ y_3(-1) \end{pmatrix} = \begin{pmatrix} 2 \\ -3 \\ 1 \end{pmatrix}.$$
+
+</details>
+
 2. Show that the IVP $y' = \sqrt{|y|}$, $y(0) = 0$ has two solutions $y(t) = 0$ and $y(t) = t^2/4$. Show that the function $f(y) = \sqrt{|y|}$ is not Lipschitz continuous in $y$.
+
+<details class="reveal-solution"><summary>Show solution</summary>
+
+The two candidate solutions are $y_1(t) = 0$ and $y_2(t) = t^2/4$ (for $t \ge 0$). Verification: $y_1'(t) = 0 = \sqrt{|y_1|}$, and $y_2'(t) = t/2 = \sqrt{t^2/4} = \sqrt{|y_2|}$; both satisfy $y(0) = 0$.
+
+To show $f(y) = \sqrt{|y|}$ is not Lipschitz, take $\tilde{y} = 0$:
+
+$$\frac{|f(y) - f(0)|}{|y - 0|} = \frac{\sqrt{|y|}}{|y|} = \frac{1}{\sqrt{|y|}} \to \infty \quad \text{as } y \to 0.$$
+
+Hence no finite Lipschitz constant exists — Lipschitz continuity is essential for uniqueness.
+
+</details>
 
 3. Prove that if the function $f \colon [t_0, T] \times \mathbb{R} \to \mathbb{R}$ is continuously differentiable in its second variable, then $f$ is locally Lipschitz continuous in its second variable.
 
+<details class="reveal-solution"><summary>Show solution</summary>
+
+Let $[a, b]$ be any bounded interval. Since $\partial f/\partial y$ is continuous on $[t_0, T] \times [a, b]$, it is bounded: $\left|\frac{\partial f}{\partial y}(t, y)\right| \le M$ there. By the Mean Value Theorem, for any $y, \tilde{y} \in [a, b]$,
+
+$$f(t, y) - f(t, \tilde{y}) = \frac{\partial f}{\partial y}(t, \xi)(y - \tilde{y})$$
+
+for some $\xi$ between $y$ and $\tilde{y}$. Therefore
+
+$$|f(t, y) - f(t, \tilde{y})| \le M|y - \tilde{y}|,$$
+
+so $f$ is Lipschitz on $[a, b]$ with $L = M$. Since $[a, b]$ was arbitrary, $f$ is locally Lipschitz. $\square$
+
+</details>
+
 4. Show that the IVP $y' = y^2$, $y(0) = 1$ has no solution on the interval $[0, T]$ for $T \ge 1$. Show that the function $g(y) = y^2$ is not globally Lipschitz continuous in $y$, but it is locally Lipschitz continuous.
+
+<details class="reveal-solution"><summary>Show solution</summary>
+
+Separating variables: $\int y^{-2}\,dy = \int dt$ gives $-1/y = t + C$. With $y(0) = 1$ we get $C = -1$, so
+
+$$y(t) = \frac{1}{1-t}.$$
+
+As $t \to 1^-$, $y(t) \to \infty$ (finite-time blowup), hence no solution exists on $[0, T]$ for $T \ge 1$.
+
+$g(y) = y^2$ is not globally Lipschitz: $\frac{|g(y) - g(0)|}{|y|} = |y| \to \infty$. But on any bounded interval $[a, b]$, $|g'(y)| = |2y| \le 2\max(|a|,|b|)$, so by Exercise 3 it is locally Lipschitz.
+
+</details>
 
 ## 10.2. Euler's Method
 
@@ -235,7 +289,36 @@ $$|y(t_i) - z_i| \le Kh, \qquad i = 0, 1, \ldots, n.$$
 
    (d) $y' = \frac{t}{1+y}, \qquad y(1) = 2, \quad h = 0.1, \quad y(t) = \sqrt{t^2 + 8} - 1$.
 
+<details class="reveal-solution"><summary>Show solution</summary>
+
+*Worked example (illustrating Euler's method on $y' = 2y - 10t^2 + 2t$, $y(0)=1$, exact $y(t) = 5t^2 + 2t + 1$):*
+
+Euler's method: $z_{i+1} = z_i + h(2z_i - 10t_i^2 + 2t_i)$. With $h = 0.2$:
+
+```
+t = 0.0:  z = 1.0000
+t = 0.2:  z = 1.4000
+t = 0.4:  z = 1.9600
+t = 0.6:  z = 2.5840
+t = 0.8:  z = 3.1328
+t = 1.0:  z = 3.4254
+```
+
+Exact $y(1) = 8$, so the error at $t = 1$ is $|8 - 3.4254| = 4.57$ — Euler's method is only first-order accurate. Apply the same recurrence $z_{i+1} = z_i + h\,f(t_i, z_i)$ to each IVP (a)–(d) and compare with the supplied exact solution.
+
+</details>
+
 2. Formulate the Euler's method for systems of differential equations.
+
+<details class="reveal-solution"><summary>Show solution</summary>
+
+For a system $\mathbf{y}' = \mathbf{f}(t, \mathbf{y})$, $\mathbf{y}(t_0) = \mathbf{y}_0$ with $\mathbf{y} \in \mathbb{R}^m$, the Euler sequence is the vector recurrence
+
+$$\mathbf{z}_{i+1} = \mathbf{z}_i + h\,\mathbf{f}(t_i, \mathbf{z}_i), \qquad \mathbf{z}_0 = \mathbf{y}_0,$$
+
+i.e. each component $z^{(k)}_{i+1} = z^{(k)}_i + h\,f_k(t_i, \mathbf{z}_i)$ is updated simultaneously using the current vector $\mathbf{z}_i$. (Higher-order scalar ODEs are first reduced to such a system as in Exercise 1 of Section 10.1.)
+
+</details>
 
 3. Solve the following system of differential equations using Euler's method, and give the error of the approximation (using the given solution):
 
@@ -245,15 +328,41 @@ $$|y(t_i) - z_i| \le Kh, \qquad i = 0, 1, \ldots, n.$$
    (b) $\left.\begin{array}{rcl} y_1' &=& 2y_1 - 3y_2, \\ y_2' &=& 3y_1 + 2y_2, \end{array}\right\}$ $\quad t \in [0, 1], \quad y_1(0) = 1, \quad y_2(0) = 0$,
    $h = 0.1, \quad y_1(t) = e^{2t}\cos 3t, \quad y_2(t) = e^{2t}\sin 3t$.
 
+<details class="reveal-solution"><summary>Show solution</summary>
+
+Apply the vector Euler recurrence from Exercise 2 componentwise. For (a),
+
+$$z^{(1)}_{i+1} = z^{(1)}_i + h(2z^{(1)}_i - 3z^{(2)}_i), \qquad z^{(2)}_{i+1} = z^{(2)}_i + h(-z^{(1)}_i + 4z^{(2)}_i),$$
+
+starting from $(z^{(1)}_0, z^{(2)}_0) = (1, -5)$ with $h = 0.1$ on $[0,2]$; for (b) use $z^{(2)}_{i+1} = z^{(2)}_i + h(3z^{(1)}_i + 2z^{(2)}_i)$ from $(1,0)$ on $[0,1]$. At each $t_i$ the error is $\max_k |y_k(t_i) - z^{(k)}_i|$ using the supplied exact solutions $y_1, y_2$. Because the exact solutions grow exponentially, the Euler error grows with $t$ at the expected first-order rate $O(h)$.
+
+</details>
+
 4. Give the equivalent system of differential equations for the following scalar differential equations. Compute the approximate solution of the system using Euler's method, and give the error of the approximation (using the given solution).
 
    (a) $y'' - 3y' + 2y = 2, \quad t \in [0, 1] \quad y(0) = 1,\ y'(0) = -1, \quad h = 0.1, \quad y(t) = 1 + e^t - e^{2t}$,
 
    (b) $y'' - 2y' + 5y = 0, \quad t \in [0, 2], \quad y(1) = 1,\ y'(0) = 3, \quad h = 0.2, \quad y(t) = e^t \sin 2t + e^t \cos 2t$.
 
+<details class="reveal-solution"><summary>Show solution</summary>
+
+First reduce each scalar equation to a system (as in Section 10.1, Exercise 1). For (a), set $y_1 = y,\ y_2 = y'$:
+
+$$y_1' = y_2, \qquad y_2' = 2 + 3y_2 - 2y_1, \qquad (y_1(0), y_2(0)) = (1, -1);$$
+
+for (b), $y_1' = y_2,\ y_2' = 2y_2 - 5y_1$. Then apply the vector Euler recurrence with the given $h$, and at each mesh point compare $z^{(1)}_i$ with the supplied exact $y(t_i)$ to obtain the error, which decreases as $O(h)$.
+
+</details>
+
 5. Let $t_i = t_0 + ih$ be an equidistant mesh of the interval $[t_0, T]$, $\{z_i\}$ be the corresponding Euler sequence, and $z(t; h)$ be the linear spline function which interpolates the values $z_i$: $z(t_i; h) = z_i$, $i = 0, 1, \ldots, n$. Prove that
 
 $$\sup_{t \in [t_0, T]} |y(t) - z(t; h)| \to 0, \qquad \text{as } h \to 0.$$
+
+<details class="reveal-solution"><summary>Show solution</summary>
+
+By the convergence of Euler's method (Theorem 10.5), $\max_i |y(t_i) - z_i| \le \frac{hM_2}{2L}(e^{L(T-t_0)} - 1) \to 0$ as $h \to 0$. At the nodes the spline equals $z_i$. Between nodes, $z(\cdot; h)$ is linear, while $y$ is uniformly continuous on the compact interval $[t_0, T]$; thus on each subinterval $|y(t) - z(t;h)|$ is bounded by the nodal errors plus the oscillation of $y$ over a subinterval of width $h$, both of which tend to $0$. Taking the supremum over $t$ gives $\sup_t |y(t) - z(t;h)| \to 0$. $\square$
+
+</details>
 
 ## 10.3. Effect of Rounding in the Euler's Method
 
@@ -292,9 +401,41 @@ Hence if $h$ is too small, then the effect of rounding in the Euler's method can
 
 1. Work out the details of Theorem 10.6.
 
+<details class="reveal-solution"><summary>Show solution</summary>
+
+With rounding, $w_{i+1} = w_i + hf(t_i, w_i) + \delta_{i+1}$, $|\delta_i| \le \delta$ for $i \ge 1$. Let $e_i = y(t_i) - w_i$. Subtracting from the Taylor expansion of $y$,
+
+$$e_{i+1} = e_i + h[f(t_i, y(t_i)) - f(t_i, w_i)] + \tfrac{h^2}{2}y''(\xi_i) - \delta_{i+1},$$
+
+so by Lipschitz continuity $|e_{i+1}| \le (1 + hL)|e_i| + \tfrac{h^2}{2}M_2 + \delta$. Writing $A = 1 + hL$, $B = \tfrac{h^2}{2}M_2 + \delta$ and iterating ($|e_i| \le A^i|e_0| + B\frac{A^i - 1}{A - 1}$) with $A - 1 = hL$ and $A^i \le e^{L(t_i - t_0)}$ gives
+
+$$|y(t_i) - w_i| \le |\delta_0|e^{L(t_i - t_0)} + \frac{e^{L(t_i - t_0)} - 1}{L}\left(\frac{hM_2}{2} + \frac{\delta}{h}\right). \qquad \square$$
+
+</details>
+
 2. Draw the graph of the function $g(h) = \frac{hM_2}{2} + \frac{\delta}{h}$ which appears in Theorem 10.6. What is its minimum point?
 
+<details class="reveal-solution"><summary>Show solution</summary>
+
+$g'(h) = \frac{M_2}{2} - \frac{\delta}{h^2} = 0 \implies h^2 = \frac{2\delta}{M_2}$, i.e.
+
+$$h_{\text{opt}} = \sqrt{\frac{2\delta}{M_2}}.$$
+
+Since $g''(h) = \frac{2\delta}{h^3} > 0$ for $h > 0$, this is a minimum, with minimum value $g(h_{\text{opt}}) = \sqrt{2\delta M_2}$. The graph decreases like $\delta/h$ for small $h$ (rounding dominates) and increases linearly for large $h$ (truncation dominates), forming a convex "U".
+
+</details>
+
 3. Using the optimal step size obtained in the previous exercise compute for the problem of Example 10.2 assuming $\delta = 0.00001$.
+
+<details class="reveal-solution"><summary>Show solution</summary>
+
+For Example 10.2, $y'' = 10$ so $M_2 = 10$, and $\delta = 10^{-5}$. Then
+
+$$h_{\text{opt}} = \sqrt{\frac{2 \cdot 10^{-5}}{10}} = \sqrt{2 \cdot 10^{-6}} \approx 0.00141, \qquad g(h_{\text{opt}}) = \sqrt{2 \cdot 10^{-5} \cdot 10} = \sqrt{2 \cdot 10^{-4}} \approx 0.0141.$$
+
+Using a step smaller than $\approx 0.0014$ would actually *increase* the total error because of rounding.
+
+</details>
 
 ## 10.4. Taylor's Method
 
@@ -405,7 +546,27 @@ for $i = 0, 1, 2, \ldots$, and $z_0 = 1$. The numerical results can be seen in T
 
 1. Solve the IVPs presented in Exercise 1 of Section 10.2 using the second- and third-order Taylor' method.
 
+<details class="reveal-solution"><summary>Show solution</summary>
+
+*Worked example on $f(t,y) = 2y - 10t^2 + 2t$:* compute the derivatives along solutions,
+
+$$f^{(1)} = 4y - 20t^2 - 16t + 2, \qquad f^{(2)} = 8y - 40t^2 - 32t - 16.$$
+
+Second-order Taylor: $z_{i+1} = z_i + hf + \tfrac{h^2}{2}f^{(1)}$; third-order adds $+\tfrac{h^3}{6}f^{(2)}$. With $h = 0.2$, $z_0 = 1$ the second-order method gives $z_1 = 1.52$, $z_2 \approx 2.098$, and the third-order method gives $z_1 \approx 1.509$ — both far more accurate than plain Euler. For each IVP (a)–(d) of Section 10.2, differentiate $f$ along the solution and apply these same formulas.
+
+</details>
+
 2. Formulate and apply the fourth- and fifth-order Taylor's method for the IVP (10.8).
+
+<details class="reveal-solution"><summary>Show solution</summary>
+
+Continuing the derivatives of $f(t,y) = 2y - 10t^2 + 2t$,
+
+$$f^{(3)} = 16y - 80t^2 - 64t - 32, \qquad f^{(4)} = 32y - 160t^2 - 128t - 64.$$
+
+Fourth-order Taylor: $z_{i+1} = z_i + hf + \tfrac{h^2}{2}f^{(1)} + \tfrac{h^3}{6}f^{(2)} + \tfrac{h^4}{24}f^{(3)}$; fifth-order adds $+\tfrac{h^5}{120}f^{(4)}$. The derivatives become increasingly cumbersome to compute — which is precisely why Runge–Kutta methods (next section) are preferred.
+
+</details>
 
 ## 10.5. Runge–Kutta Method
 
@@ -554,18 +715,80 @@ It can be shown that this method has a fourth-order local truncation error (if $
 
 1. Solve the IVPs presented in Exercise 1 of Section 10.2 using the midpoint, modified Euler, Heun and the classical fourth-order Runge–Kutta methods.
 
+<details class="reveal-solution"><summary>Show solution</summary>
+
+For each IVP apply, per step, the slope formulas
+
+- **Midpoint:** $k_1 = f(t_i, z_i)$, $k_2 = f(t_i + \tfrac{h}{2}, z_i + \tfrac{h}{2}k_1)$, $z_{i+1} = z_i + hk_2$.
+- **Modified Euler:** $k_1 = f(t_i, z_i)$, $k_2 = f(t_i + h, z_i + hk_1)$, $z_{i+1} = z_i + \tfrac{h}{2}(k_1 + k_2)$.
+- **RK4:** $k_1 = f(t_i, z_i)$, $k_2 = f(t_i + \tfrac{h}{2}, z_i + \tfrac{h}{2}k_1)$, $k_3 = f(t_i + \tfrac{h}{2}, z_i + \tfrac{h}{2}k_2)$, $k_4 = f(t_i + h, z_i + hk_3)$, $z_{i+1} = z_i + \tfrac{h}{6}(k_1 + 2k_2 + 2k_3 + k_4)$.
+
+At $t = 1$, $h = 0.1$ the expected error orders are: Euler $O(h) \approx 10^{-1}$; midpoint / modified Euler / Heun $O(h^2) \approx 10^{-2}$; RK4 $O(h^4) \approx 10^{-4}$.
+
+</details>
+
 2. Prove that if $f$ is Lipschitz continuous in its second variable, then the function
 
 $$F(t, z; h) = \frac{1}{2}f\left(t + \frac{h}{2}, z + \frac{h}{2}f(t, z)\right)$$
 
 of the midpoint method is also Lipschitz continuous in its second variable.
 
+<details class="reveal-solution"><summary>Show solution</summary>
+
+Using the Lipschitz constant $L$ of $f$ twice,
+
+$$|F(t, z; h) - F(t, \tilde{z}; h)| \le L\left|z - \tilde{z} + \tfrac{h}{2}(f(t,z) - f(t,\tilde{z}))\right| \le L|z - \tilde{z}| + \tfrac{hL}{2}\,L|z - \tilde{z}| = L\left(1 + \tfrac{hL}{2}\right)|z - \tilde{z}|.$$
+
+Hence $F$ is Lipschitz in its second variable with constant $L(1 + hL/2)$. $\square$
+
+</details>
+
 3. Similarly to the method (iii) of the Euler's method, derive formula (10.29).
+
+<details class="reveal-solution"><summary>Show solution</summary>
+
+Start from the trapezoidal rule applied to $y(t_{i+1}) - y(t_i) = \int_{t_i}^{t_{i+1}} f$:
+
+$$y(t_{i+1}) = y(t_i) + \tfrac{h}{2}[f(t_i, y(t_i)) + f(t_{i+1}, y(t_{i+1}))].$$
+
+This is implicit; replace the unknown $y(t_{i+1})$ on the right by the Euler predictor $w_{i+1} = z_i + hf(t_i, z_i)$:
+
+$$z_{i+1} = z_i + \tfrac{h}{2}\big[f(t_i, z_i) + f(t_i + h,\, z_i + hf(t_i, z_i))\big],$$
+
+which is the modified Euler formula (10.29). $\square$
+
+</details>
 
 4. Show that the midpoint method, the modified Euler and Heun method gives back the same approximation for all step sizes for the IVP
 
 $$y' = 2 - t - y, \qquad y(0) = 1.$$
 
+<details class="reveal-solution"><summary>Show solution</summary>
+
+Here $f(t,y) = 2 - t - y$ is *linear* in $y$. Substituting it into each RK2 scheme (midpoint, modified Euler, Heun) and simplifying, all three collapse to the same recurrence
+
+$$z_{i+1} = \left(1 - h + \tfrac{h^2}{2}\right)z_i + h(2 - t_i) - \tfrac{h^2}{2}.$$
+
+Thus for this linear ODE the three methods produce identical approximations for every step size.
+
+</details>
+
 5. Find a geometric interpretation to the classical fourth-order Runge–Kutta method.
 
+<details class="reveal-solution"><summary>Show solution</summary>
+
+RK4 samples four slopes: $k_1$ at the start $(t_i, z_i)$; $k_2$ at the midpoint using the $k_1$ prediction; $k_3$ at the midpoint again using the refined $k_2$ prediction; and $k_4$ at the endpoint using $k_3$. The step uses the weighted average $\frac{k_1 + 2k_2 + 2k_3 + k_4}{6}$, weighting the midpoint slopes most heavily — directly analogous to Simpson's rule for integration.
+
+</details>
+
 6. Show that if $f$ depends only on $t$, then the classical fourth-order Runge–Kutta method reduces to the Simpson's rule.
+
+<details class="reveal-solution"><summary>Show solution</summary>
+
+If $f = f(t)$ then $k_1 = f(t_i)$, $k_2 = k_3 = f(t_i + \tfrac{h}{2})$, $k_4 = f(t_i + h)$, so
+
+$$z_{i+1} = z_i + \tfrac{h}{6}\big[f(t_i) + 4f(t_i + \tfrac{h}{2}) + f(t_i + h)\big],$$
+
+which is exactly Simpson's rule for $\int_{t_i}^{t_{i+1}} f(t)\,dt$. Hence RK4 generalizes Simpson's rule to ODEs. $\square$
+
+</details>

@@ -207,6 +207,99 @@ const GLOSSARY: Entry[] = [
       hu: 'Az abszolút hiba a nagysághoz viszonyítva: |x − x̃| / |x|; x̃ n jegyre pontos, ha ez ≤ ½·10¹⁻ⁿ.',
     },
   },
+  // §1.3 — error analysis
+  {
+    term: { en: 'Error analysis', hu: 'Hibaanalízis' },
+    def: {
+      en: 'The study of how the errors in the input data propagate through arithmetic operations to the result, and how to bound the error of the output.',
+      hu: 'Annak vizsgálata, hogyan terjednek a bemenő adatok hibái a műveleteken át az eredménybe, és hogyan korlátozható a kimenet hibája.',
+    },
+  },
+  {
+    term: { en: 'Absolute error bound (Δₓ)', hu: 'Abszolút hibakorlát (Δₓ)' },
+    def: {
+      en: 'A known number Δₓ guaranteeing |x − x̃| ≤ Δₓ. It is an upper bound for the (usually unknown) absolute error.',
+      hu: 'Ismert Δₓ szám, amelyre |x − x̃| ≤ Δₓ teljesül. A (rendszerint ismeretlen) abszolút hiba felső korlátja.',
+    },
+  },
+  {
+    term: { en: 'Relative error bound (δₓ)', hu: 'Relatív hibakorlát (δₓ)' },
+    def: {
+      en: 'δₓ := Δₓ / |x| (for x ≠ 0): an upper bound for the relative error |x − x̃| / |x|.',
+      hu: 'δₓ := Δₓ / |x| (x ≠ 0 esetén): a relatív hiba |x − x̃| / |x| felső korlátja.',
+    },
+  },
+  {
+    term: { en: 'Error propagation', hu: 'Hibaterjedés' },
+    def: {
+      en: 'Each operation has its own bound: Δ_{x±y} = Δₓ + Δᵧ; δ_{x+y} = max{δₓ, δᵧ}; for ×, ÷ the relative bounds add: δ_{xy} ≈ δₓ + δᵧ and δ_{x/y} ≈ (δₓ + δᵧ)/(1 − δᵧ).',
+      hu: 'Minden műveletnek saját korlátja van: Δ_{x±y} = Δₓ + Δᵧ; δ_{x+y} = max{δₓ, δᵧ}; szorzásnál/osztásnál a relatív korlátok összeadódnak: δ_{xy} ≈ δₓ + δᵧ és δ_{x/y} ≈ (δₓ + δᵧ)/(1 − δᵧ).',
+    },
+  },
+  {
+    term: { en: 'Loss of significance', hu: 'Értékes jegyek elvesztése' },
+    def: {
+      en: 'Subtracting two nearly equal numbers (x ≈ y): the factor x/(x−y) blows up, so the relative error bound δ_{x−y} can become huge even when δₓ, δᵧ are tiny. The classic cause of catastrophic cancellation.',
+      hu: 'Két közel egyenlő szám kivonása (x ≈ y): az x/(x−y) tényező felrobban, így a δ_{x−y} relatív hibakorlát hatalmas lehet, pedig δₓ, δᵧ apró. A katasztrofális kioltás klasszikus oka.',
+    },
+  },
+  {
+    term: { en: 'Triangle inequality', hu: 'Háromszög-egyenlőtlenség' },
+    def: {
+      en: '|a + b| ≤ |a| + |b|. The main tool for deriving error bounds — it lets the error of a sum be bounded by the sum of the errors.',
+      hu: '|a + b| ≤ |a| + |b|. A hibakorlátok levezetésének fő eszköze — segítségével az összeg hibája a hibák összegével korlátozható.',
+    },
+  },
+  {
+    term: { en: 'Worst-case estimate', hu: 'Legrosszabb eset becslése' },
+    def: {
+      en: 'The error bounds are pessimistic: they assume all individual errors line up in the same (worst) direction. The actual error is usually smaller.',
+      hu: 'A hibakorlátok pesszimisták: feltételezik, hogy az egyes hibák mind ugyanabba a (legrosszabb) irányba mutatnak. A tényleges hiba rendszerint kisebb.',
+    },
+  },
+  {
+    term: { en: 'Exact (significant) digit', hu: 'Pontos (értékes) jegy' },
+    def: {
+      en: 'x̃ approximates x to n digits if the relative error is ≤ ½·10¹⁻ⁿ — used to count how many leading digits of x̃ are trustworthy.',
+      hu: 'x̃ akkor közelíti x-et n jegyre, ha a relatív hiba ≤ ½·10¹⁻ⁿ — ezzel számolható, x̃ hány vezető jegye megbízható.',
+    },
+  },
+  // §1.4 — consequences of floating-point arithmetic
+  {
+    term: { en: '4-digit arithmetic', hu: '4-jegyű aritmetika' },
+    def: {
+      en: 'A simplified model of machine math in which every result is rounded to four significant digits — a hand-computable way to expose rounding-error accumulation.',
+      hu: 'A gépi számolás egyszerűsített modellje, amelyben minden eredményt négy értékes jegyre kerekítünk — kézzel is követhetően mutatja a kerekítési hiba felhalmozódását.',
+    },
+  },
+  {
+    term: { en: 'Catastrophic cancellation', hu: 'Katasztrofális kioltás' },
+    def: {
+      en: 'The extreme form of loss of significance: subtracting two nearly equal numbers cancels the leading digits, so the result is dominated by their rounding errors. Fixed by algebraic rewrite, Taylor series, etc.',
+      hu: 'Az értékes jegyek elvesztésének szélsőséges esete: két közel egyenlő szám kivonásakor a vezető jegyek kioltják egymást, így az eredményt a kerekítési hibáik uralják. Algebrai átírással, Taylor-sorral stb. orvosolható.',
+    },
+  },
+  {
+    term: { en: 'Numerical (non-)commutativity', hu: 'Numerikus (nem-)kommutativitás' },
+    def: {
+      en: 'In exact math a + b = b + a, but in floating point the order of a long sum changes the result — small terms vanish if added after a large running total. Sum smallest-first to minimise this.',
+      hu: 'A pontos matematikában a + b = b + a, de lebegőpontosan egy hosszú összeg sorrendje megváltoztatja az eredményt — a kis tagok eltűnnek, ha nagy részösszeg után adjuk hozzá őket. Növekvő sorrendben összegezve minimalizálható.',
+    },
+  },
+  {
+    term: { en: 'Overflow', hu: 'Túlcsordulás' },
+    def: {
+      en: 'When an intermediate or final value exceeds the largest representable machine number (≈ 3.4·10³⁸ in single precision). aⁿ or n! can overflow even when the final ratio aⁿ/n! is tiny — interleave the factors to stay in range.',
+      hu: 'Amikor egy köztes vagy végeredmény meghaladja a legnagyobb ábrázolható gépi számot (egyszeres pontosságban ≈ 3,4·10³⁸). aⁿ vagy n! túlcsordulhat akkor is, ha a végső aⁿ/n! hányados parányi — a tényezők összefésülésével tartomány­ban maradunk.',
+    },
+  },
+  {
+    term: { en: 'Taylor series (as a numerical tool)', hu: 'Taylor-sor (numerikus eszközként)' },
+    def: {
+      en: 'When no algebraic identity removes a dangerous subtraction (e.g. eˣ − 1 near 0), expand the function as x + x²/2! + x³/3! + … and use a finite number of terms — the cancelling constant is removed analytically.',
+      hu: 'Ha nincs algebrai azonosság a veszélyes kivonás kiküszöbölésére (pl. eˣ − 1 a 0 közelében), fejtsük a függvényt x + x²/2! + x³/3! + … alakba, és véges sok tagot használjunk — a kioltó konstans analitikusan eltűnik.',
+    },
+  },
 ]
 
 export function Glossary() {

@@ -1,34 +1,31 @@
-import { useState } from 'react';
 import { STR } from './i18n/strings';
 import { useLang } from '../../shared/providers/LanguageProvider';
 import Lesson from './lessons/Lesson';
 import ChallengePlay from './components/ChallengePlay';
+import { ScrollyTopBar, type SectionMeta } from '../../shared/scrolly';
 import './styles.css';
 
-type Tab = 'play' | 'lagrange' | 'newton' | 'hermite' | 'spline';
+const SECTIONS: SectionMeta[] = [
+  { id: 'play', no: '6·play', title: { en: STR.en.nav.playground, hu: STR.hu.nav.playground }, blurb: { en: '', hu: '' } },
+  { id: 'lagrange', no: '6.1', title: { en: STR.en.nav.lagrange, hu: STR.hu.nav.lagrange }, blurb: { en: '', hu: '' } },
+  { id: 'newton', no: '6.2', title: { en: STR.en.nav.newton, hu: STR.hu.nav.newton }, blurb: { en: '', hu: '' } },
+  { id: 'hermite', no: '6.4', title: { en: STR.en.nav.hermite, hu: STR.hu.nav.hermite }, blurb: { en: '', hu: '' } },
+  { id: 'spline', no: '6.5', title: { en: STR.en.nav.spline, hu: STR.hu.nav.spline }, blurb: { en: '', hu: '' } },
+];
 
 /**
- * Chapter 6 — Interpolation (InterPlay). Ported from 06/interplay. The client
- * never used the Express `/api/datasets` endpoint (points are inlined), so the
- * server is dropped. Language now comes from the shared provider; the chapter's
- * own top-bar lang/theme toggles are replaced by the unified shell nav, and the
- * internal tab bar is kept.
+ * Chapter 6 — Interpolation (InterPlay), as a single scrollytelling page: the
+ * playground and the four method lessons stacked, with the shared top-bar
+ * (progress + § jump). The internal tab bar is dropped.
  */
 export default function Chapter() {
   const { lang } = useLang();
-  const [tab, setTab] = useState<Tab>('play');
   const str = STR[lang];
-
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'play', label: str.nav.playground },
-    { id: 'lagrange', label: str.nav.lagrange },
-    { id: 'newton', label: str.nav.newton },
-    { id: 'hermite', label: str.nav.hermite },
-    { id: 'spline', label: str.nav.spline },
-  ];
+  const ss = { scrollMarginTop: 'calc(var(--nav-h) + var(--scrolly-topbar-h, 44px) + 8px)' };
 
   return (
     <div className="app ch-interpolation">
+      <ScrollyTopBar sections={SECTIONS} />
       <header className="topbar">
         <div className="brand">
           <span className="logo">📈</span>
@@ -39,21 +36,11 @@ export default function Chapter() {
         </div>
       </header>
 
-      <nav className="tabs">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            className={`tab ${tab === t.id ? 'active' : ''}`}
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
-
       <main className="content">
-        {tab === 'play' && <ChallengePlay str={str} />}
-        {tab === 'lagrange' && (
+        <section id="play" style={ss}>
+          <ChallengePlay str={str} />
+        </section>
+        <section id="lagrange" style={ss}>
           <Lesson
             str={str}
             method="lagrange"
@@ -65,8 +52,8 @@ export default function Chapter() {
             ]}
             allowCompare
           />
-        )}
-        {tab === 'newton' && (
+        </section>
+        <section id="newton" style={ss}>
           <Lesson
             str={str}
             method="newton"
@@ -79,8 +66,8 @@ export default function Chapter() {
             showTable
             allowCompare
           />
-        )}
-        {tab === 'hermite' && (
+        </section>
+        <section id="hermite" style={ss}>
           <Lesson
             str={str}
             method="hermite"
@@ -92,8 +79,8 @@ export default function Chapter() {
             derivatives={[3, -5, 30]}
             enableDerivatives
           />
-        )}
-        {tab === 'spline' && (
+        </section>
+        <section id="spline" style={ss}>
           <Lesson
             str={str}
             method="spline"
@@ -107,11 +94,11 @@ export default function Chapter() {
             ]}
             allowCompare
           />
-        )}
+        </section>
       </main>
 
       <footer className="foot">
-        InterPlay · Numerical Analysis 6 · Interpolation — F. Hartung, University of Pannonia
+        InterPlay · Numerical Analysis · Interpolation
       </footer>
     </div>
   );

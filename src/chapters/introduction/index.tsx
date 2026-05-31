@@ -14,6 +14,8 @@ import { Glossary } from './sections/Glossary';
 import { Flashcards } from './sections/Flashcards';
 import { Quiz } from './sections/Quiz';
 import { useLang } from './context/LangContext';
+import { ScrollyTopBar } from '../../shared/scrolly';
+import { SECTIONS } from './sections/registry';
 import './styles/global.css';
 
 /**
@@ -25,6 +27,7 @@ export default function Chapter() {
   const { t } = useLang();
   return (
     <div className="ch-introduction">
+      <ScrollyTopBar sections={SECTIONS} />
       <Hero />
       <ComputationFlow />
       <TruncationError />

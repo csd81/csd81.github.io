@@ -4,8 +4,11 @@ import { useStrings } from '../i18n/useStrings';
 import { useLanguage } from '../context/LanguageContext';
 import { getTheory } from '../content';
 import { getQuiz } from '../quizzes';
+import { getQuiz as getBankQuiz } from '../content/quiz';
 import { Theory } from '../components/Theory';
 import { Quiz } from '../components/Quiz';
+import { Quiz as BankQuiz } from '../../../shared/ui/Quiz';
+import { GlossaryDeck, FlashcardDeck } from '../components/Decks';
 import { MatrixInput } from '../components/MatrixInput';
 import { MatrixView } from '../components/MatrixView';
 import { Panel, Stat, Verdict, PageHeader } from '../components/ui';
@@ -115,7 +118,11 @@ export function FixedPointPage() {
         </div>
       </Panel>
 
+      <GlossaryDeck moduleId="fixed-point" title={lang === 'hu' ? 'Fogalomtár' : 'Glossary'} />
+      <FlashcardDeck moduleId="fixed-point" title={lang === 'hu' ? 'Tanulókártyák' : 'Flashcards'} />
+
       <Quiz moduleId="fixed-point" questions={getQuiz('fixed-point', lang)} />
+      <BankQuiz questions={getBankQuiz('fixed-point')} />
     </div>
   );
 }

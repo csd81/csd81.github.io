@@ -1,7 +1,8 @@
 // Block renderer: turns section data into DOM, wires demos and quizzes.
 import { sections, sectionIds } from '../content/sections.js';
 import { quizzes } from '../content/quizzes.js';
-import { t, UI } from '../state/i18n.js';
+import { t, UI, getLang } from '../state/i18n.js';
+import { GLOSSARIES, FLASHCARDS } from '../content/decks.js';
 import { renderMath, renderMarkdownMath } from './katex.js';
 import {
   completeSection,
@@ -167,8 +168,100 @@ function renderQuiz(ref, sectionId) {
   return wrap;
 }
 
+function renderGlossary(deck) {
+  const entries = GLOSSARIES[deck] || [];
+  const wrap = el('div', 'deck glossary-deck');
+  wrap.appendChild(el('h4', null, t({ hu: 'Fogalomtár', en: 'Glossary' })));
+  const list = el('div', 'deck-list');
+  entries.forEach((e) => {
+    const item = el('button', 'deck-item');
+    const head = el('div', 'deck-item__head');
+    const term = el('strong');
+    renderMarkdownMath(term, e.term[getLang()]);
+    head.appendChild(term);
+    const sign = el('span', null, '+');
+    head.appendChild(sign);
+    item.appendChild(head);
+    const body = el('div', 'deck-item__body');
+    body.style.display = 'none';
+    renderMarkdownMath(body, e.def[getLang()]);
+    item.appendChild(body);
+    item.addEventListener('click', () => {
+      const open = body.style.display !== 'none';
+      body.style.display = open ? 'none' : 'block';
+      sign.textContent = open ? '+' : '−';
+    });
+    list.appendChild(item);
+  });
+  wrap.appendChild(list);
+  return wrap;
+}
+
+function renderFlashcards(deck) {
+  const cards = FLASHCARDS[deck] || [];
+  const wrap = el('div', 'deck flashcard-deck');
+  if (!cards.length) return wrap;
+  let order = cards.map((_, i) => i);
+  let pos = 0;
+  let flipped = false;
+
+  const bar = el('div', 'deck__bar');
+  bar.appendChild(el('h4', null, t({ hu: 'Tanulókártyák', en: 'Flashcards' })));
+  const ctrls = el('div', 'deck__ctrls');
+  const counter = el('span', 'deck__count');
+  const shuffleBtn = el('button', 'btn', t({ hu: '🔀 Keverés', en: '🔀 Shuffle' }));
+  const resetBtn = el('button', 'btn', t({ hu: 'Eredeti', en: 'Reset' }));
+  ctrls.appendChild(counter);
+  ctrls.appendChild(shuffleBtn);
+  ctrls.appendChild(resetBtn);
+  bar.appendChild(ctrls);
+  wrap.appendChild(bar);
+
+  const cardEl = el('button', 'deck-card');
+  wrap.appendChild(cardEl);
+
+  const nav = el('div', 'deck__nav');
+  const prevBtn = el('button', 'btn', t({ hu: '‹ Előző', en: '‹ Prev' }));
+  const flipBtn = el('button', 'btn btn--primary');
+  const nextBtn = el('button', 'btn', t({ hu: 'Következő ›', en: 'Next ›' }));
+  nav.appendChild(prevBtn);
+  nav.appendChild(flipBtn);
+  nav.appendChild(nextBtn);
+  wrap.appendChild(nav);
+
+  function paint() {
+    const card = cards[order[pos]];
+    counter.textContent = `${pos + 1} / ${cards.length}`;
+    cardEl.innerHTML = '';
+    const tag = el('div', 'deck-card__tag', flipped ? t({ hu: 'Válasz', en: 'Answer' }) : t({ hu: 'Kérdés', en: 'Question' }));
+    cardEl.appendChild(tag);
+    const body = el('div');
+    renderMarkdownMath(body, flipped ? card.a : card.q);
+    cardEl.appendChild(body);
+    flipBtn.textContent = flipped ? t({ hu: 'Kérdés', en: 'Show question' }) : t({ hu: 'Válasz', en: 'Show answer' });
+  }
+  function go(d) { flipped = false; pos = (pos + d + cards.length) % cards.length; paint(); }
+
+  cardEl.addEventListener('click', () => { flipped = !flipped; paint(); });
+  flipBtn.addEventListener('click', () => { flipped = !flipped; paint(); });
+  prevBtn.addEventListener('click', () => go(-1));
+  nextBtn.addEventListener('click', () => go(1));
+  shuffleBtn.addEventListener('click', () => {
+    for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+    pos = 0; flipped = false; paint();
+  });
+  resetBtn.addEventListener('click', () => { order = cards.map((_, i) => i); pos = 0; flipped = false; paint(); });
+
+  paint();
+  return wrap;
+}
+
 function renderBlock(block, section) {
   switch (block.type) {
+    case 'glossary':
+      return renderGlossary(block.deck);
+    case 'flashcards':
+      return renderFlashcards(block.deck);
     case 'text': {
       const p = el('div', 'prose');
       renderMarkdownMath(p, t(block));

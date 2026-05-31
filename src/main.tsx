@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { LanguageProvider } from './shared/providers/LanguageProvider';
 import { ThemeProvider } from './shared/providers/ThemeProvider';
+import { CodeLangProvider } from './shared/ui/CodeLangProvider';
+import { ScrollyNavProvider } from './shared/scrolly/ScrollyNavContext';
 import AppRoutes from './routes';
 import './shared/styles/tailwind.css';
 import './shared/styles/global.css';
@@ -12,9 +14,13 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider>
       <LanguageProvider>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
+        <CodeLangProvider>
+          <ScrollyNavProvider>
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+          </ScrollyNavProvider>
+        </CodeLangProvider>
       </LanguageProvider>
     </ThemeProvider>
   </StrictMode>,

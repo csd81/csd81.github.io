@@ -43,7 +43,9 @@ html[data-theme="light"] {
 
 * { box-sizing: border-box; }
 
-html, body, #root { height: 100%; margin: 0; }
+/* (removed `html, body, #root { height: 100% }` — a standalone-app leftover that
+   turned #root into a fixed-height internal scroller and broke the unified
+   app-nav's position:sticky while this chapter was active.) */
 
 body {
   font-family: var(--font-sans);
@@ -57,7 +59,7 @@ a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
 /* ---- App shell ---- */
-.app { display: flex; flex-direction: column; min-height: 100%; }
+.app { display: flex; flex-direction: column; min-height: 100vh; }
 
 .header {
   position: sticky; top: 0; z-index: 20;
@@ -100,7 +102,7 @@ a:hover { text-decoration: underline; }
 .nav-link:hover { background: var(--bg-elev); color: var(--text); text-decoration: none; }
 .nav-link.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 
-.content { flex: 1; min-width: 0; padding: 28px 32px 80px; }
+.content { flex: 1; min-width: 0; width: 100%; padding: 28px 32px 80px; }
 
 /* ---- Cards / demos ---- */
 .card {
@@ -163,6 +165,28 @@ table.results-table td:first-child, table.results-table th:first-child { text-al
 .markdown img { max-width: 100%; }
 .markdown hr { border: none; border-top: 1px solid var(--border); margin: 2em 0; }
 
+/* ---- Collapsible inline solution boxes (markdown <details class="reveal-solution">) ---- */
+.markdown details.reveal-solution {
+  margin: 1rem 0;
+  padding: 0 1rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--ok, #16a34a);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2, var(--bg-elev));
+}
+.markdown details.reveal-solution > summary {
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  font-weight: 700;
+  padding: 0.6rem 0;
+  color: var(--ok, #15803d);
+}
+.markdown details.reveal-solution > summary::-webkit-details-marker { display: none; }
+.markdown details.reveal-solution > summary::before { content: '▸ '; opacity: 0.65; }
+.markdown details[open].reveal-solution > summary::before { content: '▾ '; }
+.markdown details.reveal-solution > *:last-child { margin-bottom: 0.85rem; }
+
 .hero { padding: 30px 0 10px; }
 .hero h1 { font-size: 34px; margin: 0 0 8px; background: linear-gradient(120deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .hero p { color: var(--text-dim); max-width: 720px; font-size: 16px; }
@@ -181,3 +205,18 @@ table.results-table td:first-child, table.results-table th:first-child { text-al
   .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 4px; }
   .content { padding: 20px 16px 60px; }
 }
+
+/* Glossary / flashcard decks (appended) */
+.deck { margin-top: 28px; }
+.deck h3 { margin: 0 0 10px; }
+.deck-list { display: grid; gap: 8px; }
+.deck-item { text-align: left; width: 100%; cursor: pointer; background: var(--panel, rgba(127,127,127,.06)); border: 1px solid var(--border, rgba(127,127,127,.25)); border-radius: 12px; padding: 12px 14px; color: inherit; font: inherit; }
+.deck-item__head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.deck-item__body { margin-top: 8px; font-size: .94rem; opacity: .9; }
+.deck__bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.deck__ctrls { display: flex; gap: 8px; align-items: center; }
+.deck__count { font-variant-numeric: tabular-nums; opacity: .6; font-size: .85rem; }
+.deck-card { width: 100%; min-height: 150px; text-align: left; cursor: pointer; background: var(--panel, rgba(127,127,127,.06)); border: 1px solid var(--border, rgba(127,127,127,.25)); border-radius: 14px; padding: 16px 18px; margin: 10px 0; color: inherit; font: inherit; }
+.deck-card__tag { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; opacity: .7; margin-bottom: 8px; }
+.deck__nav { display: flex; gap: 10px; align-items: center; }
+.deck__nav .btn.active { flex: 1; }

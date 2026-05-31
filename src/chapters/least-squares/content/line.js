@@ -161,7 +161,26 @@ export const lineFitting = {
           ],
         },
       ],
+      solution: `**Method (worked example).** For each data set, form the sums $\\sum x_i$, $\\sum x_i^2$, $\\sum y_i$, $\\sum x_i y_i$, solve the $2\\times2$ normal equations for $\\bar a,\\bar b$, then evaluate $SSR=\\sum(\\bar a x_i+\\bar b-y_i)^2$ and $RMSE=\\sqrt{SSR/(n+1)}$.
+
+**Example A — data** $x_i:-2,-1,0,1,2$, $\\ y_i:1,2,2.5,2,1$.
+
+Sums: $n+1=5$, $\\sum x_i=0$, $\\sum x_i^2=10$, $\\sum y_i=8.5$, $\\sum x_iy_i=0$.
+
+Normal equations $\\left(\\begin{smallmatrix}10 & 0\\\\ 0 & 5\\end{smallmatrix}\\right)\\left(\\begin{smallmatrix}a\\\\ b\\end{smallmatrix}\\right)=\\left(\\begin{smallmatrix}0\\\\ 8.5\\end{smallmatrix}\\right)$ give $a=0$, $b=1.7$, i.e. the horizontal line $y=1.7$.
+
+$SSR=(1.7-1)^2+(1.7-2)^2+(1.7-2.5)^2+(1.7-2)^2+(1.7-1)^2=1.80$, $\\ RMSE=\\sqrt{1.80/5}=0.60$.
+
+**Example B — data** $x_i:0,1,2,3,4$, $\\ y_i:1,2.9,5.1,7,9.1$.
+
+Sums: $\\sum x_i=10$, $\\sum x_i^2=30$, $\\sum y_i=25.1$, $\\sum x_iy_i=70.5$. Determinant $d=30\\cdot5-10\\cdot10=50$.
+
+$a=\\dfrac{5(70.5)-10(25.1)}{50}=2.03$, $\\ b=\\dfrac{30(25.1)-10(70.5)}{50}=0.96$, so $y=2.03x+0.96$, with $SSR\\approx0.019$, $RMSE\\approx0.062$ (excellent fit).
+
+**Uniqueness of the fit.** By Cauchy–Schwarz with $u_i=1,\\ v_i=x_i$: $(\\sum x_i)^2\\le(n+1)\\sum x_i^2$, so $d=(n+1)\\sum x_i^2-(\\sum x_i)^2\\ge0$, with strict inequality (hence a unique solution) whenever at least two $x_i$ differ.`,
     },
+    { type: 'glossary', deck: 'line' },
+    { type: 'flashcards', deck: 'line' },
     { type: 'quiz', ref: 'line' },
   ],
 };

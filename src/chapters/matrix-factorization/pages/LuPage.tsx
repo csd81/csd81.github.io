@@ -1,6 +1,7 @@
 import { TheorySection } from "../components/Theory/TheorySection";
 import { GuidedExample } from "../components/GuidedExample/GuidedExample";
 import { LUSolver } from "../components/Solvers/LUSolver";
+import { GlossaryDeck, FlashcardDeck } from "../components/Decks";
 import { luSection } from "../content/lu";
 import { useT } from "../i18n/useT";
 
@@ -13,6 +14,8 @@ export function LuPage() {
       <GuidedExample kind="lu" />
       <h2>{lang === "en" ? "Try it yourself" : "Próbáld ki magad"}</h2>
       <LUSolver />
+      <GlossaryDeck deck="lu" />
+      <FlashcardDeck deck="lu" />
     </div>
   );
 }
