@@ -53,6 +53,7 @@ const META: Record<string, { title: string; author: string; blurb: string }> = {
   kalkulus1: { title: 'Kalkulus informatikusoknak I.', author: 'Győri István, Pituk Mihály', blurb: 'Halmazok, függvények, sorozatok, határérték, differenciálszámítás.' },
   kalkulus2: { title: 'Kalkulus informatikusoknak II.', author: 'Győri István, Pituk Mihály', blurb: 'Végtelen sorok, integrálszámítás, többváltozós analízis.' },
   'anal-tk1b': { title: 'Matematikai analízis I.', author: 'Dr. Szalkai István, Mikó Teréz · Pannon Egyetem', blurb: 'Alapfogalmak, függvények, sorozatok, határérték, deriválás (0–7. fejezet).' },
+  'kalkulus2-peldatar': { title: 'Kalkulus II. Példatár', author: 'Szalkai István, Dósa György · Pannon Egyetem', blurb: 'Megoldott feladatgyűjtemény: minden feladat alatt az Útmutatás és a Megoldás (10 fejezet, F1–F10).' },
 };
 
 /**
@@ -165,7 +166,7 @@ function nodeLeadKind(node: any): string | null {
  * lead, heading, or a footnotes `<section>`. Proofs are their own boxes. When
  * `qed`, a □ is appended at the box end unless the next box is its proof.
  */
-function rehypeCallouts(qed: boolean, source: string) {
+function rehypeCallouts({ qed, source }: { qed: boolean; source: string }) {
   // A `<p>` whose entire content is one `<strong>` = a bold section header (not
   // a theorem lead, which has trailing statement text) → it breaks a box.
   const isBoldHeader = (node: any) => {
@@ -343,7 +344,7 @@ function ChapterView() {
       <Link to={`/calc/${book.id}`} className="ila__back">← {book.title}</Link>
       <p className="ila__kicker">{book.title} · {c.num}. fejezet</p>
       <h1 className="ila__title">{c.title || `${c.num}. fejezet`}</h1>
-      <MarkdownView markdown={c.body} components={components} rehypePlugins={[[rehypeCallouts, qed, source]]} />
+      <MarkdownView markdown={c.body} components={components} rehypePlugins={[[rehypeCallouts, { qed, source }]]} />
       <nav className="calc-chnav">
         {prev
           ? <Link to={`/calc/${book.id}/${prev.num}`} className="ila__back">← {prev.num}. {prev.title}</Link>
