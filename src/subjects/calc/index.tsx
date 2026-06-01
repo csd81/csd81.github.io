@@ -218,9 +218,9 @@ function CopyButton({ tex }: { tex: string }) {
  * reuses ids like `[^1]` across sections, which collides in one render). Each
  * reference is paired with the next definition of the same id.
  */
-const SUP: Record<string, string> = { '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9' };
-const desup = (s: string) => s.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]/g, (c) => SUP[c]);
 function prepareFootnotes(body: string): string {
+  const SUP: Record<string, string> = { '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9' };
+  const desup = (s: string) => s.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]/g, (c) => SUP[c]);
   const b = body
     .replace(/^<sup>(\d+)\)<\/sup>[ \t]+/gm, '[^sup$1]: ')
     .replace(/<sup>(\d+)\)<\/sup>/g, '[^sup$1]')
