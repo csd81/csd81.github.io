@@ -1,0 +1,215 @@
+{
+ "ch0": {
+  "desc": "Általános jelölések és konvenciók: számhalmazok \\(\\mathbb{N},\\mathbb{Z},\\mathbb{Q},\\mathbb{R},\\mathbb{C}\\), hatványhalmaz \\(\\mathcal{P}(A)\\), egészrészek \\(\\lfloor x\\rfloor\\), \\(\\lceil x\\rceil\\), aszimptotika \\(\\mathcal{O}(f)\\). A sakktábla-paradoxon: \\(2^{64}-1\\approx 1{,}8\\times 10^{19}\\).",
+  "tags": [
+   "Jelölések",
+   "Hatványhalmaz",
+   "Egészrészek",
+   "Sakktábla"
+  ]
+ },
+ "ch1": {
+  "desc": "Halmazok definíciója és alapm&ucirc;veletek. Cantor-tétel: nem létezik mindent tartalmazó halmaz. Boole-axiómák BA1–BA14. Venn-diagramok, De Morgan, Dualitás elve. Min&odblac;ségi függetlenség, DNF/CNF normálformák.",
+  "tags": [
+   "Cantor-tétel",
+   "Boole-algebrák",
+   "Venn",
+   "De Morgan"
+  ]
+ },
+ "ch2": {
+  "desc": "Általános számlálási módszerek. Teljes indukció. Permutációk \\(P(n)=n!\\), variációk \\(V(n,k)\\), kombinációk \\(\\binom{n}{k}\\). A Stirling-formula: \\(n!\\approx\\sqrt{2\\pi n}\\,(n/e)^n\\).",
+  "tags": [
+   "Permutációk",
+   "Kombinációk",
+   "Stirling",
+   "Indukció"
+  ]
+ },
+ "ch3": {
+  "desc": "Binomiális tétel: \\((x+y)^n=\\sum_k\\binom{n}{k}x^k y^{n-k}\\). Polinomiális tétel. Összegzési módszerek, hatványok összege. Rugalmas pénzérmék (stars-and-bars) kombinatorikai modell.",
+  "tags": [
+   "Binomiális tétel",
+   "Összegzés",
+   "Pénzérmék"
+  ]
+ },
+ "ch4": {
+  "desc": "Befoglalás-kizárás elve: \\(|A_1\\cup\\cdots\\cup A_n|=\\sum|A_i|-\\sum|A_i\\cap A_j|+\\cdots\\). Elcserélt levelek (derangements) \\(D_n\\). Additív halmazfüggvények és Möbius-inverzió.",
+  "tags": [
+   "Befoglalás-kizárás",
+   "Derangements",
+   "Möbius"
+  ]
+ },
+ "ch5": {
+  "desc": "Iterációs módszer, lineáris rekurziók karakterisztikus polinomja. Fibonacci-sorozat \\(F_n=F_{n-1}+F_{n-2}\\), Binet-képlet. Szimultán rekurziók. Ackermann-függvény, Lucas-Lehmer teszt, Newton-módszer.",
+  "tags": [
+   "Rekurzió",
+   "Fibonacci",
+   "Ackermann",
+   "Mersenne"
+  ]
+ },
+ "ch6": {
+  "desc": "Hatványsor-módszer lineáris és nemlineáris rekurziókhoz. Catalan-számok \\(C_n=\\frac{1}{n+1}\\binom{2n}{n}\\) és a szülőzárójelek száma. Pénzváltási probléma. Exponenciális generátorfüggvények.",
+  "tags": [
+   "Generátorfüggvény",
+   "Catalan",
+   "Pénzváltás"
+  ]
+ },
+ "ch7": {
+  "desc": "Sperner tétele: \\(\\mathcal{F}\\subseteq\\mathcal{P}(n)\\) antichain \\(\\Rightarrow|\\mathcal{F}|\\leq\\binom{n}{\\lfloor n/2\\rfloor}\\). Erd&odblac;s-Ko-Rado, Fisher, Ryser tételei. Szimplexek kombinatorikája.",
+  "tags": [
+   "Sperner",
+   "Erdős-Ko-Rado",
+   "Antichain",
+   "Szimplexek"
+  ]
+ },
+ "ch8": {
+  "desc": "Számok felbontása összegekre: \\(p(n)\\) partíciófüggvény, Young-diagramok, Ferrer-diagramok. Halmazpartíciók, Bell-számok \\(B_n\\), Stirling-számok másodfajból \\(S(n,k)\\).",
+  "tags": [
+   "Partíciók",
+   "Bell-számok",
+   "Stirling",
+   "Young-diagram"
+  ]
+ },
+ "ch9": {
+  "desc": "Gráf \\(G=(V,E)\\), irányított és irányítatlan. Névezetes gráfok: \\(K_n\\), \\(K_{m,n}\\), \\(C_n\\), \\(P_n\\), \\(Q_n\\). Fok, szomszédosság, összefüggőség. Utak, körök, összefüggő komponensek.",
+  "tags": [
+   "Alapfogalmak",
+   "Összefügg&odblac;ség",
+   "\\(K_n,K_{m,n}\\)"
+  ]
+ },
+ "ch10": {
+  "desc": "A königsbergi hidak problémája. Euler tétele: összefügg&odblac; gráfban Euler-kör létezik \\(\\Leftrightarrow\\) minden csúcs fokszáma páros. Euler-út feltétele. Fleury-algoritmus.",
+  "tags": [
+   "Euler-kör",
+   "Königsberg",
+   "Paritás"
+  ]
+ },
+ "ch11": {
+  "desc": "Hamilton-kör és Dirac-tétel (\\(\\delta(G)\\geq n/2\\)). Ore-tétel. Kockagráfok \\(Q_n\\) és Gray-kódok: szomszédos kódszavak pontosan 1 bitben különböznek. NP-teljességi megjegyzések.",
+  "tags": [
+   "Hamilton",
+   "Dirac-tétel",
+   "Gray-kód",
+   "Kockagráf"
+  ]
+ },
+ "ch12": {
+  "desc": "Szomszédsági mátrix \\(A\\), csúcs-él incidenciamátrix \\(B\\), Laplace-mátrix \\(L=D-A\\). Hatványozás: \\(A^k_{ij}\\) = hossz-\\(k\\) séták száma \\(i\\)-ből \\(j\\)-be. Spektrum és sajátértékek.",
+  "tags": [
+   "Szomszédsági mátrix",
+   "Laplace",
+   "Spektrum"
+  ]
+ },
+ "ch13": {
+  "desc": "Dijkstra algoritmusa nemnegatív súlyú gráfokban: prioritásos sorral \\(O((V+E)\\log V)\\). Mohó stratégia, helyességbizonyítás. Bellman-Ford áttekintés.",
+  "tags": [
+   "Dijkstra",
+   "Legrövidebb út",
+   "Mohó"
+  ]
+ },
+ "ch14": {
+  "desc": "Fa: összefügg&odblac;, körmentes gráf, \\(|E|=|V|-1\\). Számozott fák száma: Cayley-képlet \\(n^{n-2}\\). Bináris fák és Catalan-számok. Rendezési algoritmusok bináris fán.",
+  "tags": [
+   "Fák",
+   "Cayley \\(n^{n-2}\\)",
+   "Bináris fa",
+   "Rendezés"
+  ]
+ },
+ "ch15": {
+  "desc": "Minimális feszít&odblac;fa: Kruskal-algoritmus (Union-Find) és Prim-algoritmus. Utazó ügynök metrikus gráfokban: MST-alapú 2-approximáció. Christofides-algoritmus.",
+  "tags": [
+   "Kruskal",
+   "MST",
+   "Utazó ügynök"
+  ]
+ },
+ "ch16": {
+  "desc": "Izomorfizmus: fok-sorozat, körök száma, spektrum mint szükséges feltételek. Fák kanonikus alakja és középpont-módszer. GI-probléma komplexitása.",
+  "tags": [
+   "Izomorfizmus",
+   "Invariánsok",
+   "GI-probléma"
+  ]
+ },
+ "ch17": {
+  "desc": "Kuratowski tétele: \\(G\\) síkbarajzolható \\(\\Leftrightarrow\\) nem tartalmaz \\(K_5\\) vagy \\(K_{3,3}\\) részgráfot. Euler poliéder-formula: \\(v-e+f=2\\). Fullerének, \\(C_{60}\\). Négy-szín tétel.",
+  "tags": [
+   "Kuratowski",
+   "Euler \\(v-e+f=2\\)",
+   "Fullerén",
+   "4-szín tétel"
+  ]
+ },
+ "ch18": {
+  "desc": "Csúcsszínezés, kromatikus szám \\(\\chi(G)\\). Brooks-tétel. Élszínezés és Vizing-tétel. Ramsey-elmélet: \\(R(s,t)\\) Ramsey-számok, \\(R(3,3)=6\\), \\(R(4,4)=18\\). Probabilisztikus módszer.",
+  "tags": [
+   "Színezés",
+   "Ramsey",
+   "Brooks",
+   "Probabilisztikus"
+  ]
+ },
+ "ch19": {
+  "desc": "Páros gráfok és König tétele: \\(\\nu(G)=\\tau(G)\\). Párosítás, maximum párosítás, augmentáló utak. Hall-feltétel. Magyar módszer súlyozott hozzárendelési feladathoz.",
+  "tags": [
+   "Páros gráf",
+   "König",
+   "Hall-feltétel",
+   "Párosítás"
+  ]
+ },
+ "ch20": {
+  "desc": "Turán-tétel: \\(K_{r+1}\\)-mentes gráf maximális élszáma \\(ex(n,K_{r+1})=\\left(1-\\tfrac{1}{r}\\right)\\tfrac{n^2}{2}\\), a Turán-gráf \\(T(n,r)\\) az extrém eset. Kövári-Sós-Turán tétel.",
+  "tags": [
+   "Turán-tétel",
+   "Extremális",
+   "Turán-gráf"
+  ]
+ },
+ "ch21": {
+  "desc": "Szomszédsági mátrix sajátértékei: \\(\\lambda_1\\geq\\cdots\\geq\\lambda_n\\). Karakterisztikus polinom \\(p_G(\\lambda)=\\det(\\lambda I - A)\\). Reguláris gráfok spektruma, Lovász–Pelikán tétel: kétpólusú \\(\\Leftrightarrow\\) spektrum szimmetrikus.",
+  "tags": [
+   "Spektrum",
+   "Sajátértékek",
+   "Lovász–Pelikán"
+  ]
+ },
+ "ch22": {
+  "desc": "Folyamhálózat: forrás, nyel&odblac;, kapacitás. Max-flow min-cut tétel (Ford-Fulkerson). Javítható utak BFS-sel (Edmonds-Karp). Alkalmazások: párosítás, szállítási feladat.",
+  "tags": [
+   "Max-flow",
+   "Ford-Fulkerson",
+   "Min-cut",
+   "Edmonds-Karp"
+  ]
+ },
+ "ch23": {
+  "desc": "Matroid \\((S,\\mathcal{F})\\): I1–I3 függetlenségi axiómák. Grafikus, uniform és partíció matroidok. Rangfüggvény \\(r(X)\\), körök, bázisok. Körök és bázisok min/max száma (DHLS-tétel).",
+  "tags": [
+   "Matroid",
+   "Független halmazok",
+   "Rangfüggvény",
+   "Körök & Bázisok"
+  ]
+ },
+ "appendix": {
+  "desc": "Az \\(\\binom{x}{n}\\) polinomok explicit alakja és koordinátái az \\(\\{\\binom{x}{k}:k\\le n\\}\\) bázisban. A \\(P_k(n):=\\sum_{i=1}^n i^k\\) hatványösszeg-polinomok \\(k=0,\\ldots,12\\)-ig. Parciális törtekre bontás módszertana.",
+  "tags": [
+   "Binomiális pol.",
+   "Hatványösszegek",
+   "Parciális törtek"
+  ]
+ }
+}

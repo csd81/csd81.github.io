@@ -1,0 +1,164 @@
+{
+ "ch1": {
+  "desc": "A halmaz mint alapfogalom (nem definiált). Elemek, részhalmazok, valódi részhalmazok, hatványhalmaz \\(\\mathcal{P}(A)\\). Halmazműveletek: unió \\(A\\cup B\\), metszet \\(A\\cap B\\), különbség \\(A\\setminus B\\), szimmetrikus különbség, komplemens. Venn-diagramok, halmazazonossági bizonyítások.",
+  "tags": [
+   "Halmazok",
+   "Részhalmaz",
+   "Halmazműveletek",
+   "Venn-diagram"
+  ]
+ },
+ "ch2": {
+  "desc": "Függvények, leképezések definíciója és tulajdonságai. Injektív, szürjektív, bijektív leképezések. Inverz függvény \\(f^{-1}\\), kompozíció \\(f\\circ g\\). Ekvivalenciaosztályok és faktorhalmazok \\(A/\\sim\\).",
+  "tags": [
+   "Függvények",
+   "Bijekció",
+   "Kompozíció",
+   "Inverz"
+  ]
+ },
+ "ch3": {
+  "desc": "Permutációk mint bijekciók \\(\\{1,\\dots,n\\}\\to\\{1,\\dots,n\\}\\), ciklikus jelölés. Permutációk szorzata, inverze, rendje. Páros és páratlan permutációk, inverzió. Az \\(S_n\\) szimmetrikus csoport és a váltakozó csoport \\(A_n\\).",
+  "tags": [
+   "Permutációk",
+   "Ciklusok",
+   "\\(S_n\\) szimmetrikus csoport",
+   "Paritás"
+  ]
+ },
+ "ch4": {
+  "desc": "Bináris relációk tulajdonságai: reflexivitás, szimmetria, tranzitivitás. Ekvivalenciarelációk és rendezések. Gráfok mint relációk — irányított és irányítatlan gráfok, szomszédossági mátrix \\(A\\).",
+  "tags": [
+   "Relációk",
+   "Ekvivalencia",
+   "Rendezés",
+   "Gráfok"
+  ]
+ },
+ "ch5": {
+  "desc": "Véges és végtelen halmazok számossága. Megszámlálható \\(|\\mathbb{N}|\\) és nem megszámlálható \\(|\\mathbb{R}|\\) halmazok (Cantor-átlós bizonyítás). A kontinuum-hipotézis. Cantor–Bernstein–Schröder-tétel. A valós számok nem megszámlálhatók.",
+  "tags": [
+   "Számosság",
+   "Cantor",
+   "Megszámlálhatóság",
+   "Végtelen"
+  ]
+ },
+ "ch6": {
+  "desc": "Ítéletlogika: ítéletek, logikai összekötők \\((\\lnot,\\land,\\lor,\\to,\\leftrightarrow)\\), igazságtáblák. Tautológiák, ellentmondások. Normálformák (DNF, KNF). Predikátumlogika alapjai, kvantifikátorok \\((\\forall, \\exists)\\).",
+  "tags": [
+   "Ítéletlogika",
+   "Tautológia",
+   "DNF / KNF",
+   "Predikátumlogika"
+  ]
+ },
+ "ch7": {
+  "desc": "Komplex számok algebrai és trigonometrikus alakja. Összeadás, szorzás, osztás, konjugált \\(\\bar{z}\\). De Moivre-tétel \\((\\cos\\theta+i\\sin\\theta)^n=\\cos n\\theta+i\\sin n\\theta\\), komplex gyökök. Euler-formula: \\(e^{i\\varphi}=\\cos\\varphi+i\\sin\\varphi\\). Alkalmazások: rezgések, Fourier-analízis.",
+  "tags": [
+   "Komplex számok",
+   "De Moivre",
+   "Euler-formula",
+   "Gyökök"
+  ]
+ },
+ "ch8": {
+  "desc": "Algebrai struktúrák: félcsoport, monoid, csoport, gyűrű, test. Csoportaxiómák, részcsoport, normálosztó \\(N\\trianglelefteq G\\), faktorcsoport \\(G/N\\). Csoporthomorfizmusok és izomorfizmusok. Cayley-tétel. Lagrange-tétel: \\(|H|\\mid|G|\\) minden \\(H\\leq G\\)-re.",
+  "tags": [
+   "Csoport",
+   "Gyűrű / Test",
+   "Homomorfizmus",
+   "Lagrange-tétel"
+  ]
+ },
+ "ch9": {
+  "desc": "Teljes indukció elve: alaplépés, indukciós hipotézis, lépés. Összegképlet \\(\\sum_{k=1}^n k = \\tfrac{n(n+1)}{2}\\), hatványegyenlőtlenség, oszthatóság indukálással. Indirekt bizonyítás: feltételezzük az ellentétet, ellentmondásra jutunk. Irracionális számokra vonatkozó tételek \\((\\sqrt{2}\\notin\\mathbb{Q})\\).",
+  "tags": [
+   "Teljes indukció",
+   "Indirekt bizonyítás",
+   "Összegképlet",
+   "Oszthatóság"
+  ]
+ },
+ "ch10": {
+  "desc": "Leszámlálási alapelvek: összeadási szabály, szorzás-szabály, skatulya-elv. Ismétléses variációk \\(n^k\\) és ismétlés nélküli variációk \\(\\tfrac{n!}{(n-k)!}\\). Permutációk \\((n!)\\), körpermutáció \\((n-1)!\\). Kombinációk \\(\\binom{n}{k}\\), binomiális együtthatók. Pascal-háromszög. Ismétléses kombinációk \\(\\binom{n+k-1}{k}\\).",
+  "tags": [
+   "Variációk",
+   "Permutációk",
+   "Kombinációk \\(\\binom{n}{k}\\)",
+   "Pascal-háromszög"
+  ]
+ },
+ "ch11": {
+  "desc": "Ismétléses permutációk (multinomiális együttható \\(\\tfrac{n!}{k_1!\\cdots k_r!}\\)). Binomiális és polinomiális tétel. Ismétléses kombinációk korlátozásokkal. Lineáris egyenletek nemnegatív/pozitív megoldásainak száma. Szita-formula (befoglalás-kizárás elve) \\(|A_1\\cup\\cdots\\cup A_n|\\). Derangementek \\(D_n\\), szürjektív leképezések száma.",
+  "tags": [
+   "Multinomiális",
+   "Szita-formula",
+   "Derangement \\(D_n\\)",
+   "Lineáris egyenlet"
+  ]
+ },
+ "ch12": {
+  "desc": "Rekurziók alkalmazásai: Fibonacci \\((F_n=F_{n-1}+F_{n-2})\\), részhalmazok, Hanoi tornyai, egyenesek a síkban, bináris sorozatok. Lineáris differenciaegyenletek elmélete: homogén/inhomogén egyenletek, megoldási tér. Karakterisztikus egyenlet — három eset: valós különböző, kétszeres, komplex gyökök. Binet-képlet \\(F_n=\\tfrac{\\varphi^n-\\psi^n}{\\sqrt{5}}\\).",
+  "tags": [
+   "Fibonacci",
+   "Hanoi tornyai",
+   "Karakterisztikus egyenlet",
+   "Binet-képlet"
+  ]
+ },
+ "ch13": {
+  "desc": "Inhomogén egyenlet megoldása próbafüggvénnyel (határozatlan együtthatók módszere): exponenciális inhomogén tag \\(b^n\\), rezonancia eset \\(n\\cdot b^n\\) próba, polinom inhomogén tag. Szuperpozíció elve. Generátorfüggvény módszere: definíció \\(G(x)=\\sum a_n x^n\\), parciális törtekre bontás, Hanoi és kétszeres gyök példák.",
+  "tags": [
+   "Próbafüggvény",
+   "Rezonancia",
+   "Generátorfüggvény",
+   "Szuperpozíció"
+  ]
+ },
+ "ch14": {
+  "desc": "Irányított és irányítatlan gráfok alapfogalmai. Fokszám, kézfogási tétel \\(\\sum_{v}d(v)=2|E|\\), egyszerű gráf. Havel–Hakimi algoritmus: fokszámsorozat grafikusságának eldöntése lépésenkénti redukcióval. Szomszédsági mátrix, séta, út, kör. Összefüggőség, komponensek, BFS/DFS. Izomorfizmus és invariánsok.",
+  "tags": [
+   "Kézfogási tétel",
+   "Havel–Hakimi",
+   "Szomszédsági mátrix",
+   "Izomorfizmus"
+  ]
+ },
+ "ch15": {
+  "desc": "Fák: összefüggő körmentes gráf, \\(n-1\\) élszám tétel, levélpont. Euler-vonal: Euler-tétel (zárt Euler-vonal \\(\\Leftrightarrow\\) minden fokszám páros), nyílt Euler-vonal (pontosan 2 páratlan fokszámú csúcs). Königsbergi hidak problémája. Fleury-algoritmus vágóélkerüléssel. Hamilton-kör: Dirac-tétel \\(\\bigl(\\deg(v)\\geq n/2\\Rightarrow\\exists\\text{ Ham-kör}\\bigr)\\), NP-nehézség.",
+  "tags": [
+   "Fák",
+   "Euler-tétel",
+   "Fleury",
+   "Hamilton-kör"
+  ]
+ },
+ "ch16": {
+  "desc": "Páros gráfok: definíció, jellemzés páratlan körök hiányával (BFS 2-színezés). Párosítás és lefogó ponthalmaz: \\(\\nu(G)\\leq\\tau(G)\\), Kőnig-tétel: \\(\\nu=\\tau\\) páros gráfban. Hall-feltétel. Síkgráfok: Euler-formula \\(c-e+f=2\\), következmény \\(e\\leq 3c-6\\), \\(K_5\\) és \\(K_{3,3}\\) nem síkbarajzolható, Kuratowski-tétel. Gráfszínezés: kromatikus szám \\(\\chi(G)\\), mohó algoritmus, 4-színtétel.",
+  "tags": [
+   "Páros gráf",
+   "Kőnig-tétel",
+   "Síkgráfok",
+   "Színezés \\(\\chi(G)\\)"
+  ]
+ },
+ "ch17": {
+  "desc": "Oszthatóság: definíció \\(a\\mid b\\), 8 tulajdonság, maradékos osztás egyértelműsége \\(b=aq+r\\). Legnagyobb közös osztó \\((a,b)\\): Bézout-azonosság \\(ax_0+by_0=(a,b)\\), Euklideszi algoritmus. Lineáris diofantoszi egyenletek: megoldhatóság \\((a,b)\\mid c\\), általános megoldás. Legkisebb közös többszörös: \\((a,b)\\cdot[a,b]=a\\cdot b\\), min/max kitevők módszere. Prímszámok: Eratosztenész szitája, Euklid-bizonyítás, Prímszámtétel \\(\\pi(n)\\sim n/\\ln n\\).",
+  "tags": [
+   "Oszthatóság",
+   "Euklideszi algoritmus",
+   "Diofantosz",
+   "Prímszámok \\(\\pi(n)\\)"
+  ]
+ },
+ "ch18": {
+  "desc": "Kongruenciák: \\(a\\equiv b\\pmod{n}\\) definíció, ekvivalenciareláció, aritmetikai műveletek; ISBN-10 hibaellenőrzés. Lineáris kongruencia egyenletek: megoldhatóság \\((a,n)\\mid b\\), \\(d\\) megoldás modulo \\(n\\); Kínai maradéktétel. Euler \\(\\varphi\\)-függvény: \\(\\varphi(p^k)=p^k-p^{k-1}\\); Euler tétele \\(a^{\\varphi(n)}\\equiv 1\\) és Fermat tétele \\(a^{p-1}\\equiv 1\\pmod{p}\\); moduláris hatványozás. Maradékosztályok gyűrűje \\(\\mathbb{Z}_n\\): test \\(\\Leftrightarrow\\) \\(n\\) prím, zérusosztók. RSA titkosítás: kulcsgenerálás, \\(c\\equiv x^e\\pmod{n}\\), visszafejtés \\(c^d\\equiv x\\pmod{n}\\).",
+  "tags": [
+   "Kongruenciák",
+   "Euler &amp; Fermat",
+   "\\(\\mathbb{Z}_n\\) gyűrű",
+   "RSA"
+  ]
+ }
+}

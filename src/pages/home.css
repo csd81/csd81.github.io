@@ -81,6 +81,32 @@
   font-size: 0.9rem;
   color: var(--text-muted);
 }
+/* Rich chapter-card context (description + topic tags), ported from the
+   Flask learn/* templates. */
+.chcard__desc {
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+.chcard__desc .katex { font-size: 0.92em; }
+.chcard__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.55rem;
+}
+.chcard__tag {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.25rem;
+  background: rgba(124, 58, 237, 0.16);
+  color: #a78bfa;
+  white-space: nowrap;
+}
+.chcard__tag .katex { font-size: 0.9em; }
 
 .chcard--sandbox {
   border-style: dashed;

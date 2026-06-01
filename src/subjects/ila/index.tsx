@@ -2,8 +2,12 @@ import { lazy, Suspense, type ComponentType } from 'react';
 import { Link, Route, Routes, useParams } from 'react-router-dom';
 import { useLang } from '../../shared/providers/LanguageProvider';
 import { ILA_CHAPTERS, GROUP_LABEL, ilaChapterById, type IlaChapter } from './registry';
+import { MathHtml } from '../../shared/ui/MathHtml';
+import cardMeta from './cardMeta.json';
 import '../../pages/home.css';
 import './ila.css';
+
+const CARD_META = cardMeta as Record<string, { desc: string; tags: string[] }>;
 
 /** Lazy chapter modules — add an entry here once a chapter's React component exists. */
 const LOADERS: Record<string, () => Promise<{ default: ComponentType }>> = {
@@ -49,11 +53,14 @@ function Landing() {
                   <span className="chcard__num">{String(c.num).padStart(2, '0')}</span>
                   <span className="chcard__body">
                     <span className="chcard__title">{c.title}</span>
-                    <span className="chcard__blurb">
-                      {c.ready
-                        ? lang === 'hu' ? 'Interaktív fejezet' : 'Interactive chapter'
-                        : lang === 'hu' ? 'Hamarosan' : 'Coming soon'}
-                    </span>
+                    {CARD_META[c.id]?.desc
+                      ? <MathHtml className="chcard__desc" html={CARD_META[c.id].desc} />
+                      : <span className="chcard__blurb">{lang === 'hu' ? 'Interaktív fejezet' : 'Interactive chapter'}</span>}
+                    {CARD_META[c.id]?.tags?.length ? (
+                      <span className="chcard__tags">
+                        {CARD_META[c.id].tags.map((t, i) => <MathHtml key={i} className="chcard__tag" html={t} />)}
+                      </span>
+                    ) : null}
                   </span>
                 </Link>
               </li>

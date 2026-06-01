@@ -1,6 +1,7 @@
 import { lazy, Suspense, type ComponentType } from 'react';
 import { Link, Route, Routes, useParams } from 'react-router-dom';
 import { ALGO_CHAPTERS, algoChapterById, type AlgoChapter } from './registry';
+import { MathHtml } from '../../shared/ui/MathHtml';
 import '../../pages/home.css';
 import '../ila/ila.css';
 
@@ -48,9 +49,14 @@ function Landing() {
                 <span className="chcard__num">{String(c.num).padStart(2, '0')}</span>
                 <span className="chcard__body">
                   <span className="chcard__title">{c.title}</span>
-                  <span className="chcard__blurb">
-                    {c.ready ? 'Interaktív fejezet' : 'Hamarosan'}
-                  </span>
+                  {c.glossary
+                    ? <MathHtml className="chcard__desc" html={c.glossary} />
+                    : <span className="chcard__blurb">{c.ready ? 'Interaktív fejezet' : 'Hamarosan'}</span>}
+                  {c.tags?.length ? (
+                    <span className="chcard__tags">
+                      {c.tags.map((t, i) => <MathHtml key={i} className="chcard__tag" html={t} />)}
+                    </span>
+                  ) : null}
                 </span>
               </Link>
             </li>

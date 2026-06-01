@@ -4,9 +4,13 @@ import { useLang, type Bi } from '../../shared/providers/LanguageProvider';
 import { MarkdownView } from '../../shared/ui/MarkdownView';
 import { TOPICS, topicById, pickDoc, isFallback, type Topic } from './content';
 import { DIMAT_CHAPTERS, DIMAT_GROUP_LABEL, type DimatChapter } from './chapters/registry';
+import { MathHtml } from '../../shared/ui/MathHtml';
+import cardMeta from './cardMeta.json';
 import '../../pages/home.css';
 import '../ila/ila.css';
 import './dimat.css';
+
+const CARD_META = cardMeta as Record<string, { desc: string; tags: string[] }>;
 
 const KombFeladatok = lazy(() => import('./KombFeladatok'));
 
@@ -73,7 +77,14 @@ function Landing() {
                   <span className="chcard__num">{c.part}</span>
                   <span className="chcard__body">
                     <span className="chcard__title">{c.title}</span>
-                    <span className="chcard__blurb">{lang === 'hu' ? 'Interaktív fejezet' : 'Interactive chapter'}</span>
+                    {CARD_META[c.id]?.desc
+                      ? <MathHtml className="chcard__desc" html={CARD_META[c.id].desc} />
+                      : <span className="chcard__blurb">{lang === 'hu' ? 'Interaktív fejezet' : 'Interactive chapter'}</span>}
+                    {CARD_META[c.id]?.tags?.length ? (
+                      <span className="chcard__tags">
+                        {CARD_META[c.id].tags.map((t, i) => <MathHtml key={i} className="chcard__tag" html={t} />)}
+                      </span>
+                    ) : null}
                   </span>
                 </Link>
               </li>

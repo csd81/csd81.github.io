@@ -334,10 +334,10 @@ function setBlobFig() {
       <circle cx="139" cy="247" r="24" fill="none" stroke={p.accent2} strokeWidth="1.2" strokeDasharray="4 3" />
       <circle cx="139" cy="247" r="3" fill={p.fg} />
       <text x="128" y="243" fill={p.fg} fontSize="13" textAnchor="middle">z</text>
-      {/* exterior point y */}
-      <circle cx="150" cy="120" r="22" fill="none" stroke={p.accent2} strokeWidth="1.2" strokeDasharray="4 3" />
-      <circle cx="150" cy="120" r="3" fill={p.fg} />
-      <text x="150" y="114" fill={p.fg} fontSize="13" textAnchor="middle">y</text>
+      {/* exterior point y — in the open lower-left, outside the blob */}
+      <circle cx="86" cy="220" r="16" fill="none" stroke={p.accent2} strokeWidth="1.2" strokeDasharray="4 3" />
+      <circle cx="86" cy="220" r="3" fill={p.fg} />
+      <text x="86" y="214" fill={p.fg} fontSize="13" textAnchor="middle">y</text>
     </FigFrame>
   );
 }
