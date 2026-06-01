@@ -3838,9 +3838,43 @@ Szokás szerint kezdjük az alapfüggvényekkel:
 
 **7.14. Tétel. (Gyűjtemény az alapfüggvényekről)** Az összes alapfüggvény értelmezési tartományának minden belső pontjában integrálható.
 
-Az alapfüggvények határozatlan integráljainak legteljesebb listáját [SzK] Függelékében vagy [www2] -ben, azaz a következő címen találhatjuk:
+Az alapfüggvények határozatlan integráljainak legteljesebb listáját [SzK] Függelékében vagy [www2] -ben, illetve az alábbi táblázatban találhatjuk:
 
-https://math.uni-pannon.hu/~szalkai/Der+Int-tablazat-sk-nagy.gif
+| $f(x)$ | $f'(x)$ | $\int f$ | $\mathrm{Dom}(f')$ |
+|---|---|---|---|
+| $c$ | $0$ | $c\cdot x + C$ | $x \in \mathbb{R}$ |
+| $x^\alpha$ | $\alpha\cdot x^{\alpha-1}$ | $\dfrac{x^{\alpha+1}}{\alpha+1} + C$ | $x \in \mathbb{R},\ \alpha \neq -1$ |
+| $\dfrac{1}{x} = x^{-1}$ | $\dfrac{-1}{x^2}$ | $\ln\lvert x\rvert + C$ | $x \neq 0,\ \alpha = -1$ |
+| $a^x$ | $a^x\cdot\ln(a)$ | $\dfrac{a^x}{\ln(a)} + C$ | $x \in \mathbb{R},\ 0 < a \neq 1$ |
+| $e^x$ | $e^x$ | $e^x + C$ | $x \in \mathbb{R}$ |
+| $\log_a x$ | $\dfrac{1}{x\ln a}$ | $x(\ln x - 1)/\ln a + C$ | $0 < x,\ 0 < a \neq 1$ |
+| $\ln x$ | $\dfrac{1}{x}$ | $x(\ln x - 1) + C$ | $0 < x$ |
+| $\sin x$ | $\cos x$ | $-\cos x + C$ | $x \in \mathbb{R}$ |
+| $\cos x$ | $-\sin x$ | $\sin x + C$ | $x \in \mathbb{R}$ |
+| $\operatorname{tg} x$ | $\dfrac{1}{\cos^2 x}$ | $-\ln\lvert\cos x\rvert + C$ | $x \neq \frac{\pi}{2}+k\pi$ |
+| $\operatorname{ctg} x$ | $\dfrac{-1}{\sin^2 x}$ | $\ln\lvert\sin x\rvert + C$ | $x \neq k\pi$ |
+| $\arcsin x$ | $\dfrac{1}{\sqrt{1-x^2}}$ | $x\arcsin(x) + \sqrt{1-x^2} + C$ | $-1 < x < 1$ |
+| $\arccos x$ | $\dfrac{-1}{\sqrt{1-x^2}}$ | $x\arccos x - \sqrt{1-x^2} + C$ | $-1 < x < 1$ |
+| $\arctan x$ | $\dfrac{1}{1+x^2}$ | $x\arctan x - \frac{1}{2}\ln(x^2+1) + C$ | $x \in \mathbb{R}$ |
+| $\operatorname{arccot}(x)$ | $\dfrac{-1}{1+x^2}$ | $x\operatorname{arccot} x + \frac{1}{2}\ln(x^2+1) + C$ | $x \in \mathbb{R}$ |
+| $\operatorname{sh}(x)$ | $\operatorname{ch}(x)$ | $\operatorname{ch}(x) + C$ | $x \in \mathbb{R}$ |
+| $\operatorname{ch}(x)$ | $\operatorname{sh}(x)$ | $\operatorname{sh}(x) + C$ | $x \in \mathbb{R}$ |
+| $\operatorname{th}(x)$ | $\dfrac{1}{\operatorname{ch}^2(x)}$ | $\ln(\operatorname{ch}(x)) + C$ | $x \in \mathbb{R}$ |
+| $\operatorname{cth}(x)$ | $\dfrac{-1}{\operatorname{sh}^2(x)}$ | $\ln(\operatorname{sh}(x)) + C$ | $x \neq 0$ |
+| $\operatorname{Arsh}(x)$ | $\dfrac{1}{\sqrt{x^2+1}}$ | $x\operatorname{Arsh}(x) - \sqrt{x^2+1} + C$ | $x \in \mathbb{R}$ |
+| $\operatorname{Arch}(x)$ | $\dfrac{1}{\sqrt{x^2-1}}$ | $x\operatorname{Arch}(x) - \sqrt{x^2-1} + C$ | $1 < \lvert x\rvert$ |
+| $\operatorname{Arth}(x)$ | $\dfrac{1}{1-x^2}$ | $x\operatorname{Arth}(x) + \ln(1-x^2) + C$ | $\lvert x\rvert < 1$ |
+| $\operatorname{Arcth}(x)$ | $\dfrac{1}{1-x^2}$ | $x\operatorname{Arcth}(x) + \ln(x^2-1) + C$ | $\lvert x\rvert > 1$ |
+| $\dfrac{1}{\cos^2(x)}$ |  | $\operatorname{tg} x + C$ | $x \neq \frac{\pi}{2}+k\pi$ |
+| $\dfrac{1}{\sin^2(x)}$ |  | $-\operatorname{ctg} x + C$ | $x \neq k\pi$ |
+| $\dfrac{1}{\operatorname{ch}^2(x)}$ |  | $\operatorname{th}(x) + C$ |  |
+| $\dfrac{1}{\operatorname{sh}^2(x)}$ |  | $-\operatorname{cth}(x) + C$ |  |
+| $\dfrac{1}{\sqrt{1-x^2}}$ |  | $\arcsin x + C$ | $-1 < x < 1$ |
+| $\dfrac{1}{1+x^2}$ |  | $\operatorname{arctg} x + C$ | $x \in \mathbb{R}$ |
+| $\dfrac{1}{\sqrt{x^2+1}}$ |  | $\operatorname{Arsh}(x) + C$ | $x \in \mathbb{R}$ |
+| $\dfrac{1}{\sqrt{x^2-1}}$ |  | $\operatorname{Arch}(x) + C$ | $1 < \lvert x\rvert$ |
+| $\dfrac{1}{1-x^2}$ |  | $\operatorname{Arth}(x) + C$ | $\lvert x\rvert < 1$ |
+| $\dfrac{1}{1-x^2}$ |  | $\operatorname{Arcth}(x) + C$ | $\lvert x\rvert > 1$ |
 
 Nagyon rövid táblázat van a középiskolai függvénytáblázatok c. gyűjteményben is.
 
