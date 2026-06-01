@@ -208,6 +208,15 @@
 }
 .calc-thm:hover .calc-copy, .calc-copy:focus { opacity: 0.85; }
 
+/* Concept terms: markdown *emphasis* in calc books → bold + distinct colour
+   (stronger than plain italics). Scoped to the calc renderer (.calc-prose). */
+.prose-lesson.calc-prose em {
+  font-style: normal;
+  font-weight: 700;
+  color: #b45309; /* amber-700, readable on light backgrounds */
+}
+.dark .prose-lesson.calc-prose em { color: #fbbf24; } /* amber-400 on dark */
+
 /* GFM footnotes section (gathered at chapter end by remark-gfm) */
 .prose-lesson .footnotes {
   margin-top: 2rem;

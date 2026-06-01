@@ -886,6 +886,14 @@ Térbeli $K$ test ($\rho(x,y,z)$): tömeg $m=\iiint_K\rho$, súlypont $x_s=\frac
 $x$-re és $y$-ra mindig egy (összefüggő) intervallumot kell megadnunk!
 </details>
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** $y'=x^2-y^2$: $x,y\in\mathbb{R}$. $\quad y'=2\sqrt y$: $x\in\mathbb{R},y\ge 0$. $\quad y'=\frac{xy}{x^2-1}$: $x>1$ vagy $x<1$, $y\in\mathbb{R}$. $\quad y'=\frac{x}{2y}+\frac{y}{2x}$: $(x>0$ vagy $x<0)$ és $(y>0$ vagy $y<0)$, azaz valamelyik (nyílt) síknegyed.
+
+**b)** $xy'+2y=3x\Rightarrow y'=3-2\frac yx$: $x>0$ vagy $x<0$, $y\in\mathbb{R}$. $\quad x-\frac{y^2}{x^3}+\frac{y}{x^2}y'=0\Rightarrow y'=\frac{y^2-x^4}{xy}$: valamelyik nyílt síknegyed.
+</details>
+
 **4.1.** Számítsuk ki az alábbi explicit egyenletek kezdetiérték-feladatai megoldásgörbéinek megadott pontbeli érintő egyenletét! Számítsuk ki $y''$ értékét is a megadott pontokban!
 
 **a)** $y'=x^2-y^2,\qquad y(1)=2,$
@@ -900,6 +908,18 @@ $x$-re és $y$-ra mindig egy (összefüggő) intervallumot kell megadnunk!
 <summary><strong>Útmutatás</strong></summary>
 
 Pl. **a)**: $x_0=1,\ y_0=2$; az érintő egyenes $y=y(x_0)+y'(x_0)(x-x_0)$.
+</details>
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** $m=y'(1)=1^2-2^2=-3$, érintő $y=2-3(x-1)=5-3x$; $y''=2x-2yy'$, $y''(1)=2-2\cdot2\cdot(-3)=14$.
+
+**b)** $m=y'(2)=\frac{4}{27}$, érintő $y=\frac{4}{27}x+\frac{73}{27}$; $y''(2)=\frac{-4}{81}$.
+
+**c)** $m=y'(-1)=\frac54$, érintő $y=-2+\frac54(x+1)$; $y''(-1)=\frac34$.
+
+**d\*)** $x=y=0$ esetén az egyenletből $y'(0)$ nem határozható meg, ezért a K.É.P.-nak *nincs* megoldása.
 </details>
 
 **4.2.** Vázoljuk az alábbi explicit egyenletek iránymezőjét, a megadott tartományok legalább $4\times 4$ pontjában, majd vázoljuk a megoldás-sereget („*általános megoldás*"). Végül rajzoljuk fel a K.É.P. megoldását vázlatosan.
@@ -924,6 +944,22 @@ Először a választott pontokban az érintő egy kis darabját kell felrajzolnu
 A függvényt egy $\delta$ hosszú intervallumon az érintőjével közelítjük, majd a végpontban az újabb érintővel folytatjuk, s.í.t. (A megoldás után használható a mellékelt Eulertv.exe program.)
 </details>
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** $P_0=(3;2),\ y'(3)=5$, $x_1=3{,}1\Rightarrow y_1=2{,}5$; $y'(3{,}1)=3{,}36\Rightarrow y_2=2{,}836$; … a 10 lépéses Euler-tábla végén $y(4{,}0)\approx 3{,}8684$.
+
+| $i$ | $x_i$ | $y_i$ | $y'_i$ |
+|---|---|---|---|
+| 0 | 3,0 | 2,0000 | 5,0000 |
+| 1 | 3,1 | 2,5000 | 3,3600 |
+| 2 | 3,2 | 2,8360 | 2,1971 |
+| 5 | 3,5 | 3,3359 | 1,1215 |
+| 10 | 4,0 | 3,8684 | 1,0358 |
+
+**b)** hasonlóan $y(2{,}0)\approx 5{,}7027$; **c)** $y(3{,}0)\approx 1{,}6366$.
+</details>
+
 **4.4.** Ellenőrizzük, hogy az alábbi egyenleteket kielégítik-e a megadott függvények:
 
 **a)** $y'=\dfrac{y}{x},\qquad y(x)=c\cdot x\ (c\in\mathbb{R})$,
@@ -931,6 +967,16 @@ A függvényt egy $\delta$ hosszú intervallumon az érintőjével közelítjük
 **b)** $y'=\dfrac{x\cdot y}{x^2-1}$ ahol $x^2+\dfrac{y^2}{b^2}=1\ (b>0,|x|\le 1,y>0)$,
 
 **c)** $y'=2\sqrt{y}$ ha $y_1(x)=(x-c)^2$ ill. $y_2(x)=\begin{cases}(x-c)^2 & \text{ha}\quad x\ge c\\ 0 & \text{máskor}\end{cases}\ (c\in\mathbb{R}).$
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** $y=cx$: $y'=c=\frac{cx}{x}=\frac yx$ ✓.
+
+**b)** $y=b\sqrt{1-x^2}$: $y'=\frac{-2bx}{2\sqrt{1-x^2}}$, és $\frac{xy}{x^2-1}=\frac{xb\sqrt{1-x^2}}{x^2-1}=\frac{xb}{-\sqrt{1-x^2}}$ — ugyanaz ✓.
+
+**c)** $y_1'=2(x-c)$, $2\sqrt{y_1}=2|x-c|$ — CSAK $x\ge c$ esetén egyenlő; $y_2'=2\sqrt{y_2}$ teljesül, hiszen $y_2$ kizárólag $x\ge c$ esetén értelmezett (nemnulla).
+</details>
 
 ## 5. fejezet
 ### F5. Elsőrendű differenciálegyenletek
@@ -949,6 +995,16 @@ Oldjuk meg az alábbi elsőrendű differenciálegyenleteket.
 $y'=H(y)\cdot G(x)$ esetén osztunk $H(y)$-nal, integrálunk: $\int\frac{1}{H(y)}\,dy=\int G(x)\,dx+C$, általános megoldás $y=\mathcal H^{-1}(\mathcal G(x)+C)$. A K.É.P.-ből $C$, $Dom(y)$ egyetlen összefüggő intervallum.
 </details>
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** $\frac{-1}{y}=-\sin x+C$, általános megoldás $y=\frac{1}{\sin x+C}$; $y(0)=2\Rightarrow C=\frac12$. $Dom(y)$: $-0{,}5236<x<3{,}6652$.
+
+**b)** $\frac12 y^2=\frac13\ln|1+x^3|+C$, $y=\pm\sqrt{\frac23\ln|1+x^3|+C}$; $C=4-\frac23\ln2\approx 3{,}5379$. $Dom(y)$: $-1<x$.
+
+**c)** $y'=(1+x)(1+y^2)$, $\arctan y=x+\frac12x^2+C$, $y=\operatorname{tg}\!\left(x+\frac12x^2+C\right)$; $C=\frac\pi4$. $Dom(y)$: $-2{,}6034<x<0{,}6034$.
+</details>
+
 #### Visszavezethető típusok
 
 A következő típusú differenciálegyenleteket bizonyos transzformációkkal szétválasztható változójú egyenletekké alakíthatjuk.
@@ -962,6 +1018,16 @@ A következő típusú differenciálegyenleteket bizonyos transzformációkkal s
 $y'=F(ax+by+c)$ típusnál az $u:=ax+by+c$ helyettesítés szétválaszthatóvá tesz: $y'=\frac1b u'-\frac ab$.
 </details>
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** $u=y-x$: $y=\frac{2}{1-e^{2(x+C)}}-1+x$; $C=\frac12\ln\frac13-1\approx -1{,}5493$. $Dom(y)$: $x<-C\approx 1{,}5493$.
+
+**b)** $u=2x+3y$: $y=\frac{5}{3\sqrt{15}}\operatorname{tg}\!\left(\sqrt{15}(x+C)+\frac\pi2\right)-\frac23x$; $C\approx -0{,}7062$. $Dom(y)$: $-0{,}1049<x<0{,}7062$.
+
+**c)** $u=x+y$: $y=2\arctan(C+x)-x$; $C=1$. $Dom(y)=\mathbb{R}$.
+</details>
+
 **5.3. a)** $y'(x)=\dfrac{y^2}{x^2}+\dfrac{y}{x},\quad y(1)=3,$ $\qquad$ **b)** $y'(x)=\dfrac{x}{2y}+\dfrac{y}{2x},\quad y(-1)=-2,$
 **c)** $y'(x)=\dfrac{y}{x}-\cos\dfrac{y}{x},\quad y(3)=\pi.$
 
@@ -969,6 +1035,16 @@ $y'=F(ax+by+c)$ típusnál az $u:=ax+by+c$ helyettesítés szétválaszthatóvá
 <summary><strong>Útmutatás</strong></summary>
 
 $y'=F\!\left(\frac yx\right)$ („homogén fokszámú") esetén $u:=\frac yx$, $y=xu$, $y'=u+xu'$.
+</details>
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** $u=\frac yx$: $\frac{-1}{u}=\ln x+C$, $y=\frac{-x}{\ln x+C}$; $C=-\frac13$. $Dom(y)$: $1<x<e^{1/3}\approx 1{,}3956$.
+
+**b)** $u=\frac yx$: $y=x\sqrt{1-\frac{1}{x\,e^C}}$ ahol $C=\ln\frac13$. $Dom(y)$: $x<0$.
+
+**c)** $u=\frac yx$: $y=x\arcsin\!\left(1-\frac{2}{1+x^{-2}D}\right)$ ahol $D\approx 125{,}3538$. $Dom(y)$: $0<x$.
 </details>
 
 #### Lineáris egyenletek
@@ -981,8 +1057,24 @@ $y'=F\!\left(\frac yx\right)$ („homogén fokszámú") esetén $u:=\frac yx$, $
 $y'+p(x)y=q(x)$. **I. Direkt:** $P=\int p$, beszorzunk $e^{P}$-vel, $(ye^{P})'=qe^{P}$, így $y=e^{-P}\int q e^{P}\,dx$. **II. Állandó variálása:** a homogén megoldásban $y=\pm e^{-P}D(x)$ alakot keresünk.
 </details>
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+$P(x)=\int -x\,dx=-\frac12x^2$, $\int x e^{-x^2/2}\,dx=-e^{-x^2/2}+C$, így $y=e^{x^2/2}(-e^{-x^2/2}+C)=Ce^{x^2/2}-1$; $y(0)=C-1=1\Rightarrow C=2$. $Dom(y)=\mathbb{R}$.
+</details>
+
 **5.5. a)** $y'(x)+\dfrac{y(x)}{x}+e^x=0,\quad y(1)=0,$ $\qquad$ **b)** $y'(x)-\dfrac{2x}{1+x^2}\cdot y(x)=1,\quad y(0)=1,$
 **c)** $y'(x)+\dfrac{1-x}{x^2}\cdot y(x)=e^{1/x},\quad y(-1)=2.$
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** $P=\ln x$, $y=-e^x\left(1-\frac1x\right)+\frac Cx$; $y(1)=0\Rightarrow C=0$. $Dom(y)=\mathbb{R}^+$.
+
+**b)** $P=-\ln(x^2+1)$, $y=(x^2+1)(\arctan x+C)$; $y(0)=1\Rightarrow C=1$. $Dom(y)=\mathbb{R}$.
+
+**c)** $P=-\ln(-x)-\frac1x$ (mert $x_0<0$), $y=xe^{1/x}(\ln(-x)-C)$; $y(-1)=2\Rightarrow C=2e\approx 5{,}4366$. $Dom(y)=\mathbb{R}^-$.
+</details>
 
 **5.6. a)** $y'(x)+y(x)=e^{-x},\quad y(1)=0,$ $\qquad$ **b)** $x\cdot y'(x)+2y(x)=3x,\quad y(0)=0,$
 **c)** $(1-x^2)\cdot y'(x)+x\cdot y(x)=1,\quad y(0)=1,$
@@ -999,6 +1091,16 @@ $y'+p(x)y=q(x)$. **I. Direkt:** $P=\int p$, beszorzunk $e^{P}$-vel, $(ye^{P})'=q
 Bernoulli: $y'+a(x)y=b(x)y^\beta$. Az $u:=y^{1-\beta}$ helyettesítés lineáris egyenletre vezet.
 </details>
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** $u=y^{-1}$: $u'+\frac ux=-2$, $y=\frac{x}{C-x^2}$; $y(1)=\frac{1}{C-1}=2\Rightarrow C=\frac32$. $Dom(y)$: $0<x<\sqrt{\frac32}\approx 1{,}2247$.
+
+**b)** $u=y^{1/2}$: $u'-\frac12u=\frac x2$, $y=\big(e^{x/2}(-e^{-x/2}(x+2)+C)\big)^2$; $y(0)=1\Rightarrow C=3$. $Dom(y)$: $x\in\mathbb{R}$.
+
+**c)** $u=y^{-2}$: $u'+\frac4x u=\frac{-2}{x^3}$, $y=\frac{x^2}{\sqrt{C-x^2}}$; $y(-1)=2\Rightarrow C=\frac54$. $Dom(y)$: $-\sqrt{\frac54}<x<0$.
+</details>
+
 #### Egzakt egyenletek
 
 **5.8. a)** $(x^2+y)-(y-x)y'(x)=0,\quad y(2)=3,$
@@ -1012,22 +1114,78 @@ Bernoulli: $y'+a(x)y=b(x)y^\beta$. Az $u:=y^{1-\beta}$ helyettesítés lineáris
 Egzakt: $P(x,y)+Q(x,y)y'=0$, ahol $\frac{\partial P}{\partial y}=\frac{\partial Q}{\partial x}$. $\int P\,dx+\psi(y)=\int Q\,dy+\varphi(x)=F(x,y)$; a K.É.P.-ből $F(x,y)=c_0$, amit $y$-ra megoldva kapjuk a megoldást.
 </details>
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** $\frac{\partial P}{\partial y}=1=\frac{\partial Q}{\partial x}$ ✓; $F(x,y)=\frac13x^3+yx-\frac12y^2=c$, $F(2,3)=\frac{25}{6}$, így $y=x+\frac{\sqrt3}{3}\sqrt{2x^3+3x^2-25}$.
+
+**b)** $(2x+3yx^2)+(x^3-3y^2)y'=0$, $\frac{\partial P}{\partial y}=3x^2=\frac{\partial Q}{\partial x}$ ✓; $F=x^2+yx^3-y^3=F(0,0)=0$, $y=\mathcal R(x)+\frac{x^3}{3\mathcal R(x)}$ ahol $\mathcal R(x)=\sqrt[3]{\sqrt{x^4/4-x^9/27}+x^2/2}$.
+
+**c)** $\frac{\partial P}{\partial y}=\frac{-2y}{x^3}=\frac{\partial Q}{\partial x}$ ✓; $F=\frac12x^2+\frac{1}{2x^2}y^2=F(1,-2)=\frac52$, $y=-x\sqrt{5-x^2}$.
+
+**d)** $\frac{\partial P}{\partial y}=\frac{2xy}{(x+y)^3}=\frac{\partial Q}{\partial x}$ ✓; $F=\frac{xy}{x+y}=F(2,3)=\frac65$, $y=\frac{6x}{5x-6}$. (Az egyenlet $y'=\frac{-y^2}{x^2}$ alakra is hozható, vagyis szeparálható.)
+</details>
+
 ## 6. fejezet
 ### F6. Elsőrendű differenciálegyenletek alkalmazásai
 
 **6.1.** Határozzuk meg azon függvénygörbéket, melyeket az $y$ tengely körül állandó $\omega$ szögsebességgel megforgatva *tetszőleges* pontjára helyezett pontszerű test egyensúlyban marad.
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+Az $\left(\overrightarrow F_g+\overrightarrow F_c\right)\parallel\overrightarrow F_t$ és $\overrightarrow F_t\perp e$ feltételekből $f'(x_0)=\frac{F_c}{F_g}=\frac{mx_0\omega^2}{mg}=kx_0$ ($k>0$), ahonnan $f(x)=\int kx\,dx=\frac k2x^2+C$ — tehát a forgó pohár víz felszíne forgási paraboloid. *(9. ábra.)*
+</details>
+
 **6.2.** Határozzuk meg azon görbék egyenletét, amelyeknél az érintési pont felezi az érintőnek a koordinátatengelyek közötti szakaszát.
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+A felezés feltétele $x\cdot f'(x)=-f(x)$ szétválasztható egyenletre vezet: $\ln f=-\ln x+C$, tehát $f(x)=\frac{e^C}{x}=\frac Dx$ ($D>0$).
+</details>
 
 **6.3.** Keressük meg azokat az $y=f(x)$ görbéket, amelyeknek bármely $E(x_0,y_0)$ pontjára teljesül a következő: az $E$-ben húzott *érintő*, az érintési pontban húzott „*függőleges*" *egyenes* ($x=x_0$) és a „vízszintes" ordináta- ($y$-) *tengely* által határolt háromszög területe (mindig) egységnyi.
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+A háromszög területe $T(x_0)=\mp\frac12\frac{f^2(x_0)}{f'(x_0)}=1$, ami az $f'(x)=\mp\frac12 f^2(x)$ szétválasztható egyenletre vezet, megoldása $f(x)=\frac{-1}{\mp x/2+C}=\frac{2}{\pm x+D}$ ($C,D\in\mathbb{R}$).
+</details>
+
 **6.4.** Egy test 10 perc alatt $100\,{}^\circ$C-ról $60\,{}^\circ$C-ra hűlt le. A környező levegő hőmérsékletét $20\,{}^\circ$C-on tartják. Mikorra hűl le a test $25\,{}^\circ$C-ra, ha a hűlés sebessége arányos a test és a környezet hőmérsékletének különbségével?
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+$x'(t)=k(x(t)-20)$ ($k<0$), $x(0)=100,\ x(10)=60$. Általános megoldás $x(t)e^{-kt}=20e^{-kt}+C$, a K.É.P.-ból $C=80,\ k=-\frac{1}{10}\ln2\approx -0{,}0693$. Az $x(t_0)=25$ egyenlet megoldása $t_0=40$ perc.
+</details>
 
 **6.5.** $100$ gr sóra vizet öntünk és keverjük, az oldódás sebessége a még fel nem oldódott só tömegével arányos. 1 perc elteltével még $50$ gr feloldatlan só volt az oldatban. Adjuk meg a feloldott só tömegének időtől való függését!
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+$x(t)$ a fel nem oldott só: $x'(t)=k\,x(t)$ ($k<0$), $x(0)=100,\ x(1)=50$, megoldása $x(t)=100\cdot\left(\frac12\right)^t$ ($k=-\ln2\approx -0{,}6931$). A *feloldott* só mennyisége $100\left(1-\frac{1}{2^t}\right)$.
+</details>
+
 **6.6.** Egy $50$ literes tartályban $8\%$-os sóoldat van. Egyszerre megnyitunk két csapot: az egyiken $4\,\ell/\text{perc}$ sebességgel $10\%$-os sóoldat folyik be, a másikon (egyenletes elkeveredést feltételezve) ugyancsak $4\,\ell/\text{perc}$ sebességgel folyik ki az oldat. Mennyi só lesz a tartályban $15$ perc múlva?
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+$m(t)$ az oldott só: $m'(t)=0{,}4-\frac{4}{50}m(t)$, $m(0)=4$. Megoldása $m(t)=Ce^{-0{,}08t}+5$, $C=-1$; $15$ perc múlva $m(15)=5-e^{-1{,}2}\approx 4{,}6988$ g, a koncentráció $c(15)=\frac{1}{50}m(15)\approx 9{,}4\%$.
+</details>
+
 **6.7. \*** A járda szélén húzunk $h$ hosszú kötélen egy (pontszerű) kiskocsit, amely kezdetben $d>0$ távolságban van a járdától. Milyen görbe mentén halad a kocsi?
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+Az érintő $y$-tengelymetszetéből $f'(x_0)=\mp\sqrt{\frac{h^2-x_0^2}{x_0^2}}$, ahonnan
+$$f(x)=\pm\int\sqrt{\frac{h^2-x^2}{x^2}}\,dx=h\ln\!\left(\frac{\sqrt{h^2-x^2}-h}{x}\right)+\sqrt{h^2-x^2}+C.$$
+A $C$ az $f(d)=0$ K.É.P.-ból. A görbe neve *vonszolási görbe* (traktrix).
+</details>
 
 **6.8.** Tetszőleges edény alján levő, az edény méreteihez képest kisméretű lyukon keresztül a víz kifolyási sebessége $v=0{,}6\sqrt{2gh}$, ahol $h$ a nyílás feletti vízoszlop magassága. Mennyi idő alatt folyik ki a víz az $A$ területű lyukon keresztül, ha az edény
 
@@ -1035,12 +1193,32 @@ Egzakt: $P(x,y)+Q(x,y)y'=0$, ahol $\frac{\partial P}{\partial y}=\frac{\partial 
 **b)** csúcsán álló (lefelé szűkülő) kúp,
 **c)** felül nyitott félgömb.
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+$V'(t)=-A\cdot 0{,}6\sqrt{2g\,h(t)}$.
+
+**a)** Henger ($T$ alapterület): $h'(t)=-K\sqrt{h(t)}$ szétválasztható, $h(t)=\left(C-\frac K2 t\right)^2$, $C=\sqrt{h_0}$, $0\le t\le\frac CK$.
+
+**b)** Kúp: $h'(t)=-K\,h^{-3/2}(t)$, $h(t)=\left(\frac52(C-Kt)\right)^{2/5}$, $C=\frac25 h_0^{5/2}$.
+
+**c)** Félgömb: a $h$ magasságú süveg térfogata $V=\frac\pi3 h^2(3R-h)$, így $\frac43 R h^{3/2}-\frac25 h^{5/2}=-Kt+C$ ($C=\frac43Rh_0^{3/2}-\frac25h_0^{5/2}$), amelyet közelítőleg (pl. intervallum-felezéssel) oldunk meg $h(t)$-re.
+</details>
+
 **6.9.** Milyen alakot vesz fel a két rögzített végénél felfüggesztett homogén, nem nyúló kötél, amit csak a saját súlya terhel?
 
 <details>
 <summary><strong>Útmutatás</strong></summary>
 
 Írjuk fel a kötél két közeli, $(x_0,f(x_0))$ és $(x_0+h,f(x_0+h))$ pontjában ható erőket: az érintő irányú kötélerők vízszintes összetevői kiegyenlítik egymást, míg a függőleges összetevők különbsége a gravitációs erővel egyezik meg ($\rho$ sűrűség, $Q$ keresztmetszet).
+</details>
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+A $h\to 0$ határátmenet az $f''(x)=K\sqrt{1+(f'(x))^2}$ egyenletre vezet ($K=\frac{\rho Qg}{F_v}$). Az $u=f'$ helyettesítéssel $\operatorname{Arsinh}(u)=Kx+C_1$, majd integrálva a *láncgörbe* (catenary):
+$$f(x)=\frac1K\cosh(Kx+C_1)+C_2,$$
+ahol $C_1,C_2$ a két rögzítési pontból (a $\cosh\alpha-\cosh\beta=2\sinh\frac{\alpha+\beta}{2}\sinh\frac{\alpha-\beta}{2}$ azonossággal) határozható meg.
 </details>
 
 **6.10.** $u(t)$ feszültségforrásra kapcsolunk sorosan egy $R=20\,\Omega$ ellenállást és egy $L=10\,H$ önindukciójú tekercset. Határozzuk meg a $t\ge 0$ idő függvényében az $i(t)$ áramerősséget, ha $i(0)=0$ és
@@ -1054,6 +1232,14 @@ Egzakt: $P(x,y)+Q(x,y)y'=0$, ahol $\frac{\partial P}{\partial y}=\frac{\partial 
 Az áramkörre $R\cdot i(t)+L\cdot i'(t)=u(t)$.
 </details>
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** A szétválasztható egyenlet megoldása $i(t)=\frac{U_0}{R}\left(1-e^{-\frac RL t}\right)$, a feladat adataival $i(t)=5-5e^{-2t}$; $\lim_{t\to\infty}i(t)=\frac{U_0}{R}=5$.
+
+**b)** $L i'+Ri=U_0\sin(\omega t)$ lineáris, általános megoldása $i(t)=\frac{U_0}{\sqrt{L^2\omega^2+R^2}}\sin\!\left(\omega t-\arctan\frac{L\omega}{R}\right)+Ce^{-\frac RL t}$; $i(0)=0\Rightarrow C\approx 0{,}07639$. A paraméterekkel $i(t)\approx 0{,}07639\sin(314t-1{,}5644)+0{,}07639\,e^{-2t}$.
+</details>
+
 ## 7. fejezet
 ### F7. Parciális törtekre bontás
 
@@ -1062,6 +1248,16 @@ Az áramkörre $R\cdot i(t)+L\cdot i'(t)=u(t)$.
 **a)** $(x^4+x^2):(x-2)$,
 **b)** $(x^3+3x+5):(2x^2-7x+9)$,
 **c)** $(4x^5+5x-2):(2x^3+3).$
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** $x^4+x^2=(x-2)(x^3+2x^2+5x+10)+20$.
+
+**b)** $x^3+3x+5=(2x^2-7x+9)\left(\frac12x+\frac74\right)+\left(\frac{43}{4}x-\frac{43}{4}\right)$.
+
+**c)** $4x^5+5x-2=(2x^3+3)\cdot 2x^2+(-6x^2+5x-2)$.
+</details>
 
 **7.2.** Bontsa fel irreducibilis tényezők szorzatára az alábbi polinomokat:
 
@@ -1075,15 +1271,43 @@ Az áramkörre $R\cdot i(t)+L\cdot i'(t)=u(t)$.
 Az Algebra Alaptétele (valós változat): minden legalább harmadfokú polinom felbontható alacsonyabb fokú polinomok szorzatára. Másodfokú $p(x)=ax^2+bx+c$ akkor és csak akkor reducibilis, ha $D\ge 0$ (ekkor $p=(x-x_1)(x-x_2)$); $D<0$ esetén irreducibilis.
 </details>
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** $x^3-1=(x-1)(x^2+x+1)$, $x^3+1=(x+1)(x^2-x+1)$, $x^4-1=(x-1)(x+1)(x^2+1)$, $x^4+1=(x^2-x\sqrt2+1)(x^2+x\sqrt2+1)$, $x^2-3x+1$ reducibilis ($D>0$), $x^2+5x+7$ irreducibilis ($D<0$).
+
+**b)** $2x^3-5x^2+3x-2=(x-2)(2x^2-x+1)$, $\quad 2x^3-x^2-1=(x-1)(2x^2+x+1)$.
+
+**c\*)** $x^4+2x^3+2x^2+2x-1\approx(x-0{,}3392)(x+1{,}7130)(x^2+0{,}6263x+1{,}7208)$.
+</details>
+
 **7.3.** Bontsa fel az alábbi törteket egy *valódi* tört és egy polinom összegére:
 
 $$\dfrac{x^4+3x-6}{x^2+x-2},\quad \dfrac{2x^3-7x}{x^4-3},\quad \dfrac{3x^3-2x^2+4}{x^2-8x+15},\quad \dfrac{x^5+1}{x^5-3x},\quad \dfrac{x^5+2x^2+3}{x+1}.$$
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+Ahol a számláló fokszáma nem kisebb a nevezőénél, polinomosztással:
+$$\frac{x^4+3x-6}{x^2+x-2}=(x^2-x+3)+\frac{-2x}{x^2+x-2},\qquad \frac{3x^3-2x^2+4}{x^2-8x+15}=(3x+22)+\frac{131x-326}{x^2-8x+15},$$
+$$\frac{x^5+1}{x^5-3x}=1+\frac{3x}{x^5-3x},\qquad \frac{x^5+2x^2+3}{x+1}=(x^4-x^3+x^2+x-1)+\frac{4}{x+1}.$$
+(A $\frac{2x^3-7x}{x^4-3}$ már valódi tört, a számláló foka kisebb.)
+</details>
 
 **7.4.** Írja fel az alábbi törtek racionális tört alakját, a konstansok kiszámítása nélkül:
 
 $$\dfrac{x^3-8x^2+12}{(x-1)^2\,(x^2+4x+9)},\quad \dfrac{x^4+5x^2+3}{(x+7)\,(x^2+5x+7)^2},$$
 
 $$\dfrac{x^2+8x+2}{(x-1)^3\,(x^2+4x+9)^2\,(x+7)\,(x^2+5)},\quad \dfrac{3x^3-2x^2+4}{x^2-8x+15}.$$
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+$$\frac{x^3-8x^2+12}{(x-1)^2(x^2+4x+9)}=\frac{A}{x-1}+\frac{B}{(x-1)^2}+\frac{Cx+D}{x^2+4x+9},$$
+$$\frac{x^4+5x^2+3}{(x+7)(x^2+5x+7)^2}=\frac{A}{x+7}+\frac{Bx+C}{x^2+5x+7}+\frac{Dx+E}{(x^2+5x+7)^2},$$
+$$\frac{x^2+8x+2}{(x-1)^3(x^2+4x+9)^2(x+7)(x^2+5)}=\frac{A}{x-1}+\frac{B}{(x-1)^2}+\frac{C}{(x-1)^3}+\frac{Dx+E}{x^2+4x+9}+\frac{Fx+G}{(x^2+4x+9)^2}+\frac{H}{x+7}+\frac{Ix+J}{x^2+5},$$
+$$\frac{3x^3-2x^2+4}{x^2-8x+15}=(3x+22)+\frac{A}{x-3}+\frac{B}{x-5}.$$
+</details>
 
 **7.5.** Bontsa fel az alábbi törteket parciális törtekre:
 
@@ -1097,6 +1321,18 @@ $$(*)\quad \dfrac{7s^4+23s^3-30s^2-172s-150}{(s+2)^4(s-5)}.$$
 <summary><strong>Útmutatás</strong></summary>
 
 A parciális (elemi/rész-) törtekre bontás módszere megtalálható Szalkai István honlapján (ParcTort-pdfw.pdf) vagy a *Diszkrét matematika és algoritmuselmélet* c. könyv függelékében.
+</details>
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+$$\frac{1}{k(k+1)}=\frac1k-\frac{1}{k+1},\qquad \frac{x+6}{x^2+x-2}=\frac{-4/3}{x+2}+\frac{7/3}{x-1},$$
+$$\frac{3x+2}{(x^2+2x+5)(x+1)}=\frac{-1/4}{x+1}+\frac{\frac14 x+\frac{13}{4}}{x^2+2x+5},\qquad \frac{x^2-1}{x^3+2x^2}=\frac{-1/2}{x^2}+\frac{1/4}{x}+\frac{3/4}{x+2},$$
+$$\frac{x}{(1-2x)^2}=\frac{-1/2}{1-2x}+\frac{1/2}{(1-2x)^2},\qquad \frac{x}{(x-1)^3}=\frac{1}{(x-1)^3}+\frac{1}{(x-1)^2},$$
+$$\frac{x^3}{(x^2+1)^2}=\frac{-x}{(x^2+1)^2}+\frac{x}{x^2+1},\qquad \frac{x^2+5}{x^4-16}=\frac{9/32}{x-2}-\frac{9/32}{x+2}-\frac{1/8}{x^2+4},$$
+$$\frac{1}{(1-x^2)(1-x^3)}=\frac{1/4}{1-x}+\frac{1/6}{(1-x)^2}+\frac{1/4}{1+x}+\frac{1/3}{1+x+x^2},$$
+$$\frac{3x^3-2x^2+4}{x^2-8x+15}=(3x+22)+\frac{-33{,}5}{x-3}+\frac{164{,}5}{x-5},$$
+$$(*)\quad \frac{7s^4+23s^3-30s^2-172s-150}{(s+2)^4(s-5)}=\frac{11317/2401}{s+2}-\frac{2/343}{(s+2)^2}-\frac{2/49}{(s+2)^3}-\frac{2/7}{(s+2)^4}+\frac{5490/2401}{s-5}.$$
 </details>
 
 ## 8. fejezet
