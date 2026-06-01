@@ -132,6 +132,7 @@ const THM_KIND: Record<string, string> = {
   'Definíció': 'def', 'Tétel': 'thm', 'Példa': 'ex', 'Megjegyzés': 'note',
   'Állítás': 'claim', 'Következmény': 'cor', 'Lemma': 'lem', 'Algoritmus': 'algo',
   'Bizonyítás': 'proof', 'Jelölés': 'note', 'Összefoglalás': 'note',
+  'Gyakorlat': 'ex', 'Probléma': 'claim', 'Feltétel': 'note',
 };
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
