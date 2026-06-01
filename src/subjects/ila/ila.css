@@ -218,6 +218,17 @@
 }
 .dark .prose-lesson.calc-prose em.concept { color: #fbbf24; } /* amber-400 on dark */
 
+/* "English translation in progress" notice on a HU-fallback chapter */
+.calc-i18n-note {
+  margin: 0 0 1rem;
+  padding: 0.5rem 0.85rem;
+  border-left: 3px solid #f59e0b;
+  background: rgba(245, 158, 11, 0.08);
+  border-radius: 0 0.4rem 0.4rem 0;
+  font-size: 0.82rem;
+  color: var(--text-muted, #8892a4);
+}
+
 /* GFM footnotes section (gathered at chapter end by remark-gfm) */
 .prose-lesson .footnotes {
   margin-top: 2rem;

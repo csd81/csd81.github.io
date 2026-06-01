@@ -4,6 +4,7 @@ import { Link, Route, Routes, useParams } from 'react-router-dom';
 import type { Components } from 'react-markdown';
 import { MarkdownView } from '../../shared/ui/MarkdownView';
 import { normalizeMath } from '../../shared/ui/normalizeMath';
+import { useLang, type Bi, type Lang } from '../../shared/providers/LanguageProvider';
 import '../../pages/home.css';
 import '../ila/ila.css';
 
@@ -12,15 +13,18 @@ const CalcFigure = lazy(() => import('./figures'));
 const RAW = import.meta.glob('./content/*.md', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 
 interface Chapter { num: number; title: string; sections: string[]; body: string; }
-interface Book { id: string; title: string; author: string; blurb: string; chapters: Chapter[]; }
+/** A book holds a per-language chapter set; `en` may be empty or partial. */
+interface Book { id: string; title: Bi; author: Bi; blurb: Bi; chapters: Record<Lang, Chapter[]>; }
 
 /**
- * Split a (preprocessed) book into chapters on `#{1,3} N. fejezet` headings.
- * The title is the heading line that follows; `sections` lists the `## N.M.`
+ * Split a (preprocessed) book into chapters on a chapter heading — either the
+ * Hungarian `#{1,3} N. fejezet` or the English `#{1,3} Chapter N` form. The
+ * title is the heading line that follows; `sections` lists the `## N.M.`
  * subsection headings (for a chapter-card table of contents). Content before
  * the first chapter (book title/author) is dropped.
  */
-const FEJEZET = /^#{1,3}\s+(\d+)\.\s+fejezet\s*$/;
+const FEJEZET = /^#{1,3}\s+(?:(\d+)\.\s+fejezet|Chapter\s+(\d+)\.?)\s*$/i;
+const fejNum = (l: string): number | null => { const m = l.match(FEJEZET); return m ? parseInt(m[1] ?? m[2], 10) : null; };
 function splitChapters(md: string): Chapter[] {
   const lines = md.split('\n');
   const starts: number[] = [];
@@ -28,7 +32,7 @@ function splitChapters(md: string): Chapter[] {
   if (starts.length === 0) return [{ num: 1, title: '', sections: [], body: prepareFootnotes(md) }];
   return starts.map((start, k) => {
     const end = k + 1 < starts.length ? starts[k + 1] : lines.length;
-    const num = parseInt(lines[start].match(FEJEZET)![1], 10);
+    const num = fejNum(lines[start])!;
     let title = '', bodyStart = start + 1;
     for (let j = start + 1; j < end; j++) {
       const t = lines[j].trim();
@@ -49,11 +53,27 @@ function splitChapters(md: string): Chapter[] {
   });
 }
 
-const META: Record<string, { title: string; author: string; blurb: string }> = {
-  kalkulus1: { title: 'Kalkulus informatikusoknak I.', author: 'Győri István, Pituk Mihály', blurb: 'Halmazok, függvények, sorozatok, határérték, differenciálszámítás.' },
-  kalkulus2: { title: 'Kalkulus informatikusoknak II.', author: 'Győri István, Pituk Mihály', blurb: 'Végtelen sorok, integrálszámítás, többváltozós analízis.' },
-  'anal-tk1b': { title: 'Matematikai analízis I.', author: 'Dr. Szalkai István, Mikó Teréz · Pannon Egyetem', blurb: 'Alapfogalmak, függvények, sorozatok, határérték, deriválás (0–7. fejezet).' },
-  'kalkulus2-peldatar': { title: 'Kalkulus II. Példatár', author: 'Szalkai István, Dósa György · Pannon Egyetem', blurb: 'Megoldott feladatgyűjtemény: minden feladat alatt az Útmutatás és a Megoldás (10 fejezet, F1–F10).' },
+const META: Record<string, { title: Bi; author: Bi; blurb: Bi }> = {
+  kalkulus1: {
+    title: { hu: 'Kalkulus informatikusoknak I.', en: 'Calculus for Computer Scientists I.' },
+    author: { hu: 'Győri István, Pituk Mihály', en: 'István Győri, Mihály Pituk' },
+    blurb: { hu: 'Halmazok, függvények, sorozatok, határérték, differenciálszámítás.', en: 'Sets, functions, sequences, limits, differential calculus.' },
+  },
+  kalkulus2: {
+    title: { hu: 'Kalkulus informatikusoknak II.', en: 'Calculus for Computer Scientists II.' },
+    author: { hu: 'Győri István, Pituk Mihály', en: 'István Győri, Mihály Pituk' },
+    blurb: { hu: 'Végtelen sorok, integrálszámítás, többváltozós analízis.', en: 'Infinite series, integral calculus, multivariable analysis.' },
+  },
+  'anal-tk1b': {
+    title: { hu: 'Matematikai analízis I.', en: 'Mathematical Analysis I.' },
+    author: { hu: 'Dr. Szalkai István, Mikó Teréz · Pannon Egyetem', en: 'Dr. István Szalkai, Teréz Mikó · University of Pannonia' },
+    blurb: { hu: 'Alapfogalmak, függvények, sorozatok, határérték, deriválás (0–7. fejezet).', en: 'Fundamentals, functions, sequences, limits, differentiation (ch. 0–7).' },
+  },
+  'kalkulus2-peldatar': {
+    title: { hu: 'Kalkulus II. Példatár', en: 'Calculus II. Problem Book' },
+    author: { hu: 'Szalkai István, Dósa György · Pannon Egyetem', en: 'István Szalkai, György Dósa · University of Pannonia' },
+    blurb: { hu: 'Megoldott feladatgyűjtemény: minden feladat alatt az Útmutatás és a Megoldás (10 fejezet, F1–F10).', en: 'Worked problem collection: each exercise followed by its Hint and Solution (10 chapters, F1–F10).' },
+  },
 };
 
 /**
@@ -116,13 +136,45 @@ const prepareCalcMd = (id: string, md: string): string => {
   return md;
 };
 
-const BOOKS: Book[] = Object.entries(RAW)
-  .map(([path, md]) => {
-    const id = path.replace(/^\.\/content\//, '').replace(/\.md$/, '');
-    const m = META[id] ?? { title: id, author: '', blurb: '' };
-    return { id, ...m, chapters: splitChapters(prepareCalcMd(id, md)) };
+/**
+ * Group source files by book id: `<id>.md` is the Hungarian (canonical) source,
+ * `<id>_en.md` is its (possibly partial) English translation. A book needs a HU
+ * source; its EN chapter set may be empty or cover only some chapters.
+ */
+const byBase: Record<string, { hu?: string; en?: string }> = {};
+for (const [path, md] of Object.entries(RAW)) {
+  const file = path.replace(/^\.\/content\//, '').replace(/\.md$/, '');
+  const en = file.match(/^(.*)_en$/);
+  if (en) (byBase[en[1]] ??= {}).en = md;
+  else (byBase[file] ??= {}).hu = md;
+}
+
+const FALLBACK_META = (id: string) => ({ title: { hu: id, en: id }, author: { hu: '', en: '' }, blurb: { hu: '', en: '' } });
+
+const BOOKS: Book[] = Object.entries(byBase)
+  .filter(([, v]) => v.hu) // a book must have a canonical (HU) source
+  .map(([id, v]) => {
+    const m = META[id] ?? FALLBACK_META(id);
+    return {
+      id, ...m,
+      chapters: {
+        hu: splitChapters(prepareCalcMd(id, v.hu!)),
+        en: v.en ? splitChapters(prepareCalcMd(id, v.en)) : [],
+      } as Record<Lang, Chapter[]>,
+    };
   })
   .sort((a, b) => a.id.localeCompare(b.id));
+
+/**
+ * Chapters for the active language: Hungarian is canonical; in English we use
+ * the translated chapter where it exists and fall back to the Hungarian chapter
+ * (by number) where it doesn't — so partial translations still render fully.
+ */
+function chaptersFor(book: Book, lang: Lang): Chapter[] {
+  if (lang !== 'en' || book.chapters.en.length === 0) return book.chapters.hu;
+  return book.chapters.hu.map((h) => book.chapters.en.find((e) => e.num === h.num) ?? h);
+}
+const isTranslated = (book: Book, num: number) => book.chapters.en.some((e) => e.num === num);
 
 export const CALC_BOOKS = BOOKS.map(({ id, title, author, blurb }) => ({ id, title, author, blurb }));
 
@@ -130,10 +182,17 @@ const bookById = (id: string) => BOOKS.find((b) => b.id === id);
 
 /** Theorem-like lead words → callout colour modifier. */
 const THM_KIND: Record<string, string> = {
+  // Hungarian
   'Definíció': 'def', 'Tétel': 'thm', 'Példa': 'ex', 'Megjegyzés': 'note',
   'Állítás': 'claim', 'Következmény': 'cor', 'Lemma': 'lem', 'Algoritmus': 'algo',
   'Bizonyítás': 'proof', 'Jelölés': 'note', 'Összefoglalás': 'note',
   'Gyakorlat': 'ex', 'Probléma': 'claim', 'Feltétel': 'note',
+  // English (for *_en.md translations)
+  'Definition': 'def', 'Theorem': 'thm', 'Example': 'ex', 'Remark': 'note',
+  'Proposition': 'claim', 'Statement': 'claim', 'Claim': 'claim',
+  'Corollary': 'cor', 'Consequence': 'cor', 'Algorithm': 'algo',
+  'Proof': 'proof', 'Notation': 'note', 'Summary': 'note',
+  'Exercise': 'ex', 'Problem': 'claim', 'Condition': 'note',
 };
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -141,7 +200,7 @@ const THM_KIND: Record<string, string> = {
 function leadKindFromText(txt: string): string | null {
   const m = /^\s*\d+(?:\.\d+)*\.?\s*([A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű]+)/.exec(txt);
   if (m && THM_KIND[m[1]]) return THM_KIND[m[1]];
-  if (/^\s*Bizonyítás/.test(txt)) return 'proof';
+  if (/^\s*(Bizonyítás|Proof)/.test(txt)) return 'proof';
   return null;
 }
 /** Concatenate the text of a hast node tree. */
@@ -282,20 +341,38 @@ const bookComponents = (bookId: string): Components => ({
   },
 });
 
+/** UI strings for the calc chrome (everything else comes from the markdown). */
+const UI = {
+  kicker: { hu: 'Analízis · Calculus', en: 'Analysis · Calculus' },
+  landingTitle: { hu: 'Kalkulus könyvek', en: 'Calculus books' },
+  landingLead: { hu: 'Teljes tankönyvek Markdown formában, KaTeX-renderelt képletekkel és élő (számolt) ábrákkal.', en: 'Full textbooks in Markdown, with KaTeX-rendered formulas and live (computed) figures.' },
+  books: { hu: 'Könyvek', en: 'Books' },
+  chapters: { hu: 'Fejezetek', en: 'Chapters' },
+  chapterWord: { hu: 'fejezet', en: 'chapters' },
+  bookNotFound: { hu: 'A könyv nem található.', en: 'Book not found.' },
+  chapterNotFound: { hu: 'A fejezet nem található.', en: 'Chapter not found.' },
+  chapterFallback: { hu: 'fejezet', en: 'Chapter' },
+  inProgress: { hu: 'Az angol fordítás folyamatban — ez a fejezet egyelőre magyarul jelenik meg.', en: 'English translation in progress — this chapter is shown in Hungarian for now.' },
+} satisfies Record<string, Bi>;
+
+/** A chapter's display title, with a localized fallback when untitled. */
+const chTitle = (c: Chapter, lang: Lang) => c.title || (lang === 'hu' ? `${c.num}. fejezet` : `Chapter ${c.num}`);
+
 function Landing() {
+  const { t } = useLang();
   return (
     <div className="ila">
-      <p className="ila__kicker">Analízis · Calculus</p>
-      <h1 className="ila__title">Kalkulus könyvek</h1>
-      <p className="ila__cite">Teljes tankönyvek Markdown formában, KaTeX-renderelt képletekkel és élő (számolt) ábrákkal.</p>
+      <p className="ila__kicker">{t(UI.kicker)}</p>
+      <h1 className="ila__title">{t(UI.landingTitle)}</h1>
+      <p className="ila__cite">{t(UI.landingLead)}</p>
       <ul className="ila__grid">
         {BOOKS.map((b, i) => (
           <li key={b.id}>
             <Link to={`/calc/${b.id}`} className="chcard">
               <span className="chcard__num">{String(i + 1).padStart(2, '0')}</span>
               <span className="chcard__body">
-                <span className="chcard__title">{b.title}</span>
-                <span className="chcard__blurb">{b.author} · {b.chapters.length} fejezet</span>
+                <span className="chcard__title">{t(b.title)}</span>
+                <span className="chcard__blurb">{t(b.author)} · {b.chapters.hu.length} {t(UI.chapterWord)}</span>
               </span>
             </Link>
           </li>
@@ -308,28 +385,30 @@ function Landing() {
 /** Book page — header + a card per chapter (with a section table of contents). */
 function BookView() {
   const { id } = useParams();
+  const { t, lang } = useLang();
   const book = id ? bookById(id) : undefined;
   if (!book) {
     return (
       <div className="ila">
-        <Link to="/calc" className="ila__back">← Könyvek</Link>
-        <p className="ila__cite">A könyv nem található.</p>
+        <Link to="/calc" className="ila__back">← {t(UI.books)}</Link>
+        <p className="ila__cite">{t(UI.bookNotFound)}</p>
       </div>
     );
   }
+  const chapters = chaptersFor(book, lang);
   return (
     <div className="ila">
-      <Link to="/calc" className="ila__back">← Könyvek</Link>
-      <p className="ila__kicker">Analízis · Calculus</p>
-      <h1 className="ila__title">{book.title}</h1>
-      <p className="ila__cite">{book.author}</p>
+      <Link to="/calc" className="ila__back">← {t(UI.books)}</Link>
+      <p className="ila__kicker">{t(UI.kicker)}</p>
+      <h1 className="ila__title">{t(book.title)}</h1>
+      <p className="ila__cite">{t(book.author)}</p>
       <ul className="ila__grid">
-        {book.chapters.map((c) => (
+        {chapters.map((c) => (
           <li key={c.num}>
             <Link to={`/calc/${book.id}/${c.num}`} className="chcard">
               <span className="chcard__num">{String(c.num).padStart(2, '0')}</span>
               <span className="chcard__body">
-                <span className="chcard__title">{c.title || `${c.num}. fejezet`}</span>
+                <span className="chcard__title">{chTitle(c, lang)}</span>
                 {c.sections.length > 0 && (
                   <span className="chcard__desc">{c.sections.join(' · ')}</span>
                 )}
@@ -345,34 +424,38 @@ function BookView() {
 /** Single-chapter view with prev/next navigation. */
 function ChapterView() {
   const { id, ch } = useParams();
+  const { t, lang } = useLang();
   const book = id ? bookById(id) : undefined;
-  const idx = book ? book.chapters.findIndex((c) => String(c.num) === ch) : -1;
+  const chapters = book ? chaptersFor(book, lang) : [];
+  const idx = chapters.findIndex((c) => String(c.num) === ch);
   if (!book || idx < 0) {
     return (
       <div className="ila">
-        <Link to={`/calc/${id ?? ''}`} className="ila__back">← Fejezetek</Link>
-        <p className="ila__cite">A fejezet nem található.</p>
+        <Link to={`/calc/${id ?? ''}`} className="ila__back">← {t(UI.chapters)}</Link>
+        <p className="ila__cite">{t(UI.chapterNotFound)}</p>
       </div>
     );
   }
-  const c = book.chapters[idx];
-  const prev = book.chapters[idx - 1];
-  const next = book.chapters[idx + 1];
+  const c = chapters[idx];
+  const prev = chapters[idx - 1];
+  const next = chapters[idx + 1];
   const qed = book.id === 'anal-tk1b'; // Szalkai marks every item's end with □
   const source = normalizeMath(c.body); // same string react-markdown parses (for box-source offsets)
+  const fallback = lang === 'en' && book.chapters.en.length > 0 && !isTranslated(book, c.num);
   const components = { ...bookComponents(book.id), calccopy: ({ node }: any) => <CopyButton tex={String(node?.properties?.tex ?? '')} /> } as Components;
   return (
     <div className="ila">
-      <Link to={`/calc/${book.id}`} className="ila__back">← {book.title}</Link>
-      <p className="ila__kicker">{book.title} · {c.num}. fejezet</p>
-      <h1 className="ila__title">{c.title || `${c.num}. fejezet`}</h1>
+      <Link to={`/calc/${book.id}`} className="ila__back">← {t(book.title)}</Link>
+      <p className="ila__kicker">{t(book.title)} · {chTitle(c, lang)}</p>
+      <h1 className="ila__title">{chTitle(c, lang)}</h1>
+      {fallback && <p className="calc-i18n-note">{t(UI.inProgress)}</p>}
       <MarkdownView className="calc-prose" markdown={c.body} components={components} rehypePlugins={[[rehypeCallouts, { qed, source }], rehypeConceptEm]} />
       <nav className="calc-chnav">
         {prev
-          ? <Link to={`/calc/${book.id}/${prev.num}`} className="ila__back">← {prev.num}. {prev.title}</Link>
+          ? <Link to={`/calc/${book.id}/${prev.num}`} className="ila__back">← {chTitle(prev, lang)}</Link>
           : <span />}
         {next
-          ? <Link to={`/calc/${book.id}/${next.num}`} className="ila__back">{next.num}. {next.title} →</Link>
+          ? <Link to={`/calc/${book.id}/${next.num}`} className="ila__back">{chTitle(next, lang)} →</Link>
           : <span />}
       </nav>
     </div>
