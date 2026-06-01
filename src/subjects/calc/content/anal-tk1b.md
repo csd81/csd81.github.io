@@ -533,7 +533,7 @@ A lista nem teljes, keressünk még „különböző alakú" hatványfüggvénye
 
 Most pedig nézzük meg a hatványfüggvények ábráit közelebbről!
 
-**1.6. Példa.** Kezdjük az $\alpha = 0 ; 1 ; 2 ; 3 ; ...$ egész kitevőkkel. Ekkor $\mathrm{Dom}(f) = \mathbb{R} \setminus \{0\}$ azaz $x \in \mathbb{R}$ de $x \neq 0$, sőt pozitív $\alpha$ esetén $x \in \mathbb{R}$ tetszőleges szám lehet.
+**1.6. Példa.** Kezdjük az $\alpha = 0, \pm 1, \pm 2, \pm 3, \dots$ egész kitevőkkel. Ekkor $\mathrm{Dom}(f) = \mathbb{R} \setminus \{0\}$ azaz $x \in \mathbb{R}$ de $x \neq 0$, sőt pozitív $\alpha$ esetén $x \in \mathbb{R}$ tetszőleges szám lehet.
 
 *(ábra)* Hatványfüggvények
 
