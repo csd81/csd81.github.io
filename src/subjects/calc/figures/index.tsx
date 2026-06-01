@@ -632,8 +632,8 @@ const K1: Record<string, FigFn> = {
 const K2: Record<string, FigFn> = {
   '3.1': setBlobFig,
   '3.2': partialDerivSurfaceFig,
-  '4.2': () => gridCover('inner', '4.2. ábra. Belső lefedés intervallumokkal'),
-  '4.3': () => gridCover('outer', '4.3. ábra. Külső lefedés intervallumokkal'),
+  '4.2': () => gridCover('outer', '4.2. ábra. Külső lefedés intervallumokkal'),
+  '4.3': () => gridCover('inner', '4.3. ábra. Belső lefedés intervallumokkal'),
   '4.4': volumeUnderSurfaceFig,
   '4.5': normalDomainNFig, '4.6': normalDomainMFig, '4.7': triangleFig,
   // 4.1 (interval rectangle) intentionally omitted
