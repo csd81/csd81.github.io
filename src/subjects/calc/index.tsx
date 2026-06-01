@@ -1,5 +1,5 @@
 /** Calculus books — raw markdown with live (computed) figures swapped in. */
-import { lazy, Suspense } from 'react';
+import { Children, isValidElement, lazy, Suspense, type ReactNode } from 'react';
 import { Link, Route, Routes, useParams } from 'react-router-dom';
 import type { Components } from 'react-markdown';
 import { MarkdownView } from '../../shared/ui/MarkdownView';
@@ -10,7 +10,7 @@ const CalcFigure = lazy(() => import('./figures'));
 
 const RAW = import.meta.glob('./content/*.md', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 
-interface Chapter { num: number; title: string; sections: string[]; body: string; }
+interface Chapter { num: number; title: string; sections: string[]; body: string; footnotes: string[]; }
 interface Book { id: string; title: string; author: string; blurb: string; chapters: Chapter[]; }
 
 /**
@@ -24,7 +24,7 @@ function splitChapters(md: string): Chapter[] {
   const lines = md.split('\n');
   const starts: number[] = [];
   lines.forEach((l, i) => { if (FEJEZET.test(l)) starts.push(i); });
-  if (starts.length === 0) return [{ num: 1, title: '', sections: [], body: md }];
+  if (starts.length === 0) return [{ num: 1, title: '', sections: [], body: md, footnotes: [] }];
   return starts.map((start, k) => {
     const end = k + 1 < starts.length ? starts[k + 1] : lines.length;
     const num = parseInt(lines[start].match(FEJEZET)![1], 10);
@@ -36,11 +36,23 @@ function splitChapters(md: string): Chapter[] {
       if (h) { title = h[1].trim(); bodyStart = j + 1; }
       break;
     }
-    const body = lines.slice(bodyStart, end).join('\n').trim();
+    // Clean OCR page-break artifacts: drop standalone `---` rules, and lift
+    // page-bottom footnote *definitions* (lines starting `$^{N)}$ …` or a
+    // unicode-superscript marker like `⁶⁾ …`) to the end of the chapter. The
+    // in-text footnote reference marks are left untouched.
+    const footnotes: string[] = [];
+    const kept: string[] = [];
+    const FN = /^(?:\$\^\{?\d+\)\}?\$|[⁰-⁹¹²³]+[⁾)])\s/;
+    for (const l of lines.slice(bodyStart, end)) {
+      if (/^-{3,}\s*$/.test(l)) continue;
+      if (FN.test(l.trim())) { footnotes.push(l.trim()); continue; }
+      kept.push(l);
+    }
+    const body = kept.join('\n').trim();
     const sections = body.split('\n')
       .map((l) => l.match(/^##\s+([\d.]+\.?\s*.+)$/)?.[1]?.trim())
       .filter((s): s is string => !!s);
-    return { num, title, sections, body };
+    return { num, title, sections, body, footnotes };
   });
 }
 
@@ -122,8 +134,31 @@ export const CALC_BOOKS = BOOKS.map(({ id, title, author, blurb }) => ({ id, tit
 
 const bookById = (id: string) => BOOKS.find((b) => b.id === id);
 
-/** Figure renderer for a book: swap `![…ábra…](…)` references for live figures. */
-const figureComponents = (bookId: string): Components => ({
+/** Theorem-like lead words → callout colour modifier. */
+const THM_KIND: Record<string, string> = {
+  'Definíció': 'def', 'Tétel': 'thm', 'Példa': 'ex', 'Megjegyzés': 'note',
+  'Állítás': 'claim', 'Következmény': 'cor', 'Lemma': 'lem', 'Algoritmus': 'algo',
+  'Bizonyítás': 'proof', 'Jelölés': 'note', 'Összefoglalás': 'note',
+};
+
+/** Plain text of a React child tree (for theorem-marker detection). */
+function textOf(node: ReactNode): string {
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(textOf).join('');
+  if (isValidElement(node)) return textOf((node.props as { children?: ReactNode }).children);
+  return '';
+}
+
+/** If a paragraph starts with `**N.N. <Type>**`, return its callout modifier. */
+function thmKind(children: ReactNode): string | null {
+  const first = Children.toArray(children)[0];
+  if (!isValidElement(first) || first.type !== 'strong') return null;
+  const m = /^\s*\d+(?:\.\d+)*\.?\s*([A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű]+)/.exec(textOf((first.props as { children?: ReactNode }).children));
+  return m && THM_KIND[m[1]] ? THM_KIND[m[1]] : null;
+}
+
+/** react-markdown components for a chapter: live figures + theorem callout boxes. */
+const bookComponents = (bookId: string): Components => ({
   img: ({ alt }) => {
     const a = alt ?? '';
     const figId = /^fig:(\S+)/.exec(a)?.[1] ?? /^(\d+\.\d+)/.exec(a)?.[1];
@@ -133,6 +168,10 @@ const figureComponents = (bookId: string): Components => ({
         <CalcFigure book={bookId} id={figId} />
       </Suspense>
     );
+  },
+  p: ({ children }) => {
+    const k = thmKind(children);
+    return k ? <p className={`thm thm--${k}`}>{children}</p> : <p>{children}</p>;
   },
 });
 
@@ -212,12 +251,18 @@ function ChapterView() {
   const c = book.chapters[idx];
   const prev = book.chapters[idx - 1];
   const next = book.chapters[idx + 1];
+  const components = bookComponents(book.id);
   return (
     <div className="ila">
       <Link to={`/calc/${book.id}`} className="ila__back">← {book.title}</Link>
       <p className="ila__kicker">{book.title} · {c.num}. fejezet</p>
       <h1 className="ila__title">{c.title || `${c.num}. fejezet`}</h1>
-      <MarkdownView markdown={c.body} components={figureComponents(book.id)} />
+      <MarkdownView markdown={c.body} components={components} />
+      {c.footnotes.length > 0 && (
+        <div className="calc-footnotes">
+          <MarkdownView markdown={c.footnotes.join('\n\n')} components={components} />
+        </div>
+      )}
       <nav className="calc-chnav">
         {prev
           ? <Link to={`/calc/${book.id}/${prev.num}`} className="ila__back">← {prev.num}. {prev.title}</Link>

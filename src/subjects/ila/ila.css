@@ -150,3 +150,31 @@
   padding-top: 1.2rem;
   border-top: 1px solid #21262d;
 }
+
+/* Calc theorem/definition callout boxes (coloured by kind) */
+.prose-lesson .thm {
+  border-left: 3px solid var(--thm-c, #a78bfa);
+  background: var(--thm-bg, rgba(167, 139, 250, 0.08));
+  border-radius: 0 0.4rem 0.4rem 0;
+  padding: 0.7rem 0.95rem;
+  margin: 1.1rem 0;
+}
+.prose-lesson .thm > strong:first-child { color: var(--thm-c, #a78bfa); }
+.thm--def   { --thm-c: #60a5fa; --thm-bg: rgba(96, 165, 250, 0.09); }
+.thm--thm   { --thm-c: #a78bfa; --thm-bg: rgba(167, 139, 250, 0.09); }
+.thm--ex    { --thm-c: #34d399; --thm-bg: rgba(52, 211, 153, 0.08); }
+.thm--note  { --thm-c: #fbbf24; --thm-bg: rgba(251, 191, 36, 0.07); }
+.thm--claim { --thm-c: #2dd4bf; --thm-bg: rgba(45, 212, 191, 0.08); }
+.thm--cor   { --thm-c: #22d3ee; --thm-bg: rgba(34, 211, 238, 0.08); }
+.thm--lem   { --thm-c: #818cf8; --thm-bg: rgba(129, 140, 248, 0.08); }
+.thm--algo  { --thm-c: #fb7185; --thm-bg: rgba(251, 113, 133, 0.08); }
+.thm--proof { --thm-c: #94a3b8; --thm-bg: rgba(148, 163, 184, 0.07); }
+
+/* Lifted page-bottom footnotes, shown at chapter end */
+.calc-footnotes {
+  margin-top: 2rem;
+  padding-top: 0.8rem;
+  border-top: 1px dashed #30363d;
+  font-size: 0.82rem;
+  opacity: 0.8;
+}
