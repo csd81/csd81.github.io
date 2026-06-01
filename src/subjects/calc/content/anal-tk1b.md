@@ -597,7 +597,7 @@ $$p(x) = q(x) \cdot s(x) + r(x)$$
 
 és $r(x)$ fokszáma kisebb mint $q(x)$ fokszáma. Felhívjuk a figyelmet arra, hogy a
 
-<http://math.uni-pannon.hu/Poliosz5.exe>
+<https://math.uni-pannon.hu/Poliosz5.exe>
 
 program segítségével bármely $p$ és $q$ polinom esetén könnyen kiszámíthatjuk az $r$ és $s$ polinomokat.
 
@@ -788,11 +788,11 @@ A középiskolában részletesen tanultuk ezeket a függvényeket (ismételjük 
 
 Működés közben:
 
-[http://math.uni-pannon.hu/~szalkai/B-SIN-1.SWF](http://math.uni-pannon.hu/~szalkai/B-SIN-1.SWF)
+[https://math.uni-pannon.hu/~szalkai/B-SIN-1.SWF](https://math.uni-pannon.hu/~szalkai/B-SIN-1.SWF)
 
 vagy
 
-[http://math.uni-pannon.hu/~szalkai/B-SIN-2.EXE](http://math.uni-pannon.hu/~szalkai/B-SIN-2.EXE)
+[https://math.uni-pannon.hu/~szalkai/B-SIN-2.EXE](https://math.uni-pannon.hu/~szalkai/B-SIN-2.EXE)
 
 **1.28. Megjegyzés.** A fenti szerkesztés nemcsak az EKG és vízhullámok, elektromos áram viselkedését magyarázza meg, hanem például ha a $45^\circ$ szögben elvágott szalámi/kolbász lefejtett bőrének, vagy szabásmintánál a ruhaujj alakját is. (Részletesen ld. [SzM] - előkészületben).
 
@@ -1697,7 +1697,7 @@ A fenti összefüggések érvényes az $A = +\infty$ és $A = -\infty$ esetekre 
 
 **2.46. Megjegyzés.** Vigyázzunk: a fenti Tétel megfordítását azért fogalmaztuk ilyen körülményesen, mert nem elég csak a „minden részsorozatának van határértéke" feltétel. Például az $a_n = (-1)^n$ sorozat páros indexű részsorozata $b_m = (-1)^{2k} = 1$ és páratlan indexű részsorozata $c_h = (-1)^{2k+1} = -1$ mindkettő konvergens hiszen konstans sorozatok, de mivel különböző a határértékük, az eredeti $(a_n)$ sorozatnak nincsen határértéke.
 Az összes részsorozatot lehetetlen mind megvizsgálni, hiszen nem csak egyszerűen végtelen sok (!) van belőle, hanem ráadásul kontinuum sok is, ami egy „még nagyobbik végtelen". (A különböző végtelen számosságokról például honlapomon a
-http://math.uni-pannon.hu/~szalkai/Szamoss1www.pdf
+https://math.uni-pannon.hu/~szalkai/Szamoss1www.pdf
 dokumentumban olvashatnak az érdeklődők.)
 Azonban, ha a megvizsgált részsorozatok például lefedik az egész sorozatot -
 
@@ -1814,9 +1814,9 @@ A (2.19) egyenlet gyökének fenti (2.20) iterációs sorozat való megadása. B
 Tudomásunk szerint még ma is ezt a képletet használják a számítógépek.
 
 **2.64. Megjegyzés.** A témáról bővebben az alábbi helyeken olvashatnak az Érdeklődők:
-- Bolyai Farkas: Tentamen IUVENTUTEM STÚDIÓSAM IN ELEMENTA MATHESEOS PUR ELEMENTÁRIS AC SUBLIMIORIS METHODO INTUITIVA EVIDENTIAQUE HUIC PROPRIA INTRODUCENDI, CUM APPENDICE TRIPLICI = http://mek.oszk.hu/06500/06507/ ,
-- Szabó Péter Gábor: Bolyai Farkas számelméleti vonatkozású kéziratos hagyatéka, Természet Világa, 2003. I. Bolyai-emlékszám, http://www.chemonet.hu/TermVil/ , http://www.kfki.hu/chemonet/TermVil/
-- Szabó Péter Gábor: A Wilson-tételnek és megfordításának bizonyítása Bolyai Farkas kéziratos hagyatékában (kézirat). Publikálás alatt a szegedi Polygon című folyóiratban, http://www.inf.u-szeged.hu/~pszabo/Wilson.ps.gz
+- Bolyai Farkas: Tentamen IUVENTUTEM STÚDIÓSAM IN ELEMENTA MATHESEOS PUR ELEMENTÁRIS AC SUBLIMIORIS METHODO INTUITIVA EVIDENTIAQUE HUIC PROPRIA INTRODUCENDI, CUM APPENDICE TRIPLICI = https://mek.oszk.hu/06500/06507/ ,
+- Szabó Péter Gábor: Bolyai Farkas számelméleti vonatkozású kéziratos hagyatéka, Természet Világa, 2003. I. Bolyai-emlékszám, https://www.chemonet.hu/TermVil/ , https://www.kfki.hu/chemonet/TermVil/
+- Szabó Péter Gábor: A Wilson-tételnek és megfordításának bizonyítása Bolyai Farkas kéziratos hagyatékában (kézirat). Publikálás alatt a szegedi Polygon című folyóiratban, https://www.inf.u-szeged.hu/~pszabo/Wilson.ps.gz
 - [www7]
 
 ## 2.9. Newton gyökvonó módszere
@@ -2135,7 +2135,7 @@ No, és mi van pl. az $u_n := \dfrac{1}{\frac{3\pi}{2} + 2n\pi}$ , $v_n := \dfra
 
 
 **4.9. Megjegyzés.** A gyakorlatban óvatosan kell bánnunk az Átviteli elvvel: az $x_0$ -hoz konvergáló összes $(x_n)$ sorozatra kellene $\lim\limits_{n\to\infty} f(x_n)$ értékét ellenőriznünk, de végtelen sok ilyen sorozat van (időnk pedig véges), ráadásul ez a végtelen egy „nagyobbik" féle végtelen: kontinuum! (A különböző végtelenekről pl. honlapomon a
-http://math.uni-pannon.hu/~szalkai/Szamoss1www.pdf dokumentumban olvashatnak az érdeklődők.)
+https://math.uni-pannon.hu/~szalkai/Szamoss1www.pdf dokumentumban olvashatnak az érdeklődők.)
 
 A határérték precíz fogalmának megismerése után rátérhetünk a folytonosság kérdésére: „ha $x$ közeledik $x_0$ -hoz, akkor $f(x)$ is közeledik $f(x_0)$ -hoz" - vagyis „ceruzánkat nem kell felemelnünk" amikor $x_0$ -hoz közeledünk illetve „oda is érünk".
 
@@ -2477,7 +2477,7 @@ Ekkor $x_1 = \dfrac{a_0 + b_0}{2} = 5.5$ . Mivel $f(x_1) \approx 4.5236 > 0$ , e
 
 A könyvhöz mellékelt
 
-[http://math.uni-pannon.hu/~szalkai/Interv3.exe](http://math.uni-pannon.hu/~szalkai/Interv3.exe)
+[https://math.uni-pannon.hu/~szalkai/Interv3.exe](https://math.uni-pannon.hu/~szalkai/Interv3.exe)
 
 program segítségével gyakorolhatjuk a fenti algoritmus lépéseit, sőt egyszerűbb egyenleteket meg is oldathatunk vele. **A programot kizárólag csak egyéni tanulás céljára használhatjuk, anyagi ellenszolgáltatást a programért vagy annak használatáért elfogadni tilos!**
 
@@ -2570,7 +2570,7 @@ Ha pedig a $P$ pontot az $y = f(x)$ függvénygörbén mozgatjuk a $P_0$ ponthoz
 
 A fent leírt folyamatot tanulmányozhatjuk a könyvhöz tartozó
 
-[http://math.uni-pannon.hu/~szalkai/TK1AB-derivalt.gif](http://math.uni-pannon.hu/~szalkai/TK1AB-derivalt.gif) mozgóképen (animáción).
+[https://math.uni-pannon.hu/~szalkai/TK1AB-derivalt.gif](https://math.uni-pannon.hu/~szalkai/TK1AB-derivalt.gif) mozgóképen (animáción).
 
 **5.4. Megjegyzés.** Ne feledjük: $f(x_0)$ és $f'(x_0)$ teljesen más értékek, tehát a pici $'$ (vesszőcske) jel nagyon lényeges, mindig gondoljuk meg alaposan, hogy mikor kell kitenni és mikor nem$^{1)}$ ! A 5.13. pontban további, használatban levő jelöléseket ismertetünk - használja mindenki a neki szimpatikusat.
 
@@ -2879,7 +2879,7 @@ Sok kivételt például az 5.7. Példában ismertettünk.
 
 **5.25. Megjegyzés.** (!) A fenti megfogalmazás nem precíz matematikailag (ráadásul sok tétel egyvelege), csak a témakörrel ismerkedők részére írtuk le ilyen formában!
 (w) Az alapfüggvények deriváltfüggvényeinek legteljesebb listáját [SzK] Függelékében, vagy [www2]-ben, azaz a következő címen találhatjuk:
-http://math.uni-pannon.hu/~szalkai/Der+Int-tablazat-sk-nagy.gif
+https://math.uni-pannon.hu/~szalkai/Der+Int-tablazat-sk-nagy.gif
 Nagyon rövid táblázat van a középiskolai függvénytáblázatok c. gyűjteményben. Mindegyik összefüggést (mint a legtöbb matematikai képletet) betűk helyett szavakkal („versikék") érdemes megtanulnunk és alkalmaznunk, mint pl. az alábbi megjegyzésben is.
 
 Néhány megjegyzést érdemes alaposan átgondolnunk a táblázattal kapcsolatban:
@@ -3262,7 +3262,7 @@ A fenti $T^n_{x_0}f(x)$ polinomot $x_0=0$ esetén **MacLaurin-polinomnak** is h�
 
 ³⁾ Brook Taylor (1685-1731) angol matematikus
 ⁴⁾ Colin MacLaurin (1698-1746) skót matematikus
-⁵⁾ Taylor maga említi egy levelében, hogy az elmélet több matematikus kollégával történt „kávéházi beszélgetések" során alakult ki, többek között James Gregory, Newton, Leibniz, Johann Bernoulli és Moivre is felfedeztek függvényeket közelítő formulákat ld. http://www-history.mcs.st-andrews.ac.uk , Taylor életrajzában.
+⁵⁾ Taylor maga említi egy levelében, hogy az elmélet több matematikus kollégával történt „kávéházi beszélgetések" során alakult ki, többek között James Gregory, Newton, Leibniz, Johann Bernoulli és Moivre is felfedeztek függvényeket közelítő formulákat ld. https://www-history.mcs.st-andrews.ac.uk , Taylor életrajzában.
 
 
 Ne feledjük, hogy $k=0$ esetén $f^{(0)}(x_0)=f(x_0)$ az $f$ függvény helyettesítési értéke és $0!=1$ .
@@ -3330,7 +3330,7 @@ Az (5.34) képletet szokás **Lagrange-féle hibatagnak** hívni.
 
 ### 5.3.3. A L'Hospital szabály
 
-Mint láttuk a 4. „Függvények határértéke és folytonossága" c. fejezetben, pontosabban az [SzK] és [SzF] feladatgyűjteményekben (és a saját bőrünkön tapasztaltuk): függvények határértékét általában nagyon nehéz meghatározni a kritikus pontokban. A hányadosfüggvények határértékének kiszámítására *Johann Bernoulli* ⁸⁾ talált fel egy egyszerű de nagyon hatékony módszert, amit tanítványa, *Guillaume François Antoine Marquis de L'Hôpital* ⁹⁾ úr pénzért megvásárolt tőle [Lásd: Keith Luoma: What's in a name? - The truth behind 'famous name' mathematics, The Mathematical Gazette, 488 (1996), 349-351, vagy: http://www-history.mcs.st-andrews.ac.uk/Biographies/De_L'Hopital.html ].
+Mint láttuk a 4. „Függvények határértéke és folytonossága" c. fejezetben, pontosabban az [SzK] és [SzF] feladatgyűjteményekben (és a saját bőrünkön tapasztaltuk): függvények határértékét általában nagyon nehéz meghatározni a kritikus pontokban. A hányadosfüggvények határértékének kiszámítására *Johann Bernoulli* ⁸⁾ talált fel egy egyszerű de nagyon hatékony módszert, amit tanítványa, *Guillaume François Antoine Marquis de L'Hôpital* ⁹⁾ úr pénzért megvásárolt tőle [Lásd: Keith Luoma: What's in a name? - The truth behind 'famous name' mathematics, The Mathematical Gazette, 488 (1996), 349-351, vagy: https://www-history.mcs.st-andrews.ac.uk/Biographies/De_L'Hopital.html ].
 
 **5.58. Probléma.** Tekintsük a következő határérték problémát :
 
@@ -3530,8 +3530,8 @@ $f'$ éppen az eredeti $f$ függvény érintője, annak meredeksége. Ha példá
 **6.14. Megjegyzés.** Még mindig ugyanazt a jelenséget elemezzük, kicsit más szempontból.
 Hogyan nézhet ki az eredeti $f$ függvény amikor az $f'$ deriváltfüggvény egy $I$ intervallumon monoton növekszik (azaz $f'' > 0$) illetve csökken (azaz $f'' < 0$) ?
 Tekintsük meg a könyvhöz tartozó animációkat:
-http://math.uni-pannon.hu/~szalkai/derivalt_novekszik.avi
-és http://math.uni-pannon.hu/~szalkai/derivalt_csokken.avi
+https://math.uni-pannon.hu/~szalkai/derivalt_novekszik.avi
+és https://math.uni-pannon.hu/~szalkai/derivalt_csokken.avi
 
 **6.15. Összefoglalás.** $f'$ és $f''$ előjeleit tekintve ($\nearrow$ / $\searrow$) négy eset lehetséges, amely eseteket megpróbáljuk megérteni, jellemezni. (Először gondoljuk végig az alábbiakat fejben, és csak utána nézzük meg az ábrákat legalul.)
 
@@ -3840,7 +3840,7 @@ Szokás szerint kezdjük az alapfüggvényekkel:
 
 Az alapfüggvények határozatlan integráljainak legteljesebb listáját [SzK] Függelékében vagy [www2] -ben, azaz a következő címen találhatjuk:
 
-http://math.uni-pannon.hu/~szalkai/Der+Int-tablazat-sk-nagy.gif
+https://math.uni-pannon.hu/~szalkai/Der+Int-tablazat-sk-nagy.gif
 
 Nagyon rövid táblázat van a középiskolai függvénytáblázatok c. gyűjteményben is.
 
@@ -4141,7 +4141,7 @@ $^{5)}$ Archimedesz (Kr.e. 287-212) görög matematikus
 
 **7.43. Megjegyzés.** Vizsgáljuk meg most figyelmesen az $F(x)$ integrálfüggvény (területfüggvény) megváltozását $x$ (apró) mozgásának következtében. Ezt a folyamatot tanulmányozhatjuk a könyvhöz tartozó
 
-http://math.uni-pannon.hu/~szalkai/integralfuggveny.gif mozgóképen (animáción).
+https://math.uni-pannon.hu/~szalkai/integralfuggveny.gif mozgóképen (animáción).
 
 Hát persze a terület(függvény) változása éppen $f(x)$ -től függ! A megváltozás pedig éppen a derivált! Tehát (szemléletesen) beláttuk a következő összefüggést:
 
