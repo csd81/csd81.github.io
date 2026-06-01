@@ -366,6 +366,233 @@ function gridCover(mode: 'inner' | 'outer', caption: string) {
   );
 }
 
+// ── anal-tk1b (Szalkai–Mikó) — function-family plots ─────────────────────────
+
+const SER = ['#a78bfa', '#38bdf8', '#f472b6', '#34d399', '#fbbf24', '#fb7185', '#60a5fa', '#c084fc', '#a3e635'];
+
+/** A line trace with NaN/out-of-range points broken (so poles don't connect). */
+function ln(name: string, xs: number[], f: (x: number) => number, color: string, ymax = 7): any {
+  const x: number[] = [], y: (number | null)[] = [];
+  for (const xv of xs) { const yv = f(xv); x.push(xv); y.push(!isFinite(yv) || Math.abs(yv) > ymax ? null : yv); }
+  return { x, y, type: 'scatter', mode: 'lines', name, line: { color, width: 2 }, connectgaps: false };
+}
+const LEGEND = { showlegend: true, legend: { font: { size: 11 }, bgcolor: 'rgba(0,0,0,0)', x: 1, xanchor: 'right', y: 1 } };
+
+function familyFig(traces: any[], xr: [number, number], yr: [number, number], caption: string): any {
+  return <CalcPlot height={320} caption={caption} data={traces}
+    layout={{ ...LEGEND, xaxis: { range: xr, zeroline: true, showgrid: false }, yaxis: { range: yr, zeroline: true, showgrid: false } }} />;
+}
+
+function powersInt() {
+  const xs = lin(-2.4, 2.4, 481);
+  return familyFig([
+    ln('x⁻²', xs, (x) => 1 / (x * x), SER[0], 6), ln('x⁻¹', xs, (x) => 1 / x, SER[1], 6),
+    ln('1', xs, () => 1, SER[2]), ln('x', xs, (x) => x, SER[3]),
+    ln('x²', xs, (x) => x * x, SER[4], 6), ln('x³', xs, (x) => x ** 3, SER[5], 6),
+  ], [-2.4, 2.4], [-6, 6], 'Hatványfüggvények (egész kitevők)');
+}
+function powersPos() {
+  const xs = lin(0, 2.3, 220);
+  return familyFig([
+    ln('∛x', xs, Math.cbrt, SER[0]), ln('√x', xs, Math.sqrt, SER[1]),
+    ln('x', xs, (x) => x, SER[3]), ln('x²', xs, (x) => x * x, SER[4]), ln('x³', xs, (x) => x ** 3, SER[5]),
+  ], [0, 2.3], [0, 5], 'Hatványfüggvények (pozitív kitevők)');
+}
+function powersNeg() {
+  const xs = lin(0.04, 3, 240);
+  return familyFig([
+    ln('x⁻¹', xs, (x) => 1 / x, SER[1], 9), ln('x⁻²', xs, (x) => 1 / (x * x), SER[0], 9), ln('x⁻³', xs, (x) => 1 / x ** 3, SER[5], 9),
+  ], [0, 3], [0, 8], 'Hatványfüggvények (negatív kitevők)');
+}
+function expAll() {
+  const xs = lin(-2.6, 2.6, 200);
+  const bases: [number, string, string][] = [[1 / 3, '(⅓)ˣ', SER[0]], [1 / 2, '(½)ˣ', SER[1]], [2, '2ˣ', SER[3]], [Math.E, 'eˣ', SER[4]], [3, '3ˣ', SER[5]]];
+  return familyFig(bases.map(([a, n, c]) => ln(n, xs, (x) => a ** x, c, 9)), [-2.6, 2.6], [0, 8], 'Exponenciális függvények (minden alap)');
+}
+function logAll() {
+  const xs = lin(0.04, 4, 220);
+  const bases: [number, string, string][] = [[1 / 3, 'log₁/₃', SER[0]], [1 / 2, 'log₁/₂', SER[1]], [2, 'log₂', SER[3]], [Math.E, 'ln', SER[4]], [3, 'log₃', SER[5]]];
+  return familyFig(bases.map(([a, n, c]) => ln(n, xs, (x) => Math.log(x) / Math.log(a), c, 7)), [0, 4], [-5, 5], 'Logaritmikus függvények (minden alap)');
+}
+function sinWaveFig() {
+  const xs = lin(-2 * PI, 2 * PI, 320);
+  return <CalcPlot height={260} caption="y = sin x"
+    data={[ln('sin x', xs, Math.sin, SER[0])]}
+    layout={{ xaxis: { range: [-2 * PI, 2 * PI], zeroline: true, showgrid: false, tickvals: [-2 * PI, -PI, PI, 2 * PI], ticktext: ['−2π', '−π', 'π', '2π'] }, yaxis: { range: [-1.4, 1.4], zeroline: true, showgrid: false } }} />;
+}
+function cosWaveFig() {
+  const xs = lin(-2 * PI, 2 * PI, 320);
+  return <CalcPlot height={260} caption="y = cos x"
+    data={[ln('cos x', xs, Math.cos, SER[1])]}
+    layout={{ xaxis: { range: [-2 * PI, 2 * PI], zeroline: true, showgrid: false, tickvals: [-2 * PI, -PI, PI, 2 * PI], ticktext: ['−2π', '−π', 'π', '2π'] }, yaxis: { range: [-1.4, 1.4], zeroline: true, showgrid: false } }} />;
+}
+function recipTrig(name: string, f: (x: number) => number, color: string) {
+  const xs = lin(-2 * PI, 2 * PI, 1200);
+  return <CalcPlot height={280} caption={name}
+    data={[ln(name, xs, f, color, 6)]}
+    layout={{ xaxis: { range: [-2 * PI, 2 * PI], zeroline: true, showgrid: false }, yaxis: { range: [-6, 6], zeroline: true, showgrid: false } }} />;
+}
+
+function growthOrderFig() {
+  const fact = (n: number) => { let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; };
+  const ns = [2, 3, 4, 5, 6, 7, 8];
+  const mk = (name: string, f: (n: number) => number, c: string) => ({ x: ns, y: ns.map(f), type: 'scatter', mode: 'lines+markers', name, line: { color: c, width: 2 }, marker: { size: 4 } });
+  return <CalcPlot height={360} caption="Alapfüggvények nagyságrendje (logaritmikus skála)"
+    data={[
+      mk('1', () => 1, SER[2]), mk('log₂n', (n) => Math.log2(n), SER[1]), mk('n', (n) => n, SER[3]),
+      mk('n·log₂n', (n) => n * Math.log2(n), SER[6]), mk('n²', (n) => n * n, SER[4]), mk('2ⁿ', (n) => 2 ** n, SER[5]), mk('n!', fact, SER[7]),
+    ]}
+    layout={{ ...LEGEND, xaxis: { range: [2, 8], title: { text: 'n' }, showgrid: false }, yaxis: { type: 'log', title: { text: '' } } }} />;
+}
+
+function invSqFig() {
+  const xs = lin(-3, 3, 400);
+  return <CalcPlot height={300} caption="y = 1/x²"
+    data={[ln('1/x²', xs, (x) => 1 / (x * x), SER[0], 12)]}
+    layout={{ xaxis: { range: [-3, 3], zeroline: true, showgrid: false }, yaxis: { range: [0, 12], zeroline: true, showgrid: false } }} />;
+}
+function logAbsFig() {
+  const xs = lin(-3, 3, 400);
+  return <CalcPlot height={300} caption="y = log|x|"
+    data={[ln('log|x|', xs, (x) => Math.log(Math.abs(x)), SER[1], 6)]}
+    layout={{ xaxis: { range: [-3, 3], zeroline: true, showgrid: false }, yaxis: { range: [-5, 2], zeroline: true, showgrid: false } }} />;
+}
+function karambolFig() {
+  const xs = lin(-0.18, 0.18, 4000);
+  return <CalcPlot height={300} caption="y = sin(1/x) — „karambolfüggvény”"
+    data={[ln('sin(1/x)', xs, (x) => Math.sin(1 / x), SER[2])]}
+    layout={{ xaxis: { range: [-0.18, 0.18], zeroline: true, showgrid: false }, yaxis: { range: [-1.3, 1.3], zeroline: true, showgrid: false } }} />;
+}
+function cbrtFig() {
+  const xs = lin(-8, 8, 300);
+  return <CalcPlot height={280} caption="y = ∛x"
+    data={[ln('∛x', xs, Math.cbrt, SER[3])]}
+    layout={{ xaxis: { range: [-8, 8], zeroline: true, showgrid: false }, yaxis: { range: [-2.2, 2.2], zeroline: true, showgrid: false } }} />;
+}
+function cbrt1mx3Fig() {
+  const xs = lin(-2, 2.2, 300);
+  return <CalcPlot height={300} caption="y = ∛(1 − x³)"
+    data={[ln('∛(1−x³)', xs, (x) => Math.cbrt(1 - x ** 3), SER[4])]}
+    layout={{ xaxis: { range: [-2, 2.2], zeroline: true, showgrid: false }, yaxis: { range: [-2, 3], zeroline: true, showgrid: false } }} />;
+}
+function cbrtX2Fig() {
+  const xs = lin(-5, 5, 300);
+  return <CalcPlot height={280} caption="y = ∛(x²) = x^(2/3)"
+    data={[ln('∛(x²)', xs, (x) => Math.cbrt(x * x), SER[5])]}
+    layout={{ xaxis: { range: [-5, 5], zeroline: true, showgrid: false }, yaxis: { range: [0, 3], zeroline: true, showgrid: false } }} />;
+}
+function xSinFig() {
+  const xs = lin(-0.32, 0.32, 4000);
+  return <CalcPlot height={300} caption="y = x·sin(1/x)"
+    data={[
+      ln('x', xs, (x) => Math.abs(x), '#475569'), ln('', xs, (x) => -Math.abs(x), '#475569'),
+      ln('x·sin(1/x)', xs, (x) => x * Math.sin(1 / x), SER[0]),
+    ]}
+    layout={{ xaxis: { range: [-0.32, 0.32], zeroline: true, showgrid: false }, yaxis: { range: [-0.34, 0.34], zeroline: true, showgrid: false } }} />;
+}
+function x2SinFig() {
+  const xs = lin(-0.32, 0.32, 4000);
+  return <CalcPlot height={300} caption="y = x²·sin(1/x)"
+    data={[
+      ln('x²', xs, (x) => x * x, '#475569'), ln('', xs, (x) => -x * x, '#475569'),
+      ln('x²·sin(1/x)', xs, (x) => x * x * Math.sin(1 / x), SER[1]),
+    ]}
+    layout={{ xaxis: { range: [-0.32, 0.32], zeroline: true, showgrid: false }, yaxis: { range: [-0.06, 0.06], zeroline: true, showgrid: false } }} />;
+}
+function taylorSinFig() {
+  const xs = lin(-2 * PI, 2 * PI, 320);
+  const T1 = (x: number) => x;
+  const T3 = (x: number) => x - x ** 3 / 6;
+  const T5 = (x: number) => x - x ** 3 / 6 + x ** 5 / 120;
+  const T7 = (x: number) => x - x ** 3 / 6 + x ** 5 / 120 - x ** 7 / 5040;
+  return <CalcPlot height={330} caption="sin x és Taylor-polinomjai (n = 1, 3, 5, 7)"
+    data={[
+      ln('sin x', xs, Math.sin, '#c4663a', 4), ln('T₁', xs, T1, SER[2], 4), ln('T₃', xs, T3, SER[3], 4),
+      ln('T₅', xs, T5, SER[1], 4), ln('T₇', xs, T7, SER[5], 4),
+    ]}
+    layout={{ ...LEGEND, xaxis: { range: [-2 * PI, 2 * PI], zeroline: true, showgrid: false }, yaxis: { range: [-4, 4], zeroline: true, showgrid: false } }} />;
+}
+function x2NegX2Fig() {
+  const xs = lin(-2, 2, 200);
+  return familyFig([ln('x²', xs, (x) => x * x, SER[4]), ln('−x²', xs, (x) => -x * x, SER[5])], [-2, 2], [-4, 4], 'x² és −x² (alulról nézve)');
+}
+function antiderivFamilyFig() {
+  const xs = lin(-2.3, 2.3, 200);
+  const F = (x: number) => x ** 3 / 3 - x;
+  const cs = [-2, -1, 0, 1, 2];
+  return <CalcPlot height={330} caption="G(x) = F(x) + C — primitív függvények serege"
+    data={cs.map((c, i) => ln(c === 0 ? 'F(x)' : `F+${c}`, xs, (x) => F(x) + c, SER[i], 8))}
+    layout={{ ...LEGEND, xaxis: { range: [-2.3, 2.3], zeroline: true, showgrid: false }, yaxis: { range: [-4, 4], zeroline: true, showgrid: false } }} />;
+}
+function riemannTaggedFig() {
+  const p = palette();
+  const a = 0.5, b = 4.6, k = 6;
+  const f = (x: number) => 1.6 + 0.8 * Math.sin(0.95 * x - 0.2) + 0.12 * x;
+  const xs = lin(a, b, 240);
+  const edges = lin(a, b, k);
+  const rects: any[] = [];
+  const stars: number[] = [];
+  for (let i = 0; i < k; i++) {
+    const l = edges[i], r = edges[i + 1], s = l + (r - l) * 0.5;
+    stars.push(s);
+    rects.push({ x: [l, r, r, l, l], y: [0, 0, f(s), f(s), 0], type: 'scatter', mode: 'lines', fill: 'toself', fillcolor: p.fill, line: { color: p.grid, width: 1 } });
+  }
+  return <CalcPlot height={320} caption="Integrálközelítő összeg (kiemelt xᵢ* mintapontokkal)"
+    data={[
+      ...rects,
+      { x: xs, y: xs.map(f), type: 'scatter', mode: 'lines', line: { color: p.accent, width: 3 } },
+      { x: stars, y: stars.map(f), type: 'scatter', mode: 'markers', marker: { color: p.accent2, size: 7 } },
+    ]}
+    layout={{ xaxis: { range: [0, b + 0.4], zeroline: true, showgrid: false, tickvals: [a, b], ticktext: ['x₀=a', 'xₙ=b'] }, yaxis: { range: [0, 3.2], zeroline: true, showgrid: false } }} />;
+}
+function trapezoidFig() {
+  const p = palette();
+  const a = 0.5, b = 4.6, k = 6;
+  const f = (x: number) => 1.6 + 0.8 * Math.sin(0.95 * x - 0.2) + 0.12 * x;
+  const xs = lin(a, b, 240);
+  const edges = lin(a, b, k);
+  const traps: any[] = edges.slice(0, -1).map((l, i) => {
+    const r = edges[i + 1];
+    return { x: [l, r, r, l, l], y: [0, 0, f(r), f(l), 0], type: 'scatter', mode: 'lines', fill: 'toself', fillcolor: p.fill, line: { color: p.accent2, width: 1.5 } };
+  });
+  return <CalcPlot height={320} caption="Trapézformula"
+    data={[
+      ...traps,
+      { x: xs, y: xs.map(f), type: 'scatter', mode: 'lines', line: { color: p.accent, width: 3 } },
+      { x: edges, y: edges.map(f), type: 'scatter', mode: 'markers', marker: { color: p.accent, size: 6 } },
+    ]}
+    layout={{ xaxis: { range: [0, b + 0.4], zeroline: true, showgrid: false, tickvals: edges, ticktext: edges.map((_, i) => `x${i === 0 ? '₀' : i === k ? 'ₙ' : ''}`) }, yaxis: { range: [0, 3.2], zeroline: true, showgrid: false } }} />;
+}
+
+/** Four convexity cases (sign of f′, f″) as a small SVG strip. */
+function convexityCasesFig() {
+  const p = palette();
+  const cases: [string, (t: number) => number][] = [
+    ["f′>0, f″>0", (t) => 0.35 + 0.55 * t * t],          // convex increasing
+    ["f′>0, f″<0", (t) => 0.1 + 0.9 * Math.sqrt(t + 0.001)], // concave increasing
+    ["f′<0, f″<0", (t) => 0.9 - 0.55 * t * t],            // concave decreasing
+    ["f′<0, f″>0", (t) => 0.9 - 0.85 * Math.sqrt(t + 0.001)], // convex decreasing
+  ];
+  const pw = 110, ph = 92, gap = 8;
+  return (
+    <FigFrame caption="A négy eset f′ és f″ előjele szerint" w={pw * 4 + gap * 3} h={ph + 22}>
+      {cases.map(([label, g], i) => {
+        const ox = i * (pw + gap);
+        const pts: string[] = [];
+        for (let s = 0; s <= 40; s++) { const t = s / 40; const x = ox + 14 + t * (pw - 24); const y = ph - 14 - g(t) * (ph - 28); pts.push(`${x.toFixed(1)},${y.toFixed(1)}`); }
+        return (
+          <g key={i}>
+            <line x1={ox + 12} y1={ph - 12} x2={ox + pw - 8} y2={ph - 12} stroke={p.grid} strokeWidth="1" />
+            <line x1={ox + 14} y1={14} x2={ox + 14} y2={ph - 10} stroke={p.grid} strokeWidth="1" />
+            <polyline points={pts.join(' ')} fill="none" stroke={p.accent} strokeWidth="2" />
+            <text x={ox + pw / 2} y={ph + 14} fill={p.fg} fontSize="10" textAnchor="middle">{label}</text>
+          </g>
+        );
+      })}
+    </FigFrame>
+  );
+}
+
 // ── dispatch ─────────────────────────────────────────────────────────────────
 
 type FigFn = () => any;
@@ -385,7 +612,22 @@ const K2: Record<string, FigFn> = {
   '4.5': normalDomainNFig, '4.6': normalDomainMFig, '4.7': triangleFig,
   // 4.1 (interval rectangle) intentionally omitted
 };
-const BOOKS: Record<string, Record<string, FigFn>> = { kalkulus1: K1, kalkulus2: K2 };
+const ATK: Record<string, FigFn> = {
+  'powers-int': powersInt, 'powers-pos': powersPos, 'powers-neg': powersNeg,
+  'exp-all': expAll, 'log-all': logAll,
+  'sin-wave': sinWaveFig, sin: sinWaveFig, cos: cosWaveFig,
+  cosec: () => recipTrig('cosec x = 1/sin x', (x) => 1 / Math.sin(x), SER[2]),
+  sec: () => recipTrig('sec x = 1/cos x', (x) => 1 / Math.cos(x), SER[5]),
+  arcsin: arcsinFig, arccos: arccosFig,
+  'growth-order': growthOrderFig,
+  'inv-sq': invSqFig, 'log-abs': logAbsFig, karambol: karambolFig,
+  cbrt: cbrtFig, 'cbrt-1mx3': cbrt1mx3Fig, 'cbrt-x2': cbrtX2Fig,
+  xsin: xSinFig, x2sin: x2SinFig,
+  'taylor-sin': taylorSinFig, 'x2-negx2': x2NegX2Fig, 'antideriv-family': antiderivFamilyFig,
+  'riemann-tagged': riemannTaggedFig, trapezoid: trapezoidFig, 'convexity-cases': convexityCasesFig,
+  // sine-construction schematic intentionally omitted
+};
+const BOOKS: Record<string, Record<string, FigFn>> = { kalkulus1: K1, kalkulus2: K2, 'anal-tk1b': ATK };
 
 /** Render the figure for `book` + `id` (e.g. "4.3"), or null if none/skipped. */
 export default function CalcFigure({ book, id }: { book: string; id: string }) {

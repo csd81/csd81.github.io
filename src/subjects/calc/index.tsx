@@ -19,17 +19,63 @@ const META: Record<string, { title: string; author: string; blurb: string }> = {
 };
 
 /**
+ * Szalkai (anal-tk1b) figure markers → slug. Order matters: the more specific
+ * "Hatványfüggvények …" variants must precede the bare one. Done as literal
+ * string replacements (the LaTeX in some markers makes regex escaping fragile).
+ */
+const ATK_MARKERS: [string, string][] = [
+  ['*(ábra)* Hatványfüggvények pozitív kitevők esetén', 'powers-pos'],
+  ['*(ábra)* Hatványfüggvények negatív kitevők esetén', 'powers-neg'],
+  ['*(ábra)* Hatványfüggvények', 'powers-int'],
+  ['*(ábra: Exponenciális függvények minden alapra)*', 'exp-all'],
+  ['*(ábra: Logaritmikus függvények minden alapra)*', 'log-all'],
+  ['*(ábra: Alapfüggvények nagyságrendje)*', 'growth-order'],
+  ['*(ábra: cosec(x))*', 'cosec'],
+  ['*(ábra: sec(x))*', 'sec'],
+  ['*(ábra: sin(x))*', 'sin'],
+  ['*(ábra: arcsin(x))*', 'arcsin'],
+  ['*(ábra: cos(x))*', 'cos'],
+  ['*(ábra: arccos(x))*', 'arccos'],
+  ['*(ábra: $\\sqrt[3]{x}$)*', 'cbrt'],
+  ['*(ábra: $\\sqrt[3]{1 - x^3}$)*', 'cbrt-1mx3'],
+  ['*(ábra: $\\sqrt[3]{x^2}$)*', 'cbrt-x2'],
+  ['*(ábra: $x \\cdot \\sin\\left(\\dfrac{1}{x}\\right)$ grafikonja kalkulátorképernyőn)*', 'xsin'],
+  ['*(ábra: $x^2 \\cdot \\sin\\left(\\dfrac{1}{x}\\right)$ grafikonja kalkulátorképernyőn)*', 'x2sin'],
+  ['*(ábra: az $y=\\sin(x)$ függvény néhány Taylor polinomja)*', 'taylor-sin'],
+  ['*(ábra: $x^2$ és $-x^2$ alulról nézve)*', 'x2-negx2'],
+  ['*(ábra: $G(x) = F(x) + C$)*', 'antideriv-family'],
+  ['*(ábra)* $\\dfrac{1}{x^2}$', 'inv-sq'],
+  ['*(ábra)* $\\log|x|$', 'log-abs'],
+  ['*(ábra)* $\\sin\\dfrac{1}{x}$ („karambolfüggvény")', 'karambol'],
+  ['*(ábra)* **Trapézformula**', 'trapezoid'],
+];
+
+/**
  * Normalise figure references so the `img` renderer can swap in a live figure.
- * kalkulus1 already uses `![N.N. ábra ...](pages_300/…)`; kalkulus2 instead has
- * text markers — `*3.2. ábra.*` and `*(ábra: 4.4. ábra.)*` — which we convert to
- * the same image-placeholder form (inline "lásd a N.N. ábra" mentions are left
- * untouched, since they aren't standalone marker lines).
+ * - kalkulus1: already `![N.N. ábra ...](pages_300/…)`.
+ * - kalkulus2: text markers `*3.2. ábra.*` / `*(ábra: 4.4. ábra.)*` → `![N.N. ábra](calcfig)`.
+ * - anal-tk1b: inline `*(ábra…)*` markers → `![fig:<slug>](calcfig)`.
+ * Inline "lásd a N.N. ábra" prose mentions are left untouched.
  */
 const prepareCalcMd = (id: string, md: string): string => {
-  if (id !== 'kalkulus2') return md;
-  return md
-    .replace(/^\*\(ábra:\s*(\d+\.\d+)\.\s*ábra\.\)\*\s*$/gm, '![$1. ábra](calcfig)')
-    .replace(/^\*(\d+\.\d+)\.\s*ábra\.\*\s*$/gm, '![$1. ábra](calcfig)');
+  if (id === 'kalkulus2') {
+    return md
+      .replace(/^\*\(ábra:\s*(\d+\.\d+)\.\s*ábra\.\)\*\s*$/gm, '![$1. ábra](calcfig)')
+      .replace(/^\*(\d+\.\d+)\.\s*ábra\.\*\s*$/gm, '![$1. ábra](calcfig)');
+  }
+  if (id === 'anal-tk1b') {
+    let out = md;
+    for (const [needle, slug] of ATK_MARKERS) out = out.split(needle).join(`![fig:${slug}](calcfig)`);
+    out = out
+      // long/variable-text markers (contain `*` from x_i^*, so match loosely)
+      .replace(/\*\(ábra: \$f\(x\)\$ függvénygörbe alatti integrálközelítő összeg[\s\S]*?magasság\)\*/g, '![fig:riemann-tagged](calcfig)')
+      .replace(/^\*\(ábra\)\* \$f' > 0\$.*$/gm, '![fig:convexity-cases](calcfig)');
+    // Two remaining bare `*(ábra)*` lines: 1st = sine construction (skip), 2nd = sin wave.
+    let n = 0;
+    out = out.replace(/^\*\(ábra\)\*\s*$/gm, () => (++n === 2 ? '![fig:sin-wave](calcfig)' : ''));
+    return out;
+  }
+  return md;
 };
 
 const BOOKS: Book[] = Object.entries(RAW)
@@ -81,11 +127,12 @@ function BookView() {
   // Swap each `![N.N. ábra …](…)` reference for the live figure (or drop it).
   const components: Components = {
     img: ({ alt }) => {
-      const m = /^(\d+\.\d+)/.exec(alt ?? '');
-      if (!m) return null;
+      const a = alt ?? '';
+      const id = /^fig:(\S+)/.exec(a)?.[1] ?? /^(\d+\.\d+)/.exec(a)?.[1];
+      if (!id) return null;
       return (
         <Suspense fallback={<span className="calc-fig-loading" style={{ display: 'block', textAlign: 'center', opacity: 0.5, margin: '1.5rem 0' }}>ábra…</span>}>
-          <CalcFigure book={book.id} id={m[1]} />
+          <CalcFigure book={book.id} id={id} />
         </Suspense>
       );
     },
