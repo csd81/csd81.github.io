@@ -2004,18 +2004,18 @@ $$
 \qquad x \in (-\infty,\infty).
 $$
 
-**4.5.3. Tétel (2. típusú helyettesítés).** *Tegyük fel, hogy $g$ differenciálható az $(\alpha,\beta) \subset \mathbb{R}$ intervallumon és $g'$ sehol sem tűnik el $(\alpha,\beta)$-n. Ha $H$ primitív függvénye $(f \circ g)g'$-nek $(\alpha,\beta)$-n, akkor $H \circ g^{-1}$ primitív függvénye $f$-nek a $g((\alpha,\beta))$ intervallumon, azaz*
+**4.5.3. Tétel (2. típusú helyettesítés).** *Tegyük fel, hogy $g$ differenciálható az $(\alpha,\beta) \subset \mathbb{R}$ intervallumon és $g'$ sehol sem tűnik el $(\alpha,\beta)$-n. Ha $H$ primitív függvénye $(f \circ g)g'$-nek $(\alpha,\beta)$-n, akkor $H \circ g_{-1}$ primitív függvénye $f$-nek a $g((\alpha,\beta))$ intervallumon, azaz*
 
 $$
 \int f(x)\,dx=
-\left[\int (f(g(u)))g'(u)\,du\right]_{u=g^{-1}(x)},
+\left[\int (f(g(u)))g'(u)\,du\right]_{u=g_{-1}(x)},
 \qquad x \in g((\alpha,\beta)).
 $$
 
 
 <!-- PDF page 42 -->
 
-A képlethez formálisan úgy juthatunk el, hogy a bal oldali integrálban elvégezzük az $x=g(u)$ helyettesítést, majd a $\frac{dx}{du}=g'(u)$ összefüggésből a $dx=g'(u)\,du$ kifejezést származtatjuk, végül megkapjuk a jobb oldali integrált. Ennek kiszámítása után $u$ helyébe $g^{-1}(x)$-et kell írnunk.
+A képlethez formálisan úgy juthatunk el, hogy a bal oldali integrálban elvégezzük az $x=g(u)$ helyettesítést, majd a $\frac{dx}{du}=g'(u)$ összefüggésből a $dx=g'(u)\,du$ kifejezést származtatjuk, végül megkapjuk a jobb oldali integrált. Ennek kiszámítása után $u$ helyébe $g_{-1}(x)$-et kell írnunk.
 
 **4.5.4. Példa.** Az
 

@@ -794,7 +794,7 @@ vagy
 
 [http://math.uni-pannon.hu/~szalkai/B-SIN-2.EXE](http://math.uni-pannon.hu/~szalkai/B-SIN-2.EXE)
 
-**1.28. Megjegyzés.** A fenti szerkesztés nemcsak az EKG és vízhullámok, elektromos áram viselkedését magyarázza meg, hanem például ha a $45^o$ szögben elvágott szalámi/kolbász lefejtett bőrének, vagy szabásmintánál a ruhaujj alakját is. (Részletesen ld. [SzM] - előkészületben).
+**1.28. Megjegyzés.** A fenti szerkesztés nemcsak az EKG és vízhullámok, elektromos áram viselkedését magyarázza meg, hanem például ha a $45^\circ$ szögben elvágott szalámi/kolbász lefejtett bőrének, vagy szabásmintánál a ruhaujj alakját is. (Részletesen ld. [SzM] - előkészületben).
 
 **1.29. Megjegyzés.** Ha a szokásos $\mathbb{R} \to \mathbb{R}$ grafikont tekintjük:
 
@@ -805,7 +805,7 @@ akkor ne feledjük, hogy $x$ csak radiánban számolható!
 
 **1.30. Megjegyzés.** A *co-* előtag (latinul) *kiegészítőt* jelent (pl. komplementer, kolléga,...). A derékszögű háromszög $\alpha$ hegyesszögének kiegészítője is
 
-$$co(\alpha) := 90^o - \alpha ,$$
+$$co(\alpha) := 90^\circ - \alpha ,$$
 
 tehát nem meglepő, hogy $co(\alpha)$ szinuszát elneveztük (def.) koszinusznak:
 
@@ -819,10 +819,10 @@ $$\cos(x) = \sin\left(\frac{\pi}{2} - x\right)$$
 
 **1.31. Összefoglalás.** A nevezetes szögek értékei (copyright © dr.Szalkai István):
 
-| $\alpha$ | $0^o$ | $30^o$ | $45^o$ | $60^o$ | $90^o$ | $co$ |
+| $\alpha$ | $0^\circ$ | $30^\circ$ | $45^\circ$ | $60^\circ$ | $90^\circ$ | $co$ |
 |---|---|---|---|---|---|---|
 | $\sin(\alpha)$ | $\dfrac{\sqrt{0}}{2}$ | $\dfrac{\sqrt{1}}{2}$ | $\dfrac{\sqrt{2}}{2}$ | $\dfrac{\sqrt{3}}{2}$ | $\dfrac{\sqrt{4}}{2}$ | $\cos(\alpha)$ |
-| $co$ | $90^o$ | $60^o$ | $45^o$ | $30^o$ | $0^o$ | $\alpha$ |
+| $co$ | $90^\circ$ | $60^\circ$ | $45^\circ$ | $30^\circ$ | $0^\circ$ | $\alpha$ |
 
 (Elsősorban elektronikában) hasznosak az alábbi összefüggések:
 
@@ -1032,7 +1032,7 @@ Most pedig keressük is meg az $f^{-1}$ inverzfüggvényt, hogyan kell egy adott
 
 **1.52. Algoritmus.** ($f^{-1}$ grafikonja) Ha előttünk van az $f$ függvény grafikonja, akkor $f^{-1}$ grafikonja nem más, mint az $y = x$ egyenesre tengelyesen tükrözni az eredeti $f$ függvény grafikonját.
 
-Mint minden egyenesre történő tengelyes tükrözést, ezt is úgy kell végrehajtanunk, hogy a papírt az egyenes tengely (mint hurkapálcika) körül $180^o$-al térben elforgatjuk (a hurkapálcika-tengely helyben marad), és a papír hátoldalát fénnyel szemben szemlélve máris látjuk az $f^{-1}$ inverzfüggvény ábráját! Ez még a mai számítógépek korában is gyors és egyszerű (és komoly!) módszer!
+Mint minden egyenesre történő tengelyes tükrözést, ezt is úgy kell végrehajtanunk, hogy a papírt az egyenes tengely (mint hurkapálcika) körül $180^\circ$-al térben elforgatjuk (a hurkapálcika-tengely helyben marad), és a papír hátoldalát fénnyel szemben szemlélve máris látjuk az $f^{-1}$ inverzfüggvény ábráját! Ez még a mai számítógépek korában is gyors és egyszerű (és komoly!) módszer!
 
 Az invertálhatóság feltételének ellenőrzésénél, az 1.44. Megjegyzésnél vizsgált függőleges és vízszintes egyenesek is jelen „papírforgatós" szemléltetéshez kapcsolódnak.
 
@@ -1601,7 +1601,7 @@ $$\frac{a_n}{b_n} = a_n \cdot \frac{1}{b_n} = \text{korlátos} \cdot 0 \to 0$$
 
 (vii1) $(a_n)^{b_n} \to +\infty$, röviden: „$+\infty^{+\infty} = \infty$",
 
-(vii2) $(a_n)^{-b_n} \to 0$, röviden: „$(-\infty)^{-\infty} = 0$",
+(vii2) $(a_n)^{-b_n} \to 0$, röviden: „$(+\infty)^{-\infty} = 0$",
 
 (vii3) ha $c_n \to 0$ akkor $(c_n)^{a_n} \to 0$, röviden: „$0^{+\infty} = 0$",
 
@@ -3185,8 +3185,8 @@ Például, a (régebbi) középiskolai függvénytáblázatokban olvashattuk az 
 Másrészt, (szinte) bármilyen bonyolult függvényt megpróbálhatunk érintőjével közelíteni, mint alább az 5.49. Példában megmutatjuk. Ismét felhívjuk a figyelmet, hogy a közelítés pontosságának vizsgálata már nem a Matematikai analízis, hanem a Numerikus Analízis tárgy feladata.
 Függvények pontosabb közelítése Taylor-polinomokkal lehetséges (ld. a következő 5.3.2. fejezetben).
 
-**5.48. Példa.** $\sin(x)\approx x$ ha $|x|<0{,}786$ rad (azaz $|x|<45^o$), a hiba kisebb mint 10\% ,
-ha pedig $|x|<0{,}245$ rad (azaz $|x|<14^o$), akkor a hiba kisebb mint 1\% ,
+**5.48. Példa.** $\sin(x)\approx x$ ha $|x|<0{,}786$ rad (azaz $|x|<45^\circ$), a hiba kisebb mint 10\% ,
+ha pedig $|x|<0{,}245$ rad (azaz $|x|<14^\circ$), akkor a hiba kisebb mint 1\% ,
 
 $e^x\approx x+1$ és $10^x\approx 2{,}303x+1$ ,
 ha $0{,}134<x<0{,}148$ , akkor a hiba kisebb mint 1\% ,
