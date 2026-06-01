@@ -158,6 +158,15 @@ export default function Home() {
             </span>
           </Link>
         </li>
+        <li>
+          <Link to="/calc/kalkulus2-peldatar" className="chcard">
+            <span className="chcard__num">∮</span>
+            <span className="chcard__body">
+              <span className="chcard__title">Kalkulus II. Példatár</span>
+              <span className="chcard__blurb">Szalkai István, Dósa György · Pannon Egyetem — megoldott feladatgyűjtemény, minden feladat alatt útmutatás és megoldás (F1–F10).</span>
+            </span>
+          </Link>
+        </li>
       </ul>
     </div>
   );

@@ -419,6 +419,16 @@ Stacionárius pontban vizsgáljuk a $\Delta_f(\underline a)=\frac{\partial^2}{\p
 Az érintősík éppen az 1-rendű Taylor-polinom: $z=f(x_0,y_0)+f'_x(x_0,y_0)(x-x_0)+f'_y(x_0,y_0)(y-y_0)$, és így $f(x,y)\approx$ ugyanez.
 </details>
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** $f'_x=2x,\ f'_x(a)=8$; $f'_y=2y,\ f'_y(a)=6$; érintősík $z=25+8(x-4)+6(y-3)$, azaz $8x+6y-z=25$. Közelítés: $f(\underline b)\approx 8\cdot 4{,}01+6\cdot 2{,}97-25=24{,}9$ (valódi érték $4{,}01^2+2{,}97^2=24{,}901$).
+
+**b)** $f'_x=y\,x^{y-1}+\frac1y,\ f'_y=x^y\ln x-\frac{x}{y^2}$; érintősík $z=\frac{13}{2}x+(9\ln3-\tfrac34)y-(18\ln3+\tfrac{15}{2})\approx 6{,}5x+9{,}1375y-27{,}275$; $f(\underline b)\approx 10{,}6441$.
+
+**c)** $z$-re megoldva $z=-\sqrt[3]{x^3+x-y^3+2y+15}$, $f(-1,3)=2$. Érintősík $z=2-\frac13(x+1)+\frac{25}{12}(y-3)$; $f(\underline b)\approx 1{,}9267$.
+</details>
+
 **1.18.** Keresse meg az alábbi egyenletrendszer egy közelítő megoldását a függvények érintősíkjainak segítségével a megadott kezdő értékekből kiindulva, 6 tizedesjegy pontossággal:
 
 $$\begin{cases}f(x,y)=x^3+2xy^2-y^4+37=0\\ g(x,y)=3x^2-5x^2y+2y^3-6=0\end{cases}$$
@@ -431,12 +441,26 @@ $$x_0=1{,}5,\quad y_0=2{,}5,\quad \text{ill.}\quad x_0=1,\quad y_0=1.$$
 Linearizálva (Newton-módszer): a $\{f=0,g=0\}$ helyett az érintősíkokból adódó lineáris egyenletrendszert oldjuk meg $(x_1,y_1)$-re, majd iterálunk egyre pontosabb gyökökért.
 </details>
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+Az $x_0=1{,}5,\ y_0=2{,}5$ kezdőpontból a Newton-iteráció gyökhöz tart: $(x_1,y_1)=(2{,}33766;3{,}26184)$, majd $(2{,}05632;3{,}03767)$, $(2{,}00176;3{,}00094)$, … végül $(x_5,y_5)=(2{,}00000;3{,}00000)$ a megadott pontossággal. — Az $x_0=y_0=1$ kezdőpontból 13 lépés után a másik gyök: $(x_{13},y_{13})=(-1{,}37487;-2{,}15624)$.
+</details>
+
 **1.19.** Írja fel az $f(x,y,z)=\dfrac{x^2y}{x+3z}$ függvény $\underline a=(2,-1,8)$ pont körüli 3-rendű Taylor-polinomját, és ennek felhasználásával becsülje meg az $f(1{,}99,-0{,}89,8{,}06)$ függvényértéket!
 
 <details>
 <summary><strong>Útmutatás</strong></summary>
 
 $\left(T^{(N)}_{\underline a}f\right)(\underline x)=\sum_{k=0}^N\sum_{|\overline m|=k}\frac{f^{(\overline m)}(\underline a)}{k!}(\underline x-\underline a)^{\overline m}$ a multiindexes Taylor-formula.
+</details>
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+$f(\underline a)=\frac{-4}{26}$; az elsőrendű tagok $f'_x(\underline a)=\frac{-25}{169},\ f'_y(\underline a)=\frac{2}{13},\ f'_z(\underline a)=\frac{3}{169}$, és így tovább a másod- és harmadrendű deriváltakig. A 3-rendű Taylor-polinom (a vezető tagokkal):
+$$\left(T^3_{\underline a}f\right)(x,y,z)\approx -0{,}1538-0{,}1479(x-2)+0{,}1538(y+1)+0{,}0178(z-8)-0{,}0328(x-2)^2-\dots$$
+Ebbe behelyettesítve $f(1{,}99,-0{,}89,8{,}06)\approx -0{,}1538-\dots$; a Taylor-becslés és a valódi érték eltérése csak $\approx 0{,}000\,000\,708$.
 </details>
 
 ## 2. fejezet
@@ -458,6 +482,16 @@ $\left(T^{(N)}_{\underline a}f\right)(\underline x)=\sum_{k=0}^N\sum_{|\overline
 Téglalapon szukcesszíve integrálunk (Fubini tétele): „vízszintes" $\iint_H f=\int_c^d\left(\int_a^b f\,dx\right)dy$, vagy „függőleges" $\int_a^b\left(\int_c^d f\,dy\right)dx$ — a két számítás egyenértékű.
 </details>
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** $\int_3^7\!\left(\int_4^5 x^2+y^3\,dx\right)dy=\int_3^7\!\left(\frac{61}{3}+y^3\right)dy\approx 661{,}3333$; $\quad\int_1^2\!\left(\int_8^9 x^5y^3\,dy\right)dx=\int_1^2\frac{2465}{4}x^5\,dx=\frac{2465}{24}(2^6-1)=6470{,}625$.
+
+**b)** Függőlegesen $\int_2^6 x\ln\!\left(\frac53\right)dx=\ln\!\left(\frac53\right)\cdot\frac12(6^2-2^2)\approx 8{,}1732$ (vízszintesen ugyanez).
+
+**c)** $\int_1^2\!\left(\int_0^3 2x^2+3xy+4y^2\,dy\right)dx=\int_1^2(6x^2+\tfrac{27}{2}x+36)\,dx=\frac{281}{4}=70{,}25$.
+</details>
+
 **2.2.** Számítsa ki az alábbi $\displaystyle\int_a^b\int_{u(x)}^{v(x)}f(x,y)\,dy\,dx$ integrálokat, ahol
 
 **a)** $u(x)=x^2-2x-4,\ v(x)=3x^2+8x,\ f(x,y)=3x^2+8y^2-xy,\ a=-6{,}83,\ b=8{,}49,$
@@ -468,6 +502,14 @@ Téglalapon szukcesszíve integrálunk (Fubini tétele): „vízszintes" $\iint_
 <summary><strong>Útmutatás</strong></summary>
 
 Az általánosított szukcesszív képlet: $\int_a^b\left(\int_{u(x)}^{v(x)}f\,dy\right)dx=\int_a^b\left(F_y(x,v(x))-F_y(x,u(x))\right)dx$.
+</details>
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** A belső integrál $\int_{x^2-2x-4}^{3x^2+8x}(3x^2+8y^2-xy)\,dy=\frac{208}{3}x^6+588x^5+1516x^4+\frac{3764}{3}x^3+20x^2+264x+\frac{512}{3}$, majd $\int_{-6,83}^{8,49}\!\dots\,dx\approx 8{,}3951\times10^7$.
+
+**b)** A belső integrál $\int_{x^2+x-4}^{3\sqrt x+8x}(x^2+xy)\,dy=-\frac12x^5-2x^4+\frac{85}{2}x^3+\frac{25}{2}x^2-8x+27(\sqrt x)^5$, majd $\int_3^9\!\dots\,dx=-\frac{1458}{7}\sqrt3+\frac{721341}{35}\approx 20248{,}9814$.
 </details>
 
 **2.3.** Számítsa ki az alábbi $\displaystyle\iint_H f$ integrálokat, ahol a $H$ korlátos tartományt alulról és felülről a $g$ és $h$ függvénygörbék határolják:
@@ -482,6 +524,16 @@ Az általánosított szukcesszív képlet: $\int_a^b\left(\int_{u(x)}^{v(x)}f\,d
 <summary><strong>Útmutatás</strong></summary>
 
 Először a $g$ és $h$ metszéspontjait számítsuk ki, állapítsuk meg, melyik az alsó/felső határ, majd a 2.2. mintájára.
+</details>
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** Metszéspontok $x_1=-2,x_2=1$; $[-2,1]$-en $x^2+2x\le 4-x^2$, így $\iint_H f=\int_{-2}^1(-4x^3-8x^2+4x+8)\,dx=9$.
+
+**b)** Metszéspontok $x_1=-1,x_2=2$; $\iint_H f=\int_{-1}^2(-x^4+x^2+4x+4)\,dx=\frac{72}{5}$.
+
+**c)** $\int_0^\pi\!\left(\int_{\sin x}^{2\sin x}y\cos x\,dy\right)dx=\int_0^\pi\frac32\sin^2 x\cos x\,dx=0$.
 </details>
 
 **2.4.** Számítsa ki az alábbi $\displaystyle\iint_H f$ integrálokat. (Minden esetben rajzolja fel a $H$ tartományt is. Ahol lehet, számítsa ki az integrált mind függőlegesen, mind vízszintesen is.)
@@ -508,11 +560,37 @@ Először a $g$ és $h$ metszéspontjait számítsuk ki, állapítsuk meg, melyi
 A $d)$ háromszög oldalegyeneseihez: az $U(u_1,u_2),V(v_1,v_2)$ pontokon átmenő egyenes $(x-v_1)(u_2-v_2)=(u_1-v_1)(y-v_2)$. Néhány feladatban az integrál csak egyik irányban végezhető el.
 </details>
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** $\iint_H f=\frac13$ (függőlegesen és vízszintesen is).
+
+**b)** $\iint_H\sqrt{1-x^2}=\frac{\pi}{4}-\frac13\approx 0{,}4521$ (felhasználva $\int\sqrt{1-x^2}\,dx=\frac12\arcsin x+\frac14\sin(2\arcsin x)$).
+
+**c)** $\int_0^1\!\int_0^{1-x}xy\,dy\,dx=\frac{1}{24}$.
+
+**d)** Az oldalegyenesek $a:\ y=-x+13$, $b:\ y=\frac13x+1$, $c:\ y=3x-7$. $x=5$-nél kettévágva: az első tényező $\approx 631{,}5062$, a második $\approx 1891{,}1605$, összegük $\iint_H f=\frac{51152}{81}+\frac{153184}{81}=\frac{7568}{3}\approx 2522{,}6667$.
+
+**e)** Az $(1,0)$ közepű félkörön $\iint_H yx=\frac23$.
+
+**f)** $\iint_H y=\frac13$ (függőlegesen és vízszintesen is).
+</details>
+
 **2.5.** Adja meg a $H$ tartományt az alábbi feladatokban:
 
 **a)** $\displaystyle\int_1^3\int_1^{4x-x^2}f(x,y)\,dy\,dx$, $\qquad$ **b)** $\displaystyle\int_{-\sqrt 3/2}^{\sqrt 3/2}\int_{1/2}^{\sqrt{1-y^2}}f(x,y)\,dx\,dy$,
 
 **c)** $\displaystyle\int_0^2\int_y^{1+\sqrt{1-y}}f(x,y)\,dx\,dy.$
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** $H=\{(x,y):1\le y\le 4x-x^2,\ 1\le x\le 3\}$ — az $y=4x-x^2$ parabola és az $x=1,\ x=3,\ y=1$ egyenesek határolják.
+
+**b)** $H=\left\{(x,y):\frac12\le x\le\sqrt{1-y^2},\ -\frac{\sqrt3}{2}\le y\le\frac{\sqrt3}{2}\right\}$ — az $x^2+y^2=1$ körből az $x=\frac12$ egyenes által levágott (jobb oldali, kisebbik) körszelet.
+
+**c)** $1<y$ esetén $\sqrt{1-y}$ nem értelmezett, ezért $H=\left\{(x,y):y\le x\le 1+\sqrt{1-y},\ 0\le y\le 1\right\}$ — az $y=1-(x-1)^2$ parabola és az $y=x$, $y=0$ egyenesek határolják.
+</details>
 
 **2.6.** Cserélje fel az integrálás sorrendjét (azaz vízszintes és függőleges irányát) az alábbi feladatokban:
 
@@ -524,7 +602,26 @@ $\displaystyle\int_0^1\int_{-\sqrt{1-y^2}}^{1-y}f(x,y)\,dx\,dy$, $\quad\displays
 
 **c)** a **2.5.** feladatban szereplő integrálokban.
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** Pl. az első: $y=6-2x$-vel ekvivalens az $x=3-\frac y2$ egyenes, így a megfordított sorrend
+$$\int_0^{2,25}\!\left(\int_0^{1,5}f\,dy\right)dx+\int_{2,25}^{3}\!\left(\int_0^{6-2x}f\,dy\right)dx.$$
+
+**b\*)** A $H$-t az $x$ tengely, az $y=x^2$ parabola, az $x=4$ és $y=2x-6$ egyenesek határolják; a két görbe $(4,2)$-ben metszi egymást, ezért $y=2$-nél kettévágva
+$$\iint_H f=\int_0^2\!\left(\int_{\sqrt y}^{y/2+6}f\,dx\right)dy+\int_2^{16}\!\left(\int_{\sqrt y}^{4}f\,dx\right)dy.$$
+A többi a $H$ ábrájáról hasonlóan adódik.
+</details>
+
 **2.7.** Számítsa ki az $\displaystyle\iint_H e^{x^2}\,dx\,dy$ integrált, ahol $H$-t az $x$-tengely, az $y=x$ és az $x=1$ egyenesek határolják.
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+$H$ az $O(0,0),A(1,1),B(1,0)$ háromszög. Liouville tétele szerint $\int e^{x^2}\,dx$ nem írható fel elemi képlettel, ezért csak függőlegesen integrálhatunk:
+$$\iint_H f=\int_0^1\!\left(\int_0^x e^{x^2}\,dy\right)dx=\int_0^1 xe^{x^2}\,dx=\frac12\left[e^{x^2}\right]_0^1=\frac{e-1}{2}\approx 0{,}859.$$
+*(A forrás itt $\frac{e}{2}\approx 1{,}3591$-et ír, ami az alsó határ figyelmen kívül hagyásából eredő elírás.)*
+</details>
 
 #### Transzformációk
 
@@ -548,6 +645,16 @@ $\displaystyle\int_0^1\int_{-\sqrt{1-y^2}}^{1-y}f(x,y)\,dx\,dy$, $\quad\displays
 Kör esetén polártranszformáció $x=r\cos\varphi+u_0,\ y=r\sin\varphi+v_0$, Jacobi-determinánsa $J(r,\varphi)=r$. Ellipszisre Yvory-transzformáció $x=ar\cos\varphi+u_0,\ y=br\sin\varphi+v_0$, $Y(r,\varphi)=r\cdot a\cdot b$. Általában $\iint_H f\,dx\,dy=\iint_M f(u,v)\cdot|\det J|\,dk\,d\ell$.
 </details>
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** $0\le r\le 1,\ 0\le\varphi\le\frac\pi2$: $\int_0^{\pi/2}\sin\varphi\left(\int_0^1 r^2\,dr\right)d\varphi=\frac13[-\cos\varphi]_0^{\pi/2}=\frac13$.
+
+**b)** $(u_0,v_0)=(1,0),\ 0\le r\le 1,\ 0\le\varphi\le\pi$: $\int_0^\pi\int_0^1\big(r^3\sin\varphi\cos\varphi+r^2\sin\varphi\big)\,dr\,d\varphi=\frac{1}{16}\cdot 0+\frac13(1+1)=\frac23$.
+
+A $c_1)$–$c_3)$ és $d)$ feladatok ugyanígy, polár- ill. Yvory-transzformációval számolhatók.
+</details>
+
 **2.9.** Számítsuk ki az alábbi $\displaystyle\iint_H f$ integrálokat *lineáris transzformáció* segítségével, ahol:
 
 **a)** $f(x,y)=x^2-y^2$ és $H=$ az $A(0,0),B(3,1),C(5,4),D(2,3)$ pontok által meghatározott paralelogramma,
@@ -560,6 +667,14 @@ Kör esetén polártranszformáció $x=r\cos\varphi+u_0,\ y=r\sin\varphi+v_0$, J
 <summary><strong>Útmutatás</strong></summary>
 
 Paralelogrammára (az $\overrightarrow u=(a_1,b_1),\overrightarrow v=(a_2,b_2)$ vektorok feszítik ki, kezdőcsúcs $A(c_1,c_2)$): $x=a_1k+b_1\ell+c_1,\ y=a_2k+b_2\ell+c_2$ ($0\le k,\ell\le 1$), $\det J=a_1b_2-a_2b_1$.
+</details>
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** $\overrightarrow u=(3,1),\ \overrightarrow v=(2,3)$, az $\{x=3k+2\ell,\ y=k+3\ell\}$ helyettesítéssel ($\det J=7$): $\iint_H f=7\int_0^1\int_0^1(8k^2+6k\ell-5\ell^2)\,dk\,d\ell=\frac{35}{2}$.
+
+A $b)$ és $c)$ ugyanígy, a megfelelő lineáris helyettesítéssel.
 </details>
 
 **2.10.** Számítsuk ki az alábbi $\displaystyle\iint_H f$ integrálokat *egyéb* transzformáció segítségével, ahol:
@@ -576,6 +691,16 @@ Paralelogrammára (az $\overrightarrow u=(a_1,b_1),\overrightarrow v=(a_2,b_2)$ 
 Ha a $H$-t $y=k\cdot\varphi(x)$ és $y=\ell\cdot\psi(x)$ görbeseregek zárják közre, akkor minden $P(x,y)$ a két görbe metszéspontjaként áll elő, amiből egy $(k,\ell)\mapsto(x,y)$ transzformáció és annak $\det J$-je adódik. (Pl. **a)**: $J:(k,\ell)\mapsto\left(\sqrt{\frac k\ell},\sqrt{k\ell}\right)$, $\det J=\frac{1}{2\ell}$.)
 </details>
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** $1\le k\le 4,\ 1\le\ell\le 2$, $\det J=\frac{1}{2\ell}$. A transzformációban $\frac yx=\frac{\sqrt{k\ell}}{\sqrt{k/\ell}}=\ell$, így az integrandus $\ell\cdot\frac{1}{2\ell}=\frac12$: $\iint_H\frac yx\,dx\,dy=\int_1^2\!\left(\int_1^4\frac12\,dk\right)d\ell=\int_1^2\frac32\,d\ell=\frac32$.
+
+**b\*)** $x=k^{1/3}\ell^{-1/3},\ y=k^{2/3}\ell^{1/3}$, $\det J=\frac29\ell^{-1}+\frac19\ell^{-5/3}$: $\iint_H 1\,dx\,dy=\frac43\ln 2-\frac12\,2^{-2/3}+\frac12\,2^{2/3}\approx 1{,}4029$.
+
+**c)** $x=k^{2/3}\ell^{-2/3},\ y=k^{1/3}\ell^{2/3}$, $\det J=\frac23\ell^{-1}$: $\iint_H(2x+3y)\,dx\,dy\approx 25{,}0029$.
+</details>
+
 #### Többváltozós integrálok
 
 **2.11.** Számítsuk ki az alábbi szukcesszív többszörös integrálokat:
@@ -583,6 +708,16 @@ Ha a $H$-t $y=k\cdot\varphi(x)$ és $y=\ell\cdot\psi(x)$ görbeseregek zárják 
 **a)** $\displaystyle\iiint_H (x+3y^5+xz^2)\,dx\,dy\,dz$ ahol $H$ az $(-1,2,-3)$ és $(4,5,9)$ átlós csúcsokkal meghatározott téglatest,
 
 **b)** $\displaystyle\int_1^2\int_{2-x}^{2+3x}\int_{x-7y}^{x+y}(x^2-3y^3+xz)\,dz\,dy\,dx$, $\qquad$ **c\*)** $\displaystyle\int_0^a\int_0^{b\sqrt{1-\frac{z^2}{a^2}}}\int_{c\sqrt{\frac{x^2}{a^2}+\frac{y^2}{b^2}}}^{c}\frac{yz}{\sqrt x}\,dz\,dy\,dx.$
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** $\int_{-3}^9\int_2^5\int_{-1}^4(x+3y^5+xz^2)\,dx\,dy\,dz=472\,770$.
+
+**b)** A három egymásba ágyazott integrál kiszámítása után $\frac{-342928}{5}=-68585{,}6$.
+
+**c\*)** $\frac{8}{45}\sqrt a\,b^2c^2$.
+</details>
 
 ## 3. fejezet
 ### F3. Többváltozós integrálok alkalmazásai
@@ -599,6 +734,14 @@ Ha a $H$-t $y=k\cdot\varphi(x)$ és $y=\ell\cdot\psi(x)$ görbeseregek zárják 
 $H\subseteq\mathbb{R}^2$ terület: $T_H=\iint_H 1\,dx\,dy$ (a 2.10. transzformációival).
 </details>
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** A 2.10.a) transzformációjával $T_H=\int_1^2\!\left(\int_1^4\frac{1}{2\ell}\,dk\right)d\ell=\frac32\ln 2\approx 1{,}0397$.
+
+**b)** A 2.10.b) feladatban már kiszámoltuk: $T_H=\frac43\ln 2-\frac12\,2^{-2/3}+\frac12\,2^{2/3}\approx 1{,}4029$.
+</details>
+
 **3.2.** Határozza meg az $f(x,y)=1-x^2-2y^2$ ellipszis keresztmetszetű „paraboloid" $[x,y]$ sík feletti részének *térfogatát*.
 
 **3.3.** Határozza meg az $x^2+z^2=r^2$ és $y^2+z^2=r^2$ egymásra merőleges hengerek *metszetének térfogatát*.
@@ -609,12 +752,31 @@ $H\subseteq\mathbb{R}^2$ terület: $T_H=\iint_H 1\,dx\,dy$ (a 2.10. transzformá
 $V_P=\iiint_P 1\,dx\,dy\,dz$. Az $[x,y]$ sík feletti részt felülről a megfelelő függvényfelület határolja.
 </details>
 
+<details>
+<summary><strong>Megoldás (3.2)</strong></summary>
+
+A felület az $[x,y]$ síkot az $1-x^2-2y^2=0$ ellipszisben metszi, így $H=\{x^2+2y^2\le 1\}$. Yvory-transzformációval $V=\int_0^{2\pi}\int_0^1(1-r^2\cos^2\varphi-r^2\sin^2\varphi)\frac{r}{\sqrt2}\,dr\,d\varphi=\frac{\sqrt2\,\pi}{4}\approx 1{,}1107$.
+</details>
+
+<details>
+<summary><strong>Megoldás (3.3)</strong></summary>
+
+A két henger tengelyei az $x$ és $y$ tengelyek; felülről a határoló $z=\sqrt{r^2-x^2}$. A közös rész egy nyolcadát számolva $V=16\int_0^r\!\int_0^x\sqrt{r^2-x^2}\,dy\,dx=16\int_0^r x\sqrt{r^2-x^2}\,dx=\frac{16}{3}r^3$. (Bláthy Ottó szemléletes megoldása szerint a köbtartalom a gömbéhez úgy aránylik, mint $4:\pi$, tehát $\frac{4}{\pi}\cdot\frac43 r^3\pi=\frac{16}{3}r^3$.)
+</details>
+
 **3.4.** Mekkora *térfogatot* metsz ki az origó középpontú, $R=2$ sugarú gömbből az $\rho=R/2$ sugarú, az origót érintő henger (*Viviani-féle test*)?
 
 <details>
 <summary><strong>Útmutatás</strong></summary>
 
 A henger egyenlete $(x-1)^2+y^2=\rho^2$, a térfogatot felülről a gömb határolja.
+</details>
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+A gömb $z=\sqrt{R^2-x^2-y^2}$, a tartomány a $T=\{(x-1)^2+y^2\le\rho^2\}$ origót érintő kör. Polártranszformációval ($T:\ -\frac\pi2\le\varphi\le\frac\pi2,\ 0\le r\le R\cos\varphi$):
+$$V=2\int_{-\pi/2}^{\pi/2}\!\int_0^{R\cos\varphi}r\sqrt{R^2-r^2}\,dr\,d\varphi=\frac43R^3\left(\frac\pi2-\frac23\right)\approx 1{,}2055\,R^3.$$
 </details>
 
 **3.5.** Határozza meg a $z=xy$ ún. **„nyeregfelület"** $x^2+y^2=R$ kör „feletti" részének *felszínét*.
@@ -625,6 +787,14 @@ A henger egyenlete $(x-1)^2+y^2=\rho^2$, a térfogatot felülről a gömb határ
 <summary><strong>Útmutatás</strong></summary>
 
 A $z=f(x,y)$ felület felszíne $A=\iint_H\sqrt{1+\left(\frac{\partial}{\partial x}f\right)^2+\left(\frac{\partial}{\partial y}f\right)^2}\,dx\,dy$.
+</details>
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**3.5.** $\frac{\partial}{\partial x}f=y,\ \frac{\partial}{\partial y}f=x$, polártranszformációval $A=\int_0^{2\pi}\!\int_0^R r\sqrt{1+r^2}\,dr\,d\varphi=\frac{2\pi}{3}\big((R^2+1)^{3/2}-1\big)$.
+
+**3.6.** $\frac{\partial}{\partial x}f=-2x,\ \frac{\partial}{\partial y}f=-2y$, polártranszformációval $A=\iint_{x^2+y^2\le1}\sqrt{1+4x^2+4y^2}\,dx\,dy=\frac{\pi}{6}\big(\sqrt{125}-1\big)$.
 </details>
 
 **3.7.** Határozzuk meg az alábbi, $[x,y]$ síkban fekvő síkidomok *súlypontjainak* koordinátáit:
@@ -638,7 +808,17 @@ A $z=f(x,y)$ felület felszíne $A=\iint_H\sqrt{1+\left(\frac{\partial}{\partial
 <details>
 <summary><strong>Útmutatás</strong></summary>
 
-Síklemez ($\rho(x,y)$ sűrűség) súlypontja $x_s=\dfrac{\iint_H x\rho\,dx\,y}{\iint_H\rho\,dx\,y}$, $y_s=\dfrac{\iint_H y\rho\,dx\,y}{\iint_H\rho\,dx\,y}$. Tehetetlenségi nyomatékok: $\Theta_x=\iint_H y^2\rho\,dx\,y$, $\Theta_y=\iint_H x^2\rho\,dx\,y$, $\Theta_z=\Theta_x+\Theta_y$.
+Síklemez ($\rho(x,y)$ sűrűség) súlypontja $x_s=\dfrac{\iint_H x\rho\,dx\,dy}{\iint_H\rho\,dx\,dy}$, $y_s=\dfrac{\iint_H y\rho\,dx\,dy}{\iint_H\rho\,dx\,dy}$. Tehetetlenségi nyomatékok: $\Theta_x=\iint_H y^2\rho\,dx\,dy$, $\Theta_y=\iint_H x^2\rho\,dx\,dy$, $\Theta_z=\Theta_x+\Theta_y$.
+</details>
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** Nevező $T=\int_0^4\sqrt x\,dx=\frac{16}{3}$, $x_s$ számláló $\int_0^4 x\sqrt x\,dx=\frac{64}{5}$, $y_s$ számláló $\int_0^4\frac12 x\,dx=4$, tehát $S=\left(\frac{12}{5},\frac34\right)$.
+
+**b)** Szimmetria miatt $x_s=0$; a félkör területe $\frac{R^2\pi}{2}$, $\iint_H y=\frac23R^3$, így $S=\left(0,\frac{4R}{3\pi}\right)$.
+
+**c)** Az $x=r\cos^3\varphi,\ y=r\sin^3\varphi$ asztroid-transzformációval ($\det J=3r\cos^2\varphi\sin^2\varphi$) a nevező $\frac{3\pi}{32}R^2$, a számláló $\frac{8}{105}R^3$, tehát szimmetria miatt $S=\left(\frac{256}{315\pi}R,\frac{256}{315\pi}R\right)$.
 </details>
 
 **3.8.** Az $[x,y]$ sík $(0,0),(1,0),(1,1),(0,1)$ négyzete fölé állított ($z$ tengellyel párhuzamos) négyzetes hasábot elvágjuk a $(0,0,0),(1,0,1),(1,1,2),(0,1,1)$ pontokon átmenő $S$ síkkal.
@@ -651,6 +831,14 @@ Síklemez ($\rho(x,y)$ sűrűség) súlypontja $x_s=\dfrac{\iint_H x\rho\,dx\,y}
 <summary><strong>Útmutatás</strong></summary>
 
 A sík egyenlete $x+y-z=0$, vagyis a test magassága $f(x,y)=x+y$, amit a négyzet alakú lemez $\rho(x,y)$ tömegeloszlásának vehetünk.
+</details>
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** A test szimmetrikus az $y=x$ egyenesre, így $x_s=y_s$. A számláló $\iint_{[0,1]^2}x(x+y)\,dx\,dy=\frac{7}{12}$, a nevező $\iint_{[0,1]^2}(x+y)\,dx\,dy=1$, tehát a súlypont vetülete $\overline S=\left(\frac{7}{12},\frac{7}{12}\right)$.
+
+**b)** $z_s$ számlálója $\iiint_K z\,dx\,dy\,dz=\int_0^1\!\int_0^1\frac12(x+y)^2\,dx\,dy=\frac{7}{12}$, nevezője $V_K=1$, tehát $S=\left(\frac{7}{12},\frac{7}{12},\frac{7}{12}\right)$.
 </details>
 
 **3.9.** Határozzuk meg a $z=0,\ x=a,\ y=b$ síkokkal és a $z^2=xy$ felülettel határolt homogén test *súlypontját*.
@@ -667,6 +855,20 @@ A sík egyenlete $x+y-z=0$, vagyis a test magassága $f(x,y)=x+y$, amit a négyz
 <summary><strong>Útmutatás</strong></summary>
 
 Térbeli $K$ test ($\rho(x,y,z)$): tömeg $m=\iiint_K\rho$, súlypont $x_s=\frac1m\iiint_K x\rho$ stb. Tehetetlenségi nyomatékok: $\Theta_x=\iiint_K(y^2+z^2)\rho$, $\Theta_y=\iiint_K(x^2+z^2)\rho$, $\Theta_z=\iiint_K(x^2+y^2)\rho$, $\Theta_0=\iiint_K(x^2+y^2+z^2)\rho$; tetszőleges $e$ egyenesre $\Theta_e=\iiint_K f(x,y,z)\rho$, ahol $f$ az $e$-től való távolság négyzete.
+</details>
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**3.9.** Közös nevező $m=V=\iiint_K 1=\frac49 a^{3/2}b^{3/2}$, $x_s$ számláló $\frac{4}{15}a^{5/2}b^{3/2}$, $y_s$ számláló $\frac{4}{15}a^{3/2}b^{5/2}$, $z_s$ számláló $\frac18 a^2b^2$, tehát $S=\left(\frac35 a,\frac35 b,\frac{9}{32}\sqrt{ab}\right)$.
+
+**3.10.** $\rho=\frac{m}{R^2\pi}$ állandó, polártranszformációval $\Theta_z=\frac{m}{R^2\pi}\iint_{x^2+y^2\le R^2}(x^2+y^2)\,dx\,dy=\frac{m}{R^2\pi}\cdot\frac{2\pi R^4}{4}=\frac12 R^2m$.
+
+**3.11.** $H=[0,a]\times[0,b]$: $\Theta_x=\rho\iint_H y^2\,dx\,dy=\frac{\rho}{3}ab^3=\frac13 mb^2$ és $\Theta_y=\frac13 ma^2$ ($m=\rho ab$). (Ez egy $b$ ill. $a$ hosszúságú, $m$ tömegű rúd végpontjára vett nyomatéka is.)
+
+**3.12.** $\Theta_{(0,0)}=\Theta_x+\Theta_y=\iint_H(x^2+y^2)\,dx\,dy=\int_0^1\!\int_{x^2}^x(x^2+y^2)\,dy\,dx=\frac{3}{35}$.
+
+**3.13.** A kocka középpontja az origó, a tengely az $x$ tengely: $\Theta_x=\rho\iiint(y^2+z^2)\,dx\,dy\,dz=\rho a\left(\frac{1}{12}a^4+\frac{1}{12}a^4\right)=\frac16\rho a^5=\frac16 ma^2$ ($m=\rho a^3$).
 </details>
 
 ## 4. fejezet
