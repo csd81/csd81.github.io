@@ -1,8 +1,12 @@
-/** Calculus books — raw markdown dumps (Győri–Pituk I/II, Szalkai–Mikó Analízis). */
+/** Calculus books — raw markdown with live (computed) figures swapped in. */
+import { lazy, Suspense } from 'react';
 import { Link, Route, Routes, useParams } from 'react-router-dom';
+import type { Components } from 'react-markdown';
 import { MarkdownView } from '../../shared/ui/MarkdownView';
 import '../../pages/home.css';
 import '../ila/ila.css';
+
+const CalcFigure = lazy(() => import('./figures'));
 
 const RAW = import.meta.glob('./content/*.md', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 
@@ -14,15 +18,25 @@ const META: Record<string, { title: string; author: string; blurb: string }> = {
   'anal-tk1b': { title: 'Matematikai analízis I.', author: 'Dr. Szalkai István, Mikó Teréz · Pannon Egyetem', blurb: 'Alapfogalmak, függvények, sorozatok, határérték, deriválás (0–7. fejezet).' },
 };
 
-/** Strip image references (the source PDFs' page scans aren't bundled). */
-const stripImages = (md: string) =>
-  md.replace(/!\[[^\]]*\]\([^)]*\)/g, '').replace(/<img[^>]*>/gi, '');
+/**
+ * Normalise figure references so the `img` renderer can swap in a live figure.
+ * kalkulus1 already uses `![N.N. ábra ...](pages_300/…)`; kalkulus2 instead has
+ * text markers — `*3.2. ábra.*` and `*(ábra: 4.4. ábra.)*` — which we convert to
+ * the same image-placeholder form (inline "lásd a N.N. ábra" mentions are left
+ * untouched, since they aren't standalone marker lines).
+ */
+const prepareCalcMd = (id: string, md: string): string => {
+  if (id !== 'kalkulus2') return md;
+  return md
+    .replace(/^\*\(ábra:\s*(\d+\.\d+)\.\s*ábra\.\)\*\s*$/gm, '![$1. ábra](calcfig)')
+    .replace(/^\*(\d+\.\d+)\.\s*ábra\.\*\s*$/gm, '![$1. ábra](calcfig)');
+};
 
 const BOOKS: Book[] = Object.entries(RAW)
   .map(([path, md]) => {
     const id = path.replace(/^\.\/content\//, '').replace(/\.md$/, '');
     const m = META[id] ?? { title: id, author: '', blurb: '' };
-    return { id, ...m, md: stripImages(md) };
+    return { id, ...m, md: prepareCalcMd(id, md) };
   })
   .sort((a, b) => a.id.localeCompare(b.id));
 
@@ -35,7 +49,7 @@ function Landing() {
     <div className="ila">
       <p className="ila__kicker">Analízis · Calculus</p>
       <h1 className="ila__title">Kalkulus könyvek</h1>
-      <p className="ila__cite">Teljes tankönyvek Markdown formában, KaTeX-renderelt képletekkel.</p>
+      <p className="ila__cite">Teljes tankönyvek Markdown formában, KaTeX-renderelt képletekkel és élő (számolt) ábrákkal.</p>
       <ul className="ila__grid">
         {BOOKS.map((b, i) => (
           <li key={b.id}>
@@ -64,10 +78,22 @@ function BookView() {
       </div>
     );
   }
+  // Swap each `![N.N. ábra …](…)` reference for the live figure (or drop it).
+  const components: Components = {
+    img: ({ alt }) => {
+      const m = /^(\d+\.\d+)/.exec(alt ?? '');
+      if (!m) return null;
+      return (
+        <Suspense fallback={<span className="calc-fig-loading" style={{ display: 'block', textAlign: 'center', opacity: 0.5, margin: '1.5rem 0' }}>ábra…</span>}>
+          <CalcFigure book={book.id} id={m[1]} />
+        </Suspense>
+      );
+    },
+  };
   return (
     <div className="ila">
       <Link to="/calc" className="ila__back">← Könyvek</Link>
-      <MarkdownView markdown={book.md} />
+      <MarkdownView markdown={book.md} components={components} />
     </div>
   );
 }
