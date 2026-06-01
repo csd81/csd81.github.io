@@ -178,3 +178,14 @@
   font-size: 0.82rem;
   opacity: 0.8;
 }
+
+/* Theorem/definition callout that wraps a whole item (lead → next item) */
+.calc-thm {
+  border-left: 3px solid var(--thm-c, #a78bfa);
+  background: var(--thm-bg, rgba(167, 139, 250, 0.08));
+  border-radius: 0 0.45rem 0.45rem 0;
+  padding: 0.25rem 1rem 0.35rem;
+  margin: 1.15rem 0;
+}
+.calc-thm > .prose-lesson > p:first-child > strong:first-child { color: var(--thm-c, #a78bfa); }
+.calc-qed { display: block; text-align: right; color: var(--thm-c, #a78bfa); font-size: 1.05rem; line-height: 1; margin-top: -0.2rem; }

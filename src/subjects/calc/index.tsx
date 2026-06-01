@@ -1,5 +1,5 @@
 /** Calculus books — raw markdown with live (computed) figures swapped in. */
-import { Children, isValidElement, lazy, Suspense, type ReactNode } from 'react';
+import { lazy, Suspense } from 'react';
 import { Link, Route, Routes, useParams } from 'react-router-dom';
 import type { Components } from 'react-markdown';
 import { MarkdownView } from '../../shared/ui/MarkdownView';
@@ -141,23 +141,36 @@ const THM_KIND: Record<string, string> = {
   'Bizonyítás': 'proof', 'Jelölés': 'note', 'Összefoglalás': 'note',
 };
 
-/** Plain text of a React child tree (for theorem-marker detection). */
-function textOf(node: ReactNode): string {
-  if (typeof node === 'string' || typeof node === 'number') return String(node);
-  if (Array.isArray(node)) return node.map(textOf).join('');
-  if (isValidElement(node)) return textOf((node.props as { children?: ReactNode }).children);
-  return '';
-}
-
-/** If a paragraph starts with `**N.N. <Type>**`, return its callout modifier. */
-function thmKind(children: ReactNode): string | null {
-  const first = Children.toArray(children)[0];
-  if (!isValidElement(first) || first.type !== 'strong') return null;
-  const m = /^\s*\d+(?:\.\d+)*\.?\s*([A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű]+)/.exec(textOf((first.props as { children?: ReactNode }).children));
+/** A markdown line that opens a numbered item, e.g. `**0.26. Tétel** …`. */
+const LEAD = /^\*\*\s*\d+(?:\.\d+)*\.?\s*([A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű]+)/;
+function leadKind(line: string): string | null {
+  const m = LEAD.exec(line);
   return m && THM_KIND[m[1]] ? THM_KIND[m[1]] : null;
 }
 
-/** react-markdown components for a chapter: live figures + theorem callout boxes. */
+interface Seg { kind: string | null; md: string; }
+/**
+ * Group a chapter body into segments. A theorem/definition block runs from its
+ * `**N.N. Type**` lead until the next lead, the next heading, or a □/■ QED mark
+ * (the OCR dropped all QED glyphs, so in practice it's the next lead/heading —
+ * which is exactly where the book's □ would sit). Non-lead runs are plain.
+ */
+function segmentChapter(body: string): Seg[] {
+  const segs: Seg[] = [];
+  let cur: string[] = [];
+  let kind: string | null = null;
+  const flush = () => { const md = cur.join('\n').trim(); if (md) segs.push({ kind, md }); cur = []; };
+  for (const l of body.split('\n')) {
+    const k = leadKind(l);
+    if (k) { flush(); kind = k; cur = [l]; }
+    else if (/^#{1,3}\s/.test(l)) { flush(); kind = null; cur = [l]; }
+    else { cur.push(l); if (kind && /[□■]/.test(l)) { flush(); kind = null; } }
+  }
+  flush();
+  return segs;
+}
+
+/** react-markdown components for a chapter: live figures. */
 const bookComponents = (bookId: string): Components => ({
   img: ({ alt }) => {
     const a = alt ?? '';
@@ -168,10 +181,6 @@ const bookComponents = (bookId: string): Components => ({
         <CalcFigure book={bookId} id={figId} />
       </Suspense>
     );
-  },
-  p: ({ children }) => {
-    const k = thmKind(children);
-    return k ? <p className={`thm thm--${k}`}>{children}</p> : <p>{children}</p>;
   },
 });
 
@@ -252,12 +261,22 @@ function ChapterView() {
   const prev = book.chapters[idx - 1];
   const next = book.chapters[idx + 1];
   const components = bookComponents(book.id);
+  const qed = book.id === 'anal-tk1b'; // Szalkai marks every item's end with □
   return (
     <div className="ila">
       <Link to={`/calc/${book.id}`} className="ila__back">← {book.title}</Link>
       <p className="ila__kicker">{book.title} · {c.num}. fejezet</p>
       <h1 className="ila__title">{c.title || `${c.num}. fejezet`}</h1>
-      <MarkdownView markdown={c.body} components={components} />
+      {segmentChapter(c.body).map((s, i) => (
+        s.kind ? (
+          <div key={i} className={`calc-thm thm--${s.kind}`}>
+            <MarkdownView markdown={s.md} components={components} />
+            {qed && <span className="calc-qed">□</span>}
+          </div>
+        ) : (
+          <MarkdownView key={i} markdown={s.md} components={components} />
+        )
+      ))}
       {c.footnotes.length > 0 && (
         <div className="calc-footnotes">
           <MarkdownView markdown={c.footnotes.join('\n\n')} components={components} />
