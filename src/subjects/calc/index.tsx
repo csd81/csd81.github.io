@@ -332,7 +332,7 @@ function ChapterView() {
       <Link to={`/calc/${book.id}`} className="ila__back">← {book.title}</Link>
       <p className="ila__kicker">{book.title} · {c.num}. fejezet</p>
       <h1 className="ila__title">{c.title || `${c.num}. fejezet`}</h1>
-      <MarkdownView markdown={c.body} components={components} rehypePlugins={[rehypeCallouts(qed, source)]} />
+      <MarkdownView markdown={c.body} components={components} rehypePlugins={[[rehypeCallouts, qed, source]]} />
       <nav className="calc-chnav">
         {prev
           ? <Link to={`/calc/${book.id}/${prev.num}`} className="ila__back">← {prev.num}. {prev.title}</Link>
