@@ -42,7 +42,7 @@ function splitChapters(md: string): Chapter[] {
     // in-text footnote reference marks are left untouched.
     const footnotes: string[] = [];
     const kept: string[] = [];
-    const FN = /^(?:\$\^\{?\d+\)\}?\$|[⁰-⁹¹²³]+[⁾)])\s/;
+    const FN = /^(?:\$\^\{?\d+\)\}?\$|<sup>\d+\)<\/sup>|[⁰-⁹¹²³]+[⁾)])\s/;
     for (const l of lines.slice(bodyStart, end)) {
       if (/^-{3,}\s*$/.test(l)) continue;
       if (FN.test(l.trim())) { footnotes.push(l.trim()); continue; }

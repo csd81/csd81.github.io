@@ -247,16 +247,28 @@ function partialDerivSurfaceFig() {
 }
 
 function volumeUnderSurfaceFig() {
+  // Solid column: floor region H in the xy-plane + side walls rising to the
+  // surface z = f(x,y), i.e. the volume "under the surface over H" (not a slice).
   const f = (x: number, y: number) => 1.2 + 0.4 * Math.sin(x) + 0.4 * Math.cos(y);
-  const xs = lin(0, 3, 36), ys = lin(0, 3, 36);
+  const xs = lin(0, 3, 30), ys = lin(0, 3, 30);
   const Z = ys.map((y) => xs.map((x) => f(x, y)));
-  const Z0 = ys.map(() => xs.map(() => 0));
+  const wall = [[0, '#155e75'], [1, '#22d3ee']] as [number, string][];
+  const wallX = (c: number) => ({ type: 'surface', showscale: false, opacity: 0.5, colorscale: wall,
+    x: [ys.map(() => c), ys.map(() => c)], y: [ys, ys], z: [ys.map(() => 0), ys.map((y) => f(c, y))] });
+  const wallY = (c: number) => ({ type: 'surface', showscale: false, opacity: 0.5, colorscale: wall,
+    x: [xs, xs], y: [xs.map(() => c), xs.map(() => c)], z: [xs.map(() => 0), xs.map((x) => f(x, c))] });
   return <CalcPlot height={400} caption="4.4. ábra. A z = f(x,y) felület alatti V térfogat a H tartomány felett"
     data={[
-      { type: 'surface', x: xs, y: ys, z: Z, showscale: false, opacity: 0.9, colorscale: [[0, '#4c1d95'], [1, '#a78bfa']] },
-      { type: 'surface', x: xs, y: ys, z: Z0, showscale: false, opacity: 0.25, colorscale: [[0, '#38bdf8'], [1, '#38bdf8']] },
+      // floor region H (z = 0)
+      { type: 'surface', x: xs, y: ys, z: ys.map(() => xs.map(() => 0)), showscale: false, opacity: 0.45, colorscale: [[0, '#0e7490'], [1, '#0e7490']] },
+      wallX(0), wallX(3), wallY(0), wallY(3),
+      // top surface z = f(x,y)
+      { type: 'surface', x: xs, y: ys, z: Z, showscale: false, opacity: 0.95, colorscale: [[0, '#4c1d95'], [1, '#a78bfa']] },
     ]}
-    layout={{ scene: { annotations: [{ x: 1.5, y: 1.5, z: 0, text: 'H', showarrow: false, font: { color: '#e2e8f0', size: 16 } }] } }} />;
+    layout={{ scene: { annotations: [
+      { x: 1.5, y: 1.5, z: 0, text: 'H', showarrow: false, font: { color: '#e2e8f0', size: 16 } },
+      { x: 0.4, y: 0.4, z: f(0.4, 0.4) + 0.25, text: 'z = f(x,y)', showarrow: false, font: { color: '#c4b5fd', size: 12 } },
+    ] } }} />;
 }
 
 function normalDomainNFig() {
