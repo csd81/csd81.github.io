@@ -165,15 +165,21 @@ function nodeLeadKind(node: any): string | null {
  * `qed`, a □ is appended at the box end unless the next box is its proof.
  */
 function rehypeCallouts(qed: boolean, source: string) {
+  // A `<p>` whose entire content is one `<strong>` = a bold section header (not
+  // a theorem lead, which has trailing statement text) → it breaks a box.
+  const isBoldHeader = (node: any) => {
+    if (!node || node.type !== 'element' || node.tagName !== 'p') return false;
+    const sig = (node.children || []).filter((c: any) => !(c.type === 'text' && !c.value.trim()));
+    return sig.length === 1 && sig[0].type === 'element' && sig[0].tagName === 'strong';
+  };
   return (tree: any) => {
     const items: { kind: string | null; nodes: any[] }[] = [];
     let cur: { kind: string | null; nodes: any[] } | null = null;
     for (const node of tree.children || []) {
       const k = nodeLeadKind(node);
-      const isHeading = node.type === 'element' && /^h[1-6]$/.test(node.tagName);
-      const isSection = node.type === 'element' && node.tagName === 'section';
+      const isBreak = (node.type === 'element' && (/^h[1-6]$/.test(node.tagName) || node.tagName === 'section')) || isBoldHeader(node);
       if (k) { cur = { kind: k, nodes: [node] }; items.push(cur); }
-      else if (isHeading || isSection) { cur = { kind: null, nodes: [node] }; items.push(cur); }
+      else if (isBreak) { cur = { kind: null, nodes: [node] }; items.push(cur); }
       else { if (!cur) { cur = { kind: null, nodes: [] }; items.push(cur); } cur.nodes.push(node); }
     }
     const out: any[] = [];
