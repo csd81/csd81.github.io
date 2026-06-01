@@ -10,7 +10,39 @@ const CalcFigure = lazy(() => import('./figures'));
 
 const RAW = import.meta.glob('./content/*.md', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 
-interface Book { id: string; title: string; author: string; blurb: string; md: string; }
+interface Chapter { num: number; title: string; sections: string[]; body: string; }
+interface Book { id: string; title: string; author: string; blurb: string; chapters: Chapter[]; }
+
+/**
+ * Split a (preprocessed) book into chapters on `#{1,3} N. fejezet` headings.
+ * The title is the heading line that follows; `sections` lists the `## N.M.`
+ * subsection headings (for a chapter-card table of contents). Content before
+ * the first chapter (book title/author) is dropped.
+ */
+const FEJEZET = /^#{1,3}\s+(\d+)\.\s+fejezet\s*$/;
+function splitChapters(md: string): Chapter[] {
+  const lines = md.split('\n');
+  const starts: number[] = [];
+  lines.forEach((l, i) => { if (FEJEZET.test(l)) starts.push(i); });
+  if (starts.length === 0) return [{ num: 1, title: '', sections: [], body: md }];
+  return starts.map((start, k) => {
+    const end = k + 1 < starts.length ? starts[k + 1] : lines.length;
+    const num = parseInt(lines[start].match(FEJEZET)![1], 10);
+    let title = '', bodyStart = start + 1;
+    for (let j = start + 1; j < end; j++) {
+      const t = lines[j].trim();
+      if (t === '') continue;
+      const h = t.match(/^#{1,3}\s+(.*)$/);
+      if (h) { title = h[1].trim(); bodyStart = j + 1; }
+      break;
+    }
+    const body = lines.slice(bodyStart, end).join('\n').trim();
+    const sections = body.split('\n')
+      .map((l) => l.match(/^##\s+([\d.]+\.?\s*.+)$/)?.[1]?.trim())
+      .filter((s): s is string => !!s);
+    return { num, title, sections, body };
+  });
+}
 
 const META: Record<string, { title: string; author: string; blurb: string }> = {
   kalkulus1: { title: 'Kalkulus informatikusoknak I.', author: 'Győri István, Pituk Mihály', blurb: 'Halmazok, függvények, sorozatok, határérték, differenciálszámítás.' },
@@ -82,13 +114,27 @@ const BOOKS: Book[] = Object.entries(RAW)
   .map(([path, md]) => {
     const id = path.replace(/^\.\/content\//, '').replace(/\.md$/, '');
     const m = META[id] ?? { title: id, author: '', blurb: '' };
-    return { id, ...m, md: prepareCalcMd(id, md) };
+    return { id, ...m, chapters: splitChapters(prepareCalcMd(id, md)) };
   })
   .sort((a, b) => a.id.localeCompare(b.id));
 
 export const CALC_BOOKS = BOOKS.map(({ id, title, author, blurb }) => ({ id, title, author, blurb }));
 
 const bookById = (id: string) => BOOKS.find((b) => b.id === id);
+
+/** Figure renderer for a book: swap `![…ábra…](…)` references for live figures. */
+const figureComponents = (bookId: string): Components => ({
+  img: ({ alt }) => {
+    const a = alt ?? '';
+    const figId = /^fig:(\S+)/.exec(a)?.[1] ?? /^(\d+\.\d+)/.exec(a)?.[1];
+    if (!figId) return null;
+    return (
+      <Suspense fallback={<span className="calc-fig-loading" style={{ display: 'block', textAlign: 'center', opacity: 0.5, margin: '1.5rem 0' }}>ábra…</span>}>
+        <CalcFigure book={bookId} id={figId} />
+      </Suspense>
+    );
+  },
+});
 
 function Landing() {
   return (
@@ -103,7 +149,7 @@ function Landing() {
               <span className="chcard__num">{String(i + 1).padStart(2, '0')}</span>
               <span className="chcard__body">
                 <span className="chcard__title">{b.title}</span>
-                <span className="chcard__blurb">{b.author}</span>
+                <span className="chcard__blurb">{b.author} · {b.chapters.length} fejezet</span>
               </span>
             </Link>
           </li>
@@ -113,6 +159,7 @@ function Landing() {
   );
 }
 
+/** Book page — header + a card per chapter (with a section table of contents). */
 function BookView() {
   const { id } = useParams();
   const book = id ? bookById(id) : undefined;
@@ -124,23 +171,61 @@ function BookView() {
       </div>
     );
   }
-  // Swap each `![N.N. ábra …](…)` reference for the live figure (or drop it).
-  const components: Components = {
-    img: ({ alt }) => {
-      const a = alt ?? '';
-      const id = /^fig:(\S+)/.exec(a)?.[1] ?? /^(\d+\.\d+)/.exec(a)?.[1];
-      if (!id) return null;
-      return (
-        <Suspense fallback={<span className="calc-fig-loading" style={{ display: 'block', textAlign: 'center', opacity: 0.5, margin: '1.5rem 0' }}>ábra…</span>}>
-          <CalcFigure book={book.id} id={id} />
-        </Suspense>
-      );
-    },
-  };
   return (
     <div className="ila">
       <Link to="/calc" className="ila__back">← Könyvek</Link>
-      <MarkdownView markdown={book.md} components={components} />
+      <p className="ila__kicker">Analízis · Calculus</p>
+      <h1 className="ila__title">{book.title}</h1>
+      <p className="ila__cite">{book.author}</p>
+      <ul className="ila__grid">
+        {book.chapters.map((c) => (
+          <li key={c.num}>
+            <Link to={`/calc/${book.id}/${c.num}`} className="chcard">
+              <span className="chcard__num">{String(c.num).padStart(2, '0')}</span>
+              <span className="chcard__body">
+                <span className="chcard__title">{c.title || `${c.num}. fejezet`}</span>
+                {c.sections.length > 0 && (
+                  <span className="chcard__desc">{c.sections.join(' · ')}</span>
+                )}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** Single-chapter view with prev/next navigation. */
+function ChapterView() {
+  const { id, ch } = useParams();
+  const book = id ? bookById(id) : undefined;
+  const idx = book ? book.chapters.findIndex((c) => String(c.num) === ch) : -1;
+  if (!book || idx < 0) {
+    return (
+      <div className="ila">
+        <Link to={`/calc/${id ?? ''}`} className="ila__back">← Fejezetek</Link>
+        <p className="ila__cite">A fejezet nem található.</p>
+      </div>
+    );
+  }
+  const c = book.chapters[idx];
+  const prev = book.chapters[idx - 1];
+  const next = book.chapters[idx + 1];
+  return (
+    <div className="ila">
+      <Link to={`/calc/${book.id}`} className="ila__back">← {book.title}</Link>
+      <p className="ila__kicker">{book.title} · {c.num}. fejezet</p>
+      <h1 className="ila__title">{c.title || `${c.num}. fejezet`}</h1>
+      <MarkdownView markdown={c.body} components={figureComponents(book.id)} />
+      <nav className="calc-chnav">
+        {prev
+          ? <Link to={`/calc/${book.id}/${prev.num}`} className="ila__back">← {prev.num}. {prev.title}</Link>
+          : <span />}
+        {next
+          ? <Link to={`/calc/${book.id}/${next.num}`} className="ila__back">{next.num}. {next.title} →</Link>
+          : <span />}
+      </nav>
     </div>
   );
 }
@@ -150,6 +235,7 @@ export default function Calc() {
     <Routes>
       <Route index element={<Landing />} />
       <Route path=":id" element={<BookView />} />
+      <Route path=":id/:ch" element={<ChapterView />} />
     </Routes>
   );
 }
