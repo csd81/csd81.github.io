@@ -6,7 +6,8 @@
  * the dispatch is keyed by book id + "N.N". Lazily imported by calc/index.tsx,
  * so Plotly only loads when a figure is on screen.
  */
-import { CalcPlot, palette } from './CalcPlot';
+import Plot from './Plot.jsx';
+import { CalcPlot, palette, themedLayout, themedScene } from './CalcPlot';
 
 const lin = (a: number, b: number, n: number) => Array.from({ length: n + 1 }, (_, i) => a + ((b - a) * i) / n);
 const PI = Math.PI;
@@ -200,7 +201,9 @@ function resonanceFig() {
 // ── kalkulus2 ───────────────────────────────────────────────────────────────
 
 function partialDerivSurfaceFig() {
-  // z = f(x,y) bump with the x=a and y=b slice curves + tangent directions
+  // Like the book: TWO diagrams under one label — the x=a slice (∂/∂x) and the
+  // y=b slice (∂/∂y), each with the intersection curve and its tangent line.
+  const p = palette();
   const f = (x: number, y: number) => 2 * Math.exp(-(x * x + y * y) / 8);
   const xs = lin(-3, 3, 40), ys = lin(-3, 3, 40);
   const Z = ys.map((y) => xs.map((x) => f(x, y)));
@@ -208,16 +211,39 @@ function partialDerivSurfaceFig() {
   const dfx = (-a / 4) * f0, dfy = (-b / 4) * f0;
   const sliceX = ys.map((y) => f(a, y));   // x = a fixed
   const sliceY = xs.map((x) => f(x, b));   // y = b fixed
-  return <CalcPlot height={400} caption="3.2. ábra. z = f(x,y); az x=a és y=b metszetek és érintőik"
-    data={[
-      { type: 'surface', x: xs, y: ys, z: Z, showscale: false, opacity: 0.82, colorscale: [[0, '#312e81'], [1, '#a78bfa']] },
-      { type: 'scatter3d', mode: 'lines', x: ys.map(() => a), y: ys, z: sliceX, line: { color: '#38bdf8', width: 5 } },
-      { type: 'scatter3d', mode: 'lines', x: xs, y: xs.map(() => b), z: sliceY, line: { color: '#f472b6', width: 5 } },
-      { type: 'scatter3d', mode: 'lines', x: [a - 1.4, a + 1.4], y: [b, b], z: [f0 - 1.4 * dfx, f0 + 1.4 * dfx], line: { color: '#fbbf24', width: 4 } },
-      { type: 'scatter3d', mode: 'lines', x: [a, a], y: [b - 1.4, b + 1.4], z: [f0 - 1.4 * dfy, f0 + 1.4 * dfy], line: { color: '#34d399', width: 4 } },
-      { type: 'scatter3d', mode: 'markers', x: [a], y: [b], z: [f0], marker: { color: '#fbbf24', size: 4 } },
-    ]}
-    layout={{ scene: { zaxis: { range: [0, 2.3] } } }} />;
+  const surf = { type: 'surface', x: xs, y: ys, z: Z, showscale: false, opacity: 0.78, colorscale: [[0, '#312e81'], [1, '#a78bfa']] };
+  const dot = { type: 'scatter3d', mode: 'markers', x: [a], y: [b], z: [f0], marker: { color: '#fbbf24', size: 4 } };
+  const left = [
+    surf,
+    { type: 'scatter3d', mode: 'lines', x: ys.map(() => a), y: ys, z: sliceX, line: { color: '#38bdf8', width: 5 } },
+    { type: 'scatter3d', mode: 'lines', x: [a - 1.4, a + 1.4], y: [b, b], z: [f0 - 1.4 * dfx, f0 + 1.4 * dfx], line: { color: '#fbbf24', width: 4 } },
+    dot,
+  ];
+  const right = [
+    surf,
+    { type: 'scatter3d', mode: 'lines', x: xs, y: xs.map(() => b), z: sliceY, line: { color: '#f472b6', width: 5 } },
+    { type: 'scatter3d', mode: 'lines', x: [a, a], y: [b - 1.4, b + 1.4], z: [f0 - 1.4 * dfy, f0 + 1.4 * dfy], line: { color: '#34d399', width: 4 } },
+    dot,
+  ];
+  const layout = () => ({ autosize: true, height: 300, ...themedLayout({}), scene: themedScene({ zaxis: { range: [0, 2.3] } }) });
+  const cfg = { displayModeBar: false, responsive: true };
+  const panel = (data: any[], sub: string) => (
+    <span style={{ flex: '1 1 260px', minWidth: 0 }}>
+      <Plot data={data} layout={layout()} config={cfg} style={{ width: '100%' }} useResizeHandler />
+      <span style={{ display: 'block', textAlign: 'center', opacity: 0.6, fontSize: '.74rem' }}>{sub}</span>
+    </span>
+  );
+  return (
+    <span className="calc-fig" style={{ display: 'block', margin: '1.5rem auto', maxWidth: 720 }}>
+      <span style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
+        {panel(left, 'x = a metszet és érintő (∂f/∂x)')}
+        {panel(right, 'y = b metszet és érintő (∂f/∂y)')}
+      </span>
+      <span className="calc-fig__cap" style={{ display: 'block', textAlign: 'center', color: p.fg, opacity: 0.7, fontSize: '.82rem', marginTop: '.35rem', fontStyle: 'italic' }}>
+        3.2. ábra. z = f(x,y); az x=a és y=b metszetek és érintőik
+      </span>
+    </span>
+  );
 }
 
 function volumeUnderSurfaceFig() {
