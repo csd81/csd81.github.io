@@ -1358,6 +1358,16 @@ $$f_6(t)=\begin{cases}\sin(t) & \text{ha}\quad 2\pi\le t\le 4\pi\\ 0 & \text{má
 A Laplace-transzformáció definíciója: $F(s)=\mathcal L(f)(s):=\int_0^\infty f(t)e^{-st}\,dt$ (ha az improprius integrál konvergens). Alaptulajdonságok és transzformáltak: Szalkai honlapja (Laplace-tabl+.pdf).
 </details>
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** A definíció szerint:
+$$\mathcal L(f_1)=\frac{e^{-2s}-e^{-3s}}{s},\quad \mathcal L(f_2)=\frac1s e^{-2s},\quad \mathcal L(f_3)=\frac{3s+1}{s^2}e^{-3s},\quad \mathcal L(f_4)=\frac{1}{s^2}\left(e^{-s}-e^{-2s}\right),$$
+$$\mathcal L(f_5)=\frac{-1}{2s^2}\left(e^{-5s}(14s+5)-e^{-3s}(4s+5)\right),\quad \mathcal L(f_6)=\frac{1}{s^2+1}\left(e^{-2\pi s}-e^{-4\pi s}\right),\quad \mathcal L(f_7)=\frac{e^{-s}(e^s-1)}{s(e^{-s}-1)^2}.$$
+
+**b)** Periodikus jelek a Heaviside-függvénnyel: $f=b(H(t)-H(t-a)+H(t-2a)-\dots)\Rightarrow \mathcal L(f)=\frac{b}{s(1+e^{-as})}$; $g=\frac ba tH(t)-bH(t-a)-bH(t-2a)-\dots\Rightarrow \mathcal L(g)=\frac{b}{as^2}-\frac{be^{-as}}{s(1-e^{-as})}$.
+</details>
+
 **8.2.** Számítsuk ki az alábbi függvények Laplace-transzformáltját az alapfüggvények és a műveleti szabályok segítségével:
 
 **a)** $7t^2-3t+5,\quad 3-4e^{(5+6i)t},\quad e^{5t}\cos(2t),\quad t^3 e^{-7t},\quad t^3 e^{it},\quad \operatorname{sh}(2t),\quad t\cdot\operatorname{ch}(3t),\quad t^2 e^{6t}\sin(4t),$
@@ -1366,8 +1376,25 @@ A Laplace-transzformáció definíciója: $F(s)=\mathcal L(f)(s):=\int_0^\infty 
 
 **c)** $f_1(t)$ és $f_4(t)$ a **8.1.** feladatból.
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** $\mathcal L(7t^2-3t+5)=\frac{14}{s^3}-\frac{3}{s^2}+\frac5s$; $\ \mathcal L(3-4e^{(5+6i)t})=\frac3s-\frac{4}{s-(5+6i)}$; $\ \mathcal L(e^{5t}\cos2t)=\frac{s-5}{(s-5)^2+4}$; $\ \mathcal L(t^3e^{-7t})=\frac{6}{(s+7)^4}$; $\ \mathcal L(t^3e^{it})=\frac{6}{(s-i)^4}$; $\ \mathcal L(\operatorname{sh}2t)=\frac{2}{s^2-4}$; $\ \mathcal L(t\operatorname{ch}3t)=\frac{s^2+9}{(s^2-9)^2}$; $\ \mathcal L(t^2e^{6t}\sin4t)=\frac{32(3s^2-36s+92)}{(s^2-12s+52)^3}$.
+
+**b\*)** $\mathcal L(5^t)=\frac{1}{s-\ln5}$; $\ \mathcal L(\cos^2 t)=\frac{s^2+2}{s(s^2+4)}$; $\ \mathcal L(\cos^3 4t)=\frac{s(s^2+112)}{(s^2+144)(s^2+16)}$; $\ \mathcal L\!\left(\frac{1-e^{-t}}{t}\right)=\ln\!\left(1+\frac1s\right)$.
+
+**c)** $\mathcal L(f_1)=\frac1s(e^{-2s}-e^{-3s})$; $\ \mathcal L(f_4)=\frac{1}{s^2}(e^{-s}-e^{-2s})$ (az eltolási tétellel, $f_1=f_2(t)-f_2(t-1)$ ill. $f_4=f_3(t+2)-f_3(t+1)$).
+</details>
+
 **8.3.** Számítsuk ki az alábbi függvények Laplace-transzformáltját:
 $$t\cdot\cos(\omega t),\quad t\cdot\sin(\omega t),\quad t\cdot\operatorname{ch}(\omega t),\quad t\cdot\operatorname{sh}(\omega t).$$
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+A $\mathcal L(t\cdot f(t))=-\frac{d}{ds}\mathcal L(f)$ szabállyal:
+$$\mathcal L(t\cos\omega t)=\frac{s^2-\omega^2}{(s^2+\omega^2)^2},\quad \mathcal L(t\sin\omega t)=\frac{2\omega s}{(s^2+\omega^2)^2},\quad \mathcal L(t\operatorname{ch}\omega t)=\frac{s^2+\omega^2}{(s^2-\omega^2)^2},\quad \mathcal L(t\operatorname{sh}\omega t)=\frac{2\omega s}{(\omega^2-s^2)^2}.$$
+</details>
 
 **8.4.** Számítsuk ki az alábbi racionális törtfüggvények *inverz Laplace*-transzformáltját parciális törtekre bontással:
 
@@ -1384,8 +1411,25 @@ $\dfrac{s+1}{(s+3)^5},\quad \dfrac{4s+2}{s^2+6s+13},\quad \dfrac{1}{s^3+6s^2+13s
 Az inverz definíciója: $f(t)=\int_{x_0-i\infty}^{x_0+i\infty}F(s)e^{st}\,ds$ ($x_0>\alpha$), de a gyakorlatban parciális törtekre bontunk és táblázatból visszakeresünk.
 </details>
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** $\mathcal L^{-1}\!\left(\frac{1}{5s-3}\right)=\frac15 e^{3t/5}$; $\ \frac{1}{s^2-4}\to\frac12\operatorname{sh}2t$; $\ \frac{1}{s^2+4}\to\frac12\sin2t$; $\ \frac{5s+3}{s^2+4}\to 5\cos2t+\frac32\sin2t$; $\ \frac{s+10}{s^2+4s+3}\to\frac92e^{-t}-\frac72e^{-3t}$; $\ \frac{1}{(s+3)^5}\to\frac{1}{4!}t^4e^{-3t}$; $\ \frac{1}{(2s-1)^3}\to\frac{1}{8\cdot2!}t^2e^{t/2}$; $\ \frac{s+1}{(s+3)^5}\to e^{-3t}\!\left(\frac{1}{3!}t^3-\frac{2}{4!}t^4\right)$; $\ \frac{4s+2}{s^2+6s+13}\to(4\cos2t-5\sin2t)e^{-3t}$; $\ \frac{1}{s^3+6s^2+13s}\to\frac{1}{13}-\frac{1}{13}\!\left(\cos2t+\frac32\sin2t\right)e^{-3t}$; $\ \frac{s^2}{(s-3)^5}\to e^{3t}\!\left(\frac12 t^2+t^3+\frac{9}{4!}t^4\right)$.
+
+**b\*)** $\frac{s}{(s^2+\omega^2)^2}\to\frac{1}{2\omega}t\sin\omega t$; $\ \frac{1}{(s^2+\omega^2)^2}\to\frac{1}{2\omega^3}(\sin\omega t-\omega t\cos\omega t)$; $\ \frac{s^2}{(s^2+\omega^2)^2}\to\frac{1}{2\omega}(\sin\omega t+\omega t\cos\omega t)$.
+
+**c)** $\frac{3s+6}{(s^2+4)^2}\to\left(\frac34 t+\frac38\right)\sin2t-\frac34 t\cos2t$; $\ \frac{s^2-3}{(s^2+4)^2}\to\frac{1}{16}\sin2t+\frac78 t\cos2t$; $\ \frac{s^3}{(s^2+9)^2}\to\cos3t-\frac{9}{6}t\sin3t$; $\ \frac{5s+3}{(s^2-1)^2}\to\left(\frac34-\frac12 t\right)e^{-t}+\left(-\frac34+2t\right)e^t$.
+</details>
+
 **8.5.** Számítsuk ki a következő konvolúciókat:
 $$e^{\alpha x}*e^{\beta x},\quad x*e^{\lambda x},\quad x^2*e^{\lambda x},\quad 1*f(x),\quad \dfrac{x^n}{n!}*\dfrac{x^k}{k!}\ (n,k\in\mathbb{N}).$$
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+$$e^{\alpha x}*e^{\beta x}=\frac{e^{\beta x}-e^{\alpha x}}{\beta-\alpha},\qquad x*e^{\lambda x}=\frac{1}{\lambda^2}e^{\lambda x}-\frac{x}{\lambda}-\frac{1}{\lambda^2},$$
+$$x^2*e^{\lambda x}=\frac{1}{\lambda^3}\left(2e^{\lambda x}-x^2\lambda^2-2x\lambda-2\right),\qquad 1*f(x)=F(x)-F(0),\qquad \frac{x^n}{n!}*\frac{x^k}{k!}=\frac{x^{k+n+1}}{(k+n+1)!}.$$
+</details>
 
 ## 9. fejezet
 ### F9. Integro-differenciálegyenletek megoldása Laplace-transzformációval
@@ -1401,6 +1445,24 @@ Laplace-transzformációval oldjuk meg az alábbi lineáris differenciálegyenle
 **e)** $y'''+4y'=\cos(2x),\quad y(0)=0,\ y'(0)=0,\ y''(0)=0,$
 **f)** $y''-3y'-10y=x^2e^{-2x},\quad y(0)=7,\ y'(0)=2.$
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+A $\mathcal L(y')=sY-y(0)$ stb. szabályokkal $Y(s)$-re algebrai egyenlet, majd parciális törtekre bontás + inverz:
+
+**a)** $y=\frac{3}{13}\cos2x+\frac{4}{26}\sin2x+\frac14 e^x+\frac{27}{52}e^{-3x}$.
+
+**b)** $y=\frac{5}{16}e^{-x}-\frac12 e^x+\left(\frac{3}{16}+\frac14 t\right)e^{3x}$.
+
+**c)** $y=e^x(1+2x)+e^{3x}(\cos2x-\sin2x)$.
+
+**d)** $y=e^{3x}\left(\frac{1}{52}\cos2x+\frac{1}{78}\sin2x\right)-e^{-3x}\left(\frac{1}{52}\cos2x+\frac{11}{156}\sin2x\right)$.
+
+**e)** $y=\frac{1}{2\cdot2^3}(\sin2x-2x\cos2x)$ (a 8.4.b\*) alapján).
+
+**f)** $y=\frac{5490}{2401}e^{5x}+e^{-2x}\left(-\frac{1}{21}x^3-\frac{2}{98}x^2-\frac{2}{343}x+\frac{11317}{2401}\right)$ (a 7.5.(\*) bontás szerint).
+</details>
+
 **9.2. a)** $y^{(3)}(x)+y'(x)=1,\quad y(\pi)=2,\ y'(\pi)=0,\ y''(\pi)=\pi,$
 **b)** $y^{(3)}(x)-y''(x)=-6x,\quad y(1)=7,\ y'(1)=10,\ y''(1)=12.$
 
@@ -1408,6 +1470,14 @@ Laplace-transzformációval oldjuk meg az alábbi lineáris differenciálegyenle
 <summary><strong>Útmutatás</strong></summary>
 
 Ha a K.É.P. nem az $x_0=0$ pontban van, akkor a függvényt vízszintesen eltolva alkalmazzuk az Eltolási tételt: $\mathcal L(f(t-b))=e^{-bs}F(s)$.
+</details>
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** A $z(x):=y(x+\pi)$ eltolt ismeretlennel ($z(0)=2,z'(0)=0,z''(0)=\pi$): $z(x)=2+\pi-\sin x-\pi\cos x+x$, így $y(x)=z(x-\pi)=x+2+\sin x+\pi\cos x$.
+
+**b)** A $z(x):=y(x+1)$ eltolttal: $z(x)=x^3+6x^2+10x+7$, így $y(x)=z(x-1)=x^3+3x^2+x+2$.
 </details>
 
 **9.3. a)** $y''(x)-y(x)=\dfrac{1}{1+e^x},\quad y(0)=y'(0)=0,$
@@ -1421,6 +1491,18 @@ Ha a K.É.P. nem az $x_0=0$ pontban van, akkor a függvényt vízszintesen eltol
 Ha az egyenlet jobb oldalán álló $f(x)$-nek nincs Laplace-transzformáltja, az $F(s)=\mathcal L(f)$ rövidítéssel dolgozunk, majd a Konvolúció-tétellel: $\mathcal L^{-1}(F\cdot G)=\mathcal L^{-1}(F)*\mathcal L^{-1}(G)$.
 </details>
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+**a)** $Y=\frac{1}{s^2-1}F(s)$, konvolúcióval $y(x)=\operatorname{sh}x*\frac{1}{1+e^x}=\frac12\left(e^x\ln\frac{1+e^{-x}}{2}-e^{-x}\ln\frac{e^x+1}{2}+e^x-1\right)$.
+
+**b)** $y(x)=x*\arctan x=\frac12(x^2-1)\arctan x+\frac12 x-\frac12 x\ln(x^2+1)$.
+
+**c)** $y(x)=\operatorname{sh}x*\operatorname{th}x=\cosh x\left(\ln\frac{1+e^x}{1-e^x}-\frac\pi2\right)-\sinh x$.
+
+**d\*)** $Y=\frac{1}{(s-1)^2}F(s)$, $y(x)=xe^x*(1-e^{-x^2})$. Mivel $\int e^{-t^2-t}\,dt$ (Liouville) nem elemi, az `erf`-fel: $y(x)=1+xe^x-\frac12 e^x-\frac12 e^{-x^2}-\left(\frac12 e^x+xe^x\right)\cdot\frac{\sqrt\pi e^{1/4}}{2}\left(\operatorname{erf}(x+\tfrac12)-\operatorname{erf}(\tfrac12)\right)$.
+</details>
+
 **9.4.** Laplace-transzformációval oldjuk meg az alábbi lineáris differenciálegyenlet-rendszereket:
 
 **a)** $\begin{cases}x'(t)=7x(t)+9y(t) & x(0)=8\\ y'(t)=x(t)-y(t) & y(0)=2\end{cases},$
@@ -1431,6 +1513,20 @@ Ha az egyenlet jobb oldalán álló $f(x)$-nek nincs Laplace-transzformáltja, a
 
 **d)** $\begin{cases}x'(t)=y(t)+1 & x(0)=0\\ y'(t)=z(t)+2 & y(0)=0\\ z'(t)=x(t)+3 & z(0)=0\end{cases}.$
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+Az $X=\mathcal L(x),Y=\mathcal L(y),\dots$ jelölésekkel lineáris algebrai rendszert (akár Cramer-szabállyal) oldunk meg, majd inverz:
+
+**a)** $x(t)=9e^{8t}-e^{-2t}$, $\ y(t)=e^{8t}+e^{-2t}$.
+
+**b)** $x(t)=\frac29 e^{3t}+\frac13 te^{3t}-\frac29$, $\ y(t)=\frac13 te^{3t}-\frac19 e^{3t}+\frac19$.
+
+**c)** $x(t)=2te^t-e^{-4t}+2te^{-4t}$, $\ y(t)=3e^t-12te^t-e^{-4t}-2te^{-4t}$.
+
+**d)** $x(t)=e^{-t/2}\!\left(\cos\sqrt{\tfrac34}t-\tfrac12\sqrt{\tfrac43}\sin\sqrt{\tfrac34}t\right)+2e^t-3$, $\ y(t)=-e^{-t/2}\!\left(\cos\sqrt{\tfrac34}t+\tfrac{\sqrt3}{3}\sin\sqrt{\tfrac34}t\right)+2e^t-1$, $\ z(t)=\sqrt{\tfrac43}e^{-t/2}\sin\sqrt{\tfrac34}t+2e^t-2$.
+</details>
+
 #### Integro-differenciálegyenletek és -rendszerek
 
 **9.5.** Laplace-transzformációval oldjuk meg az alábbi integro-differenciálegyenleteket és -rendszereket:
@@ -1440,6 +1536,18 @@ Ha az egyenlet jobb oldalán álló $f(x)$-nek nincs Laplace-transzformáltja, a
 **b)** $y'(x)+2y(x)+\displaystyle\int_0^x y(t)\,dt=\sin(x),\quad y(0)=1,$
 
 **c)** $\begin{cases}y_1(x)=2-\displaystyle\int_0^x (x-t)\cdot y_1(t)\,dt-4\int_0^x y_2(t)\,dt\\ y_2(x)=1-\displaystyle\int_0^x y_1(t)\,dt-\int_0^x (x-t)\cdot y_2(t)\,dt\end{cases}.$
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+A konvolúciós integrálok $\mathcal L$-transzformáltja $\frac1s,\frac{1}{s^2}$ stb. tényezőkkel jelenik meg:
+
+**a)** $Y=\frac{1}{1+s^2}+\frac{1}{s-1}Y\Rightarrow y(x)=\frac15 e^{2x}-\frac15\cos x+\frac35\sin x$.
+
+**b)** $y(x)=e^{-x}-\frac32 xe^{-x}+\frac12\sin x$.
+
+**c)** $y_1(x)=2e^{-x}(1-x)$, $\ y_2(x)=e^{-x}(1-x)$.
+</details>
 
 #### Alkalmazások
 
@@ -1461,12 +1569,32 @@ Ha az egyenlet jobb oldalán álló $f(x)$-nek nincs Laplace-transzformáltja, a
 A rezgőkörre $L\cdot i''(t)+R\cdot i'(t)+\frac1C\cdot i(t)=u'(t)$.
 </details>
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+Az egyenlet $1\cdot i''+3i'+\frac{1}{0{,}001}i=u'$.
+
+**a)** $u=u_0$ állandó, $u'=0$: $i(0)=i'(0)=0$ esetén $i(t)\equiv 0$; általános kezdetiértékkel $i(t)=i_0 T e^{-\frac32 t}\sin\!\left(\frac{\sqrt{3991}}{2}t+\delta\right)$ — *csillapodó* szinuszhullám.
+
+**b)** $u=\sin(10t)$: $i(t)\approx 0{,}0111\sin(10t+1{,}5375)-0{,}0111\,e^{-\frac32 t}\sin(31{,}5872t+1{,}5128)$ — *beálló* szinuszhullám (a tranziens $e^{-3t/2}\to 0$).
+
+**c\*)** A gerjesztő $\omega_g$ frekvenciától függően a beálló amplitúdó $\frac{\omega_g}{\sqrt{\omega_g^4-1991\omega_g^2+10^6}}$.
+
+**d\*\*)** Általánosan $R,L,C$-re az állandósult áram amplitúdója $A(\omega_g)=\dfrac{U_0}{\sqrt{R^2+\left(L\omega_g-\frac{1}{C\omega_g}\right)^2}}$, ami pontosan akkor *maximális* (rezonancia), ha $\omega_g=\frac{1}{\sqrt{LC}}$, ekkor $A=\frac{U_0}{R}$ és nincs fáziseltolódás.
+</details>
+
 **9.7.** Sűrű anyagban lefelé süllyedő test sebessége $m\cdot v'(t)=mg-k\cdot v(t),\ v(0)=v_0$, ahol $g$ a gravitációs állandó, $m,k,v_0\in\mathbb{R}^+$. Keresendő $v(t)$ és a „végleges" sebesség, $\displaystyle\lim_{t\to\infty}v(t)$.
 
 <details>
 <summary><strong>Útmutatás</strong></summary>
 
 Ha csak a $\lim_{t\to\infty}v(t)$ érdekel: $\lim_{t\to\infty}f(t)=\lim_{s\to 0}s\cdot F(s)$, ahol $F=\mathcal L(f)$.
+</details>
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+$V(s)=\frac{mv_0-\frac gk m^2}{k+ms}+\frac{gm}{ks}$, így $v(t)=\frac{-1}{km}e^{-\frac km t}(gm^2-kmv_0)+\frac{gm}{k}$, és a „végleges" sebesség $\lim_{t\to\infty}v(t)=\frac{gm}{k}$ (a végértéktétellel is: $\lim_{s\to0}sV(s)=\frac{gm}{k}$).
 </details>
 
 **9.8.** Egy ideális, $k$ rugóállandójú, súlytalan rugó végén $m$ állandó tömegű test függ, a rugót $s_0$ hosszan megnyújtjuk / összenyomjuk ($s_0>0$ vagy $s_0<0$), ezen felül a rugó végét időben változó $F_K(t)$ kényszererővel terheljük. Írjuk le a rugó végének $s(t)$ kitérési függvényét, ha
@@ -1481,6 +1609,18 @@ Ha csak a $\lim_{t\to\infty}v(t)$ érdekel: $\lim_{t\to\infty}f(t)=\lim_{s\to 0}
 <summary><strong>Útmutatás</strong></summary>
 
 Alkalmazzuk az $F_{rugó}=-k\cdot s$ és $F_{össz}=m\cdot a=m\cdot s''=F_{rugó}+F_K$ összefüggéseket.
+</details>
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+$m s''=-ks+F_K$, $\omega_R=\sqrt{\frac km}$ a saját frekvencia.
+
+**a)** $F_K=0$: $s(t)=s_0\cos(\omega_R t)+\frac{s_1}{\omega_R}\sin(\omega_R t)=\sqrt{s_0^2+\frac{s_1^2}{\omega_R^2}}\sin\!\left(\omega_R t+\operatorname{arctg}\frac{s_0\omega_R}{s_1}\right)$; ha $s_1=0$: $s(t)=s_0\cos(\omega_R t)$.
+
+**b)** $F_K=mB\sin(\omega_K t),\ \omega_K\ne\omega_R$: $s(t)=A_2\sin(\omega_R t+\delta_2)+\frac{B}{\omega_K^2-\omega_R^2}\left(\frac{\omega_K}{\omega_R}\sin\omega_R t-\sin\omega_K t\right)$. (Ha $\omega_K\to\omega_R$, az amplitúdó nagyon nagy lehet.)
+
+**c)** $\omega_K=\omega_R$ (rezonancia): $s(t)=A_3\sin(\omega_R t+\delta_3)-\frac{B}{2\omega_R}t\cos(\omega_R t)$ — az amplitúdó $t\to\infty$ esetén $+\infty$-be tart.
 </details>
 
 ## 10. fejezet

@@ -202,6 +202,28 @@ function rehypeCallouts({ qed, source }: { qed: boolean; source: string }) {
   };
 }
 
+/**
+ * Tag *short* emphasis as concept terms (`.concept`) so only those get the
+ * bold+colour highlight. Long italic runs — e.g. whole theorem statements,
+ * which Szalkai/Győri italicise entirely — stay plain italic. Threshold is on
+ * the emphasised text length (math annotations inflate statement length, which
+ * is what we want: statements with math stay un-highlighted).
+ */
+function rehypeConceptEm() {
+  const visit = (node: any) => {
+    if (node?.type === 'element' && node.tagName === 'em') {
+      const txt = hastText(node).trim();
+      if (txt.length > 0 && txt.length <= 50) {
+        node.properties = node.properties || {};
+        const cls = node.properties.className || [];
+        node.properties.className = [...(Array.isArray(cls) ? cls : [cls]), 'concept'];
+      }
+    }
+    (node?.children || []).forEach(visit);
+  };
+  return (tree: any) => visit(tree);
+}
+
 /** Copy-to-clipboard button for a callout box's LaTeX/markdown source. */
 function CopyButton({ tex }: { tex: string }) {
   const [done, setDone] = useState(false);
@@ -344,7 +366,7 @@ function ChapterView() {
       <Link to={`/calc/${book.id}`} className="ila__back">← {book.title}</Link>
       <p className="ila__kicker">{book.title} · {c.num}. fejezet</p>
       <h1 className="ila__title">{c.title || `${c.num}. fejezet`}</h1>
-      <MarkdownView className="calc-prose" markdown={c.body} components={components} rehypePlugins={[[rehypeCallouts, { qed, source }]]} />
+      <MarkdownView className="calc-prose" markdown={c.body} components={components} rehypePlugins={[[rehypeCallouts, { qed, source }], rehypeConceptEm]} />
       <nav className="calc-chnav">
         {prev
           ? <Link to={`/calc/${book.id}/${prev.num}`} className="ila__back">← {prev.num}. {prev.title}</Link>
