@@ -1,8 +1,9 @@
 /** Calculus books — raw markdown with live (computed) figures swapped in. */
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Link, Route, Routes, useParams } from 'react-router-dom';
 import type { Components } from 'react-markdown';
 import { MarkdownView } from '../../shared/ui/MarkdownView';
+import { normalizeMath } from '../../shared/ui/normalizeMath';
 import '../../pages/home.css';
 import '../ila/ila.css';
 
@@ -10,7 +11,7 @@ const CalcFigure = lazy(() => import('./figures'));
 
 const RAW = import.meta.glob('./content/*.md', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 
-interface Chapter { num: number; title: string; sections: string[]; body: string; footnotes: string[]; }
+interface Chapter { num: number; title: string; sections: string[]; body: string; }
 interface Book { id: string; title: string; author: string; blurb: string; chapters: Chapter[]; }
 
 /**
@@ -24,7 +25,7 @@ function splitChapters(md: string): Chapter[] {
   const lines = md.split('\n');
   const starts: number[] = [];
   lines.forEach((l, i) => { if (FEJEZET.test(l)) starts.push(i); });
-  if (starts.length === 0) return [{ num: 1, title: '', sections: [], body: md, footnotes: [] }];
+  if (starts.length === 0) return [{ num: 1, title: '', sections: [], body: prepareFootnotes(md) }];
   return starts.map((start, k) => {
     const end = k + 1 < starts.length ? starts[k + 1] : lines.length;
     const num = parseInt(lines[start].match(FEJEZET)![1], 10);
@@ -36,23 +37,15 @@ function splitChapters(md: string): Chapter[] {
       if (h) { title = h[1].trim(); bodyStart = j + 1; }
       break;
     }
-    // Clean OCR page-break artifacts: drop standalone `---` rules, and lift
-    // page-bottom footnote *definitions* (lines starting `$^{N)}$ …` or a
-    // unicode-superscript marker like `⁶⁾ …`) to the end of the chapter. The
-    // in-text footnote reference marks are left untouched.
-    const footnotes: string[] = [];
-    const kept: string[] = [];
-    const FN = /^(?:\$\^\{?\d+\)\}?\$|<sup>\d+\)<\/sup>|[⁰-⁹¹²³]+[⁾)])\s/;
-    for (const l of lines.slice(bodyStart, end)) {
-      if (/^-{3,}\s*$/.test(l)) continue;
-      if (FN.test(l.trim())) { footnotes.push(l.trim()); continue; }
-      kept.push(l);
-    }
-    const body = kept.join('\n').trim();
+    // Drop standalone `---` page-break rules; GFM footnotes (incl. the manual
+    // ones, normalised by prepareFootnotes) are gathered to the chapter end by
+    // remark-gfm in the single render.
+    const kept = lines.slice(bodyStart, end).filter((l) => !/^-{3,}\s*$/.test(l));
+    const body = prepareFootnotes(kept.join('\n').trim());
     const sections = body.split('\n')
       .map((l) => l.match(/^##\s+([\d.]+\.?\s*.+)$/)?.[1]?.trim())
       .filter((s): s is string => !!s);
-    return { num, title, sections, body, footnotes };
+    return { num, title, sections, body };
   });
 }
 
@@ -141,33 +134,104 @@ const THM_KIND: Record<string, string> = {
   'Bizonyítás': 'proof', 'Jelölés': 'note', 'Összefoglalás': 'note',
 };
 
-/** A markdown line that opens a numbered item, e.g. `**0.26. Tétel** …`. */
-const LEAD = /^\*\*\s*\d+(?:\.\d+)*\.?\s*([A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű]+)/;
-function leadKind(line: string): string | null {
-  const m = LEAD.exec(line);
-  return m && THM_KIND[m[1]] ? THM_KIND[m[1]] : null;
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/** The callout modifier for a numbered-item / proof lead text like "0.26. Tétel". */
+function leadKindFromText(txt: string): string | null {
+  const m = /^\s*\d+(?:\.\d+)*\.?\s*([A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű]+)/.exec(txt);
+  if (m && THM_KIND[m[1]]) return THM_KIND[m[1]];
+  if (/^\s*Bizonyítás/.test(txt)) return 'proof';
+  return null;
+}
+/** Concatenate the text of a hast node tree. */
+function hastText(n: any): string {
+  if (n.type === 'text') return n.value || '';
+  return (n.children || []).map(hastText).join('');
+}
+/** A hast `<p>` whose first element child is a `<strong>` lead → its kind. */
+function nodeLeadKind(node: any): string | null {
+  if (!node || node.type !== 'element' || node.tagName !== 'p') return null;
+  const ch = node.children || [];
+  let i = 0;
+  while (i < ch.length && ch[i].type === 'text' && !ch[i].value.trim()) i++;
+  const first = ch[i];
+  if (!first || first.type !== 'element' || first.tagName !== 'strong') return null;
+  return leadKindFromText(hastText(first));
 }
 
-interface Seg { kind: string | null; md: string; }
 /**
- * Group a chapter body into segments. A theorem/definition block runs from its
- * `**N.N. Type**` lead until the next lead, the next heading, or a □/■ QED mark
- * (the OCR dropped all QED glyphs, so in practice it's the next lead/heading —
- * which is exactly where the book's □ would sit). Non-lead runs are plain.
+ * rehype plugin: wrap each theorem/definition/proof item in a `.calc-thm` box.
+ * An item runs from its `**N.N. Type**` / `**Bizonyítás**` lead until the next
+ * lead, heading, or a footnotes `<section>`. Proofs are their own boxes. When
+ * `qed`, a □ is appended at the box end unless the next box is its proof.
  */
-function segmentChapter(body: string): Seg[] {
-  const segs: Seg[] = [];
-  let cur: string[] = [];
-  let kind: string | null = null;
-  const flush = () => { const md = cur.join('\n').trim(); if (md) segs.push({ kind, md }); cur = []; };
-  for (const l of body.split('\n')) {
-    const k = leadKind(l);
-    if (k) { flush(); kind = k; cur = [l]; }
-    else if (/^#{1,3}\s/.test(l)) { flush(); kind = null; cur = [l]; }
-    else { cur.push(l); if (kind && /[□■]/.test(l)) { flush(); kind = null; } }
-  }
-  flush();
-  return segs;
+function rehypeCallouts(qed: boolean, source: string) {
+  return (tree: any) => {
+    const items: { kind: string | null; nodes: any[] }[] = [];
+    let cur: { kind: string | null; nodes: any[] } | null = null;
+    for (const node of tree.children || []) {
+      const k = nodeLeadKind(node);
+      const isHeading = node.type === 'element' && /^h[1-6]$/.test(node.tagName);
+      const isSection = node.type === 'element' && node.tagName === 'section';
+      if (k) { cur = { kind: k, nodes: [node] }; items.push(cur); }
+      else if (isHeading || isSection) { cur = { kind: null, nodes: [node] }; items.push(cur); }
+      else { if (!cur) { cur = { kind: null, nodes: [] }; items.push(cur); } cur.nodes.push(node); }
+    }
+    const out: any[] = [];
+    items.forEach((it, idx) => {
+      if (it.kind === null) { out.push(...it.nodes); return; }
+      const start = it.nodes[0]?.position?.start?.offset ?? 0;
+      const end = items[idx + 1]?.nodes[0]?.position?.start?.offset ?? source.length;
+      const tex = source.slice(start, end).replace(/^\[\^[^\]]+\]:.*$/gm, '').trim(); // drop footnote defs
+      const children: any[] = [
+        { type: 'element', tagName: 'calccopy', properties: { tex }, children: [] },
+        ...it.nodes,
+      ];
+      const nextIsProof = items[idx + 1]?.kind === 'proof';
+      if (qed && !nextIsProof) children.push({ type: 'element', tagName: 'span', properties: { className: ['calc-qed'] }, children: [{ type: 'text', value: '□' }] });
+      out.push({ type: 'element', tagName: 'div', properties: { className: ['calc-thm', `thm--${it.kind}`] }, children });
+    });
+    tree.children = out;
+  };
+}
+
+/** Copy-to-clipboard button for a callout box's LaTeX/markdown source. */
+function CopyButton({ tex }: { tex: string }) {
+  const [done, setDone] = useState(false);
+  return (
+    <button type="button" className="calc-copy" title="LaTeX forrás másolása"
+      onClick={() => { navigator.clipboard?.writeText(tex).then(() => { setDone(true); setTimeout(() => setDone(false), 1200); }, () => {}); }}>
+      {done ? '✓ másolva' : '⧉ LaTeX'}
+    </button>
+  );
+}
+
+/**
+ * Normalise footnotes per chapter: convert the manual forms (`<sup>N)</sup>`,
+ * `$^{N)}$`) to GFM `[^id]`, then renumber every footnote uniquely (the book
+ * reuses ids like `[^1]` across sections, which collides in one render). Each
+ * reference is paired with the next definition of the same id.
+ */
+function prepareFootnotes(body: string): string {
+  const b = body
+    .replace(/^<sup>(\d+)\)<\/sup>[ \t]+/gm, '[^sup$1]: ')
+    .replace(/<sup>(\d+)\)<\/sup>/g, '[^sup$1]')
+    .replace(/^\$\^\{(\d+)\)\}\$[ \t]+/gm, '[^pp$1]: ')
+    .replace(/\$\^\{(\d+)\)\}\$/g, '[^pp$1]');
+  const toks: { start: number; len: number; id: string; isDef: boolean }[] = [];
+  const re = /\[\^([^\]\s]+)\](:?)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(b))) toks.push({ start: m.index, len: m[0].length, id: m[1], isDef: m[2] === ':' });
+  const assign: (number | null)[] = new Array(toks.length).fill(null);
+  const pend = new Map<string, number[]>();
+  let n = 0;
+  toks.forEach((t, i) => {
+    if (t.isDef) { n++; assign[i] = n; (pend.get(t.id) || []).forEach((j) => { assign[j] = n; }); pend.set(t.id, []); }
+    else { const arr = pend.get(t.id) || []; arr.push(i); pend.set(t.id, arr); }
+  });
+  toks.forEach((_, i) => { if (assign[i] == null) { n++; assign[i] = n; } });
+  let out = '', last = 0;
+  toks.forEach((t, i) => { out += b.slice(last, t.start) + `[^${assign[i]}]` + (t.isDef ? ':' : ''); last = t.start + t.len; });
+  return out + b.slice(last);
 }
 
 /** react-markdown components for a chapter: live figures. */
@@ -260,28 +324,15 @@ function ChapterView() {
   const c = book.chapters[idx];
   const prev = book.chapters[idx - 1];
   const next = book.chapters[idx + 1];
-  const components = bookComponents(book.id);
   const qed = book.id === 'anal-tk1b'; // Szalkai marks every item's end with □
+  const source = normalizeMath(c.body); // same string react-markdown parses (for box-source offsets)
+  const components = { ...bookComponents(book.id), calccopy: ({ node }: any) => <CopyButton tex={String(node?.properties?.tex ?? '')} /> } as Components;
   return (
     <div className="ila">
       <Link to={`/calc/${book.id}`} className="ila__back">← {book.title}</Link>
       <p className="ila__kicker">{book.title} · {c.num}. fejezet</p>
       <h1 className="ila__title">{c.title || `${c.num}. fejezet`}</h1>
-      {segmentChapter(c.body).map((s, i) => (
-        s.kind ? (
-          <div key={i} className={`calc-thm thm--${s.kind}`}>
-            <MarkdownView markdown={s.md} components={components} />
-            {qed && <span className="calc-qed">□</span>}
-          </div>
-        ) : (
-          <MarkdownView key={i} markdown={s.md} components={components} />
-        )
-      ))}
-      {c.footnotes.length > 0 && (
-        <div className="calc-footnotes">
-          <MarkdownView markdown={c.footnotes.join('\n\n')} components={components} />
-        </div>
-      )}
+      <MarkdownView markdown={c.body} components={components} rehypePlugins={[rehypeCallouts(qed, source)]} />
       <nav className="calc-chnav">
         {prev
           ? <Link to={`/calc/${book.id}/${prev.num}`} className="ila__back">← {prev.num}. {prev.title}</Link>

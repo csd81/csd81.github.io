@@ -181,11 +181,45 @@
 
 /* Theorem/definition callout that wraps a whole item (lead → next item) */
 .calc-thm {
+  position: relative;
   border-left: 3px solid var(--thm-c, #a78bfa);
   background: var(--thm-bg, rgba(167, 139, 250, 0.08));
   border-radius: 0 0.45rem 0.45rem 0;
   padding: 0.25rem 1rem 0.35rem;
   margin: 1.15rem 0;
 }
-.calc-thm > .prose-lesson > p:first-child > strong:first-child { color: var(--thm-c, #a78bfa); }
+.calc-thm > p:first-of-type > strong:first-child { color: var(--thm-c, #a78bfa); }
 .calc-qed { display: block; text-align: right; color: var(--thm-c, #a78bfa); font-size: 1.05rem; line-height: 1; margin-top: -0.2rem; }
+.calc-copy {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.4rem;
+  background: transparent;
+  border: 1px solid var(--thm-c, #a78bfa);
+  color: var(--thm-c, #a78bfa);
+  border-radius: 0.3rem;
+  font-size: 0.62rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.18rem 0.4rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.calc-thm:hover .calc-copy, .calc-copy:focus { opacity: 0.85; }
+
+/* GFM footnotes section (gathered at chapter end by remark-gfm) */
+.prose-lesson .footnotes {
+  margin-top: 2rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed #30363d;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+.prose-lesson .footnotes h2 {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.6;
+  margin: 0 0 0.4rem;
+}

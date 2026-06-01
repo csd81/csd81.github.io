@@ -1,5 +1,4 @@
-import ReactMarkdown from 'react-markdown';
-import type { Components } from 'react-markdown';
+import ReactMarkdown, { type Components, type Options } from 'react-markdown';
 import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
@@ -12,15 +11,17 @@ interface Props {
   className?: string;
   /** Extra react-markdown component overrides, merged over the code components. */
   components?: Components;
+  /** Extra rehype plugins, run after rehype-raw + KaTeX (e.g. callout boxes). */
+  rehypePlugins?: Options['rehypePlugins'];
 }
 
 /** Render lesson markdown with GFM tables, KaTeX math, and highlighted code. */
-export function MarkdownView({ markdown, className, components }: Props) {
+export function MarkdownView({ markdown, className, components, rehypePlugins }: Props) {
   return (
     <div className={`prose-lesson${className ? ` ${className}` : ''}`}>
       <ReactMarkdown
         remarkPlugins={[remarkMath, remarkGfm]}
-        rehypePlugins={[rehypeRaw, [rehypeKatex, { throwOnError: false, trust: true }]]}
+        rehypePlugins={[rehypeRaw, [rehypeKatex, { throwOnError: false, trust: true }], ...(rehypePlugins ?? [])]}
         components={components ? { ...markdownCodeComponents, ...components } : markdownCodeComponents}
       >
         {normalizeMath(markdown)}
