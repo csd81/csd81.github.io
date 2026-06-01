@@ -1640,6 +1640,20 @@ $m s''=-ks+F_K$, $\omega_R=\sqrt{\frac km}$ a saját frekvencia.
 Fourier-sor ($[-L,L]$ periódus): $\mathcal F(f)=\frac{a_0}2+\sum_{k\ge1}\left(a_k\cos\frac{k\pi x}{L}+b_k\sin\frac{k\pi x}{L}\right)$, ahol $a_k=\frac1L\int_{-L}^L f\cos\frac{k\pi x}{L}\,dx$, $b_k=\frac1L\int_{-L}^L f\sin\frac{k\pi x}{L}\,dx$. Lineáris transzformációkra: ha $g=\alpha f+\beta$, $h=f(\gamma x)$, akkor a Fourier-sor is egyszerűen adódik.
 </details>
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+A jelek (a páros jelek koszinuszos, a páratlanok szinuszos sorúak):
+
+$$\mathcal F(f_A)=\sum_{k=1}^\infty\frac{-4}{(2k-1)\pi}\sin((2k-1)x),\qquad \mathcal F(f_B)=\sum_{k=1}^\infty\frac{4(-1)^{k+1}}{\pi k}\sin(k\pi x),$$
+$$\mathcal F(f_E)=\frac12+\sum_{\ell=0}^\infty\frac{-4}{(2\ell+1)^2\pi^2}\cos((2\ell+1)x),\qquad \mathcal F(f_G)=3-6\mathcal F(f_E)(x\pi)=\sum_{\ell=0}^\infty\frac{24}{(2\ell+1)^2\pi^2}\cos((2\ell+1)\pi x),$$
+$$\mathcal F(f_J)=\mathcal F(f_A)\!\left(x-\tfrac\pi2\right)=\sum_{\ell=0}^\infty\frac{-4(-1)^\ell}{(2\ell+1)\pi}\cos((2\ell+1)x),\qquad \mathcal F(f_L)=\frac{4}{\pi^2k^2}\cdot(1,2,1,0,1,2,1,0,\dots).$$
+
+A $C),F),H),I),K)$ jelekre a megfelelő $L$ periódussal közvetlenül integrálva kapjuk az $a_k,b_k$ együtthatókat (pl. $f_C$: $\mathcal F\approx 1+9{,}8767\cos(0{,}6981x)-0{,}3219\cos(1{,}3962x)+\dots$; $f_D$: $\sum\frac{12}{2\ell\pi}\sin(2\ell\pi x)$).
+
+**b)** $f=f_{0,1}$ a 10.2.-ben, és $g=-\frac16 f_D+\frac12$, így $\mathcal F(g)=\frac12-\sum_{\ell=1}^\infty\frac{1}{\ell\pi}\sin(2\ell\pi x)$.
+</details>
+
 **10.2.** Az alábbi képletekkel megadott periodikus függvényeket rajzolja fel és számítsa ki Fourier-sorukat:
 
 $$f_0(x)=1,\quad x\in\mathbb{R};\qquad f_1(x)=x,\quad x\in[-\pi,\pi];$$
@@ -1652,12 +1666,37 @@ $$f_{u,v}(x)=\begin{cases}u & \text{ha}\ -L\le x<0\\ v & \text{ha}\ 0\le x<L\end
 
 $$f_{11}(x)=\begin{cases}x & \text{ha}\ -1\le x<0\\ 2x & \text{ha}\ 0\le x<1\end{cases},\qquad f_{12}(x)=\begin{cases}-1 & \text{ha}\ -2\le x<-1\\ 0 & \text{ha}\ -1\le x<1\\ 3 & \text{ha}\ 1\le x<2\end{cases}.$$
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+$$\mathcal F(1)=1,\qquad \mathcal F(f_1)=\sum_{k=1}^\infty\frac{2(-1)^{k-1}}{k}\sin(kx),\qquad \mathcal F(f_2)=\frac{\pi^2}{3}+\sum_{k=1}^\infty\frac{4(-1)^k}{k^2}\cos(kx),$$
+$$\mathcal F(f_3)=\left(\frac{5\pi^2}{3}+7\right)+\sum_{k=1}^\infty\frac{20(-1)^k}{k^2}\cos(kx)+\sum_{k=1}^\infty\frac{-8(-1)^{k-1}}{k}\sin(kx),$$
+$$\mathcal F(f_4)=\frac16\sin6+\sum_{k=1}^\infty\frac{-12(-1)^k\sin6}{k^2\pi^2-36}\cos\frac{k\pi x}{2},\qquad \mathcal F(f_5)=\frac2\pi-\frac4\pi\left(\frac{1}{1\cdot3}\cos2x+\frac{1}{3\cdot5}\cos4x+\dots\right),$$
+$$\mathcal F(f_6)=\frac{e^4-e^{-4}}{8}+\sum_{k=1}^\infty\frac{4(-1)^k(e^4-e^{-4})}{k^2\pi^2+16}\cos\frac{k\pi x}{2},\qquad \mathcal F(f_7)=\frac12+\sum_{k=1}^\infty\frac{-2}{(2k-1)\pi}\sin((2k-1)x),$$
+$$\mathcal F(f_8)=-\mathcal F(f_A),\qquad \mathcal F(f_{u,v})=\frac{u+v}{2}+\sum_{k=1}^\infty\frac{2(v-u)}{k\pi}\sin\frac{k\pi x}{L},$$
+$$\mathcal F(f_{10})=\frac\pi4+\sum_{k=1}^\infty\frac{-2}{(2k-1)^2\pi}\cos((2k-1)x)+\sum_{k=1}^\infty\frac{(-1)^{k+1}}{k}\sin(kx),$$
+$$\mathcal F(f_{11})=\frac14+\sum_{\ell=0}^\infty\frac{-2}{(2\ell+1)^2\pi^2}\cos((2\ell+1)\pi x)+\sum_{k=1}^\infty\frac{-3(-1)^k}{k\pi}\sin(k\pi x),$$
+$$\mathcal F(f_{12})=\frac12+\sum_{\ell=0}^\infty\frac{-2(-1)^\ell}{(2\ell+1)\pi}\cos\frac{(2\ell+1)\pi}{2}x+\sum_{k=1}^\infty\frac{4\!\left(\cos\frac{k\pi}{2}-(-1)^k\right)}{k\pi}\sin\frac{k\pi}{2}x.$$
+</details>
+
 **10.3.** Terjessze ki az alábbi függvényeket **a)** párosan ($y$ tengelyre szimmetrikusan), **b)** páratlanul (origóra szimmetrikusan), majd számítsa ki Fourier-sorukat mindkét esetben:
 
 $$g_1(x)=x,\ x\in[0,2];\qquad g_2(x)=x^2,\ x\in[0,3];\qquad g_3(x)=x(3-x),\ x\in[0,3];$$
 $$g_4(x)=|x-1|,\ x\in[0,2];\qquad g_4(x)=\sin(x),\ x\in[0,\pi];\qquad g_5(x)=\cos(x),\ x\in[0,\pi].$$
 
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+A *páros* kiterjesztés tisztán koszinuszos ($b_k=0$), a *páratlan* tisztán szinuszos ($a_k=0$) sort ad; a $g_i$-ket a $[0,L]$-en integrálva, majd a megfelelő szimmetriával folytatva a 10.2. mintájára kapjuk az együtthatókat. (Ezeket a feladatokat a könyv önálló gyakorlásra hagyja.)
+</details>
+
 **10.4.** Az **10.1.a)** feladat *B)* és *J)* függvényeit hogyan közelíti a Fourier-összegének első négy tagja? Néhány pontban számítsa ki az eltérést, esetleg készítsen vázlatot.
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+$f_B(x)=2x\approx\frac4\pi\sin(\pi x)-\frac{4}{2\pi}\sin(2\pi x)+\frac{4}{3\pi}\sin(3\pi x)-\frac{4}{4\pi}\sin(4\pi x)$, részösszegek $s_1$ (fekete), $s_2$ (zöld), $s_3$ (piros), $s_4$ (kék). *(11. ábra.)* A periódus végpontjai felé az eltérés nagy (Gibbs-jelenség), de minden rögzített belső intervallumon a hiba (pl. $\delta=10\%$ alatt) egyre kisebb, ha több tagot veszünk. Hasonlóan $f_J(x)\approx\frac4\pi\cos x-\frac{4}{3\pi}\cos3x+\frac{4}{5\pi}\cos5x-\dots$.
+</details>
 
 #### Alkalmazások
 
@@ -1669,4 +1708,13 @@ $$g_4(x)=|x-1|,\ x\in[0,2];\qquad g_4(x)=\sin(x),\ x\in[0,\pi];\qquad g_5(x)=\co
 <summary><strong>Útmutatás</strong></summary>
 
 R-L-C áramkörökre: soros kapcsolásnál $i_{fo}=i_1=\dots=i_n$, $u_{fo}=u_1+\dots+u_n$; továbbá $u_R=R\cdot i$, $u_L=L\cdot\frac{d}{dt}i$, $u_C=\frac1C\int_0^t i\,d\tau$. Mivel a bemeneti egyenlet $|\sin(100\pi t)|$ miatt közvetlenül nem számolható, helyette Fourier-sorát véve tagonként oldjuk meg és összegezzük.
+</details>
+
+<details>
+<summary><strong>Megoldás</strong></summary>
+
+A bemenet Fourier-sora ($L=\frac{1}{200}$, páros függvény):
+$$U_{be}(t)=240\,\mathcal F(|\sin(100\pi t)|)=\frac{480}{\pi}-\frac{960}{\pi}\left(\frac{1}{1\cdot3}\cos(200\pi t)+\frac{1}{3\cdot5}\cos(400\pi t)+\dots\right).$$
+A bemeneti körre $1\cdot i'(t)+R\cdot i(t)=U_{be}(t),\ i(0)=0$, a kimenet $U_{ki}=R\cdot i$. Tagonként megoldva (a tranziens $e^{-Rt}\to0$): az $u_k=v_k\cos(\omega_k t)$ bemenetre $u_{ki,k}=\frac{v_k}{\sqrt{1+k^2\pi^2/25}}\cos\!\left(\omega_k t-\operatorname{arctg}\frac{\omega_k}{R}\right)$. Az első három tag:
+$$U_{ki}(t)\approx 152{,}7887-86{,}2340\cos(628{,}3185t-0{,}5610)-17{,}2346\cos(1256{,}6371t-0{,}8986).$$
 </details>
