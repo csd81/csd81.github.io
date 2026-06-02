@@ -3368,4 +3368,67 @@ a_{1k}c_1 &{}+{}& a_{2k}c_2 &{}+{}& \ldots &{}+{}& a_{rk}c_r &{}={}& 0
 \end{alignedat}$$
 egyenletrendszernek a $c_1 = c_2 = \ldots = c_k = 0$ az egyetlen megoldása. Ez viszont a 3.6. tétel szerint nem teljesülhet, mivel a fenti homogén
 
-<!-- OCR: through PDF p.125 -->
+egyenletrendszer egyenleteinek száma kisebb ismeretlenjei számánál ($k < r$). Ez az ellentmondás bizonyítja, hogy indirekt feltevésünk helytelen volt, tehát a két bázis azonos számú vektorból áll. $\square$
+
+E tétel értelmet ad a következő definíciónak:
+
+**3.30. definíció (Dimenzió).** *Ha a $\mathcal{V}$ vektortérnek van véges bázisa, akkor dimenzióján egy bázisának elemszámát értjük, melyet $\dim \mathcal{V}$ jelöl.*
+
+▶ Az $\mathbb{R}^n$ standard bázisa épp $n$ vektorból áll, így $\dim \mathbb{R}^n = n$.
+▶ A zérustér bázisa az üreshalmaz, ami 0 darab elemből áll, így e teret nulldimenziósnak tekintjük.
+▶ Ha a háromdimenziós térben tekintünk egy origón átmenő síkot, látjuk, hogy bármely két független vektora kifeszíti, azaz minden bázisa kételemű. E sík e definíció szerint is 2-dimenziós.
+▶ Hasonlóan egy origón átmenő egyenest minden nemnulla vektora, mint egyelemű bázisa, kifeszíti. Ez a térnek 1-dimenziós altere.
+
+Az $m \times n$-es $\mathbf{A}$ mátrix *transzponáltján* az $\mathbf{A}^\mathsf{T}$-vel jelölt $n \times m$-es mátrixot értjük, amelyet az $\mathbf{A}$ sorainak és oszlopainak felcserélésével kapunk. Azaz
+$$\mathbf{A}^\mathsf{T} = [a_{ij}]^\mathsf{T} := [a_{ji}].$$
+Például
+$$\begin{bmatrix} 1 \\ 2 \end{bmatrix}^\mathsf{T} = \begin{bmatrix} 1 & 2 \end{bmatrix}, \quad \begin{bmatrix} 0 & 1 \\ 2 & 3 \end{bmatrix}^\mathsf{T} = \begin{bmatrix} 0 & 2 \\ 1 & 3 \end{bmatrix}, \quad \begin{bmatrix} 0 & 1 & 2 \\ 3 & 4 & 5 \end{bmatrix}^\mathsf{T} = \begin{bmatrix} 0 & 3 \\ 1 & 4 \\ 2 & 5 \end{bmatrix}.$$
+
+Adott véges sok $\mathbb{R}^n$-beli vektor által kifeszített altér dimenzióját úgy határozhatjuk meg, hogy meghatározzuk a vektorokból képzett mátrix rangját. Igaz ugyanis a következő állítás:
+
+**3.31. állítás (Dimenzió = rang).** *Egy mátrix rangja, sorterének dimenziója és oszlopterének dimenziója megegyezik, azaz $\operatorname{r}(\mathbf{A}) = \dim(\mathcal{S}(\mathbf{A})) = \dim(\mathcal{O}(\mathbf{A}))$. Ebből következőleg $\operatorname{r}(\mathbf{A}) = \operatorname{r}(\mathbf{A}^\mathsf{T})$.*
+
+*Bizonyítás.* A mátrix rangja megegyezik a lépcsős alakjában lévő nemzérus sorainak számával. A 3.23. tétel szerint viszont e sorok lineárisan függetlenek és kifeszítik a sorteret, tehát bázist alkotnak, így számuk a sortér dimenzióját adja. Az oszloptérről láttuk, hogy a főelemeknek megfelelő oszlopok az eredeti mátrixban lineárisan függetlenek és kifeszítik az oszlopteret, tehát e tér dimenziója is a mátrix rangjával egyezik meg. Az utolsó állítás abból következik, hogy $\mathbf{A}$ sortere megegyezik $\mathbf{A}^\mathsf{T}$ oszlopterével. $\square$
+
+Egy $\mathbb{R}^n$-beli vektorokból álló vektorrendszer *rangján* a vektorokból képzett mátrix rangját, vagy ami ezzel egyenlő, az általuk kifeszített altér dimenzióját értjük. Egy $\mathbf{A}$ mátrix $\operatorname{null}(\mathbf{A})$-val jelölt *nullitásán* nullterének dimenzióját értjük, tehát $\operatorname{null}(\mathbf{A}) = \dim(\mathcal{N}(\mathbf{A}))$.
+
+**3.32. példa (Dimenzió kiszámítása).** *Határozzuk meg az $\mathbf{A}$ mátrix sorterének és nullterének dimenzióját!*
+$$\mathbf{A} = \begin{bmatrix} 3 & 3 & 3 & 3 & 3 \\ 3 & 4 & 5 & 4 & 3 \\ 3 & 2 & 1 & 2 & 3 \\ 3 & 3 & 3 & 3 & 3 \end{bmatrix}$$
+
+*Megoldás.* Az $\mathbf{A}$ redukált lépcsős alakja
+$$\operatorname{rref}(\mathbf{A}) = \begin{bmatrix} 1 & 0 & -1 & 0 & 1 \\ 0 & 1 & 2 & 1 & 0 \\ 0 & 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 & 0 \end{bmatrix}$$
+Innen leolvasható, hogy a mátrix rangja 2, így sorterének dimenziója is 2. A nulltér dimenziója megegyezik az egyenletrendszer megoldásterének dimenziójával, ami megegyezik a szabad változók számával, esetünkben ez 3. Vegyük észre, hogy a sortér és a nulltér dimenziójának összege megegyezik a változók számával, azaz a mátrix oszlopainak számával, jelen példában 5-tel. $\square$
+
+**3.33. tétel (Dimenziótétel (rang-nullitási tétel)).** *Bármely valós $m \times n$-es $\mathbf{A}$ mátrix esetén a sortér dimenziójának és a nulltér dimenziójának összege $n$. Képlettel:*
+$$\dim(\mathcal{S}(\mathbf{A})) + \dim(\mathcal{N}(\mathbf{A})) = n \qquad (\operatorname{r}(\mathbf{A}) + \operatorname{null}(\mathbf{A}) = n).$$
+
+*Bizonyítás.* A mátrix sorterének dimenziója megegyezik a mátrix rangjával, azaz az $[\mathbf{A}|\mathbf{0}]$ mátrixú egyenletrendszerben a kötött változók számával. Megmutatjuk, hogy a nulltér dimenziója megegyezik a szabad változók számával, így a két szám összege valóban $n$, ami bizonyítja az állítást (ld. még a 3.4. állítást).
+
+Elég tehát megmutatnunk, hogy egy homogén lineáris egyenletrendszer redukált lépcsős alakkal előállított megoldásában a szabad változók száma megegyezik a nulltérből kiválasztható bázis elemszámával. Először lássunk egy ilyen megoldást konkrétan. Például a 2.35. példabeli homogén lineáris egyenletrendszer megoldása
+$$\begin{bmatrix} x_1 \\ x_2 \\ x_3 \\ x_4 \\ x_5 \end{bmatrix} = \begin{bmatrix} -2s - \frac{3}{2}t - u \\ s \\ -\frac{1}{2}t \\ t \\ u \end{bmatrix} = s\begin{bmatrix} -2 \\ 1 \\ 0 \\ 0 \\ 0 \end{bmatrix} + t\begin{bmatrix} -\frac{3}{2} \\ 0 \\ -\frac{1}{2} \\ 1 \\ 0 \end{bmatrix} + u\begin{bmatrix} -1 \\ 0 \\ 0 \\ 0 \\ 1 \end{bmatrix},$$
+ahol $x_2 = s$, $x_4 = t$ és $x_5 = u$ a három szabad változó. A nullteret kifeszítő három vektor közül az elsőben $x_2 = 1$, de az összes többiben $x_2 = 0$, így az első vektor független a többitől. Hasonlóképp általában is igaz, hogy a redukált lépcsős alakból való származtatás következtében a nullteret kifeszítő minden megoldásvektorban az összes szabad változóhoz tartozó koordináta 0, azt az egyet kivéve, amelyikhez a vektor tartozik. Így viszont mindegyik vektor független a többitől, vagyis e vektorok függetlenek, és mivel kifeszítik a nullteret, számuk megadja a nulltér dimenzióját. $\square$
+
+### Mátrix kitüntetett alterei és a lineáris algebra alaptétele
+
+Definiálni fogjuk mátrix négy kitüntetett alterét és igazoljuk azok merőlegességét.
+
+**3.34. példa (Vektorokra merőleges altér).** *Határozzuk meg az összes olyan vektort $\mathbb{R}^4$-ben, mely merőleges a $\mathbf{v}_1 = (1, 0, 1, 2)$ és $\mathbf{v}_2 = (-1, 2, -2, 1)$ vektorok mindegyikére!*
+
+*Megoldás.* Olyan $\mathbf{x}$ vektort keresünk, melyre $\mathbf{v}_1 \cdot \mathbf{x} = 0$ és $\mathbf{v}_2 \cdot \mathbf{x} = 0$. Ezt koordinátákkal felírva egy két egyenletből álló egyenletrendszert kapunk, melynek együtthatómátrixa és annak lépcsős alakja:
+$$\begin{bmatrix} 1 & 0 & 1 & 2 \\ -1 & 2 & -2 & 1 \end{bmatrix} \Rightarrow \begin{bmatrix} 1 & 0 & 1 & 2 \\ 0 & 2 & -1 & 3 \end{bmatrix},$$
+amiből $\mathbf{x} = (-s - 2t, (s - 3t)/2, s, t)$, azaz
+$$\mathbf{x} = s\begin{bmatrix} -1 \\ 1/2 \\ 1 \\ 0 \end{bmatrix} + t\begin{bmatrix} -2 \\ -3/2 \\ 0 \\ 1 \end{bmatrix}.$$
+A megoldás tehát a sorvektorokból képzett mátrix nulltere. $\square$
+
+**3.35. állítás (A sortér és a nulltér merőlegessége).** *A valós $\mathbf{A}$ mátrix sorterének bármely $\mathbf{s}$ vektora és nullterének tetszőleges $\mathbf{x}$ vektora merőleges egymásra, azaz $\mathbf{s} \cdot \mathbf{x} = 0$.*
+
+*Bizonyítás.* Az $m \times n$-es $\mathbf{A}$ együtthatómátrixú homogén lineáris egyenletrendszer $i$-edik egyenletének alakja
+$$a_{i1}x_1 + a_{i2}x_2 + \cdots + a_{in}x_n = 0, \text{ azaz } \mathbf{a}_{i*} \cdot \mathbf{x} = 0.$$
+Eszerint a homogén lineáris egyenletrendszer minden megoldása merőleges az $\mathbf{A}$ mátrix minden sorvektorára. A sortér minden vektora az $\mathbf{A}$ sorvektorainak valamely $c_1, \ldots, c_m$ skalárokkal vett lineáris kombinációja. Ezt felhasználva
+$$\begin{aligned}
+\mathbf{s} \cdot \mathbf{x} &= (c_1\mathbf{a}_{1*} + c_2\mathbf{a}_{2*} + \cdots + c_m\mathbf{a}_{m*}) \cdot \mathbf{x} \\
+&= c_1\mathbf{a}_{1*} \cdot \mathbf{x} + c_2\mathbf{a}_{2*} \cdot \mathbf{x} + \cdots + c_m\mathbf{a}_{m*} \cdot \mathbf{x} \\
+&= c_1 0 + c_2 0 + \cdots + c_m 0 = 0. \qquad \square
+\end{aligned}$$
+
+<!-- OCR: through PDF p.128 -->
