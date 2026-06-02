@@ -104,18 +104,24 @@ export function rehypePracticeBoxes({ source }: { source: string }) {
       }
     }
   };
+  const isBreak = (n: any): boolean => {
+    if (n?.type !== 'element') return false;
+    const t = n.tagName;
+    return /^h[1-6]$/.test(t) || t === 'hr' || t === 'ol' || t === 'ul' || !!nodeLeadKind(n);
+  };
   return (tree: any) => {
     wrapMathDeep(tree);
+    const kids: any[] = tree.children || [];
     const out: any[] = [];
-    for (const node of tree.children || []) {
-      if (node.type !== 'element') { out.push(node); continue; }
+    let i = 0;
+    while (i < kids.length) {
+      const node = kids[i];
+      if (node.type !== 'element') { out.push(node); i++; continue; }
       const tag = node.tagName;
 
-      // Headings remain section titles (not boxed).
-      if (/^h[1-6]$/.test(tag) || tag === 'hr') { out.push(node); continue; }
-
-      // Display math → its own box (distinct colour).
-      if (isDisplayMath(node)) { out.push(boxEl('math', [copyEl(sliceNode(node)), node])); continue; }
+      // Headings remain section titles (not boxed). Display math was already
+      // wrapped (once) into its own box by wrapMathDeep above.
+      if (/^h[1-6]$/.test(tag) || tag === 'hr') { out.push(node); i++; continue; }
 
       // Lists → one box per <li>.
       if (tag === 'ol' || tag === 'ul') {
@@ -128,6 +134,38 @@ export function rehypePracticeBoxes({ source }: { source: string }) {
           out.push(boxEl(ordered ? 'num' : 'item', [...head, ...(li.children || [])]));
           if (ordered) idx++;
         }
+        i++;
+        continue;
+      }
+
+      // Proof / Bizonyítás → one collapsible <details>, collapsed by default,
+      // spanning the proof lead through its body (until the next lead/heading,
+      // or a paragraph ending in □).
+      if (tag === 'p' && nodeLeadKind(node) === 'proof') {
+        const group = [node];
+        let j = i + 1;
+        const endsProof = (n: any) => /[□∎]|\\square|\bQED\b/.test(hastText(n));
+        if (!endsProof(node)) {
+          for (; j < kids.length; j++) {
+            const n = kids[j];
+            if (isBreak(n)) break;
+            group.push(n);
+            if (endsProof(n)) { j++; break; }
+          }
+        }
+        const startOff = node.position?.start?.offset;
+        let endOff = node.position?.end?.offset;
+        for (const g of group) if (g.position?.end?.offset != null) endOff = g.position.end.offset;
+        const summary = firstStrongText(node) || 'Proof';
+        out.push({
+          type: 'element', tagName: 'details', properties: { className: ['pbox', 'pbox--proof'] },
+          children: [
+            { type: 'element', tagName: 'summary', properties: { className: ['pbox__summary'] }, children: [{ type: 'text', value: summary }] },
+            copyEl(sliceClean(source, startOff, endOff)),
+            ...group,
+          ],
+        });
+        i = j;
         continue;
       }
 
@@ -135,13 +173,23 @@ export function rehypePracticeBoxes({ source }: { source: string }) {
       if (tag === 'p' || tag === 'blockquote' || tag === 'table' || tag === 'pre') {
         const kind = (tag === 'p' && nodeLeadKind(node)) || (tag === 'p' ? 'para' : tag);
         out.push(boxEl(kind, [copyEl(sliceNode(node)), node]));
+        i++;
         continue;
       }
 
       out.push(node);
+      i++;
     }
     tree.children = out;
   };
+}
+
+/** Text of the first <strong> in a node (the box's lead label). */
+function firstStrongText(p: any): string {
+  for (const c of p.children || []) {
+    if (c.type === 'element' && c.tagName === 'strong') return hastText(c).trim();
+  }
+  return '';
 }
 
 /** Tag short emphasis as `.concept` (coloured), leaving long italic runs plain. */
