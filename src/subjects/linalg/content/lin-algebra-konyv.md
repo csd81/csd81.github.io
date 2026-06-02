@@ -1692,4 +1692,105 @@ x_2 &&&{}={}& 1 \\
 x_3 &&&{}={}& 4
 \end{alignedat} \qquad 2x - 3y + z - w = 6. \tag{2.16}$$
 
-<!-- OCR: through PDF p.71 -->
+▶ Egyenletrendszer megoldása során gyakran fogunk $0 = b$ alakú egyenletekkel találkozni. Az is lehet, hogy egy egyenletrendszerben egyes együtthatók paraméterek. A következő egyenletrendszerek is lineárisak az $x$ és $y$ ismeretlenekben:
+$$\begin{alignedat}{9}
+ax &{}+{}& y &{}={}& 2a \\
+x &{}-{}& \tfrac{1}{a}y &{}={}& 0
+\end{alignedat} \qquad \begin{alignedat}{9}
+3x &{}-{}& y &{}={}& 0 \\
+-x &{}+{}& 2y &{}={}& 0 \\
+&& 0 &{}={}& 0
+\end{alignedat} \qquad \begin{alignedat}{9}
+x &{}+{}& y &{}={}& 1 \\
+&& 0 &{}={}& 2.
+\end{alignedat} \tag{2.17}$$
+
+**2.20. definíció (Lineáris egyenletrendszer).** *Lineáris egyenletrendszeren ugyanazokban a változókban lineáris egyenletek egy véges halmazát értjük. Általános alakja $m$ egyenlet és $n$ ismeretlen esetén*
+$$\begin{alignedat}{9}
+a_{11}x_1 &{}+{}& a_{12}x_2 &{}+{}& \ldots &{}+{}& a_{1n}x_n &{}={}& b_1 \\
+a_{21}x_1 &{}+{}& a_{22}x_2 &{}+{}& \ldots &{}+{}& a_{2n}x_n &{}={}& b_2 \\
+\vdots && \vdots && && \vdots && \;\,\vdots \\
+a_{m1}x_1 &{}+{}& a_{m2}x_2 &{}+{}& \ldots &{}+{}& a_{mn}x_n &{}={}& b_m,
+\end{alignedat} \tag{2.18}$$
+*ahol $x_1, x_2, \ldots x_n$ az ismeretlenek, $a_{ij}$ az $i$-edik egyenletben az $x_j$ ismeretlen együtthatóját jelöli, és $b_i$ az $i$-edik egyenlet konstans tagja. Ha mindegyik egyenlet konstans tagja $0$, a lineáris egyenletrendszer* homogén, *ha csak egy is különbözik $0$-tól,* inhomogén.
+
+▶ A (2.16) egyenletrendszerei mind inhomogének, míg a (2.17) középső egyenletrendszere homogén.
+
+**2.21. definíció (Lineáris egyenletrendszer megoldása).** *Azt mondjuk, hogy a rendezett $(u_1, u_2, \ldots, u_n)$ szám-$n$-es* megoldása *a (2.18) egyenletrendszernek, ha megoldása minden egyenletnek, azaz ha minden egyenletet kielégít az $x_1 = u_1$, $x_2 = u_2, \ldots, x_n = u_n$ helyettesítéssel. Ha e szám-$n$-est vektornak tekintjük,* megoldásvektorról *beszélünk. Az összes megoldás halmazát az egyenletrendszer* megoldáshalmazának *nevezzük. Egy egyenletrendszert* konzisztensnek *(vagy megoldhatónak) nevezünk, ha megoldáshalmaza nem üres. Ellenkező esetben az egyenletrendszer* inkonzisztens *(nem megoldható).*
+
+> *A* konzisztes *szó jelentése: belső ellentmondástól mentes. Egyéb jelentései: szilárd, sűrű, tömött, tömör, tartalmas, egységes, következetes. A latin consistens szóból ered, melynek jelentése helytálló.*
+
+> *Ha egy egyenletrendszer több egyenletből áll, mint ahány ismeretlene van,* túlhatározottnak *nevezzük, míg ha kevesebb egyenletből áll,* alulhatározottnak. *E fogalmak időnként félrevezető megfogalmazásokhoz és téves következtetésekre vezetnek, ha az az elképzelés alakul ki, hogy a túlhatározottság azt jelenti: az egyenletek (a feltételek) már „túl sokan" vannak ahhoz, hogy akár csak egy szám-$n$-es is kielégítse. Később látni fogjuk, hogy ezzel ellentétben nem a „túl sok" egyenlet, hanem az egymásnak ellentmondó egyenletek okozzák az inkonzisztenciát. Hasonlóképp az alulhatározottság nem jelenti azt, hogy szükségképpen több megoldás is van. Alulhatározott egyenletrendszer is lehet inkonzisztens. Egyedül annyi mondható: alulhatározott egyenletrendszernek nem lehet csak egyetlen megoldása.*
+
+▶ A (2.17) első egyenletrendszerének megoldása $(x, y) = (1, a)$, a másodiké $(x, y) = (0, 0)$. A harmadik egyenletrendszernek nincs megoldása, hisz nincs olyan $x$ és $y$ érték, melyre fönnállna a $0x + 0y = 2$ egyenlőség.
+
+▶ Általában, a
+$$0x_1 + 0x_2 + \cdots + 0x_n = 0$$
+egyenletnek minden szám-$n$-es megoldása, míg a
+$$0x_1 + 0x_2 + \cdots + 0x_n = b, \quad (b \neq 0)$$
+egyenletnek egyetlen megoldása sincs.
+
+### Ekvivalens lineáris egyenletrendszerek
+
+Az alábbi egyenletrendszerek mindegyikének $(x, y) = (2, 1)$ az egyetlen megoldása:
+$$\begin{alignedat}{9}
+x &{}+{}& y &{}={}& 3 \\
+x &{}+{}& 2y &{}={}& 4
+\end{alignedat} \qquad \begin{alignedat}{9}
+x &{}+{}& y &{}={}& 3 \\
+&& y &{}={}& 1
+\end{alignedat} \qquad \begin{alignedat}{9}
+x && &{}={}& 2 \\
+&& y &{}={}& 1
+\end{alignedat} \tag{2.19}$$
+
+**2.22. definíció (Ekvivalens egyenletrendszerek).** *Azonos ismeretlenekkel felírt két egyenletrendszert ekvivalensnek nevezünk, ha megoldásaik halmaza azonos.*
+
+**2.23. tétel (Ekvivalens átalakítások).** *Az alábbi transzformációk minden egyenletrendszert ekvivalens egyenletrendszerbe visznek át:*
+1. *két egyenlet felcserélése;*
+2. *egy egyenlet nem nulla számmal való szorzása;*
+3. *egy egyenlet konstansszorosának egy másikhoz adása.*
+
+*Ezen kívül*
+4. *egy $0 = 0$ alakú egyenlet elhagyása*
+
+*is ekvivalens átalakítás, ami eggyel csökkenti az egyenletek számát.*
+
+*Bizonyítás.* Az első kettő és a negyedik átalakítás nyilvánvalóan nem változtatja meg a megoldások halmazát (a negyedikkel kapcsolatban lásd a 2.20. feladatot). Nézzük a harmadik átalakítást. Tekintsük az *eredeti* egyenletrendszer egy megoldását, és azt az *új* egyenletrendszert, melyet az $i$-edik egyenlet $c$-szeresének a $j$-edikhez adásával kapunk. Világos, az átalakítás előtt is elvégezhetjük a behelyettesítést, akkor viszont egy kielégített egyenlőség konstansszorosát adjuk egy másikhoz, ami így ugyancsak ki lesz elégítve. Tehát az eredeti egyenletrendszer minden megoldása az újnak is megoldása. Másrészt viszont az új egyenletrendszer minden megoldása az eredetinek is megoldása, hisz az visszakapható az újból az $i$-edik egyenlet $-c$-szeresének a $j$-edikhez adásával. Vagyis a két megoldáshalmaz megegyezik. Tehát ez az átalakítás is ekvivalens. $\square$
+
+▶ Az
+$$\frac{x}{z} + \frac{y}{z} + 2 = 0$$
+egyenlet nem lineáris, mert a $z$-vel való beszorzás nem ekvivalens átalakítás, tehát a lineáris $x + y + 2z = 0$ egyenlettel nem ekvivalens.
+
+### Mátrixok
+
+A számtáblázatokat, azaz a *mátrixokat* egyelőre csak az egyenletrendszerek megoldásának kényelmes leírására fogjuk használni, később azonban a velük végezhető műveletekkel a lineáris algebra kulcsfogalmává válik.
+
+> *Mátrix: a latin mater (máter)* (anya, szülőanya, forrás) *szó származéka a matrix (mátrix), melynek jelentése az európai nyelvekben a következő változásokon ment át: anyaállat, vemhes állat, anyaméh, bezárt hely, ahonnan valami kifejlődik, bezárt, körülzárt dolgok sokasága, tömbje. Jelentése az élettanban méh, a geológiában finomszemcsés kő, melybe fosszíliák, kristályok, drágakövek vannak zárva, az anatómiában a körmöt, fogat kialakító szövet.*
+
+A mátrixba írt számokat a *mátrix elemeinek* nevezzük. A mátrix méretének jellemzéséhez mindig előbb a sorok, majd az oszlopok számát adjuk meg, tehát egy $m \times n$-es mátrixnak $m$ sora és $n$ oszlopa van. Egy ilyen mátrix általános alakja
+$$\mathbf{A} = \begin{bmatrix} a_{11} & a_{12} & \ldots & a_{1n} \\ a_{21} & a_{22} & \ldots & a_{2n} \\ \vdots & \vdots & \ddots & \vdots \\ a_{m1} & a_{m2} & \ldots & a_{mn} \end{bmatrix}, \quad \text{vagy} \quad \mathbf{A} = \begin{pmatrix} a_{11} & a_{12} & \ldots & a_{1n} \\ a_{21} & a_{22} & \ldots & a_{2n} \\ \vdots & \vdots & \ddots & \vdots \\ a_{m1} & a_{m2} & \ldots & a_{mn} \end{pmatrix},$$
+mi az előbbit fogjuk használni.
+
+A mátrixokat[^2] általában nagy betűvel jelöljük, e könyvben – követve a műszaki nyelv szokásait – félkövér nagy betűvel. A mátrix elemeit általában a mátrixot jelölő nagy betűvel azonos kis betűvel jelöljük, tehát $\mathbf{A}$ elemei $a_{11}, a_{12} \ldots$. A fenti mátrixra szokás még a
+$$\mathbf{A} = [a_{ij}]_{m \times n} \quad \text{vagy egyszerűen az} \quad \mathbf{A} = [a_{ij}]$$
+jelölést, míg elemére a $(\mathbf{A})_{ij}$ jelölést használni.
+
+[^2]: *A programnyelvekben – ellentétben a matematikával – a kisbetűvel/nagybetűvel való jelölésnek nincs a mátrixot az elemétől való megkülönböztető szerepe. A legtöbb magasszintű nyelvben az $\mathbf{A}$-val jelölt mátrix (informatikai szóhasználattal* tömb) *$i$-edik sorának $j$-edik elemét `A[i,j]` vagy `A[i,j]` jelöli. Az alacsonyabb szintű C-típusú nyelvekben nincs 2-dimenziós tömb, a mátrixot egy olyan 1-dimenziós tömb reprezentálja, melynek minden eleme 1-dimenziós tömb, így `A[i]` az $i$-edik sort, `A[i][j]` az $i$-edik sor $j$-edik elemét jelöli. A mátrix alapú nyelvekben egy mátrix egy sorvektora vagy oszlopvektora könnyen kiemelhető, pl. az $\mathbf{A}$ mátrix 2. sorát az `A(2,:)`, 3. oszlopát a `A(:,3)` kóddal érhetjük el. Sok programnyelvben a tömbök elemeit nem 1-től, hanem 0-tól indexelik, ilyen például a C és a Python is.*
+
+Mindig az első index jelöli a sor, a második az oszlop számát, tehát $a_{23}$ a 2-dik sor 3-adik eleme. A félreérthetőség elkerülésére $a_{ij}$ helyett $a_{i,j}$ is írható (pl. $a_{n,n-1}$). A mátrix *főátlójába* azok az elemek tartoznak, amelyek ugyanannyiadik sorban vannak, mint ahányadik oszlopban, azaz a például a fenti mátrixban a főátló elemei $a_{11}, a_{22}, \ldots$.
+
+A gyakorlatban igen nagy méretű mátrixokat is kezelni kell. Ha elemeik nagy része $0$, *ritka mátrixoknak* nevezzük. A nagy méretű nem ritka mátrixokat *sűrűnek* nevezzük.
+
+A vektorokat is szokás *mátrix jelöléssel, mátrix alakban,* azaz egy 1-soros vagy 1-oszlopos mátrixszal leírni – ahogy azt az első fejezetben mi is tettük. Az $n \times 1$-es mátrixot *oszlopvektornak (oszlopmátrixnak),* az $1 \times n$-es mátrixot *sorvektornak (sormátrixnak)* nevezzük. Az, hogy egy $n$-dimenziós vektort sor- vagy oszlopvektorral reprezentáljunk, döntés (szokás, ízlés) kérdése. Például az $(1, 2)$ vektornak megfelelő sorvektor és oszlopvektor
+$$\begin{bmatrix} 1 & 2 \end{bmatrix}, \quad \text{illetve} \quad \begin{bmatrix} 1 \\ 2 \end{bmatrix}.$$
+A széles körben elterjedt szokást követve alapértelmezésben az oszlopvektoros jelölést fogjuk használni.
+
+> *Vektorok magyar irodai és általános iskolában használt jelölése – a tizedes vessző használata miatt – pontosvesszőt tesz a* vektor koordinátái *közé elválasztójelként. Magyar nyelvű felsőbb matematika szövegekben ez nem szokás, mi is elkerüljük, és tizedespontot, vektor koordinátái közt vesszőt használunk. Vegyük észre, hogy vektorok sorvektorral (sormátrixszal) való megadásánál írásjelet nem használunk, csak szóközzel választjuk el a koordinátákat!*
+
+Az $\mathbf{A}$ mátrix $i$-edik sorvektorát $\mathbf{a}_{i*}$ vagy $(\mathbf{A})_{i*}$, a $j$-edik oszlopvektorát $\mathbf{a}_{*j}$ vagy $(\mathbf{A})_{*j}$ jelöli összhangban az elemek indexelésével. Hasonló jelölést használnak a mátrix alapú nyelvek is (ld. a széljegyzetet). Ha csak oszlopvektorokkal dolgozunk, a $j$-edik oszlopvektort egyszerűbben, $\mathbf{a}_j$-vel jelöljük.
+
+**2.24. példa (Mátrixok és elemeik).** *Ha*
+$$\mathbf{C} = \begin{bmatrix} 1 & 2 & 3 \\ 4 & 5 & 7 \end{bmatrix}, \text{akkor } c_{23} = 7, \; \mathbf{c}_2 = \mathbf{c}_{*2} = \begin{bmatrix} 2 \\ 5 \end{bmatrix}, \; \mathbf{c}_{2*} = \begin{bmatrix} 4 & 5 & 7 \end{bmatrix}.$$
+
+<!-- OCR: through PDF p.74 -->
