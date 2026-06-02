@@ -2617,4 +2617,117 @@ $$\begin{aligned}
 \end{aligned}$$
 Hasonlóan definiálható az oszloponként domináns főátlójú mátrix.
 
-<!-- OCR: through PDF p.101 -->
+Világos, hogy az alábbi mátrixok soronként domináns főátlójúak:
+$$\begin{bmatrix} 2 & 1 \\ 0 & 1 \end{bmatrix}, \quad \begin{bmatrix} -10 & 1 & 2 \\ 1 & 10 & -3 \\ -1 & -2 & 10 \end{bmatrix}, \quad \begin{bmatrix} 2 & 0 & 0 \\ 0 & -3 & 0 \\ 0 & 0 & -5 \end{bmatrix}, \quad \begin{bmatrix} 1 & .25 & .25 & .25 \\ .25 & 1 & .25 & .25 \\ .25 & .25 & 1 & .25 \\ .25 & .25 & .25 & 1 \end{bmatrix}.$$
+Az alábbi mátrixok nem soronként domináns főátlójúak, de sorcserékkel azzá tehetők:
+$$\begin{bmatrix} 0 & 1 \\ 2 & 1 \end{bmatrix}, \quad \begin{bmatrix} -1 & -2 & 10 \\ -10 & 1 & 2 \\ 1 & 10 & -3 \end{bmatrix}, \quad \begin{bmatrix} 0 & -3 & 0 \\ 0 & 0 & -5 \\ 2 & 0 & 0 \end{bmatrix}, \quad \begin{bmatrix} .25 & .25 & .25 & 1 \\ 1 & .25 & .25 & .25 \\ .25 & .25 & 1 & .25 \\ .25 & 1 & .25 & .25 \end{bmatrix}.$$
+Az alábbi egyenletrendszer együtthatómátrixa soronként domináns főátlójú:
+$$\begin{alignedat}{9}
+4x &{}-{}& y &{}={}& 11 \\
+2x &{}-{}& 5y &{}={}& -17
+\end{alignedat}$$
+
+**2.56. tétel (Elégséges feltétel az iterációk konvergenciájára).** *Ha az $n$ egyenletből álló $n$-ismeretlenes egyenletrendszer együtthatómátrixa soronként domináns főátlójú, akkor bármely indulóvektor esetén a Jacobi- és a Gauss–Seidel-iteráció is konvergens.*
+
+▶ A bizonyításhoz, mely a Banach-fixponttételre épít, itt még hiányoznak eszközeink, de két változó esetére a 2.47. feladat megoldást ad.
+▶ A tételbeli feltétel nem szükséges, csak elégséges, azaz olyan egyenletrendszeren is konvergens lehet valamelyik iteráció, melynek nem domináns főátlójú az együtthatómátrixa.
+▶ Hasonló tétel igaz oszloponként domináns főátlójú együtthatómátrixok esetén is.
+▶ A domináns főátlójú mátrixokon a Gauss–Seidel-iteráció sosem lassabb, mint a Jacobi-iteráció, sőt, gyakran érezhetően gyorsabb. Az viszont előfordulhat, hogy a Gauss–Seidel-iteráció divergens, míg a Jacobi-iteráció konvergens (ld. 2.48. feladat).
+▶ A gyakorlatban ezeknél hatékonyabb iterációkat használnak. E témában az Olvasó figyelmébe ajánljuk a *numerikus módszerek* tárgyú könyveket, web-oldalakat, például Faragó István és Horváth Róbert jegyzetét[^5].
+
+[^5]: *Faragó István, Horváth Róbert. Numerikus módszerek. BME, http://math.bme.hu/~rhorvath/nummodszjegyzet.pdf, 2013*
+
+### Feladatok
+
+**2.44.•** Oldjuk meg a
+$$\begin{alignedat}{9} 4x &{}-{}& y &{}={}& 8 \\ 2x &{}-{}& 5y &{}={}& -5 \end{alignedat}$$
+egyenletrendszert Jacobi- és Gauss–Seidel-iterációval! Számoljunk 3, majd 4 értékes jegyre!
+
+**2.45.•** Oldjuk meg a
+$$\begin{alignedat}{9} x &{}+{}& 4y &{}+{}& 2z &{}={}& 5 \\ 3x &{}-{}& 2y &{}+{}& 7z &{}={}& -3 \\ 5x &{}-{}& 2y &{}+{}& z &{}={}& 2 \end{alignedat}$$
+egyenletrendszert Jacobi- és Gauss–Seidel-iterációval! Számoljunk 3 értékes jegyre!
+
+**2.46.•** Működnek-e a Jacobi- és Gauss–Seidel-iterációk a
+$$\begin{alignedat}{9} 4x &{}+{}& 5y &{}={}& 1 \\ 5x &{}+{}& 7y &{}={}& 2 \end{alignedat}$$
+egyenletrendszeren, bár az nem domináns főátlójú, és sorcserével sem tehető azzá?
+
+**2.47.** Igazoljuk, hogy ha a kétismeretlenes
+$$\begin{alignedat}{9} a_{11}x &{}+{}& a_{12}y &{}={}& b_1 \\ a_{21}x &{}+{}& a_{22}y &{}={}& b_2 \end{alignedat}$$
+egyenletrendszer együtthatómátrixa domináns főátlójú, akkor a Jacobi-iterációnál használt
+$$f : \begin{bmatrix} x \\ y \end{bmatrix} \mapsto \begin{bmatrix} \frac{b_1 - a_{12}y}{a_{11}} \\ \frac{b_2 - a_{21}x}{a_{22}} \end{bmatrix}$$
+függvény és a Gauss–Seidel-iterációnál a (2.25) képletből származó
+$$g : \begin{bmatrix} x \\ y \end{bmatrix} \mapsto \begin{bmatrix} \frac{b_1}{a_{11}} - \frac{a_{12}y}{a_{11}} \\ \frac{b_2}{a_{22}} - \frac{a_{21}}{a_{22}}\left(\frac{b_1}{a_{11}} - \frac{a_{12}}{a_{11}}y\right) \end{bmatrix}$$
+függvény mindegyike kontrakció, azaz bármely két $\mathbf{x}^1 = (x_1, y_1)$ és $\mathbf{x}^2 = (x_2, y_2)$ vektor esetén
+$$d(f(\mathbf{x}^1), f(\mathbf{x}^2)) \leqslant q\,d(\mathbf{x}^1, \mathbf{x}^2) \quad \text{és}$$
+$$d(g(\mathbf{x}^1), g(\mathbf{x}^2)) \leqslant r\,d(\mathbf{x}^1, \mathbf{x}^2),$$
+ahol $0 < q < 1$ és $0 < r < 1$ adott konstansok.
+
+**2.48.•** *Jacobi-iteráció konvergál, Gauss–Seidel-iteráció nem.* Írjunk programot annak az állításnak az ellenőrzésére, hogy a
+$$\begin{alignedat}{9}
+x &&&{}+{}& z &{}={}& 0 \\
+-x &{}+{}& \tfrac{5}{6}y &&&{}={}& 0 \\
+x &{}+{}& 2y &{}-{}& 3z &{}={}& 1
+\end{alignedat}$$
+egyenletrendszeren a Jacobi-iteráció konvergál, a Gauss–Seidel-iteráció nem.
+
+**2.49.** *Gauss-elimináció domináns főátlójú mátrixon.* Bizonyítsuk be, hogy ha az $\mathbf{A}$ mátrix főátlója soronként domináns, akkor végrehajtható rajta a főelem-kiválasztásos Gauss-elimináció sorcsere nélkül!
+
+**2.50.** *Az iterációk szemléltetése.* Az $A$ városból elindul egy $A$ jelű vonat a $B$ város felé, vele egy időben a $B$ városból egy $B$ jelű $A$ felé. A $B$ vonat indulásával egy időben a $B$ vonat orráról elindul egy légy is $A$ felé, de amint találkozik az $A$ vonattal megfordul, és addig repül, míg a $B$ vonattal nem találkozik, amikor ismét megfordul, stb. Mindhármuk sebessége konstans, de a légy sebessége nagyobb mindkét vonaténál.
+1. Egy táblázatban megadjuk mindkét vonat távolságát az indulási helyüktől km-ben mérve azokban a pillanatokban, amikor a légy épp a $B$ vonattal találkozik.
+
+| | $(x_0, y_0)$ | $(x_1, y_1)$ | $(x_2, y_2)$ | $(x_3, y_3)$ |
+|---|---|---|---|---|
+| $x$: távolság $A$-tól | 0 | 40 | 48 | 49.6 |
+| $y$: távolság $B$-től | 0 | 80 | 96 | 99.2 |
+
+Számítsuk ki a táblázat egy-két további oszlopát! Milyen messze van $A$ város $B$-től?
+2. Most egy másik táblázatban megadjuk annak a vonatnak a távolságát az indulási helyétől, amelyik épp találkozik a léggyel:
+
+| | $y_0$ | $x_1$ | $y_1$ | $x_2$ | $y_2$ | $x_3$ | $y_3$ |
+|---|---|---|---|---|---|---|---|
+| $x$: távolság $A$-tól | | 30 | | 46 | | 49.2 | |
+| $y$: távolság $B$-től | 0 | | 80 | | 96 | | 99.2 |
+
+Számítsuk ki a táblázat egy-két további oszlopát! Milyen messze van $A$ város $B$-től?
+3. Mi köze van e feladatnak a Jacobi- és a Gauss–Seidel-iterációhoz?
+
+## Megoldások
+
+**2.1.** a) igaz, b) hamis, de pl. ortonormált bázisban igaz, c) igaz, d) hamis, a sík normálvektora $(A, B, 0)$, e) igaz, ugyanis az
+$$(x, y, z, w) = (1, -1, 0, 0)t + (0, 0, 1, -1)s$$
+explicit egyenlet egy sík egyenlete, f) igaz, g) igaz, ha $(x_1, x_2, x_3, x_4, x_5)$ jelöli az alakzat egy általános pontját, h) igaz, például az $x = 0$, $y = 0$ egyenletrendszerű sík, és $z = 0$, $w = 0$ egyenletrendszerű sík egytlen közös pontja a $(0, 0, 0, 0)$ pont.
+
+**2.2.** Egy tetszőleges $P(x, y, z)$ pont harmadik koordinátája megegyezik a rajta átfektetett és az első két koordinátatengellyel párhuzamos sík harmadik koordinátatengellyel való metszéspontjának koordinátájával. Ezért a feladatbeli sík minden pontjának $(a, b, 5)$ a koordinátás alakja, ahol $a$ és $b$ valósok, másrészt az ilyen alakú pontok mind e síkon vannak. Tehát olyan egyenletet keresünk, amelyben az ismeretlenek $x$, $y$ és $z$, továbbá $x$ és $y$ értéke tetszőleges valós szám, $z$ pedig csak 5 lehet.
+
+Implicit egyenlet a $z = 5$ (másként $0x + 0y + z = 5$), explicit vektoregyenlete és explicit egyenletrendszere
+$$\begin{aligned} x &= s \\ y &= t \\ z &= 5, \end{aligned} \quad \text{és} \quad \begin{bmatrix} x \\ y \\ z \end{bmatrix} = \begin{bmatrix} s \\ t \\ 5 \end{bmatrix}.$$
+
+**2.3.** a) Több megoldás is lehetséges. Ha $t = x$-et választjuk paraméternek, akkor $x = t$, $y = 1 - t$, amiből a vektoregyenlet:
+$$\begin{bmatrix} x \\ y \end{bmatrix} = \begin{bmatrix} 0 \\ 1 \end{bmatrix} + \begin{bmatrix} 1 \\ -1 \end{bmatrix} t.$$
+Az $y$-t választva paraméternek
+$$\begin{bmatrix} x \\ y \end{bmatrix} = \begin{bmatrix} 1 \\ 0 \end{bmatrix} + \begin{bmatrix} -1 \\ 1 \end{bmatrix} t.$$
+b) Az $x = t$ paraméterválasztás esetén
+$$\begin{bmatrix} x \\ y \end{bmatrix} = \begin{bmatrix} 0 \\ 2 \end{bmatrix} + \begin{bmatrix} 1 \\ -2/3 \end{bmatrix} t.$$
+Az $x = 3t$-t választva paraméternek
+$$\begin{bmatrix} x \\ y \end{bmatrix} = \begin{bmatrix} 0 \\ 2 \end{bmatrix} + \begin{bmatrix} 3 \\ -2 \end{bmatrix} t.$$
+c) Az $x = t$ paraméterválasztás esetén
+$$\begin{bmatrix} x \\ y \\ z \end{bmatrix} = \begin{bmatrix} 0 \\ 2 \\ -1 \end{bmatrix} + \begin{bmatrix} 1 \\ 1 \\ -1 \end{bmatrix} t.$$
+d) Az $x = t$ paraméterválasztás esetén
+$$\begin{bmatrix} x \\ y \\ z \end{bmatrix} = \begin{bmatrix} 0 \\ -5 \\ 0 \end{bmatrix} + \begin{bmatrix} 1 \\ -2 \\ 0 \end{bmatrix} t.$$
+e) Az $x = t$ paraméterválasztás esetén
+$$\begin{bmatrix} x \\ y \\ z \\ w \end{bmatrix} = \begin{bmatrix} 0 \\ -1 \\ 3 \\ -1 \end{bmatrix} + \begin{bmatrix} 1 \\ 1 \\ 0 \\ 0 \end{bmatrix} t.$$
+f) Az $x = t$ paraméterválasztás esetén
+$$\begin{bmatrix} x \\ y \\ z \\ w \end{bmatrix} = \begin{bmatrix} 0 \\ 2 \\ -1 \\ 2 \end{bmatrix} + \begin{bmatrix} 1 \\ -1 \\ 1 \\ -1 \end{bmatrix} t.$$
+A $w = t$ paraméterválasztás esetén
+$$\begin{bmatrix} x \\ y \\ z \\ w \end{bmatrix} = \begin{bmatrix} 2 \\ 0 \\ 1 \\ 0 \end{bmatrix} + \begin{bmatrix} -1 \\ 1 \\ -1 \\ 1 \end{bmatrix} t.$$
+
+**2.4.**
+- a) $\begin{aligned} x &= t \\ y &= 1 - t \end{aligned}$  b) $\begin{aligned} x &= s \\ y &= t \\ z &= 1 - s - t \end{aligned}$  c) $\begin{aligned} x &= s \\ y &= 1 - s \\ z &= t \end{aligned}$
+- d) $\begin{aligned} x &= r \\ y &= s \\ z &= t \\ w &= 1 - r - s - t \end{aligned}$  e) $\begin{aligned} x &= r \\ y &= 1 - r \\ z &= s \\ w &= t \end{aligned}$  f) $\begin{aligned} x &= 1 \\ y &= r \\ z &= s \\ w &= t \end{aligned}$
+
+**2.6.** a) Az explicit egyenletrendszer $x = 2 + t$, $y = 1 + 3t$, a vektoregyenlet
+$$\begin{bmatrix} x \\ y \end{bmatrix} = \begin{bmatrix} 2 \\ 1 \end{bmatrix} + \begin{bmatrix} 1 \\ 3 \end{bmatrix} t.$$
+Az implicit egyenletek $3(x - 2) = y - 1$, $(3, -1) \cdot (x - 2, y - 1) = 0$, $3x - y = 5$. d) $x = 3$, $y = 4$,
+$$\begin{bmatrix} x \\ y \end{bmatrix} = \begin{bmatrix} 3 \\ 4 \end{bmatrix}.$$
+
+<!-- OCR: through PDF p.104 -->
