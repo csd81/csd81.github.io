@@ -3630,4 +3630,145 @@ $\Longrightarrow$
 
 Az egyenletrendszer megoldása tehát $x = 1$, $y = 3$, $z = -2$. $\square$
 
-<!-- OCR: through PDF p.134 -->
+### Feladatok
+
+**3.13.** *A lépcsős alak vektorai.* Igazoljuk a 3.23. következményt: ha $\mathbf{B}$ az $\mathbf{A}$ mátrix egy lépcsős alakja, akkor
+1. $\mathbf{A}$ és $\mathbf{B}$ sortere megegyezik,
+2. $\mathbf{B}$ nemzérus sorvektorai lineárisan függetlenek,
+3. a főelemek oszlopvektorai $\mathbf{A}$-ban és $\mathbf{B}$-ben is lineárisan függetlenek.
+
+**3.14.•** *Bázis: igaz – hamis.*
+- a) A $\mathcal{V}$ vektortérben a $\{ \mathbf{v}_1, \ldots, \mathbf{v}_k \}$ vektorrendszer bázis, ha tetszőleges $\mathbf{v} \in \mathcal{V}$ vektor egyértelműen felírható e vektorok lineáris kombinációjaként.
+- b) Van olyan vektortér, melynek bármely nemnulla vektora bázist alkot.
+- c) Van olyan vektortér, melynek van kételemű bázisa, és van három lineárisan független vektora.
+- d) Van olyan vektortér, melyet bármely két különböző vektora kifeszít!
+- e) Van olyan $\mathcal{V}$ vektortér, melyet kifeszít valamely 5 vektora, és abban olyan $\mathcal{W}$ altér, melyet kifeszít annak valamely 10 vektora.
+
+**3.15.** Határozzuk meg a 3.27. példabeli vektorok által kifeszített altér egy bázisát úgy, hogy a vektorokat más sorrendben írjuk a mátrixba. Legyen például a sorrend $\mathbf{w}_1 = (1, 1, 2, 1)$, $\mathbf{w}_2 = (3, 1, 3, 2)$, $\mathbf{w}_3 = (6, 0, 3, 3)$, $\mathbf{w}_4 = (2, -2, -2, 0)$. Fejezzük ki mind a négy vektort ezek lineáris kombinációjaként! Végül írjuk fel mind a négy vektor koordinátás alakját e bázisban!
+
+**3.16.•** Keressünk bázist az alábbi vektortérhez a megadott vektorok közül, majd írjuk fel a vektorok e bázisra vonatkozó koordinátás alakjait!
+- a) $\operatorname{span}((1, 2, 3), (-2, -4, -6), (1, 1, 1), (0, 1, 2), (2, 1, 0))$,
+- b) $\operatorname{span}((1, 2, 3, 4), (0, 1, 2, 3), (3, 1, -1, 1), (2, 0, 4, 0))$,
+- c) $\operatorname{span}((1, 2, 3, 4), (0, 1, 2, 3), (1, 1, 1, 1), (-1, 0, 1, 2))$.
+
+**3.17.•** Adjuk meg az alábbi altér $\mathbb{R}^4$-beli merőleges kiegészítő alterének egy bázisát!
+- a) $\operatorname{span}((1, 2, 0, 1), (3, 1, -1, 1), (1, -3, -1, -1))$,
+- b) $\operatorname{span}((1, 2, 0, 1), (3, 1, -1, 1), (2, -1, -1, 0))$.
+
+**3.18.** Tekintsük a $\mathcal{V} = \operatorname{span}((0, 1, 2, 3, 4), (1, 2, 3, 4, 5)) \leqslant \mathbb{R}^5$ alteret!
+- a) Merőleges-e a $\mathcal{W} = \operatorname{span}((0, 1, 1, -1, 0), (0, 0, 1, 1, -1))$ altérre?
+- b) Merőleges kiegészítő altere-e $\mathcal{V}$-nek $\mathcal{W}$?
+- c) Határozzuk meg a $\mathcal{V}^\perp$ és $\mathcal{W}^\perp$ altereket!
+
+**3.19.** Adjuk meg a $\operatorname{span}((0, 1, 2, 3, 4), (1, 2, 3, 4, 5))$ altér merőleges kiegészítő alterét!
+
+**3.20.** Egy lineáris egyenletrendszerről tudjuk, hogy együtthatómátrixának rangja 2, és hogy $(1, 2, 3)$ és $(0, 1, 3)$ is megoldásvektora. Adjuk meg az összes megoldását!
+
+**3.21.** Egy lineáris egyenletrendszer együtthatómátrixának rangja 2, és $(1, 2, 3, 4)$, $(0, 1, 3, 4)$ és $(0, 1, 2, 3)$ megoldásvektorai. Adjuk meg az összes megoldását!
+
+Határozzuk meg az alábbi mátrixok kitüntetett altereinek bázisát!
+
+**3.22.•** $\begin{bmatrix} 1 & 2 & 3 & 1 \\ 1 & -2 & -1 & 0 \\ 0 & 1 & 1 & -1 \end{bmatrix}$
+
+**3.23.** $\begin{bmatrix} 1 & 2 & 3 & 1 \\ 0 & 1 & 1 & -1 \end{bmatrix}$
+
+**3.24.** $\begin{bmatrix} 0 & 1 & 1 & -1 \end{bmatrix}$
+
+**3.25.** $\begin{bmatrix} 1 & 2 & 0 & -1 & 1 \\ 2 & 4 & 1 & -1 & 3 \\ -1 & -2 & 1 & 2 & 0 \end{bmatrix}$
+
+**3.26.** *Gram-mátrix.* Igazoljuk, hogy a
+$$\begin{bmatrix} \mathbf{v}_1 \cdot \mathbf{v}_1 & \mathbf{v}_1 \cdot \mathbf{v}_2 & \ldots & \mathbf{v}_1 \cdot \mathbf{v}_k \\ \mathbf{v}_2 \cdot \mathbf{v}_1 & \mathbf{v}_2 \cdot \mathbf{v}_2 & \ldots & \mathbf{v}_2 \cdot \mathbf{v}_k \\ \vdots & \vdots & \ddots & \vdots \\ \mathbf{v}_k \cdot \mathbf{v}_1 & \mathbf{v}_k \cdot \mathbf{v}_2 & \ldots & \mathbf{v}_k \cdot \mathbf{v}_k \end{bmatrix}$$
+mátrix – az ún. *Gram-mátrix* – rangja pontosan akkor $k$, ha az $\mathbb{R}^n$-beli $\mathbf{v}_1, \mathbf{v}_2, \ldots, \mathbf{v}_k$ vektorok lineárisan függetlenek.
+
+**3.27.** *Lineáris algebra alaptétele.* Igazoljuk a lineáris algebra alaptételét!
+
+#### A sortérbe eső megoldás meghatározása
+
+Keressük meg az alábbi egyenletrendszerek sortérbe eső egyetlen megoldását, és annak segítségével írjuk fel az összes megoldást!
+
+**3.28.•** $\begin{aligned} x + y + z &= 3 \\ 2x + y - z &= 2 \\ 3x + 2y &= 5 \end{aligned}$
+
+**3.29.** $x + 4y + 8z + 12w = 225$
+
+**3.30.•** $\begin{aligned} x + y + z + w &= 3 \\ x + y - z - w &= 1 \end{aligned}$
+
+**3.31.** Határozzuk meg a $\mathbb{Z}_p^n$ tér $k$-dimenziós altereinek számát, ahol $p$ prím, és $k = 0, 1, \ldots, n$?
+
+## Megoldások
+
+**3.1.** Mindegyik állítás hamis.
+
+**3.2.** a) Igaz. b) Igaz. c) Hamis, csak akkor igaz, ha egyik a másik altere. d) Igaz. e) Hamis, a zérustér egyetlen vektora a zérusvektor.
+
+**3.3.** a) Hamis, csak a homogén lineáris egyenletrendszer megoldásai alkotnak vektorteret. b) Igaz. c) Igaz. Ez épp az oszloptér, ugyanis csak az oszloptérből való $\mathbf{b}$ vektorokra oldható meg az egyenletrendszer. d) Igaz. Ez épp az együtthatómátrix nulltere, azaz az egyenletrendszerhez tartozó homogén egyenletrendszer megoldáshalmaza.
+
+**3.4.** a) Igaz. b) Igaz. c) Hamis. d) Igaz, ugyanis az állításbeli $\operatorname{r}(\mathbf{A}|\mathbf{b}) \leqslant \operatorname{r}(\mathbf{A})$ feltétel pontosan akkor teljesül, ha $\operatorname{r}(\mathbf{A}|\mathbf{b}) = \operatorname{r}(\mathbf{A})$, és ez pontosan akkor teljesül, ha az egyenletrendszer megoldható. e) Hamis, ha $\operatorname{r}(\mathbf{A}) = n$, és az egyenletrendszer több, mint $n$ egyenletből áll, akkor előfordulhat, hogy $\operatorname{r}(\mathbf{A}|\mathbf{b}) = n + 1$, és ekkor az egyenletrendszer nem oldható meg!
+
+**3.5.** a) Nem, egységvektor konstansszorosai nem egységvektorok. b) Igen (origón átmenő sík). c) Nem (eltolt sík). d) Igen, ez egy origón átmenő egyenes vektoraiból áll. e) Igen, ez a zérustér. f) Nem, az $(1, -1, 0)$ és az $(1, 0, -1)$ vektor benne van, de az összegük nincs e halmazban.
+
+**3.7.** a) $\operatorname{r}(\mathbf{A}|\mathbf{b}) \leqslant 1$. A 0 rang csak úgy fordulhat elő, ha az összes egyenlet $0 = 0$ alakú – nem egy érdekes eset. Ha a rang 1, akkor a kötött és a szabad változók száma is 1. b) $\operatorname{r}(\mathbf{A}|\mathbf{b}) = 5$. c) $\operatorname{r}(\mathbf{A}|\mathbf{b}) = 3$. d) $\operatorname{r}(\mathbf{A}|\mathbf{b}) = 2$.
+
+**3.8.** Két megoldásvektor különbsége, azaz az $(1, 2, 3) - (0, 1, 3) = (1, 1, 0)$ vektor biztosan megoldása az egyenletrendszer homogén részének. Akkor viszont ennek minden skalárszorosa is megoldás, így azokat bármelyik fenti megoldáshoz adjuk, újabb megoldásokat kapunk. Például megoldás az $(1, 2, 3) + (1, 1, 0) = (2, 3, 3)$ és az $(1, 2, 3) + 2(1, 1, 0) = (3, 4, 3)$ vektor is.
+
+Mivel az ismeretlenek száma 3, és azok legalább egyike szabad változó, ezért a rang legfeljebb 2. Ha viszont e megoldások egy homogén lineáris egyenletrendszer megoldásai, akkor a megoldások közt van legalább két lineárisan független megoldás, így a szabad változók száma legalább kettő, vagyis a kötötteké legföljebb 1, tehát az együtthatómátrix rangja is legföljebb 1.
+
+**3.9.** Első ránézésre csak annyi látszik, hogy mindkét megoldás egy kétdimenziós altér eltoltja. Először megvizsgáljuk, hogy az altér – vagyis az egyenletrendszer homogén részére adott két megoldás – egybeesik-e. Elég megmutatni, hogy az egyik altérben benne van a másikat generáló két vektor. Ha igen, a két altér megegyezik. Ezesetben el kell dönteni, hogy az inhomogén két partikuláris megoldása az altérnek ugyanabban az eltoltjában van-e. Vagy egyszerűbben, hogy a két partikuláris megoldás különbsége az altérben. E kérdéseket egyetlen mátrix lépcsős alakra hozásával is megoldhatjuk. Az első két oszlop az első, a második két oszlop a második altér generátorait tartalmazza, az ötödik oszlop a két partikuláris megoldás különbsége.
+$$\left[\begin{array}{cc|ccc} 1 & 0 & -2 & 3 & 1 \\ 0 & 1 & 1 & -2 & -1 \\ -2 & -3 & 1 & 0 & 1 \\ -1 & -2 & 0 & 1 & 1 \end{array}\right] \Longrightarrow \left[\begin{array}{cc|ccc} 1 & 0 & -2 & 3 & 1 \\ 0 & 1 & 1 & -2 & -1 \\ 0 & 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 & 0 \end{array}\right]$$
+Az eredményből látszik, hogy a két megoldás azonos.
+
+**3.10.** Ha $\mathbf{a}_{i*}$ jelöli az együtthatómátrix $i$-edik sorát és $\mathbf{x}$, illetve $\mathbf{y}$ a homogén egyenletrendszer egy-egy megoldását, azaz $\mathbf{a}_{i*} \cdot \mathbf{x} = 0$, $\mathbf{a}_{i*} \cdot \mathbf{y} = 0$ $(i = 1, 2, \ldots, m)$, akkor
+$$\mathbf{a}_{i*} \cdot (c\mathbf{x} + d\mathbf{y}) = c\mathbf{a}_{i*} \cdot \mathbf{x} + d\mathbf{a}_{i*} \cdot \mathbf{y} = 0 + 0 = 0,$$
+tehát a két megoldásvektor bármely lineáris kombinációja is megoldás. Másként fogalmazva a homogén lineáris egyenletrendszerek megoldásainak bármely lineáris kombinációja is megoldás, tehát a megoldások alteret alkotnak.
+
+**3.11.** Legyen $\mathbf{x} = (x_1, x_2, \ldots, x_n)$ az inhomogén egy partikuláris megoldása, és jelölje $\mathbf{a}_1, \mathbf{a}_2, \ldots, \mathbf{a}_n$ az $\mathbf{A}$ oszlopvektorait, $\mathcal{H}$ a homogén, $\mathcal{I}$ az inhomogén egyenletrendszer általános megoldását. Megmutatjuk, hogy $\mathbf{x} + \mathcal{H} = \mathcal{I}$, ahol a bal oldali összeadást elemenként értjük.
+
+$\mathbf{x} + \mathcal{H} \subseteq \mathcal{I}$: Meg kell mutatnunk, hogy $\mathbf{x}$-hez adjuk a $\mathcal{H}$ egy tetszőleges $\mathbf{y} = (y_1, y_2, \ldots, y_n) \in \mathcal{H}$ elemét, az inhomogén egyenletrendszer egy megoldását kapjuk. Valóban, $\mathbf{x}$, illetve $\mathbf{y}$ eleget tesz az
+$$\begin{aligned} \mathbf{a}_1 x_1 + \mathbf{a}_2 x_2 + \ldots + \mathbf{a}_n x_n &= \mathbf{b}, \text{ illetve} \\ \mathbf{a}_1 y_1 + \mathbf{a}_2 y_2 + \ldots + \mathbf{a}_n y_n &= \mathbf{0} \end{aligned}$$
+egyenletnek. Ebből
+$$\begin{aligned} \mathbf{a}_1(x_1 + y_1) + \mathbf{a}_2(x_2 + y_1) + \ldots + \mathbf{a}_n(x_n + y_1) &= \\ (\mathbf{a}_1 x_1 + \mathbf{a}_2 x_2 + \ldots + \mathbf{a}_n x_n) + (\mathbf{a}_1 y_1 + \mathbf{a}_2 y_2 + \ldots + \mathbf{a}_n y_n) &= \\ \mathbf{b} + \mathbf{0} = \mathbf{b}, \end{aligned}$$
+tehát $\mathbf{x} + \mathbf{y}$ megoldása az inhomogén egyenletrendszernek, azaz $\mathbf{x} + \mathbf{y} \in \mathcal{I}$.
+
+$\mathbf{x} + \mathcal{H} \supseteq \mathcal{I}$: Meg kell mutatnunk, hogy ha $\mathbf{z}$ az inhomogén egy tetszőleges megoldása, azaz $\mathbf{z} \in \mathcal{I}$, akkor található olyan $\mathbf{y} \in \mathcal{H}$, hogy $\mathbf{z} = \mathbf{x} + \mathbf{y}$. Valóban, az $\mathbf{y} = \mathbf{z} - \mathbf{x}$ megteszi, mert
+$$\begin{aligned} \mathbf{a}_1(z_1 - x_1) + \mathbf{a}_2(z_2 - x_1) + \ldots + \mathbf{a}_n(z_n - x_1) &= \\ (\mathbf{a}_1 z_1 + \mathbf{a}_2 z_2 + \ldots + \mathbf{a}_n z_n) - (\mathbf{a}_1 x_1 + \mathbf{a}_2 x_2 + \ldots + \mathbf{a}_n x_n) &= \\ \mathbf{b} - \mathbf{b} = \mathbf{0}, \end{aligned}$$
+azaz $\mathbf{z} - \mathbf{x} \in \mathcal{H}$.
+
+**3.12.** Összesen 16 altere van $\mathbb{F}_2^3$-nek. Van egy 0-dimenziós, a $\mathcal{Z} = \{ \mathbf{0} \}$ tér. Az egydimenziós alterek a nullvektorból és egyetlen tőle különböző további vektorból állnak (7 ilyen altér van). A kétdimenziós alterek mindegyike a nullvektorból, két további egymástól különböző vektorból és azok összegéből áll. Ezeket felsoroljuk:
+$$\begin{aligned}
+&\{(0,0,0), (1,0,0), (0,1,0), (1,1,0)\}, \\
+&\{(0,0,0), (0,1,0), (0,0,1), (0,1,1)\}, \\
+&\{(0,0,0), (0,0,1), (1,0,0), (1,0,1)\}, \\
+&\{(0,0,0), (1,0,0), (0,1,1), (1,1,1)\}, \\
+&\{(0,0,0), (0,1,0), (1,0,1), (1,1,1)\}, \\
+&\{(0,0,0), (0,0,1), (1,1,0), (1,1,1)\}, \\
+&\{(0,0,0), (0,1,1), (1,0,1), (1,1,0)\}.
+\end{aligned}$$
+Végül altér maga $\mathbb{F}_2^3$ is.
+
+**3.13.** Az első két állítás a 3.22. tétel egyszerű következménye.
+
+A harmadik állítás bizonyításához megmutatjuk, hogy egy lépcsős alak egy nemzérus sorvektora nem fejezhető ki a többi sorvektor lineáris kombinációjaként. Tekintsük a lépcsős alak $k$-adik sorvektorát. Főeleme legyen a $j$-edik oszlopban. E főelem nem állítható elő a $k$-nál nagyobb indexű sorok lineáris kombinációjával, mert azokban a $j$-edik koordináta 0. A $k$-nál kisebb indexű sorvektorok pedig nem szerepelhetnek a lineáris kombinációban, mivel a legkisebb indexű vektor főelemét a többi vektor nem eliminálhatja, pedig a $k$-adik sorban azon a helyen 0 áll.
+
+Annak bizonyítása, hogy a főelemek oszlopai $\mathbf{B}$-ben lineárisan függetlenek, ugyanúgy megy, mint a sorvektorok esetén. Innen pedig az előző tétellel adódik, hogy az ilyen indexű oszlopok $\mathbf{A}$-ban is lineárisan függetlenek.
+
+**3.14.** 1. Igaz. 2. Igaz, bármely 1-dimenziós vektortér ilyen. 3. Hamis, ha van kételemű bázis, akkor a lineárisan független vektorrendszerek elemszáma legföljebb 2. 4. Igaz, bármely 1-dimenziós vektortér ilyen. 5. Igen, egy generátorrendszer több vektorból is állhat, mint a dimenzió.
+
+**3.15.** A mátrix és annak redukált lépcsős alakja:
+$$\begin{bmatrix} 1 & 1 & 2 & 1 \\ 3 & 1 & 3 & 2 \\ 6 & 0 & 3 & 3 \\ 2 & -2 & -2 & 0 \end{bmatrix} \Rightarrow \begin{bmatrix} 1 & 0 & \frac{1}{2} & \frac{1}{2} \\ 0 & 1 & \frac{3}{2} & \frac{1}{2} \\ 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 \end{bmatrix}.$$
+Eszerint bázisvektoroknak választhatjuk a $\mathbf{w}_1 = (1, 3, 6, 2)$ és a $\mathbf{w}_2 = (1, 1, 0, -2)$ vektorokat. A többi vektor kifejezhető ezek lineáris kombinációjaként:
+$$\begin{bmatrix} 2 \\ 3 \\ 3 \\ -2 \end{bmatrix} = \frac{1}{2}\begin{bmatrix} 1 \\ 3 \\ 6 \\ 2 \end{bmatrix} + \frac{3}{2}\begin{bmatrix} 1 \\ 1 \\ 0 \\ -2 \end{bmatrix}, \quad \begin{bmatrix} 1 \\ 2 \\ 3 \\ 0 \end{bmatrix} = \frac{1}{2}\begin{bmatrix} 1 \\ 3 \\ 6 \\ 2 \end{bmatrix} + \frac{1}{2}\begin{bmatrix} 1 \\ 1 \\ 0 \\ -2 \end{bmatrix}.$$
+A redukált lépcsős alak nemzérus soraiból álló
+$$\begin{bmatrix} 1 & 0 & 1/2 & 1/2 \\ 0 & 1 & 3/2 & 1/2 \end{bmatrix}$$
+mátrixból kiolvasható, hogy a fenti altérnek $\mathcal{B} = \{ \mathbf{w}_1, \mathbf{w}_2 \}$ bázisa, és ebben a bázisban a négy vektor koordinátás alakja rendre
+$$\mathbf{v}_4 = \begin{bmatrix} 1 \\ 0 \end{bmatrix}_{\mathcal{B}}, \quad \mathbf{v}_1 = \begin{bmatrix} 0 \\ 1 \end{bmatrix}_{\mathcal{B}}, \quad \mathbf{v}_2 = \begin{bmatrix} 1/2 \\ 3/2 \end{bmatrix}_{\mathcal{B}}, \quad \mathbf{v}_3 = \begin{bmatrix} 1/2 \\ 1/2 \end{bmatrix}_{\mathcal{B}}.$$
+
+**3.18.** a) Merőlegesek, b) nem merőleges kiegészítő alterek.
+
+**3.20.** Mivel az egyenletrendszer 3-ismeretlenes, és a rang 2, ezért a kötött változók száma 2, a szabad változóké 1, és így a nulltér dimenziója is 1. A két vektor független egymástól, tehát az egyenletrendszer nem lehet homogén, akkor ugyanis legalább kettő lenne a nulltér dimenziója. Az egyenletrendszer tehát inhomogén, és a megadott két megoldás különbsége a homogén rész egy megoldását adja, annak összes skalárszorosa pedig az összes megoldását. Így az inhomogén összes megoldása: $(1, 2, 3) + t(1, 1, 0)$.
+
+**3.21.** Például $(1, 2, 3, 4) + s(1, 1, 0, 0) + t(1, 1, 1, 1)$.
+
+**3.26.** E mátrix rangja pontosan akkor $k$, ha az oszlopvektorai lineárisan függetlenek, azaz ha az oszlopvektorok bármely lineáris kombinációja csak úgy lehet a nullvektor, ha minden együttható 0. Tekintsük az oszlopvektorok egy $c_1, \ldots, c_k$ skalárokkal vett, nullvektort adó lineáris kombinációját. Ennek $i$-edik koordinátája
+$$0 = c_1\mathbf{v}_i \cdot \mathbf{v}_1 + c_2\mathbf{v}_i \cdot \mathbf{v}_2 + \cdots + c_k\mathbf{v}_i \cdot \mathbf{v}_k = \mathbf{v}_i \cdot (c_1\mathbf{v}_1 + c_2\mathbf{v}_2 + \cdots + c_k\mathbf{v}_k).$$
+Tehát azt kaptuk, hogy az $\mathbf{x} = c_1\mathbf{v}_1 + c_2\mathbf{v}_2 + \cdots + c_k\mathbf{v}_k$ vektor olyan, hogy a $\mathbf{v}_1, \ldots, \mathbf{v}_k$ vektorok mindegyikével vett skaláris szorzata 0; így ezek bármelyik lineáris kombinációjával vett skaláris szorzata is 0, tehát például az $\mathbf{x}$ vektorral
+
+<!-- OCR: through PDF p.137 -->
