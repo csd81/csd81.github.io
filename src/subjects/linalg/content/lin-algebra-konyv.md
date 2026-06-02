@@ -2273,4 +2273,94 @@ a &{}+{}& b &{}+{}& && d &{}={}& 1
 \end{alignedat}$$
 Oldjuk meg ezt az egyenletrendszert Gauss–Jordan kiküszöböléssel $\mathbb{Z}_2$ fölött. Ne felejtsük, hogy $\mathbb{Z}_2$-ben $1 + 1 = 0$, így $1 = -1$, azaz a
 
-<!-- OCR: through PDF p.89 -->
+kivonás nem különbözik az összeadástól.
+$$\left[\begin{array}{cccc|c} 0 & 1 & 1 & 1 & 1 \\ 1 & 0 & 1 & 1 & 0 \\ 1 & 1 & 0 & 1 & 1 \end{array}\right] \xrightarrow{S_1 \leftrightarrow S_2} \left[\begin{array}{cccc|c} 1 & 0 & 1 & 1 & 0 \\ 0 & 1 & 1 & 1 & 1 \\ 1 & 1 & 0 & 1 & 1 \end{array}\right] \xrightarrow{S_3 + S_1} \left[\begin{array}{cccc|c} 1 & 0 & 1 & 1 & 0 \\ 0 & 1 & 1 & 1 & 1 \\ 0 & 1 & 1 & 0 & 1 \end{array}\right] \xrightarrow{S_3 + S_2}$$
+$$\left[\begin{array}{cccc|c} 1 & 0 & 1 & 1 & 0 \\ 0 & 1 & 1 & 1 & 1 \\ 0 & 0 & 0 & 1 & 0 \end{array}\right] \xrightarrow{\substack{S_2 + S_3 \\ S_1 + S_3}} \left[\begin{array}{cccc|c} 1 & 0 & 1 & 0 & 0 \\ 0 & 1 & 1 & 0 & 1 \\ 0 & 0 & 0 & 1 & 0 \end{array}\right] \longrightarrow \begin{alignedat}{9}
+a && &{}+{}& c && &{}={}& 0 \\
+&& b &{}+{}& c && &{}={}& 1 \\
+&& && && d &{}={}& 0
+\end{alignedat}$$
+Az utolsó egyenletből $d = 0$. A szabad változó $c$, legyen $c = s$. Így a második egyenletből $b = 1 + c$, azaz $b = 1 + s$ és az elsőből $a = c$, azaz $a = s$. A megoldás általános alakban $(a, b, c, d) = (s, 1 + s, s, 0)$, azaz $(a, b, c, d) = (0, 1, 0, 0) + s(1, 1, 1, 0)$. Az $s = 0$ és az $s = 1$ értékekhez tartozó megoldások tehát: $(0, 1, 0, 0)$ és $(1, 0, 1, 0)$.
+
+Ha az egyenletrendszert vektoregyenletnek tekintjük, akkor az első megoldás azt mutatja, hogy az együtthatómátrix második oszlopa megegyezik a jobb oldallal (és valóban), a második megoldás pedig azt, hogy az első és a harmadik oszlop összege a jobb oldalt adja. $\square$
+
+**2.45. példa (Egyenletrendszer $\mathbb{Z}_5$ fölött).** *Oldjuk meg az alábbi két egyenletrendszert $\mathbb{Z}_5$ fölött.*
+$$\begin{alignedat}{9} 2x &{}+{}& 3y &{}={}& 1 \\ 3x &{}+{}& 2y &{}={}& 4 \end{alignedat} \qquad \begin{alignedat}{9} 2x &{}+{}& 3y &{}={}& 1 \\ 3x &{}+{}& 4y &{}={}& 3 \end{alignedat}$$
+
+*Megoldás.* A számolás megkönnyítésére vagy készítsünk osztási táblát, vagy használjuk az 548. oldalon található A.5. ábra szorzótábláját.
+$$\left[\begin{array}{cc|c} 2 & 3 & 1 \\ 3 & 2 & 4 \end{array}\right] \xrightarrow{3S_1} \left[\begin{array}{cc|c} 1 & 4 & 3 \\ 3 & 2 & 4 \end{array}\right] \xrightarrow{S_2 - 3S_1} \left[\begin{array}{cc|c} 1 & 4 & 3 \\ 0 & 0 & 0 \end{array}\right],$$
+azaz az egyenletrendszernek több megoldása van. Itt ez nem azt jelenti, hogy végtelen sok, hanem azt, hogy legalább egy paraméter végigfut $\mathbb{Z}_5$ összes elemén. Szabad változó az $y$, legyen $y = s$, így $x = 3 - 4s = 3 + s$, tehát $(x, y) = (3 + s, s)$, azaz a vektorok mátrixjelölésével:
+$$\begin{bmatrix} x \\ y \end{bmatrix} = \begin{bmatrix} 3 \\ 0 \end{bmatrix} + s\begin{bmatrix} 1 \\ 1 \end{bmatrix}, \quad s \in \mathbb{Z}_5$$
+Mivel $\mathbb{Z}_5$-nek öt eleme van, ezért $s$-nek is ennyi értéke lehet, azaz az első egyenletrendszer összes megoldása $(3, 0)$, $(4, 1)$, $(0, 2)$, $(1, 3)$, $(2, 4)$. A másik egyenletrendszer megoldása:
+$$\left[\begin{array}{cc|c} 2 & 3 & 1 \\ 3 & 4 & 3 \end{array}\right] \xrightarrow{3S_1} \left[\begin{array}{cc|c} 1 & 4 & 3 \\ 3 & 4 & 3 \end{array}\right] \xrightarrow{S_2 - 3S_1} \left[\begin{array}{cc|c} 1 & 4 & 3 \\ 0 & 2 & 4 \end{array}\right] \xrightarrow{3S_2} \left[\begin{array}{cc|c} 1 & 0 & 0 \\ 0 & 1 & 2 \end{array}\right].$$
+Így a megoldás $(x, y) = (0, 2)$. $\square$
+
+### Feladatok
+
+#### Mátrix lépcsős és redukált lépcsős alakja
+
+**2.26.•** *Lépcsős alak: igaz – hamis.* Melyek igazak, melyek hamisak az alábbi állítások közül?
+- a) Egy mátrix minden lépcsős alakjában ugyanannyi nemzérus sor van.
+- b) Egy mátrix minden lépcsős alakjában ugyanannyi főoszlop (bázisoszlop) van.
+- c) Minden valós mátrixnak van lépcsős alakja, ami egyértelmű.
+- d) Különböző mátrixoknak különböző a redukált lépcsős alakjuk.
+- e) Ha egy mátrix elemi sorműveletekkel egy másikba vihető, akkor redukált lépcsős alakjuk megegyezik.
+
+Határozzuk meg valamely lépcsős alakját, majd a redukált lépcsős alakját az alábbi mátrixoknak!
+
+**2.27.** $\begin{bmatrix} 1 & 1 & 1 & 1 & 1 \\ 2 & 3 & 2 & 3 & 4 \\ 1 & 2 & 1 & 2 & 3 \end{bmatrix}$
+
+**2.28.** $\begin{bmatrix} 1 & 1 & 1 & 1 & 1 \\ 2 & 3 & 2 & 3 & 4 \\ 3 & 2 & 1 & 2 & 3 \end{bmatrix}$
+
+**2.29.•** A három elemi sorművelet egyike elvégezhető a másik kettő segítségével is. Melyik és hogyan?
+
+#### Egyenletrendszer megoldása Gauss-módszerrel
+
+Oldjuk meg az alábbi lineáris egyenletrendszereket Gauss-módszerrel!
+
+**2.30.** $\begin{cases} x_1 + x_2 + x_3 = 1 \\ x_2 + x_3 + x_4 = 2 \\ x_3 + x_4 + x_5 = 2 \\ x_4 + x_5 + x_1 = 1 \end{cases}$
+
+**2.31.** $\begin{cases} x_1 + x_2 + x_3 = 4 \\ -x_1 + x_2 - x_3 = 2 \\ 2x_1 + x_2 + 2x_3 = 3 \\ 4x_1 + 4x_2 + 4x_3 = 1 \end{cases}$
+
+**2.32.•** $\begin{cases} 7x + 14y - 21z = 7 \\ x + 2y - 3z = 1 \\ 5x + 10y + 15z = 5 \\ 3x + 6y - 9z = 3 \end{cases}$
+
+**2.33.** $\begin{cases} x + 3y + z = 1 \\ 2x + 7y + 2z = 0 \\ x + 4y + 4z = 1 \\ x + 4y + 2z = -1 \\ 4x + 15y + 10z = 2 \end{cases}$
+
+**2.34.** $\begin{cases} x + y = 4 \\ 3x - y = 2 \\ -3x + 5y = 2 \\ x + 2y = 1 \end{cases}$
+
+**2.35.** $\begin{cases} x_1 + x_2 + 4x_4 = 3 \\ x_2 - x_3 + 3x_4 = 1 \\ x_1 - 2x_2 + 3x_3 - 5x_4 = 0 \\ 3x_1 - x_2 + 4x_3 = 5 \end{cases}$
+
+#### Egyenletrendszer megoldása Gauss–Jordan-módszerrel
+
+**2.36.** Oldjuk meg az alábbi szimultán egyenletrendszereket!
+- a) $\begin{cases} 2x + y = 1 \\ 5x + 3y = 0 \end{cases}$ $\quad$ $\begin{cases} 2x + y = 0 \\ 5x + 3y = 1 \end{cases}$
+- b) $\begin{cases} 2x + y = 2 \\ 4x + 2y = 0 \end{cases}$ $\quad$ $\begin{cases} 2x + y = 2 \\ 4x + 2y = 4 \end{cases}$
+- c) $\begin{cases} x + y + z = 1 \\ x + 2y + 3z = 4 \\ x + 2y + 2z = 1 \end{cases}$ $\quad$ $\begin{cases} x + y + z = 0 \\ x + 2y + 3z = 5 \\ x + 2y + 2z = 1 \end{cases}$
+- d) $\begin{cases} x + y + z = 1 \\ x + 2y + 3z = 4 \\ x + 2y + z = 2 \end{cases}$ $\quad$ $\begin{cases} x + y + z = 1 \\ x + 2y + 3z = 5 \\ x + 2y + z = 1 \end{cases}$ $\quad$ $\begin{cases} x + y + z = 0 \\ x + 2y + 3z = 6 \\ x + 2y + z = 2 \end{cases}$
+
+#### Egyenletrendszerek
+
+**2.37.•** *Egyenletrendszerek: igaz – hamis.* Melyek igazak, melyek hamisak az alábbi állítások közül?
+- a) A bővített mátrixon végrehajtott elemi sorműveletek közben az egyenletrendszer megoldáshalmaza nem változik.
+- b) Egy lineáris egyenletrendszer nem konzisztens, ha több egyenletből áll, mint ahány ismeretlenes.
+- c) Ha egy valósegyütthatós lineáris egyenletrendszernek van két különböző megoldása, akkor végtelen sok is van.
+- d) Egy homogén lineáris egyenletrendszer mindig konzisztens.
+
+Ekvivalensek-e az alábbi egyenletrendszerek?
+
+**2.38.** $\begin{cases} 3x + 2y - 2z = 1 \\ 2x + 3y - 3z = -1 \\ 4x + 2y = 8 \end{cases}$ $\quad$ $\begin{cases} 2x + 2y - 2z = 0 \\ 3x + 3y - 2z = 3 \\ 5x - 3y + 2z = 5 \end{cases}$
+
+**2.39.** $\begin{cases} 2x + 3y + 5z = 0 \\ 3x + 2y + 2z = 3 \\ 5x - 4z = 9 \end{cases}$ $\quad$ $\begin{cases} x - y - 3z = 3 \\ 5x + 5y + 7z = 3 \end{cases}$
+
+**2.40.** Csak egész számokkal számolva megoldható-e az az egyenletrendszer, melynek bővített mátrixa a következő:
+- a) $\left[\begin{array}{ccc|c} 3 & 4 & 1 & 1 \\ 7 & 8 & 3 & 7 \\ 11 & 7 & -2 & 2 \end{array}\right]$  b) $\left[\begin{array}{ccc|c} 3 & 4 & 1 & 1 \\ 7 & 8 & 3 & 7 \\ 11 & 7 & 2 & 2 \end{array}\right]$
+
+**2.41.** Egy legalább 2-ismeretlenes lineáris egyenletrendszerről annyit tudunk, hogy egyértelműen megoldható, és hogy bővített mátrixának elemei sorfolytonosan olvasva számtani sorozatot adnak. Mi a megoldása?
+
+**2.42.** *Lineárisra visszavezethető egyenletrendszerek.* Oldjuk meg az alábbi, nem lineáris egyenletrendszereket!
+- a) $\begin{cases} 2\sqrt{x} + 2\sqrt{y} = 8 \\ 3\sqrt{x} + \sqrt{y} = 4 \end{cases}$  b) $\begin{cases} 2x^3 + 2y^2 = 8 \\ 3x^3 + y^2 = 4 \end{cases}$
+- c) $\begin{cases} 2e^x + 2e^y = 8 \\ 3e^x + e^y = 4 \end{cases}$  d) $\begin{cases} 2\cos x + 2\cos y = 8 \\ 3\cos x + \cos y = 4 \end{cases}$
+
+**2.43.** *Egyenletrendszer pozitív egész megoldásokkal.* Egy érmegyűjteményben régi 1, 5 és 10 Ft-osok vannak, összesen 11 darab, 53 Ft összértékben. Melyik érméből hány darab van?
+
+<!-- OCR: through PDF p.92 -->
