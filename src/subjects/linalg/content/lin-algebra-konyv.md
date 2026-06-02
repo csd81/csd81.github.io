@@ -1241,4 +1241,78 @@ ami a lapátló-vektor síkjának másik lapátló-vektora.
 
 **1.51.** Milyen irányokat cserél föl a tükör, és milyeneket nem? Nem cseréli föl a tükör síkjával párhuzamos irányokat: minden, a tükör síkjával párhuzamos vektor tükörképe önmaga. Tehát, ha a tükör előtt állunk, és a tükör is függőleges, akkor a „fölfelé" irány a tükörképen sem változik. Viszont a tükör fölcseréli a tükörre merőleges irányokat.
 
-<!-- OCR: through PDF p.56 -->
+(folyt. 1.51.) Egy lehetőség a definiálásra: ha értelmezve van egy viszonyítási rendszerben (pl. az emberi testhez képest, vagy a mozgó járműben, …) a *föl* és az *előre*, melyek egymásra merőleges irányok, akkor a *jobb* irány az *előre* $\times$ *föl* vektori szorzattal definiálható. Ennek képe a tükörben viszont $(-előre) \times föl = -jobb$, ami épp a *bal*. (A feladatban föltett kérdés egyébként nem pontos, hisz egy vízszintesen a földre helyezett tükör megfordítja a lentet és föntet.)
+
+**1.52.** Bontsuk fel $\mathbf{a}$-t az $\mathbf{e}$-vel párhuzamos $\mathbf{p}$ és rá merőleges $\mathbf{m}$ összetevőkre. $|\mathbf{e} \times \mathbf{a}| = |\mathbf{a}|\sin(\mathbf{e},\mathbf{a})_\angle$, ami megegyezik $|\mathbf{m}|$-mel. $\mathbf{e} \times \mathbf{a}$ merőleges $\mathbf{e}$ és $\mathbf{a}$ síkjára, ezért $(\mathbf{e} \times \mathbf{a}) \times \mathbf{e}$ az $\mathbf{e}$ és $\mathbf{a}$ síkjában van és $|(\mathbf{e} \times \mathbf{a}) \times \mathbf{e}| = |\mathbf{a}|\sin(\mathbf{e},\mathbf{a})_\angle$, így $(\mathbf{e} \times \mathbf{a}) \times \mathbf{e} = \mathbf{m}$.
+
+**1.53.** Az $\mathbf{a} + \mathbf{b} + \mathbf{c} = \mathbf{0}$ egyenlőséget $\mathbf{a}$-val vektoriálisan szorozva, átrendezve kapjuk, hogy
+$$\mathbf{a} \times \mathbf{b} + \mathbf{a} \times \mathbf{c} = \mathbf{0},$$
+amiből $\mathbf{a} \times \mathbf{b} = \mathbf{c} \times \mathbf{a}$. $\mathbf{b}$-vel való szorzás után kapjuk az $\mathbf{a} \times \mathbf{b} = \mathbf{b} \times \mathbf{c}$ egyenlőséget. Az állítás megfordítása nem igaz, mivel bármely három kollineáris vektor esetén $\mathbf{a} \times \mathbf{b} = \mathbf{b} \times \mathbf{c} = \mathbf{c} \times \mathbf{a} = \mathbf{0}$ akkor is, ha $\mathbf{a} + \mathbf{b} + \mathbf{c} \neq \mathbf{0}$.
+
+**1.54.** a) $V$, és a körüljárás azonos. b) $4V$, és az $\mathbf{u}$, $\mathbf{v}$, $\mathbf{w}$ körüljárása az $\mathbf{a}$, $\mathbf{b}$, $\mathbf{c}$ körüljárásával ellentétes!
+
+**1.55.** a) igen, b) nem, az origó kijelölése is szükséges, c) igen, d) nem, a szokásos $\mathbf{u} \cdot \mathbf{v} = u_1v_1 + u_2v_2 + u_3v_3$ csak ortonormált bázisban érvényes.
+
+**1.56.** a) ilyen vektorok nincsenek (CBS-egyenlőtlenségnek ellent mond), b) $\mathbf{u} \cdot \mathbf{v} = -9$ (ld. az 1.10 polarizációs formulát), c) ilyen vektorok a háromszög-egyenlőtlenség miatt nem léteznek, d) $\mathbf{u} \cdot \mathbf{v} = -4$ (ld. az 1.9 polarizációs formulát), e) 17 (a 8, 15, 17 pithagoraszi számhármas).
+
+**1.57.** a) $\mathbf{a} \cdot \mathbf{b} = 3$, $\mathbf{a} \times \mathbf{b} = (3, -3, -3)$, b) $\mathbf{a} \cdot \mathbf{b} = 1$, $\mathbf{a} \times \mathbf{b} = (-2, -1, 2)$, c) $\mathbf{u} \cdot \mathbf{v} = 10$, $\mathbf{u} \times \mathbf{v} = (-4, 8, -4)$.
+
+**1.58.** a) $\pi/2$, b) $\pi/3$, c) $\pi/4$, d) $3\pi/4$, e) $\pi/4$.
+
+**1.59.** a) 2.701, $154.76°$, b) 1.91986226152, $110.0°$.
+
+**1.60.** a) egyenlő oldalú, b) tompa szögű ($B$ csúcsnál), c) derékszögű ($C$ csúcsnál).
+
+**1.61.** $\arccos(1/\sqrt{n})$. $n = 2$ esetén $45°$, $n = 4$ esetén $60°$.
+
+**1.62.** Kihasználjuk, hogy $\operatorname{proj}_{\mathbf{a}} \mathbf{b} = \frac{\mathbf{a} \cdot \mathbf{b}}{\mathbf{a} \cdot \mathbf{a}}\mathbf{a}$ a párhuzamos és $\mathbf{b} - \operatorname{proj}_{\mathbf{a}} \mathbf{b}$ az $\mathbf{a}$-ra merőleges összetevő:
+- a) $(4, 6, -1) = (2, 4, -4) + (2, 2, 3)$,
+- b) $(5, -3, 8) = (2, 3, 6) + (3, -6, 2)$,
+- c) $(1, 4, 0, 3) = (2, 2, 2, 2) + (-1, 2, -2, 1)$,
+- d) $(4, 3, 6, 7) = (2, 4, 4, 8) + (2, -1, 2, -1)$.
+
+**1.66.** Teljes indukcióval a háromszög-egyenlőtlenségből.
+
+**1.68.** Az $|\mathbf{u}|^2 = \mathbf{u} \cdot \mathbf{u}$ alkalmazásával:
+$$\begin{aligned}
+|\mathbf{a} + \mathbf{b}|^2 + |\mathbf{a} - \mathbf{b}|^2 &= (\mathbf{a} + \mathbf{b}) \cdot (\mathbf{a} + \mathbf{b}) + (\mathbf{a} - \mathbf{b}) \cdot (\mathbf{a} - \mathbf{b}) \\
+&= (\mathbf{a} \cdot \mathbf{a} + 2\mathbf{a} \cdot \mathbf{b} + \mathbf{b} \cdot \mathbf{b}) + (\mathbf{a} \cdot \mathbf{a} - 2\mathbf{a} \cdot \mathbf{b} + \mathbf{b} \cdot \mathbf{b}) \\
+&= 2|\mathbf{a}|^2 + 2|\mathbf{b}|^2.
+\end{aligned}$$
+
+**1.69.** Használjuk az $|\mathbf{u} + \mathbf{v}| \leqslant |\mathbf{u}| + |\mathbf{v}|$ háromszög-egyenlőtlenséget az $\mathbf{u} = \mathbf{a} - \mathbf{b}$, $\mathbf{v} = \mathbf{b} - \mathbf{c}$ vektorokra.
+
+**1.70.** Mindkét összefüggés a CBS-egyenlőtlenség mindkét oldalának négyzetreemelése után kapott egyenlőtlenséggel ekvivalens. A b) esetén $(\mathbf{x} \cdot \mathbf{y})^2 \leqslant |\mathbf{x}|^2|\mathbf{y}|^2$.
+
+**1.71.** A feladat szerint $c \in R_a$ pontosan akkor teljesül, ha $a\,R\,c$. Tegyük fel, hogy $R_a$ és $R_b$ nem diszjunkt. Ha $c$ egy közös elemük, akkor $c$ az $a$-val és $b$-vel is relációban van, azaz $a\,R\,c$ és $b\,R\,c$, de a szimmetria miatt $c\,R\,b$ is, a tranzitivitás miatt pedig az $a\,R\,c$ és $c\,R\,b$ relációkból következik az $a\,R\,b$. Ekkor pedig a tranzitivitást használva bármely $x$ elemre $b\,R\,x$-ből következik $a\,R\,x$, azaz $x \in R_b$-ből következik $x \in R_a$, azaz $R_b \subseteq R_a$. Mivel az $a$ és $b$ szerepét megfordítva kapjuk $R_a \subseteq R_b$, tehát $R_a = R_b$. Végül be kell még látnunk, hogy e halmazok uniója kiadja az egész $X$ halmazt. Ez igaz, hisz minden $a$ elemre $a\,R\,a$, azaz $a \in R_a$.
+
+**1.72.** Tekintsünk egy $\overrightarrow{AB}$ és egy $\overrightarrow{CD}$ irányított szakaszt! Azt mondjuk, hogy ezek relációban vannak, ha van egy olyan eltolás, mely $A$-t $C$-be, $B$-t $D$-be viszi. E reláció ekvivalenciareláció (ellenőrizzük), így egy osztályozást definiál az irányított szakaszok halmazán. Egy ilyen osztályt nevezünk (szabad) vektornak.
+
+**1.73.** A vektor iránya a félegyenesek, az állása az egyenesek halmazán – az előző feladathoz hasonlóan az eltolással – definiált ekvivalencia reláció egy ekvivalenciaosztálya.
+
+# 2. Lineáris egyenletrendszerek és megoldásuk
+
+E fejezet témái: a lineáris egyenletrendszerek geometriája, megoldásuk technikái és a megoldások halmazának szerkezete.
+
+## Egyenes és sík egyenletei
+
+*A 2- és 3-dimenziós tér lineáris alakzatainak áttekintése segítségünkre lesz a lineáris egyenletrendszerek megértésében.*
+
+### Alakzatok implicit és explicit egyenletrendszerei
+
+**2.1. példa (Az $x + y = 1$ egyenlet).** *Egy tetszőleges síkbeli koordináta-rendszerben az $x + y = 1$ egyenletet kielégítő $(x, y)$ pontok milyen alakzatot adnak? Ábrázoljunk néhány pontot, és fogalmazzunk meg sejtést!*
+
+*Megoldás.* A 2.1 ábrán két különböző koordináta-rendszert ábrázolunk, és azokban a fenti egyenletet kielégítő pontok közül néhányat. Ennek alapján azt sejthetjük, hogy az $x + y = 1$ egyenletet kielégítő pontok egy egyenesen vannak. A sejtést hamarosan bizonyítjuk. $\square$
+
+**2.2. példa (Az $x^2 + y^2 = 1$ egyenlet).** *Egy tetszőleges síkbeli koordináta-rendszerben az $x^2 + y^2 = 1$ egyenletet kielégítő $(x, y)$ pontok milyen alakzatot adnak? Ábrázoljunk néhány pontot, és fogalmazzunk meg sejtést!*
+
+*Megoldás.* Az alábbi ábrán két koordináta-rendszerben ábrázolunk az $x^2 + y^2 = 1$ egyenletet kielégítő néhány ponttal. Később igazolni fogjuk, hogy az egyenletet kielégítő pontok egy ellipszisen vannak. $\square$
+
+Az előző két egyenlet mindegyikéből *kifejezhető* a két koordináta egy paraméter bevezetésével. Az $x + y = 1$, illetve az $x^2 + y^2 = 1$ egyenlet ekvivalens az
+$$\begin{cases} x = t \\ y = 1 - t, \end{cases} \quad t \in \mathbb{R}, \qquad \text{illetve az} \qquad \begin{cases} x = \cos t \\ y = \sin t \end{cases} \quad t \in [0, 2\pi)$$
+
+*2.1. ábra. Az $x + y = 1$ egyenletet kielégítő néhány pont két különböző koordináta-rendszerben.*
+
+*2.2. ábra. Az $x^2 + y^2 = 1$ egyenletet kielégítő $(x, y)$ pontok halmaza két koordináta-rendszerben.*
+
+<!-- OCR: through PDF p.59 -->
