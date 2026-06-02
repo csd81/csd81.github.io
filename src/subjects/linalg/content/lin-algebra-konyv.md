@@ -3771,4 +3771,53 @@ $$\mathbf{v}_4 = \begin{bmatrix} 1 \\ 0 \end{bmatrix}_{\mathcal{B}}, \quad \math
 $$0 = c_1\mathbf{v}_i \cdot \mathbf{v}_1 + c_2\mathbf{v}_i \cdot \mathbf{v}_2 + \cdots + c_k\mathbf{v}_i \cdot \mathbf{v}_k = \mathbf{v}_i \cdot (c_1\mathbf{v}_1 + c_2\mathbf{v}_2 + \cdots + c_k\mathbf{v}_k).$$
 Tehát azt kaptuk, hogy az $\mathbf{x} = c_1\mathbf{v}_1 + c_2\mathbf{v}_2 + \cdots + c_k\mathbf{v}_k$ vektor olyan, hogy a $\mathbf{v}_1, \ldots, \mathbf{v}_k$ vektorok mindegyikével vett skaláris szorzata 0; így ezek bármelyik lineáris kombinációjával vett skaláris szorzata is 0, tehát például az $\mathbf{x}$ vektorral
 
-<!-- OCR: through PDF p.137 -->
+vett szorzat is 0, azaz $\mathbf{x} \cdot \mathbf{x} = 0$. Ez viszont csak $\mathbf{x} = \mathbf{0}$ esetén állhat fönn, és mivel a $\mathbf{v}_i$ vektorok lineárisan függetlenek, csak a $c_i = 0$ konstansokkal vett lineáris kombinációjuk lehet 0, ahol $i = 1, 2, \ldots, k$.
+
+**3.27.** Megmutatjuk, hogy a nulltér merőleges kiegészítő altere a sortér. Legyen a valós $\mathbf{A}$ mátrix sortere $\mathcal{S}$, nulltere $\mathcal{N}$, és ezek egy-egy bázisa $\{ \mathbf{s}_1, \mathbf{s}_2, \ldots, \mathbf{s}_k \}$, illetve $\{ \mathbf{e}_1, \mathbf{e}_2, \ldots, \mathbf{e}_{n-k} \}$. $\mathcal{S}$ és $\mathcal{N}$ merőlegessége miatt $\mathbf{s}_i \cdot \mathbf{e}_j = 0$ minden $i = 1, 2, \ldots, r$ és $j = 1, 2, \ldots, n - r$ esetén. E két bázis együtt $\mathbb{R}^n$ egy bázisát adja, hisz $n$ elemű és független vektorokból áll. A függetlenség abból következik, hogy nullvektort előállító tetszőleges
+$$\underbrace{c_1\mathbf{s}_1 + \cdots + c_r\mathbf{s}_r}_{\mathbf{c}} + \underbrace{d_1\mathbf{e}_1 + \cdots + d_{n-r}\mathbf{e}_{n-r}}_{\mathbf{d}} = \mathbf{0} \tag{3.4}$$
+lineáris kombináció csak úgy állhat fenn, ha a $\mathbf{c}$ és $\mathbf{d}$ a két altér metszetében van, így azok mindketten a nullvektorok, és így $c_1 = \cdots = c_r = d_1 = \cdots = d_{n-r} = 0$.
+
+Ha $\mathbf{x}$ egy olyan vektor, mely merőleges $\mathcal{N}$ minden vektorára, akkor $\mathbf{x} \cdot \mathbf{e}_i = 0$ $(i = 1, 2, \ldots, n - r)$. Ha
+$$\mathbf{x} = y_1\mathbf{s}_1 + \cdots + y_r\mathbf{s}_r + x_1\mathbf{e}_1 + \cdots + x_{n-r}\mathbf{e}_{n-r},$$
+akkor az $\mathbf{e}_i$ vektorokkal való beszorzás a következő homogén lineáris egyenletrendszerre vezet:
+$$\begin{alignedat}{9}
+(\mathbf{e}_1 \cdot \mathbf{e}_1)x_1 &{}+{}& (\mathbf{e}_1 \cdot \mathbf{e}_2)x_2 &{}+{}& \ldots &{}+{}& (\mathbf{e}_1 \cdot \mathbf{e}_r)x_n &{}={}& 0 \\
+(\mathbf{e}_2 \cdot \mathbf{e}_1)x_1 &{}+{}& (\mathbf{e}_2 \cdot \mathbf{e}_2)x_2 &{}+{}& \ldots &{}+{}& (\mathbf{e}_2 \cdot \mathbf{e}_r)x_n &{}={}& 0 \\
+\vdots && \vdots && && \;\;\vdots && \vdots \\
+(\mathbf{e}_{n-r} \cdot \mathbf{e}_1)x_1 &{}+{}& (\mathbf{e}_{n-r} \cdot \mathbf{e}_2)x_2 &{}+{}& \ldots &{}+{}& (\mathbf{e}_{n-r} \cdot \mathbf{e}_n)x_n &{}={}& 0
+\end{alignedat}$$
+Ez pedig egyértelműen megoldható, mert együtthatómátrixának rangja $r$. Ennek bizonyítását az Olvasóra hagyjuk. Egy bizonyítás látható a 3.26. feladatban, egy másik, egyszerűbb a ?? feladatban.
+
+**3.28.** Az egyenletrendszer bővített mátrixának redukált lépcsős alakja
+$$\left[\begin{array}{ccc|c} 1 & 0 & -2 & -1 \\ 0 & 1 & 3 & 4 \end{array}\right]$$
+így a megoldása $(x, y, z) = (-1, 4, 0) + (2, -3, 1)t$. A nullteret a $(2, -3, 1)$ vektor feszíti ki, a sortérbe eső vektornak erre merőlegesnek kell lennie, tehát fönn kell állnia a
+$$2x - 3y + z = 0$$
+egyenletnek is. Ezt az egyenletet a redukált lépcsős alakból származó egyenletrendszerhez (vagy akár az eredetihez) adva egy egyetlen megoldást adó egyenletrendszert kapunk. Ennek bővített mátrixa és annak redukált lépcsős alakja:
+$$\left[\begin{array}{ccc|c} 1 & 0 & -2 & -1 \\ 0 & 1 & 3 & 4 \\ 2 & -3 & 1 & 0 \end{array}\right] \Longrightarrow \left[\begin{array}{ccc|c} 1 & 0 & 0 & 1 \\ 0 & 1 & 0 & 1 \\ 0 & 0 & 1 & 1 \end{array}\right]$$
+Innen a sortérbe eső megoldás $(1, 1, 1)$.
+
+**3.29.** A sortérbe eső megoldás meghatározása egyetlen egyenlet esetében egyszerű. Mivel a sorteret az $(1, 4, 8, 12)$ vektor feszíti ki, ennek egy skalárszorosát keressük, mellyel vett skalárszorzata 225. Mivel $1^2 + 4^2 + 8^2 + 12^2 = 15^2 = 225$, ezért a sortérbe eső egyetlen megoldás $(x, y, z, w) = (1, 4, 8, 12)$. A homogén egyenletrendszer összes megoldását meghatározva majd hozzáadva kapjuk, hogy
+$$\begin{bmatrix} x \\ y \\ z \\ w \end{bmatrix} = \begin{bmatrix} 1 \\ 4 \\ 8 \\ 12 \end{bmatrix} + \begin{bmatrix} -4 \\ 1 \\ 0 \\ 0 \end{bmatrix} t + \begin{bmatrix} -8 \\ 0 \\ 1 \\ 0 \end{bmatrix} s + \begin{bmatrix} -12 \\ 0 \\ 0 \\ 1 \end{bmatrix} u$$
+az összes megoldás.
+
+**3.30.** A bővített mátrix és redukált lépcsős alakja:
+$$\left[\begin{array}{cccc|c} 1 & 1 & 1 & 1 & 3 \\ 1 & 1 & -1 & -1 & 1 \end{array}\right] \Longrightarrow \left[\begin{array}{cccc|c} 1 & 1 & 0 & 0 & 2 \\ 0 & 0 & 1 & 1 & 1 \end{array}\right]$$
+Az egyenletrendszer megoldása:
+$$\begin{bmatrix} x \\ y \\ z \\ w \end{bmatrix} = \begin{bmatrix} 2 - s \\ s \\ 1 - t \\ t \end{bmatrix} = \begin{bmatrix} 2 \\ 0 \\ 1 \\ 0 \end{bmatrix} + \begin{bmatrix} -1 \\ 1 \\ 0 \\ 0 \end{bmatrix} s + \begin{bmatrix} 0 \\ 0 \\ -1 \\ 1 \end{bmatrix} t.$$
+Tehát a nullteret a $(-1, 1, 0, 0)$ és a $(0, 0, -1, 1)$ vektorok feszítik ki. A sortérbe eső megoldásvektor ezekre merőleges, tehát az eredeti egyenleten kívül kielégíti a következő két egyenletet is:
+$$\begin{alignedat}{9}
+-x &{}+{}& y &&&&&{}={}& 0 \\
+&& &{}-{}& z &{}+{}& w &{}={}& 0
+\end{alignedat}$$
+Ezek mátrixával kibővítve a redukált lépcsős alakot, majd azt redukált lépcsős alakra hozva kapjuk, hogy
+$$\left[\begin{array}{cccc|c} 1 & 1 & 0 & 0 & 2 \\ 0 & 0 & 1 & 1 & 1 \\ -1 & 1 & 0 & 0 & 0 \\ 0 & 0 & -1 & 1 & 0 \end{array}\right] \Longrightarrow \left[\begin{array}{cccc|c} 1 & 0 & 0 & 0 & 1 \\ 0 & 1 & 0 & 0 & 1 \\ 0 & 0 & 1 & 0 & 1/2 \\ 0 & 0 & 0 & 1 & 1/2 \end{array}\right]$$
+tehát a sortérbe eső megoldás $(1, 1, 1/2, 1/2)$, az összes megoldás
+$$\begin{bmatrix} x \\ y \\ z \\ w \end{bmatrix} = \begin{bmatrix} 1 \\ 1 \\ 1/2 \\ 1/2 \end{bmatrix} + \begin{bmatrix} -1 \\ 1 \\ 0 \\ 0 \end{bmatrix} s + \begin{bmatrix} 0 \\ 0 \\ -1 \\ 1 \end{bmatrix} t.$$
+
+# II. rész — Mátrixok algebrája és geometriája
+
+Eddig a mátrixokat csak egyszerű jelölésnek tekintettük, mely az egyenletrendszer együtthatóinak tárolására, és az egyenletrendszer megoldása közbeni számítások egyszerűsítésére való. E részt a számok közti műveletek számtáblázatokra való kiterjesztésével kezdjük, majd ezeket átültetjük mátrixokra, és megvizsgáljuk algebrai tulajdonságaikat. E műveletek segítségével újravizsgáljuk az egyenletrendszerek megoldhatóságának és a megoldások kiszámításának kérdését. A mátrixok „számtani" fejezetei után a „mértaniak" következnek: a determináns, mint a négyzetes mátrixhoz rendelt előjeles mérték, majd a mátrixleképezések geometriája lesz e rész tárgya.
+
+*Enter The Matrix – 3D picture (CC) on flickr by Grégory Tonon*
+
+<!-- OCR: through PDF p.139 -->
