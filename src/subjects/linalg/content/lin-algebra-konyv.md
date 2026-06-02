@@ -598,4 +598,144 @@ tehát a három lapátló-vektor vegyes szorzata 2. Ez azt is jelenti, hogy e h�
 
 *1.31. ábra. $(\mathbf{i} + \mathbf{j})(\mathbf{j} + \mathbf{k})(\mathbf{k} + \mathbf{i}) = 2$.*
 
-<!-- OCR: through PDF p.38 -->
+## Feladatok
+
+### Ellenőrző kérdések
+
+**1.29.● Skaláris szorzás: igaz – hamis.** Melyek igazak, melyek hamisak az alábbi állítások közül?
+- a) Két egységvektor skaláris szorzata $-1$ és 1 közé esik.
+- b) Egy $\mathbf{v}$ vektor szorzata egy egységvektorral megegyezik $\mathbf{v}$-nek az egységvektor egyenesére eső merőleges vetületével.
+- c) A skaláris szorzás kommutatív.
+- d) A skaláris szorzás asszociatív (ld. 1.35. feladat).
+- e) A nullvektor bármely vektorra merőleges.
+- f) Két vektor pontosan akkor merőleges, ha skaláris szorzatuk 0.
+- g) Ha $\mathbf{a} \cdot \mathbf{b} = \mathbf{a} \cdot \mathbf{c}$, akkor $\mathbf{b} = \mathbf{c}$.
+
+**1.30.● Vektori szorzás, orientáció: igaz – hamis.** Melyek igazak, melyek hamisak az alábbi állítások közül?
+- a) A vektori szorzás kommutatív és asszociatív művelet.
+- b) Ha $\mathbf{a} \times \mathbf{b} = \mathbf{a} \times \mathbf{c}$, akkor $\mathbf{b} = \mathbf{c}$.
+- c) Ha az $xy$-síkbeli $\mathbf{a}$ és $\mathbf{b}$ vektorok irányított szöge a $\mathbf{k}$ egységvektor felől nézve pozitív, akkor $\mathbf{a} \times \mathbf{b} = c\mathbf{k}$, ahol $c > 0$.
+- d) Ha $\mathbf{a}$, $\mathbf{b}$ és $\mathbf{c}$ jobbrendszert alkot, akkor $\mathbf{a}$, $-\mathbf{b}$ és $-\mathbf{c}$ is.
+- e) Ha $\mathbf{a}$, $\mathbf{b}$, $\mathbf{c}$ jobbrendszert alkot, akkor $-\mathbf{a}$, $-\mathbf{b}$ és $-\mathbf{c}$ is.
+- f) $\mathbf{a} \times \mathbf{b} = \mathbf{0}$ pontosan akkor igaz, ha $\mathbf{a}$ és $\mathbf{b}$ lineárisan összefüggők.
+- g) Ha $\mathbf{v} \neq \mathbf{0}$, de $\mathbf{a} \times \mathbf{v} = \mathbf{b} \times \mathbf{v} = \mathbf{0}$, akkor $\mathbf{a}$ és $\mathbf{b}$ lineárisan összefüggők.
+
+### Skaláris, vektori és vegyes szorzás
+
+*A következő feladatokban megadott adatok alapján számítsuk ki az $\mathbf{a} \cdot \mathbf{b}$ skaláris szorzatot! Legyen $\gamma = (\mathbf{a},\mathbf{b})_\angle$.*
+
+**1.31.✶** $|\mathbf{a}| = 1$, $|\mathbf{b}| = 2$, $\gamma = \frac{\pi}{3}$.
+
+**1.32.** $|\mathbf{a}| = \sqrt{2}$, $|\mathbf{b}| = 2$, $\gamma = \frac{3\pi}{4}$.
+
+**1.33.** $|\mathbf{a}| = 1$, $|\mathbf{b}| = 2$, $\gamma = \pi$.
+
+**1.34.✶** $|\mathbf{a}| = \sqrt{2}$, $|\mathbf{b}| = 2$, $\gamma = \frac{\pi}{2}$.
+
+**1.35.** Igazoljuk, hogy általában $(\mathbf{a} \cdot \mathbf{b})\mathbf{c} \neq \mathbf{a}(\mathbf{b} \cdot \mathbf{c})$.
+
+**1.36.** Egyszerűsítsük az alábbi kifejezést! *a)* $(\mathbf{a} + \mathbf{b}) \cdot (\mathbf{a} - \mathbf{b})$, *b)* $(\mathbf{a} + 2\mathbf{b}) \cdot \mathbf{a} - 2\mathbf{a} \cdot \mathbf{b}$.
+
+**1.37.** Mekkora $\mathbf{a}$ és $\mathbf{b}$ szöge, ha $|\mathbf{a}| = 3$, $|\mathbf{b}| = 4$, $|\mathbf{a} + \mathbf{b}| = 5$?
+
+**1.38.●** Legyen $O$ a tér adott pontja, $\mathbf{a}$ egy tetszőleges vektor és $c$ egy tetszőleges konstans. Hol helyezkednek el azok az $X$ pontok, amelyekre $\overrightarrow{OX} \cdot \mathbf{a} = c$?
+
+**1.39.** Határozzuk meg az $\mathbf{e}_1 \cdot \mathbf{e}_2 + \mathbf{e}_1 \cdot \mathbf{e}_3 + \mathbf{e}_2 \cdot \mathbf{e}_3$ értékét, ha $\mathbf{e}_1$, $\mathbf{e}_2$ és $\mathbf{e}_3$ egységvektorok és $\mathbf{e}_1 + \mathbf{e}_2 + \mathbf{e}_3 = \mathbf{0}$.
+
+**1.40.** Bizonyítsuk be, hogy ha a térbeli $\mathbf{v}$ vektor merőleges a lineárisan független (nem komplanáris) $\mathbf{a}$, $\mathbf{b}$ és $\mathbf{c}$ vektorok mindegyikére, akkor $\mathbf{v} = \mathbf{0}$.
+
+**1.41. Skaláris szorzat kiszámítása.** Számítsuk ki az ábrán látható két vektor skaláris szorzatát (a szomszédos rácsvonalak távolsága 1 egység).
+
+**1.42. Merőleges összetevőkre bontás.** Az 1.41. feladatbeli vektorokra $\mathbf{a} \cdot \mathbf{b} = 2$ és $|\mathbf{a}| = 2\sqrt{2}$. Bontsuk fel a $\mathbf{b}$ vektort $\mathbf{a}$-val párhuzamos és rá merőleges összetevőkre.
+
+**1.43.✶** Igaz-e, hogy $|\mathbf{a} + \mathbf{b} + \mathbf{c}|^2 = |\mathbf{a}|^2 + |\mathbf{b}|^2 + |\mathbf{c}|^2$ pontosan akkor áll fenn, ha $\mathbf{a}$, $\mathbf{b}$ és $\mathbf{c}$ három egymásra páronként merőleges vektor?
+
+**1.44.●** Számítsuk ki *a)* $|\mathbf{a} \times \mathbf{b}|$ értékét, ha $|\mathbf{a}| = 1$, $|\mathbf{b}| = 2$, $(\mathbf{a},\mathbf{b})_\angle = \frac{\pi}{6}$; *b)* $\mathbf{a} \times \mathbf{b}$ értékét, ha $|\mathbf{a}| = 1$, $|\mathbf{b}| = 2$, $(\mathbf{a},\mathbf{b})_\angle = \pi$.
+
+**1.45.** Egyszerűsítsük az alábbi kifejezést! *a)* $(\mathbf{a} + \mathbf{b}) \times (\mathbf{a} - \mathbf{b})$, *b)* $(\mathbf{i} + \mathbf{j} + \mathbf{k}) \times (\mathbf{i} + \mathbf{j})$.
+
+**1.46.** Tekintsünk egy egységélű kockát, melynek egyik csúcsát jelölje $P$. Számítsuk ki a $P$-ből induló *a)* valamelyik két lapátló-vektor skaláris szorzatát, *b)* egyik lapátló- és a testátló-vektor skaláris szorzatát, valamint a $P$-ből induló valamelyik élvektor és *c)* egy vele egy lapon lévő lapátló-vektor, *d)* egy vele nem egy lapon lévő lapátló-vektor vektori szorzatát.
+
+**1.47.** Igazoljuk, hogy ha $\mathbf{u}$ merőleges a $\mathbf{v}$ és $\mathbf{w}$ vektorokra, akkor merőleges minden lineáris kombinációjukra is.
+
+**1.48.** Három lineárisan független vektor lehetséges sorrendjei közül hány alkot jobb- és hány balrendszert?
+
+**1.49.** Igazoljuk az 1.29. tétel állításait!
+
+**1.50. Szögfelező.** Legyenek $\mathbf{a}$ és $\mathbf{b}$ nemzérus vektorok. Mutassuk meg, hogy a $|\mathbf{b}|\mathbf{a} + |\mathbf{a}|\mathbf{b}$ vektor felezi $\mathbf{a}$ és $\mathbf{b}$ szögét! (Ezt felhasználva mutassuk meg, hogy a háromszög egyik szögének szögfelezője a szemközti oldalt a két szomszédos oldal hosszának arányában osztja fel.)
+
+**1.51. Mit cserél föl a tükör?** Hogy lehet az, hogy a tükör fölcseréli a jobbat a ballal, de a föntet a lenttel nem?
+
+**1.52. Vektori szorzás egységvektorral.** Ha $\mathbf{e}$ egységvektor és $\mathbf{a}$ egy tetszőleges vektor, akkor mi az $|\mathbf{e} \times \mathbf{a}|$ szám és mi az $(\mathbf{e} \times \mathbf{a}) \times \mathbf{e}$ vektor geometriai jelentése?
+
+**1.53.** Bizonyítsuk, hogy ha $\mathbf{a} + \mathbf{b} + \mathbf{c} = \mathbf{0}$, akkor $\mathbf{a} \times \mathbf{b} = \mathbf{b} \times \mathbf{c} = \mathbf{c} \times \mathbf{a}$. Igaz-e az állítás megfordítása?
+
+**1.54.** Az $\mathbf{a}$, $\mathbf{b}$, $\mathbf{c}$ vektorok által kifeszített paralelepipedon térfogata $V$. Mennyi a térfogata a következő három vektor által kifeszített paralelepipedonnak?
+- a) $\mathbf{u} = \mathbf{a} + \mathbf{b} + \mathbf{c}$, $\mathbf{v} = \mathbf{a} + 2\mathbf{b} + 3\mathbf{c}$, $\mathbf{w} = \mathbf{a} + \mathbf{b} + 2\mathbf{c}$,
+- b) $\mathbf{u} = \mathbf{a} + \mathbf{b} + \mathbf{c}$, $\mathbf{v} = \mathbf{a} + \mathbf{b} + 3\mathbf{c}$, $\mathbf{w} = \mathbf{a} + 3\mathbf{b} + \mathbf{c}$.
+
+Mi a kapcsolat az $\mathbf{a}$, $\mathbf{b}$, $\mathbf{c}$ körüljárása és az $\mathbf{u}$, $\mathbf{v}$, $\mathbf{w}$ vektorok körüljárása között?
+
+## Vektorok koordinátás alakban
+
+*A koordináták bevezetésével egyrészt új algebrai eszközökhöz jutunk a vektorok és a különféle geometriai alakzatok vizsgálatában, másrészt lehetővé válik a vektor fogalmának kiterjesztése. Így jutunk a sokdimenziós terek fogalmához, ami nélkülözhetetlen a közgazdaságtanban, az internetes keresők matematikájában, vagy véges struktúrák fölötti változatában a kódelméletben és a kriptográfiában.*
+
+### Descartes-féle koordináta-rendszer
+
+Descartes 1637-ben *La Géométrie* című művében egy szép ötlettel összekapcsolta a geometriát az algebrával. Alapgondolata az volt, hogy a geometria alapelemei (pl. pontok) és a valós számok/számpárok/számhármasok közt kölcsönösen egyértelmű megfeleltetés hozható létre, így bizonyos geometriai alakzatok algebrai egyenletekkel leírhatóvá és vizsgálhatóvá válnak.
+
+Az 1.11. tétel szerint a sík bármely $\mathbf{v}$ vektora felírható két adott lineárisan független $\mathbf{e}_1$, $\mathbf{e}_2$ vektor lineáris kombinációjaként, és e felírás egyértelmű. Ha e lineáris kombináció $\mathbf{v} = v_1\mathbf{e}_1 + v_2\mathbf{e}_2$ alakú, akkor a $\mathbf{v}$ vektorhoz a $(v_1, v_2)$ számpárt rendeljük, és ezt a $\mathbf{v}$ vektor *koordinátás alakjának*, a $v_1$ és $v_2$ skalárokat pedig a $\mathbf{v}$ *koordinátáinak* nevezzük. Azt mondjuk, hogy az $\{\mathbf{e}_1, \mathbf{e}_2\}$ vektorpár a *koordináta-rendszer bázisa*, az $\mathbf{e}_1$ és $\mathbf{e}_2$ vektorok a *bázisvektorok* vagy *alapvektorok*. Tetszőleges vektor koordinátáinak meghatározásához elég a bázisvektorokat ismerni.
+
+**1.33. példa (Vektorok koordinátái).** *Határozzuk meg az 1.32. ábrán megadott vektoroknak az $\mathbf{e}_1$ és $\mathbf{e}_2$ vektorokra, mint bázisra vonatkozó koordinátáit!*
+
+*Megoldás.* A megoldás leolvasható az 1.33. ábráról. Áttekinthetőbb, ha az összes vektort egyetlen pontból indítjuk (ld. 1.34. ábra). $\square$
+
+A koordináta-rendszer a 3-dimenziós térben is hasonló módon építhető fel. Az 1.12. tétel szerint a tér bármely $\mathbf{v}$ vektora felírható három adott lineárisan független $\mathbf{e}_1$, $\mathbf{e}_2$, $\mathbf{e}_3$ vektor lineáris kombinációjaként, és e felírás egyértelmű. Ha $\mathbf{v} = v_1\mathbf{e}_1 + v_2\mathbf{e}_2 + v_3\mathbf{e}_3$, akkor a $\mathbf{v}$ vektorhoz a $(v_1, v_2, v_3)$ számhármast rendeljük, és ezt a $\mathbf{v}$ vektor *koordinátás alakjának*, a $v_1$, $v_2$, $v_3$ skalárokat pedig a $\mathbf{v}$ *koordinátáinak* nevezzük. *Bázis* az $\{\mathbf{e}_1, \mathbf{e}_2, \mathbf{e}_3\}$ vektorhármas.
+
+A koordinátázás az 1-dimenziós térben is megvalósítható: ha $\mathbf{e} \neq \mathbf{0}$ (tehát $\{\mathbf{e}\}$ lineárisan független vektorrendszer!), akkor bármely vele párhuzamos $\mathbf{v}$ vektor egyértelműen felírható $\mathbf{v} = v\mathbf{e}$ alakban. E $v$ skalár lesz a $\mathbf{v}$ koordinátás alakja (a zárójel itt szükségtelen). Így a $\mathbf{v} \leftrightarrow v$ hozzárendelés kölcsönösen egyértelmű a vektorok és a skalárok közt.
+
+> *René Descartes* (Renatus Cartesianus) (1596–1650) francia filozófus és matematikus, a modern filozófia atyja, az analitikus geometria egyik megalkotója. Filozófiáját a puszta hitre alapozott állításokkal szemben a racionális érvelések útján kívánta fölépíteni (lásd *descartesi kételkedés* és „gondolkodom, tehát vagyok"). Orvostudományt és jogot tanult, végül hadmérnöki képesítést szerzett. Több háborúban is részt vett. 1619-ben egy Magyarországot is érintő hosszú útján egy Ulm melletti parasztházban három álmot látott, melyek megfejtése „egy csodálatos tudományhoz" vezette, ami filozófiája alapjává vált.
+
+*1.32. ábra. Mik a vektorok koordinátái?*
+
+*1.33. ábra. A megoldás.*
+
+*1.34. ábra. A megoldás helyvektorokkal ábrázolva.*
+
+Ha kijelölünk egy pontot az egyenesen/síkban/térben – ez lesz az origó –, akkor az egyenes/sík/tér pontjai és a helyvektorok végpontjai közti kölcsönösen egyértelmű megfeleltetéssel együtt a pontok is koordinátát kapnak.
+
+Például az 1.34 helyvektorainak végpontjai a helyvektoréval azonos koordinátákat kapnak (ld. 1.35. ábra).
+
+A helyvektorok és a pontok közti kölcsönösen egyértelmű megfeleltetést a jelölésben is kifejezzük azzal, hogy nem teszünk különbséget a vektor és a pont koordinátás alakja közt, a $\mathbf{v} = (a, b)$ vektorhoz adott origó mellett rendelt pontot is $(a, b)$ jelöli. A vektorok koordinátás alakja – később kifejtendő okból – ún. *oszlopvektor* alakba is írható. E könyvben ekkor kerek helyett szögletes zárójelet használunk:
+$$(a, b) = \begin{bmatrix} a \\ b \end{bmatrix}.$$
+
+Ha a síkon egy pont az első koordinátatengelyen van, és az azon az egyenesen $x$ az 1-dimenziós koordinátája, akkor síkbeli koordinátás alakja $(x, 0)$ lesz. Hasonlóképp a második tengely minden pontjának $(0, y)$ a koordinátás alakja. Az origóé $(0, 0)$ (ld. 1.36. ábra). Az alapvektorok koordinátás alakja $\mathbf{e}_1 = (1, 0)$ és $\mathbf{e}_2 = (0, 1)$.
+
+A 3-dimenziós esetben a koordinátatengelyekre eső pontok 3-dimenziós koordinátás alakja $(x, 0, 0)$, $(0, y, 0)$, illetve $(0, 0, z)$. Az origón átmenő és 2 tengelyt tartalmazó síkokat *koordinátasíkoknak* nevezzük. A koordinátasíkok pontjainak alakja $(x, y, 0)$, $(x, 0, z)$, illetve $(0, y, z)$. Az origóé $(0, 0, 0)$, míg az alapvektoroké $\mathbf{e}_1 = (1, 0, 0)$, $\mathbf{e}_2 = (0, 1, 0)$, $\mathbf{e}_3 = (0, 0, 1)$ (ld. 1.37. ábra).
+
+### Műveletek koordinátás alakban megadott vektorokkal
+
+Adva van a térben egy koordináta-rendszer és abban két tetszőleges $\mathbf{u} = (u_1, u_2, u_3)$ és $\mathbf{v} = (v_1, v_2, v_3)$ vektor. Keressük $\mathbf{u} + \mathbf{v}$, $\mathbf{u} - \mathbf{v}$, $c\mathbf{u}$, $\mathbf{u} \cdot \mathbf{v}$, $\mathbf{u} \times \mathbf{v}$ koordinátás alakját.
+
+Az adott két vektor összege:
+$$\begin{aligned}
+\mathbf{u} + \mathbf{v} &= (u_1, u_2, u_3) + (v_1, v_2, v_3) \\
+&= (u_1\mathbf{e}_1 + u_2\mathbf{e}_2 + u_3\mathbf{e}_3) + (v_1\mathbf{e}_1 + v_2\mathbf{e}_2 + v_3\mathbf{e}_3) \\
+&= (u_1 + v_1)\mathbf{e}_1 + (u_2 + v_2)\mathbf{e}_2 + (u_3 + v_3)\mathbf{e}_3 \\
+&= (u_1 + v_1, u_2 + v_2, u_3 + v_3).
+\end{aligned}$$
+
+A különbségre vonatkozó összefüggés hasonlóan igazolható. A skalárral szorzás is egyszerűen koordinátánként számolható:
+$$\begin{aligned}
+c\mathbf{u} &= c(u_1, u_2, u_3) = c(u_1\mathbf{e}_1 + u_2\mathbf{e}_2 + u_3\mathbf{e}_3) \\
+&= cu_1\mathbf{e}_1 + cu_2\mathbf{e}_2 + cu_3\mathbf{e}_3 \\
+&= (cu_1, cu_2, cu_3).
+\end{aligned}$$
+
+*1.35. ábra. Pontok és koordinátáik.*
+
+*1.36. ábra. Pontok a koordináta-rendszer tengelyein.*
+
+*1.37. ábra. Pontok a koordinátasíkokon.*
+
+<!-- OCR: through PDF p.41 -->
