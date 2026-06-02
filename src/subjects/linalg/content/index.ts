@@ -65,10 +65,9 @@ export const DOCS: Doc[] = [
   { id: 'koordinata-geometria', group: 'eloismeretek', icon: 'xy', title: 'Koordináta-geometria',
     blurb: 'Vektorok a koordináta-rendszerben, egyenes és kör egyenletei a síkban.' },
 
-  // --- Alkalmazások (készül) ---
+  // --- Alkalmazások ---
   { id: 'tamop-alkalmazasok', group: 'alkalmazasok', icon: '∂', title: 'A lineáris algebra alkalmazásai',
-    blurb: 'Wettl Ferenc · BME — differenciálhatóság és Jacobi-mátrix, differencia-/differenciálegyenletek, kombinatorika, Markov-láncok, lineáris programozás, kódelmélet, SVD.',
-    comingSoon: true },
+    blurb: 'Wettl Ferenc · BME — differenciálhatóság és Jacobi-mátrix, differencia-/differenciálegyenletek, kombinatorika, Markov-láncok, lineáris programozás és dualitás, kódelmélet és kriptográfia, SVD-alkalmazások (teljes könyv, 4 fejezet).' },
 
   // --- Feladatok ---
   { id: 'peldatar', group: 'feladatok', icon: '✎', title: 'Lineáris algebra példatár',
