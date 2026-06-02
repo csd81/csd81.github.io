@@ -2363,4 +2363,77 @@ Ekvivalensek-e az alábbi egyenletrendszerek?
 
 **2.43.** *Egyenletrendszer pozitív egész megoldásokkal.* Egy érmegyűjteményben régi 1, 5 és 10 Ft-osok vannak, összesen 11 darab, 53 Ft összértékben. Melyik érméből hány darab van?
 
-<!-- OCR: through PDF p.92 -->
+## Megoldás a gyakorlatban
+
+*Bár e szakasz tartalma elsősorban nem a lineáris algebra, hanem a numerikus analízis témakörébe tartozik, ismerete elengedhetetlen annak, aki a gyakorlatban lineáris algebrai eszközöket alkalmaz. Először a Gauss- és Gauss–Jordan-kiküszöbölés műveletigényét, majd numerikus megbízhatóságának kérdését vizsgáljuk. Ezután az iterációs módszerek lényegét vázoljuk, melyek alkalmazásakor az együtthatómátrix nem változik, így a számítási hibák sem halmozódnak. Ráadásul e módszerek a ritka mátrixokat sem „rontják el", mint a Gauss-módszer, mely sok zérust írhat felül.*
+
+### A kiküszöbölés műveletigénye
+
+Ahhoz, hogy a lineáris egyenletrendszerek különböző megoldási módszereit össze tudjuk hasonlítani, azt is tudnunk kell, mennyi a műveletigényük. A flop mértékegységről részletesen a függelékben írunk az 554. oldalon.
+
+**2.46. tétel (A kiküszöbölés műveletigénye).** *A Gauss- és a Gauss–Jordan-módszer műveletigénye egy $n$-ismeretlenes, $n$ egyenletből álló egyenletrendszer esetén egyaránt*
+$$\frac{n^3}{3} + \frac{n^2}{2} - \frac{5n}{6} \;\; \text{összeadás/kivonás,} \quad \frac{n^3}{3} + n^2 - \frac{n}{3} \;\; \text{szorzás/osztás.}$$
+*azaz összesen*
+$$\frac{2}{3}n^3 + \frac{3}{2}n^2 - \frac{7}{6}n \;\, \text{flop,}$$
+*azaz jó közelítéssel $2n^3/3$ flop.*
+
+*Bizonyítás.* Először felelevenítünk két elemi összefüggést, amire a bizonyításban szükség van:
+$$\begin{aligned}
+1 + 2 + \ldots + n &= \frac{n(n+1)}{2} = \frac{1}{2}n^2 + \frac{1}{2}n, \\
+1^2 + 2^2 + \ldots + n^2 &= \frac{n(n+1)(2n+1)}{6} = \frac{1}{3}n^3 + \frac{1}{2}n^2 + \frac{1}{6}n.
+\end{aligned}$$
+A továbbiakban feltételezzük, hogy a kiküszöbölés során a főátlóba kerülő elemek egyike sem $0$. A Gauss-módszernél a főátló alatti elemek eliminálásához $\frac{1}{3}n^3 - \frac{1}{3}n$ összeadás és $\frac{1}{3}n^3 + \frac{1}{2}n^2 - \frac{5}{6}n$ szorzás szükséges. A visszahelyettesítés $\frac{1}{2}n^2 - \frac{1}{2}n$ összeadásból és $\frac{1}{2}n^2 + \frac{1}{2}n$ szorzásból áll. Ha a Gauss–Jordan-módszernél a főátló alatti elemek kiküszöbölése mellett a főátló elemeit is 1-re változtatjuk, az $\frac{1}{3}n^3 - \frac{1}{3}n$ összeadás mellett $\frac{1}{3}n^3 + \frac{1}{2}n^2 + \frac{1}{6}n$ szorzás szükséges. A főátló feletti elemek eliminálásához $\frac{1}{2}n^2 - \frac{1}{2}n$ összeadás és ugyanennyi szorzás kell. A számítások részletezését az olvasóra hagyjuk. $\square$
+
+### Numerikusan instabil egyenletrendszerek
+
+A gyakorlati feladatokban gyakran mérési eredményekkel, így nem pontos adatokkal dolgozunk.
+
+**2.47. példa (Instabil egyenletrendszer).** *Oldjuk meg a következő egyenletrendszert!*
+$$\begin{alignedat}{9}
+6.73x &{}-{}& 8.97y &{}={}& 5.61 \\
+4.79x &{}-{}& 6.39y &{}={}& 3.99
+\end{alignedat}$$
+*Mutassuk meg, hogy az együtthatók $0.01$-dal való megváltoztatása a megoldások nagy megváltozását okozhatja, sőt az is elérhető, hogy az egyenletrendszernek ne legyen, vagy épp végtelen sok megoldása legyen!*
+
+*Megoldás.* Az egyenletrendszer megoldása: $x = 1.5$, $y = 0.5$. Az első egyenletben az $x$ együtthatóját változtassuk $6.72$-re. Ekkor az egyenletrendszer megoldása $x \approx -2.26$, $y \approx -2.32$. Ezután változtassuk az $y$ együtthatóját $-8.96$-ra. Ekkor a megoldás $x \approx 4.35$, $y \approx 2.64$. Ha végül az első egyenlet konstans tagját is megváltoztatjuk egy századdal $5.62$-re, akkor $x \approx 7.21$, $y \approx 4.78$ lesz az eredmény, ha pedig $5.60$-ra, akkor – csemegeként – ismét a kerek $x = 1.5$, $y = 0.5$ értékeket kapjuk.
+
+A fenti egyenletrendszeren tovább változtatva az együtthatókat az is elérhető, hogy végtelen sok megoldása legyen:
+$$\begin{alignedat}{9}
+6.72x &{}-{}& 8.96y &{}={}& 5.60 \\
+4.80x &{}-{}& 6.40y &{}={}& 4.00
+\end{alignedat}$$
+ugyanis itt a két egyenlet egymás konstansszorosa. Ha pedig a második egyenlet konstans tagját visszaírjuk $3.99$-re, egy ellentmondó egyenletrendszert kapunk. $\square$
+
+Ilyen megbízhatatlan eredmények a gyakorlatban használhatatlanok! Az olyan egyenletrendszert, melyben az együtthatók vagy a konstans tagok kis változása a megoldásban nagy változást okoz, *numerikusan instabilnak* vagy *rosszul kondicionáltnak* nevezzük. Egyébként *numerikusan stabil,* illetve *jól kondicionált* egyenletrendszerről beszélünk.
+
+Világos, hogy a fentiek nem precíz matematikai fogalmak, de adható a kondicionáltság fokát mérő szám. Az azonban, hogy egy adott egyenletrendszer megoldásai elfogadhatók-e vagy nem, csak a feladat döntheti el.
+
+A numerikus instabilitás okát szemlélteti a 2.12. ábra. Kétváltozós egyenletrendszerek esetén, ha a két egyenes grafikonja „közel" van egymáshoz, azaz majdnem egybe esnek, akkor kis változások az egyeneseken messze vihetik a metszéspontot, de párhuzamossá is tehetik a két egyenest.
+
+Ha a gyakorlatban numerikusan instabil egyenletrendszerrel találkozunk, vizsgáljuk meg, hogy az egyenleteink közti „majdnem" lineáris összefüggőség mögött nem valódi lineáris összefüggőség van-e kis mérési hibával.
+
+*2.12. ábra. Instabil egyenletrendszer, melyben az egyenletek együtthatóinak kis megváltoztatása a megoldás nagy megváltozását okozza.*
+
+### Részleges főelem-kiválasztás
+
+A következőkben lebegőpontos aritmetikát használunk. A számításokat úgy végezzük el, hogy az adott pontosságnak megfelelően minden részeredményt $p$ értékes jegyre kerekítünk.
+
+**2.48. példa (Gauss-módszer lebegőpontos számokkal).** *Oldjuk meg az alábbi – numerikusan stabil – egyenletrendszert pontosan, majd 3 értékes jegy pontossággal számolva.*
+$$\begin{alignedat}{9}
+10^{-4}x &{}+{}& y &{}={}& 2 \\
+x &{}-{}& y &{}={}& 0
+\end{alignedat}$$
+
+*Megoldás.* Pontosan számolva
+$$\left[\begin{array}{cc|c} 10^{-4} & 1 & 2 \\ 1 & -1 & 0 \end{array}\right] \xrightarrow{S_2 - 10^4 S_1} \left[\begin{array}{cc|c} 10^{-4} & 1 & 2 \\ 0 & -1 - 10^4 & -2 \cdot 10^4 \end{array}\right]$$
+amiből az eredmény $x = y = \frac{2 \cdot 10^4}{1 + 10^4}$. Igazolható, hogy az egyenletrendszer numerikusan stabil, ami azt jelenti, hogy például $10^{-4}$ helyébe $0$-t helyettesítve, vagyis kicsit változtatva egy együtthatót, a kapott
+$$\left[\begin{array}{cc|c} 0 & 1 & 2 \\ 1 & -1 & 0 \end{array}\right]$$
+egyenletrendszer megoldása csak kicsit különbözik az előzőtől: $x = y = 2$. Végezzük most el a Gauss-kiküszöbölést 3 értékes jeggyel számolva:
+$$\left[\begin{array}{cc|c} 10^{-4} & 1 & 2 \\ 1 & -1 & 0 \end{array}\right] \xrightarrow{S_2 - 10^4 S_1} \left[\begin{array}{cc|c} 10^{-4} & 1 & 2 \\ 0 & -1 - 10^4 & -2 \cdot 10^4 \end{array}\right] \approx \left[\begin{array}{cc|c} 10^{-4} & 1 & 2 \\ 0 & -10^4 & -2 \cdot 10^4 \end{array}\right],$$
+ahol a közelítésnél a $\operatorname{fl}(-1 - 10^4) = -10^4$ összefüggést használtuk. Az így kapott egyenletrendszernek viszont $x = 0$, $y = 2$ a megoldása, ami nagyon messze van az eredeti egyenletrendszer megoldásától! Most végezzünk egy apró változtatást: először cseréljük fel a két egyenletet!
+$$\left[\begin{array}{cc|c} 1 & -1 & 0 \\ 10^{-4} & 1 & 2 \end{array}\right] \xrightarrow{S_2 - 10^{-4} S_1} \left[\begin{array}{cc|c} 1 & -1 & 0 \\ 0 & 1 + 10^{-4} & 2 \end{array}\right] \approx \left[\begin{array}{cc|c} 1 & -1 & 0 \\ 0 & 1 & 2 \end{array}\right],$$
+amelynek megoldása $x = y = 2$, ami nagyon közel van a pontos megoldáshoz! Mi az oka a két megoldás közti különbségnek? $\square$
+
+Mindkét megoldásban az első egyenlet konstansszorosát hozzáadtuk a második egyenlethez, de az első esetben az első oszlop kisebb, a másodikban az nagyobb elemét választottuk főelemnek. Amikor a kisebbet választottuk, akkor az első sort egy kis számmal osztottuk, vagyis recpirokával – egy nagy számmal – szoroztuk, és ezt adtuk a második sorhoz. A nagy számmal való beszorzás következtében a
+
+<!-- OCR: through PDF p.95 -->
