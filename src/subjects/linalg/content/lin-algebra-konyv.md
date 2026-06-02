@@ -2436,4 +2436,66 @@ amelynek megoldása $x = y = 2$, ami nagyon közel van a pontos megoldáshoz! Mi
 
 Mindkét megoldásban az első egyenlet konstansszorosát hozzáadtuk a második egyenlethez, de az első esetben az első oszlop kisebb, a másodikban az nagyobb elemét választottuk főelemnek. Amikor a kisebbet választottuk, akkor az első sort egy kis számmal osztottuk, vagyis recpirokával – egy nagy számmal – szoroztuk, és ezt adtuk a második sorhoz. A nagy számmal való beszorzás következtében a
 
-<!-- OCR: through PDF p.95 -->
+második egyenlet együtthatóit „elnyomták" e nagy számok, nagyon megváltoztatva az egyenletet, aminek következtében a megoldások is nagyon megváltoztak! A $\operatorname{fl}(-1 - 10^4) = -10^4$ kerekítés hatása, vagyis a $-1$ „eltüntetése", ekvivalens azzal, mintha az eredeti egyenletrendszer helyett a következőt kéne megoldani:
+$$\left[\begin{array}{cc|c} 10^{-4} & 1 & 2 \\ 1 & 0 & 0 \end{array}\right].$$
+Ennek valóban $x = 0$, $y = 2$ a megoldása! Amikor az első oszlop nagyobbik elemét választottuk főelemnek, a sort egy kis számmal kellett szorozni, és ezt hozzáadni a másik sorhoz, vagyis az egyenletrendszer kevésbé torzult. Ennek alapján megfogalmazható egy széles körben elterjedt szabály: a Gauss-féle kiküszöbölési eljárás során, lebegőpontos adatokkal dolgozva minden oszlopban a szóbajöhető elemek közül – sorcserék segítségével – mindig a legnagyobb abszolút értékűt választsuk főelemnek! E módszert *részleges főelem-kiválasztásnak,* illetve *részleges pivotálásnak* nevezzük. (Bizonyos esetekben jobb eredmény kapható a *teljes főelem-kiválasztás* módszerével, amikor főelemnek az összes még hátralévő elem abszolút értékben legnagyobbikát választjuk. Ez az eljárás műveletigényesebb, ritkán alkalmazzák.)
+
+**2.49. példa (Részleges főelem-kiválasztás).** *Részleges főelem-kiválasztással hozzuk lépcsős alakra az alábbi mátrixot!*
+$$\begin{bmatrix} 1.8 & 3.0 & 3.0 & 3.7 & 7.5 \\ 3.6 & 3.2 & 3.6 & 6.2 & 7.8 \\ 7.2 & 3.6 & 4.8 & 2.4 & 1.2 \\ 2.4 & 5.4 & 5.2 & 2.6 & 5.2 \end{bmatrix}$$
+
+*Megoldás.* Az első oszlop legnagyobb eleme a harmadik sorban van, így az első és a harmadik sor cseréjével kezdünk:
+$$\xrightarrow{S_1 \leftrightarrow S_3} \begin{bmatrix} 7.2 & 3.6 & 4.8 & 2.4 & 1.2 \\ 3.6 & 3.2 & 3.6 & 6.2 & 7.8 \\ 1.8 & 3.0 & 3.0 & 3.7 & 7.5 \\ 2.4 & 5.4 & 5.2 & 2.6 & 5.2 \end{bmatrix} \xrightarrow{\substack{S_2 - S_1/2 \\ S_3 - S_1/4 \\ S_4 - S_1/3}} \begin{bmatrix} 7.2 & 3.6 & 4.8 & 2.4 & 1.2 \\ 0.0 & 1.4 & 1.2 & 5.0 & 7.2 \\ 0.0 & 2.1 & 1.8 & 3.1 & 7.2 \\ 0.0 & 4.2 & 3.6 & 1.8 & 4.8 \end{bmatrix}$$
+$$\xrightarrow{S_2 \leftrightarrow S_4} \begin{bmatrix} 7.2 & 3.6 & 4.8 & 2.4 & 1.2 \\ 0.0 & 4.2 & 3.6 & 1.8 & 4.8 \\ 0.0 & 2.1 & 1.8 & 3.1 & 7.2 \\ 0.0 & 1.4 & 1.2 & 5.0 & 7.2 \end{bmatrix} \xrightarrow{\substack{S_3 - S_2/2 \\ S_4 - S_2/3}} \begin{bmatrix} 7.2 & 3.6 & 4.8 & 2.4 & 1.2 \\ 0.0 & 4.2 & 3.6 & 1.8 & 4.8 \\ 0.0 & 0.0 & 0.0 & 2.2 & 4.8 \\ 0.0 & 0.0 & 0.0 & 4.4 & 5.6 \end{bmatrix}$$
+$$\xrightarrow{S_3 \leftrightarrow S_4} \begin{bmatrix} 7.2 & 3.6 & 4.8 & 2.4 & 1.2 \\ 0.0 & 4.2 & 3.6 & 1.8 & 4.8 \\ 0.0 & 0.0 & 0.0 & 4.4 & 5.6 \\ 0.0 & 0.0 & 0.0 & 2.2 & 4.8 \end{bmatrix} \xrightarrow{S_4 - S_3/2} \begin{bmatrix} 7.2 & 3.6 & 4.8 & 2.4 & 1.2 \\ 0.0 & 4.2 & 3.6 & 1.8 & 4.8 \\ 0.0 & 0.0 & 0.0 & 4.4 & 5.6 \\ 0.0 & 0.0 & 0.0 & 0.0 & 2.0 \end{bmatrix} \qquad \square$$
+
+### Skálázás
+
+A részleges főelem-kiválasztásban az oszlop legnagyobb elemét választottuk. Mi történik, ha a mátrix egy sorát beszorozzuk egy skalárral? Nem rontja el a módszert?
+
+**2.50. példa (Sor szorzása).** *A 2.48. példában szorozzuk meg az első egyenletet $10^5$-nel, azaz a kisebb elemből csináljunk nagyot, és ezt az egyenletrendszert is oldjuk meg részleges főelem-kiválasztással.*
+$$\begin{alignedat}{9}
+10x &{}+{}& 10^5 y &{}={}& 2 \cdot 10^5 \\
+x &{}-{}& y &{}={}& 0
+\end{alignedat}$$
+
+*Megoldás.* Egy egyenlet beszorzása egy nemzérus számmal ekvivalens átalakítás, így ennek az egyenletrendszernek is $x = y = \frac{2 \cdot 10^4}{1 + 10^4}$ a pontos megoldása. Ha 3 értékes jegyre számolunk, és alkalmazzuk a részleges főelem-kiválasztás módszerét, akkor ismét rossz eredményt kapunk:
+$$\left[\begin{array}{cc|c} 10 & 10^5 & 2 \cdot 10^5 \\ 1 & -1 & 0 \end{array}\right] \xrightarrow{S_2 - \frac{1}{10}S_1} \left[\begin{array}{cc|c} 10 & 10^5 & 2 \cdot 10^5 \\ 0 & -1 - 10^4 & -2 \cdot 10^4 \end{array}\right] \approx \left[\begin{array}{cc|c} 10 & 10^5 & 2 \cdot 10^5 \\ 0 & -10^4 & -2 \cdot 10^4 \end{array}\right],$$
+amiből $x = 0$ és $y = 2$. $\square$
+
+Hasonlóképp zavart okozhat az együtthatómátrix egy oszlopának beszorzása is, ami az egyenletrendszeren például úgy valósítható meg, ha egyik változó mértékegységét megváltoztatjuk. (Ha például a korábban kilométerben meghatározott ismeretlent milliméterben keressük, együtthatóját minden egyenletben $10^6$-nal kell osztani.)
+
+Az együtthatók ilyen „egyenletlenségeiből" származó számítási hibák csökkentésére a *skálázás* nevű gyakorlati módszer ajánlható. Ez a következő két skálázási szabály követéséből áll, mely a tapasztalatok szerint a gyakorlati feladatok nagy részében nagyon jó eredményt ad a részleges főelem-kiválasztással együtt alkalmazva:
+1. *Oszlopok skálázása:* Válasszunk a feladatban szereplő mennyiségeknek természetes mértékegységet, ezzel általában elkerülhetők az együtthatók közti tetemes nagyságrendi különbségek. Ezen kívül nincs szükség az oszlopok elemeinek beszorzására.
+2. *Sorok skálázása:* Az egyenletrendszer $[\mathbf{A}|\mathbf{b}]$ bővített mátrixának minden sorát osszuk el az az $\mathbf{A}$ együtthatómátrix adott sorbeli legnagyobb abszolút értékű elemével. Így $\mathbf{A}$ minden sorának 1 a legnagyobb abszolút értékű eleme.
+
+Nem ismeretes olyan módszer, mely a lebegőpontos ábrázolás korlátai mellett hatékonyan megtalálná a lehető legpontosabb eredményt. Az elmélet és a tapasztalatok alapján sűrű, nem túlzottan nagy méretű egyenletrendszerekre a skálázott főelem kiválasztásos Gauss-módszer ajánlható. A ritka együtthatómátrixú egyenletrendszerekre az iteratív módszerek általában jobb eredményt adnak.
+
+### Iteratív módszerek
+
+Az iteratív módszerek lényege, hogy olyan
+$$\mathbf{x}^0, \mathbf{x}^1, \ldots, \mathbf{x}^k, \ldots$$
+vektorsorozatot generálunk, mely az adott egyenletrendszer megoldásvektorához konvergál (a felső index itt nem hatványozást jelent!). Első pillanatra meglepőnek tűnhet végtelen sorozattal keresni a megoldást, de mivel számításaink eleve csak véges pontosságúak, gyakran igen kevés lépésben elérhetjük a megkívánt pontosságot. Ráadásul a kerekítési hibák még növelhetik is a konvergencia sebességét.
+
+Az alapgondolat – a matematika több más területén is gyümölcsöző módszer – a fixpontkeresés. Ennek lényegét először egy egyváltozós függvény példáján mutatjuk be. Legyen $f$ egy minden valós helyen értelmezett függvény, mely bármely $a$ és $b$ pontot két olyan pontba visz, melyek távolsága $a$ és $b$ távolságának legföljebb a fele. Képletben:
+$$|f(b) - f(a)| \leq \frac{1}{2}|b - a|, \quad \text{azaz} \quad \frac{|f(b) - f(a)|}{|b - a|} \leq \frac{1}{2}.$$
+Ez azt jelenti, hogy $f$ összes különbségi hányadosa legfeljebb $1/2$. A sokkal általánosabban megfogalmazható Banach-féle fixpont tétel szerint ekkor egyetlen olyan $\bar{x}$ pont létezik, hogy $\bar{x} = f(\bar{x})$, és ez megkapható úgy, hogy tetszőleges $x_0$ pontból kiindulva képezzük az
+$$x_0, \; x_1 = f(x_0), \; x_2 = f(x_1), \ldots, x_{k+1} = f(x_k), \ldots$$
+sorozatot, és vesszük a határértékét. Ekkor
+$$\bar{x} = \lim_{k \to \infty} x_k.$$
+A 2.13. ábra szemléltette a fenti állítást. Az $1/2$-es szorzó kicserélhető tetszőleges $0$ és $1$ közé eső $q$ konstansra.
+
+A *Banach fixponttétel* – nem a legáltalánosabb formájában – $\mathbb{R}^n$-ben a következőképpen szól:
+
+**2.51. tétel (Banach-féle fixponttétel).** *Legyen $f : \mathbb{R}^n \to \mathbb{R}^n$ kontrakció, azaz olyan függvény, hogy bármely $\mathbf{x}, \mathbf{y} \in \mathbb{R}^n$ vektorra*
+$$d(f(\mathbf{x}), f(\mathbf{y})) \leqslant q\,d(\mathbf{x}, \mathbf{y}),$$
+*ahol $0 < q < 1$ adott konstans. Ekkor pontosan egy olyan $\bar{\mathbf{x}}$ vektor van, melyre $f(\bar{\mathbf{x}}) = \bar{\mathbf{x}}$, azaz $f$-nek pontosan egy fixpontja van. Ez megkapható a $\lim_{k \to \infty} \mathbf{x}^k = \bar{\mathbf{x}}$ határértékkel, ahol $\mathbf{x}^0$ tetszőleges és $\mathbf{x}^{k+1} = f(\mathbf{x}^k)$.*
+
+A bizonyítás a Cauchy-sorozatok konvergenciájára épül, itt nem részletezzük. $\mathbb{R}^2$ esetén egyszerű szemléltetés adható a tételre, ami megtalálható a széljegyzetben.
+
+A Banach-tételt úgy fogjuk használni az egyenletrendszerek megoldásánál, hogy a változókat átrendezve az egyenletrendszer $\mathbf{x} = f(\mathbf{x})$ alakú legyen, ahol $\mathbf{x}$ jelöli az ismeretlenek vektorát. A továbbiakban négyzetes együttható-mátrixú egyenletrendszerekkel foglalkozunk.
+
+*2.13. ábra. Egy függvény, mely bármely $a$ és $b$ pontot két olyan pontba visz, melyek távolsága $a$ és $b$ távolságának legföljebb a fele, így a függvény minden különbségi hányadosa abszolút értékben legföljebb $1/2$. E függvénynek pontosan egy fixpontja van, mely megkapható egy tetszőleges $x_0$ pontból induló $x_k = f(x_{k-1})$ sorozat határértékeként.*
+
+> *Képzeljük el, hogy egy nagyobb gumilapot néhányan körbeállva egy kerek asztal tetején széthúznak az asztal széléig, majd (most jön a leképezés!) visszaengedik eredeti állapotába. Ekkor igaz az, hogy az asztalon pontosan egy olyan pont van, mely fölött a gumilap helyben marad. E pont megkapható, ha kiválasztunk az asztalon egy tetszőleges $P_0$ pontot, és megnézzük, hogy a kinyújtott gumilap e fölötti pontja összehúzódáskor hová ugrik, legyen ez a $P_1$ pont az asztalon. A kinyújtott gumilap $P_1$ fölötti pontja összehúzódáskor az $P_2$ pont fölé ugrik, stb. Az így kapott pontsorozat a fixponthoz konvergál.*
+
+<!-- OCR: through PDF p.98 -->
