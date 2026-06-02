@@ -5279,4 +5279,266 @@ d_7 &= (a_{12} - a_{22})(b_{21} + b_{22})
 
 Az ötlet nagyszerűsége abban van, hogy e módszer kiterjeszthető tetszőleges méretű négyzetes mátrixokra is, és elegendően nagy $n$-ekre az e módon elvégzett mátrixszorzás műveletigénye kisebb lesz a hagyományos módon elvégzettnél. A standard mátrixszorzás műveletigénye $2n^3 - n^2$ (ebből $n^3$ szorzás és $n^3 - n^2$ összeadás – gondoljunk utána!), a Strassen-formulákkal való szorzás $n = 2^k$ esetén legföljebb $7 \cdot 7^k - 6 \cdot 4^k$. Ez $n = 2^{10}$ esetén már kevesebb műveletet ad. Az általánosítás lényege, hogy a Strassen-formulák $2 \times 2$-es blokkmátrixokra is használhatók, mert a szorzás kommutativitását nem használják, így ha $M(n)$ jelöli két $n \times n$-es mátrix összeszorzásához szükséges szorzások, és $S(n)$ a szükséges összeadások számát, akkor $M(2n) \leq 7M(n)$ és $S(2n) \leq 18n^2 + 7S(n)$. Az $M(1) = 1$, $S(1) = 0$ kezdeti feltételeket is használva megmutatható, hogy $M(2^k) \leq 7^k$, $S(2^k) \leq 6(7^k - 4^k)$. E képletekből a felső egészrész jelét használva és a $k = \lceil \log_2 n \rceil$ jelöléssel az műveletek összámára a $cn^{\log_2 7} \leq cn^{2.81}$ felső becslést kapjuk, ami a $2n^3 - n^2$ értéknél jobb, függetlenül a $c$ konstans konkrét értékétől. Mivel a két összeszorzandó mátrix mindegyikének mind az $n^2$ elemét használni kell, ezért a szükséges műveletek számának alsó becslése $cn^2$. A $cn^{2.81}$ felső becslés 1990-ben $cn^{2.375477}$ lett javítva (Coppersmith és Winograd), a 2015-ben ismert legjobb korlát $cn^{2.3728639}$, de az a sejtés, hogy a kitevő 2-re, de legalább $2 + \varepsilon$-ra lenyomható, ahol $\varepsilon$
 
-<!-- OCR: through PDF p.188 -->
+tetszőlegesen kis pozitív szám.
+
+A módszer gyengéje numerikus instabilitása, így a gyakorlatban csak bizonyos mátrixokra érdemes használni, például nagyméretű egészelemű mátrixokra tetszőleges pontosságú aritmetika használata esetén.
+
+### Feladatok
+
+#### Igaz – hamis
+
+**5.1.** A négyzetes $\mathbf{A}$ mátrix pontosan akkor invertálható, ha elemi sorműveletekkel megkapható az $\mathbf{I}$ mátrixból.
+
+**5.2.** Ha elemi sorműveletek $\mathbf{A}$-t $\mathbf{B}$-be viszik, akkor az inverz sorműveletek $\mathbf{B}$-t $\mathbf{A}$-ba viszik.
+
+**5.3.** Ha elemi sorműveletek $\mathbf{A}$-t $\mathbf{B}$-be viszik, akkor az inverz sorműveletek fordított sorrendben végrehajtva $\mathbf{B}$-t $\mathbf{A}$-ba viszik.
+
+#### Műveleti azonosságok
+
+**5.4.** *Összeadás és skalárral szorzás tulajdonságai.* Legyen $\mathbf{A}$, $\mathbf{B}$ és $\mathbf{C}$ azonos típusú ($m \times n$-es) mátrix, $c$ és $d$ legyenek skalárok. Ekkor
+- a) $\mathbf{A} + \mathbf{B} = \mathbf{B} + \mathbf{A}$ (felcserélhetőség, kommutativitás)
+- b) $\mathbf{A} + (\mathbf{B} + \mathbf{C}) = (\mathbf{A} + \mathbf{B}) + \mathbf{C}$ (csoportosíthatóság, asszociativitás)
+- c) $\mathbf{A} + \mathbf{O}_{m \times n} = \mathbf{A}$ (zérusmátrix)
+- d) $\mathbf{A} + (-\mathbf{A}) = \mathbf{O}_{m \times n}$ (ellentett létezése)
+- e) $c(d\mathbf{A}) = (cd)\mathbf{A}$ (csoportosíthatóság)
+- f) $(c + d)\mathbf{A} = c\mathbf{A} + d\mathbf{A}$ (disztributivitás)
+- g) $c(\mathbf{A} + \mathbf{B}) = c\mathbf{A} + c\mathbf{B}$ (disztributivitás)
+- h) $0\mathbf{A} = \mathbf{O}_{m \times n}$, $1\mathbf{A} = \mathbf{A}$, $-1\mathbf{A} = -\mathbf{A}$
+
+**5.5.** Egy algebrai kifejezésben végrehajtjuk az alábbi helyettesítést:
+$$\begin{aligned} u &= 3x_1 + 2x_2 + 4x_3 \\ v &= x_1 - 3x_2 + x_3 \\ w &= 2x_1 - x_2 - 3x_3 \end{aligned}$$
+Írjuk fel a lineáris helyettesítést mátrixszorzatos alakban. Legyen $(u^2 + v^2 + w^2)(2u - v - w)$ az a kifejezés, melyben a helyettesítést elvégezzük. Írjuk fel e kifejezést a helyettesítés előtt és után mátrixműveletek segítségével!
+
+#### Számítási feladatok
+
+Bontsuk fel a következő mátrixokat elemi mátrixok szorzatára!
+
+**5.6.** $\begin{bmatrix} 1 & 3 \\ 2 & 8 \end{bmatrix}$
+
+**5.7.** $\begin{bmatrix} 1 & 2 \\ -2 & -1 \end{bmatrix}$
+
+**5.8.** $\begin{bmatrix} 1 & -1 \\ 1 & 1 \end{bmatrix}$
+
+**5.9.** $\begin{bmatrix} 2 & 4 \\ 3 & 8 \end{bmatrix}$
+
+**5.10.** $\begin{bmatrix} 2 & 0 & 4 \\ 0 & 2 & 0 \\ 3 & 2 & 7 \end{bmatrix}$
+
+**5.11.** $\begin{bmatrix} 1 & 1 & 2 \\ 1 & 2 & 2 \\ 2 & 4 & 5 \end{bmatrix}$
+
+**5.12.** Határozzuk meg az összes olyan $2 \times 2$-es $\mathbf{A}$ mátrixot, melyre $\mathbf{A}^2 = \mathbf{O}$. Másként fogalmazva határozzuk meg a nullmátrix összes négyzetgyökét!
+
+**5.13.** Számítsuk ki az
+$$\mathbf{A} = \begin{bmatrix} 0 & 1 \\ 1 & 1 \end{bmatrix}$$
+mátrix $k$-adik hatványait!
+
+**5.14.** Írjuk fel a mátrixszorzás definícióját az Einstein-konvenciót használva.
+
+#### Blokkmátrixok
+
+**5.15.** Mutassuk meg, hogy ha $\mathbf{A}$ és $\mathbf{D}$ invertálható mátrixok, akkor a következő ún. blokkdiagonális mátrix invertálható, és inverze
+$$\begin{bmatrix} \mathbf{A} & \mathbf{O} \\ \mathbf{O} & \mathbf{D} \end{bmatrix}^{-1} = \begin{bmatrix} \mathbf{A}^{-1} & \mathbf{O} \\ \mathbf{O} & \mathbf{D}^{-1} \end{bmatrix}.$$
+továbbá tetszőleges, de megfelelő típusú $\mathbf{B}$ mátrix esetén
+$$\begin{bmatrix} \mathbf{A} & \mathbf{B} \\ \mathbf{O} & \mathbf{D} \end{bmatrix}^{-1} = \begin{bmatrix} \mathbf{A}^{-1} & -\mathbf{A}^{-1}\mathbf{B}\mathbf{D}^{-1} \\ \mathbf{O} & \mathbf{D}^{-1} \end{bmatrix}.$$
+
+**5.16.** Mutassuk meg, hogy ha $\mathbf{A}$ és $\mathbf{D}$ négyzetes mátrixok, akkor
+$$\begin{bmatrix} \mathbf{A} & \mathbf{B} \\ \mathbf{C} & \mathbf{D} \end{bmatrix}^{-1} = \begin{bmatrix} \mathbf{X} & -\mathbf{X}\mathbf{B}\mathbf{D}^{-1} \\ -\mathbf{D}^{-1}\mathbf{C}\mathbf{X} & \mathbf{D}^{-1} + \mathbf{D}^{-1}\mathbf{C}\mathbf{X}\mathbf{B}\mathbf{D}^{-1} \end{bmatrix},$$
+ahol $\mathbf{X} = (\mathbf{A} - \mathbf{B}\mathbf{D}^{-1}\mathbf{C})^{-1}$, és feltételezzük, hogy minden felírt mátrixinverz létezik.
+
+Az előbbi két feladat valamelyikének felhasználásával számítsuk ki az alábbi mátrixok inverzét!
+
+**5.17.** $\begin{bmatrix} 2 & 3 & 0 & 0 & 0 \\ 1 & 2 & 0 & 0 & 0 \\ 0 & 0 & 7 & 3 & 3 \\ 0 & 0 & 8 & 1 & 2 \\ 0 & 0 & 4 & 4 & 3 \end{bmatrix}$
+
+**5.18.** $\begin{bmatrix} 2 & 3 & 1 & 1 & 1 \\ 1 & 2 & 1 & 1 & 1 \\ 0 & 0 & 7 & 3 & 3 \\ 0 & 0 & 8 & 1 & 2 \\ 0 & 0 & 4 & 4 & 3 \end{bmatrix}$
+
+**5.19.** $\begin{bmatrix} 2 & 3 & 1 & 1 & 1 \\ 1 & 2 & 1 & 1 & 1 \\ 1 & 1 & 1 & 0 & 0 \\ 1 & 1 & 0 & 1 & 0 \\ 1 & 1 & 0 & 0 & 1 \end{bmatrix}$
+
+#### Bizonyítások
+
+**5.20.** Bizonyítsuk be, hogy ha $c\mathbf{A} = \mathbf{O}$, akkor vagy $c = 0$, vagy $\mathbf{A} = \mathbf{O}$.
+
+**5.21.** *Sorművelet és elemi mátrix inverze.* Az $S_i \leftrightarrow S_j$ sorművelethez tartozó elemi mátrixot jelölje $\mathbf{E}_{ij}$, a $cS_i$-hez tartozót $\mathbf{E}_i(c)$ és a $S_i + cS_j$ sorművelethez tartozót $\mathbf{E}_{ij}(c)$. Mutassuk meg, hogy $\mathbf{E}_{ij}^{-1} = \mathbf{E}_{ij}$, $\mathbf{E}_i(c)^{-1} = \mathbf{E}_i(\frac{1}{c})$ és $\mathbf{E}_{ij}(c)^{-1} = \mathbf{E}_{ij}(-c)$.
+
+**5.22.** Mutassuk meg, hogy ha $\mathbf{A}$ fölcserélhető $\mathbf{B}$-vel és $\mathbf{B}$ invertálható, akkor $\mathbf{A}$ fölcserélhető $\mathbf{B}^{-1}$-gyel is.
+
+#### Absztrakció
+
+**5.23.** *Invertálható művelet.* Legyen $\odot$ egy $H$-n értelmezett kétváltozós művelet, azaz egy $H^2 \to H$ függvény. Fogalmazzuk meg, mit értünk azon, hogy $\odot$ invertálható egy $R \subseteq H$ részhalmazán. Hogyan változik a definíció, ha a művelet kommutatív?
+
+**5.24.** *Elem inverze.* Legyen $\odot$ egy $H$-n értelmezett kétváltozós művelet.
+1. Mit értünk azon, hogy $e \in H$ e művelet semleges eleme?
+2. Mit értünk azon, hogy $b \in H$ az $a \in H$ elem inverze?
+
+**5.25.•** *Gyorsinvertálás.* Legyen $\mathbf{B} = \mathbf{A}^{-1}$, mindketten $2 \times 2$-es mátrixok. Mutassuk meg, hogy az alábbi eljárással definiált mátrixinvertálás segítségével $n \times n$-es mátrixokra olyan algoritmus készíthető, melynek műveletigénye legföljebb $cn^{2.81}$.
+$$\begin{aligned}
+c_1 &= a_{11}^{-1} & \qquad b_{12} &= c_3 c_6 \\
+c_2 &= a_{21}c_1 & b_{21} &= c_6 c_2 \\
+c_3 &= c_1 a_{12} & c_7 &= c_3 b_{21} \\
+c_4 &= c_2 a_{12} & b_{11} &= c_1 - c_7 \\
+c_5 &= c_4 - a_{22} & b_{22} &= -c_6 \\
+c_6 &= c_5^{-1}
+\end{aligned}$$
+
+#### Mátrix és diád összegének inverze
+
+*Összegmátrix inverzére nincs egyszerű képlet, de speciális mátrixokra nagyon hasznos eredmények vannak.*
+
+**5.26.** *Sherman–Morrison-formula.* Tegyük fel, hogy az $\mathbf{A} \in \mathbb{R}^{n \times n}$ mátrix invertálható, és $\mathbf{u}, \mathbf{v} \in \mathbb{R}^n$ két olyan vektor, hogy $1 + \mathbf{v}^\mathsf{T}\mathbf{A}^{-1}\mathbf{u} \neq 0$. Ekkor $\mathbf{A} + \mathbf{u}\mathbf{v}^\mathsf{T}$ invertálható, és
+$$(\mathbf{A} + \mathbf{u}\mathbf{v}^\mathsf{T})^{-1} = \mathbf{A}^{-1} - \frac{\mathbf{A}^{-1}\mathbf{u}\mathbf{v}^\mathsf{T}\mathbf{A}^{-1}}{1 + \mathbf{v}^\mathsf{T}\mathbf{A}^{-1}\mathbf{u}}.$$
+
+**5.27.** *Inverz változása a mátrix egy elemének változása függvényében.* Legyen $\mathbf{A}$ invertálható mátrix, és változtassuk meg az $a_{ij}$ elemet $a_{ij} + \varepsilon$-ra. Fejezzük ki az így kapott mátrix inverzét $\mathbf{A}^{-1}$ segítségével.
+
+**5.28.•** *Inverz változása számpéldán.* Adva van egy $\mathbf{A}$ mátrix és annak inverze:
+$$\mathbf{A} = \begin{bmatrix} 1 & 2 & 3 & 4 \\ 2 & 0 & 0 & 3 \\ 3 & 0 & 0 & 2 \\ 4 & 3 & 2 & 1 \end{bmatrix} \quad \mathbf{A}^{-1} = \begin{bmatrix} 0 & -2/5 & 3/5 & 0 \\ -2/5 & 7/5 & -8/5 & 3/5 \\ 3/5 & -8/5 & 7/5 & -2/5 \\ 0 & 3/5 & -2/5 & 0 \end{bmatrix}.$$
+Változtassuk meg $a_{11}$ értékét 1-ről $11/10$-re. Az így kapott mátrixot jelölje $\mathbf{B}$. Határozzuk meg inverzét!
+
+## Műveletek speciális mátrixokkal
+
+*A gyakorlatban gyakran találkozunk olyan speciális mátrixokkal, melyekkel a műveletek egyszerűbben végezhetők el.*
+
+### Diagonális mátrixok
+
+A diagonális mátrixokkal végzett mátrixműveletek szabályai igen egyszerűek.
+
+Legyen $\mathbf{A} = \operatorname{diag}(1, 2, 3)$, $\mathbf{B} = \operatorname{diag}(5, 4, 3)$. Ekkor
+$$\mathbf{AB} = \begin{bmatrix} 1 & 0 & 0 \\ 0 & 2 & 0 \\ 0 & 0 & 3 \end{bmatrix}\begin{bmatrix} 5 & 0 & 0 \\ 0 & 4 & 0 \\ 0 & 0 & 3 \end{bmatrix} = \begin{bmatrix} 5 & 0 & 0 \\ 0 & 8 & 0 \\ 0 & 0 & 9 \end{bmatrix},$$
+$$\mathbf{A}^2 = \begin{bmatrix} 1 & 0 & 0 \\ 0 & 2 & 0 \\ 0 & 0 & 3 \end{bmatrix}^2 = \begin{bmatrix} 1 & 0 & 0 \\ 0 & 4 & 0 \\ 0 & 0 & 9 \end{bmatrix}, \quad \mathbf{A}^{-1} = \begin{bmatrix} 1 & 0 & 0 \\ 0 & 2 & 0 \\ 0 & 0 & 3 \end{bmatrix}^{-1} = \begin{bmatrix} 1 & 0 & 0 \\ 0 & \frac{1}{2} & 0 \\ 0 & 0 & \frac{1}{3} \end{bmatrix},$$
+$$\mathbf{A}^k = \begin{bmatrix} 1 & 0 & 0 \\ 0 & 2 & 0 \\ 0 & 0 & 3 \end{bmatrix}^k = \begin{bmatrix} 1 & 0 & 0 \\ 0 & 2^k & 0 \\ 0 & 0 & 3^k \end{bmatrix}, \text{ ahol } k \text{ egész szám.}$$
+
+Mindezek alapján könnyen igazolható a következő tétel:
+
+**5.24. tétel (Műveletek diagonális mátrixokkal).** *Legyen $\mathbf{A} = \operatorname{diag}(a_1, a_2, \ldots, a_n)$, $\mathbf{B} = \operatorname{diag}(b_1, b_2, \ldots, b_n)$, és legyen $k$ egész. Ekkor*
+- a) *$\mathbf{AB} = \operatorname{diag}(a_1 b_1, a_2 b_2, \ldots, a_n b_n)$,*
+- b) *$\mathbf{A}^k = \operatorname{diag}(a_1^k, a_2^k, \ldots, a_n^k)$, speciálisan*
+- c) *$\mathbf{A}^{-1} = \operatorname{diag}(a_1^{-1}, a_2^{-1}, \ldots, a_n^{-1})$.*
+
+*A c)- és negatív $k$ esetén a b)-beli művelet pontosan akkor végezhető el, ha $a_i \neq 0$ ($i = 1, 2, \ldots, n$).*
+
+### Permutáló mátrixok és kígyók
+
+Könnyen kezelhetők a diagonális mátrixok sorainak permutációjával kapott mátrixok is.
+
+Tudjuk, hogy bármely permutáció megkapható elempárok cseréjének egymás után való elvégzésével. Az algebra nyelvén fogalmazva bármely permutáció transzpozíciók szorzatára bontható. Például az $\{1, 2, 3, 4\}$ halmaz $\{2, 4, 3, 1\}$ permutációja megkapható az alábbi transzpozíciókkal (elempár-cserékkel):
+$$\{1, 2, 3, 4\} \to \{2, 1, 3, 4\} \to \{2, 4, 3, 1\}$$
+Így, ha egy mátrix sorait permutáljuk, azaz végrehajtunk rajta néhány sorcserét, akkor ez elérhető a sorcseréket adó elemi mátrixokkal való balról szorzásokkal. Ezeknek az elemi mátrixoknak a szorzataként kapott mátrix úgy kapható az egységmátrixból, hogy a megadott sorcseréket végrehajtjuk rajta. Például a $\{2, 4, 3, 1\}$ permutációt végrehajtva az $\mathbf{I}_4$ egységmátrixon, a következő $\mathbf{P}$ mátrixot kapjuk:
+$$\mathbf{I}_4 = \begin{bmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ 0 & 0 & 0 & 1 \end{bmatrix} \xrightarrow{S_1 \leftrightarrow S_2} \begin{bmatrix} 0 & 1 & 0 & 0 \\ 1 & 0 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ 0 & 0 & 0 & 1 \end{bmatrix} \xrightarrow{S_2 \leftrightarrow S_4} \begin{bmatrix} 0 & 1 & 0 & 0 \\ 0 & 0 & 0 & 1 \\ 0 & 0 & 1 & 0 \\ 1 & 0 & 0 & 0 \end{bmatrix} = \mathbf{P}$$
+Ezzel balról szorozva egy tetszőleges $4 \times m$-es mátrixot, annak sorait a fenti permutáció szerint fogja fölcserélni, például
+$$\mathbf{PA} = \begin{bmatrix} 0 & 1 & 0 & 0 \\ 0 & 0 & 0 & 1 \\ 0 & 0 & 1 & 0 \\ 1 & 0 & 0 & 0 \end{bmatrix}\begin{bmatrix} a_{11} & a_{12} \\ a_{21} & a_{22} \\ a_{31} & a_{32} \\ a_{41} & a_{42} \end{bmatrix} = \begin{bmatrix} a_{21} & a_{22} \\ a_{41} & a_{42} \\ a_{31} & a_{32} \\ a_{11} & a_{12} \end{bmatrix}$$
+
+**5.25. definíció (Permutáló mátrix, kígyó).** *A diagonális mátrixok sorainak permutációjával kapott mátrixot* kígyónak *(más néven transzverzálisnak) nevezzük, speciálisan az egységmátrixból ugyanígy kapott mátrixot* permutáló mátrixnak *(vagy permutációmátrixnak) hívjuk.*
+
+▶ Például az alábbi mátrixok mindegyike kígyó, az utolsó kettő egyúttal permutáló mátrix is:
+$$\begin{bmatrix} 0 & 5 & 0 \\ 0 & 0 & 9 \\ 3 & 0 & 0 \end{bmatrix}, \quad \begin{bmatrix} 0 & \alpha & 0 & 0 \\ \gamma & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & \beta \end{bmatrix}, \quad \begin{bmatrix} 0 & 1 & 0 & 0 \\ 0 & 0 & 0 & 1 \\ 0 & 0 & 1 & 0 \\ 1 & 0 & 0 & 0 \end{bmatrix}, \quad \begin{bmatrix} 1 & 0 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \end{bmatrix}.$$
+▶ Könnyen látható, hogy a permutáló mátrix olyan négyzetes mátrix, melynek minden sorában és minden oszlopában *pontosan* egy 1-es van, az összes többi elem 0. A kígyó olyan négyzetes mátrix, melynek minden sorában és minden oszlopában *legföljebb* egy nemnulla elem van.
+▶ Minden kígyó megkapható egy diagonális mátrixból oszlopcserékkel is. Egy diagonális mátrixból akkor is kígyót kapunk, ha a sorok permutációja mellett az oszlopokat is permutáljuk.
+▶ Ha $\mathbf{P}$ egy permutáló mátrix, akkor $\mathbf{PA}$ az $\mathbf{A}$-ból a soroknak épp azzal a permutációjával kapható, amely permutációval $\mathbf{I}$-ből a $\mathbf{P}$-t kaptuk.
+
+**5.26. tétel (Műveletek permutáló mátrixokkal).** *Bármely két azonos méretű permutáló mátrix szorzata és egy permutáló mátrix bármely egész kitevős hatványa permutáló mátrix. Permutáló mátrix inverze megegyezik a transzponáltjával, azaz ha $\mathbf{P}$ permutáló mátrix, akkor*
+$$\mathbf{P}^{-1} = \mathbf{P}^\mathsf{T}.$$
+
+*Bizonyítás.* Legyen $\mathbf{P}$ és $\mathbf{Q}$ két permutáló mátrix. Szorzatuk sorvektorai $\mathbf{P}_{i*}\mathbf{Q}$ alakúak, ahol $\mathbf{P}_{i*}$ megegyezik valamelyik standard egységvektorral, pl. $\mathbf{P}_{i*} = \mathbf{e}_k$. Ekkor a szorzatvektornak csak az az eleme 1, amelyik oszlop $\mathbf{e}_k$-val megegyezik, és ilyen oszlop pontosan egy van. Tehát a szorzatmátrix minden sorában pontosan egy elem 1, a többi 0. Oszlopokra az állítás hasonlóan bizonyítható. A szorzatra vonatkozó állítás természetes következménye a pozitív egész kitevős hatványokra vonatkozó állítás. A negatív egész kitevőkre is igaz az állítás, aminek bizonyításához elég azt az inverzre belátni.
+
+Tekintsük a $\mathbf{PP}^\mathsf{T}$ szorzatot. A $(\mathbf{PP}^\mathsf{T})_{ii}$ elem a $\mathbf{P}_{i*}$ vektornak és a $(\mathbf{P}^\mathsf{T})_{*i} = \mathbf{P}_{i*}$ vektornak a szorzata, vagyis 1, míg
+$$(\mathbf{PP}^\mathsf{T})_{ij} = (\mathbf{P})_{i*}(\mathbf{P}^\mathsf{T})_{*j} = (\mathbf{P})_{i*} \cdot (\mathbf{P})_{j*},$$
+azaz a szorzat $i$-edik sorának $j$-edik eleme a $\mathbf{P}$ $i$-edik és $j$-edik sorvektorának skalárszorzata, ami 0, mivel két különböző sorban az 1-es különböző helyen van. $\square$
+
+▶ Az alábbi példa szemlélteti a tételben kimondott egyszerű állítást:
+$$\mathbf{PP}^\mathsf{T} = \begin{bmatrix} 0 & 1 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ 0 & 0 & 0 & 1 \\ 1 & 0 & 0 & 0 \end{bmatrix}\begin{bmatrix} 0 & 0 & 0 & 1 \\ 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 1 & 0 \end{bmatrix} = \begin{bmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ 0 & 0 & 0 & 1 \end{bmatrix}.$$
+
+### Háromszögmátrixok
+
+A Gauss-kiküszöbölés végrehajtásakor az együtthatómátrixot lépcsős alakra transzformáltuk, melyben a főátló alatt mindig csak nullák szerepelnek. Az ilyen mátrixok nem csak a Gauss-kiküszöbölésnél fontosak.
+
+**5.27. definíció (Háromszögmátrix).** *Azokat a mátrixokat, melyek főátlója alatt csak 0-elemek szerepelnek* felső háromszögmátrixnak, *azokat, melyek főátlója fölött csak 0-elemek vannak* alsó háromszögmátrixnak *nevezzük. Ha egy háromszögmátrix főátlójában csupa 1-es áll,* egység háromszögmátrixról *beszélünk.*
+
+A Gauss-kiküszöbölésnél kapott felső háromszögmátrixhoz hasonlóan azok az egyenletrendszerek is megoldhatók csak behelyettesítésekkel, amelyek együtthatómátrixa alsó háromszögmátrix. A különbség kizárólag annyi, hogy ekkor az első egyenlettel kezdjük, és az első változó értékét határozzuk meg először. Például az
+$$\begin{alignedat}{9} x &&&&&{}={}& 3 \\ 2x &{}+{}& 3y &&&{}={}& 3 \\ 2x &{}+{}& y &{}+{}& 2z &{}={}& 3 \end{alignedat}$$
+egyenletrendszer első egyenletéből $x = 3$, a másodikba való behelyettesítés után $y = -1$, végül a harmadikba való behelyettesítés után $z = -1$.[^8]
+
+[^8]: *Az angol nyelvű lineáris algebra tankönyvek különbséget tesznek a felső és az alsó háromszögmátrixú egyenletrendszerek megoldása között.* Forward substitution, *illetve* backward substitution *a neve a behelyettesítésnek ha alsó, illetve ha felső háromszögmátrix az együtthatómátrix. Ez arra utal, hogy a változókat előre vagy hátra haladva számoljuk ki. Mi nem fogjuk használni e finom különbségtételt.*
+
+**5.28. tétel (Műveletek háromszögmátrixokkal).** *Felső háromszögmátrixok összege, szorzata, és invertálható felső háromszögmátrix inverze felső háromszögmátrix. Analóg tétel igaz az alsó háromszögmátrixokra is. Egy háromszögmátrix pontosan akkor invertálható, ha főátlóbeli elemeinek egyike sem zérus.*
+
+A bizonyítást feladatként az Olvasóra hagyjuk.
+
+### Szimmetrikus és ferdén szimmetrikus mátrixok
+
+Gyakran használunk olyan mátrixokat, melyekben az elemek egyenlők vagy ellentettjei a főátlóra nézve szimmetrikusan elhelyezkedő párjuknak. E tulajdonság a transzponálttal könnyen kifejezhető.
+
+**5.29. definíció (Szimmetrikus és ferdén szimmetrikus mátrixok).** *A négyzetes $\mathbf{A}$ mátrixot szimmetrikusnak nevezzük, ha $\mathbf{A}^\mathsf{T} = \mathbf{A}$, és ferdén szimmetrikusnak nevezzük, ha $\mathbf{A}^\mathsf{T} = -\mathbf{A}$.*
+
+**5.30. példa (Szimmetrikus és ferdén szimmetrikus mátrixok).** *Az alábbi mátrixok közül az $\mathbf{A}$ szimmetrikus, a $\mathbf{B}$ ferdén szimmetrikus, a $\mathbf{C}$ egyik osztályba sem tartozik.*
+$$\mathbf{A} = \begin{bmatrix} 5 & 6 & 1 \\ 6 & 2 & 0 \\ 1 & 0 & 3 \end{bmatrix}, \quad \mathbf{B} = \begin{bmatrix} 0 & 1 & -2 \\ -1 & 0 & 3 \\ 2 & -3 & 0 \end{bmatrix}, \quad \mathbf{C} = \begin{bmatrix} 1 & 9 & 9 \\ -9 & 2 & 9 \\ -9 & -9 & 3 \end{bmatrix}.$$
+
+Ha $\mathbf{A}$ ferdén szimmetrikus, akkor minden elemére $a_{ij} = -a_{ji}$, azaz $i = j$ esetén $a_{ii} = -a_{ii}$. Ez csak $a_{ii} = 0$ esetén áll fönn, azaz a ferdén szimmetrikus mátrixok főátlójában csupa 0 áll.
+
+**5.31. állítás (Műveletek (ferdén) szimmetrikus mátrixokkal).** *Szimmetrikus mátrixok összege, skalárszorosa, inverze szimmetrikus. Ferdén szimmetrikus mátrixok összege, skalárszorosa, inverze ferdén szimmetrikus.*
+
+Az állítás bizonyítását feladatként az olvasóra hagyjuk.
+
+**5.32. tétel (Felbontás szimmetrikus és ferdén szimmetrikus mátrix összegére).** *Minden négyzetes mátrix előáll egy szimmetrikus és egy ferdén szimmetrikus mátrix összegeként, nevezetesen minden $\mathbf{A}$ négyzetes mátrixra*
+$$\mathbf{A} = \underbrace{\tfrac{1}{2}(\mathbf{A} + \mathbf{A}^\mathsf{T})}_{\text{szimmetrikus}} + \underbrace{\tfrac{1}{2}(\mathbf{A} - \mathbf{A}^\mathsf{T})}_{\text{ferdén szimm.}}.$$
+
+*Bizonyítás.* Ha egy mátrix szimmetrikus, konstansszorosa is, így elég megmutatni, hogy az $\mathbf{A} + \mathbf{A}^\mathsf{T}$ mátrix szimmetrikus:
+$$(\mathbf{A} + \mathbf{A}^\mathsf{T})^\mathsf{T} = \mathbf{A}^\mathsf{T} + (\mathbf{A}^\mathsf{T})^\mathsf{T} = \mathbf{A}^\mathsf{T} + \mathbf{A} = \mathbf{A} + \mathbf{A}^\mathsf{T}$$
+Hasonlóképp $\mathbf{A} - \mathbf{A}^\mathsf{T}$ ferdén szimmetrikus, hiszen
+$$(\mathbf{A} - \mathbf{A}^\mathsf{T})^\mathsf{T} = \mathbf{A}^\mathsf{T} - (\mathbf{A}^\mathsf{T})^\mathsf{T} = \mathbf{A}^\mathsf{T} - \mathbf{A} = -(\mathbf{A} - \mathbf{A}^\mathsf{T})$$
+Végül a két mátrix összege valóban $\mathbf{A}$:
+$$\frac{1}{2}(\mathbf{A} + \mathbf{A}^\mathsf{T}) + \frac{1}{2}(\mathbf{A} - \mathbf{A}^\mathsf{T}) = \frac{1}{2}\mathbf{A} + \frac{1}{2}\mathbf{A}^\mathsf{T} + \frac{1}{2}\mathbf{A} - \frac{1}{2}\mathbf{A}^\mathsf{T} = \mathbf{A}. \qquad \square$$
+
+Fontos következményei lesznek az alábbi egyszerű állításnak.
+
+**5.33. tétel ($\mathbf{A}^\mathsf{T}\mathbf{A}$ és $\mathbf{AA}^\mathsf{T}$ szimmetrikus).** *Az $\mathbf{A}^\mathsf{T}\mathbf{A}$ és az $\mathbf{AA}^\mathsf{T}$ mátrixok tetszőleges $\mathbf{A}$ mátrix esetén szimmetrikusak.*
+
+*Bizonyítás.* $(\mathbf{AA}^\mathsf{T})^\mathsf{T} = (\mathbf{A}^\mathsf{T})^\mathsf{T}\mathbf{A}^\mathsf{T} = \mathbf{AA}^\mathsf{T}$. Az állítás másik fele ugyanígy bizonyítható. $\square$
+
+### Feladatok
+
+**5.29.•** *Igaz – hamis.* Döntsük el, igazak-e az alábbi állítások? Válaszunkat indokoljuk!
+- a) Szimmetrikus mátrixok összege és skalárszorosa is szimmetrikus, így szimmetrikus mátrixok tetszőleges lineáris kombinációja is szimmetrikus.
+- b) Ferdén szimmetrikus mátrixok összege és skalárszorosa is ferdén szimmetrikus, így ferdén szimmetrikus mátrixok tetszőleges lineáris kombinációja is ferdén szimmetrikus.
+- c) Minden lépcsős alakú mátrix felső háromszögmátrix.
+- d) Minden felső háromszögmátrix lépcsős alakú.
+
+**5.30.** Számítsuk ki az alábbi mátrixok inverzeit, négyzetét és köbét!
+$$\begin{bmatrix} 0 & 2 & 0 \\ 0 & 0 & 4 \\ 3 & 0 & 0 \end{bmatrix}, \quad \begin{bmatrix} 0 & 0 & 2 \\ 0 & 4 & 0 \\ 3 & 0 & 0 \end{bmatrix}, \quad \begin{bmatrix} 0 & 2 & 0 & 0 \\ 0 & 0 & 0 & 5 \\ 0 & 0 & 3 & 0 \\ 4 & 0 & 0 & 0 \end{bmatrix}.$$
+
+**5.31.** Hogyan oldanánk meg a következő egyenletrendszert a lehető legkevesebb lépésben?
+$$\begin{alignedat}{9}
+x &{}+{}& 4y &{}+{}& 3z &{}+{}& 5w &{}={}& 3 \\
+6x &{}+{}& 3y &&&&&{}={}& 3 \\
+2x &{}+{}& 3y &{}+{}& 2z &&&{}={}& 3 \\
+2x &{}+{}& 4y &{}+{}& 3z &{}+{}& 5w &{}={}& 4
+\end{alignedat}$$
+
+#### Bizonyítások
+
+**5.32.** Mutassuk meg, hogy minden permutáló mátrix oszlopcserékkel is megkapható az egységmátrixból, és hogy permutáló mátrixszal jobbról való szorzás a beszorzott mátrix oszlopain ugyanazt a permutációt hajtja végre, mint amellyel a permutáló mátrix az egységmátrixból megkapható.
+
+**5.33.** Bizonyítsuk be, hogy bármely két azonos méretű kígyó szorzata és egy kígyó bármely pozitív egész kitevős hatványa kígyó.
+
+**5.34.•** Mutassuk meg, hogy egy $\mathbf{K}$ kígyó pontosan akkor invertálható, ha minden sorában pontosan egy elem nem 0, és ekkor inverze megkapható úgy, hogy minden nemnulla elem helyébe annak reciprokát írjuk, majd az így kapott mátrixot transzponáljuk.
+
+## Mátrixfelbontások
+
+*Mátrixfelbontáson egy mátrixnak adott tulajdonságú mátrixok szorzataként való fölírását értjük. Egy ilyen felbontással már találkoztunk, amikor invertálható mátrixot elemi mátrixok szorzatára bontottunk. E szakaszban a kiküszöbölési eljárásra épülő további felbontásokkal találkozunk. Ezek egyike, az LU-felbontás bizonyos lineáris algebrai feladatok számítógépes megoldásának gyakran használt eszköze.*
+
+### Az LU-felbontás
+
+Tegyük fel, hogy egy $\mathbf{A}$ mátrixból el lehet jutni egy $\mathbf{U}$ felső háromszögalakhoz csak olyan sorműveletekkel, melyekben egy sor konstansszorosát valamely alatta lévő sorhoz adjuk. Minden ilyen elemi sorművelethez olyan elemi mátrix tartozik, mely alsó háromszög alakú. Ekkor tehát léteznek olyan $\mathbf{E}_1, \ldots \mathbf{E}_k$ elemi alsó háromszögmátrixok, melyekre
+$$\mathbf{E}_k \ldots \mathbf{E}_1\mathbf{A} = \mathbf{U}.$$
+Innen
+$$\mathbf{A} = (\mathbf{E}_k \ldots \mathbf{E}_1)^{-1}\mathbf{U},$$
+ahol $(\mathbf{E}_k \ldots \mathbf{E}_1)^{-1}$ alsó háromszögmátrixok szorzatának inverze, tehát maga is alsó háromszögmátrix. Ráadásul mindegyik mátrixban, így szorzatukban, és annak inverzében is a főátló csupa 1-esből áll. Ez a következő definícióhoz vezet:
+
+**5.34. definíció (LU-felbontás).** *Azt mondjuk, hogy az $m \times n$-es $\mathbf{A}$ mátrix egy $\mathbf{A} = \mathbf{LU}$ alakú tényezőkre bontása LU-felbontás (LU-faktorizáció vagy LU-dekompozíció), ha $\mathbf{L}$ alsó egység háromszögmátrix (tehát a főátlóban 1-ek, fölötte 0-k vannak), $\mathbf{U}$ pedig felső háromszögmátrix.*
+
+> Az *LU-felbontásban* az L és U betűk az *alsó* és *felső* jelentésű angol *lower* és *upper* szavak kezdőbetűi.
+
+▶ Nincs minden mátrixnak LU-felbontása (ld. ??. feladat), például az
+$$\begin{bmatrix} 0 & 1 \\ 1 & 0 \end{bmatrix} = \begin{bmatrix} 1 & 0 \\ a & 1 \end{bmatrix}\begin{bmatrix} b & c \\ 0 & d \end{bmatrix}$$
+egyenlőség a paraméterek semmilyen értékére sem áll fönn.
+▶ Az LU-felbontás nem egyértelmű, például
+$$\begin{bmatrix} 1 & 1 & 1 \\ 0 & 0 & 0 \\ 0 & 0 & 0 \end{bmatrix} = \begin{bmatrix} 1 & 0 & 0 \\ 0 & 1 & 0 \\ 0 & a & 1 \end{bmatrix}\begin{bmatrix} 1 & 1 & 1 \\ 0 & 0 & 0 \\ 0 & 0 & 0 \end{bmatrix}$$
+felbontás minden $a$ paraméterértékre fönnáll. Megmutatható viszont, hogy ha $\mathbf{A}$ invertálható, és létezik LU-felbontása, akkor az egyértelmű (ld. 5.37. tétel).
+
+<!-- OCR: through PDF p.198 -->
