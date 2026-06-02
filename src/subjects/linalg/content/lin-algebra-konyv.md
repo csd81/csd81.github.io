@@ -4064,4 +4064,78 @@ $$\begin{bmatrix} 1 & 1 \\ 2 & 1 \\ 0 & 3 \end{bmatrix} \begin{bmatrix} 1 & 1 & 
 Hasonlóan a többi elemet is kiszámolva
 $$\begin{bmatrix} 1 & 1 \\ 2 & 1 \\ 0 & 3 \end{bmatrix} \begin{bmatrix} 1 & 1 & 2 \\ 2 & 1 & 0 \end{bmatrix} = \begin{bmatrix} 3 & 2 & 2 \\ 4 & 3 & 4 \\ 6 & 3 & 0 \end{bmatrix}. \qquad \square$$
 
-<!-- OCR: through PDF p.146 -->
+### Műveletek blokkmátrixokkal
+
+Hatalmas méretű mátrixokkal végzett műveletek párhuzamosíthatók, és a memóriakezelés is hatékonyabbá válik, ha a mátrixokat blokkokra osztjuk, és a műveleteket e kisebb részmátrixokkal végezzük.
+
+Ha egy mátrixot vízszintes és függőleges vonalakkal részmátrixokra bontunk, azt mondjuk, hogy e mátrix a részmátrixokból – más néven blokkokból – alkotott *blokkmátrix.* Egy blokkmátrix sorait és oszlopait a mátrix *blokksorainak* és *blokkoszlopainak* nevezzük.
+
+Egy egyenletrendszer $[\mathbf{A}|\mathbf{b}]$ bővített mátrixa egy két blokkból álló blokkmátrix. Az alábbi példa egy 5-ismeretlenes, 5 egyenletből álló egyenletrendszer bővített mátrixának redukált lépcsős alakját mutatja, ahol az első blokkoszlop a kötött változóknak, a második a szabad változóknak, a harmadik az egyenletrendszer jobb oldalának felel meg, a második blokksor a zérussorokat tartalmazza.[^6]
+$$\left[\begin{array}{ccc|cc|c} 1 & 0 & 0 & 1 & 2 & 4 \\ 0 & 1 & 0 & 2 & 0 & 3 \\ 0 & 0 & 1 & 1 & 0 & 3 \\ \hline 0 & 0 & 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 & 0 & 0 \end{array}\right] = \begin{bmatrix} \mathbf{B}_{11} & \mathbf{B}_{12} & \mathbf{B}_{13} \\ \mathbf{B}_{21} & \mathbf{B}_{22} & \mathbf{B}_{23} \end{bmatrix}.$$
+
+[^6]: *A blokkmátrixokra a szakirodalomban a* hipermátrix *elnevezés is használatos. Mi kerüljük e szóhasználatot a hipermátrix másik – többdimenziós tömb értelmű – jelentése miatt.*
+
+**4.9. állítás (Műveletek blokkmátrixokkal).** *Blokkmátrixok skalárral való szorzása és két azonos módon particionált blokkmátrix összeadása blokkonként is elvégezhető, azaz*
+$$c[\mathbf{A}_{ij}] := [c\mathbf{A}_{ij}], \qquad [\mathbf{A}_{ij}] + [\mathbf{B}_{ij}] := [\mathbf{A}_{ij} + \mathbf{B}_{ij}].$$
+*Ha $\mathbf{A} = [\mathbf{A}_{ik}]_{m \times t}$, $\mathbf{B} = [\mathbf{B}_{kj}]_{t \times n}$ két blokkmátrix, és minden $k$-ra az $\mathbf{A}_{ik}$ blokk oszlopainak száma megegyezik $\mathbf{B}_{kj}$ sorainak számával, akkor a $\mathbf{C} = \mathbf{AB}$ szorzat kiszámítható a szorzási szabály blokkokra való alkalmazásával is, azaz $\mathbf{C}$ olyan blokkmátrix, melynek $i$-edik blokksorában és $j$-edik blokkoszlopában álló blokk*
+$$\mathbf{C}_{ij} = \sum_{k=1}^{t} \mathbf{A}_{ik}\mathbf{B}_{kj}.$$
+
+Például az alábbi mátrixszorzás blokkmátrixként a következőképp végezhető el:
+$$\left[\begin{array}{cc|c} 1 & 0 & 1 \\ 2 & 1 & 1 \\ 0 & 3 & 1 \end{array}\right] \left[\begin{array}{cc} 1 & 1 \\ 1 & 2 \\ \hline 0 & 1 \end{array}\right] = \begin{bmatrix} 1 & 0 \\ 2 & 1 \\ 0 & 3 \end{bmatrix}\begin{bmatrix} 1 & 1 \\ 1 & 2 \end{bmatrix} + \begin{bmatrix} 1 \\ 1 \\ 1 \end{bmatrix}\begin{bmatrix} 0 & 1 \end{bmatrix} = \begin{bmatrix} 1 & 1 \\ 3 & 4 \\ 3 & 6 \end{bmatrix} + \begin{bmatrix} 0 & 1 \\ 0 & 1 \\ 0 & 1 \end{bmatrix} = \begin{bmatrix} 1 & 2 \\ 3 & 5 \\ 3 & 7 \end{bmatrix}.$$
+
+### Kronecker-szorzat és a vec-függvény
+
+Vannak olyan blokkmátrixműveletek, amelyek nem származtathatóak egyszerű mátrixműveletekből.
+
+A vec függvény egy tetszőleges mátrixot vektorrá alakít a mátrix oszlopvektorainak egymás alá tételével. Ha $\mathbf{A} = [\mathbf{a}_1 | \mathbf{a}_2 | \ldots | \mathbf{a}_n]$, akkor
+$$\operatorname{vec}(\mathbf{A}) = \begin{bmatrix} \mathbf{a}_1 \\ \vdots \\ \mathbf{a}_n \end{bmatrix}.$$
+Például, ha $\mathbf{A} = \begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix}$, akkor $\operatorname{vec}(\mathbf{A}) = \begin{bmatrix} 1 \\ 3 \\ 2 \\ 4 \end{bmatrix}$.
+
+Legyen $\mathbf{A}$ egy $m \times n$-es, $\mathbf{B}$ egy $p \times q$-as mátrix. *Kronecker-szorzatukon* (vagy más néven *tenzorszorzatukon*) azt az $\mathbf{A} \otimes \mathbf{B}$-vel jelölt $mp \times nq$ méretű mátrixot értjük, melynek blokkmátrix alakja
+$$\mathbf{A} \otimes \mathbf{B} = \begin{bmatrix} a_{11}\mathbf{B} & a_{12}\mathbf{B} & \ldots & a_{1n}\mathbf{B} \\ a_{21}\mathbf{B} & a_{22}\mathbf{B} & \ldots & a_{2n}\mathbf{B} \\ \vdots & \vdots & \ddots & \vdots \\ a_{m1}\mathbf{B} & a_{m2}\mathbf{B} & \ldots & a_{mn}\mathbf{B} \end{bmatrix}.$$
+Például
+$$\begin{bmatrix} -1 & 2 \\ 0 & 1 \end{bmatrix} \otimes \begin{bmatrix} 0 & 1 & 2 \\ 3 & 3 & 3 \end{bmatrix} = \begin{bmatrix} 0 & -1 & -2 & 0 & 2 & 4 \\ -3 & -3 & -3 & 3 & 6 & 6 \\ 0 & 0 & 0 & 0 & 1 & 2 \\ 0 & 0 & 0 & 3 & 3 & 3 \end{bmatrix}.$$
+
+**4.10. tétel (A Kronecker-szorzat tulajdonságai).** *Adva van az $\mathbf{A}_{m \times n}$, $\mathbf{B}_{m \times n}$, $\mathbf{C}_{p \times s}$ és $\mathbf{D}_{r \times s}$ mátrix. Ekkor*
+- a) *$(\mathbf{A} + \mathbf{B}) \otimes \mathbf{C} = \mathbf{A} \otimes \mathbf{C} + \mathbf{B} \otimes \mathbf{C}$, $\mathbf{C} \otimes (\mathbf{A} + \mathbf{B}) = \mathbf{C} \otimes \mathbf{A} + \mathbf{C} \otimes \mathbf{B}$,*
+- b) *$(\mathbf{A} \otimes \mathbf{C}) \otimes \mathbf{D} = \mathbf{A} \otimes (\mathbf{C} \otimes \mathbf{D})$,*
+- c) *$(\mathbf{A} \otimes \mathbf{C})^\mathsf{T} = \mathbf{C}^\mathsf{T} \otimes \mathbf{A}^\mathsf{T}$.*
+
+A lineáris mátrixegyenleteknél fogjuk használni a következőket:
+
+**4.11. tétel (A Kronecker-szorzat és a vec-függvény tulajdonságai).** *Adva van az $\mathbf{A}_{m \times n}$, $\mathbf{B}_{p \times q}$ és $\mathbf{X}_{n \times p}$ mátrix. Ekkor*
+- a) *$\operatorname{vec}(\mathbf{AX}) = (\mathbf{I}_p \otimes \mathbf{A})\operatorname{vec}(\mathbf{X})$, $\operatorname{vec}(\mathbf{XB}) = (\mathbf{B}^\mathsf{T} \otimes \mathbf{I}_n)\operatorname{vec}(\mathbf{X})$,*
+- b) *$\operatorname{vec}(\mathbf{AXB}) = (\mathbf{B}^\mathsf{T} \otimes \mathbf{A})\operatorname{vec}(\mathbf{X})$,*
+- c) *$\operatorname{vec}(\mathbf{AX} + \mathbf{XB}) = (\mathbf{I}_p \otimes \mathbf{A} + \mathbf{B}^\mathsf{T} \otimes \mathbf{I}_n)\operatorname{vec}(\mathbf{X})$.*
+
+*Bizonyítás.* A fenti állítások mindegyike közvetlenül bizonyítható a definíció alapján. Szemléltetésül megmutatjuk a b) bizonyítását.
+$$\begin{aligned}
+[\mathbf{AXB}]_{*j} = \mathbf{AX}\mathbf{b}_{*j} &= \sum_{i=1}^{n} b_{ij}(\mathbf{AX})_{*i} = \sum_{i=1}^{n} (b_{ij}\mathbf{A})\mathbf{X}_{*i} \\
+&= [b_{1j}\mathbf{A} | \ldots | b_{nj}\mathbf{A}]\operatorname{vec}(\mathbf{X}) = [\mathbf{B}^\mathsf{T} \otimes \mathbf{A}]_{*j}\operatorname{vec}(\mathbf{X}) \qquad \square
+\end{aligned}$$
+
+### Hipermátrixok
+
+Bizonyos adatok, természetüknél fogva, 2-nél magasabb dimenziós tömbben rendezhetők el jól.
+
+**4.12. definíció (Hipermátrix).** *Legyen $n_1, n_2, \ldots, n_d \in \mathbb{N}^+$ és legyen $S$ egy tetszőleges halmaz (pl. $S = \mathbb{R}, \mathbb{Q}, \mathbb{N}, \mathbb{Z}\ldots$). $d$-edrendű (vagy $d$-dimenziós) $n_1 \times n_2 \times \ldots \times n_d$-típusú hipermátrixnak nevezzük az*
+$$\mathbf{A} : \{1, \ldots, n_1\} \times \{1, \ldots, n_2\} \times \ldots \times \{1, \ldots, n_d\} \to S$$
+*alakú leképezést. Az $\mathbf{A}(i_1, i_2, \ldots, i_d)$ elemet $a_{i_1 i_2 \ldots i_d}$-vel jelöljük, melyre úgy gondolhatunk, mint egy $d$-dimenziós táblázat egy elemére és a mátrixoknál megszokotthoz hasonlóan írhatjuk, hogy*
+$$\mathbf{A} = [a_{i_1 i_2 \ldots i_d}]_{i_1, i_2, \ldots, i_d = 1}^{n_1, n_2, \ldots, n_d} \quad \text{vagy egyszerűbben} \quad \mathbf{A} = [a_{i_1 i_2 \ldots i_d}].$$
+*Ha $n_1 = n_2 = \cdots = n_d = n$, akkor a* hiper-kockamátrixról *beszélünk.*
+
+Az $S$ elemeiből képzett összes $n_1 \times n_2 \times \ldots \times n_d$-típusú hipermátrixok halmazát $S^{n_1 \times n_2 \times \ldots \times n_d}$ jelöli.
+
+A másodrendű hipermátrixok egybeesnek a mátrixokkal.
+
+A 3-adrendű hipermátrixok elemeinek leírását papírra (tehát 2-dimenzióban) úgy oldhatjuk meg, hogy például a harmadik index szerint „szeletekre" vágjuk. E „szeletek" mindegyike egy mátrix, melyeket függőleges vonallal elválasztva egymás mellé írunk. Így például a $4 \times 2 \times 3$-típusú hipermátrixok általános alakja
+$$\left[\begin{array}{cc|cc|cc} a_{111} & a_{121} & a_{112} & a_{122} & a_{113} & a_{123} \\ a_{211} & a_{221} & a_{212} & a_{222} & a_{213} & a_{223} \\ a_{311} & a_{321} & a_{312} & a_{322} & a_{313} & a_{323} \\ a_{411} & a_{421} & a_{412} & a_{422} & a_{413} & a_{423} \end{array}\right]$$
+
+Két azonos típusú hipermátrix összeadása és egy hipermátrix skalárral való szorzása a mátrixokhoz hasonlóan elemenként történik:
+$$[a_{i_1 i_2 \ldots i_d}] + [b_{i_1 i_2 \ldots i_d}] := [a_{i_1 i_2 \ldots i_d} + b_{i_1 i_2 \ldots i_d}], \quad c[a_{i_1 i_2 \ldots i_d}] := [ca_{i_1 i_2 \ldots i_d}].$$
+
+**4.13. definíció (Hipermátrix transzponáltja).** *Legyen $\pi$ az $\{1, 2, \ldots, d\}$ halmaz egy permutációja. A $d$-edrendű $\mathbf{A} = [a_{i_1 i_2 \ldots i_d}] \in S^{n_1 \times n_2 \times \ldots \times n_d}$ hipermátrix $\pi$-transzponáltján az*
+$$\mathbf{A}^\pi = [a_{i_{\pi(1)} i_{\pi(2)} \ldots i_{\pi(d)}}] \in S^{n_{\pi(1)} \times n_{\pi(2)} \times \ldots \times n_{\pi(d)}}$$
+*hipermátrixot értjük. Egy $\mathbf{A} \in S^{n \times n \times \ldots \times n}$ hiper-kockamátrix* szimmetrikus, *ha minden $\pi$ permutációra $\mathbf{A}^\pi = \mathbf{A}$, és* ferdén szimmetrikus, *ha $\mathbf{A}^\pi = \operatorname{sgn}(\pi)\mathbf{A}$, ahol $\operatorname{sgn}(\pi) = -1$, ha a $\pi$ páratlan permutáció, és 1, ha páros.*
+
+<!-- OCR: through PDF p.149 -->
