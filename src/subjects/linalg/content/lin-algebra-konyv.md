@@ -3943,4 +3943,125 @@ lineáris helyettesítést adja. Figyeljük meg, hogy ha a két lineáris helyet
 | $b$ | 4 | 4 | 2 | | 140 | 620 |
 | $c$ | 4 | 2 | 4 | | 108 | 490 |
 
-<!-- OCR: through PDF p.143 -->
+### Elemenkénti mátrixműveletek
+
+Mátrixok összeadását és skalárral szorzását a táblázatoknál látottak alapján definiáljuk.
+
+A mátrixműveletekhez szükségünk van arra, hogy a mátrix elemei olyan struktúrából valók legyenek, melyek közt a megkívánt műveletek elvégezhetők. Legyen $S$ egy tetszőleges halmaz (pl. $S = \mathbb{R}, \mathbb{Q}, \mathbb{N}, \mathbb{Z}\ldots$). Az $S$ elemeiből képzett összes $m \times n$-es mátrixok halmazát
+$$S^{m \times n} \quad \text{vagy} \quad \mathrm{M}_{m \times n}[S]$$
+jelöli. Azt mondjuk, hogy $S^{m \times n}$ ($\mathrm{M}_{m \times n}[S]$) az $S$ fölötti $m \times n$ típusú *mátrixok tere.* Például az $\begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix}$ mátrix eleme az $\mathbb{N}^{2 \times 2}$, $\mathbb{Z}^{2 \times 2}$, $\mathbb{Q}^{2 \times 2}$, $\mathbb{R}^{2 \times 2}$ terek mindegyikének.
+
+Két mátrixot akkor tekintünk *egyenlőnek,* ha azonos típusúak, és az azonos indexű elemek egyenlők. Például az $\begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix} = \begin{bmatrix} 1 & 2 \\ 3 & x \end{bmatrix}$ egyenlőség pontosan akkor áll fönn, ha $x = 4$. Egy vektor sor- vagy oszlopvektor alakba írva mátrixként nem egyenlők egymással. Például
+$$\begin{bmatrix} 1 & 2 \end{bmatrix} \neq \begin{bmatrix} 1 \\ 2 \end{bmatrix},$$
+mert nem azonos típusúak.
+
+Egy mátrix *négyzetes,* ha sorainak és oszlopainak száma megegyezik. A $\mathbf{A}$ mátrix *főátlójának* elemei $a_{11}$, $a_{22}$, $a_{33}, \ldots$ Ez nem csak négyzetes mátrixra értelmezhető. Az olyan négyzetes mátrixot, melynek főátlón kívüli elemei mind nullák, *diagonális mátrixnak* nevezzük. Az ilyen mátrixok egyszerű megadására a diag függvényt használjuk, melynek argumentumába a főátló elemei vannak felsorolva. Például
+$$\operatorname{diag}(1, 2, 3) = \begin{bmatrix} 1 & 0 & 0 \\ 0 & 2 & 0 \\ 0 & 0 & 3 \end{bmatrix}.$$
+
+A mátrixműveletek megismerését azokkal kezdjük melyeket elemenként végezhetünk.
+
+**4.3. definíció (Mátrixok összege, különbsége).** *Az $m \times n$ típusú $\mathbf{A} = [a_{ij}]$ és $\mathbf{B} = [b_{ij}]$ mátrixok összegén azt az ugyancsak $m \times n$-es, és $\mathbf{A} + \mathbf{B}$-vel jelölt mátrixot értjük, melynek $i$-edik sorában a $j$-edik elem $a_{ij} + b_{ij}$, ahol $i = 1, \ldots, m$, $j = 1, \ldots, n$. Képletben:*
+$$\mathbf{A} + \mathbf{B} = [a_{ij}] + [b_{ij}] := [a_{ij} + b_{ij}].$$
+*Hasonlóan definiálható $\mathbf{A}$ és $\mathbf{B}$ különbsége is, azaz $\mathbf{A} - \mathbf{B} := [a_{ij} - b_{ij}]$.*
+
+Például
+$$\begin{bmatrix} 0 & 2 & 4 \\ 1 & 3 & 5 \end{bmatrix} + \begin{bmatrix} 1 & 0 & 0 \\ 0 & 1 & 0 \end{bmatrix} = \begin{bmatrix} 1 & 2 & 4 \\ 1 & 4 & 5 \end{bmatrix}, \quad \begin{bmatrix} 2 \\ 3 \end{bmatrix} - \begin{bmatrix} 3 \\ 2 \end{bmatrix} = \begin{bmatrix} -1 \\ 1 \end{bmatrix}.$$
+
+*4.1. ábra. Mátrix megadása, elemeinek, sorainak és oszlopainak és azok számának lekérdezése mátrix alapú nyelvekben.*
+
+```octave
+OCTAVE  a = [1 2 3
+>            4 5 7]
+a =
+   1   2   3
+   4   5   7
+OCTAVE  b = [1 2;3 4]
+b =
+   1   2
+   3   4
+OCTAVE  diag([1,2,3])
+ans =
+   1   0   0
+   0   2   0
+   0   0   3
+OCTAVE  a(2,3)
+ans = 7
+OCTAVE  a(2,:)
+ans =
+   4   5   7
+OCTAVE  a(:,3)
+ans =
+   3
+   7
+OCTAVE  v = [1 2 3]
+v =
+   1   2   3
+OCTAVE  w = [1;2;3]
+w =
+   1
+   2
+   3
+OCTAVE  size(v)
+ans =
+   1   3
+OCTAVE  size(w)
+ans =
+   3   1
+```
+
+> A mátrixalapú nyelvekben mátrixok közötti elemenkénti művelet definiálható a műveleti jel elé tett ponttal. Így az `A` és `B` mátrixok elemenkénti szorzata az `A .* B` paranccsal kapható meg. Eszerint az `A .+ B` és `A + B` kódok az eredményt tekintve ekvivalensek.
+
+**4.4. definíció (Zérusmátrix).** *A csupa nullából álló mátrixokat zérusmátrixoknak nevezzük. Az $m \times n$-es zérusmátrixot $\mathbf{O}_{m \times n}$, míg az $n \times n$-es négyzetes zérusmátrixot $\mathbf{O}_n$ jelöli.*
+
+Tetszőleges $\mathbf{A}$ mátrixhoz egy azonos típusú zérusmátrixot adva $\mathbf{A}$-t kapunk, azaz $\mathbf{A} + \mathbf{O} = \mathbf{O} + \mathbf{A} = \mathbf{A}$.
+
+**4.5. definíció (Mátrix szorzása skalárral).** *Az $m \times n$-es típusú $\mathbf{A} = [a_{ij}]$ mátrix $c$ számmal képzett szorzatán azt az ugyancsak $m \times n$-es típusú, és $c\mathbf{A}$-val jelölt mátrixot értjük, melyre*
+$$c\mathbf{A} = c[a_{ij}] := [ca_{ij}].$$
+
+Az $\mathbf{A}$ mátrix *ellentettjének* azt a $-\mathbf{A}$-val jelölt mátrixot nevezzük, melyre $\mathbf{A} + (-\mathbf{A}) = \mathbf{O}$. Könnyen megmutatható, hogy ilyen mátrix csak egy van, nevezetesen $-\mathbf{A} = (-1)\mathbf{A}$.
+
+Azonos méretű mátrixokon más elemenkénti művelet is definiálható. Érdekességként mutatunk egy példát egy ilyen műveletre a digitális képfeldolgozás köréből, ahol a képpontokra (pixelekre) bontott kép adatai mátrixokban vannak tárolva. A 4.2. ábra mátrixa az alatta lévő férfiarc 9 szürkeárnyalatos képe, melyen a háttér egy egyszerű elemenkénti művelettel megváltoztatható (részletek a 4.6. feladatban).
+
+A vektorokhoz hasonlóan, a skalárral való szorzás és az összeadás művelete lehetővé teszi, hogy mátrixokra is definiáljuk a *lineáris kombináció,* a *lineáris függetlenség* és a *lineáris összefüggőség* fogalmát.
+
+**4.6. példa (Mátrixok lineáris kombinációja).** *Számítsuk ki a*
+$$2\begin{bmatrix} 0 & 1 \\ 2 & 1 \\ 0 & -1 \end{bmatrix} - 3\begin{bmatrix} 1 & 0 \\ -1 & -2 \\ -1 & 0 \end{bmatrix}.$$
+*lineáris kombinációt!*
+
+*Megoldás.* A skalárral való szorzásokat, majd az összeadást elvégezve
+$$2\begin{bmatrix} 0 & 1 \\ 2 & 1 \\ 0 & -1 \end{bmatrix} - 3\begin{bmatrix} 1 & 0 \\ -1 & -2 \\ -1 & 0 \end{bmatrix} = \begin{bmatrix} 0 & 2 \\ 4 & 2 \\ 0 & -2 \end{bmatrix} + \begin{bmatrix} -3 & 0 \\ 3 & 6 \\ 3 & 0 \end{bmatrix} = \begin{bmatrix} -3 & 2 \\ 7 & 8 \\ 3 & -2 \end{bmatrix}.$$
+A műveletek természetesen elemként is elvégezhetők, pl. a második sor első eleme így megkapható: $2 \cdot 2 - 3 \cdot (-1) = 7$. $\square$
+
+A mátrixok az összeadásra és a skalárral való szorzásra nézve a vektorokhoz hasonlóan viselkednek. Az $\mathbb{R}^{m \times n}$-beli $m \times n$-es mátrixok e két műveletre nézve úgy viselkednek, mint $\mathbb{R}^{mn}$ vektorai. Mondhatjuk tehát, hogy $\mathbb{R}^{m \times n}$ mátrixai egy $mn$-dimenziós *vektorteret* alkotnak. Lásd erről pl. a 4.7. és a 4.8. feladatokat.
+
+*4.2. ábra. Egy elemenkénti mátrixművelet a képfeldolgozásban (egy szürkeárnyalatos arckép pixelmátrixán végzett művelet).*
+
+### Mátrixszorzás
+
+A táblázatok szorzásánál és a lineáris helyettesítések kompozíciójánál látott szabályt követi a mátrixok szorzásának definíciójához.
+
+**4.7. definíció (Mátrixok szorzása).** *Egy $m \times t$-s $\mathbf{A}$ és egy $t \times n$-es $\mathbf{B}$ mátrix szorzatán azt az $\mathbf{AB}$-vel jelölt $m \times n$-es $\mathbf{C}$ mátrixot értjük, amelynek $i$-edik sorában és $j$-edik oszlopában álló eleme*
+$$c_{ij} = a_{i1}b_{1j} + a_{i2}b_{2j} + \ldots + a_{ik}b_{kj} + \ldots + a_{it}b_{tj}.$$
+
+*Ábra. A $c_{ij}$ elem az $\mathbf{A}$ $i$-edik sorának $(a_{i1}, a_{i2}, \ldots, a_{it})$ és $\mathbf{B}$ $j$-edik oszlopának $(b_{1j}, b_{2j}, \ldots, b_{tj})$ skaláris szorzata.*
+
+A definícióbeli összefüggés több módon is kifejezhető. Szummával fölírva:
+$$c_{ij} = \sum_{k=1}^{t} a_{ik}b_{kj},$$
+de mondhatjuk azt is, hogy $c_{ij}$ az $\mathbf{A}$ mátrix $i$-edik sorának és a $\mathbf{B}$ mátrix $j$-edik oszlopának skaláris szorzata, azaz
+$$c_{ij} = \mathbf{a}_{i*} \cdot \mathbf{b}_{*j}.$$
+Egy $m \times s$-es $\mathbf{A}$ és egy $t \times n$-es $\mathbf{B}$ mátrix csak akkor szorozható össze, ha $s = t$, és ekkor a szorzat $m \times n$ típusú.
+
+*Ábra. Az $m \times s$ típusú $\mathbf{A}$ és $t \times n$ típusú $\mathbf{B}$ szorzata – feltéve, hogy $s = t$ – $m \times n$ típusú.*
+
+A szorzandók sorrendje fontos. Lehet, hogy az $\mathbf{AB}$ szorzás elvégezhető, de a $\mathbf{BA}$ nem, és lehet, hogy elvégezhető, de különböző eredményt kapunk (ld. a 4.10. feladatot). Mivel a mátrixszorzás nem felcserélhető, ha szükséges, az „$\mathbf{A}$-t balról szorozzuk $\mathbf{B}$-vel", vagy az „$\mathbf{A}$-t jobbról szorozzuk $\mathbf{B}$-vel" kifejezésekkel teszünk különbséget a $\mathbf{BA}$ és az $\mathbf{AB}$ szorzatok közt.
+
+**4.8. példa (Mátrixok szorzása).** *Legyen*
+$$\mathbf{A} = \begin{bmatrix} 1 & 1 \\ 2 & 1 \\ 0 & 3 \end{bmatrix}, \quad \mathbf{B} = \begin{bmatrix} 1 & 1 & 2 \\ 2 & 1 & 0 \end{bmatrix}$$
+*Számítsuk ki az $(\mathbf{AB})_{21}$ elemet, majd az $\mathbf{AB}$ mátrixot.*
+
+*Megoldás.* A szorzat második sorának első eleme az $\mathbf{A}$ második sorának és $\mathbf{B}$ első oszlopának skaláris szorzata:
+$$\begin{bmatrix} 1 & 1 \\ 2 & 1 \\ 0 & 3 \end{bmatrix} \begin{bmatrix} 1 & 1 & 2 \\ 2 & 1 & 0 \end{bmatrix} = \begin{bmatrix} * & * & * \\ 4 & * & * \\ * & * & * \end{bmatrix}$$
+Hasonlóan a többi elemet is kiszámolva
+$$\begin{bmatrix} 1 & 1 \\ 2 & 1 \\ 0 & 3 \end{bmatrix} \begin{bmatrix} 1 & 1 & 2 \\ 2 & 1 & 0 \end{bmatrix} = \begin{bmatrix} 3 & 2 & 2 \\ 4 & 3 & 4 \\ 6 & 3 & 0 \end{bmatrix}. \qquad \square$$
+
+<!-- OCR: through PDF p.146 -->
