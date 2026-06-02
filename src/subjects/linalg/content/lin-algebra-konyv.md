@@ -1315,4 +1315,82 @@ $$\begin{cases} x = t \\ y = 1 - t, \end{cases} \quad t \in \mathbb{R}, \qquad \
 
 *2.2. ábra. Az $x^2 + y^2 = 1$ egyenletet kielégítő $(x, y)$ pontok halmaza két koordináta-rendszerben.*
 
-<!-- OCR: through PDF p.59 -->
+egyenletrendszerrel. Mindkettő átírható vektoralakba is. Használjuk az oszlopvektoros jelölést:
+$$\begin{bmatrix} x \\ y \end{bmatrix} = \begin{bmatrix} t \\ t \end{bmatrix}, \quad t \in \mathbb{R}, \quad \text{illetve} \quad \begin{bmatrix} x \\ y \end{bmatrix} = \begin{bmatrix} \cos t \\ \sin t \end{bmatrix}, \quad t \in [0, 2\pi) \subseteq \mathbb{R}.$$
+
+**2.3. definíció (Alakzat implicit egyenletrendszere).** *Egy (geometriai) alakzat egy adott koordináta-rendszerre vonatkozó (implicit) egyenletrendszerén olyan, a koordinátákra felírt egyenletrendszert értünk, melynek egyszerre minden egyenletét kielégítik az alakzathoz tartozó pontok koordinátái, de más pontokéhoz tartozók nem. Az egyenletek felírhatók pontokba mutató vektorokra is, ezeket* vektoregyenletnek *nevezzük. Egy alakzat $m$ egyenletből álló egyenletrendszerének, illetve $m$ vektoregyenletből álló egyenletrendszerének általános alakja*
+$$\begin{cases} F_1(x_1, x_2, \ldots, x_n) = 0 \\ F_2(x_1, x_2, \ldots, x_n) = 0 \\ \quad\vdots \\ F_m(x_1, x_2, \ldots, x_n) = 0 \end{cases} \text{illetve} \quad \begin{cases} F_1(\mathbf{r}) = 0 \\ F_2(\mathbf{r}) = 0 \\ \quad\vdots \\ F_m(\mathbf{r}) = 0 \end{cases}$$
+*ahol $(x_1, x_2, \ldots, x_n) \in \mathbb{R}^n$ a tér egy pontja, és $\mathbf{r}$ az oda mutató vektor.*
+
+> *A latin eredetű* implicit *szó jelentése* nem kifejtett, rejtett, *ami az összeköt, összefügg, összekever, körülcsavar jelentésű* implico *(implicó) szó származéka. E szó a matematikában az implicit alak, implicit függvény, stb. kifejezésekben arra utal, hogy valamely fontosnak tekintett mennyiség, változó, stb. nincs kifejezve a képletből. Ugyanennek a szónak a származéka a magába foglal, maga után von jelentésű* implikál *szó is, mely a matematikai logika „ha…, akkor…" szerkezetű műveletével, az* implikációval *is kapcsolatban van.*
+
+Ha az egyenletrendszer egy egyenletből áll, az alakzat *egyenletéről* beszélünk.
+
+**2.4. definíció (Alakzat explicit egyenletrendszere).** *Egy alakzat egy adott koordináta-rendszerre vonatkozó explicit vagy paraméteres egyenletrendszerén olyan egyenletrendszert értünk, melyben az egyenletek bal oldalán a pontok koordinátáit megadó változók, jobb oldalán adott paraméterek függvényei szerepelnek. Általános alakja*
+$$\begin{aligned}
+x_1 &= f_1(t_1, t_2, \ldots, t_k) \\
+x_2 &= f_2(t_1, t_2, \ldots, t_k) \\
+&\;\;\vdots \\
+x_n &= f_n(t_1, t_2, \ldots, t_k)
+\end{aligned}$$
+*ahol $t_1 \in I_1$, $t_2 \in I_2, \ldots, t_n \in I_n$, és $I_1, \ldots, I_n \subseteq \mathbb{R}$. Az ilyen egyenletrendszer egyetlen vektoregyenletté fogható össze:*
+$$\mathbf{r} = \mathbf{f}(t_1, t_2, \ldots, t_k),$$
+*ahol $\mathbf{f}$ egy $\mathbb{R}^k \to \mathbb{R}^n$ függvény.*
+
+> *A latin eredetű* explicit *szó jelentése* kifejtett, világosan kimondott, *ami a kibont, szétterít, kiszabadít, átvitt értelemben tisztáz, kifejt, megfejt jelentésű* explico *(explicó) szó származéka. E szó a matematikában az explicit alak, explicit függvény, stb. kifejezésekben arra utal, hogy valamely fontosnak tekintett mennyiség, változó, stb. ki van fejezve a többi segítségével.*
+
+A következőkben egyenes és sík egyenleteit és egyenletrendszereit fogjuk áttekinteni. Egyúttal látni fogjuk, hogy (lineáris) egyenletrendszer megoldása az implicit alak explicitté transzformálást jelenti.
+
+### Síkbeli egyenes egyenletei
+
+Tekintsük a sík egy tetszőleges $e$ egyenesét, és jelöljük ki a síkban az $O$ origót. Legyen a nemzérus $\mathbf{v}$ egy tetszőleges, az egyenessel párhuzamos vektor. Az ilyen vektorokat az egyenes *irányvektorának* nevezzük. Mutasson $\mathbf{r}_0$ az egyenes egy tetszőleges pontjába. Világos, hogy az $e$ egyenes bármely pontjába mutató $\mathbf{r}$ vektor előáll $\mathbf{r}_0 + t\mathbf{v}$ alakban, ahol $t$ valós szám. Másrészt ha $Q$ a sík egy tetszőleges, nem az $e$ egyenesre eső pontja, akkor $\overrightarrow{OQ} - \mathbf{r}_0$ nem párhuzamos $\mathbf{v}$-vel, tehát nem is konstansszorosa, azaz $\overrightarrow{OQ} - \mathbf{r}_0 \neq t\mathbf{v}$ semmilyen $t$-re sem, így $\overrightarrow{OQ}$ nem áll elő $\mathbf{r}_0 + t\mathbf{v}$ alakban. Tehát az $e$ tetszőleges pontjába mutató $\mathbf{r}$ vektor felírható $\mathbf{r} = \mathbf{r}_0 + t\mathbf{v}$ alakban, és ez csak $e$ pontjaira igaz (ld. 2.3. ábra). Ez igazolja a következő állítást:
+
+**2.5. állítás (Síkbeli egyenes explicit vektoregyenlete).** *A sík minden egyenesének van*
+$$\mathbf{r} = \mathbf{r}_0 + t\mathbf{v}, \quad t \in \mathbb{R} \tag{2.1}$$
+*alakú vektoregyenlete, és minden ilyen alakú egyenlet egy egyenes egyenlete, ahol $\mathbf{v} \neq \mathbf{0}$ az egyenes egy irányvektora, és $\mathbf{r}_0$ az egyenes egy tetszőleges, de rögzített pontjába mutató vektor.*
+
+*2.3. ábra. Egyenes explicit vektoregyenlete: $\mathbf{r} = \mathbf{r}_0 + t\mathbf{v}$.*
+
+A síkbeli egyenesre merőleges vektorokat az egyenes *normálvektorainak* nevezzük. Legyen $\mathbf{n} \neq \mathbf{0}$ egy tetszőleges, a $\mathbf{v}$ irányvektorra merőleges vektor, azaz legyen $\mathbf{n}$ az $e$ egy normálvektora. Azt, hogy az $e$ egy tetszőleges pontjába mutató $\mathbf{r}$ vektorra $\mathbf{r} - \mathbf{r}_0$ párhuzamos $\mathbf{v}$-vel, úgy is kifejezhetjük, hogy $\mathbf{r} - \mathbf{r}_0$ merőleges $\mathbf{n}$-re. A merőlegesség kifejezhető a skaláris szorzattal. Így az egyenes egy implicit vektoregyenletéhez jutunk: $\mathbf{r}$ pontosan akkor mutat az $e$ egy pontjába, ha $\mathbf{n} \cdot (\mathbf{r} - \mathbf{r}_0) = 0$ (ld. 2.4. ábra). Ez az egyenlet átrendezés után $\mathbf{n} \cdot \mathbf{r} = \mathbf{n} \cdot \mathbf{r}_0$ alakra, majd a $C = \mathbf{n} \cdot \mathbf{r}_0$ jelöléssel $\mathbf{n} \cdot \mathbf{r} = C$ alakra hozható (ld. még a 2.5. ábrát).
+
+*2.4. ábra. Síkbeli egyenes implicit vektoregyenlete: $\mathbf{n} \cdot (\mathbf{r} - \mathbf{r}_0) = 0$.*
+
+**2.6. állítás (Síkbeli egyenes implicit vektoregyenlete).** *A sík minden egyenesének van*
+$$\mathbf{n} \cdot (\mathbf{r} - \mathbf{r}_0) = 0, \tag{2.2}$$
+*és vele ekvivalens*
+$$\mathbf{n} \cdot \mathbf{r} = C \tag{2.3}$$
+*alakú vektoregyenlete, és minden ilyen alakú egyenlet egy egyenes egyenlete, ahol $\mathbf{n} \neq \mathbf{0}$ az egyenes egy normálvektora, $\mathbf{r}_0$ az egyenes egy tetszőleges, de rögzített pontjába mutató vektor és $C$ konstans.*
+
+A (2.2) alakú egyenlet könnyen átírható (2.3) alakúvá a $C = \mathbf{n} \cdot \mathbf{r}_0$ jelöléssel. Az átalakítás fordított irányban is egyszerű, hisz ha $\mathbf{n} \cdot \mathbf{r} = C$, akkor találunk olyan $\mathbf{r}_0$ vektort, melyre $\mathbf{n} \cdot \mathbf{r}_0 = C$. Ez azért igaz, mert ha tetszőleges $\mathbf{n}$-re nem merőleges $\mathbf{v}$ vektorra $\mathbf{n} \cdot \mathbf{v} = D$, akkor $\mathbf{n} \cdot \left(\frac{C}{D}\mathbf{v}\right) = C$, így az $\mathbf{r}_0 = \frac{C}{D}\mathbf{v}$ megfelel.
+
+*2.5. ábra. Síkbeli egyenes (implicit) vektoregyenlete: $\mathbf{n} \cdot \mathbf{r} = C$. Ha az $\mathbf{n}$ egységvektor, akkor az $\mathbf{n} \cdot \mathbf{r} = C$ geometriai jelentése az, hogy az egyenes bármely pontjába mutató vektornak az $\mathbf{n}$ egyenesére eső merőleges vetülete $C$. Ez az ábra is ezt az esetet szemlélteti.*
+
+Az $\mathbf{r} = (x, y)$, $\mathbf{r}_0 = (x_0, y_0)$ és $\mathbf{v} = (a, b)$ jelöléseket használva az explicit vektoregyenlet azonnal egyenletrendszerré alakítható.
+
+**2.7. állítás (Síkbeli egyenes explicit egyenletrendszere).** *A sík minden egyenesének van*
+$$\begin{aligned}
+x &= x_0 + at \\
+y &= y_0 + bt
+\end{aligned} \tag{2.4}$$
+*alakú egyenletrendszere, ahol $(a, b)$ az egyenes egy irányvektora, és $(x_0, y_0)$ az egyenes egy tetszőleges rögzített pontja.*
+
+A következőkben megmutatjuk, hogy az explicit egyenletrendszerből a $t$ paraméter kiküszöbölhető, így egy implicit egyenletet kapunk.
+
+**2.8. állítás (Síkbeli egyenes (implicit) egyenlete).** *A sík minden egyenesének van*
+$$Ax + By = C \tag{2.5}$$
+*alakú egyenlete, és minden ilyen alakú egyenlet egy egyenes egyenlete, ahol $A$ és $B$ közül nem mindkettő nulla, és $(-B, A)$ az egyenes egy irányvektora.*
+
+*Bizonyítás.* Ha $a$ vagy $b$ valamelyike $0$, akkor a két egyenlet egyike felesleges, például ha $a = 0$, akkor az egyenletrendszer alakja
+$$\begin{aligned}
+x &= x_0 \\
+y &= y_0 + bt
+\end{aligned}$$
+ami ekvivalens az $x = x_0$ egyenlettel, hisz az $y = y_0 + bt$ semmi mást nem mond, mint hogy $y$ egy valós szám. Mivel $(a, b) \neq (0, 0)$, ezért csak az az eset marad, amikor $a$ és $b$ egyike sem $0$. Ekkor mindkét egyenletből kifejezhető $t$, és a két értéket egyenlővé téve kapjuk, hogy
+$$\frac{x - x_0}{a} = \frac{y - y_0}{b},$$
+azaz
+$$bx - ay = bx_0 - ay_0, \quad \text{vagy} \quad b(x - x_0) - a(y - y_0) = 0.$$
+Az $A = b$, $B = -a$ jelöléssel a fenti egyenlet $Ax + By = Ax_0 + By_0$ alakú lesz. Az egyenlet jobb oldalán lévő konstanst $C$-vel jelölve az egyenes egyenlete $Ax + By = C$ alakot ölt. Másrészt könnyen látható, hogy minden ilyen alakú egyenlet egy egyenes egyenlete, mert ekvivalens egy egyenes paraméteres egyenletrendszerével. Nevezetesen az $Ax + By = C$ egyenlet visszaírható $Ax + By = Ax_0 + By_0$ alakba, hisz az $Ax_0 + By_0 = C$ egyenletben $A \neq 0$ esetén egy tetszőleges $y_0$-t választva, egyértelműen kifejezhető $x_0$. (A $B \neq 0$ eset analóg.) Ennek alapján felírható a (2.4) egyenletrendszer. $\square$
+
+▶ A fenti állítás még egyszerűbben bizonyítható abban az esetben, ha a bázis ortonormált! Ezt az Olvasóra hagyjuk (ld. a 2.9. feladatot).
+
+<!-- OCR: through PDF p.62 -->
