@@ -3191,4 +3191,115 @@ homogén lineáris egyenletrendszert. Ha van nemtriviális megoldása, akkor a v
 $$\begin{bmatrix} 1 & 0 & 1 \\ 2 & 1 & 1 \\ 3 & 0 & 1 \\ 4 & 1 & 0 \end{bmatrix} \Rightarrow \begin{bmatrix} 1 & 0 & 1 \\ 0 & 1 & -1 \\ 0 & 0 & -2 \\ 0 & 0 & 0 \end{bmatrix},$$
 ami azt mutatja, hogy a homogén lineáris egyenletrendszernek csak egyetlen megoldása van, azaz az oszlopvektorok lineárisan függetlenek. $\square$
 
-<!-- OCR: through PDF p.119 -->
+### Feladatok
+
+**3.1.•** *Igaz – hamis.* Melyek igazak, melyek hamisak az alábbi állítások közül?
+- a) Ha egy 10-ismeretlenes egyenletrendszer 6 egyenletből áll, akkor végtelen sok megoldása van.
+- b) Ha egy 10-ismeretlenes egyenletrendszer 6 egyenletből áll, azaz alulhatározott, akkor lehet, hogy végtelen sok megoldása van, de az is lehet, hogy csak egy.
+- c) Ha egy 15-ismeretlenes egyenletrendszer 20 egyenletből áll, azaz túlhatározott, akkor biztosan nem oldható meg!
+- d) Ha egy 15-ismeretlenes egyenletrendszer 20 egyenletből áll, akkor nem lehet végtelen sok megoldása.
+
+**3.2.•** *Alterek tulajdonságai: igaz – hamis.*
+- a) $\mathbb{R}^n$ bármely három alterének metszete altér.
+- b) Ha az $\mathcal{U}$ altér altere a $\mathcal{V}$ és a $\mathcal{W}$ altérnek is, akkor altere metszetüknek is.
+- c) Alterek egyesítése altér.
+- d) Minden altérnek eleme a zérusvektor.
+- e) Minden altérnek van legalább egy nemzérus vektora.
+
+**3.3.•** *Vektorterek és egyenletrendszerek: igaz – hamis.*
+- a) Egy lineáris egyenletrendszer megoldásai vektorteret alkotnak.
+- b) Egy homogén lineáris egyenletrendszer megoldásai vektorteret alkotnak.
+- c) Rögzített $\mathbf{A}$ mátrix mellett vektorteret alkotnak azok a $\mathbf{b}$ vektorok, melyekre az $[\mathbf{A}|\mathbf{b}]$ egyenletrendszer konzisztens.
+- d) Egy egyenletrendszer megoldásvektorainak különbségeként kapott vektorok halmaza vektorteret alkot.
+
+**3.4.•** *Megoldhatóság: igaz – hamis.*
+- a) Az $[\mathbf{A}|\mathbf{b}]$ mátrixú egyenletrendszer pontosan akkor oldható meg, ha $\mathbf{b}$ előáll $\mathbf{A}$ oszlopainak lineáris kombinációjaként.
+- b) Az $[\mathbf{A}|\mathbf{b}]$ mátrixú egyenletrendszer bármely két megoldásának különbsége megoldása a homogén $[\mathbf{A}|\mathbf{0}]$ egyenletrendszernek.
+- c) Az $[\mathbf{A}|\mathbf{b}]$ mátrixú egyenletrendszer bármely megoldása előáll a homogén $[\mathbf{A}|\mathbf{0}]$ mátrixú egyenletrendszer két megoldásának különbségeként.
+- d) Az $[\mathbf{A}|\mathbf{b}]$ mátrixú egyenletrendszer pontosan akkor oldható meg, ha $\operatorname{r}(\mathbf{A}|\mathbf{b}) \leqslant \operatorname{r}(\mathbf{A})$.
+- e) Az $n$-ismeretlenes $[\mathbf{A}|\mathbf{b}]$ mátrixú egyenletrendszer pontosan akkor oldható meg egyértelműen, ha $\operatorname{r}(\mathbf{A}) = n$.
+
+**3.5.** Alteret alkotnak-e az alábbi vektorhalmazok $\mathbb{R}^3$-ben?
+- a) $\{ \mathbf{x} \in \mathbb{R}^3 : |\mathbf{x}| = 1 \}$
+- b) $\{ (x, y, z) : x + 2y - 3z = 0 \}$
+- c) $\{ (x, y, z) : x + 2y - 3z = 1 \}$
+- d) $\{ (x, y, z) : x = 2t, y = t, z = 0, t \in \mathbb{R} \}$
+- e) $\{ (x, y, z) : x^2 + y^2 + z^2 = 0 \}$
+- f) $\{ (x, y, z) : x^3 + y^3 + z^3 = 0 \}$
+
+**3.6.** Igazoljuk, hogy egy $\mathcal{V}$ vektortér vektorainak egy $\mathcal{W}$ halmaza pontosan akkor altér $\mathcal{V}$-ben, ha a $\mathcal{W}$-beli vektorok bármely lineáris kombinációja $\mathcal{W}$-beli.
+
+**3.7.•** Mennyi lehet az $\operatorname{r}(\mathbf{A}|\mathbf{b})$ rang, ha az $[\mathbf{A}|\mathbf{b}]$ bővített mátrixú egyenletrendszerről tudjuk, hogy
+- a) 2-ismeretlenes és megoldásainak száma végtelen;
+- b) inkonzisztens, és $\operatorname{r}(\mathbf{A}) = 4$;
+- c) egyetlen megoldása van és $\mathbf{A}$ $5 \times 3$-as;
+- d) inkonzisztens, $n$-ismeretlenes és 2 egyenletből áll.
+
+**3.8.** Egy lineáris egyenletrendszerről tudjuk, hogy $(1, 2, 3)$ és $(0, 1, 3)$ is megoldásvektora. Adjunk meg további két megoldásvektort! Mekkora lehet az együtthatómátrix rangja? És mekkora lehet a rang, ha az egyenletrendszer homogén?
+
+**3.9.•** *Inhomogén lineáris egyenletrendszer megoldásai.* Egy négyismeretlenes lineáris egyenletrendszer megoldását számítógéppel próbálom ellenőrizni, de más jön ki. A saját eredményem ez:
+$$\begin{bmatrix} x \\ y \\ z \\ w \end{bmatrix} = \begin{bmatrix} 1 \\ 1 \\ 1 \\ 1 \end{bmatrix} + s\begin{bmatrix} 1 \\ 0 \\ -2 \\ -1 \end{bmatrix} + t\begin{bmatrix} 1 \\ 1 \\ -3 \\ -2 \end{bmatrix},$$
+a számítógépé ez:
+$$\begin{bmatrix} x \\ y \\ z \\ w \end{bmatrix} = \begin{bmatrix} 2 \\ 0 \\ 2 \\ 0 \end{bmatrix} + s\begin{bmatrix} -2 \\ 1 \\ 1 \\ 0 \end{bmatrix} + t\begin{bmatrix} 3 \\ -2 \\ 0 \\ 1 \end{bmatrix}.$$
+Lehet-e mindkét eredmény jó?
+
+**3.10.** *Megoldások lineáris kombinációja.* Adjunk új bizonyítást a 3.8. tételre a sormodellt használva.
+
+**3.11.** *Homogén és inhomogén egyenletrendszer megoldásai.* Adjunk az oszlopmodellben megfogalmazott új bizonyítást a 3.16. tételre.
+
+**3.12.** $\mathbb{F}_2^3$ *alterei.* Soroljuk fel $\mathbb{F}_2^3$ összes alterét (ehhez segítségül hívhatjuk az alábbi ábrát, mely az $\mathbb{F}_2^3$ vektortér vektorait szemlélteti).
+
+*Ábra. Az $\mathbb{F}_2^3$ vektortér 8 vektora egy egységkocka csúcsain: $(0,0,0)$, $(1,0,0)$, $(0,1,0)$, $(0,0,1)$, $(1,1,0)$, $(1,0,1)$, $(0,1,1)$, $(1,1,1)$.*
+
+## Alterek tulajdonságai és az egyenletrendszerek
+
+*E szakaszban az alterek tulajdonságait, és az egyenletrendszerek kapcsán felmerülő alterek viszonyát vizsgáljuk. Különösen fontos az együtthatómátrixhoz tartozó négy kitüntetett altér kapcsolata.*
+
+### Sor- és oszloptér
+
+Végigkövetjük, hogy mi történik egy mátrix sortérbeli és oszloptérbeli vektoraival az elemi sorműveletek közben.
+
+**3.22. tétel (Elemi sorműveletek hatása a sor- és oszlopvektorokra).** *Elemi sorműveletek közben a sortér nem változik, az oszlopvektorok pedig megőrzik lineáris kapcsolataikat.*
+
+*Bizonyítás.* Legyenek $\mathbf{A}$ sorvektorai $\mathbf{v}_1, \mathbf{v}_2, \ldots, \mathbf{v}_m$ és legyen $\mathbf{u}$ a sortér egy tetszőleges vektora, azaz valamely $c_1, c_2, \ldots, c_m$ skalárokkal
+$$\mathbf{u} = c_1 \mathbf{v}_1 + c_2 \mathbf{v}_2 + \ldots + c_m \mathbf{v}_m.$$
+Megmutatjuk, hogy $\mathbf{u}$ a sortérben marad az elemi sorműveletek után is. A sorcserére ez nyilvánvaló. Ha egy sort (mondjuk az elsőt) beszorozzuk egy $d \neq 0$ skalárral, akkor
+$$\mathbf{u} = \frac{c_1}{d}(d\mathbf{v}_1) + c_2 \mathbf{v}_2 + \ldots + c_m \mathbf{v}_m,$$
+a hozzáadás műveleténél (mondjuk az első sor $d$-szeresét adjuk a második sorhoz)
+$$\mathbf{u} = (c_1 - c_2 d)\mathbf{v}_1 + c_2(\mathbf{v}_2 + d\mathbf{v}_1) + \ldots + c_m \mathbf{v}_m.$$
+Tehát $\mathbf{u}$ minden esetben az új sortérnek is eleme. Az, hogy az új sortér nem bővebb, az igazolja, hogy minden sorművelet inverze is sorművelet, így az új sortér minden vektora az eredetinek is vektora.
+
+Nyilvánvaló, hogy ha az $\mathbf{a}_1$, $\mathbf{a}_2$ és $\mathbf{a}_3$ oszlopvektorok közt az $\mathbf{a}_1 = c\mathbf{a}_2 + d\mathbf{a}_3$ lineáris kapcsolat van, akkor ez az elemi sorműveletek közben is megmarad, és ez ugyanígy igaz tetszőleges más lineáris kapcsolatra is. A sorművelet inverzének léte igazolja, hogy az oszlopok közti lineárisan függetlenség is megőrződik elemi sorműveletek közben. $\square$
+
+**3.23. következmény (Mátrix lépcsős alakjának vektorai).** *Legyen $\mathbf{B}$ az $\mathbf{A}$ mátrix egy lépcsős alakja. Ekkor*
+1. *$\mathbf{A}$ és $\mathbf{B}$ sortere megegyezik,*
+2. *az $\mathbf{A}$ oszlopvektorai közti lineáris kapcsolatok azonosak a $\mathbf{B}$ nekik megfelelő oszlopai köztiekkel,*
+3. *$\mathbf{B}$ nemzérus sorvektorai lineárisan függetlenek,*
+4. *a főelemek oszlopvektorai $\mathbf{A}$-ban és $\mathbf{B}$-ben is lineárisan függetlenek.*
+
+A bizonyítást az Olvasóra hagyjuk (ld. a 3.13. feladatot).
+
+### Bázis
+
+Az elemi sorműveleteket alkalmazva, egy mátrix sorterében és oszlopterében találtunk olyan lineárisan független vektorokat, melyek kifeszítik az adott teret. Azt már az 1.9. tételben megmutattuk, hogy a háromdimenziós tér tetszőleges három lineárisan független vektorának lineáris kombinációjaként a tér minden vektora előáll. Más szavakkal ez azt jelenti, hogy a tér három lineárisan független vektora kifeszíti a teret. Az ilyen vektorhármasokat, melyeket egy koordinátarendszer alapvektorainak vettünk, bázisnak nevezzük. Ezek vezetnek a következő definícióhoz.
+
+**3.24. definíció (Bázis).** *A $\mathcal{V}$ vektortér bázisán olyan vektorrendszert értünk, mely*
+1. *lineárisan független és*
+2. *kifeszíti a $\mathcal{V}$ teret (azaz generátorrendszer).*
+
+▶ A *standard bázis* $\mathbb{R}^n$ egy $n$-elemű bázisa.
+▶ Meg fogjuk mutatni, hogy $\mathbb{R}^n$ minden bázisa $n$-elemű, és hogy bármely nem triviális alterének bázisa $n$-nél kevesebb elemű.
+▶ A bázis elemeit gyakran nem egy rendezetlen halmazban, hanem rendezve adjuk meg és használjuk. Szokás ilyenkor *rendezett bázisról* beszélni, de a gyakorlatban leggyakrabban elhagyjuk ezt a jelzőt.
+▶ Ha véletlenszerűen és egymástól függetlenül (pl. egy egységgömbből, vagy az egységvektorok közül) egyenletes eloszlás szerint választunk $\mathbb{R}^n$-ben $n$ vektort, akkor e vektorok 1 valószínűséggel függetlenek lesznek, azaz bázist alkotnak.
+▶ A zérustér bázisa az üreshalmaz, mivel e térből kiválasztható egyetlen vektort, a zérusvektort nem tartalmazhatja lineárisan független rendszer. Ahogy nulla darab szám összegét hasznos 0-nak, nulla darab szám szorzatát 1-nek definiálni, hasonlóképp hasznos nulla darab vektor összegét (vagy bármely más lineáris kombinációját) nullvektornak definiálni, így az üres vektorhalmaz által generált vektorrendszer a zérusvektorból áll.
+
+**3.25. állítás (Bázis ekvivalens definíciói).** *Legyen $\mathcal{V}$ egy tetszőleges vektortér, és legyen $\mathcal{B} = \{ \mathbf{v}_1, \mathbf{v}_2, \ldots, \mathbf{v}_k \} \subseteq \mathcal{V}$ vektorok egy halmaza. A következő állítások ekvivalensek:*
+1. *$\mathcal{B}$ bázis (lineárisan független generátorrendszer);*
+2. *$\mathcal{B}$ minimális méretű generátorrendszer (kifeszíti $\mathcal{V}$-t);*
+3. *$\mathcal{B}$ maximális méretű lineárisan független vektorokból álló halmaz $\mathcal{V}$-ben.*
+
+*Bizonyítás.* Elég belátnunk, hogy egy minimális méretű generátorrendszer független vektorokból áll, és hogy egy maximális méretű független rendszer generátor.
+
+Legyen $\mathcal{B}$ minimális méretű generátor. Ha nem volna független, akkor elhagyva egy olyan vektort, mely a többi lineáris kombinációja, ugyanazt a teret generálnák, de így egy még kisebb méretű generátort
+
+<!-- OCR: through PDF p.122 -->
