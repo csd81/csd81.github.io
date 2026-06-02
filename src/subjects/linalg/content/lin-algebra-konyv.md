@@ -4393,4 +4393,428 @@ $$\mathbf{A} = \mathbf{B}\mathbf{R}.$$
 
 *Bizonyítás.* $\mathbf{B}$ oszlopai az $\mathbf{A}$ oszlopterének bázisát adják, tehát $\mathbf{B}$ a standard bázisra való áttérés mátrixa az $\mathbf{A}$ oszlopterében. Az $\mathbf{R}$ mátrix
 
-<!-- OCR: through PDF p.158 -->
+$j$-edik oszlopa megegyezik az $\mathbf{A}$ mátrix $j$-edik oszlopának a $\mathbf{B}$ oszlopai alkotta bázisban felírt koordinátás alakjával. Képletben ez azt jelenti, hogy
+$$\mathbf{A}_{*j} = \mathbf{B}\mathbf{R}_{*j}, \quad \text{azaz} \quad \mathbf{A} = \mathbf{BR}. \qquad \square$$
+Egy mátrix fenti $\mathbf{A} = \mathbf{BR}$ alakú felbontását *bázisfelbontásnak* nevezzük.
+
+**4.27. példa (Bázisfelbontás).** *Határozzuk meg az alábbi mátrix bázisfelbontását, és magyarázzuk meg a két mátrix oszlopainak jelentését!*
+$$\mathbf{A} = \begin{bmatrix} 1 & 2 & 1 & 1 \\ 1 & 3 & 2 & 3 \\ 0 & 3 & 3 & 6 \\ -2 & -2 & 0 & 2 \end{bmatrix}$$
+
+*Megoldás.* Az $\mathbf{A}$ mátrix redukált lépcsős alakja:
+$$\begin{bmatrix} 1 & 2 & 1 & 1 \\ 1 & 3 & 2 & 3 \\ 0 & 3 & 3 & 6 \\ -2 & -2 & 0 & 2 \end{bmatrix} \Longrightarrow \begin{bmatrix} 1 & 0 & -1 & -3 \\ 0 & 1 & 1 & 2 \\ 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 \end{bmatrix}.$$
+E mátrix első két sora alkotja az $\mathbf{R}$ mátrixot, az $\mathbf{A}$ mátrix első és második oszlopa a $\mathbf{B}$ mátrixot, így a felbontás
+$$\mathbf{A} = \begin{bmatrix} 1 & 2 \\ 1 & 3 \\ 0 & 3 \\ -2 & -2 \end{bmatrix}\begin{bmatrix} 1 & 0 & -1 & -3 \\ 0 & 1 & 1 & 2 \end{bmatrix} = \mathbf{BR}.$$
+Az $\mathbf{R}$ oszlopai az $\mathbf{A}$ oszlopvektorainak koordinátás alakjai a $\mathbf{B}$ oszlopai alkotta bázisban. Ezt már beláttuk a 3.27. és a 3.28. példákban. Eszerint
+$$[\mathbf{v}]_{\mathcal{E}} = \mathbf{B}[\mathbf{v}]_{\mathcal{B}},$$
+ahol az $\mathcal{E}$ a standard, $\mathcal{B}$ a $\mathbf{B}$ mátrix oszlopai alkotta bázisbeli koordinátás alakot jelöli. Például
+$$\begin{bmatrix} 1 \\ 3 \\ 6 \\ 2 \end{bmatrix} = \begin{bmatrix} 1 & 2 \\ 1 & 3 \\ 0 & 3 \\ -2 & -2 \end{bmatrix}\begin{bmatrix} -3 \\ 2 \end{bmatrix}, \quad \text{azaz} \quad [\mathbf{a}_4]_{\mathcal{E}} = \begin{bmatrix} 1 \\ 3 \\ 6 \\ 2 \end{bmatrix}, \; [\mathbf{a}_4]_{\mathcal{B}} = \begin{bmatrix} -3 \\ 2 \end{bmatrix},$$
+ahol $\mathbf{a}_4$ az $\mathbf{A}$ negyedik oszlopvektora. $\square$
+
+▶ Ha az $m \times n$-es $\mathbf{A}$ mátrix rangja $r$, akkor az $\mathbf{R}$ mátrix $r \times n$-es, a $\mathbf{B}$ mátrix $m \times r$-es. Ez azt jelenti, hogy az $\mathbf{A}$ mátrixot két olyan mátrix szorzatára bontottuk, ahol az elsőnek az oszlopai, a másodiknak a sorai lineárisan függetlenek.
+
+### Egységmátrix, elemi mátrixok
+
+Egy adott $\mathbf{B}$ mátrixhoz találhatunk olyan $\mathbf{A}$-t, hogy az 1-gyel való szorzáshoz hasonlóan $\mathbf{AB} = \mathbf{B}$ legyen. Például
+$$\mathbf{A} = \begin{bmatrix} 3 & -4 \\ -2 & 5 \end{bmatrix}, \quad \mathbf{B} = \begin{bmatrix} 2 & -2 \\ 1 & -1 \end{bmatrix}$$
+esetén
+$$\begin{bmatrix} 3 & -4 \\ -2 & 5 \end{bmatrix}\begin{bmatrix} 2 & -2 \\ 1 & -1 \end{bmatrix} = \begin{bmatrix} 2 & -2 \\ 1 & -1 \end{bmatrix}.$$
+Az azonban már nem igaz, hogy $\mathbf{A}$-t bármely $2 \times 2$-es $\mathbf{B}$ mátrixszal szorozva $\mathbf{B}$ lesz az eredmény. Ilyen mátrix is létezik, némi próbálkozás után bárki rátalálhat.
+
+**4.28. definíció (Egységmátrix).** *Az $n \times n$-es*
+$$\mathbf{I}_n := \operatorname{diag}(1, 1, \ldots, 1) = \begin{bmatrix} 1 & 0 & \ldots & 0 \\ 0 & 1 & \ldots & 0 \\ \vdots & \vdots & \ddots & \vdots \\ 0 & 0 & \ldots & 1 \end{bmatrix}$$
+*mátrixot egységmátrixnak nevezzük.*
+
+> Az *egységmátrix* jelölésére használt $\mathbf{I}$ betű az angol *identity matrix* elnevezés első betűjéből származik. Az *azonosság* vagy *identitás* jelentésű *identity* szó az $\mathbf{IA} = \mathbf{A}$ összefüggésre utal (az $x \mapsto x$ függvényt ugyanezen okból hívjuk identikus függvénynek). Ráadásul az $I$ betű hasonlít legjobban az 1-es számra.
+
+▶ Az egységmátrix elnevezés onnan származik, hogy bármely $m \times n$-es $\mathbf{A}$ mátrixra igaz, hogy
+$$\mathbf{I}_m\mathbf{A}_{m \times n} = \mathbf{A}_{m \times n}\mathbf{I}_n = \mathbf{A}_{m \times n},$$
+azaz e mátrix hasonló tulajdonsággal rendelkezik, mint a számok közt az egy.
+▶ Az egységmátrixszal már találkoztunk: a Gauss–Jordan-módszernél egy $n$-ismeretlenes, $n$ egyenletből álló egyértelműen megoldható egyenletrendszer együtthatómátrixa az elemi sorműveletek során egységmátrixszá transzformálódik!
+
+Az egységmátrixon végrehajtott elemi sorműveletek olyan mátrixokat eredményeznek, melyek kapcsolatot létesítenek az elemi sorműveletek és a mátrixokkal való szorzás között.
+
+**4.29. definíció (Elemi mátrixok).** *Az $\mathbf{I}_n$ egységmátrixon végrehajtott egyetlen elemi sorművelettel kapott mátrixot elemi mátrixnak nevezzük.*
+
+Az alábbi mátrixok elemi mátrixok:
+$$\begin{bmatrix} 0 & 0 & 0 & 1 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ 1 & 0 & 0 & 0 \end{bmatrix}, \quad \begin{bmatrix} 1 & 0 & 0 & 0 \\ 0 & 5 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ 0 & 0 & 0 & 1 \end{bmatrix}, \quad \begin{bmatrix} 1 & 0 & 2 & 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ 0 & 0 & 0 & 1 \end{bmatrix}, \quad \begin{bmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ 0 & 0 & 0 & 1 \end{bmatrix}.$$
+Ezt igazolja, hogy mindegyikük $\mathbf{I}_4$-ből származik rendre a következő elemi sorműveletekkel: $S_1 \leftrightarrow S_4$, $5S_2$, $S_1 + 2S_3$, $1S_1$. Az utolsó mátrix az egységmátrix, amely maga is elemi mátrix, mert például egy sorának 1-gyel való szorzásával megkapható.
+
+**4.30. példa (Mátrix balról szorzása elemi mátrixszal).** *Vizsgáljuk meg mi történik, ha az előbbi mátrixokkal balról megszorzunk egy tetszőleges 4-soros mátrixot?*
+
+*Megoldás.* Legyen $\mathbf{A}$ egy 4-sorból, és az egyszerűség kedvéért csak 2 oszlopból álló mátrix.
+$$\begin{bmatrix} 0 & 0 & 0 & 1 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ 1 & 0 & 0 & 0 \end{bmatrix}\begin{bmatrix} a_{11} & a_{12} \\ a_{21} & a_{22} \\ a_{31} & a_{32} \\ a_{41} & a_{42} \end{bmatrix} = \begin{bmatrix} a_{41} & a_{42} \\ a_{21} & a_{22} \\ a_{31} & a_{32} \\ a_{11} & a_{12} \end{bmatrix},$$
+A szorzás eredményeként fölcserélődött $\mathbf{A}$ első és negyedik sora.
+$$\begin{bmatrix} 1 & 0 & 0 & 0 \\ 0 & 5 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ 0 & 0 & 0 & 1 \end{bmatrix}\begin{bmatrix} a_{11} & a_{12} \\ a_{21} & a_{22} \\ a_{31} & a_{32} \\ a_{41} & a_{42} \end{bmatrix} = \begin{bmatrix} a_{11} & a_{12} \\ 5a_{21} & 5a_{22} \\ a_{31} & a_{32} \\ a_{41} & a_{42} \end{bmatrix},$$
+Itt az $\mathbf{A}$ második sora be lett szorozva 5-tel.
+$$\begin{bmatrix} 1 & 0 & 2 & 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ 0 & 0 & 0 & 1 \end{bmatrix}\begin{bmatrix} a_{11} & a_{12} \\ a_{21} & a_{22} \\ a_{31} & a_{32} \\ a_{41} & a_{42} \end{bmatrix} = \begin{bmatrix} a_{11} + 2a_{31} & a_{12} + 2a_{32} \\ a_{21} & a_{22} \\ a_{31} & a_{32} \\ a_{41} & a_{42} \end{bmatrix},$$
+A szorzás eredményeként az $\mathbf{A}$ első sorához hozzá lett adva harmadik sorának kétszerese. $\square$
+
+E példa eredménye kimondható tételként, melynek bizonyítása általánosan is úgy történik, mint az előző példában, ezért elhagyjuk:
+
+**4.31. tétel (Elemi sorműveletek mátrixszorzással).** *Legyen $\mathbf{E}$ az az elemi mátrix, melyet $\mathbf{I}_m$-ből egy elemi sorművelettel kapunk. Ha ugyanezt a sorműveletet egy tetszőleges $m \times n$-es $\mathbf{A}$ mátrixra alkalmazzuk, akkor eredményül az $\mathbf{EA}$ mátrixot kapjuk.*
+
+▶ Az elemi sorműveletek mátrixszorzással való elvégzésének nincs számítási praktikuma, annak célja az elemi sorműveletek algebraizálása, s így mélyebb megértése.
+▶ Elemi mátrixszal való jobbról szorzás a mátrixon elemi oszlopműveletet hajt végre (ld. a ?? feladatot).
+
+### Vektorokra particionált mátrixok
+
+Megvizsgáljuk a mátrixszorzást, ha legalább az egyik tényezőt vektorokra particionáljuk, és blokkmátrixnak tekintjük. Legyen a következőkben $\mathbf{A}$ egy $m \times t$, $\mathbf{B}$ egy $t \times n$ méretű mátrix.
+
+1. *[sorvektorok] $\cdot$ [oszlopvektorok]:* Bontsuk fel az $\mathbf{A}_{m \times t}$ mátrixot sorvektoraira, és a $\mathbf{B}_{t \times n}$ mátrixot oszlopvektoraira. Ekkor egy $m \times 1$-es blokkmátrixot szorzunk egy $1 \times n$-essel, ami épp az $\mathbf{AB}$ mátrixszorzat definícióját adja:
+$$\mathbf{AB} = \left[\begin{array}{c} \mathbf{a}_{1*} \\ \hline \mathbf{a}_{2*} \\ \hline \vdots \\ \hline \mathbf{a}_{m*} \end{array}\right]\begin{bmatrix} \mathbf{b}_{*1} & \ldots & \mathbf{b}_{*n} \end{bmatrix} = \begin{bmatrix} \mathbf{a}_{1*}\mathbf{b}_{*1} & \mathbf{a}_{1*}\mathbf{b}_{*2} & \ldots & \mathbf{a}_{1*}\mathbf{b}_{*n} \\ \mathbf{a}_{2*}\mathbf{b}_{*1} & \mathbf{a}_{2*}\mathbf{b}_{*2} & \ldots & \mathbf{a}_{2*}\mathbf{b}_{*n} \\ \vdots & \vdots & \ddots & \vdots \\ \mathbf{a}_{m*}\mathbf{b}_{*1} & \mathbf{a}_{m*}\mathbf{b}_{*2} & \ldots & \mathbf{a}_{m*}\mathbf{b}_{*n} \end{bmatrix}.$$
+
+2. *[mátrix] $\cdot$ [oszlopvektorok]:* Ekkor egy $1 \times 1$-es blokkmátrixot szorzunk egy $1 \times n$-essel:
+$$\mathbf{C} = \mathbf{AB} = \mathbf{A}\begin{bmatrix} \mathbf{b}_{*1} & \mathbf{b}_{*2} & \ldots & \mathbf{b}_{*n} \end{bmatrix} = \begin{bmatrix} \mathbf{A}\mathbf{b}_{*1} & \mathbf{A}\mathbf{b}_{*2} & \ldots & \mathbf{A}\mathbf{b}_{*n} \end{bmatrix}$$
+Itt tehát a $\mathbf{C}$ mátrix $j$-edik oszlopvektora az $\mathbf{A}$ mátrix és a $\mathbf{B}$ $j$-edik oszlopának szorzata, vagyis $\mathbf{c}_{*j} = \mathbf{A}\mathbf{b}_{*j}$.
+
+*Ábra. Az $\mathbf{A}$ mátrix és a $\mathbf{B}$ $j$-edik $\mathbf{b}_{*j}$ oszlopának szorzata a $\mathbf{C}$ mátrix $j$-edik $\mathbf{c}_{*j}$ oszlopát adja.*
+
+Ezzel az esettel már találkoztunk a szimultán egyenletrendszerek mátrixszorzatos alakjának fölírásánál (4.18. példa). Ha a fenti sematikus ábra egy szimultán egyenletrendszer mátrixszorzatos alakját reprezentálja, akkor a színesen kiemelt rész a szimultán egyenletrendszer egyetlen egyenletrendszerének felel meg.
+
+3. *[sorvektorok] $\cdot$ [mátrix]:* Ekkor egy $m \times 1$-es blokkmátrixot szorzunk egy $1 \times 1$-essel:
+$$\mathbf{C} = \mathbf{AB} = \left[\begin{array}{c} \mathbf{a}_{1*} \\ \hline \mathbf{a}_{2*} \\ \hline \vdots \\ \hline \mathbf{a}_{m*} \end{array}\right]\mathbf{B} = \left[\begin{array}{c} \mathbf{a}_{1*}\mathbf{B} \\ \hline \mathbf{a}_{2*}\mathbf{B} \\ \hline \vdots \\ \hline \mathbf{a}_{m*}\mathbf{B} \end{array}\right]$$
+Azaz itt a $\mathbf{C} = \mathbf{AB}$ mátrix $i$-edik sora az $\mathbf{A}$ mátrix $i$-edik sorának $\mathbf{B}$-szerese. Másként írva $\mathbf{c}_{i*} = \mathbf{a}_{i*}\mathbf{B}$.
+
+*Ábra. Az $\mathbf{A}$ mátrix $i$-edik sorának és a $\mathbf{B}$ mátrixnak a szorzata a $\mathbf{C}$ mátrix $i$-edik sorát adja.*
+
+4. *[oszlopvektorok] $\cdot$ [sorvektorok]:* Ekkor egyetlen blokksorból álló mátrixot szorzunk egy blokkoszlopból állóval, azaz egy $1 \times t$-es blokkmátrixot egy $t \times 1$-essel. A skaláris szorzatra emlékeztető összeget kapunk:
+$$\mathbf{AB} = \begin{bmatrix} \mathbf{a}_{*1} & \ldots & \mathbf{a}_{*t} \end{bmatrix}\left[\begin{array}{c} \mathbf{b}_{1*} \\ \hline \vdots \\ \hline \mathbf{b}_{t*} \end{array}\right] = \mathbf{a}_{*1}\mathbf{b}_{1*} + \mathbf{a}_{*2}\mathbf{b}_{2*} + \cdots + \mathbf{a}_{*t}\mathbf{b}_{t*}.$$
+E felbontásban az $\mathbf{AB}$ mátrixot *diádok összegére* bontottuk! Például az alábbi mátrixszorzatot három diád összegére bontjuk:
+$$\begin{bmatrix} 0 & 1 & 2 \\ 3 & 4 & 5 \end{bmatrix}\begin{bmatrix} 1 & 1 \\ -2 & 0 \\ 1 & 1 \end{bmatrix} = \begin{bmatrix} 0 \\ 3 \end{bmatrix}\begin{bmatrix} 1 & 1 \end{bmatrix} + \begin{bmatrix} 1 \\ 4 \end{bmatrix}\begin{bmatrix} -2 & 0 \end{bmatrix} + \begin{bmatrix} 2 \\ 5 \end{bmatrix}\begin{bmatrix} 1 & 1 \end{bmatrix}$$
+$$= \begin{bmatrix} 0 & 0 \\ 3 & 3 \end{bmatrix} + \begin{bmatrix} -2 & 0 \\ -8 & 0 \end{bmatrix} + \begin{bmatrix} 2 & 2 \\ 5 & 5 \end{bmatrix} = \begin{bmatrix} 0 & 2 \\ 0 & 8 \end{bmatrix}.$$
+
+> Megjegyezzük, az eredmény maga is egy diád, hisz $\begin{bmatrix} 0 & 2 \\ 0 & 8 \end{bmatrix} = \begin{bmatrix} 2 \\ 8 \end{bmatrix}\begin{bmatrix} 0 & 1 \end{bmatrix}$, tehát egy mátrix többféleképp is felbontható diádok összegére. A mátrixok diádok – azaz 1-rangú – mátrixok összegére való bontása több alapfogalom megközelítésére alkalmas. Például a mátrix rangja definiálható úgy, mint a diadikus felbontásaiban szereplő diádok minimális száma.
+
+E felbontásnak fontos speciális esete az, amikor $\mathbf{A}$ egyetlen sorból, vagy $\mathbf{B}$ egyetlen oszlopból áll. Ekkor az $\mathbf{AB}$ szorzat $\mathbf{B}$ sor-, illetve $\mathbf{A}$ oszlopvektorainak lineáris kombinációja:
+$$\begin{bmatrix} 0 & 1 & 2 \end{bmatrix}\begin{bmatrix} 1 & 1 \\ -2 & 0 \\ 1 & 1 \end{bmatrix} = 0\begin{bmatrix} 1 & 1 \end{bmatrix} + 1\begin{bmatrix} -2 & 0 \end{bmatrix} + 2\begin{bmatrix} 1 & 1 \end{bmatrix} = \begin{bmatrix} 0 & 2 \end{bmatrix},$$
+$$\begin{bmatrix} 0 & 1 & 2 \\ 3 & 4 & 5 \end{bmatrix}\begin{bmatrix} 1 \\ 0 \\ 1 \end{bmatrix} = 1\begin{bmatrix} 0 \\ 3 \end{bmatrix} + 0\begin{bmatrix} 1 \\ 4 \end{bmatrix} + 1\begin{bmatrix} 2 \\ 5 \end{bmatrix} = \begin{bmatrix} 2 \\ 8 \end{bmatrix}.$$
+
+**4.32. állítás (A szorzat oszlopai és sorai).** *Az $\mathbf{AB}$ mátrix minden oszlopa az $\mathbf{A}$ oszlopainak és minden sora a $\mathbf{B}$ sorainak lineáris kombinációja.*
+
+*Bizonyítás.* Az $\mathbf{AB}$ mátrix $j$-edik oszlopa
+$$(\mathbf{AB})_{*j} = \mathbf{A}\mathbf{b}_{*j} = \mathbf{a}_{*1}b_{1j} + \mathbf{a}_{*2}b_{2j} + \ldots + \mathbf{a}_{*t}b_{tj}$$
+az $i$-edik sora pedig
+$$(\mathbf{AB})_{i*} = \mathbf{a}_{i*}\mathbf{B} = a_{i1}\mathbf{b}_{1*} + a_{i2}\mathbf{b}_{2*} + \ldots + a_{it}\mathbf{b}_{t*},$$
+ami bizonyítja az állítást. $\square$
+
+**4.33. következmény (Szorzat rangja).** *$\operatorname{r}(\mathbf{AB}) \leqslant \operatorname{r}(\mathbf{A})$ és $\operatorname{r}(\mathbf{AB}) \leqslant \operatorname{r}(\mathbf{B})$, így*
+$$\operatorname{r}(\mathbf{AB}) \leqslant \min(\operatorname{r}(\mathbf{A}), \operatorname{r}(\mathbf{B})). \tag{4.2}$$
+
+*Bizonyítás.* Az $\mathbf{AB}$ független oszlopainak száma legföljebb annyi, mint $\mathbf{A}$ független oszlopainak száma, hisz oszloptere az $\mathbf{A}$ oszlopterének altere, és $\mathbf{AB}$ független sorainak száma legföljebb annyi, mint $\mathbf{B}$ független sorainak száma, hisz sortere $\mathbf{B}$ sorterének altere. $\square$
+
+### Feladatok
+
+#### Mátrixműveletek
+
+**4.17.•** *Igaz – hamis.* Döntsük el, igazak-e az alábbi állítások? Válaszunkat indokoljuk!
+- a) Ha az $\mathbf{AB}$ és a $\mathbf{BA}$ szorzat is értelmezve van, akkor mindkét mátrix négyzetes.
+- b) Ha az $\mathbf{AB}$ és a $\mathbf{BA}$ szorzat is értelmezve van, akkor mindkét szorzat négyzetes.
+- c) Ha az $(\mathbf{AB})\mathbf{C}$ szorzat értelmezve van, akkor biztosan értelmezve van az $\mathbf{A}(\mathbf{BC})$ szorzat is.
+
+A következőkben legyen
+$$\mathbf{A} = \begin{bmatrix} 1 & 2 \\ 4 & 2 \end{bmatrix}, \mathbf{B} = \begin{bmatrix} 4 & 2 \\ 4 & 5 \end{bmatrix}, \mathbf{C} = \begin{bmatrix} -3 & 2 \\ 2 & -1 \end{bmatrix}, \mathbf{D} = \begin{bmatrix} 2 & -1 \\ -1 & 1 \end{bmatrix}.$$
+Végezzük el az alábbi műveleteket!
+
+**4.18.** $2\mathbf{A} - 3\mathbf{B}^\mathsf{T}$
+
+**4.19.** $\mathbf{AB} - \mathbf{BA} + \mathbf{AC} - \mathbf{CA}$
+
+**4.20.** $(\mathbf{CD} - \mathbf{DC})(\mathbf{ABC})$
+
+**4.21.** $\mathbf{A}^2 - \mathbf{C}^2$
+
+**4.22.** $(\mathbf{C})_{2*}(\mathbf{D})_{*2}$
+
+**4.23.** $(\mathbf{A})_{*1}(\mathbf{B})_{2*}$
+
+**4.24.** A fenti jelölések mellett igazak-e a következő egyenlőségek?
+$$(\mathbf{A} + \mathbf{B})^2 = \mathbf{A}^2 + 2\mathbf{AB} + \mathbf{B}^2, \quad (\mathbf{A} + \mathbf{C})^2 = \mathbf{A}^2 + 2\mathbf{AC} + \mathbf{C}^2.$$
+
+**4.25.** A fenti jelölések mellett igazak-e a következő egyenlőségek?
+$$(\mathbf{C} + \mathbf{D})(\mathbf{C} - \mathbf{D}) = \mathbf{C}^2 - \mathbf{D}^2, \quad (\mathbf{A} + \mathbf{D})(\mathbf{A} - \mathbf{D}) = \mathbf{A}^2 - \mathbf{D}^2.$$
+
+Számítsuk ki az alábbi vektorok skaláris és diadikus szorzatát! Írjuk fel mindkét műveletet mátrixszorzatos alakban!
+
+**4.26.** $\mathbf{a} = (1, 2)$, $\mathbf{b} = (0, 1)$
+
+**4.27.** $\mathbf{u} = (1, 2, 0, 1)$, $\mathbf{v} = (0, 1, 2, 3)$
+
+**4.28.** $\mathbf{a} = (1, 2, 0)$, $\mathbf{b} = (0, 1, 3)$
+
+#### Mátrixszorzatos alakok
+
+Írjuk fel az alábbi egyenletrendszerek mátrixszorzatos alakját!
+
+**4.29.** $\begin{aligned} x + y &= 1 \\ x - z &= 2 \\ z &= 3 \end{aligned}$
+
+**4.30.** $3x - 2y + 4z = 5$
+
+**4.31.** $\begin{aligned} 2x + z &= 1 \\ x - y - w &= 2 \\ y + z + w &= 2 \\ 0 &= 3 \end{aligned}$
+
+Írjuk fel az alábbi lineáris helyettesítések mátrixszorzatos alakját!
+
+**4.32.** $\begin{aligned} u &= 2x - 4y \\ v &= x + 2y \end{aligned}$
+
+**4.33.** $\begin{aligned} x &= 3a - 2b + c \\ y &= 2a - c \\ z &= b + 2c \end{aligned}$
+
+**4.34.** $\begin{aligned} x &= 3a + b \\ y &= 2a - b \\ z &= b \end{aligned}$
+
+**4.35.** $\begin{aligned} x &= 3a - 2b + c \\ y &= 2a - c \end{aligned}$
+
+**4.36.•** *Lineáris helyettesítés mátrixszorzatos alakja.* Írjuk fel az $x_1, x_2, \ldots, x_n$ változók lineáris kifejezéseinek az $y_1, y_2, \ldots, y_m$ változók helyébe való helyettesítését általánosan leíró
+$$\begin{aligned} y_1 &= a_{11}x_1 + a_{12}x_2 + \ldots + a_{1n}x_n \\ y_2 &= a_{21}x_1 + a_{22}x_2 + \ldots + a_{2n}x_n \\ &\;\;\vdots \\ y_m &= a_{m1}x_1 + a_{m2}x_2 + \ldots + a_{mn}x_n \end{aligned}$$
+helyettesítés mátrixszorzatos alakját!
+
+#### Áttérés mátrixa
+
+Írjuk fel az alábbi $\mathcal{B}$ bázisról $\mathcal{C}$-re való áttérés mátrixát, ha $\mathcal{B}$ vektorainak $\mathcal{C}$-beli koordinátás alakját ismerjük. Írjuk fel a megadott vektorok $\mathcal{C}$-beli koordinátás alakját!
+
+**4.37.•** $\mathcal{B} = \{ (1, 1, 1), (0, 2, 2), (0, 0, 3) \}$, $\mathcal{C}$ az $\mathbb{R}^3$ standard bázisa, $(\mathbf{u})_{\mathcal{B}} = (-1, 1, 1)$, $(\mathbf{v})_{\mathcal{B}} = (3, -2, 0)$.
+
+**4.38.•** *Áttérés altérről.* $\mathcal{B} = \{ (1, 1, 0, -2), (0, 1, 3, 2) \}$, $\mathcal{C}$ az $\mathbb{R}^4$ standard bázisa, $(\mathbf{u})_{\mathcal{B}} = (2, 1)$, $(\mathbf{v})_{\mathcal{B}} = (1, 1)$, $(\mathbf{w})_{\mathcal{B}} = (1, 2)$. Vessük össze e feladatot a 3.26. példa első megoldásával és a ?? példával!
+
+#### Bázisfelbontás
+
+Határozzuk meg az alábbi mátrix bázisfelbontását, és magyarázzuk meg a két mátrix oszlopainak jelentését!
+
+**4.39.•** $\mathbf{A} = \begin{bmatrix} 1 & 2 & 3 & 4 & 5 \\ 2 & 4 & 8 & 6 & 2 \\ 1 & 2 & 7 & 0 & -11 \end{bmatrix}$
+
+**4.40.** $\begin{bmatrix} 2 & 4 & 6 \end{bmatrix}$
+
+**4.41.** $\begin{bmatrix} 3 \\ 4 \end{bmatrix}$
+
+**4.42.** $\mathbf{A} = \mathbf{u} \otimes \mathbf{v}$, ahol $\mathbf{u} \in \mathbb{R}^n$, $\mathbf{v} \in \mathbb{R}^m$ tetszőleges zérustól különböző vektorok.
+
+#### Elemi mátrixok
+
+Keressük meg azt az $\mathbf{E}$ mátrixot, mely megoldása az alábbi mátrixegyenletnek!
+
+**4.43.** $\mathbf{E}\begin{bmatrix} a & b \\ c & d \\ e & f \end{bmatrix} = \begin{bmatrix} a & b \\ e & f \\ c & d \end{bmatrix}$
+
+**4.44.** $\mathbf{E}\begin{bmatrix} a & b \\ c & d \\ e & f \end{bmatrix} = \begin{bmatrix} a & b \\ 3c & 3d \\ e & f \end{bmatrix}$
+
+**4.45.** $\mathbf{E}\begin{bmatrix} a & b \\ c & d \\ e & f \end{bmatrix} = \begin{bmatrix} a & b \\ c + 2e & d + 2f \\ e & f \end{bmatrix}$
+
+**4.46.** $\mathbf{E}\begin{bmatrix} a & b \\ c & d \\ e & f \end{bmatrix} = \begin{bmatrix} a - c & b - d \\ c & d \\ e & f \end{bmatrix}$
+
+Elemi sorműveletekkel, mátrixszorzás nélkül határozzuk meg az alábbi mátrixszorzatok értékét!
+
+**4.47.** $\begin{bmatrix} 1 & 0 & 0 \\ -2 & 1 & 0 \\ 0 & 0 & 1 \end{bmatrix}\begin{bmatrix} 1 & 0 & 0 \\ 0 & 2 & 0 \\ 0 & 0 & 1 \end{bmatrix}\begin{bmatrix} 2 & 2 & 2 \\ 3 & 3 & 3 \\ 4 & 4 & 4 \end{bmatrix}$
+
+**4.48.** $\begin{bmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 2 \\ 0 & 0 & 1 & 0 \\ 0 & 0 & 0 & 1 \end{bmatrix}\begin{bmatrix} 1 & 0 & 0 & 0 \\ 0 & -2 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ 0 & 0 & 0 & 1 \end{bmatrix}\begin{bmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \\ 3 & 0 & 1 & 0 \\ 0 & 0 & 0 & 1 \end{bmatrix}\begin{bmatrix} a \\ b \\ c \\ d \end{bmatrix}$
+
+**4.49.•** *[Elemi oszlopműveletek mátrixszorzással]* a) Minden elemi mátrix megkapható az egységmátrixból egyetlen elemi oszlopművelettel is. b) Legyen $\mathbf{E}$ az az elemi mátrix, melyet $\mathbf{I}_n$-ből egy elemi oszlopművelettel kapunk. Ha ugyanezt az oszlopműveletet egy tetszőleges $m \times n$-es $\mathbf{A}$ mátrixra alkalmazzuk, akkor eredményül az $\mathbf{AE}$ mátrixot kapjuk.
+
+#### Blokkmátrixok
+
+Számítsuk ki az alábbi feladatokban megadott mátrixszorzatokat a kijelölt blokkmátrixokat használva!
+
+**4.50.** $\left[\begin{array}{cc|c} 1 & 0 & 1 \\ 0 & 1 & 1 \\ \hline 0 & 0 & 2 \\ 0 & 0 & 3 \end{array}\right]\left[\begin{array}{c|cc} 2 & 3 & 1 \\ 4 & 5 & 1 \\ \hline 0 & 0 & 1 \end{array}\right]$
+
+**4.51.** $\left[\begin{array}{cc|c} 2 & 3 & 1 \\ 4 & 5 & 1 \\ \hline 0 & 0 & 1 \end{array}\right]\left[\begin{array}{cc} 1 & 0 \\ 0 & 1 \\ \hline 0 & 0 \\ 0 & 3 \end{array}\right]$
+
+**4.52.** $\left[\begin{array}{ccc|ccc} 1 & 1 & 1 & 0 & 1 & 0 \\ 1 & 1 & 1 & 0 & 0 & 1 \\ 3 & 3 & 3 & 1 & 0 & 0 \end{array}\right]\left[\begin{array}{cc} 1 & 1 \\ 1 & 1 \\ 1 & 1 \\ \hline 3 & 3 \\ 2 & 3 \\ 3 & 4 \end{array}\right]$
+
+**4.53.** *Lineáris egyenletrendszer megoldásának blokkmátrix alakja.* Tegyük fel, hogy az $r$ rangú $\mathbf{A}$ mátrix első $r$ oszlopa lineárisan független – ez oszlopcserékkel mindig elérhető. Jelölje $\mathbf{B}_r$ az $\mathbf{A}$ első $r$ oszlopából álló mátrixot, és legyen az $\mathbf{A}$, illetve az $[\mathbf{A}|\mathbf{b}]$ bővített mátrix redukált lépcsős alakja
+$$\begin{bmatrix} \mathbf{I}_r & \mathbf{S} \\ \mathbf{O} & \mathbf{O} \end{bmatrix} \quad \text{illetve} \quad \left[\begin{array}{cc|c} \mathbf{I}_r & \mathbf{S} & \mathbf{d}_r \\ \mathbf{O} & \mathbf{O} & \mathbf{0} \end{array}\right],$$
+ahol $\mathbf{d}_r$ egy $r$-dimenziós vektor. Ekkor
+1. az $\mathbf{Ax} = \mathbf{b}$ egyenletrendszer megoldható, és megoldása
+$$\mathbf{x} = \begin{bmatrix} \mathbf{d}_r \\ \mathbf{0}_s \end{bmatrix} + \begin{bmatrix} -\mathbf{S} \\ \mathbf{I}_s \end{bmatrix}\mathbf{t}_s,$$
+ahol $s$ a szabad változók száma, azaz $s = n - r$, és $\mathbf{t}_s$ a szabad paraméterek vektora, ráadásul $\mathbf{A} = \mathbf{B}_r[\mathbf{I}_r|\mathbf{S}]$ és $\mathbf{b} = \mathbf{B}_r\mathbf{d}_r$, továbbá
+2. az $\mathbf{Ax} = \mathbf{0}$ homogén lineáris egyenletrendszer megoldása
+$$\mathbf{x} = \begin{bmatrix} -\mathbf{S} \\ \mathbf{I}_s \end{bmatrix}\mathbf{t}_s,$$
+ahol a $\begin{bmatrix} -\mathbf{S} \\ \mathbf{I}_s \end{bmatrix}$ mátrix oszlopvektorai a nulltér bázisát alkotják.
+
+#### Vegyes feladatok
+
+**4.54.** A *sudoku* egy olyan logikai játék, melyben egy olyan $9 \times 9$-es mátrixot kell megadni, melynek ismerjük néhány, de nem minden elemét. A feladat a nem ismert elemek meghatározása. A mátrix 9 darab $3 \times 3$-as blokkra van particionálva és eleget tesz annak a feltételnek, hogy minden sorában, minden oszlopában és minden blokkjában az 1-től 9-ig terjedő egészek mindegyike egyszer szerepel. Ez azt jelenti, hogy az egy sorban, egy oszlopban és egy blokkban lévő számok összege mindig 45. Fejezzük ki ezt mátrixműveletekkel, azaz írjunk fel a sudoku tábla $\mathbf{A}$ mátrixát is tartalmazó olyan mátrixegyenleteket, melyeket minden helyesen kitöltött sudoku tábla mátrixa kielégít!
+
+**4.55.** Hány eleme van a $\mathbb{Z}_2^{2 \times 2}$-nek, azaz a kételemű test fölötti $2 \times 2$-es mátrixok terének?
+
+## Megoldások
+
+**4.1.** A két táblázat szorzata:
+
+| | csarnok | hipermarket | piac |
+|---|---|---|---|
+| Anti | 1350 | 1250 | 1210 |
+| Bori | 1425 | 1245 | 1225 |
+| Cili | 960 | 830 | 850 |
+
+Tehát Antinak és Borinak a piacon, Cilinek a hipermarketben érdemes vásárolnia.
+
+**4.2.** A két helyettesítést elvégezve:
+$$\begin{aligned} x &= 2a + b = 2(-3s + t) + (4s - t) = -2s + t, \\ y &= 3a + b = 3(-3s + t) + (4s - t) = -5s + 2t. \end{aligned}$$
+A két helyettesítés kompozíciója a két helyettesítés táblázatának szorzatával megkapható:
+
+| | $a$ | $b$ |
+|---|---|---|
+| $x$ | 2 | 1 |
+| $y$ | 3 | 1 |
+
+$\times$
+
+| | $s$ | $t$ |
+|---|---|---|
+| $a$ | -3 | 1 |
+| $b$ | 4 | -1 |
+
+$=$
+
+| | $s$ | $t$ |
+|---|---|---|
+| $x$ | -2 | 1 |
+| $y$ | -5 | 2 |
+
+**4.3.** A két helyettesítés kompozíciója a két helyettesítés táblázatának szorzatával megkapható. E szorzatból olvasható le, hogy a kompozícióval kapott helyettesítés: $x = s$, $y = t$, $z = u$. Ez azt jelenti, hogy a két helyettesítés valamilyen értelemben egymás inverze.
+
+**4.4.**
+1. Kétféleképp adhatjuk meg a táblázatot, ha az első sor és oszlop a tv1-é:
+
+| -re | tv1 | tv2 |
+|---|---|---|
+| tv1 | 1/2 | 1/4 |
+| tv2 | 1/2 | 3/4 |
+
+| -ről | tv1 | tv2 |
+|---|---|---|
+| tv1 | 1/2 | 1/2 |
+| tv2 | 1/4 | 3/4 |
+
+2. A nézők kezdeti eloszlásának táblázatára két lehetőség:
+
+| | arány |
+|---|---|
+| tv1 | 1/2 |
+| tv2 | 1/2 |
+
+| | tv1 | tv2 |
+|---|---|---|
+| arány | 1/2 | 1/2 |
+
+3. Először válasszuk meg a kérdést a tv1-re: saját nézőinek fele marad ($\frac{1}{2} \cdot \frac{1}{2}$), ehhez jön a tv2 nézőinek negyede ($\frac{1}{2} \cdot \frac{1}{4}$), ez összesen $\frac{1}{2} \cdot \frac{1}{2} + \frac{1}{2} \cdot \frac{1}{4} = \frac{3}{8}$. A tv2-re a számítás: $\frac{1}{2} \cdot \frac{3}{4} + \frac{1}{2} \cdot \frac{1}{2} = \frac{5}{8}$. Ez táblázatok szorzásával az előző 2-2 felírást használva:
+
+| -re | tv1 | tv2 |
+|---|---|---|
+| tv1 | 1/2 | 1/4 |
+| tv2 | 1/2 | 3/4 |
+
+$\times$
+
+| | arány |
+|---|---|
+| tv1 | 1/2 |
+| tv2 | 1/2 |
+
+$=$
+
+| | arány |
+|---|---|
+| tv1 | 3/8 |
+| tv2 | 5/8 |
+
+4. Csak az átpártolás táblázatát nézve, a második hét végére a tv1 nézői első héten megmaradt felének csak a fele marad meg, míg a tv2-től átpártolt negyednyi közönségnek is a fele, tehát a tv1 → tv1 „mozgás" a nézők $\frac{3}{8}$-adát érinti, mert $\frac{1}{2} \cdot \frac{1}{2} + \frac{1}{2} \cdot \frac{1}{4} = \frac{3}{8}$. Hasonló számításokkal a többi érték is megkapható, melyet az alábbi, két táblázat közti szorzással is meg lehet adni:
+
+| -re | tv1 | tv2 |
+|---|---|---|
+| tv1 | 1/2 | 1/4 |
+| tv2 | 1/2 | 3/4 |
+
+$\times$
+
+| -re | tv1 | tv2 |
+|---|---|---|
+| tv1 | 1/2 | 1/4 |
+| tv2 | 1/2 | 3/4 |
+
+$=$
+
+| -re | tv1 | tv2 |
+|---|---|---|
+| tv1 | 3/8 | 5/16 |
+| tv2 | 5/8 | 11/16 |
+
+**4.5.** a) $4\mathbf{A} - 3\mathbf{B} = \begin{bmatrix} 1 & 5 & 12 \\ 2 & 1 & -3 \end{bmatrix}$, b) $2\mathbf{B} - \mathbf{C}$ nincs értelmezve. c) $2\mathbf{B} - \mathbf{C}^\mathsf{T} = \begin{bmatrix} 1 & 0 & -1 \\ 3 & 0 & 2 \end{bmatrix}$.
+
+**4.6.** Ha $a$ a $[0, k]$ intervallumba eső szám, akkor $0 \leq a/k \leq 1$, így $a/k$ egész része 0 vagy 1. Részletezve $\lfloor a/k \rfloor$ pontosan akkor 1, ha $a = k$, azaz ha a pixel átlátszó, egyébként 0. Másrészt $1 - \lfloor a/k \rfloor$ pontosan akkor 0, ha $a = k$, egyébként 1. Ezt kihasználva könnyen definiálható a kívánt művelet:
+$$a \odot b = \left\lfloor \frac{a}{k} \right\rfloor b + \left(1 - \left\lfloor \frac{a}{k} \right\rfloor\right) a.$$
+Így e művelettel elemenként definiált $\mathbf{A} \odot \mathbf{B}$ művelet a kívánt eredményt adja. A 4.2. ábrán három képet $32 \times 24$-es mátrixszal szemléltetünk, a férfiarc mátrixát is megadtuk, a másik egy háttérkép, a művelet eredménye a harmadik kép.
+
+**4.7.** A standard bázisba azon mátrixok tartoznak, amelyekben egyetlen elem 1, a többi 0.
+
+**4.8.** E mátrixok összes lineáris kombinációja
+$$a\mathbf{A} + b\mathbf{B} + c\mathbf{C} = \begin{bmatrix} a + b + c & a + c \\ a & b + c \end{bmatrix}$$
+alakú. Ha egy tetszőleges $\begin{bmatrix} u & v \\ w & z \end{bmatrix}$ mátrixról el akarjuk dönteni, hogy a fenti alakú-e, azaz fönnáll-e valamely $a$, $b$, $c$ ismeretlenekre az
+$$\begin{bmatrix} a + b + c & a + c \\ a & b + c \end{bmatrix} = \begin{bmatrix} u & v \\ w & z \end{bmatrix}$$
+egyenlőség, akkor meg kell oldani a mátrixok négy elemére vonatkozó négy egyenletből álló 3-ismeretlenes egyenletrendszert:
+$$\begin{alignedat}{9} a &{}+{}& b &{}+{}& c &{}={}& u \\ a &&&{}+{}& c &{}={}& v \\ a &&&&&{}={}& w \\ && b &{}+{}& c &{}={}& z \end{alignedat}$$
+Ha ennek van megoldása, akkor létezik a megfelelő lineáris kombináció, tehát az adott $\begin{bmatrix} u & v \\ w & z \end{bmatrix}$ mátrix a kifeszített térbe esik. Ennek az egyenletrendszernek a bővített mátrixát fölírva, majd elemi sorműveletekkel megoldva a következőt kapjuk:
+$$\left[\begin{array}{ccc|c} 1 & 1 & 1 & u \\ 1 & 0 & 1 & v \\ 1 & 0 & 0 & w \\ 0 & 1 & 1 & z \end{array}\right] \Longrightarrow \left[\begin{array}{ccc|c} 1 & 0 & 0 & w \\ 0 & 1 & 1 & u - w \\ 0 & 0 & 1 & v - w \\ 0 & 0 & 0 & w + z - u \end{array}\right].$$
+A lépcsős alakból leolvasható, hogy ez az egyenletrendszer pontosan akkor oldható meg, ha $w + z - u = 0$. Például az $\begin{bmatrix} 5 & 4 \\ 3 & 2 \end{bmatrix}$ mátrix ebbe az altérbe esik. A fenti egyenletrendszer megoldásával az is megkapható, hogy mik a lineáris kombináció együtthatói. Azt kapjuk, hogy $a = 3$, $b = 1$ és $c = 1$.
+
+**4.9.** a) $\mathbf{AB}$ nincs értelmezve. b) $\mathbf{AB}^\mathsf{T} - \mathbf{D} = \begin{bmatrix} 0 & 5 \\ 2 & 3 \end{bmatrix}$, c) $\mathbf{BC} = \begin{bmatrix} 3 & 3 \\ 5 & 4 \end{bmatrix}$, d) $\mathbf{CB} = \begin{bmatrix} 3 & 2 & 1 \\ 6 & 4 & 2 \\ 1 & 1 & 0 \end{bmatrix}$, e) $(\mathbf{DA})\mathbf{C} = \begin{bmatrix} 32 & 23 \\ 16 & 13 \end{bmatrix}$.
+
+**4.10.** A méretek alapján a $\mathbf{BC}$ szorzat nincs értelmezve, a többi:
+$$\mathbf{AB} = \begin{bmatrix} 3 & 2 & 1 \\ 9 & 8 & 7 \\ 3 & 4 & 5 \end{bmatrix}, \mathbf{BA} = \begin{bmatrix} 6 & 5 \\ 6 & 10 \end{bmatrix}, \mathbf{CB} = \begin{bmatrix} 3 & 2 & 1 \\ 3 & 4 & 5 \end{bmatrix},$$
+$$\mathbf{CD} = \begin{bmatrix} -2 & -1 \\ 10 & 11 \end{bmatrix}, \mathbf{DC} = \begin{bmatrix} 12 & 12 \\ -2 & -3 \end{bmatrix}, \mathbf{DE} = \mathbf{ED} = \begin{bmatrix} 0 & -6 \\ 2 & 5 \end{bmatrix}.$$
+Összefoglalva: $\mathbf{AB} \neq \mathbf{BA}$, mert különböző típusúak, $\mathbf{BC} \neq \mathbf{CB}$, mert az egyik oldal nincs értelmezve, $\mathbf{CD} \neq \mathbf{DC}$, bár mindkét oldal értelmezve van és azonos típusú. Az előzőekkel ellentétben viszont fennáll a $\mathbf{DE} = \mathbf{ED}$ egyenlőség. Azaz vannak felcserélhető mátrixok, de a mátrixszorzás nem felcserélhető művelet, tehát nem kommutatív!
+
+**4.11.** Az $\mathbf{AB}$ szorzat felírható
+$$\begin{bmatrix} \mathbf{A}_{11} & \mathbf{A}_{12} \\ \mathbf{A}_{21} & \mathbf{A}_{22} \end{bmatrix}\begin{bmatrix} \mathbf{B}_{11} & \mathbf{B}_{12} \\ \mathbf{B}_{21} & \mathbf{B}_{22} \end{bmatrix} = \begin{bmatrix} \mathbf{A}_{11}\mathbf{B}_{11} + \mathbf{A}_{12}\mathbf{B}_{21} & \mathbf{A}_{11}\mathbf{B}_{12} + \mathbf{A}_{12}\mathbf{B}_{22} \\ \mathbf{A}_{21}\mathbf{B}_{11} + \mathbf{A}_{22}\mathbf{B}_{21} & \mathbf{A}_{21}\mathbf{B}_{12} + \mathbf{A}_{22}\mathbf{B}_{22} \end{bmatrix}$$
+alakban. A $\mathbf{BA}$ hasonlóképp írható fel! Ellenőrizzük, hogy a 4.9. állítás feltétele (minden $k$-ra az $\mathbf{A}_{ik}$ blokk oszlopainak száma megegyezik $\mathbf{B}_{kj}$ sorainak számával) valóban szükséges, és elégséges is.
+
+**4.12.** Számoljunk blokkmátrixként kezelve a mátrixokat:
+$$\mathbf{A} + 3\mathbf{C} = \left[\begin{array}{cc|cc} 1 & 0 & 1 & 0 \\ 0 & 1 & 1 & 2 \\ \hline 0 & 0 & 3 & 0 \end{array}\right] + 3\left[\begin{array}{cc|cc} 0 & 2 & 0 & 0 \\ 2 & 0 & 0 & 0 \\ \hline 1 & 1 & 1 & 1 \end{array}\right] = \begin{bmatrix} 1 & 6 & 1 & 0 \\ 6 & 1 & 1 & 2 \\ 3 & 3 & 6 & 3 \end{bmatrix}.$$
+Ellenőrizzük a számítást közönséges mátrixműveletekkel! Ezután tekintsük a blokkmátrixok szorzását!
+$$\mathbf{AB} = \left[\begin{array}{cc|cc} 1 & 0 & 1 & 0 \\ 0 & 1 & 1 & 2 \\ \hline 0 & 0 & 3 & 0 \end{array}\right]\left[\begin{array}{cc} 2 & 4 \\ 1 & 5 \\ \hline 2 & 2 \\ 0 & 1 \end{array}\right] = \begin{bmatrix} 4 & 6 \\ 3 & 9 \\ 6 & 6 \end{bmatrix}.$$
+Ugyanezt az eredményt kapjuk, ha ellenőrzésül egyszerű mátrixszorzással is elvégezzük a műveletet!
+
+**4.13.** Valóban (az $\mathbb{F}_3$ testben számolva)
+$$\begin{bmatrix} 1 & 0 & 1 & 2 \\ 0 & 1 & 1 & 1 \end{bmatrix}\begin{bmatrix} 2 & 1 \\ 2 & 2 \\ 1 & 0 \\ 0 & 1 \end{bmatrix} = \begin{bmatrix} 0 & 0 \\ 0 & 0 \end{bmatrix}.$$
+
+**4.14.** Az $\mathbb{R}^2$- és $\mathbb{R}^{3 \times 2}$-beli hipermátrixok külső szorzata $\mathbb{R}^{2 \times 3 \times 2}$-ba esik:
+$$\begin{bmatrix} 1 \\ 2 \end{bmatrix} \otimes \begin{bmatrix} 0 & 1 \\ 2 & 3 \\ 4 & 0 \end{bmatrix} = \left[\begin{array}{ccc|ccc} 0 & 2 & 4 & 1 & 3 & 0 \\ 0 & 4 & 8 & 2 & 6 & 0 \end{array}\right]$$
+
+**4.16.** A Segre-féle külső szorzat:
+$$\begin{bmatrix} 0 \\ 1 \\ 2 \end{bmatrix} \otimes \begin{bmatrix} 1 \\ 0 \\ 2 \end{bmatrix} \otimes \begin{bmatrix} 1 \\ 2 \\ 0 \end{bmatrix} = \left[\begin{array}{ccc|ccc|ccc} 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\ 1 & 0 & 2 & 2 & 0 & 4 & 0 & 0 & 0 \\ 2 & 0 & 4 & 4 & 0 & 8 & 0 & 0 & 0 \end{array}\right].$$
+
+**4.17.** a) Hamis, b) igaz, c) igaz.
+
+**4.26.** $\mathbf{a} \cdot \mathbf{b} = \mathbf{a}^\mathsf{T}\mathbf{b} = \begin{bmatrix} 1 & 2 \end{bmatrix}\begin{bmatrix} 0 \\ 1 \end{bmatrix} = 2$, $\mathbf{a} \otimes \mathbf{b} = \mathbf{a}\mathbf{b}^\mathsf{T} = \begin{bmatrix} 1 \\ 2 \end{bmatrix}\begin{bmatrix} 0 & 1 \end{bmatrix} = \begin{bmatrix} 0 & 1 \\ 0 & 2 \end{bmatrix}$.
+
+**4.27.** $\mathbf{u} \cdot \mathbf{v} = \mathbf{u}^\mathsf{T}\mathbf{v} = \begin{bmatrix} 1 & 2 & 0 & 1 \end{bmatrix}\begin{bmatrix} 0 \\ 1 \\ 2 \\ 3 \end{bmatrix} = 5$,
+$$\mathbf{u} \otimes \mathbf{v} = \mathbf{u}\mathbf{v}^\mathsf{T} = \begin{bmatrix} 1 \\ 2 \\ 0 \\ 1 \end{bmatrix}\begin{bmatrix} 0 & 1 & 2 & 3 \end{bmatrix} = \begin{bmatrix} 0 & 1 & 2 & 3 \\ 0 & 2 & 4 & 6 \\ 0 & 0 & 0 & 0 \\ 0 & 1 & 2 & 3 \end{bmatrix}.$$
+
+**4.28.** A skaláris szorzat nem végezhető el, a diadikus szorzat
+$$\mathbf{a} \otimes \mathbf{b} = \mathbf{a}\mathbf{b}^\mathsf{T} = \begin{bmatrix} 1 \\ 2 \\ 0 \end{bmatrix}\begin{bmatrix} 0 & 1 & 2 & 3 \end{bmatrix} = \begin{bmatrix} 0 & 1 & 2 & 3 \\ 0 & 2 & 4 & 6 \\ 0 & 0 & 0 & 0 \end{bmatrix}.$$
+
+**4.29.** $\begin{bmatrix} 1 & 1 & 0 \\ 1 & 0 & -1 \\ 0 & 0 & 1 \end{bmatrix}\begin{bmatrix} x \\ y \\ z \end{bmatrix} = \begin{bmatrix} 1 \\ 2 \\ 3 \end{bmatrix}$.
+
+**4.35.** $\begin{bmatrix} x \\ y \end{bmatrix} = \begin{bmatrix} 3 & -2 & 1 \\ 2 & 0 & -1 \end{bmatrix}\begin{bmatrix} a \\ b \\ c \end{bmatrix}$.
+
+**4.36.** A lineáris helyettesítés mátrixszorzatos alakja
+$$\mathbf{y} = \mathbf{Ax},$$
+ahol
+$$\mathbf{A} = \begin{bmatrix} a_{11} & a_{12} & \ldots & a_{1n} \\ a_{21} & a_{22} & \ldots & a_{2n} \\ \vdots & \vdots & \ddots & \vdots \\ a_{m1} & a_{m2} & \ldots & a_{mn} \end{bmatrix}, \quad \mathbf{y} = \begin{bmatrix} y_1 \\ y_2 \\ \vdots \\ y_m \end{bmatrix}, \quad \text{és} \quad \mathbf{x} = \begin{bmatrix} x_1 \\ x_2 \\ \vdots \\ x_n \end{bmatrix}.$$
+
+**4.37.** Az áttérés mátrixa
+$$\mathbf{A}_{\mathcal{C} \leftarrow \mathcal{B}} = \begin{bmatrix} 1 & 0 & 0 \\ 1 & 2 & 0 \\ 1 & 2 & 3 \end{bmatrix},$$
+Ezt fölhasználva kapjuk, hogy
+$$[\mathbf{u}]_{\mathcal{C}} = \mathbf{A}_{\mathcal{C} \leftarrow \mathcal{B}}[\mathbf{u}]_{\mathcal{B}} = \begin{bmatrix} 1 & 0 & 0 \\ 1 & 2 & 0 \\ 1 & 2 & 3 \end{bmatrix}\begin{bmatrix} -1 \\ 1 \\ 1 \end{bmatrix} = \begin{bmatrix} -1 \\ 1 \\ 4 \end{bmatrix},$$
+továbbá
+$$[\mathbf{v}]_{\mathcal{C}} = \mathbf{A}_{\mathcal{C} \leftarrow \mathcal{B}}[\mathbf{v}]_{\mathcal{B}} = \begin{bmatrix} 1 & 0 & 0 \\ 1 & 2 & 0 \\ 1 & 2 & 3 \end{bmatrix}\begin{bmatrix} 3 \\ -2 \\ 0 \end{bmatrix} = \begin{bmatrix} 3 \\ -1 \\ -1 \end{bmatrix}.$$
+
+**4.38.** Az áttérés mátrixa
+$$\mathbf{A}_{\mathcal{C} \leftarrow \mathcal{B}} = \begin{bmatrix} 1 & 0 \\ 1 & 1 \\ 0 & 3 \\ -2 & 2 \end{bmatrix}.$$
+Ezt fölhasználva kapjuk, hogy
+$$[\mathbf{u}]_{\mathcal{C}} = \begin{bmatrix} 1 & 0 \\ 1 & 1 \\ 0 & 3 \\ -2 & 2 \end{bmatrix}\begin{bmatrix} 2 \\ 1 \end{bmatrix} = \begin{bmatrix} 2 \\ 3 \\ 3 \\ -2 \end{bmatrix}, \quad [\mathbf{v}]_{\mathcal{C}} = \begin{bmatrix} 1 & 0 \\ 1 & 1 \\ 0 & 3 \\ -2 & 2 \end{bmatrix}\begin{bmatrix} 1 \\ 1 \end{bmatrix} = \begin{bmatrix} 1 \\ 2 \\ 3 \\ 0 \end{bmatrix}, \quad [\mathbf{w}]_{\mathcal{C}} = \begin{bmatrix} 1 & 0 \\ 1 & 1 \\ 0 & 3 \\ -2 & 2 \end{bmatrix}\begin{bmatrix} 1 \\ 2 \end{bmatrix} = \begin{bmatrix} 1 \\ 3 \\ 6 \\ 2 \end{bmatrix}.$$
+
+**4.39.** Az $\mathbf{A}$ mátrix redukált lépcsős alakja:
+$$\mathbf{A} = \begin{bmatrix} 1 & 2 & 3 & 4 & 5 \\ 2 & 4 & 8 & 6 & 2 \\ 1 & 2 & 7 & 0 & -11 \end{bmatrix} \Longrightarrow \begin{bmatrix} 1 & 2 & 0 & 7 & 17 \\ 0 & 0 & 1 & -1 & -4 \\ 0 & 0 & 0 & 0 & 0 \end{bmatrix}.$$
+E mátrix első két sora alkotja az $\mathbf{R}$ mátrixot, az $\mathbf{A}$ mátrix első és harmadik oszlopa a $\mathbf{B}$ mátrixot, így a felbontás
+$$\mathbf{A} = \begin{bmatrix} 1 & 2 & 3 & 4 & 5 \\ 2 & 4 & 8 & 6 & 2 \\ 1 & 2 & 7 & 0 & -11 \end{bmatrix} = \begin{bmatrix} 1 & 3 \\ 2 & 8 \\ 1 & 7 \end{bmatrix}\begin{bmatrix} 1 & 2 & 0 & 7 & 17 \\ 0 & 0 & 1 & -1 & -4 \end{bmatrix} = \mathbf{BR}.$$
+Az $\mathbf{R}$ oszlopai az $\mathbf{A}$ oszlopvektorainak koordinátás alakjai a $\mathbf{B}$ oszlopai alkotta bázisban, azaz
+$$[\mathbf{v}]_{\mathcal{E}} = \mathbf{B}[\mathbf{v}]_{\mathcal{B}}.$$
+
+<!-- OCR: through PDF p.168 -->
+<!-- OCR-NOTE: p166–168 megoldások közül a 4.15, 4.18–4.25, 4.30–4.34, 4.40–4.55 megoldások a könyvben nem szerepelnek külön (csak a •-gal jelölt feladatoké); a fent átírtak a nyomtatott megoldások. -->
