@@ -738,4 +738,93 @@ c\mathbf{u} &= c(u_1, u_2, u_3) = c(u_1\mathbf{e}_1 + u_2\mathbf{e}_2 + u_3\math
 
 *1.37. ábra. Pontok a koordinátasíkokon.*
 
-<!-- OCR: through PDF p.41 -->
+**1.34. állítás (Vektorműveletek koordinátás alakja).** *Adva van a térben egy koordináta-rendszer és abban két tetszőleges $\mathbf{u} = (u_1, u_2, u_3)$ és $\mathbf{v} = (v_1, v_2, v_3)$ vektor, valamint egy tetszőleges $c \in \mathbb{R}$ valós szám. Ekkor a vektorok összegének, különbségének és skalárszorosának koordinátás alakja*
+$$\begin{aligned}
+\mathbf{u} + \mathbf{v} &= (u_1, u_2, u_3) + (v_1, v_2, v_3) = (u_1 + v_1, u_2 + v_2, u_3 + v_3), \\
+\mathbf{u} - \mathbf{v} &= (u_1, u_2, u_3) - (v_1, v_2, v_3) = (u_1 - v_1, u_2 - v_2, u_3 - v_3), \\
+c\mathbf{u} &= c(u_1, u_2, u_3) = (cu_1, cu_2, cu_3).
+\end{aligned}$$
+*Az oszlopvektor jelölést használva*
+$$\mathbf{u} \pm \mathbf{v} = \begin{bmatrix} u_1 \\ u_2 \\ u_3 \end{bmatrix} \pm \begin{bmatrix} v_1 \\ v_2 \\ v_3 \end{bmatrix} = \begin{bmatrix} u_1 \pm v_1 \\ u_2 \pm v_2 \\ u_3 \pm v_3 \end{bmatrix}, \quad c\mathbf{u} = c\begin{bmatrix} u_1 \\ u_2 \\ u_3 \end{bmatrix} = \begin{bmatrix} cu_1 \\ cu_2 \\ cu_3 \end{bmatrix}.$$
+
+A síkbeli vektorokra hasonló állítások igazak, csak két koordinátával. Ellentétben az előzőekkel, a skaláris szorzás koordinátás alakja függ a koordináta-rendszertől.
+
+**1.35. példa (Skaláris szorzás koordináta-rendszerben).** *Legyen a síkban az első alapvektor hossza 1, a másodiké 2, a köztük lévő szög $\pi/3$. Számítsuk ki az $\mathbf{u} = (1, 1)$ és a $\mathbf{v} = (-5/2, 1)$ vektorok skaláris szorzatát!*
+
+*Megoldás.* Az alapvektorok hosszát és szögét ismerve ki tudjuk számítani az alapvektorok skaláris szorzatait:
+$$\mathbf{e}_1 \cdot \mathbf{e}_1 = 1, \quad \mathbf{e}_2 \cdot \mathbf{e}_2 = 2^2 = 4, \quad \mathbf{e}_1 \cdot \mathbf{e}_2 = 1 \cdot 2 \cdot \cos\frac{\pi}{3} = 1.$$
+Így két tetszőleges $\mathbf{u} = (u_1, u_2)$ és $\mathbf{v} = (v_1, v_2)$ vektorra:
+$$\begin{aligned}
+\mathbf{u} \cdot \mathbf{v} &= (u_1\mathbf{e}_1 + u_2\mathbf{e}_2) \cdot (v_1\mathbf{e}_1 + v_2\mathbf{e}_2) \\
+&= u_1v_1\mathbf{e}_1 \cdot \mathbf{e}_1 + (u_1v_2 + u_2v_1)\mathbf{e}_1 \cdot \mathbf{e}_2 + u_2v_2\mathbf{e}_2 \cdot \mathbf{e}_2 \\
+&= u_1v_1 + u_1v_2 + u_2v_1 + 4u_2v_2.
+\end{aligned}$$
+A megadott vektorokra $\mathbf{u} \cdot \mathbf{v} = -\frac{5}{2} + 1 - \frac{5}{2} + 4 = 0$, tehát a két vektor merőleges egymásra (ld. az 1.38. ábrát). $\square$
+
+*1.38. ábra. Két vektor skaláris szorzata.*
+
+### A derékszögű koordináta-rendszer
+
+A természeti törvények különös fontosságot adnak az egymásra merőleges irányoknak, ezért például igen gyakran érdemes olyan koordináta-rendszert választani, amelyben az alapvektorok merőlegesek, más szóval *ortogonálisak* egymásra. A bázisvektorok szöge mellett azok hosszát is érdemes standardizálni, nevezetesen egységnyi hosszúnak választani, így mindegyik koordináta egyúttal távolságot is jelent. Az egységvektorokból álló ortogonális bázist *ortonormált bázisnak* nevezzük.
+
+Az egységes tárgyalás érdekében a bázisvektorok körüljárását is előírhatjuk: általánosan elterjedt szokás a jobbrendszert választani. Az így konstruált bázis vektorait síkban gyakran $\mathbf{i}$, $\mathbf{j}$, térben $\mathbf{i}$, $\mathbf{j}$ és $\mathbf{k}$ jelöli.
+
+A két és háromdimenziós térben a skaláris szorzat egyszerű alakot ölt, ha a koordináta-rendszer alapvektorai ortonormáltak.
+
+**1.36. állítás (Skaláris szorzat ortonormált koordináta-rendszerben).** *A síkbeli $\mathbf{u} = (u_1, u_2)$ és $\mathbf{v} = (v_1, v_2)$, illetve a térbeli $\mathbf{u} = (u_1, u_2, u_3)$ és $\mathbf{v} = (v_1, v_2, v_3)$ vektorok skaláris szorzata ortonormált koordináta-rendszerben*
+$$\mathbf{u} \cdot \mathbf{v} = u_1v_1 + u_2v_2, \quad\text{illetve}\quad \mathbf{u} \cdot \mathbf{v} = u_1v_1 + u_2v_2 + u_3v_3.$$
+
+*Bizonyítás.* A síkbeli esetben kihasználjuk, hogy $\mathbf{i} \cdot \mathbf{i} = \mathbf{j} \cdot \mathbf{j} = 1$ és $\mathbf{i} \cdot \mathbf{j} = 0$:
+$$\begin{aligned}
+\mathbf{u} \cdot \mathbf{v} &= (u_1\mathbf{i} + u_2\mathbf{j}) \cdot (v_1\mathbf{i} + v_2\mathbf{j}) \\
+&= u_1v_1\mathbf{i} \cdot \mathbf{i} + (u_1v_2 + u_2v_1)\mathbf{i} \cdot \mathbf{j} + u_2v_2\mathbf{j} \cdot \mathbf{j} \\
+&= u_1v_1 + u_2v_2.
+\end{aligned}$$
+A térbeli eset hasonlóan bizonyítható. $\square$
+
+**1.37. állítás (Vektori szorzat ortonormált koordináta-rendszerben).** *A térbeli $\mathbf{a} = (a_1, a_2, a_3)$ és $\mathbf{b} = (b_1, b_2, b_3)$ vektorok vektori szorzata derékszögű koordináta-rendszerben*
+$$\mathbf{a} \times \mathbf{b} = (a_2b_3 - a_3b_2, a_3b_1 - a_1b_3, a_1b_2 - a_2b_1).$$
+
+▶ Az $\mathbf{a} \times \mathbf{b}$ koordinátáinak könnyű memorizálására két sémát mutatunk a széljegyzetben (1.39. ábra).
+
+*Bizonyítás.* Az alapvektorok egymással való vektori szorzatait már kiszámoltuk az 1.26. példában. Kihasználva, hogy $\mathbf{i} \times \mathbf{i} = \mathbf{j} \times \mathbf{j} = \mathbf{k} \times \mathbf{k} = \mathbf{0}$, $\mathbf{i} \times \mathbf{j} = \mathbf{k}$, $\mathbf{j} \times \mathbf{i} = -\mathbf{k}$, …, a következőt kapjuk:
+$$\begin{aligned}
+\mathbf{a} \times \mathbf{b} &= (a_1\mathbf{i} + a_2\mathbf{j} + a_3\mathbf{k}) \times (b_1\mathbf{i} + b_2\mathbf{j} + b_3\mathbf{k}) \\
+&= a_2b_3\,\mathbf{j} \times \mathbf{k} + a_3b_2\,\mathbf{k} \times \mathbf{j} + a_3b_1\,\mathbf{k} \times \mathbf{i} + a_1b_3\,\mathbf{i} \times \mathbf{k} + a_1b_2\,\mathbf{i} \times \mathbf{j} + a_2b_1\,\mathbf{j} \times \mathbf{i} \\
+&= a_2b_3\mathbf{i} - a_3b_2\mathbf{i} + a_3b_1\mathbf{j} - a_1b_3\mathbf{j} + a_1b_2\mathbf{k} - a_2b_1\mathbf{k} \\
+&= (a_2b_3 - a_3b_2, a_3b_1 - a_1b_3, a_1b_2 - a_2b_1).
+\end{aligned}$$
+$\square$
+
+**1.38. tétel (Paralelogramma területe).** *Az $(a, b)$ és a $(c, d)$ vektorok által kifeszített paralelogramma területe*
+$$|ad - bc|.$$
+*Az $ad - bc$ előjele aszerint pozitív, illetve negatív, hogy a két vektor a megadott sorrendben jobb- vagy balrendszert alkot.*
+
+*1.39. ábra. A vektori szorzat kiszámítása a két vektor koordinátáiból. a) Írjuk a két vektort egymás alá, majd az első két koordinátát másoljuk a vektorok végére, végül az X alakba rakott nyílpároknál a ↘ nyíl végein lévő számok szorzatából vonjuk ki a ↗ szerinti szorzatot; az eredmény $(a_2b_3 - a_3b_2,\ a_3b_1 - a_1b_3,\ a_1b_2 - a_2b_1)$. b) Írjuk a két vektor koordinátái fölé az $\mathbf{i}$, $\mathbf{j}$, $\mathbf{k}$ vektorokat, másoljuk a táblázat után az első két oszlopot, és a ↘ menti szorzatokból vonjuk ki a ↗ menti szorzatokat: $(a_2b_3 - a_3b_2)\mathbf{i} + (a_3b_1 - a_1b_3)\mathbf{j} + (a_1b_2 - a_2b_1)\mathbf{k}$.*
+
+*Bizonyítás.* Két 3-dimenziós vektor által kifeszített paralelogramma területe a vektori szorzatuk abszolút értéke. Ágyazzuk be a megadott két vektort a tér egyik koordinátasíkjába, tekintsük például az $(a, b, 0)$ és a $(c, d, 0)$ vektorokat. Vektori szorzatuk
+$$(a, b, 0) \times (c, d, 0) = (0, 0, ad - bc),$$
+ennek abszolút értéke $|ad - bc|$.
+
+Mivel az $(a, b, 0)$, $(c, d, 0)$ és $(0, 0, ad - bc)$ vektorok jobbrendszert alkotnak, ezért $ad - bc$ pontosan akkor pozitív, ha a síkban az $(a, b)$ és a $(c, d)$ vektorok jobbrendszert alkotnak. $\square$
+
+A paralelepipedon térfogata is kifejezhető az azt kifeszítő vektorok koordinátáival. Az $\mathbf{a} = (a_1, a_2, a_3)$, $\mathbf{b} = (b_1, b_2, b_3)$ és $\mathbf{c} = (c_1, c_2, c_3)$ vektorok által kifeszített paralelepipedon térfogata megegyezik az
+$$(\mathbf{a} \times \mathbf{b}) \cdot \mathbf{c} = a_1b_2c_3 + a_2b_3c_1 + a_3b_1c_2 - a_1b_3c_2 - a_2b_1c_3 - a_3b_2c_1 \tag{1.3}$$
+kifejezés abszolút értékével, előjele pedig aszerint pozitív, illetve negatív, hogy a vektorok jobb- vagy balrendszert alkotnak. E képlet kiszámítására, memorizálására a széljegyzet ad segítséget (1.41. ábra).
+
+*1.40. ábra. A paralelogramma előjeles területe $ad - bc$, melynek memorizálására a fenti séma használatos. Ez megegyezik két 2-dimenziós vektor – később tanulandó – determinánsával, melyet úgy jelölünk, hogy a két vektor koordinátáiból képzett táblázatot függőleges zárójelek közé zárjuk: $\begin{vmatrix} a & b \\ c & d \end{vmatrix} = ad - bc$. E jel nem az abszolút értéket jelöli, ahhoz egy további zárójelpár szükséges, azaz $|ad - bc| = \left|\begin{vmatrix} a & b \\ c & d \end{vmatrix}\right|$.*
+
+*1.41. ábra. A paralelepipedon térfogata megegyezik az azt kifeszítő három vektor vegyes szorzatának abszolút értékével; a determinánsokra használt jelöléssel az előjeles térfogat $\mathbf{abc} = (\mathbf{a} \times \mathbf{b}) \cdot \mathbf{c} = \begin{vmatrix} a_1 & a_2 & a_3 \\ b_1 & b_2 & b_3 \\ c_1 & c_2 & c_3 \end{vmatrix}$.*
+
+### Az $\mathbb{R}^n$ halmaz
+
+Láttuk, hogy a 2-dimenziós, illetve 3-dimenziós vektorjellegű mennyiségek leírhatók egy rendezett számpárral, illetve számhármassal. Vajon megfordítható-e ez a kapcsolat? Értelmes dolog-e e szám-$n$-eseket egy $n$-dimenziós tér vektorainak, vagy pontjainak tekinteni? És hasznos-e a 2- és 3-dimenziós térben használt fogalmak általánosítása $n$ dimenzióra? A válasz mindegyik kérdésre határozott igen, amit a fizika 4-dimenziós tér-idő fogalmától számtalan gazdasági, vagy internettel kapcsolatos kérdés sokmilliárd-dimenziós térben való megoldása fényesen bizonyít.
+
+**1.39. definíció.** *Egy tetszőleges $H$ halmaz elemeiből képzett rendezett elem-$n$-esek halmazát $H^n$-nel jelöljük.*
+
+Például a $H = \{0,1\}$ halmaz elemeiből képzett rendezett elemhármasok halmaza
+$$H^3 = \{(0,0,0), (0,0,1), (0,1,0), (1,0,0), (0,1,1), (1,0,1), (1,1,0), (1,1,1)\}.$$
+
+A fenti jelölésnek megfelelően $\mathbb{R}^n$ a valós számokból képzett rendezett szám-$n$-esek halmazát jelöli. Eszerint a sík pontjait és vektorait $\mathbb{R}^2$, a térét $\mathbb{R}^3$ elemeivel koordinátáztuk. $\mathbb{R}^n$ elemein vektorműveleteket fogunk bevezetni, és $\mathbb{R}^n$-ről, mint vektortérről fogunk beszélni. Hasonlóképp, $\mathbb{R}^n$-t geometriai vagy pontérnek fogjuk tekinteni, ha elemeire, mint pontokra gondolunk, és köztük geometriai műveleteket végzünk. E kétféleség nem fog zavart okozni: $\mathbb{R}^n$ szerepét mindig az fogja meghatározni, hogy mit teszünk elemeivel, vagyis a szám-$n$-esekkel.
+
+<!-- OCR: through PDF p.44 -->
