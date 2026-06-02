@@ -5766,4 +5766,306 @@ Innen a megoldás $\mathbf{x} = (-2t, 0, 1 + t, t, t)$. $\square$
 
 Az, hogy ez az algoritmus valóban PLU-felbontást ad, az algoritmus leírásában bizonyítottuk, illetve onnan kiolvasható.
 
-<!-- OCR: through PDF p.208 -->
+### Feladatok
+
+Adjuk meg az alábbi mátrixok egy LU-felbontását!
+
+**5.35.** $\begin{bmatrix} 4 & 4 & 4 \\ 2 & 5 & 5 \\ 1 & 2 & 4 \end{bmatrix}$
+
+**5.36.** $\begin{bmatrix} 4 & 8 & 4 \\ 2 & 7 & 8 \\ 1 & 3 & 4 \end{bmatrix}$
+
+**5.37.** $\begin{bmatrix} 5 & -4 & -2 \\ 4 & -5 & -5 \\ -3 & 1 & -4 \end{bmatrix}$
+
+**5.38.** $\begin{bmatrix} -3 & 1 & -3 & 0 \\ -2 & 4 & 3 & -4 \\ 1 & 3 & 3 & 0 \\ -3 & 0 & -3 & -1 \end{bmatrix}$
+
+**5.39.** $\begin{bmatrix} -2 & -2 & 0 & 3 \\ 0 & 2 & -2 & -1 \\ -1 & 0 & 2 & 0 \\ 1 & 0 & 2 & 1 \end{bmatrix}$
+
+**5.40.** $\begin{bmatrix} 2.0 & 2.0 & -2.0 \\ -0.5 & 0.0 & -1.0 \\ 1.0 & 1.5 & 1.0 \end{bmatrix}$
+
+*Az előző feladatokban megkonstruált LU-felbontásokat használva oldjuk meg az alábbi egyenletrendszereket, azaz oldjuk meg előbb az $\mathbf{Ly} = \mathbf{b}$, majd az $\mathbf{Ux} = \mathbf{y}$ egyenletrendszereket!*
+
+**5.41.** $\begin{bmatrix} 4 & 4 & 4 \\ 2 & 5 & 5 \\ 1 & 2 & 4 \end{bmatrix}\mathbf{x} = \begin{bmatrix} 0 \\ 3 \\ 5 \end{bmatrix}$
+
+**5.42.** $\begin{bmatrix} 4 & 8 & 4 \\ 2 & 7 & 8 \\ 1 & 3 & 4 \end{bmatrix}\mathbf{x} = \begin{bmatrix} 0 \\ 3 \\ 2 \end{bmatrix}$
+
+**5.43.** $\begin{bmatrix} 5 & -4 & -2 \\ 4 & -5 & -5 \\ -3 & 1 & -4 \end{bmatrix}\mathbf{x} = \begin{bmatrix} 3 \\ -1 \\ -7 \end{bmatrix}$
+
+**5.44.** $\begin{bmatrix} 2.0 & 2.0 & -2.0 \\ -0.5 & 0.0 & -1.0 \\ 1.0 & 1.5 & 1.0 \end{bmatrix}\mathbf{x} = \begin{bmatrix} 5.6 \\ -1.0 \\ 4.6 \end{bmatrix}$
+
+**5.45. Végtelen sok megoldás.**
+$$\begin{alignedat}{9} 4x_1 &{}+{}& 8x_2 &{}+{}& 4x_3 &{}+{}& 8x_4 &{}={}& 8 \\ 2x_1 &{}+{}& 6x_2 &{}+{}& 4x_3 &{}+{}& 4x_4 &{}={}& 4 \\ x_1 &{}+{}& 3x_2 &{}+{}& 2x_3 &{}+{}& 4x_4 &{}={}& 4 \end{alignedat}$$
+
+*Határozzuk meg az alábbi mátrixok inverzét az LU-felbontásuk ismeretében, azaz oldjuk meg az $\mathbf{LY} = \mathbf{I}$ és az $\mathbf{UX} = \mathbf{Y}$ mátrixegyenleteket!*
+
+**5.46.** $\begin{bmatrix} 4 & 4 & 4 \\ 2 & 5 & 5 \\ 1 & 2 & 4 \end{bmatrix}$
+
+**5.47.** $\begin{bmatrix} 4 & 8 & 4 \\ 2 & 7 & 8 \\ 1 & 3 & 4 \end{bmatrix}$
+
+**5.48.** Bizonyítsuk be, hogy ha $\mathbf{A} = \mathbf{LU}$ az $\mathbf{A}$ egy LU-felbontása, és $\mathbf{A}$ invertálható, akkor e felbontás egyértelmű!
+
+*Adjuk meg az alábbi mátrixok egy PLU-felbontását! Alkalmazzunk részleges főelem-kiválasztást!*
+
+**5.49.** $\begin{bmatrix} 1 & 1 & 2 \\ 3 & 3 & 3 \\ 2 & 2 & 3 \end{bmatrix}$
+
+**5.50.** $\begin{bmatrix} 1 & 2 & 3 & 4 & 5 \\ 2 & 2 & 3 & 3 & 4 \\ 3 & 4 & 6 & 7 & 9 \end{bmatrix}$
+
+**5.51.** $\begin{bmatrix} 0.0 & -1.0 & 1.5 \\ 0.5 & -2.0 & 2.0 \\ 0.0 & 2.0 & 2.0 \end{bmatrix}$
+
+**5.52.** Igazoljuk, hogy az
+$$\mathbf{A} = \begin{bmatrix} 0 & 0 & 1 \\ 1 & 1 & 1 \\ 0 & 1 & 1 \end{bmatrix}$$
+mátrixnak nincs LU-felbontása, és annak a mátrixnak sincs, melyet az $\mathbf{A}$ első két sorának felcserélésével kapunk.
+
+### Megoldások
+
+**5.4.** A bizonyítások közvetlenül következnek a valós számok közti műveletek tulajdonságaiból. Mintaként bebizonyítjuk az *(a)* állítást.
+$$\mathbf{A} + \mathbf{B} = [a_{ij}] + [b_{ij}] = [a_{ij} + b_{ij}] \overset{*}{=} [b_{ij} + a_{ij}] = [b_{ij}] + [a_{ij}] = \mathbf{B} + \mathbf{A}.$$
+A $*$-gal jelzett egyenlőségnél használjuk a számok összeadásának kommutativitását. A többi állítás hasonlóan bizonyítható.
+
+**5.5.** Helyettesítés előtt: $\mathbf{u}^{\mathsf{T}}\mathbf{u}$, $\begin{bmatrix} 2 & -1 & -1 \end{bmatrix}\mathbf{u}$. Az $\mathbf{u} = \mathbf{Ax}$ helyettesítés elvégzése után $\mathbf{x}^{\mathsf{T}}\mathbf{A}^{\mathsf{T}}\mathbf{Ax}$, $\begin{bmatrix} 2 & -1 & -1 \end{bmatrix}\mathbf{Ax}$, ahol
+$$\mathbf{x} = \begin{bmatrix} x_1 \\ x_2 \\ x_3 \end{bmatrix}, \quad \mathbf{u} = \begin{bmatrix} u_1 \\ u_2 \\ u_3 \end{bmatrix}, \quad \mathbf{A} = \begin{bmatrix} 3 & 2 & 4 \\ 1 & -3 & 1 \\ 2 & -1 & -3 \end{bmatrix}.$$
+
+**5.6.** $\begin{bmatrix} 1 & 3 \\ 2 & 8 \end{bmatrix} = \begin{bmatrix} 1 & 0 \\ 2 & 1 \end{bmatrix}\begin{bmatrix} 1 & 0 \\ 0 & 2 \end{bmatrix}\begin{bmatrix} 1 & 3 \\ 0 & 1 \end{bmatrix}$
+
+**5.7.** $\begin{bmatrix} 1 & 2 \\ -2 & -1 \end{bmatrix} = \begin{bmatrix} 1 & 0 \\ -2 & 1 \end{bmatrix}\begin{bmatrix} 1 & 0 \\ 0 & 3 \end{bmatrix}\begin{bmatrix} 1 & 2 \\ 0 & 1 \end{bmatrix}$
+
+**5.8.** $\begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix} = \begin{bmatrix} 1 & 0 \\ 1 & 1 \end{bmatrix}\begin{bmatrix} 1 & 0 \\ 0 & 0 \end{bmatrix}\begin{bmatrix} 1 & 1 \\ 0 & 1 \end{bmatrix}$
+
+**5.9.** $\begin{bmatrix} 2 & 4 \\ 3 & 8 \end{bmatrix} = \begin{bmatrix} 2 & 0 \\ 3 & 1 \end{bmatrix}\begin{bmatrix} 1 & 0 \\ 0 & 2 \end{bmatrix}\begin{bmatrix} 1 & 2 \\ 0 & 1 \end{bmatrix}$
+
+**5.10.** $\begin{bmatrix} 2 & 0 & 4 \\ 0 & 2 & 0 \\ 3 & 2 & 7 \end{bmatrix} = \begin{bmatrix} 2 & 0 & 0 \\ 0 & 2 & 0 \\ 3 & 2 & 1 \end{bmatrix}\begin{bmatrix} 1 & 0 & 2 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \end{bmatrix}$
+
+**5.11.** $\begin{bmatrix} 1 & 1 & 2 \\ 1 & 1 & 1 \\ 2 & 4 & 5 \end{bmatrix} = \begin{bmatrix} 1 & 0 & 0 \\ 1 & 1 & 0 \\ 2 & 0 & 1 \end{bmatrix}\begin{bmatrix} 1 & 0 & 2 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \end{bmatrix}$
+
+**5.12.** Legyen $\mathbf{A} = \begin{bmatrix} a & b \\ c & d \end{bmatrix}$. Négyzete a zérusmátrix, azaz
+$$\mathbf{A}^2 = \begin{bmatrix} a & b \\ c & d \end{bmatrix}\begin{bmatrix} a & b \\ c & d \end{bmatrix} = \begin{bmatrix} a^2 + bc & b(a + d) \\ c(a + d) & bc + d^2 \end{bmatrix} = \begin{bmatrix} 0 & 0 \\ 0 & 0 \end{bmatrix}.$$
+Innen vagy $a = d = 0$ és $b$ vagy $c$ legalább egyike 0, vagy $a \neq 0$, $c \neq 0$ és $b = -a^2/c$, $d = -a$.
+
+**5.13.** A feladat érdekes, abban a Fibonacci sorozat elemei bukkannak föl. Ez az $f_0 = 0$, $f_1 = 1$, $f_{k+1} = f_k + f_{k-1}$ egyenlőségekkel definiált sorozat, melynek első néhány tagja: $0, 1, 1, 2, 3, 5, 8, 13, 21, \ldots$ Tekintsük $\mathbf{B}$ néhány hatványát:
+$$\mathbf{A}^2 = \begin{bmatrix} 0 & 1 \\ 1 & 1 \end{bmatrix}\begin{bmatrix} 0 & 1 \\ 1 & 1 \end{bmatrix} = \begin{bmatrix} 1 & 1 \\ 1 & 2 \end{bmatrix} = \begin{bmatrix} f_1 & f_2 \\ f_2 & f_3 \end{bmatrix},$$
+$$\mathbf{A}^3 = \mathbf{A}^2\mathbf{A} = \begin{bmatrix} 1 & 1 \\ 1 & 2 \end{bmatrix}\begin{bmatrix} 0 & 1 \\ 1 & 1 \end{bmatrix} = \begin{bmatrix} 1 & 2 \\ 2 & 3 \end{bmatrix} = \begin{bmatrix} f_2 & f_3 \\ f_3 & f_4 \end{bmatrix}.$$
+Ennek alapján azt sejtjük, hogy
+$$\mathbf{A}^n = \begin{bmatrix} f_{n-1} & f_n \\ f_n & f_{n+1} \end{bmatrix}.$$
+Az állítás $n = 1, 2, 3$ esetén igaz, és $n$-ről öröklődik $n + 1$-re, ugyanis
+$$\mathbf{A}^{n+1} = \mathbf{A}^n\mathbf{A} = \begin{bmatrix} f_{n-1} & f_n \\ f_n & f_{n+1} \end{bmatrix}\begin{bmatrix} 0 & 1 \\ 1 & 1 \end{bmatrix} = \begin{bmatrix} f_n & f_{n-1} + f_n \\ f_{n+1} & f_n + f_{n+1} \end{bmatrix} = \begin{bmatrix} f_n & f_{n+1} \\ f_{n+1} & f_{n+2} \end{bmatrix}.$$
+
+**5.14.** $\mathbf{C} = \mathbf{AB}$ Einstein-konvencióval: $c_{ij} = a_{ik}b_{kj}$.
+
+**5.17.** $\begin{bmatrix} 2 & -3 & 0 & 0 & 0 \\ -1 & 2 & 0 & 0 & 0 \\ 0 & 0 & -5 & 3 & 3 \\ 0 & 0 & -16 & 9 & 10 \\ 0 & 0 & 28 & -16 & -17 \end{bmatrix}$
+
+**5.18.** $\begin{bmatrix} 2 & -3 & 7 & -4 & -4 \\ -1 & 2 & -7 & 4 & 4 \\ 0 & 0 & -5 & 3 & 3 \\ 0 & 0 & -16 & 9 & 10 \\ 0 & 0 & 28 & -16 & -17 \end{bmatrix}$
+
+**5.19.** $\begin{bmatrix} -1 & 0 & 1 & 1 & 1 \\ 2 & -1 & -1 & -1 & -1 \\ -1 & 1 & 1 & 0 & 0 \\ -1 & 1 & 0 & 1 & 0 \\ -1 & 1 & 0 & 0 & 1 \end{bmatrix}$
+
+**5.22.** A fölcserélhetőségre vonatkozó $\mathbf{AB} = \mathbf{BA}$ egyenletet szorozzuk meg mindkét oldalról $\mathbf{B}^{-1}$-gyel:
+$$\mathbf{B}^{-1}(\mathbf{AB})\mathbf{B}^{-1} = \mathbf{B}^{-1}(\mathbf{BA})\mathbf{B}^{-1}.$$
+Az asszociativitást használva
+$$(\mathbf{B}^{-1}\mathbf{A})(\mathbf{B}\mathbf{B}^{-1}) = (\mathbf{B}^{-1}\mathbf{B})(\mathbf{A}\mathbf{B}^{-1}),$$
+amiből $\mathbf{B}\mathbf{B}^{-1} = \mathbf{I}$ azonosság fölhasználásával kapjuk, hogy
+$$\mathbf{B}^{-1}\mathbf{A} = \mathbf{A}\mathbf{B}^{-1}.$$
+
+**5.23.** Azt mondjuk, hogy a $\circ$ művelet invertálható a $H$ egy $R$ részhalmazán, ha bármely $a, b, c \in R$ elem esetén az
+$$a \circ x = b, \qquad y \circ a = c$$
+egyenletek mindegyike megoldható, azaz vannak olyan $x, y \in H$ elemek, melyek kielégítik a fenti egyenleteket. Ha a definícióbeli $\circ$ kommutatív művelet, akkor elég a fenti két egyenlet egyikét tekinteni.
+
+**5.24.** a) Az $e \in H$ semleges elem, ha minden $a \in H$ elemre $a \circ e = e \circ a = a$. b) Azt mondjuk, hogy a $\circ$ műveletre nézve $a$ inverze $b$, ha $a \circ b = b \circ a = e$.
+
+**5.26.** Elég megmutatni, hogy
+$$\left(\mathbf{A}^{-1} - \frac{\mathbf{A}^{-1}\mathbf{u}\mathbf{v}^{\mathsf{T}}\mathbf{A}^{-1}}{1 + \mathbf{v}^{\mathsf{T}}\mathbf{A}^{-1}\mathbf{u}}\right)(\mathbf{A} + \mathbf{u}\mathbf{v}^{\mathsf{T}}) = \mathbf{I},$$
+mert ez a formula igazolása mellett azt is bizonyítja, hogy $\mathbf{A} + \mathbf{u}\mathbf{v}^{\mathsf{T}}$ invertálható.
+$$\begin{aligned} &\left(\mathbf{A}^{-1} - \frac{\mathbf{A}^{-1}\mathbf{u}\mathbf{v}^{\mathsf{T}}\mathbf{A}^{-1}}{1 + \mathbf{v}^{\mathsf{T}}\mathbf{A}^{-1}\mathbf{u}}\right)(\mathbf{A} + \mathbf{u}\mathbf{v}^{\mathsf{T}}) \\ &= \mathbf{A}^{-1}\mathbf{A} + \mathbf{A}^{-1}\mathbf{u}\mathbf{v}^{\mathsf{T}} - \frac{\mathbf{A}^{-1}\mathbf{u}\mathbf{v}^{\mathsf{T}}\mathbf{A}^{-1}\mathbf{A}}{1 + \mathbf{v}^{\mathsf{T}}\mathbf{A}^{-1}\mathbf{u}} - \frac{\mathbf{A}^{-1}\mathbf{u}\mathbf{v}^{\mathsf{T}}\mathbf{A}^{-1}\mathbf{u}\mathbf{v}^{\mathsf{T}}}{1 + \mathbf{v}^{\mathsf{T}}\mathbf{A}^{-1}\mathbf{u}} \\ &= \mathbf{I} + \mathbf{A}^{-1}\mathbf{u}\mathbf{v}^{\mathsf{T}} - \frac{\mathbf{A}^{-1}\mathbf{u}\mathbf{1}\mathbf{v}^{\mathsf{T}}}{1 + \mathbf{v}^{\mathsf{T}}\mathbf{A}^{-1}\mathbf{u}} - \frac{\mathbf{A}^{-1}\mathbf{u}(\mathbf{v}^{\mathsf{T}}\mathbf{A}^{-1}\mathbf{u})\mathbf{v}^{\mathsf{T}}}{1 + \mathbf{v}^{\mathsf{T}}\mathbf{A}^{-1}\mathbf{u}} \\ &= \mathbf{I} + \mathbf{A}^{-1}\mathbf{u}\mathbf{v}^{\mathsf{T}} - \frac{\mathbf{A}^{-1}\mathbf{u}(1 + \mathbf{v}^{\mathsf{T}}\mathbf{A}^{-1}\mathbf{u})\mathbf{v}^{\mathsf{T}}}{1 + \mathbf{v}^{\mathsf{T}}\mathbf{A}^{-1}\mathbf{u}} \\ &\overset{*}{=} \mathbf{I} + \mathbf{A}^{-1}\mathbf{u}\mathbf{v}^{\mathsf{T}} - \mathbf{A}^{-1}\mathbf{u}\mathbf{v}^{\mathsf{T}} \\ &= \mathbf{I}. \end{aligned}$$
+A $*$-gal jelzett egyenlőségnél azt használtuk ki, hogy $1 \times 1$-es mátrixszal való szorzás egybeesik a skalárral való szorzással, a skalár tényező pedig egy mátrixszorzatban átvihető más helyre, így az adott törtkifejezésben egyszerűsíthettünk vele.
+
+**5.27.** Első lépésként kifejezzük az új mátrixot $\mathbf{A}$-ból mátrixműveletekkel. Legyen $\mathbf{e}_i$ és $\mathbf{e}_j$ az $i$-edik és $j$-edik standard egységvektor. Ekkor a módosított mátrix
+$$\mathbf{B} = \mathbf{A} + \varepsilon\mathbf{e}_i\mathbf{e}_j^{\mathsf{T}}.$$
+Erre alkalmazható a Sherman–Morrison-formula az $\mathbf{u} = \mathbf{e}_i$ és $\mathbf{v} = \varepsilon\mathbf{e}_j$ választással.
+$$\begin{aligned} \mathbf{B}^{-1} &= \left(\mathbf{A} + \varepsilon\mathbf{e}_i\mathbf{e}_j^{\mathsf{T}}\right)^{-1} \\ &= \mathbf{A}^{-1} - \frac{\mathbf{A}^{-1}\mathbf{e}_i(\varepsilon\mathbf{e}_j)^{\mathsf{T}}\mathbf{A}^{-1}}{1 + \varepsilon\mathbf{e}_j^{\mathsf{T}}\mathbf{A}^{-1}\mathbf{e}_i} \\ &= \mathbf{A}^{-1} - \varepsilon\frac{(\mathbf{A}^{-1})_{*i}(\mathbf{A}^{-1})_{j*}}{1 + \varepsilon(\mathbf{A}^{-1})_{ji}} \end{aligned}$$
+
+**5.28.** Az előző példa alkalmazásával
+$$\mathbf{B}^{-1} = \mathbf{A}^{-1} - \frac{1}{10}\frac{(\mathbf{A}^{-1})_{*1}(\mathbf{A}^{-1})_{1*}}{1 + \frac{1}{10}(\mathbf{A}^{-1})_{11}}$$
+$$= \begin{bmatrix} 0 & -2/5 & 3/5 & 0 \\ -2/5 & 7/5 & -8/5 & 3/5 \\ 3/5 & -8/5 & 7/5 & -2/5 \\ 0 & 3/5 & -2/5 & 0 \end{bmatrix} - \frac{1}{10}\frac{\begin{bmatrix} 0 \\ -2/5 \\ 3/5 \\ 0 \end{bmatrix}\begin{bmatrix} 0 & -2/5 & 3/5 & 0 \end{bmatrix}}{1 + \frac{1}{10}\cdot 0}$$
+$$= \begin{bmatrix} 0 & -2/5 & 3/5 & 0 \\ -2/5 & 7/5 & -8/5 & 3/5 \\ 3/5 & -8/5 & 7/5 & -2/5 \\ 0 & 3/5 & -2/5 & 0 \end{bmatrix} - \frac{1}{10}\begin{bmatrix} 0 & 0 & 0 & 0 \\ 0 & 4/25 & -6/25 & 0 \\ 0 & -6/25 & 9/25 & 0 \\ 0 & 0 & 0 & 0 \end{bmatrix}$$
+$$= \begin{bmatrix} 0 & -2/5 & 3/5 & 0 \\ -2/5 & 173/125 & -197/125 & 3/5 \\ 3/5 & -197/125 & 341/250 & -2/5 \\ 0 & 3/5 & -2/5 & 0 \end{bmatrix}.$$
+Tizedestörtekkel számolva:
+$$\mathbf{A}^{-1} = \begin{bmatrix} 0.0 & -0.4 & 0.6 & 0.0 \\ -0.4 & 1.4 & -1.6 & 0.6 \\ 0.6 & -1.6 & 1.4 & -0.4 \\ 0.0 & 0.6 & -0.4 & 0.0 \end{bmatrix}, \quad \mathbf{B}^{-1} = \begin{bmatrix} 0.000 & -0.400 & 0.600 & 0.000 \\ -0.400 & 1.384 & -1.576 & 0.600 \\ 0.600 & -1.576 & 1.364 & -0.400 \\ 0.000 & 0.600 & -0.400 & 0.000 \end{bmatrix}.$$
+
+**5.31.** Az első egyenletet kivonjuk az utolsóból, innen $x = 1$, ezután visszahelyettesítés a második, harmadik, majd első egyenletbe.
+
+**5.35.** $\mathbf{L} = \begin{bmatrix} 1 & 0 & 0 \\ 1/2 & 1 & 0 \\ 1/4 & 1/3 & 1 \end{bmatrix}$, $\mathbf{U} = \begin{bmatrix} 4 & 4 & 4 \\ 0 & 3 & 3 \\ 0 & 0 & 2 \end{bmatrix}$.
+
+**5.36.** $\mathbf{L} = \begin{bmatrix} 1 & 0 & 0 \\ 1/2 & 1 & 0 \\ 1/4 & 1/3 & 1 \end{bmatrix}$, $\mathbf{U} = \begin{bmatrix} 4 & 8 & 4 \\ 0 & 3 & 6 \\ 0 & 0 & 1 \end{bmatrix}$.
+
+**5.37.** $\mathbf{L} = \begin{bmatrix} 1 & 0 & 0 \\ 4/5 & 1 & 0 \\ -3/5 & 7/9 & 1 \end{bmatrix}$, $\mathbf{U} = \begin{bmatrix} 5 & -4 & -2 \\ 0 & -9/5 & -17/5 \\ 0 & 0 & -23/9 \end{bmatrix}$.
+
+**5.38.** $\mathbf{L} = \begin{bmatrix} 1 & 0 & 0 & 0 \\ 2/3 & 1 & 0 & 0 \\ -1/3 & 1 & 1 & 0 \\ 1 & -3/10 & -1/2 & 1 \end{bmatrix}$, $\mathbf{U} = \begin{bmatrix} -3 & 1 & -3 & 0 \\ 0 & 10/3 & 5 & -4 \\ 0 & 0 & -3 & 4 \\ 0 & 0 & 0 & -1/10 \end{bmatrix}$.
+
+**5.39.** $\mathbf{L} = \begin{bmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \\ 1/2 & 1/2 & 1 & 0 \\ -1/2 & -1/2 & 1/3 & 1 \end{bmatrix}$, $\mathbf{U} = \begin{bmatrix} -2 & -2 & 0 & 3 \\ 0 & 2 & -2 & -1 \\ 0 & 0 & 3 & -1 \\ 0 & 0 & 0 & 7/3 \end{bmatrix}$.
+
+**5.40.** $\mathbf{L} = \begin{bmatrix} 1.00 & 0.00 & 0.00 \\ -0.25 & 1.00 & 0.00 \\ 0.50 & 1.00 & 1.00 \end{bmatrix}$, $\mathbf{U} = \begin{bmatrix} 2.00 & 2.00 & -2.00 \\ 0.00 & 0.50 & -1.50 \\ 0.00 & 0.00 & 3.50 \end{bmatrix}$.
+
+**5.41.** $\mathbf{y} = (0, 3, 4)$, $\mathbf{x} = (-1, -1, 2)$.
+
+**5.42.** $\mathbf{y} = (0, 3, 1)$, $\mathbf{x} = (1, -1, 1)$.
+
+**5.43.** $\mathbf{y} = (3, -17/5, -23/9)$, $\mathbf{x} = (1, 0, 1)$.
+
+**5.44.** $\mathbf{y} = (5.6, 0.4, 1.4)$, $\mathbf{x} = (1.2, 2.0, 0.4)$.
+
+**5.45.** Mivel ismerjük az együtthatómátrix LU-felbontását – az épp az (5.2)-beli felbontás –, ezért ezt használjuk, és először megoldjuk az $\mathbf{Ly} = \mathbf{b}$ egyenletrendszert:
+$$\begin{bmatrix} 1 & 0 & 0 \\ 1/2 & 1 & 0 \\ 1/4 & 1/2 & 1 \end{bmatrix}\begin{bmatrix} y_1 \\ y_2 \\ y_3 \end{bmatrix} = \begin{bmatrix} 8 \\ 4 \\ 4 \end{bmatrix}$$
+Ebből $y_1 = 8$, ezt a második egyenletbe helyettesítve kapjuk, hogy $y_2 = 0$, majd ezeket a harmadikba helyettesítve kapjuk, hogy $y_3 = 2$. Ezután megoldjuk az $\mathbf{Ux} = \mathbf{y}$ egyenletrendszert, aminek alakja
+$$\begin{bmatrix} 4 & 8 & 4 & 8 \\ 0 & 2 & 2 & 0 \\ 0 & 0 & 0 & 2 \end{bmatrix}\begin{bmatrix} x_1 \\ x_2 \\ x_3 \\ x_4 \end{bmatrix} = \begin{bmatrix} 8 \\ 0 \\ 2 \end{bmatrix}.$$
+Ismét egyszerű visszahelyettesítésekkel kapjuk, hogy $x_4 = 1$, $x_3 = s$ a szabad változó, $x_2 = -s$ és $x_1 = s$. A megoldás $\mathbf{x} = (s, -s, s, 1) = (0, 0, 0, 1) + s(1, -1, 1, 0)$.
+
+**5.46.** Az $\mathbf{LY} = \mathbf{I}$ egyenletből
+$$\mathbf{Y} = \begin{bmatrix} 1 & 0 & 0 \\ -1/2 & 1 & 0 \\ -1/12 & -1/3 & 1 \end{bmatrix},$$
+míg az $\mathbf{UX} = \mathbf{Y}$ egyenlet megoldása, egyúttal $\mathbf{A}$ inverze
+$$\mathbf{X} = \begin{bmatrix} 5/12 & -1/3 & 0 \\ -1/8 & 1/2 & -1/2 \\ -1/24 & -1/6 & 1/2 \end{bmatrix}.$$
+
+**5.47.** $$\mathbf{Y} = \begin{bmatrix} 1 & 0 & 0 \\ -1/2 & 1 & 0 \\ -1/12 & -1/3 & 1 \end{bmatrix}, \quad \mathbf{X} = \begin{bmatrix} 1/3 & -5/3 & 3 \\ 0 & 1 & -2 \\ -1/12 & -1/3 & 1 \end{bmatrix}.$$
+
+**5.48.** Tegyük fel, hogy létezik az $n$-edrendű $\mathbf{A}$ mátrixnak két LU-felbontása is, azaz $\mathbf{A} = \mathbf{L}_1\mathbf{U}_1 = \mathbf{L}_2\mathbf{U}_2$. Mivel $\mathbf{A}$ invertálható, ezért $\mathbf{L}_1, \mathbf{U}_1, \mathbf{L}_2$ és $\mathbf{U}_2$ is. Ugyanis ha pl. $\mathbf{L}_1$ nem volna invertálható, akkor az oszlopterének dimenziója kisebb lenne $n$-nél, és mivel $\mathbf{L}_1\mathbf{U}_1$ oszlopvektorai az $\mathbf{L}_1$ oszlopvektorainak lineáris kombinációi, ezért e szorzat oszlopterének dimenziója is kisebb lenne $n$-nél, azaz $\mathbf{A}$ nem lenne invertálható. A többi mátrix invertálhatósága hasonlóan igazolható. Balról $\mathbf{L}_1$, jobbról $\mathbf{U}_2$ inverzével szorozva kapjuk, hogy
+$$\mathbf{U}_1\mathbf{U}_2^{-1} = \mathbf{L}_1^{-1}\mathbf{L}_2.$$
+A bal oldalon két felső háromszögmátrix szorzataként egy felső háromszögmátrix van, míg a jobb oldalon két alsó háromszögmátrix szorzata, ami alsó háromszögmátrix. Ráadásul a jobb oldal egység főátlójú. Ez csak akkor állhat fönn, ha $\mathbf{U}_1\mathbf{U}_2^{-1} = \mathbf{L}_1^{-1}\mathbf{L}_2 = \mathbf{I}$, azaz ha $\mathbf{L}_1 = \mathbf{L}_2$ és $\mathbf{U}_1 = \mathbf{U}_2$.
+
+**5.49.** $$\mathbf{L} = \begin{bmatrix} 1 & 0 & 0 \\ 2/3 & 1 & 0 \\ 1/3 & 1/2 & 1 \end{bmatrix}, \; \mathbf{U} = \begin{bmatrix} 3 & 3 & 3 \\ 0 & 0 & 1 \\ 0 & 0 & 1/2 \end{bmatrix}, \; \mathbf{P} = \begin{bmatrix} 0 & 1 & 0 \\ 0 & 0 & 1 \\ 1 & 0 & 0 \end{bmatrix}.$$
+
+**5.50.** $$\mathbf{L} = \begin{bmatrix} 1 & 0 & 0 \\ 1/3 & 1 & 0 \\ 2/3 & -1 & 1 \end{bmatrix}, \; \mathbf{U} = \begin{bmatrix} 3 & 4 & 6 & 7 & 9 \\ 0 & 2/3 & 1 & 5/3 & 2 \\ 0 & 0 & 0 & 0 & 0 \end{bmatrix}, \; \mathbf{P} = \begin{bmatrix} 0 & 0 & 1 \\ 1 & 0 & 0 \\ 0 & 1 & 0 \end{bmatrix}.$$
+
+**5.51.** $$\mathbf{L} = \begin{bmatrix} 1.0 & 0.0 & 0.0 \\ 0.0 & 1.0 & 0.0 \\ 0.0 & -0.5 & 1.0 \end{bmatrix}, \; \mathbf{U} = \begin{bmatrix} 0.5 & -2.0 & 2.0 \\ 0.0 & 2.0 & 2.0 \\ 0.0 & 0.0 & 2.5 \end{bmatrix}, \; \mathbf{P} = \begin{bmatrix} 0 & 1 & 0 \\ 0 & 0 & 1 \\ 1 & 0 & 0 \end{bmatrix}.$$
+
+**5.52.** Egyrészt $\det\mathbf{A} = 1 \neq 0$, és így $\det\mathbf{U} \neq 0$, tehát $u_{11} \neq 0$, másrészt $\mathbf{A}$ egy LU-felbontás bal felső elemére $0 = a_{11} = (\mathbf{LU})_{11} = l_{11}u_{11} \neq 0$, ami ellentmondás. Az első két sor felcserélése után kapott mátrixnál hasonló ellentmondásra jutunk az $a_{22}$ elemmel.
+
+# 6. Determináns
+
+Egy valós négyzetes mátrix sorvektorai által kifeszített paralelepipedon térfogata jó jellemzője a mátrix egyes tulajdonságainak. Ehhez közel áll a determináns fogalma, melyet egy négyzetes mátrixokon értelmezett skalárértékű függvényként definiálunk, ami elemi sorműveletekkel számolható.
+
+### Paralelogramma előjeles területe
+
+A paralelogramma területéről szóló 1.38. tétel szerint az $(a, b)$ és a $(c, d)$ vektorok által kifeszített paralelogramma területe $|ad - bc|$, $ad - bc$ pontosan akkor pozitív, ha az $(a, b)$ és a $(c, d)$ vektorok jobbrendszert alkotnak, és pontosan akkor negatív, ha balrendszert. Ez a következő definícióhoz vezet: két síkbeli vektor által kifeszített paralelogramma *előjeles területe* megegyezik területével, ha a két vektor jobbrendszert alkot, és a terület $-1$-szeresével, ha balrendszert. Jelölje $f$ az előjelesterület-függvényt, azaz legyen $f(\mathbf{u}, \mathbf{v}) = ad - bc$, ahol $\mathbf{u} = (a, b)$, $\mathbf{v} = (c, d)$. $f$ néhány tulajdonsága:
+
+1. $f(c\mathbf{u}, \mathbf{v}) = cf(\mathbf{u}, \mathbf{v})$, és $f(\mathbf{u}, c\mathbf{v}) = cf(\mathbf{u}, \mathbf{v})$, azaz ha $f$ egyik argumentumát $c$-vel szorozzuk, a függvényérték $c$-szeresére változik. (Azt mondjuk, hogy $f$ *homogén* mindkét változójában.) Ez nyilvánvaló, hisz egy paralelogramma egyik oldalának $c$-szeresére növelése $c$-szerezi a területét. Ha $c$ negatív, akkor a vektorok körüljárása is változik összhangban azzal, hogy az előjeles területének is megváltozik az előjele (6.1. ábra).
+
+2. $f(\mathbf{u}, \mathbf{v}) = -f(\mathbf{v}, \mathbf{u})$, hisz a két vektor sorrendjét megcserélve megváltozik orientációjuk, jobbrendszerből balrendszerbe és viszont (6.2. ábra).
+
+3. $f(\mathbf{u}, \mathbf{v}) = f(\mathbf{u} + c\mathbf{v}, \mathbf{v}) = f(\mathbf{u}, \mathbf{v} + c\mathbf{u})$, azaz az $\left[\begin{smallmatrix} \mathbf{u} \\ \mathbf{v} \end{smallmatrix}\right] = \left[\begin{smallmatrix} a & b \\ c & d \end{smallmatrix}\right]$ mátrix sorvektorai által kifeszített paralelogramma területe megegyezik a hozzáadás sorművelete után kapott mátrix sorvektoraihoz tartozó paralelogramma területével (6.3. ábra).
+
+4. $f(\mathbf{u}, \mathbf{u}) = 0$, és hasonlóképp $f(\mathbf{u}, \mathbf{0}) = f(\mathbf{0}, \mathbf{u}) = 0$ tetszőleges $\mathbf{u}$ vektorra, ugyanis az elfajuló paralelogramma területe 0.
+
+*6.1. ábra. Az $f(\mathbf{u}, c_1\mathbf{v}) = c_1 f(\mathbf{u}, \mathbf{v})$ ($c_1 > 0$) és $f(\mathbf{u}, c_2\mathbf{v}) = c_2 f(\mathbf{u}, \mathbf{v})$ ($c_2 < 0$) összefüggések szemléltetése.*
+
+*6.2. ábra. Két vektor sorrendjének cseréje megváltoztatja az orientációjukat.*
+
+*6.3. ábra. Az $f(\mathbf{u}, \mathbf{v}) = f(\mathbf{u} + c\mathbf{v}, \mathbf{v})$ és az $f(\mathbf{u}, \mathbf{v}) = f(\mathbf{u}, \mathbf{v} + c\mathbf{u})$ összefüggések szemléltetése.*
+
+5. $f(\mathbf{i}, \mathbf{j}) = 1$, azaz a standard bázis által kifeszített egységnégyzet területe 1.
+
+Az állítások a fenti ábrákkal szemléltetett egyszerű geometriai érvelések mellett az $f((a, b), (c, d)) = ad - bc$ formulával is bizonyíthatók. E tulajdonságok segítségével általánosítani tudjuk az előjeles terület fogalmát, és bevezethetjük az előjeles térfogat fogalmát az $n$-dimenziós valós tér paralelepipedonjaira.
+
+### Paralelepipedon előjeles térfogata
+
+A vegyes szorzat tárgyalásakor láttuk (1.31. definíció), hogy a valós háromdimenziós térben három vektor vegyes szorzata a vektorok által kifeszített paralelepipedon előjeles térfogatát adja, ahol az előjel aszerint pozitív vagy negatív, hogy a három vektor jobb- vagy balrendszert alkot. A háromdimenziós tér paralelepipedonjainak $f$ előjeles térfogatára a paralelogrammánál látottakhoz hasonló tulajdonságok igazolhatók.
+
+1. $f$ homogén mindhárom argumentumában, azaz egy konstans tényező bármelyik argumentumból kiemelhető, pl. $f(c\mathbf{u}, \mathbf{v}, \mathbf{w}) = cf(\mathbf{u}, \mathbf{v}, \mathbf{w})$.
+
+2. Bármely két argumentum felcserélése megváltoztatja a függvényérték előjelét, pl. $f(\mathbf{u}, \mathbf{v}, \mathbf{w}) = -f(\mathbf{w}, \mathbf{v}, \mathbf{u})$, $f(\mathbf{u}, \mathbf{v}, \mathbf{w}) = -f(\mathbf{u}, \mathbf{w}, \mathbf{v})$.
+
+3. $f$ bármely argumentumához hozzáadva egy másik konstansszorosát, a függvényérték nem változik, pl. $f(\mathbf{u}, \mathbf{v}, \mathbf{w}) = f(\mathbf{u} + c\mathbf{w}, \mathbf{v}, \mathbf{w})$.
+
+4. Ha $f$ bármely két argumentuma megegyezik, a függvényérték 0, pl. $f(\mathbf{u}, \mathbf{v}, \mathbf{u}) = 0$. Ugyancsak 0 értéket kapunk, ha $f$ bármelyik argumentuma a $\mathbf{0}$-vektor, pl. $f(\mathbf{u}, \mathbf{0}, \mathbf{w}) = 0$.
+
+5. $f(\mathbf{i}, \mathbf{j}, \mathbf{k}) = 1$, azaz az egységkocka térfogata 1.
+
+Látjuk, hogy $f$ eddig megismert tulajdonságai vagy azonnal megadják $f$ értékét (ha az 0 vagy 1), vagy az argumentumok olyan megváltoztatását tartalmazzák, amelyekhez hasonlókat a mátrixok elemi sorműveleteinél láttunk. Valóban, e tulajdonságok nem csak egy új fogalom – az előjeles térfogat általánosítását –, de egyúttal annak egyszerű kiszámítási módját is lehetővé teszik.
+
+## A determináns mint sorvektorainak függvénye
+
+### A determináns definíciója
+
+Az $n$ darab $n$-dimenziós vektor által kifeszített paralelepipedon előjeles térfogata helyett olyan fogalmat fogunk definiálni, mely speciális esetként ezt is tartalmazza. Ez lesz a determináns. A determináns tehát olyan függvény, mely $n$ darab $n$-dimenziós vektorhoz – vagy ami ezzel ekvivalens, a belőlük képzett $n \times n$-es mátrixhoz – egy skalárt rendel. A definícióban csak az előjeles térfogat vizsgálatában megismert függvénytulajdonságokat használjuk.
+
+Az $\mathbf{A} = [a_{ij}]_n$ mátrixhoz rendelt skalárt, azaz determinánsának értékét $\det(\mathbf{A})$, $|\mathbf{A}|$ vagy $|a_{ij}|$ jelöli. Részletezve az általános jelölést az $\mathbf{A}$ mátrixra és determinánsára:
+$$\mathbf{A} = \begin{bmatrix} a_{11} & a_{12} & \ldots & a_{1n} \\ a_{21} & a_{22} & \ldots & a_{2n} \\ \vdots & \vdots & \ddots & \vdots \\ a_{n1} & a_{n2} & \ldots & a_{nn} \end{bmatrix}, \qquad \det(\mathbf{A}) = \begin{vmatrix} a_{11} & a_{12} & \ldots & a_{1n} \\ a_{21} & a_{22} & \ldots & a_{2n} \\ \vdots & \vdots & \ddots & \vdots \\ a_{n1} & a_{n2} & \ldots & a_{nn} \end{vmatrix}.$$
+E jelölésnek megfelelően a $\det(\mathbf{A})$ determináns sorain, oszlopain, elemein az $\mathbf{A}$ mátrix sorait, oszlopait, elemeit értjük.
+
+**6.1. definíció (Determináns).** *Determinánson azt a négyzetes mátrixokon értelmezett és $\det$-tel jelölt skalár értékű függvényt értjük, mely eleget tesz a következő feltételeknek:*
+- *D1. értéke $c$-szeresére változik, ha egy sorát $c$-vel szorozzuk,*
+- *D2. értéke $-1$-szeresére változik, ha két különböző sorát fölcseréljük,*
+- *D3. értéke nem változik a hozzáadás elemi sorművelete közben,*
+- *D4. az egységmátrixhoz 1-et rendel.*
+
+> A determinánsokat először Seki Takakazu (関 孝和, 1642–1708) vizsgálta, eredményei 1683-ban jelentek meg. Seki 2-től 5-ödrendűek értékét tudta kiszámolni. Európában is 1683-ban jelenik meg a fogalom először Leibniz egy l'Hôpitalnak írt levelében, melyet később reziltánsnak hív. A determináns név Gausstól származik. A mátrixok és determinánsok történetének szép összefoglalója olvasható a MacTutor History of Mathematics weboldalon.
+
+> Mint látjuk, a definíció első három feltétele azt mondja ki, hogy hogyan változik a determináns értéke elemi sorműveletek közben. Az egyetlen változás, hogy itt a skalárral való szorzásnál nem kötöttük ki, hogy $c$ nem lehet 0. Látni fogjuk, hogy e kikötés elhagyása nem fog gondot okozni az elemi sorműveletek determinánsokra való alkalmazásában.
+
+> A definícióból nem látszik, hogy a feltételeket kielégítő függvény létezik-e és ha igen, egyértelmű-e. Ezeket később igazolni fogjuk.
+
+> A definícióban nem törekedtünk a feltételek minimalizálására, inkább a természetesség és egyszerűség volt a fontosabb szempont. Például a D2. feltétel elhagyható, hisz sorcsere előállítható a két másik sorművelet segítségével, amint azt a 2.29. feladatból is láthattuk.
+
+> Az $1 \times 1$-es $[a]$ mátrix determinánsa $\det([a]) = a$, ugyanis a determináns definíciója szerint $\det([1]) = 1$, és $\det([a]) = \det([a \cdot 1]) = a\det([1]) = a$. A D2. és D3. feltételek teljesülnek, hisz a determinánsnak csak egy sora van. A jelölésbeli zavarok elkerülésére az $1 \times 1$-es $[a]$ mátrix determinánsára csak a $\det([a])$ vagy $\det(a)$ jelölést használjuk, mert $|a|$ az $a$ abszolút értékét jelöli!
+
+> Hamarosan igazolni fogjuk, hogy a fejezet elején említett
+> $$\begin{vmatrix} a & b \\ c & d \end{vmatrix} = ad - bc$$
+> képlet illeszkedik e definícióhoz.
+
+> A determináns tekinthető olyan $n$-változós függvénynek, melynek $n$ argumentumába a mátrix $n$ sorvektora kerül. Nem okoz félreértést, ha ezt a függvényt is $\det$ jelöli. Ha tehát $\mathbf{A}$ sorvektorai $\mathbf{s}_1, \mathbf{s}_2, \ldots, \mathbf{s}_n$, akkor $\det(\mathbf{A})$ megegyezik a $\det(\mathbf{s}_1, \mathbf{s}_2, \ldots, \mathbf{s}_n)$ függvényértékkel. Például a $3 \times 3$-as egységmátrix determinánsa az alábbi alakokba írható:
+> $$\det(\mathbf{I}_3) = \begin{vmatrix} 1 & 0 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \end{vmatrix} = \det((1, 0, 0), (0, 1, 0), (0, 0, 1)) = \det(\mathbf{e}_1, \mathbf{e}_2, \mathbf{e}_3),$$
+> ahol $\mathbf{e}_1, \mathbf{e}_2, \mathbf{e}_3$ a standard egységvektorokat jelöli. A determináns fenti definíciója könnyen fölírható e jelöléssel is (ld. 6.11. feladat).
+
+### Mikor 0 a determináns értéke
+
+Gyakran vízválasztó, hogy egy determináns értéke zérus-e.
+
+**6.2. tétel (Ránézésre 0 determinánsok).** *Ha egy mátrixnak van egy zérussora, akkor determinánsa 0. Ha egy mátrixnak van két azonos sora, akkor determinánsa 0.*
+
+*Bizonyítás.* Ha egy mátrixnak van egy zérussora, akkor e sort bármely $c$ számmal beszorozva e sor nem változik, így a determináns értéke sem. Másrészt a determináns definíciójának D1. pontja szerint a determináns értéke $c$-szeresére változik. E két feltétel csak úgy állhat fönn minden $c$ skalárra, ha $\det(\mathbf{A}) = 0$. (Ennek következményeként a definíció D1. pontjában nem kell a $c = 0$ lehetőséget kizárni.)
+
+Ha egy determinánsnak két azonos sora van, akkor D3. szerint értéke nem változik, ha az egyik sort a másikból kivonjuk, így egy zérussort kapunk, akkor pedig a determináns értéke 0. $\square$
+
+**6.3. tétel (Zérus értékű determináns).** *Legyen $\mathbf{A}$ négyzetes mátrix. A következő állítások ekvivalensek:*
+1. *$\det(\mathbf{A}) = 0$,*
+2. *$\mathbf{A}$ sorvektorai lineárisan összefüggők,*
+3. *$\mathbf{A}$ szinguláris,*
+4. *a homogén lineáris $\mathbf{Ax} = \mathbf{0}$ egyenletrendszernek van nemtriviális megoldása.*
+
+*Bizonyítás.* Az 5.20. tételben láttuk, hogy négyzetes mátrix sorvektorai pontosan akkor lineárisan összefüggők, ha a mátrix szinguláris, azaz ha a lépcsős alakra hozás során keletkezik egy 0-sor, ez pedig azzal ekvivalens, hogy a determináns értéke 0. Az utolsó állítás ekvivalenciája a mátrix invertálhatóságáról szóló 5.15. tétel közvetlen következménye. $\square$
+
+**6.4. példa (Zérus értékű determinánsok).** *A sorvektorok lineáris összefüggőségének igazolásával mutassuk meg, hogy*
+$$\begin{vmatrix} 5 & 6 & 8 \\ 2 & 1 & 2 \\ 3 & 5 & 6 \end{vmatrix} = 0, \qquad \begin{vmatrix} 2 & -1 & 0 & -1 \\ -1 & 2 & -1 & 0 \\ 0 & -1 & 2 & -1 \\ -1 & 0 & -1 & 2 \end{vmatrix} = 0.$$
+
+*Megoldás.* Az első determináns első sora a második és a harmadik összege. De fogalmazhatunk úgy is, hogy az első sorból kivonva a másodikat és a harmadikat, a nullvektort kapjuk. Tehát az első mátrix sorvektorai lineárisan összefüggők, így determinánsa 0.
+
+A második determináns sorvektorainak összege a nullvektor, tehát ezek is lineárisan összefüggők, így ez a determináns is 0. $\square$
+
+Az előző 6.3. tétel, valamint az 5.15. tétel fontos következménye a determinánsnak az egyenletrendszerek megoldhatóságával való kapcsolatáról szól:
+
+**6.5. tétel (Egyenletrendszer megoldhatósága és a determináns).** *Legyen $\mathbf{A}$ négyzetes mátrix. Ekkor az alábbi állítások ekvivalensek:*
+1. *$\det\mathbf{A} \neq 0$,*
+2. *az $\mathbf{Ax} = \mathbf{b}$ egyenletrendszer tetszőleges $\mathbf{b}$-re egyértelműen megoldható,*
+3. *az $\mathbf{Ax} = \mathbf{0}$ egyenletrendszernek csak triviális megoldása van.*
+
+> A legegyszerűbb eseteket leszámítva a sorvektorok lineáris összefüggősége „ránézésre" nem látható, de az összefüggőséget bizonyító skalárok – ha szükségünk van rá – megkaphatók az $\mathbf{A}^{\mathsf{T}}\mathbf{x} = \mathbf{0}$ egyenletrendszer nemtriviális megoldásaiból.
+
+> A gyakorlatban – például mért vagy közelítő számítással kapott adatok esetén – annak eldöntése, hogy egy determináns nulla-e, nagy óvatosságot igényel! Az, hogy egy mátrix „közel szinguláris", nem feltétlenül olvasható le abból, hogy a determináns értéke „közel van a nullához". Például az
+> $$\begin{vmatrix} \frac{1}{n} & 0 \\ 0 & n \end{vmatrix} = 1, \quad \text{és az} \quad \begin{vmatrix} \frac{1}{2} & 0 & \ldots & 0 \\ 0 & \frac{1}{2} & \ldots & 0 \\ \vdots & \vdots & \ddots & \vdots \\ 0 & 0 & \ldots & \frac{1}{2} \end{vmatrix} = \frac{1}{2^n}$$
+> determinánsok közül az első értéke tetszőlegesen nagy $n$-re is 1, pedig $\frac{1}{n}$ tetszőlegesen kicsi lehet 0-hoz, és az $\left[\begin{smallmatrix} 0 & 0 \\ 0 & n \end{smallmatrix}\right]$ mátrix már szinguláris. A második determinánsbeli $\frac{1}{2}\mathbf{I}_n$ mátrix nem szinguláris, pedig determinánsának értéke tetszőlegesen közel lehet 0-hoz, igaz, csak elegendően nagy $n$ esetén.
+
+> A véletlen valós mátrixok determinánsa 1 valószínűséggel nem 0, ha a mátrix elemeit valamely folytonos valószínűségeloszlás szerint választjuk. Másként fogalmazva, ha egy valós elemű mátrix determinánsa 0, akkor annak különleges oka van! Ez az ok, a sorvektorok közti lineáris kapcsolat, ami „igen ritkán" esik meg „véletlenül".
+
+### A determináns értékének kiszámítása
+
+A determináns kiszámításához az elemi sorműveleteket fogjuk használni. A 6.1. definíció pontosan megmondja, hogyan változik a determináns értéke az elemi sorműveletek közben. Ha a lépcsős alakra hozás közben nem keletkezik zérussor, akkor a lépcsős alak háromszög alakú, illetve a redukált lépcsős alak diagonális. Ezek értékéről szól a következő tétel:
+
+**6.6. tétel (Háromszögmátrix determinánsa).** *Az alsó vagy felső háromszögmátrix, s így a diagonális mátrix determinánsa megegyezik a főátlóbeli elemek szorzatával.*
+
+*Bizonyítás.* Ha egy háromszögmátrix főátlójában van 0, akkor a redukált lépcsős alakra hozás után a főelemek száma kevesebb lesz, mint a sorok száma, azaz a mátrixban lesz egy zérussor, így determinánsának értéke 0. Ha nincs 0-elem a főátlóban, mind az alsó, mind a felső háromszögmátrix csak a hozzáadás sorművelettel – azaz a determináns értékének megváltoztatása nélkül – diagonálissá alakítható a főátlón kívüli elemek kiküszöbölésével, azaz
+$$\begin{vmatrix} a_{11} & 0 & \ldots & 0 \\ ? & a_{22} & \ldots & 0 \\ \vdots & \vdots & \ddots & \vdots \\ ? & ? & \ldots & a_{nn} \end{vmatrix} = \begin{vmatrix} a_{11} & ? & \ldots & ? \\ 0 & a_{22} & \ldots & ? \\ \vdots & \vdots & \ddots & \vdots \\ 0 & 0 & \ldots & a_{nn} \end{vmatrix} = \begin{vmatrix} a_{11} & 0 & \ldots & 0 \\ 0 & a_{22} & \ldots & 0 \\ \vdots & \vdots & \ddots & \vdots \\ 0 & 0 & \ldots & a_{nn} \end{vmatrix}.$$
+Egy diagonális mátrix determinánsában minden sorból kiemelve a főátlóban szereplő számot kapjuk, hogy
+$$\begin{vmatrix} a_{11} & 0 & \ldots & 0 \\ 0 & a_{22} & \ldots & 0 \\ \vdots & \vdots & \ddots & \vdots \\ 0 & 0 & \ldots & a_{nn} \end{vmatrix} \overset{D1}{=} a_{11}a_{22}\ldots a_{nn}\begin{vmatrix} 1 & 0 & \ldots & 0 \\ 0 & 1 & \ldots & 0 \\ \vdots & \vdots & \ddots & \vdots \\ 0 & 0 & \ldots & 1 \end{vmatrix} = a_{11}a_{22}\ldots a_{nn},$$
+tehát a determináns értéke valóban a főátlóbeli elemek szorzata. $\square$
+
+Például az alábbi determináns értéke egyetlen sorcsere után azonnal leolvasható:
+$$\begin{vmatrix} 3 & 0 & 0 & 0 & 0 \\ 3 & 0 & 0 & 2 & 0 \\ 3 & 0 & 2 & 0 & 0 \\ 3 & 2 & 0 & 0 & 0 \\ 3 & 3 & 3 & 3 & 3 \end{vmatrix} = -\begin{vmatrix} 3 & 0 & 0 & 0 & 0 \\ 3 & 2 & 0 & 0 & 0 \\ 3 & 0 & 2 & 0 & 0 \\ 3 & 0 & 0 & 2 & 0 \\ 3 & 3 & 3 & 3 & 3 \end{vmatrix} = -3 \cdot 2 \cdot 2 \cdot 2 \cdot 3 = -72$$
+
+A determináns kézzel való kiszámításának módja tehát a következő: elemi sorműveletekkel hozzuk a determinánst olyan alakra, melynek
+
+<!-- OCR: through PDF p.218 -->
