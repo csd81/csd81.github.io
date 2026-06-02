@@ -1393,4 +1393,80 @@ Az $A = b$, $B = -a$ jelöléssel a fenti egyenlet $Ax + By = Ax_0 + By_0$ alak�
 
 ▶ A fenti állítás még egyszerűbben bizonyítható abban az esetben, ha a bázis ortonormált! Ezt az Olvasóra hagyjuk (ld. a 2.9. feladatot).
 
-<!-- OCR: through PDF p.62 -->
+**2.9. példa (Síkbeli egyenes egyenletei).** *Írjuk fel annak a $(2, 3)$ és az $(1, 1)$ koordinátájú pontokon átmenő egyenes összes egyenlet(rendszer)ét!*
+
+*Megoldás.* Ha egy egyenes átmegy e két ponton, akkor irányvektora a két pontba mutató vektorok különbsége, azaz $\mathbf{v} = (2, 3) - (1, 1) = (1, 2)$. Legyen például $\mathbf{r}_0 = (1, 1)$. Ekkor a vektoregyenlet és az explicit egyenletrendszer
+$$\begin{bmatrix} x \\ y \end{bmatrix} = \begin{bmatrix} 1 \\ 1 \end{bmatrix} + t\begin{bmatrix} 1 \\ 2 \end{bmatrix}, \quad \text{illetve} \quad \begin{aligned} x &= 1 + t \\ y &= 1 + 2t. \end{aligned}$$
+Az irányvektorból $(A, B) = (2, -1)$, innen az egyenes egyenlete $2x - y = 2 \cdot 1 - 1 \cdot 1$, azaz
+$$2x - y = 1.$$
+Az $(A, B) = (2, -1)$ vektor csak ortonormált koordináta-rendszerben egyezik meg a normálvektorral, így ott írhatjuk az egyenletet
+$$(2, -1) \cdot (x - 1, y - 1) = 0$$
+alakban. $\square$
+
+### Síkbeli pont egyenletei
+
+Tekintsük a síkbeli $(x_0, y_0)$ pontot. Ennek explicit egyenletrendszere, illetve vektoregyenlete:
+$$\begin{aligned} x &= x_0 \\ y &= y_0, \end{aligned} \quad \text{illetve} \quad \begin{bmatrix} x \\ y \end{bmatrix} = \begin{bmatrix} x_0 \\ y_0 \end{bmatrix}.$$
+Ez nyilvánvaló, de didaktikai okokból hasznos erre a speciális esetre is vetni egy pillantást, ugyanis a matematikai fogalmak megértésében nagy segítségünkre lehet az extremális esetek vizsgálata.
+
+A pont explicit egyenletrendszeréhez nincs szükség paraméterekre, így az implicit alak egyúttal explicit is. Ekkor úgy tekintünk az egyenletrendszerre, mint két egyenes egyenletére, melyek normálvektorai $(1, 0)$ illetve $(0, 1)$, és amelyek metszéspontja a tekintett pont.
+
+Ez adja az ötletet, egy pont implicit egyenletrendszerének tekinthetnénk két egyenletet, melyek egymást az adott pontban metsző egy-egy egyenes egyenletei. Tehát mondhatjuk, hogy a pont implicit egyenletrendszerének általános alakja:
+$$\begin{aligned}
+A_1 x + B_1 y &= C_1 \\
+A_2 x + B_2 y &= C_2
+\end{aligned}$$
+Az azonban nem igaz, hogy minden ilyen alakú egyenletrendszer egy pont egyenletrendszere, mert két egyenes metszheti egymást egyetlen pontban, de lehet, hogy nincs közös pontjuk, és lehet végtelen sok közös pontjuk is. Épp ennek a kérdésnek a részletes vizsgálata lesz a 2. fejezet témája.
+
+### A 3-dimenziós tér síkjainak egyenletei
+
+Tudjuk, hogy két lineárisan független $\mathbf{u}$ és $\mathbf{v}$ vektor bármely lineáris kombinációja a két vektor által meghatározott síkban van, továbbá hogy e sík bármely vektora előáll a megadott két vektor lineáris kombinációjaként (ld. 1.8. és 1.11. tételek). Ebből azonnal adódik, hogy a sík egy rögzített pontjába mutató $\mathbf{r}_0$ vektor segítségével a sík bármelyik pontjába mutató $\mathbf{r}$ vektor felírható $\mathbf{r} = \mathbf{r}_0 + s\mathbf{u} + t\mathbf{v}$ alakban.
+
+**2.10. állítás (Sík explicit vektoregyenlete).** *Bármely síknak van*
+$$\mathbf{r} = \mathbf{r}_0 + s\mathbf{u} + t\mathbf{v} \tag{2.6}$$
+*alakú vektoregyenlete, és minden ilyen alakú egyenlet egy sík egyenlete, ahol $\mathbf{u}$ és $\mathbf{v}$ a sík két lineárisan független vektora és $\mathbf{r}_0$ a sík egy tetszőleges, de rögzített pontjába mutató vektor.*
+
+Hasonlóan a síkbeli egyeneshez, a térbeli sík egyenletéből is kiküszöbölhető a paraméter a merőlegesség felhasználásával. Az 1.47. feladat állítása szerint, ha egy vektor merőleges két tetszőleges vektor mindegyikére, akkor merőleges azok lineáris kombinációjára is. Mivel az $\mathbf{n} = \mathbf{u} \times \mathbf{v}$ merőleges $\mathbf{u}$-ra és $\mathbf{v}$-re is, ezért merőleges azok minden lineáris kombinációjára, is, azaz az $\mathbf{r} - \mathbf{r}_0 = s\mathbf{u} + t\mathbf{v}$ vektorra is. Ez az észrevétel az alapja az alábbi tételnek.
+
+**2.11. állítás (Sík implicit vektoregyenlete).** *A háromdimenziós térben minden síknak van*
+$$\mathbf{n} \cdot (\mathbf{r} - \mathbf{r}_0) = 0, \tag{2.7}$$
+*és a vele ekvivalens*
+$$\mathbf{n} \cdot \mathbf{r} = C \tag{2.8}$$
+*alakú vektoregyenlete, és minden ilyen alakú egyenlet egy sík egyenlete, ahol $\mathbf{n}$ a sík egy normálvektora, $\mathbf{r}_0$ a sík egy tetszőleges, de rögzített pontjába mutató vektor és $C$ konstans.*
+
+A bizonyítás analóg a síkbeli egyenesnél leírtakkal (ld. 2.10. feladat).
+
+Az $\mathbf{r} = (x, y, z)$, $\mathbf{r}_0 = (x_0, y_0, z_0)$ és $\mathbf{u} = (a_1, b_1, c_1)$ $\mathbf{v} = (a_2, b_2, c_2)$ jelölésekkel az explicit vektoregyenlet egyenletrendszerré alakítható.
+
+**2.12. állítás (Sík explicit egyenletrendszere).** *A háromdimenziós tér minden síkjának van*
+$$\begin{aligned}
+x &= x_0 + a_1 s + a_2 t \\
+y &= y_0 + b_1 s + b_2 t \\
+z &= z_0 + c_1 s + c_2 t
+\end{aligned} \tag{2.9}$$
+*alakú egyenletrendszere, ahol $(a_1, b_1, c_1)$ és $(a_2, b_2, c_2)$ a sík két lineárisan független vektora, és $(x_0, y_0, z_0)$ a sík egy tetszőleges rögzített pontja.*
+
+Az explicit egyenletrendszerből kiküszöbölhető a két paraméter, ha például két egyenletből kifejezzük a paramétereket, és behelyettesítjük a harmadik egyenletbe. Így egy implicit egyenletet kapunk. A számításokat nem részletezzük, az eredmény
+$$(b_1 c_2 - b_2 c_1)(x - x_0) + (c_1 a_2 - c_2 a_1)(y - y_0) + (a_1 b_2 - a_2 b_1)(z - z_0) = 0.$$
+Az $(A, B, C) = (b_1 c_2 - b_2 c_1, c_1 a_2 - c_2 a_1, a_1 b_2 - a_2 b_1)$ jelöléssel a sík egyenlete $A(x - x_0) + B(y - y_0) + C(z - z_0) = 0$ alakra hozható, vagy ami vele ekvivalens, $Ax + By + Cz = D$ alakra.
+
+**2.13. állítás (Sík implicit egyenlete).** *A háromdimenziós térben minden síknak van*
+$$Ax + By + Cz = D \tag{2.10}$$
+*alakú egyenlete, és minden ilyen alakú egyenlet egy sík egyenlete, ha $A$, $B$ és $C$ legalább egyike nem nulla, és $D = Ax_0 + By_0 + Cz_0$, ahol $(x_0, y_0, z_0)$ a sík valamely pontja.*
+
+A sík egyenlete a $\mathbf{n} \cdot (\mathbf{r} - \mathbf{r}_0) = 0$ alakú vektoregyenletéből is megkapható, amit *ortonormált* koordináta-rendszerben könnyű igazolni (ld. 2.11. feladat). Mivel
+$$(A, B, C) = (b_1 c_2 - b_2 c_1, c_1 a_2 - c_2 a_1, a_1 b_2 - a_2 b_1), \tag{2.11}$$
+ami ortonormált bázisban épp az $\mathbf{u} \times \mathbf{v}$ vektorral egyenlő, ezért $(A, B, C)$ merőleges a sík minden vektorára, vagyis a sík egy normálvektora. Az $\mathbf{n} \cdot (\mathbf{r} - \mathbf{r}_0) = 0$ egyenletet koordinátás alakba átírva kapjuk, hogy
+$$(A, B, C) \cdot (x - x_0, y - y_0, z - z_0) = 0.$$
+
+**2.14. példa (Sík egyenletei).** *Írjuk fel a $(0, -1, 2)$ ponton átmenő, az $\mathbf{u} = (2, 2, 2)$ és $\mathbf{v} = (-1, 1, 5)$ vektorokkal párhuzamos sík egyenleteit!*
+
+*Megoldás.* Egyszerű képletbehelyettesítés után a sík explicit vektoregyenlete és explicit egyenletrendszere
+$$\begin{bmatrix} x \\ y \\ z \end{bmatrix} = \begin{bmatrix} 0 \\ -1 \\ 2 \end{bmatrix} + s\begin{bmatrix} 2 \\ 2 \\ 2 \end{bmatrix} + t\begin{bmatrix} -1 \\ 1 \\ 5 \end{bmatrix}, \quad \text{illetve} \quad \begin{aligned} x &= 2s - t \\ y &= -1 + 2s + t \\ z &= 2 + 2s + 5t. \end{aligned}$$
+Mivel a (2.11) képlet szerint $(A, B, C) = (8, -12, 4)$, ezért a sík implicit egyenlete $8(x - 0) - 12(y - (-1)) + 4(z - 2) = 0$, azaz 4-gyel való osztás és átrendezés után
+$$2x - 3y + z = 5.$$
+Így ortonormált koordináta-rendszerben a
+$$(2, -3, 1) \cdot (x, y, z) = 5, \quad \text{vagy} \quad (2, -3, 1) \cdot (x, y + 1, z - 2) = 0$$
+a sík implicit vektoregyenlete. $\square$
+
+<!-- OCR: through PDF p.65 -->
