@@ -4816,5 +4816,233 @@ $$\mathbf{A} = \begin{bmatrix} 1 & 2 & 3 & 4 & 5 \\ 2 & 4 & 8 & 6 & 2 \\ 1 & 2 &
 Az $\mathbf{R}$ oszlopai az $\mathbf{A}$ oszlopvektorainak koordinátás alakjai a $\mathbf{B}$ oszlopai alkotta bázisban, azaz
 $$[\mathbf{v}]_{\mathcal{E}} = \mathbf{B}[\mathbf{v}]_{\mathcal{B}}.$$
 
-<!-- OCR: through PDF p.168 -->
-<!-- OCR-NOTE: p166–168 megoldások közül a 4.15, 4.18–4.25, 4.30–4.34, 4.40–4.55 megoldások a könyvben nem szerepelnek külön (csak a •-gal jelölt feladatoké); a fent átírtak a nyomtatott megoldások. -->
+ahol az $\mathcal{E}$ indexszel a standard, $\mathcal{B}$-vel a $\mathbf{B}$ mátrix oszlopai alkotta bázisbeli koordinátás alakot jelöltük ugyanannak a vektornak. Például
+$$\begin{bmatrix} 4 \\ 6 \\ 0 \end{bmatrix} = \begin{bmatrix} 1 & 3 \\ 2 & 8 \\ 1 & 7 \end{bmatrix}\begin{bmatrix} 7 \\ -1 \end{bmatrix}, \quad \text{azaz} \quad [\mathbf{a}_4]_{\mathcal{E}} = \begin{bmatrix} 4 \\ 6 \\ 0 \end{bmatrix}, [\mathbf{a}_4]_{\mathcal{B}} = \begin{bmatrix} 7 \\ -1 \end{bmatrix},$$
+ahol $\mathbf{a}_4$ az $\mathbf{A}$ negyedik oszlopvektora.
+
+**4.40.** $\begin{bmatrix} 2 & 4 & 6 \end{bmatrix} = [2]\begin{bmatrix} 1 & 2 & 3 \end{bmatrix}$.
+
+**4.41.** $\begin{bmatrix} 3 \\ 4 \end{bmatrix} = \begin{bmatrix} 3 \\ 4 \end{bmatrix}[1]$.
+
+**4.42.** Egy bázisfelbontás az $\mathbf{u} \otimes \mathbf{v} = \mathbf{u}\mathbf{v}^\mathsf{T}$ összefüggést felhasználva $(c\mathbf{u})\left(\frac{1}{c}\mathbf{v}^\mathsf{T}\right)$, ahol $c$ a $\mathbf{v}$ első nemnulla koordinátája.
+
+**4.43.** $\mathbf{E} = \begin{bmatrix} 1 & 0 & 0 \\ 0 & 0 & 1 \\ 0 & 1 & 0 \end{bmatrix}$
+
+**4.44.** $\mathbf{E} = \begin{bmatrix} 1 & 0 & 0 \\ 0 & 3 & 0 \\ 0 & 0 & 1 \end{bmatrix}$
+
+**4.45.** $\mathbf{E} = \begin{bmatrix} 1 & 0 & 0 \\ 0 & 1 & 2 \\ 0 & 0 & 1 \end{bmatrix}$
+
+**4.46.** $\mathbf{E} = \begin{bmatrix} 1 & 0 & -1 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \end{bmatrix}$
+
+**4.47.** $\begin{bmatrix} 2 & 2 & 2 \\ 2 & 2 & 2 \\ 8 & 8 & 8 \end{bmatrix}$
+
+**4.48.** $\begin{bmatrix} a \\ 2d - 2b \\ 3a + c \\ d \end{bmatrix}$
+
+**4.50.** $\left[\begin{array}{cc|cc} 2 & 3 & 2 & 2 \\ 4 & 5 & 2 & 2 \\ \hline 0 & 0 & 2 & 2 \\ 0 & 0 & 3 & 3 \end{array}\right]$
+
+**4.51.** $\begin{bmatrix} 2 & 10 \\ 4 & 14 \\ 0 & 5 \end{bmatrix}$
+
+**4.52.** $\begin{bmatrix} 5 & 6 \\ 6 & 7 \\ 12 & 12 \end{bmatrix}$
+
+**4.53.** Mivel $[\mathbf{I}_r|\mathbf{S}]$ az $\mathbf{A}$ redukált lépcsős alakja, ezért ennek bármely oszlopa az $\mathbf{A}$ mátrix azonos sorszámú oszlopának koordinátás alakja az $\mathbf{B}_r$ oszlopvektoraiban, mint bázisban felírva. Ez épp azt jelenti, hogy $\mathbf{A} = \mathbf{B}_r[\mathbf{I}_r|\mathbf{S}]$. Ez az oszloptér bármely oszlopára, így $\mathbf{b}$-re is igaz, hisz $[\mathbf{A}|\mathbf{b}]$ redukált lépcsős alakja szerint az egyenletrendszer megoldható, így $\mathbf{b}$ eleme az oszloptérnek. Eszerint tehát $\mathbf{b} = \mathbf{B}_r\mathbf{d}_r$.
+
+Az, hogy minden megoldás fölírható ilyen alakba, a Gauss–Jordan-módszerből következik. Meg kell még mutatni, hogy a tételben felírt $\mathbf{x}$ vektor valóban megoldás.
+$$\begin{aligned} \mathbf{Ax} = \mathbf{B}_r\begin{bmatrix} \mathbf{I}_r & \mathbf{S} \end{bmatrix}\left(\begin{bmatrix} \mathbf{d}_r \\ \mathbf{0}_s \end{bmatrix} + \begin{bmatrix} -\mathbf{S} \\ \mathbf{I}_s \end{bmatrix}\mathbf{t}_s\right) &= \mathbf{B}_r(\mathbf{d}_r - \mathbf{S}\mathbf{t}_s + \mathbf{S}\mathbf{t}_s) = \mathbf{B}_r\mathbf{d}_r \\ &= \mathbf{b}. \end{aligned}$$
+Ez bizonyítja az állítás első felét. A második felének bizonyításához csak azt kell látni, hogy $\begin{bmatrix} -\mathbf{S} \\ \mathbf{I}_s \end{bmatrix}$ oszlopvektorai a nulltér bázisát alkotják. Ez abból következik, hogy egyrészt kifeszítik a nullteret, másrészt lineárisan függetlenek, hisz az alsó blokkban lévő $\mathbf{I}_s$ mátrix oszlopai lineárisan függetlenek.
+
+**4.54.** Jelölje $\mathbf{j}$ a csupa 1-esből álló 9-dimenziós vektort, $\mathbf{j}_{456}$ azt, amelynek 4, 5, 6 indexű eleme 1-es, a többi 0. Ekkor a „minden sorösszeg 45" és a „minden oszlopösszeg 45" feltételek ekvivalensek az $\mathbf{Aj} = 45\mathbf{j}$, $\mathbf{j}^\mathsf{T}\mathbf{A} = 45\mathbf{j}^\mathsf{T}$ egyenletekkel, míg pl. az „első blokkoszlop, második blokksor metszetében álló blokk elemeinek összege 45" feltételnek a $\mathbf{j}_{456}^\mathsf{T}\mathbf{A}\mathbf{j}_{123} = 45$ egyenlet felel meg.
+
+**4.55.** $\mathbb{Z}_2^{2 \times 2}$-be $2^4 = 16$ mátrix tartozik:
+$$\mathbb{Z}_2^{2 \times 2} = \left\{ \begin{bmatrix} 1 & 0 \\ 0 & 0 \end{bmatrix}, \begin{bmatrix} 0 & 1 \\ 0 & 0 \end{bmatrix}, \begin{bmatrix} 0 & 0 \\ 1 & 0 \end{bmatrix}, \begin{bmatrix} 0 & 0 \\ 0 & 1 \end{bmatrix}, \begin{bmatrix} 1 & 1 \\ 0 & 0 \end{bmatrix}, \begin{bmatrix} 1 & 0 \\ 1 & 0 \end{bmatrix}, \ldots, \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix} \right\}.$$
+
+# 5. Mátrixműveletek algebrája
+
+Áttekintjük a mátrixműveletek legfontosabb algebrai tulajdonságait. Ezek nem csak a mátrixokkal való számolás közben követendő szabályokról szólnak, de hozzásegítenek az lineáris egyenletrendszerek mélyebb megértéséhez, és olyan eszközöket adnak a kezünkbe, például a mátrixfelbontásokkal, melyek a lineáris algebra alkalmazásaiban is fontosak.
+
+## Az alapműveletek tulajdonságai
+
+*Az összeadás és a skalárral szorzás őrzi a valósok műveleti tulajdonságait, de a mátrixszorzás nem.*
+
+### Az összeadás és a skalárral való szorzás tulajdonságai
+
+Mivel a mátrixok összeadása és skalárral való szorzása elemenként végrehajtható műveletek, ezért műveleti tulajdonságaik természetes módon öröklik meg a számok műveleti tulajdonságait. Például azonos típusú mátrixok összeadása felcserélhető (kommutatív) és csoportosítható (asszociatív) művelet, míg összeg skalárral való szorzása disztributív. Tehát
+$$\mathbf{A} + \mathbf{B} = \mathbf{B} + \mathbf{A}, \quad \mathbf{A} + (\mathbf{B} + \mathbf{C}) = (\mathbf{A} + \mathbf{B}) + \mathbf{C} = \mathbf{A} + \mathbf{B} + \mathbf{C},$$
+$$c(\mathbf{A} + \mathbf{B}) = c\mathbf{A} + c\mathbf{B}, \quad (c + d)\mathbf{A} = c\mathbf{A} + d\mathbf{A}.$$
+E tulajdonságok igazolását az Olvasóra hagyjuk (ld. 5.4. feladat).
+
+### A szorzás tulajdonságai
+
+A számok szorzásának algebrai tulajdonságai nem öröklődnek automatikusan a mátrixműveletekre, mint az összeadásnál. Nem is teljesülnek mind, pl. a mátrixszorzás *nem kommutatív.*
+
+A mátrixokkal való számolás közben nem csak arra kell ügyelnünk, hogy bizonyos azonosságok nem teljesülnek, de arra is, hogy bizonyos elemi eljárások nem végezhetők el olyan tág körben, mint azt a valós számoknál megszoktuk.
+
+**5.1. állítás (Mire vigyázzunk a mátrixszorzásnál?).**
+- a) *A mátrixszorzás nem kommutatív, azaz $\mathbf{AB} = \mathbf{BA}$ nem áll fenn bármely két összeszorozható mátrixra.*
+- b) *Ha $\mathbf{AB} = \mathbf{AC}$, akkor az $\mathbf{A} \neq \mathbf{O}$ feltétel kevés ahhoz, hogy a $\mathbf{B} = \mathbf{C}$ következtetésre jussunk.*
+- c) *Az $\mathbf{AB} = \mathbf{O}$ egyenlőségből nem következik, hogy $\mathbf{A}$ vagy $\mathbf{B}$ a nullmátrix.*
+
+▶ A mátrixszorzás kommutativitásának cáfolására az egyik legegyszerűbb példa:
+$$\begin{bmatrix} 1 & 0 \\ 0 & 0 \end{bmatrix}\begin{bmatrix} 0 & 1 \\ 0 & 0 \end{bmatrix} = \begin{bmatrix} 0 & 1 \\ 0 & 0 \end{bmatrix}, \quad \text{de} \quad \begin{bmatrix} 0 & 1 \\ 0 & 0 \end{bmatrix}\begin{bmatrix} 1 & 0 \\ 0 & 0 \end{bmatrix} = \begin{bmatrix} 0 & 0 \\ 0 & 0 \end{bmatrix}.$$
+A 4.10. feladatban további példákat mutatunk.
+
+▶ A valós számok közt igaz, hogy ha $a \neq 0$ és $ab = ac$, akkor $a$-val egyszerűsíthetünk, azaz akkor $b = c$. Mátrixokra egy ellenpélda:
+$$\begin{bmatrix} 1 & -2 \\ 2 & -4 \\ 1 & -2 \end{bmatrix}\begin{bmatrix} 1 & -3 \\ 2 & -1 \end{bmatrix} = \begin{bmatrix} 1 & -2 \\ 2 & -4 \\ 1 & -2 \end{bmatrix}\begin{bmatrix} -1 & 3 \\ 1 & 2 \end{bmatrix}, \quad \text{de} \quad \begin{bmatrix} 1 & -3 \\ 2 & -1 \end{bmatrix} \neq \begin{bmatrix} -1 & 3 \\ 1 & 2 \end{bmatrix}.$$
+
+> Nullosztóval találkozhatunk a $\mathbb{Z}_m$-ben való számolásnál is, ha $m$ összetett. Például $\mathbb{Z}_6$-ban $2 \cdot 3 = 0$. Összetett $m$ esetén egyszerűsíteni sem lehet mindig $\mathbb{Z}_m$-ben, például $\mathbb{Z}_{12}$-ben $9 \cdot 2 = 3 \cdot 2 = 6$, de $9 \neq 2$.
+
+▶ *Nullosztónak* nevezzük egy algebrai struktúra olyan nemzérus elemét, melyhez található olyan nemzérus elem, mellyel vett szorzata zérus. Valósok közt ilyenek nincsenek, de a mátrixok közt igen, például
+$$\begin{bmatrix} 1 & 2 \\ 3 & 6 \end{bmatrix}\begin{bmatrix} 2 & -2 \\ -1 & 1 \end{bmatrix} = \begin{bmatrix} 0 & 0 \\ 0 & 0 \end{bmatrix}.$$
+
+**5.2. tétel (Mátrixszorzás algebrai tulajdonságai).** *Legyen $\mathbf{A}$, $\mathbf{B}$ és $\mathbf{C}$ olyan, hogy a kijelölt műveletek elvégezhetők legyenek, legyen továbbá $c$ tetszőleges skalár. Ekkor*
+- a) *$\mathbf{A}(\mathbf{BC}) = (\mathbf{AB})\mathbf{C}$* (csoportosíthatóság, asszociativitás)
+- b) *$\mathbf{A}(\mathbf{B} + \mathbf{C}) = \mathbf{AB} + \mathbf{AC}$* (disztributivitás)
+- c) *$(\mathbf{A} + \mathbf{B})\mathbf{C} = \mathbf{AC} + \mathbf{BC}$* (disztributivitás)
+- d) *$(c\mathbf{A})\mathbf{B} = c(\mathbf{AB}) = \mathbf{A}(c\mathbf{B})$*
+- e) *$\mathbf{A}_{m \times n}\mathbf{O}_{n \times t} = \mathbf{O}_{m \times t}$* (szorzás nullmátrixszal)
+- f) *$\mathbf{I}_m\mathbf{A}_{m \times n} = \mathbf{A}_{m \times n}\mathbf{I}_n = \mathbf{A}_{m \times n}$* (szorzás egységmátrixszal)
+
+*Bizonyítás.* A fenti tulajdonságok közül csak az elsőt bizonyítjuk, a többit hasonlóan, vagy még egyszerűbben bizonyítható.
+
+a) Valójában többet bizonyítunk. Megmutatjuk, hogy ha az egyenlőség egyik oldalán kijelölt szorzások elvégezhetők, akkor a másik oldalon kijelöltek is. Legyen $\mathbf{A}_{m \times s}$, $\mathbf{B}_{u \times v}$ és $\mathbf{C}_{t \times n}$ három tetszőleges mátrix. Az $(\mathbf{AB})\mathbf{C}$ szorzatban $\mathbf{AB}$ csak $s = u$ esetén végezhető el, a szorzat típusa $m \times v$, ami $\mathbf{C}$-vel csak $v = t$ esetén szorozható meg, és a szorzat $m \times n$-es. Tehát e szorzat csak akkor van értelmezve, ha $\mathbf{B}$ típusa $s \times t$. Hasonló érveléssel ugyanezt kapjuk az $\mathbf{A}(\mathbf{BC})$ szorzatról is.
+
+Az indexek kezelésének könnyítésére elég lesz a bizonyítást sorvektor alakú $\mathbf{A}$ és oszlopvektor alakú $\mathbf{C}$ mátrixokra elvégezni, ugyanis az $(\mathbf{AB})\mathbf{C}$ szorzat $i$-edik sorában és $j$-edik oszlopában álló elem az $\mathbf{AB}$ $i$-edik sorának, azaz az $\mathbf{a}_{i*}\mathbf{B}$ sorvektornak és $\mathbf{C}$ $j$-edik oszlopának szorzata, azaz $(\mathbf{a}_{i*}\mathbf{B})\mathbf{c}_{*j}$. Hasonlóképp az $\mathbf{A}(\mathbf{BC})$ szorzat $i$-edik sorában és $j$-edik oszlopában álló elem $\mathbf{a}_{i*}(\mathbf{B}\mathbf{c}_{*j})$. Legyen tehát
+$$\mathbf{A} = \begin{bmatrix} a_1 & a_2 & \ldots & a_m \end{bmatrix}, \quad \mathbf{B} = \begin{bmatrix} b_{11} & b_{12} & \ldots & b_{1n} \\ b_{21} & b_{22} & \ldots & b_{2n} \\ \vdots & \vdots & \ddots & \vdots \\ b_{m1} & b_{m2} & \ldots & b_{mn} \end{bmatrix}, \quad \mathbf{C} = \begin{bmatrix} c_1 \\ c_2 \\ \vdots \\ c_n \end{bmatrix}.$$
+Ekkor a szorzat $1 \times 1$-es. Először számoljuk ki az $\mathbf{AB}$ mátrixot, ami $1 \times n$-es: $\begin{bmatrix} \sum_{k=1}^{m} a_k b_{k1} & \sum_{k=1}^{m} a_k b_{k2} & \ldots & \sum_{k=1}^{m} a_k b_{kn} \end{bmatrix}$. Innen számolva $(\mathbf{AB})\mathbf{C}$-t:
+$$\begin{bmatrix} \sum_{k=1}^{m} a_k b_{k1} & \sum_{k=1}^{m} a_k b_{k2} & \ldots & \sum_{k=1}^{m} a_k b_{kn} \end{bmatrix}\begin{bmatrix} c_1 \\ c_2 \\ \vdots \\ c_n \end{bmatrix} = \sum_{l=1}^{n}\sum_{k=1}^{m} a_k b_{kl} c_l.$$
+Hasonlóan, először $\mathbf{BC}$-t fölírva, az $\mathbf{A}(\mathbf{BC})$ mátrixra kapjuk, hogy
+$$\begin{bmatrix} a_1 & a_2 & \ldots & a_m \end{bmatrix}\begin{bmatrix} \sum_{l=1}^{n} b_{1l} c_l \\ \sum_{l=1}^{n} b_{2l} c_l \\ \vdots \\ \sum_{l=1}^{n} b_{ml} c_l \end{bmatrix} = \sum_{k=1}^{m} a_k\left(\sum_{l=1}^{n} b_{kl} c_l\right) = \sum_{k=1}^{m}\sum_{l=1}^{n} a_k b_{kl} c_l.$$
+Az utolsó lépésben a belső szumma minden tagját beszoroztuk $a_k$-val, a számok közti összeadás és szorzás közti disztributivitást használva. Vagyis mindkét oldalon olyan összeg áll, amely az összes $a_k b_{kl} c_l$ alakú szorzat összege, csak a tagok csoportosítása más. $\square$
+
+▶ Az asszociativitás következménye, hogy a többtényezős mátrixszorzatokat nem kell zárójelezni, hisz bármelyik zárójelezés ugyanazt az eredményt adja. Így $\mathbf{ABC} = (\mathbf{AB})\mathbf{C} = \mathbf{A}(\mathbf{BC})$. Az állítás igaz többtényezős szorzatokra is, vagyis az $\mathbf{A}_1\mathbf{A}_2 \ldots \mathbf{A}_k$ szorzat független a végrehajtás sorrendjétől, de a tényezők sorrendje nem változtatható!
+
+▶ Megjegyezzük, hogy az asszociativitás imént leírt bizonyítása hasonlóan mondható el, ha az $\mathbf{A} = [a_{ik}]$ mátrix nem csak 1 sorból, és a $\mathbf{C} = [c_{lj}]$ mátrix nem csak egy oszlopból áll: ekkor a $\mathbf{D} = \mathbf{ABC}$ szorzat $i$-edik sorának $j$-edik elemére azt kapjuk, hogy az az összes $a_{ik} b_{kl} c_{lj}$ alakú szorzatok összege, azaz
+$$d_{ij} = \sum_{k=1}^{m}\sum_{l=1}^{n} a_{ik} b_{kl} c_{lj}. \tag{5.1}$$
+
+> Az 5.1 egyenlőség, és az ehhez hasonló számtalan hasonló kifejezés vezette Einsteint arra a felismerésre, hogy az indexelt változók szorzatainak összegében a szumma jelek feleslegesek, hisz azokra az indexekre kell összegezni, amelyek legalább kétszer szerepelnek, míg az egyszer szereplőkre nem. Tehát az előző kettős szumma helyett írhatnánk azt is, hogy $d_{ij} = a_{ik} b_{kl} c_{lj}$, hisz a jobb oldalon $i$ és $j$ csak egyszer szerepel, így $k$-ra és $l$-re kell összegezni, azt pedig tudjuk, hogy $k = 1, \ldots, m$ és $l = 1, \ldots, n$. Ezt a jelölésbeli egyszerűsítést *Einstein-konvenciónak* nevezik. Einstein ezt a relativitás általános elméletéről írt híres dolgozatában használta először 1916-ban. A konvenció használata főként a lineáris algebra fizikai alkalmazásaiban terjedt el, mi e könyvben nem fogjuk használni.
+
+### Mátrix hatványozása
+
+Csak a négyzetes mátrixok szorozhatók meg önmagukkal, hisz ha egy $m \times n$-es mátrix megszorozható egy $m \times n$-essel, akkor $m = n$. Ezt figyelembe véve természetes módon definiálható négyzetes mátrixok pozitív egész kitevős hatványa:
+$$\mathbf{A}^k = \underbrace{\mathbf{AA} \ldots \mathbf{A}}_{k \text{ tényező}}$$
+Kicsit elegánsabban – rekurzióval – is definiálhatjuk e fogalmat: $\mathbf{A}^1 := \mathbf{A}$ és $\mathbf{A}^{k+1} := \mathbf{A}^k\mathbf{A}$.
+
+Mivel a mátrixszorzás asszociatív, mindegy, hogy milyen sorrendben végezzük el a hatványozást. Ezzel igazolható a következő két összefüggés is:
+
+**5.3. állítás (Hatványozás azonosságai).** *Legyen $\mathbf{A}$ egy négyzetes mátrix! Ekkor*
+- a) *$\mathbf{A}^k\mathbf{A}^m = \mathbf{A}^{k+m}$,*
+- b) *$(\mathbf{A}^k)^m = \mathbf{A}^{km}$.*
+
+Ha ki akarjuk terjeszteni a hatványozást 0 kitevőre is, kövessük a precedencia-elvet,[^7] azaz olyan értelmet adjunk $\mathbf{A}^0$-nak, hogy a fenti összefüggések érvényben maradjanak. Például tekintsük az a) azonosságot $m = 0$ esetén:
+$$\mathbf{A}^k\mathbf{A}^0 = \mathbf{A}^{k+0} = \mathbf{A}^k.$$
+Ez minden $\mathbf{A}$ mátrix esetén csak az egységmátrixra igaz, tehát
+$$\mathbf{A}^0 = \mathbf{I}_n,$$
+ahol $n$ a négyzetes $\mathbf{A}$ mérete.
+
+[^7]: *A latin eredetű* precedencia *szó* előzményt *jelent (lásd még precedens). A* precedencia elv *a matematikában fogalmak jelentésének olyan kiterjesztését jelenti, melynek során a korábban megismert tulajdonságok, összefüggések érvényben maradnak.*
+
+▶ A valós számoknál tanult, különböző alapú hatványokra érvényes azonosság itt a kommutativitás hiánya miatt nem érvényes, azaz általában $(\mathbf{AB})^k \neq \mathbf{A}^k\mathbf{B}^k$.
+
+**5.4. példa (Mátrix hatványozása).** *Számítsuk ki az*
+$$\mathbf{A} = \begin{bmatrix} 0 & 1 \\ 1 & 0 \end{bmatrix}, \quad \text{és a} \quad \mathbf{B} = \begin{bmatrix} 1 & 1 \\ 0 & 1 \end{bmatrix}$$
+*mátrixok $k$-adik hatványait!*
+
+*Megoldás.* Számoljuk ki $\mathbf{A}$ hatványait!
+$$\mathbf{A}^2 = \begin{bmatrix} 0 & 1 \\ 1 & 0 \end{bmatrix}\begin{bmatrix} 0 & 1 \\ 1 & 0 \end{bmatrix} = \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix},$$
+azaz $\mathbf{A}^2 = \mathbf{I}_2$, ebből pedig látjuk, hogy $\mathbf{A}^3 = \mathbf{I}_2\mathbf{A} = \mathbf{A}$, $\mathbf{A}^4 = \mathbf{A}^3\mathbf{A} = \mathbf{AA} = \mathbf{I}_2, \ldots$ Tehát általában $\mathbf{A}^{2k} = \mathbf{I}_2$ és $\mathbf{A}^{2k+1} = \mathbf{A}$.
+
+A másik feladatot a hatványozás rekurzív definícióját használva indukcióval kényelmesen meg tudjuk oldani. Először számoljuk ki $\mathbf{B}$ néhány hatványát:
+$$\mathbf{B}^2 = \begin{bmatrix} 1 & 1 \\ 0 & 1 \end{bmatrix}\begin{bmatrix} 1 & 1 \\ 0 & 1 \end{bmatrix} = \begin{bmatrix} 1 & 2 \\ 0 & 1 \end{bmatrix}, \quad \mathbf{B}^3 = \mathbf{B}^2\mathbf{B} = \begin{bmatrix} 1 & 2 \\ 0 & 1 \end{bmatrix}\begin{bmatrix} 1 & 1 \\ 0 & 1 \end{bmatrix} = \begin{bmatrix} 1 & 3 \\ 0 & 1 \end{bmatrix}.$$
+Ebből azt sejtjük, hogy $\mathbf{B}^k = \begin{bmatrix} 1 & k \\ 0 & 1 \end{bmatrix}$. Ha be tudjuk látni ennek az összefüggésnek az öröklődését $k$-ról $k + 1$-re, akkor kész vagyunk. Más szóval meg kell mutatnunk, hogy ha $\mathbf{B}^k = \begin{bmatrix} 1 & k \\ 0 & 1 \end{bmatrix}$, akkor $\mathbf{B}^{k+1} = \begin{bmatrix} 1 & k+1 \\ 0 & 1 \end{bmatrix}$. Ezt a következő szorzás elvégzése igazolja:
+$$\mathbf{B}^{k+1} = \mathbf{B}^k\mathbf{B} = \begin{bmatrix} 1 & k \\ 0 & 1 \end{bmatrix}\begin{bmatrix} 1 & 1 \\ 0 & 1 \end{bmatrix} = \begin{bmatrix} 1 & k+1 \\ 0 & 1 \end{bmatrix} \qquad \square$$
+
+Miután mátrixok lineáris kombinációja és négyzetes mátrixok egész kitevős hatványa értelmezve van, ezért négyzetes mátrixokra is definiálhatjuk skalár együtthatós polinom helyettesítési értékét. Legyen
+$$p(x) = a_k x^k + a_{k-1} x^{k-1} + \ldots + a_2 x^2 + a_1 x + a_0$$
+egy skalár együtthatós polinom. A $p$ polinom $\mathbf{X} \in \mathbb{R}^{n \times n}$ helyen vett helyettesítési értékén a
+$$p(\mathbf{X}) = a_k\mathbf{X}^k + \ldots + a_2\mathbf{X}^2 + a_1\mathbf{X} + a_0\mathbf{I}_n$$
+mátrixot értjük.
+
+**5.5. példa (Polinom helyettesítési értéke).** *Legyen*
+$$\mathbf{C} = \begin{bmatrix} 1 & 2 & -3 \\ 2 & 3 & -4 \\ 3 & 4 & -6 \end{bmatrix}.$$
+*Mutassuk meg, hogy $p(\mathbf{C}) = \mathbf{O}$, ha $p(x) = x^3 + 2x^2 - 1$.*
+
+*Megoldás.* A $p(\mathbf{C}) = \mathbf{C}^3 + 2\mathbf{C}^2 - \mathbf{I}$ műveleteit elvégezve kapjuk, hogy
+$$\begin{aligned} p(\mathbf{C}) = \mathbf{C}^3 + 2\mathbf{C}^2 - \mathbf{I} &= \begin{bmatrix} 9 & 8 & -14 \\ 8 & 7 & -12 \\ 14 & 12 & -21 \end{bmatrix} + 2\begin{bmatrix} -4 & -4 & 7 \\ -4 & -3 & 6 \\ -7 & -6 & 11 \end{bmatrix} - \begin{bmatrix} 1 & 0 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \end{bmatrix} \\ &= \begin{bmatrix} 0 & 0 & 0 \\ 0 & 0 & 0 \\ 0 & 0 & 0 \end{bmatrix}. \qquad \square \end{aligned}$$
+
+### A transzponálás tulajdonságai
+
+A következő tétel a transzponálás és a többi művelet kapcsolatáról szól:
+
+**5.6. tétel (Transzponálás tulajdonságai).** *Legyenek $\mathbf{A}$ és $\mathbf{C}$ azonos típusú mátrixok, $\mathbf{B}$ sorainak száma egyezzen meg $\mathbf{A}$ oszlopainak számával, $c$ pedig legyen tetszőleges skalár. Ekkor*
+- a) *$(\mathbf{A}^\mathsf{T})^\mathsf{T} = \mathbf{A}$,*
+- b) *$(\mathbf{A} + \mathbf{C})^\mathsf{T} = \mathbf{A}^\mathsf{T} + \mathbf{C}^\mathsf{T}$,*
+- c) *$(c\mathbf{A})^\mathsf{T} = c\mathbf{A}^\mathsf{T}$,*
+- d) *$(\mathbf{AB})^\mathsf{T} = \mathbf{B}^\mathsf{T}\mathbf{A}^\mathsf{T}$.*
+
+*Bizonyítás.* Az első három összefüggés magától értetődő, csak az utolsót bizonyítjuk.
+
+Először megmutatjuk, hogy ha $(\mathbf{AB})^\mathsf{T}$ elvégezhető, akkor $\mathbf{B}^\mathsf{T}\mathbf{A}^\mathsf{T}$ is. Az $m \times t$ típusú $\mathbf{A}$ és $t \times n$ típusú $\mathbf{B}$ szorzata $m \times n$-es, transzponáltja $n \times m$-es, így az $n \times t$ típusú $\mathbf{B}^\mathsf{T}$ és a $t \times m$-es $\mathbf{A}^\mathsf{T}$ összeszorozhatók, szorzatuk $n \times m$-es, így a tételbeli egyenlőség két oldalának típusa azonos.
+
+A tétel azon alapul, hogy két tetszőleges $\mathbf{u}$, $\mathbf{v}$ vektorra $\mathbf{u}^\mathsf{T}\mathbf{v} = \mathbf{v}^\mathsf{T}\mathbf{u}$. Ezt az összefüggést a $*$-gal jelölt egyenlőségnél fogjuk használni. Az $(\mathbf{AB})^\mathsf{T}$ $i$-edik sorának $j$-edik eleme
+$$\left((\mathbf{AB})^\mathsf{T}\right)_{ij} = (\mathbf{AB})_{ji} = (\mathbf{A})_{j*}(\mathbf{B})_{*i}.$$
+A $\mathbf{B}^\mathsf{T}\mathbf{A}^\mathsf{T}$ $i$-edik sorának $j$-edik eleme
+$$\left(\mathbf{B}^\mathsf{T}\mathbf{A}^\mathsf{T}\right)_{ij} = (\mathbf{B}^\mathsf{T})_{i*}(\mathbf{A}^\mathsf{T})_{*j} \overset{*}{=} (\mathbf{A})_{j*}(\mathbf{B})_{*i}.$$
+Tehát $(\mathbf{AB})^\mathsf{T} = \mathbf{B}^\mathsf{T}\mathbf{A}^\mathsf{T}$. $\square$
+
+▶ A tétel b) pontjának indukcióval könnyen bizonyítható következménye, hogy többtagú összeg transzponáltja megegyezik a transzponáltak összegével. A c) pontot is figyelembe véve kapjuk, hogy mátrixok lineáris kombinációjának transzponáltja megegyezik a mátrixok transzponáltjainak azonos lineáris kombinációjával, azaz
+$$(c_1\mathbf{A}_1 + c_2\mathbf{A}_2 + \ldots + c_k\mathbf{A}_k)^\mathsf{T} = c_1\mathbf{A}_1^\mathsf{T} + c_2\mathbf{A}_2^\mathsf{T} + \ldots + c_k\mathbf{A}_k^\mathsf{T}.$$
+▶ A tétel d) pontjára „szemléletes igazolás" is adható, ami leolvasható az 5.1. ábráról.
+▶ Indukcióval bizonyítható, hogy a d)-beli összefüggés többtényezős szorzatokra is fönnáll, azaz
+$$(\mathbf{A}_1\mathbf{A}_2 \ldots \mathbf{A}_k)^\mathsf{T} = \mathbf{A}_k^\mathsf{T} \ldots \mathbf{A}_2^\mathsf{T}\mathbf{A}_1^\mathsf{T}.$$
+
+*5.1. ábra. $(\mathbf{AB})^\mathsf{T} = \mathbf{B}^\mathsf{T}\mathbf{A}^\mathsf{T}$ szemléletes bizonyítása.*
+
+### Mátrixszorzás inverze – mátrixok osztása
+
+Lehet-e mátrixszal osztani, és ha igen, meg tudjuk-e vele oldani az $\mathbf{Ax} = \mathbf{b}$ egyenletrendszert vagy az $\mathbf{AX} = \mathbf{B}$ mátrixegyenletet úgy, ahogy az $ax = b$ egyenletet megoldjuk az $a$-val való osztással?
+
+Korábbi tanulmányainkban megtanultuk, hogy az összeadás és a szorzás invertálható műveletek, inverzeik a kivonás, ill. az osztás.
+
+Azon, hogy az összeadás művelete invertálható, azt értjük, hogy bármely $a$ és $b$ valós esetén találunk olyan $x$ valóst, hogy $a + x = b$, a megoldás $x = b - a$. A szorzás is invertálható, de csak a nemzérus valósok halmazán. Ezt jelenti, hogy bármely $a$ nemzérus valóshoz és $b$ valóshoz található olyan $x$ valós szám, hogy $ax = b$, a megoldás $x = b/a$.
+
+Azonos típusú mátrixok közt az $\mathbf{A} + \mathbf{X} = \mathbf{B}$ egyenlet megoldása ugyanolyan egyszerű, mint a számok közt: $\mathbf{X} = \mathbf{B} - \mathbf{A}$. A mátrixszorzás esete bonyolultabb.
+
+▶ A mátrixszorzás nem kommutatív ezért az $\mathbf{AX} = \mathbf{B}$ és az $\mathbf{YA} = \mathbf{B}$ egyenletek megoldása különböző is lehet. Valóban a mátrixosztás művelete emiatt nem vezethető be, de egy balról és egy jobbról való osztás igen, melyekkel a fenti egyenletek megoldása
+$$\mathbf{X} = \mathbf{A}\backslash\mathbf{B}, \text{ és } \mathbf{Y} = \mathbf{B}/\mathbf{A}$$
+lenne. Ez sem működik minden megszorítás nélkül, mert létezhet több olyan különböző mátrix, például $\mathbf{X}_1$ és $\mathbf{X}_2$, hogy $\mathbf{AX}_1 = \mathbf{B}$ és $\mathbf{AX}_2 = \mathbf{B}$. Így mi döntené el, hogy melyik egyenlő $\mathbf{A}\backslash\mathbf{B}$-vel? Ha az $\mathbf{AX} = \mathbf{B}$ és az $\mathbf{YA} = \mathbf{B}$ egyenleteknek csak egyetlen megoldása van (a következőkben megtudjuk, hogy mi ennek a feltétele), akkor biztosan használható a fent bevezetett jelölés. Például ha
+$$\mathbf{A} = \begin{bmatrix} 1 & 2 \\ 2 & 3 \end{bmatrix}, \text{ és } \mathbf{B} = \begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix},$$
+akkor
+$$\mathbf{X} = \begin{bmatrix} 1 & 2 \\ 2 & 3 \end{bmatrix} \backslash \begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix} = \begin{bmatrix} 3 & 2 \\ -1 & 0 \end{bmatrix}, \text{ mert } \begin{bmatrix} 1 & 2 \\ 2 & 3 \end{bmatrix}\begin{bmatrix} 3 & 2 \\ -1 & 0 \end{bmatrix} = \begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix} \text{ és}$$
+$$\mathbf{Y} = \begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix} / \begin{bmatrix} 1 & 2 \\ 2 & 3 \end{bmatrix} = \begin{bmatrix} 1 & 0 \\ -1 & 2 \end{bmatrix}, \text{ mert } \begin{bmatrix} 1 & 0 \\ -1 & 2 \end{bmatrix}\begin{bmatrix} 1 & 2 \\ 2 & 3 \end{bmatrix} = \begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix}.$$
+▶ Végül a *pszeudoinverz* fogalmának segítségével a fenti két mátrixosztást arra az esetre is ki fogjuk terjeszteni, ha az $\mathbf{AX} = \mathbf{B}$ és az $\mathbf{YA} = \mathbf{B}$ egyenleteknek több megoldásuk is van vagy ha egyetlen megoldásuk sincs.
+
+> Egy $H$ halmazon értelmezett kétváltozós (más szóval bináris) *műveleten* olyan függvényt értünk, mely $H$-beli elempárokhoz $H$-beli elemet rendel. Például a valós számok összeadása esetén e függvény valós számpárhoz valós számot rendel, mondjuk az $(1.2, 0.4)$ számpárhoz az 1.6-ot. E függvényt a $+$ jellel jelöljük, de a függvényeknél szokásos prefix „$+(a, b)$" jelölés helyett műveleteknél az ún. infix jelölést használjuk, azaz $a + b$-t írunk (lásd erről még a következő széljegyzetet).
+
+> A számítástechnikában gyakran találkozunk a műveletek infix jelölése mellett a prefix vagy lengyel és a postfix vagy fordított lengyel jelölésével. A prefixnél a műveleti jel az argumentumai előtt, a postfixnél után van. Például a $(3 + 4) \cdot 2$ kifejezést a prefix jelölést használó Lisp nyelvcsalád nyelveiben a `(* (+ 3 4) 2)` kód, míg például a postfix jelölést használó PostScript nyelvben a `3 4 add 2 mul` kód számítja ki. (A PostScript nyelvvel találkozhatunk a PDF formátumú fájlokban.) Ugyanez a formula a komputer algebra nyelvek közül a Mapleben prefix módon `'*'('+'(3,4),2)`, a Mathematicában `Times[Plus[3,4],2]` alakot ölt. A Sage két lehetőséget kínál: `prod([sum([3,4]),2])`, `mul([add([3,4]),2])`.
+
+### Mátrix inverze
+
+Tudjuk, hogy az $ax = b$ egyenlet megoldásához elég ismerni *a reciprokát,* más néven *multiplikatív inverzét,* és azzal szorozni $b$-t. Ez a gondolat átvihető a mátrixszorzásra is.
+
+Egy nemnulla $a$ szám reciproka az az $a^{-1}$-gyel jelölt szám, melyre $aa^{-1} = a^{-1}a = 1$. Az 1 szerepét mátrixszorzásnál az $\mathbf{I}$ egységmátrix játssza. Világos, hogy adott $\mathbf{A}$ mátrixhoz csak úgy létezhet olyan $\mathbf{X}$, melyre $\mathbf{AX} = \mathbf{XA} = \mathbf{I}$, ha $\mathbf{A}$ négyzetes. Ez a következő definíciót adja:
+
+**5.7. definíció (Mátrix inverze).** *Legyen $\mathbf{A}$ egy $n \times n$-es mátrix. Azt mondjuk, hogy $\mathbf{A}$ invertálható, ha létezik olyan $\mathbf{B}$ mátrix, melyre*
+$$\mathbf{AB} = \mathbf{BA} = \mathbf{I}_n.$$
+*A $\mathbf{B}$ mátrixot $\mathbf{A}$ inverzének nevezzük, és $\mathbf{A}^{-1}$-nel jelöljük. A nem invertálható mátrixot szingulárisnak nevezzük.*
+
+▶ Világos, hogy ha $\mathbf{A}$ inverze $\mathbf{B}$, akkor $\mathbf{B}$ inverze $\mathbf{A}$.
+▶ Például az alábbi szorzatokban szereplő két mátrix egymás inverze:
+$$\begin{bmatrix} 2 & 1 \\ 5 & 3 \end{bmatrix}\begin{bmatrix} 3 & -1 \\ -5 & 2 \end{bmatrix} = \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}, \quad \begin{bmatrix} 3 & -1 \\ -5 & 2 \end{bmatrix}\begin{bmatrix} 2 & 1 \\ 5 & 3 \end{bmatrix} = \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}.$$
+▶ A definícióból nem derül ki, hogy egy mátrixnak lehet-e több inverze, de könnyen megmutatható, hogy nem. Ha ugyanis az $\mathbf{A}$ mátrixnak $\mathbf{B}$ és $\mathbf{C}$ is inverze, azaz $\mathbf{AB} = \mathbf{BA} = \mathbf{I}$ és $\mathbf{AC} = \mathbf{CA} = \mathbf{I}$, akkor
+$$\mathbf{C} = \mathbf{CI} = \mathbf{C}(\mathbf{AB}) = (\mathbf{CA})\mathbf{B} = \mathbf{IB} = \mathbf{B}.$$
+▶ Az $\mathbf{A}$ mátrix inverzére használhatjuk az $\mathbf{A}^{-1}$ jelölést, mert megfelel a precedencia-elvnek. Például ha az 5.3. tétel érvényességét megtartva akarunk az $\mathbf{A}^{-1}$ hatványnak értelmet adni, akkor fenn kell álljon rá az $\mathbf{A}^{-1}\mathbf{A} = \mathbf{A}^{-1+1} = \mathbf{A}^0 = \mathbf{I}$ és $\mathbf{AA}^{-1} = \mathbf{A}^{1-1} = \mathbf{A}^0 = \mathbf{I}$ összefüggés.
+▶ Minthogy a mátrixok közti műveleteket a számok közti műveletek táblázatokra való kiterjesztésén keresztül vezettük be, elvárjuk, hogy az $1 \times 1$-es mátrixok inverze essen egybe a számok multiplikatív inverzével (reciprokával), azaz ha $\mathbf{A} = [a]$, akkor $\mathbf{A}^{-1} = [a^{-1}] = [1/a]$ legyen igaz. A fenti definíció ennek az elvárásunknak is megfelel.
+
+Egy négyzetes $\mathbf{A}$ mátrixot *nilpotensnek* nevezünk, ha van olyan $k$ pozitív egész, hogy
+$$\mathbf{A}^k = \mathbf{O}.$$
+Például a $\begin{bmatrix} -2 & 4 \\ -1 & 2 \end{bmatrix}$ mátrix nilpotens, mert $\begin{bmatrix} -2 & 4 \\ -1 & 2 \end{bmatrix}^2 = \begin{bmatrix} 0 & 0 \\ 0 & 0 \end{bmatrix}$. Több alkalmazásban is fontos szerepet kap az alábbi példában szereplő inverz.
+
+**5.8. példa ($\mathbf{I} - \mathbf{A}$ inverze nilpotens $\mathbf{A}$ esetén).** *Mutassuk meg, ha $\mathbf{A}$ nilpotens, azaz valamely pozitív $k$-ra $\mathbf{A}^k = \mathbf{O}$, akkor $\mathbf{I} - \mathbf{A}$ invertálható, és inverze $\mathbf{I} + \mathbf{A} + \mathbf{A}^2 + \ldots + \mathbf{A}^{k-1}$.*
+
+> Általában egy algebrai struktúra egy elemének egy műveletre vonatkozó inverzéhez a művelet *semleges eleme* szükséges. Az összeadás semleges eleme a 0, mert bármely $a$ elemhez adva $a$-t kapunk, hasonlóképp a szorzás semleges eleme az 1, mert bármely $a$ elemet vele szorozva $a$-t kapunk. Összeadás esetén egy elem ellentettjét az $a + x = 0$ egyenlet megoldásával kapjuk, szorzás esetén a reciprokot az $ax = 1$ megoldásával. Az ellentettet, illetve a reciprokot additív, illetve multiplikatív *inverznek* is nevezzük. Mátrixszorzás semleges eleme az egységmátrix.
+
+<!-- OCR: through PDF p.178 -->
