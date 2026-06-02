@@ -2859,4 +2859,100 @@ Az első egyenletrendszer megoldása $x = 3$, $y = -5$, a másodiké $x = -1$, $
 b) Az első egyenletrendszer ellentmondásos, a második megoldásai $x = 1 - \frac{1}{2}t$, $y = t$, ugyanis
 $$\left[\begin{array}{cc|cc} 2 & 1 & 1 & 2 \\ 4 & 2 & 0 & 4 \end{array}\right] \xrightarrow{\operatorname{rref}} \left[\begin{array}{cc|cc} 1 & \frac{1}{2} & 0 & 1 \\ 0 & 0 & 1 & 0 \end{array}\right].$$
 
-<!-- OCR: through PDF p.107 -->
+c) A megoldások leolvashatók a bővített mátrix redukált lépcsős alakjából:
+$$\left[\begin{array}{ccc|cc} 1 & 1 & 1 & 1 & 0 \\ 1 & 2 & 3 & 4 & 5 \\ 1 & 2 & 2 & 1 & 1 \end{array}\right] \xrightarrow{\operatorname{rref}} \left[\begin{array}{ccc|cc} 1 & 0 & 0 & 1 & -1 \\ 0 & 1 & 0 & -3 & -3 \\ 0 & 0 & 1 & 3 & 4 \end{array}\right].$$
+d) A megoldások leolvashatók a bővített mátrix redukált lépcsős alakjából:
+$$\left[\begin{array}{ccc|ccc} 1 & 0 & 0 & -1 & -1 & -2 \\ 0 & 1 & 0 & 1 & 0 & 1 \\ 0 & 0 & 1 & 1 & 2 & 2 \end{array}\right].$$
+
+**2.37.** a) Igaz. b) Hamis, az egyenletrendszer megoldhatósága nem függ az egyenletek számától. Az ismeretlenek számánál akár kevesebb, akár több egyenletből álló rendszer akár konzisztens, akár inkonzisztens is lehet. c) Igaz. d) Igaz, a nullvektor mindig megoldás.
+
+**2.38.** Igen, mindkettőnek $(x, y, z) = (1, 2, 3)$ az egyetlen megoldása, azaz megoldáshalmazaik megegyeznek.
+
+**2.39.** Igen, mindkettő bővített együtthatómátrixának redukált lépcsős alaka a zérussor nélkül
+$$\left[\begin{array}{cc|cc} 1 & 0 & -0.8 & 1.8 \\ 0 & 1 & 2.2 & -1.2 \end{array}\right]$$
+
+**2.40.** a) Igen. b) Nem.
+
+**2.41.** Ha az egyenletrendszernek van legalább három sora, akkor – mivel bármely két szomszédos sor különbsége azonos – az első két sor lineáris kombinációjaként megkapható az összes többi, így nem tudunk $n > 2$ esetén $n$ független egyenletből álló $n$-ismeretlenes egyenletrendszert fölírni, hogy csak egyetlen megoldása legyen. Ha $n = 2$, akkor a bővített mátrix és annak lépcsős alakja
+$$\left[\begin{array}{cc|c} a & a + d & a + 2d \\ a + 3d & a + 4d & a + 5d \end{array}\right] \longrightarrow \left[\begin{array}{cc|c} 1 & 1 & 1 \\ 0 & 1 & 2 \end{array}\right],$$
+ahol $a$ tetszőleges, $d \neq 0$. Innen a megoldásvektor $(-1, 2)$. (Két ismeretlen, de kettőnél több egyenlet esetén, $d \neq 0$ mellett két független egyenlet lesz, melyek ugyanezt a megoldást adják.)
+
+**2.42.** Mind a négy egyenlet megfelelő helyettesítéssel a következő lineáris egyenletrendszerre vezet:
+$$\begin{alignedat}{9}
+2X &{}+{}& 2Y &{}={}& 8 \\
+3X &{}+{}& Y &{}={}& 4
+\end{alignedat}$$
+Ennek megoldása $X = 0$, $Y = 4$. Innen a) $(x, y) = (0, 16)$, b) két megoldás van: $(0, 2)$ és $(0, -2)$, c) ez az egyenletrendszer nem oldható meg, mivel a $e^x = 0$ egyenlet nem oldható meg, d) ez az egyenletrendszer sem oldható meg, mivel a $\cos x = 4$ egyenlet nem oldható meg (a valós számok körében).
+
+**2.43.** Jelölje az 1, 5 és 10 Ft-osok számát rendre $x$, $y$ és $z$. A feladat a következő egyenletrendszerre vezet:
+$$x + y + z = 11 \tag{2.21}$$
+$$x + 2y + 5z = 53 \tag{2.22}$$
+Ennek megoldásai $(x, y, z) = \left(\frac{1}{2} + \frac{5}{2}t, \frac{21}{2} - \frac{9}{4}t, t\right)$. A 10 Ft-os érmék száma legföljebb 5, így elég a $t = 1, 2, \ldots, 5$ értékeket kipróbálni. Az egyetlen megoldás, amely pozitív egészekből áll, azaz ahol minden érme darabszáma pozitív egész: $x = 3$, $y = 6$, $z = 2$. (Ha észrevesszük, hogy csak úgy kaphatunk egész megoldásokat, ha $t$ néggyel osztva kettő maradékot ad, akkor a $t = 2$ eseten kívül más megoldás nem is jöhet szóba.)
+
+**2.44.** A Jacobi-iteráció lépéseinek táblázata 3 értékes jeggyel számolva $\mathbf{x}^0 = (0, 0)$ kezdővektorral:
+
+| | $\mathbf{x}^0$ | $\mathbf{x}^1$ | $\mathbf{x}^2$ | $\mathbf{x}^3$ | $\mathbf{x}^4$ | $\mathbf{x}^5$ | $\mathbf{x}^6$ |
+|---|---|---|---|---|---|---|---|
+| $x$ | 0 | 2 | 2.25 | 2.45 | 2.48 | 2.50 | 2.50 |
+| $y$ | 0 | 1.80 | 1.90 | 1.98 | 1.99 | 2.00 | 2.00 |
+
+Az iteráció lépései 4 értékes jeggyel számolva:
+
+| | $\mathbf{x}^0$ | $\mathbf{x}^1$ | $\mathbf{x}^2$ | $\mathbf{x}^3$ | $\mathbf{x}^4$ | $\mathbf{x}^5$ | $\mathbf{x}^6$ | $\mathbf{x}^7$ | $\mathbf{x}^8$ |
+|---|---|---|---|---|---|---|---|---|---|
+| $x$ | 0 | 2 | 2.25 | 2.45 | 2.475 | 2.495 | 2.498 | 2.500 | 2.5 |
+| $y$ | 0 | 1.80 | 1.90 | 1.980 | 1.990 | 1.998 | 1.999 | 2.0 | |
+
+**2.45.** Az egyenletrendszer sorcserékkel domináns főátlójúvá tehető. A megoldás $(x, y, z) = (1, 1.25, -0.5)$.
+
+**2.50.** A Jacobi-iteráció szerinti módon, a vonatok valamelyikének és a légynek a $k$-adik találkozásából kiszámítva a $k + 1$-edik találkozásra jellemző távolságokat, az $x_{k+1} = ay_k + b$, $y_{k+1} = cx_k + d$ egyenletekre jutunk. Az első táblázat adatait behelyettesítve, és $a$, $b$, $c$ és $d$ értékre megoldva az $a = 1/10$, $b = 40$, $c = 2/5$, $d = 80$ értékeket kapjuk, amiből a táblázat további értékei számolhatók, és az eredeti egyenletrendszer is fölírható:
+$$\begin{alignedat}{9}
+x &{}-{}& \tfrac{1}{10}y &{}={}& 40 \\
+-\tfrac{2}{5}x &{}+{}& y &{}={}& 80.
+\end{alignedat}$$
+Ennek megoldása $(x, y) = (50, 100)$, vagyis a vonatok találkozásáig az $A$ vonat 50 km-t, a $B$ vonat 100 km-t tesz meg. Eszerint a két város 150 km-re van egymástól.
+
+A Gauss–Seidel-iteráció szerinti $x_{k+1} = ay_k + b$, $y_{k+1} = cx_{k+1} + d$ egyenletek épp illeszkednek a feladat második táblázatához az $a = 1/5$, $b = 30$, $c = 1$, $d = 50$ értékekkel. Ez az
+$$\begin{alignedat}{9}
+x &{}-{}& \tfrac{1}{5}y &{}={}& 30 \\
+-x &{}+{}& y &{}={}& 50
+\end{alignedat}$$
+egyenletrendszerhez tartozik, melynek megoldása ismét $(x, y) = (50, 100)$.
+
+# 3. Megoldhatóság és a megoldások tere
+
+E fejezetet az egyenletrendszer megoldásainak jellemzésére szánjuk. Ennek során egy apró lépést teszünk a vektortér általános fogalmának bevezetése felé, és megmutatjuk, hogy egy lineáris egyenletrendszer megoldásai vektorteret alkotnak. Végül megmutatjuk, hogy minden konzisztens lineáris egyenletrendszer origóhoz legközelebbi megoldása az egyetlen, mely a sortérbe esik.
+
+## Homogén és inhomogén egyenletrendszerek megoldásai
+
+*Az előzőekben a megoldások megtalálásának módszereit tanulmányoztuk. E szakaszban a megoldhatóság kérdését és a megoldások halmazának legfontosabb tulajdonságait vizsgáljuk. A vizsgálatokban a lineáris egyenletrendszerek mindkét geometriai interpretációja fontos szerepet kap.*
+
+### Kötött változók száma, mátrix rangja
+
+A redukált lépcsős alak egyértelműségének nyilvánvaló, de fontos folyománya az alábbi eredmény:
+
+**3.1. következmény (Főelemek oszlopai).** *Egy valós mátrix bármely lépcsős alakjában a főelemek ugyanazokban az oszlopokban vannak, tehát ezek száma is független a lépcsős alaktól.*
+
+A bizonyítás azonnal adódik abból, hogy bármely lépcsős alak főelemeiből kapjuk a redukált lépcsős alak vezéregyeseit, így bármely lépcsős alak főelemei ugyanott vannak, ahol a vezéregyesek, a redukált lépcsős alak pedig egyértelmű.
+
+Ebből az is következik, hogy bármely valós mátrix esetén
+$$\text{(bármely lépcsős alak főelemeinek száma)} = \text{(bármely lépcsős alak nemzérus sorainak száma)} = \text{(a redukált lépcsős alak vezéregyeseinek száma).}$$
+Ez a következő definícióhoz vezet.
+
+**3.2. definíció (Mátrix rangja).** *Egy mátrix valamely lépcsős alakjában a nemnulla sorok számát a mátrix* rangjának *nevezzük. Az $\mathbf{A}$ mátrix rangját $\operatorname{r}(\mathbf{A})$, $\operatorname{rang}(\mathbf{A})$ vagy $\operatorname{rank}(\mathbf{A})$ jelöli.*
+
+**3.3. példa (Mátrix rangjának kiszámítása).** *Számítsuk ki az alábbi mátrixok rangját!*
+$$\begin{bmatrix} 2 & 3 \\ 0 & 0 \end{bmatrix}, \quad \begin{bmatrix} 3 & 2 & 1 \\ 0 & 0 & 4 \end{bmatrix}, \quad \begin{bmatrix} 1 & 1 & 1 & 1 \\ 1 & 1 & -1 & -1 \\ 1 & -1 & 1 & -1 \\ 1 & -1 & -1 & 1 \end{bmatrix}, \quad \begin{bmatrix} 0 & 1 & 1 & 0 \\ 1 & 0 & 0 & 1 \\ 1 & 0 & 0 & 1 \\ 0 & 1 & 1 & 0 \end{bmatrix}.$$
+
+*Megoldás.* Az első és második mátrix lépcsős alakú, rangjuk 1, ill. 2. A harmadik és negyedik mátrix elemi sorműveletekkel
+$$\begin{bmatrix} 1 & 1 & 1 & 1 \\ 0 & -2 & 0 & -2 \\ 0 & 0 & -2 & 2 \\ 0 & 0 & 0 & -4 \end{bmatrix}, \text{ illetve} \quad \begin{bmatrix} 1 & 0 & 0 & 1 \\ 0 & 1 & 1 & 0 \\ 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 \end{bmatrix}$$
+alakra hozható, tehát a rang 4, illetve 2. $\square$
+
+**3.4. állítás (Kötött és szabad változók száma).** *Ha egy $n$-ismeretlenes egyenletrendszer megoldható, és együtthatómátrixának rangja $r$, akkor a Gauss- vagy a Gauss–Jordan-módszerrel kapott megoldásában a kötött változók száma $r$, a szabad változók száma $n - r$.*
+
+▶ Megjegyezzük, hogy egyelőre csak annyit látunk, hogy ha az együtthatómátrix és a bővített mátrix rangja $r$, akkor az egyenletrendszernek *van olyan megoldása,* amelyben a kötött változók száma $r$, a szabad változóké $n - r$, és egy ilyen megoldás megkapható a Gauss- vagy a Gauss–Jordan-módszerrel. Arról még nem tudunk semmit, hogy a változók sorrendjének felcserélésével, vagy más megoldási módszerrel nem kaphatjuk-e meg ugyanazt a megoldást több vagy épp kevesebb kötött változóval. A következő, 3. fejezetben be fogjuk látni, hogy a kötött és szabad változók száma független a változók sorrendjétől, és a meghatározásuk módszerétől.
+▶ Például a
+$$\left[\begin{array}{ccccccc|c} 1 & 3 & 2 & 6 & 0 & 4 & 1 & 2 \\ 0 & 0 & 3 & 1 & 2 & 3 & 0 & 1 \\ 0 & 0 & 0 & 0 & 0 & 0 & 4 & 5 \\ 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \end{array}\right]$$
+bővített mátrixhoz tartozó egyenletrendszerben 3 a kötött és 4 a szabad változók száma.
+
+<!-- OCR: through PDF p.110 -->
