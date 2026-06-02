@@ -54,6 +54,8 @@ function flashcardsFor(base: string): Flashcard[] {
 }
 
 export interface Subsection {
+  /** Full source base / folder name (e.g. '02_05_Newton_s_Method'). */
+  base: string;
   /** Chapter number 1–10. */
   chapter: number;
   /** Stable sort key (the numeric prefix, e.g. "03_02_01"). */
@@ -102,6 +104,7 @@ for (const path of Object.keys(SHORT)) {
   const nums = prefix.split('_').map((n) => parseInt(n, 10));
   const chapter = nums[0];
   const sub: Subsection = {
+    base,
     chapter,
     sortKey: prefix,
     slug: prefix.replace(/_/g, '-'),

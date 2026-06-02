@@ -9,6 +9,7 @@ import {
   subsectionsFor, subsectionBySlug, GUIDE_CHAPTERS,
   chapterBook, chapterSlides, hasBook, hasSlides, type Flashcard,
 } from './practice/guides';
+import { videoFor } from './practice/guides/videos';
 import glossaryMd from './practice/glossary.md?raw';
 import './practice/practice.css';
 
@@ -130,6 +131,35 @@ function PracticeHome() {
         </details>
       </section>
     </div>
+  );
+}
+
+/** Lecture-video player for a subsection (YouTube embed or native <video>).
+ *  Renders nothing until a URL is registered in guides/videos.ts. */
+function SubVideo({ base }: { base: string }) {
+  const { lang } = useLang();
+  const url = videoFor(base);
+  if (!url) return null;
+  const yt = url.startsWith('yt:') ? url.slice(3) : null;
+  return (
+    <section className="practice__guide-block">
+      <div className="practice__guide-head">
+        <h2 className="practice__h2">{lang === 'hu' ? '🎬 Videó' : '🎬 Video'}</h2>
+      </div>
+      <div className="subvideo">
+        {yt ? (
+          <iframe
+            className="subvideo__frame"
+            src={`https://www.youtube-nocookie.com/embed/${yt}`}
+            title={lang === 'hu' ? 'Előadásvideó' : 'Lecture video'}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        ) : (
+          <video className="subvideo__el" controls preload="metadata" src={url} />
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -373,6 +403,8 @@ function SubsectionGuide() {
           <FlashcardDeck cards={s.flashcards} />
         </section>
       )}
+
+      <SubVideo base={s.base} />
 
       <nav className="practice__chnav">
         {prev ? (
