@@ -172,7 +172,7 @@ function ChapterGuide() {
                 <span className="chcard__body">
                   <span className="chcard__title">{lang === 'hu' ? 'Teljes fejezet' : 'Full chapter'}</span>
                   <span className="chcard__blurb">
-                    {lang === 'hu' ? 'A tankönyv teljes fejezete (angol)' : 'The complete textbook chapter'}
+                    {lang === 'hu' ? 'A tankönyv teljes fejezete' : 'The complete textbook chapter'}
                   </span>
                 </span>
               </Link>
@@ -293,7 +293,7 @@ function ChapterReader({ kind }: { kind: 'book' | 'slides' }) {
   const { ch } = useParams();
   const chapter = Number(ch);
   const meta = CHAPTERS.find((c) => c.num === chapter);
-  const md = kind === 'book' ? chapterBook(chapter) : chapterSlides(chapter, lang);
+  const md = kind === 'book' ? chapterBook(chapter, lang) : chapterSlides(chapter, lang);
 
   if (!meta || !md) {
     return (

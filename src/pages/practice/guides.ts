@@ -90,10 +90,14 @@ export const GUIDE_CHAPTERS: number[] = [...byChapter.keys()].sort((a, b) => a -
 
 /* ── Full book chapters (EN) and presentation slides (HU + EN) ──────────── */
 
-const bookByCh = new Map<number, string>();
+const bookEnByCh = new Map<number, string>();
+const bookHuByCh = new Map<number, string>();
 for (const [path, md] of Object.entries(BOOK)) {
-  const m = path.match(/Chapter_(\d+)_/);
-  if (m) bookByCh.set(parseInt(m[1], 10), md);
+  const fname = path.split('/').pop()!;
+  const en = fname.match(/^Chapter_(\d+)_/);              // Chapter_3_Linear_Systems.md → EN
+  if (en) { bookEnByCh.set(parseInt(en[1], 10), md); continue; }
+  const hu = fname.match(/^(\d+)_/);                       // 03_Linearis_egyenletrendszerek.md → HU
+  if (hu) bookHuByCh.set(parseInt(hu[1], 10), md);
 }
 
 const slidesEnByCh = new Map<number, string>();
@@ -108,9 +112,12 @@ for (const [path, md] of Object.entries(SLIDES)) {
   }
 }
 
-/** Full English book chapter markdown for a chapter (or ''). */
-export function chapterBook(chapter: number): string {
-  return bookByCh.get(chapter) ?? '';
+/** Full book-chapter markdown in the active language (Hungarian when available
+ *  + requested, English otherwise). */
+export function chapterBook(chapter: number, lang: 'en' | 'hu'): string {
+  const hu = bookHuByCh.get(chapter);
+  const en = bookEnByCh.get(chapter);
+  return (lang === 'hu' ? hu : en) || en || hu || '';
 }
 
 /** Presentation-slide markdown for a chapter in the active language
@@ -121,6 +128,7 @@ export function chapterSlides(chapter: number, lang: 'en' | 'hu'): string {
   return (lang === 'hu' ? hu : en) || en || hu || '';
 }
 
-export const hasBook = (chapter: number): boolean => bookByCh.has(chapter);
+export const hasBook = (chapter: number): boolean =>
+  bookEnByCh.has(chapter) || bookHuByCh.has(chapter);
 export const hasSlides = (chapter: number): boolean =>
   slidesEnByCh.has(chapter) || slidesHuByCh.has(chapter);
