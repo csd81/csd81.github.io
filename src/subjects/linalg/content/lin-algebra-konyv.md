@@ -1572,4 +1572,124 @@ A_3 x + B_3 y + C_3 z &= D_3,
 \end{aligned}$$
 feltéve, hogy a síkoknak csak egyetlen közös pontjuk van. E kérdés vizsgálatára visszatérünk a 2. fejezetben.
 
-<!-- OCR: through PDF p.68 -->
+### Egyenletek $\mathbb{R}^n$-ben
+
+Az egyenes és a sík explicit vektoregyenlete $\mathbb{R}^n$-ben is ugyanolyan alakú, mint $\mathbb{R}^3$-ben, azaz az egyenes explicit vektoregyenlete $\mathbf{r} = \mathbf{r}_0 + t\mathbf{v}$, a síké $\mathbf{r} = \mathbf{r}_0 + s\mathbf{u} + t\mathbf{v}$ alakú.
+
+A síkbeli egyenes és a térbeli sík vektoregyenlete $\mathbf{n} \cdot \mathbf{r} = c$ alakú. E két esetben ez az egyenlet az $n$-dimenziós tér egy $n-1$-dimenziós alakzatának egyenlete ($n = 2, 3$). A későbbiekben látni fogjuk, hogy ez általában is igaz, de e pillanatban még a dimenzió fogalmát sem definiáltuk, ezért egyelőre csak nevet adunk ennek az alakzatnak. Az $\mathbb{R}^n$ térben $\mathbf{n} \neq \mathbf{0}$ esetén az $\mathbf{n} \cdot \mathbf{r} = c$ egyenletet kielégítő $\mathbf{r}$ vektorok végpontjainak halmazát *hipersíknak* nevezzük. Koordinátás alakban
+$$a_1 x_1 + a_2 x_2 + \ldots + a_n x_n = c,$$
+ahol $\mathbf{n} = (a_1, a_2, \ldots, a_n)$ a hipersík *normálvektora* (ld. a 2.12. feladatot), $\mathbf{r} = (x_1, x_2, \ldots, x_n)$ a hipersík egy tetszőleges pontjába mutató vektor.
+
+A következő táblázat összefoglalja geometriai alakzatoknak a továbbiak szempontjából legfontosabb egyenleteit.
+
+| Tér | Alakzat | Explicit vektoregyenlet | Implicit egyenlet(rendszer) |
+|---|---|---|---|
+| **Síkban** | egyenes | $\mathbf{r} = \mathbf{r}_0 + t\mathbf{v}$ | $Ax + By = C$ |
+| | pont | $\mathbf{r} = \mathbf{r}_0$ | $A_1 x + B_1 y = C_1$<br>$A_2 x + B_2 y = C_2$ |
+| **Térben** | sík | $\mathbf{r} = \mathbf{r}_0 + s\mathbf{u} + t\mathbf{v}$ | $Ax + By + Cz = D$ |
+| | egyenes | $\mathbf{r} = \mathbf{r}_0 + t\mathbf{v}$ | $A_1 x + B_1 y + C_1 z = D_1$<br>$A_2 x + B_2 y + C_2 z = D_2$ |
+| | pont | $\mathbf{r} = \mathbf{r}_0$ | $A_1 x + B_1 y + C_1 z = D_1$<br>$A_2 x + B_2 y + C_2 z = D_2$<br>$A_3 x + B_3 y + C_3 z = D_3$ |
+| **$\mathbb{R}^n$-ben** | hipersík | ??? | $a_1 x_1 + a_2 x_2 + \ldots + a_n x_n = b$ |
+| | sík | $\mathbf{r} = \mathbf{r}_0 + s\mathbf{u} + t\mathbf{v}$ | ??? |
+| | egyenes | $\mathbf{r} = \mathbf{r}_0 + t\mathbf{v}$ | ??? |
+| | pont | $\mathbf{r} = \mathbf{r}_0$ | ??? |
+
+*2.1. táblázat. Geometriai alakzatok egyenletei: az $\mathbb{R}^n$-beli egyenletek közül többet még nem ismerünk, ezeket három kérdőjel jelzi, de arra biztatjuk az Olvasót, hogy az analógia fonalán haladva fogalmazza meg sejtéseit.*
+
+### Feladatok
+
+**2.1.•** *Egyenes, sík, hipersík: igaz – hamis.* Melyek igazak, melyek hamisak az alábbi állítások közül? Válaszunkat indokoljuk!
+- a) Az $Ax + By = C$ minden síkbeli koordinátarendszerben egy egyenes egyenlete!
+- b) Az $x^2 + y^2 = 4$ minden síkbeli koordinátarendszerben egy kör egyenlete!
+- c) Az $Ax + By = C$ lehet egy sík egyenlete!
+- d) Az $Ax + By = C$ egyenletű sík normálvektora $(A, B, C)$.
+- e) Az $x + y = 0$, $z + w = 0$ egyenletrendszer egy $\mathbb{R}^4$-beli sík egyenletrendszere.
+- f) Az $x = 0$, $y = 0$ egyenletrendszer egy $\mathbb{R}^4$-beli sík egyenletrendszere.
+- g) Az $x_1 + 3x_3 + 5x_5 = 2$ egyenletű $\mathbb{R}^5$-beli hipersík normálvektora $(1, 0, 3, 0, 5)$.
+- h) $\mathbb{R}^4$-ben van olyan két sík, melyek egyetlen pontban metszik egymást!
+
+**2.2.** *Koordinátasíkkal párhuzamos sík egyenlete.* Tekintsük egy térbeli koordináta-rendszerben azt a síkot, mely párhuzamos az első két koordinátatengellyel, és a harmadik tengelyt az 5 koordinátájú pontban metszi. Írjunk fel egyenleteit!
+
+**2.3.•** Határozzuk meg az implicit egyenlet(rendszer)ével megadott egyenes explicit vektoregyenletét!
+- a) $x + y = 1$  b) $2x + 3y = 6$
+- c) $\begin{cases} x + 2y + 3z = 1 \\ x + 3y + 4z = 2 \end{cases}$  d) $\begin{cases} x + 2y + 3z = 1 \\ z = 2 \end{cases}$
+- e) $\begin{cases} x + y + z + w = 1 \\ x + y + 2z + 3w = 2 \\ x + y + 2z + 2w = 2 \end{cases}$  f) $\begin{cases} x + y + z + w = 3 \\ y + 2z + w = 2 \\ z + w = 1 \end{cases}$
+
+**2.4.** Az alábbi egyenlet a megadott térben egy hipersík implicit egyenlete. Adjuk meg az explicit egyenletrendszerét!
+- a) $x + y = 1$, $\mathbb{R}^2$  b) $x + y + z = 1$, $\mathbb{R}^3$
+- c) $x + y = 1$, $\mathbb{R}^3$  d) $x + y + z + w = 1$, $\mathbb{R}^4$
+- e) $x + y = 1$, $\mathbb{R}^4$  f) $x = 1$, $\mathbb{R}^4$
+
+**2.5.•** Határozzuk meg az implicit egyenlet(rendszer)ével megadott alábbi sík explicit vektoregyenletét!
+- a) $x + 2y + 3z = 1$  b) $3x + 2y + z = 6$
+- c) $ax + by + cz = 1$, ahol $a, b, c \in \mathbb{R}$ legalább egyike nem nulla paraméter
+- d) $\begin{cases} x + y + 2z + 6w = 4 \\ x - y + 4z = 2 \end{cases}$  e) $\begin{cases} x + y + z + w = 1 \\ x + y + 2z + 3w = 2 \end{cases}$
+- f) $\begin{cases} x + y = 3 \\ z + w = 1 \end{cases}$  g) $\begin{cases} x + y = 3 \\ w = 1 \end{cases}$
+
+**2.6.** *Egyenes egyenletei.* Írjuk fel a megadott pontokon átmenő egyenes egyenlet(rendszer)eit!
+- a) $A(2, 1)$, $B(3, 4)$,  b) $A(1, 4)$, $B(3, 4)$,
+- c) $A(1, 4)$, $B(1, 3)$,  d) $A(3, 4, 1)$, $B(3, 4, 2)$,
+- e) $A(1, 4, 1)$, $B(3, 4, 2)$,  f) $A(1, 4, 1)$, $B(3, 2, 2)$,
+- g) $A(1, 1, 1)$, $B(2, 3, 2, 4)$,  h) $A(3, 4, 1, 0)$, $B(3, 2, 1, 2)$.
+
+**2.7.** *Sík egyenletei.* Írjuk fel a megadott pontokon átmenő sík egyenleteit!
+- a) $A(0, -1, 2)$, $B(-1, 0, 7)$, $C(2, 1, 4)$,
+- b) $A(0, 1, 2)$, $B(-1, 1, 7)$, $C(2, 1, 4)$,
+- c) $A(1, 1, 1, 1)$, $B(2, 3, 2, 4)$, $C(3, 2, 1, 0)$,
+- d) $A(0, -1, 2, 3)$, $B(-1, 0, 7, 4)$, $C(2, 1, 4, 2)$.
+
+**2.8.** *Hipersík egyenletei.* Írjuk fel a megadott pontokon átmenő $\mathbb{R}^4$-beli hipersík egyenleteit!
+- a) $A(0, 1, 1, 1)$, $B(0, 2, 3, 4)$, $C(1, 2, 1, 1)$, $D(0, 1, 2, 2)$,
+- b) $A(1, 1, 1, 1)$, $B(1, 2, 3, 4)$, $C(2, 2, 1, 1)$, $D(1, 1, 2, 2)$.
+- c) $A(1, 1, 1, 1)$, $B(1, 2, 1, 4)$, $C(2, 2, 1, 1)$, $D(1, 1, 2, 2)$.
+
+**2.9.•** Adjunk bizonyítást a 2.8. állításra, ha a bázis ortonormált, azaz mutassuk meg, hogy a sík minden egyenesének van
+$$Ax + By = C$$
+alakú egyenlete, és minden ilyen alakú egyenlet egy egyenes egyenlete, ahol $A$ és $B$ közül nem mindkettő nulla, és $(-B, A)$ az egyenes egy irányvektora.
+
+**2.10.** Igazoljuk a 2.11. állítást.
+
+**2.11.** Igazoljuk a 2.13. tételt ortonormált bázis esetén (az $\mathbf{n} \cdot (\mathbf{r} - \mathbf{r}_0) = 0$ alakú vektoregyenletéből)
+
+**2.12.** Mutassuk meg, hogy $\mathbb{R}^n$ egy tetszőleges $\mathbf{n} \cdot \mathbf{r} = c$ egyenletű hipersíkjának bármely két pontját összekötő vektor merőleges $\mathbf{n}$-re.
+
+## A lineáris egyenletrendszer és két modellje
+
+*E szakasz témája a lineáris egyenletrendszerek fogalma és a lineáris egyenletrendszer megoldásának két geometriai interpretációja: hipersíkok metszetének meghatározása és egy vektor lineáris kombinációként való előállítása. A számítások kényelmes könyvelésére bevezetjük a* mátrix *fogalmát.*
+
+### Lineáris egyenlet és egyenletrendszer
+
+$Ax + By = C$ a síkbeli egyenes implicit egyenlete. Innen ered a lineáris egyenlet elnevezés.[^1]
+
+[^1]: *Lineáris: a* vonalas *jelentésű latin lineáris szóból ered, mely a* lenfonal, horgászzsinór, *átvitt értelemben* vonal, határvonal *jelentésű* linea (linea) *szó származéka. A matematikában* egyenessel kapcsolatba hozható, *illetve* elsőfokú *értelemben szokás használni.*
+
+**2.19. definíció (Lineáris egyenlet).** *Az*
+$$a_1 x_1 + a_2 x_2 + \cdots + a_n x_n = b \tag{2.15}$$
+*alakra hozható egyenletet az $x_1, x_2 \ldots x_n$ ismeretlenekben* lineáris egyenletnek *nevezzük, ahol $a_1, a_2, \ldots$ és $a_n$, valamint $b$ konstansok. Az $a_1, a_2, \ldots$ és $a_n$ konstansokat az egyenlet* együtthatóinak, *$b$-t az egyenlet* konstans tagjának *nevezzük.*
+
+▶ Például az alábbi egyenletek lineárisak:
+$$x - 2y = 1, \quad \frac{1}{2}x_1 - \sqrt{2}x_2 + (5 - \pi)x_3 = 0, \quad a\cos 0.87 - 0.15c = 0.23.$$
+
+▶ A következő egyenletek nem lineárisak az $x$, $y$ és $z$ ismeretlenekben:
+$$xz - y = 0, \quad x + 2y = 3^z, \quad x\sin y + y\cos z + y = z^2,$$
+viszont mindegyikük lineáris az $x$ és $y$ ismeretlenekben, hisz ekkor $z$ paraméter, melynek bármely értéke mellett lineárisak az egyenletek.
+
+▶ Az
+$$x = y, \quad x = 3 - y + 2z$$
+egyenletek az $x$, $y$ és $z$ ismeretlenekben lineárisak, mert ekvivalens (azonos) átalakítással a definícióbeli alakra hozhatók:
+$$x - y + 0z = 0, \quad x + y - 2z = 3.$$
+
+Lineáris egyenletek egy véges halmazát *lineáris egyenletrendszernek* nevezzük. Az egyenletrendszer ismeretlenei mindazok az ismeretlenek, amelyek legalább egy egyenletben szerepelnek. Ha egy ismeretlen egy egyenletben nem szerepel, akkor úgy tekintjük, hogy $0$ az együtthatója. A jobb áttekinthetőséget az ismeretlenek azonos sorrendben való felírásával segítjük.
+
+▶ Lineáris egyenletrendszerek például a következők:
+$$\begin{alignedat}{9}
+3x &{}-{}& y &{}={}& 2 \\
+-x &{}+{}& 2y &{}={}& 6 \\
+x &{}+{}& y &{}={}& 6
+\end{alignedat} \qquad \begin{alignedat}{9}
+x_1 &&&{}={}& 3 \\
+x_2 &&&{}={}& 1 \\
+x_3 &&&{}={}& 4
+\end{alignedat} \qquad 2x - 3y + z - w = 6. \tag{2.16}$$
+
+<!-- OCR: through PDF p.71 -->
