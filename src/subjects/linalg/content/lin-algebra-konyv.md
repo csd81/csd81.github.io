@@ -4325,4 +4325,72 @@ $$\begin{bmatrix} 1 & 2 & 3 & 4 & 5 \\ 2 & 3 & 5 & 7 & 11 \\ 0 & 1 & 1 & 1 & -1 
 
 *Megoldás.* A nulltér, azaz a mátrixhoz tartozó homogén lineáris egyenletrendszer megoldásainak tere könnyen leolvasható a redukált lép-
 
-<!-- OCR: through PDF p.155 -->
+csős alakból.
+$$\begin{bmatrix} 1 & 2 & 3 & 4 & 5 \\ 2 & 3 & 5 & 7 & 11 \\ 0 & 1 & 1 & 1 & -1 \end{bmatrix} \Rightarrow \begin{bmatrix} 1 & 2 & 3 & 4 & 5 \\ 0 & 1 & 1 & 1 & -1 \\ 0 & 0 & 0 & 0 & 0 \end{bmatrix} \Rightarrow \begin{bmatrix} 1 & 0 & 1 & 2 & 7 \\ 0 & 1 & 1 & 1 & -1 \\ 0 & 0 & 0 & 0 & 0 \end{bmatrix}.$$
+A szabad változókhoz rendelt paraméterek legyenek $x_3 = t_1$, $x_4 = t_2$, $x_5 = t_3$, amiből $x_1 = -t_1 - 2t_2 - 7t_3$ és $x_2 = -t_1 - t_2 + t_3$. Innen
+$$\begin{bmatrix} x_1 \\ x_2 \\ x_3 \\ x_4 \\ x_5 \end{bmatrix} = t_1\begin{bmatrix} -1 \\ -1 \\ 1 \\ 0 \\ 0 \end{bmatrix} + t_2\begin{bmatrix} -2 \\ -1 \\ 0 \\ 1 \\ 0 \end{bmatrix} + t_3\begin{bmatrix} -7 \\ 1 \\ 0 \\ 0 \\ 1 \end{bmatrix} = \begin{bmatrix} -1 & -2 & -7 \\ -1 & -1 & 1 \\ 1 & 0 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \end{bmatrix}\begin{bmatrix} t_1 \\ t_2 \\ t_3 \end{bmatrix}. \qquad \square$$
+
+▶ Vegyük észre, hogy a redukált lépcsős alak és a megoldás blokkszerkezete egyszerű kapcsolatot mutat:
+$$\begin{bmatrix} \mathbf{I}_2 & \mathbf{S} \\ \mathbf{O} & \mathbf{O} \end{bmatrix}, \qquad \mathbf{x} = \begin{bmatrix} -\mathbf{S} \\ \mathbf{I}_3 \end{bmatrix}\mathbf{t},$$
+ahol $\mathbf{t}$ a paraméterek vektora. Ez általánosítható tetszőleges homogén, és inhomogén lineáris egyenletrendszerekre (ld. a 4.53. feladatot).
+
+Könnyen igazolhatók azok az összefüggések, melyeket a standard egységvektorokkal való szorzással kapunk. Jelölje $\mathbf{e}_i = (0, 0, \ldots, 1, \ldots, 0)$ azt a vektort, melynek $i$-edik koordinátája 1, a többi 0.
+
+**4.21. állítás (Mátrix elemeinek, sor- és oszlopvektorainak előállítása).** *Legyen $\mathbf{A}$ egy $m \times n$-es mátrix, $\mathbf{e}_i$ $m$-dimenziós, $\mathbf{e}_j$ $n$-dimenziós standard egységvektor. Ekkor a standard $\mathbf{e}_i$ sorvektorral balról való szorzás a mátrix $i$-edik sorvektorát, az $\mathbf{e}_j$-vel jobbról való szorzás a mátrix $j$-edik oszlopvektorát adja, azaz*
+$$\mathbf{e}_i^\mathsf{T}\mathbf{A} = \mathbf{a}_{i*} \text{ és } \mathbf{A}\mathbf{e}_j = \mathbf{a}_{*j},$$
+*továbbá*
+$$\mathbf{e}_i^\mathsf{T}(\mathbf{A}\mathbf{e}_j) = (\mathbf{e}_i^\mathsf{T}\mathbf{A})\mathbf{e}_j = a_{ij}.$$
+
+Az $\mathbf{e}_i\mathbf{e}_j^\mathsf{T}$ diád egy olyan mátrix, melynek $(i, j)$-indexű eleme 1, az összes többi 0:
+$$\mathbf{e}_i\mathbf{e}_j^\mathsf{T} = \begin{bmatrix} 0 \\ \vdots \\ 1 \\ \vdots \\ 0 \end{bmatrix} \begin{bmatrix} 0 & \ldots & 1 & \ldots & 0 \end{bmatrix} = \begin{bmatrix} 0 & \ldots & 0 & \ldots & 0 \\ \vdots & & \vdots & & \vdots \\ 0 & \ldots & 1 & \ldots & 0 \\ \vdots & & \vdots & & \vdots \\ 0 & \ldots & 0 & \ldots & 0 \end{bmatrix}.$$
+
+### A báziscsere mátrixszorzatos alakja
+
+Ha egy vektornak két különböző bázisban is meg van adva a koordinátás alakja, akkor az egyikből a másikat egy egyszerű mátrixszorzással is megkaphatjuk.
+
+**4.22. példa (Áttérés standard bázisra).** *Az $\mathbb{R}^3$ térnek $\mathcal{B} = \{ (1, 2, 3), (0, 2, 3), (3, 5, 8) \}$ egy bázisa. Az e bázisban megadott $[\mathbf{v}]_{\mathcal{B}}$ vektornak írjuk fel a koordinátás alakját a standard bázisban egyetlen mátrixszorzással. Mi a $\mathbf{v}$ vektor standard koordinátás alakja, ha $[\mathbf{v}]_{\mathcal{B}} = (3, 2, -1)$?*
+
+*Megoldás.* $[\mathbf{v}]_{\mathcal{B}} = (3, 2, -1)$ azt jelenti, hogy
+$$\mathbf{v} = 3\begin{bmatrix} 1 \\ 2 \\ 3 \end{bmatrix} + 2\begin{bmatrix} 0 \\ 2 \\ 3 \end{bmatrix} - \begin{bmatrix} 3 \\ 5 \\ 8 \end{bmatrix} = \begin{bmatrix} 0 \\ 5 \\ 7 \end{bmatrix},$$
+ami mátrixszorzatos alakban
+$$\mathbf{v} = \begin{bmatrix} 1 & 0 & 3 \\ 2 & 2 & 5 \\ 3 & 3 & 8 \end{bmatrix}\begin{bmatrix} 3 \\ 2 \\ -1 \end{bmatrix} = \begin{bmatrix} 0 \\ 5 \\ 7 \end{bmatrix}.$$
+Legyen $[\mathbf{v}]_{\mathcal{B}} = (x, y, z)$. Ekkor
+$$\mathbf{v} = x\begin{bmatrix} 1 \\ 2 \\ 3 \end{bmatrix} + y\begin{bmatrix} 0 \\ 2 \\ 3 \end{bmatrix} + z\begin{bmatrix} 3 \\ 5 \\ 8 \end{bmatrix} = \begin{bmatrix} 1 & 0 & 3 \\ 2 & 2 & 5 \\ 3 & 3 & 8 \end{bmatrix}\begin{bmatrix} x \\ y \\ z \end{bmatrix}. \qquad \square$$
+
+E példa a következő definícióhoz és állításhoz vezet:
+
+**4.23. definíció (Áttérés mátrixa).** *Legyen $\mathcal{B} = \{ \mathbf{b}_1, \mathbf{b}_2, \ldots, \mathbf{b}_n \}$ a $\mathcal{V}$ vektortér bázisa és $\mathcal{C}$ egy $\mathcal{V}$-t tartalmazó valamely (véges dimenziós) vektortér egy bázisa (például a $\mathcal{V}$ egy másik bázisa). A $\mathcal{B}$ vektorainak a $\mathcal{C}$ bázisban felírt koordinátás alakjaiból képzett mátrixot a $\mathcal{B}$ bázisról a $\mathcal{C}$-re való áttérés mátrixának nevezzük. Ennek alakja tehát*
+$$\mathbf{A}_{\mathcal{C} \leftarrow \mathcal{B}} = [\, [\mathbf{b}_1]_{\mathcal{C}} \mid [\mathbf{b}_2]_{\mathcal{C}} \mid \cdots \mid [\mathbf{b}_n]_{\mathcal{C}} \,]$$
+
+**4.24. állítás (Koordináták változása a bázis cseréjénél).** *Ha $\mathcal{B}$ a $\mathcal{V}$ vektortér egy bázisa, $\mathcal{C}$ egy $\mathcal{V}$-t tartalmazó vektortér egy bázisa és $\mathbf{A}_{\mathcal{C} \leftarrow \mathcal{B}}$ az áttérés mátrixa, akkor bármely $\mathbf{v}$ vektor $\mathcal{B}$-, illetve $\mathcal{C}$-beli koordinátás alakja közt fennáll a*
+$$[\mathbf{v}]_{\mathcal{C}} = \mathbf{A}_{\mathcal{C} \leftarrow \mathcal{B}}[\mathbf{v}]_{\mathcal{B}}$$
+*összefüggés.*
+
+*Bizonyítás.* Legyen $[\mathbf{v}]_{\mathcal{B}} = (v_1, v_2, \ldots, v_n)$. A koordinátás alak jelentése szerint
+$$\mathbf{v} = v_1\mathbf{b}_1 + v_2\mathbf{b}_2 + \ldots + v_n\mathbf{b}_n.$$
+Ennek koordinátás alakja a $\mathcal{C}$ bázisban
+$$\begin{aligned}
+[\mathbf{v}]_{\mathcal{C}} &= v_1[\mathbf{b}_1]_{\mathcal{C}} + v_2[\mathbf{b}_2]_{\mathcal{C}} + \ldots + v_n[\mathbf{b}_n]_{\mathcal{C}} \\
+&= [\, [\mathbf{b}_1]_{\mathcal{C}} \mid [\mathbf{b}_2]_{\mathcal{C}} \mid \cdots \mid [\mathbf{b}_n]_{\mathcal{C}} \,][\mathbf{v}]_{\mathcal{B}} \\
+&= \mathbf{A}_{\mathcal{C} \leftarrow \mathcal{B}}[\mathbf{v}]_{\mathcal{B}}. \qquad \square
+\end{aligned}$$
+
+▶ A 4.22. példában a $\mathcal{B}$ bázisról a standard $\mathcal{E} = \{ \mathbf{e}_1, \mathbf{e}_2, \mathbf{e}_3 \}$ bázisra tértünk át, tehát az áttérés mátrixát jelölheti $\mathbf{A}_{\mathcal{E} \leftarrow \mathcal{B}}$.
+
+**4.25. példa (Áttérés mátrixa).** *Legyen $\mathcal{E}$ az $\mathbb{R}^4$ standard bázisa, és $\mathcal{B}$ a 3.27. és a 3.28. példákban is szereplő $\mathbf{b}_1 = (1, 1, 0, -2)$ és $\mathbf{b}_2 = (2, 3, 3, -2)$ vektorok által kifeszített altér. Írjuk fel a $\mathcal{B}$-ről $\mathcal{E}$-re való áttérés mátrixát, és adjuk meg a $(-1, 1)_{\mathcal{B}}$ és a $(-3, 2)_{\mathcal{B}}$ vektorok $\mathcal{E}$-beli koordinátás alakját!*
+
+*Megoldás.* Az áttérés mátrixa
+$$\mathbf{A}_{\mathcal{E} \leftarrow \mathcal{B}} = [\, [\mathbf{b}_1]_{\mathcal{E}} \mid [\mathbf{b}_2]_{\mathcal{E}} \,] = \begin{bmatrix} 1 & 2 \\ 1 & 3 \\ 0 & 3 \\ -2 & -2 \end{bmatrix}.$$
+Így a két vektor koordinátás alakja a standard bázisban
+$$\begin{bmatrix} 1 & 2 \\ 1 & 3 \\ 0 & 3 \\ -2 & -2 \end{bmatrix}\begin{bmatrix} -1 \\ 1 \end{bmatrix} = \begin{bmatrix} 1 \\ 2 \\ 3 \\ 0 \end{bmatrix}, \quad \begin{bmatrix} 1 & 2 \\ 1 & 3 \\ 0 & 3 \\ -2 & -2 \end{bmatrix}\begin{bmatrix} -3 \\ 2 \end{bmatrix} = \begin{bmatrix} 1 \\ 3 \\ 6 \\ 2 \end{bmatrix}. \qquad \square$$
+
+### Bázisfelbontás
+
+A 3.23. tétel második pontja szerint az $\mathbf{A}$ mátrix oszlopai és redukált lépcsős alakjának oszlopai közt azonos lineáris kapcsolatok állnak fenn. A redukált lépcsős alak főoszlopainak megfelelő oszlopok az $\mathbf{A}$-ban az $\mathbf{A}$ oszlopterének bázisát adják. Az ezekből az oszlopokból képzett mátrix e bázisról a standard bázisra való áttérés mátrixa. A redukált lépcsős alak oszlopvektorai pedig az $\mathbf{A}$ oszlopvektorainak e bázisra vonatkozó koordinátás alakjai. Mindezek adják a következő állítást:
+
+**4.26. állítás (Bázisfelbontás).** *Jelölje az $\mathbf{A}$ mátrix redukált lépcsős alakjának nemzérus soraiból álló mátrixát $\mathbf{R}$, az $\mathbf{R}$ főoszlopainak megfelelő $\mathbf{A}$-beli oszlopok alkotta részmátrixot $\mathbf{B}$. Ekkor*
+$$\mathbf{A} = \mathbf{B}\mathbf{R}.$$
+
+*Bizonyítás.* $\mathbf{B}$ oszlopai az $\mathbf{A}$ oszlopterének bázisát adják, tehát $\mathbf{B}$ a standard bázisra való áttérés mátrixa az $\mathbf{A}$ oszlopterében. Az $\mathbf{R}$ mátrix
+
+<!-- OCR: through PDF p.158 -->
