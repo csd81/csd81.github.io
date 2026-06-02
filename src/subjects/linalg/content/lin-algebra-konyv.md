@@ -2498,4 +2498,123 @@ A Banach-tételt úgy fogjuk használni az egyenletrendszerek megoldásánál, h
 
 > *Képzeljük el, hogy egy nagyobb gumilapot néhányan körbeállva egy kerek asztal tetején széthúznak az asztal széléig, majd (most jön a leképezés!) visszaengedik eredeti állapotába. Ekkor igaz az, hogy az asztalon pontosan egy olyan pont van, mely fölött a gumilap helyben marad. E pont megkapható, ha kiválasztunk az asztalon egy tetszőleges $P_0$ pontot, és megnézzük, hogy a kinyújtott gumilap e fölötti pontja összehúzódáskor hová ugrik, legyen ez a $P_1$ pont az asztalon. A kinyújtott gumilap $P_1$ fölötti pontja összehúzódáskor az $P_2$ pont fölé ugrik, stb. Az így kapott pontsorozat a fixponthoz konvergál.*
 
-<!-- OCR: through PDF p.98 -->
+### Jacobi-iteráció
+
+Az iteráció arra épül, hogy a $k$-adik egyenletből kifejezzük a $k$-adik változót, ebből kapjuk az $\mathbf{x} = f(\mathbf{x})$ alakot.
+
+**2.52. példa (Jacobi-iteráció).** *Oldjuk meg a*
+$$\begin{alignedat}{9}
+4x &{}-{}& y &{}={}& 2 \\
+2x &{}-{}& 5y &{}={}& -8
+\end{alignedat}$$
+*egyenletrendszert Jacobi-iterációval, 3 tizedes pontossággal számolva.*
+
+*Megoldás.* Az egyenletrendszert kiküszöböléssel megoldva kapjuk, hogy $\mathbf{x} = (1, 2)$ az egyetlen megoldás.
+
+Hozzuk az egyenletrendszert $\mathbf{x} = f(\mathbf{x})$, azaz $\begin{bmatrix} x \\ y \end{bmatrix} = f\left(\begin{bmatrix} x \\ y \end{bmatrix}\right)$ alakra. Az első egyenletből fejezzük ki az $x$-et, a másodikból $y$-t:
+$$x = \frac{y + 2}{4}, \quad y = \frac{2x + 8}{5}.$$
+Válasszunk egy $\mathbf{x}^0$ vektort tetszőlegesen, legyen pl. $\mathbf{x}^0 = (0, 0)$, azaz $x = y = 0$. A fenti képletekbe helyettesítve kapjuk, hogy $\mathbf{x}^1 = \left(\frac{0+2}{4}, \frac{0+8}{5}\right) = (0.5, 1.6)$. A további értékeket egy táblázatban adjuk meg:
+
+| | $\mathbf{x}^0$ | $\mathbf{x}^1$ | $\mathbf{x}^2$ | $\mathbf{x}^3$ | $\mathbf{x}^4$ | $\mathbf{x}^5$ | $\mathbf{x}^6$ | $\mathbf{x}^7$ | $\mathbf{x}^8$ |
+|---|---|---|---|---|---|---|---|---|---|
+| $x$ | 0 | 0.5 | 0.9 | 0.95 | 0.99 | 0.995 | 0.999 | 1.000 | 1.000 |
+| $y$ | 0 | 1.6 | 1.8 | 1.96 | 1.98 | 1.996 | 1.998 | 2.000 | 2.000 |
+
+E példa esetén tehát a végtelen sorozat konvergensnek mutatkozott, de a kerekítési hiba folytán véges sok lépés után megtalálta a konvergenciapontot. $\square$
+
+Az általános eset hasonlóan írható le. Tegyük fel, hogy az
+$$\begin{alignedat}{9}
+a_{11}x_1 &{}+{}& a_{12}x_2 &{}+{}& \ldots &{}+{}& a_{1n}x_n &{}={}& b_1 \\
+a_{21}x_1 &{}+{}& a_{22}x_2 &{}+{}& \ldots &{}+{}& a_{2n}x_n &{}={}& b_2 \\
+\vdots && \vdots && && \vdots && \;\,\vdots \\
+a_{n1}x_1 &{}+{}& a_{n2}x_2 &{}+{}& \ldots &{}+{}& a_{nn}x_n &{}={}& b_n
+\end{alignedat}$$
+egyenletrendszer egyértelműen megoldható, és főátlójának minden eleme különbözik 0-tól. A *Jacobi-iteráció* menete tehát a következő. A $k$-adik egyenletből fejezzük ki az $x_k$ változót:
+$$\begin{aligned}
+x_1 &= \frac{1}{a_{11}}(b_1 - a_{12}x_2 - \ldots - a_{1,n-1}x_{n-1} - a_{1n}x_n) \\
+x_2 &= \frac{1}{a_{22}}(b_2 - a_{21}x_1 - \ldots - a_{2,n-1}x_{n-1} - a_{2n}x_n) \\
+&\;\;\vdots \\
+x_n &= \frac{1}{a_{nn}}(b_n - a_{n1}x_1 - a_{n2}x_2 - \ldots - a_{n,n-1}x_{n-1}).
+\end{aligned} \tag{2.23}$$
+
+*2.14. ábra. A Jacobi-iteráció szemléltetése.*
+
+Válasszunk az ismeretlenek $\mathbf{x} = (x_1, x_2, \ldots, x_n)$ vektorának egy $\mathbf{x}^0$ kezdőértéket, pl. legyen $\mathbf{x}^0 = (0, 0, \ldots, 0)$. A (2.23) egyenletrendszer jobb oldalába helyettesítsük be $\mathbf{x}^0$ koordinátáinak értékét, a bal oldal adja $\mathbf{x}^1$ koordinátáit. Ezt a lépést ismételjük meg, generálva az $\mathbf{x}^2$, $\mathbf{x}^3, \ldots$ vektorokat addig, míg el nem érjük a megfelelő pontosságot.
+
+### Gauss–Seidel-iteráció
+
+A Jacobi-iteráció gyorsasága növelhető, ha a (2.23) minden egyenletének jobb oldalába azonnal a már kiszámolt változók új értékeit helyettesítjük. Ezt az algoritmust *Gauss–Seidel-iterációnak* nevezzük.
+
+A kétismeretlenes
+$$\begin{alignedat}{9}
+a_{11}x &{}+{}& a_{12}y &{}={}& b_1 \\
+a_{21}x &{}+{}& a_{22}y &{}={}& b_2
+\end{alignedat}$$
+egyenletrendszer esetén a Jacobi-iterációnál használt
+$$x_{k+1} = \frac{b_1 - a_{12}y_k}{a_{11}}, \quad y_{k+1} = \frac{b_2 - a_{21}x_k}{a_{22}} \tag{2.24}$$
+képletek helyett, a Gauss–Seidel-iteráció az
+$$x_{k+1} = \frac{b_1 - a_{12}y_k}{a_{11}}, \quad y_{k+1} = \frac{b_2 - a_{21}x_{k+1}}{a_{22}} \tag{2.25}$$
+képleteket használja.
+
+**2.53. példa (Gauss–Seidel-iteráció).** *Oldjuk meg a*
+$$\begin{alignedat}{9}
+4x &{}-{}& y &{}={}& 2 \\
+2x &{}-{}& 5y &{}={}& -8
+\end{alignedat}$$
+*egyenletrendszert Gauss–Seidel-iterációval.*
+
+*Megoldás.* A Gauss–Seidel-iterációnál a sorozatot a
+$$x_{k+1} = \frac{2 + y_k}{4}, \quad y_{k+1} = \frac{8 + 2x_{k+1}}{5}$$
+formulák generálják. A kiszámolt értékeket táblázatban adjuk meg de úgy, hogy jelezzük a kiszámítás sorrendjét (néhány lépést fejben ellenőrizzünk):
+
+| | $\mathbf{x}^0$ | $\mathbf{x}^1$ | $\mathbf{x}^2$ | $\mathbf{x}^3$ | $\mathbf{x}^4$ |
+|---|---|---|---|---|---|
+| $x$ | 0 | 0.5 | 0.95 | 0.995 | 1.000 |
+| $y$ | 0 | 1.8 | 1.98 | 1.998 | 2.000 |
+
+Hasonlítsuk össze az eredményt a Jacobi iterációnál készített táblázattal. A megoldás szemléltetése a 2.15. ábrán látható. $\square$
+
+*2.15. ábra. A Gauss–Seidel-iteráció szemléltetése.*
+
+### Az iterációk konvergenciája
+
+Vajon a Jacobi- és a Gauss–Seidel-iterációk mindig konvergens sorozatot adnak-e, ha az egyenletrendszer egyértelműen megoldható? A válasz: nem, de bizonyos – egyszerűen ellenőrizhető, és kikényszeríthető – feltételek fennállása esetén igen.
+
+**2.54. példa (Divergens iteráció).** *Oldjuk meg Jacobi- és Gauss–Seidel-iterációval a következő egyenletrendszert:*
+$$\begin{alignedat}{9}
+x &{}-{}& y &{}={}& 2 \\
+2x &{}-{}& y &{}={}& 5
+\end{alignedat}$$
+
+*Megoldás.* Alakítsuk át az egyenletrendszert:
+$$\begin{aligned}
+x &= y + 2 \\
+y &= 2x - 5
+\end{aligned}$$
+Először próbálkozzunk Jacobi-iterációval:
+
+| | $\mathbf{x}^0$ | $\mathbf{x}^1$ | $\mathbf{x}^2$ | $\mathbf{x}^3$ | $\mathbf{x}^4$ | $\mathbf{x}^5$ | $\mathbf{x}^6$ | $\mathbf{x}^7$ | $\mathbf{x}^8$ |
+|---|---|---|---|---|---|---|---|---|---|
+| $x$ | 0 | 2 | -3 | 1 | -9 | -1 | -21 | -5 | -45 |
+| $y$ | 0 | -5 | -1 | -11 | -3 | -23 | -7 | -47 | -15 |
+
+Úgy tűnik, nem konvergens a vektorsorozat, mint ahogy nem tűnik annak a Gauss–Seidel-iterációnál sem:
+
+| | $\mathbf{x}^0$ | $\mathbf{x}^1$ | $\mathbf{x}^2$ | $\mathbf{x}^3$ | $\mathbf{x}^4$ | $\mathbf{x}^5$ |
+|---|---|---|---|---|---|---|
+| $x$ | 0 | 2 | 1 | -1 | -5 | -13 |
+| $y$ | 0 | -1 | -3 | -7 | -15 | -31 |
+
+A divergencia leolvasható az iterációkat szemléltető ábrákról is! $\square$
+
+**2.55. definíció (Soronként domináns főátlójú mátrix).** *Azt mondjuk, hogy az $n \times n$-es $\mathbf{A}$ mátrix soronként (szigorúan) domináns főátlóval rendelkezik, vagy soronként (szigorúan) domináns főátlójú, ha a főátló minden eleme abszolút értékben nagyobb a sorában lévő többi elem abszolút értékeinek összegénél, azaz képletben*
+$$\begin{aligned}
+|a_{11}| &> |a_{12}| + \ldots + |a_{1,n-1}| + |a_{1n}| \\
+|a_{22}| &> |a_{21}| + \ldots + |a_{2,n-1}| + |a_{2n}| \\
+&\;\;\vdots \\
+|a_{n-1,n-1}| &> |a_{n-1,1}| + |a_{n-1,2}| + \ldots + |a_{n-1,n}| \\
+|a_{nn}| &> |a_{n1}| + |a_{n2}| + \ldots + |a_{n,n-1}|
+\end{aligned}$$
+Hasonlóan definiálható az oszloponként domináns főátlójú mátrix.
+
+<!-- OCR: through PDF p.101 -->
