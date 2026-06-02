@@ -180,8 +180,8 @@ export default function Home() {
               <span className="chcard__title">Lineáris algebra</span>
               <span className="chcard__blurb">
                 {lang === 'hu'
-                  ? 'Leitold Adrien & Szalkai István · Pannon Egyetem — vektorterek, mátrixok, lineáris leképezések, bázistranszformáció + előismeretek (16 téma).'
-                  : 'Leitold Adrien & Szalkai István · University of Pannonia — vector spaces, matrices, linear maps, basis transformation + prerequisites (16 topics).'}
+                  ? 'Leitold Adrien & Szalkai István · Pannon Egyetem — vektorterek, mátrixok, lineáris leképezések, bázistranszformáció, példatár + előismeretek (17 téma).'
+                  : 'Leitold Adrien & Szalkai István · University of Pannonia — vector spaces, matrices, linear maps, basis transformation, worked exercises + prerequisites (17 topics).'}
               </span>
             </span>
           </Link>

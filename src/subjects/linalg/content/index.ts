@@ -6,7 +6,7 @@ function byId(id: string): string {
   return RAW[`./${id}.md`] ?? '';
 }
 
-export type GroupKey = 'eloismeretek' | 'linalg' | 'jegyzet';
+export type GroupKey = 'eloismeretek' | 'linalg' | 'jegyzet' | 'feladatok';
 
 export interface Doc {
   id: string;
@@ -20,10 +20,11 @@ export interface Doc {
 export const GROUP_LABEL: Record<GroupKey, { hu: string; en: string }> = {
   eloismeretek: { hu: 'Előismeretek', en: 'Prerequisites' },
   linalg: { hu: 'Lineáris algebra', en: 'Linear algebra' },
+  feladatok: { hu: 'Feladatok', en: 'Exercises' },
   jegyzet: { hu: 'Jegyzetek', en: 'Lecture notes' },
 };
 
-export const GROUP_ORDER: GroupKey[] = ['linalg', 'eloismeretek', 'jegyzet'];
+export const GROUP_ORDER: GroupKey[] = ['linalg', 'eloismeretek', 'feladatok', 'jegyzet'];
 
 /** Curated order + titles. Slugs match the .md filenames in this folder. */
 export const DOCS: Doc[] = [
@@ -60,6 +61,10 @@ export const DOCS: Doc[] = [
     blurb: 'Függvényfogalom, elemi függvények és tulajdonságaik, függvénytranszformációk.' },
   { id: 'koordinata-geometria', group: 'eloismeretek', icon: 'xy', title: 'Koordináta-geometria',
     blurb: 'Vektorok a koordináta-rendszerben, egyenes és kör egyenletei a síkban.' },
+
+  // --- Feladatok ---
+  { id: 'peldatar', group: 'feladatok', icon: '✎', title: 'Lineáris algebra példatár',
+    blurb: 'Leitold Adrien · Pannon Egyetem — 67 részletesen megoldott minta feladat 8 témakörben, plusz a gyakorló feladatok megoldásai.' },
 
   // --- Jegyzetek ---
   { id: 'linalg-bevezeto', group: 'jegyzet', icon: '📖', title: 'Lineáris algebra alapfogalmak',
