@@ -40,6 +40,9 @@
   padding: 0 1rem;
 }
 .practice__example > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   cursor: pointer;
   font-weight: 700;
   padding: 0.7rem 0;
@@ -48,8 +51,30 @@
   color: var(--brand-700);
 }
 .practice__example > summary::-webkit-details-marker { display: none; }
-.practice__example > summary::before { content: '▸ '; opacity: 0.6; }
+.practice__example > summary::before { content: '▸ '; opacity: 0.6; flex: 0 0 auto; }
 .practice__example[open] > summary::before { content: '▾ '; }
+.practice__example-title { flex: 1 1 auto; }
+
+/* Szalkai-style copy button: copies the box's Markdown/LaTeX source. */
+.practice__copy {
+  flex: 0 0 auto;
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid var(--brand-500);
+  color: var(--brand-700);
+  border-radius: 0.3rem;
+  font-size: 0.66rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  padding: 0.22rem 0.45rem;
+  cursor: pointer;
+  opacity: 0.45;
+  transition: opacity 0.12s, background 0.12s;
+}
+.practice__example:hover .practice__copy,
+.practice__copy:focus { opacity: 0.95; }
+.practice__copy:hover { background: var(--surface, transparent); }
 .practice__example > .prose-lesson { padding-bottom: 0.8rem; }
 
 .practice__toc {
