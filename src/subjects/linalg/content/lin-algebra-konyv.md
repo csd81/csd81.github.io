@@ -2730,4 +2730,133 @@ $$\begin{bmatrix} x \\ y \end{bmatrix} = \begin{bmatrix} 2 \\ 1 \end{bmatrix} + 
 Az implicit egyenletek $3(x - 2) = y - 1$, $(3, -1) \cdot (x - 2, y - 1) = 0$, $3x - y = 5$. d) $x = 3$, $y = 4$,
 $$\begin{bmatrix} x \\ y \end{bmatrix} = \begin{bmatrix} 3 \\ 4 \end{bmatrix}.$$
 
-<!-- OCR: through PDF p.104 -->
+g) Az $A(1, 1, 1, 1)$ ponton átmenő, $\overrightarrow{AB} = (1, 2, 1, 3)$ irányvektorú egyenes explicit vektoregyenlete és explicit egyenletrendszere
+$$\begin{bmatrix} x \\ y \\ z \\ w \end{bmatrix} = \begin{bmatrix} 1 \\ 1 \\ 1 \\ 1 \end{bmatrix} + t\begin{bmatrix} 1 \\ 2 \\ 1 \\ 3 \end{bmatrix}, \quad \text{illetve} \quad \begin{aligned} x &= 1 + t \\ y &= 1 + 2t \\ z &= 1 + t \\ w &= 1 + 3t. \end{aligned}$$
+Az implicit egyenletrendszerek megkaphatók a $t$ kifejezésével az előző egyenletrendszerből:
+$$x - 1 = \frac{y - 1}{2} = z - 1 = \frac{w - 1}{3}.$$
+Innen három *független* egyenlet kiválasztása többféleképp is lehetséges, egyik például a következő:
+$$\begin{alignedat}{9}
+2x &{}-{}& y &&&{}={}& 1 \\
+x &&&{}-{}& z &{}={}& 0 \\
+3x &&&{}-{}& w &{}={}& 2.
+\end{alignedat}$$
+
+**2.7.** a) A három pontba mutató vektorok különbségei a síkkal párhuzamos vektorok, így azokkal felírható a sík mindegyik egyenlete. Két vektor a lehetséges háromból:
+$$\mathbf{u} = (2, 1, 4) - (0, -1, 2) = (2, 2, 2), \text{ és}$$
+$$\mathbf{v} = (-1, 0, 7) - (0, -1, 2) = (-1, 1, 5).$$
+Ezek alapján például az $\mathbf{r}_0 = (0, -1, 2)$ választás mellett a sík egyenletei megegyeznek a 2.14. példában leírtakkal, mivel ugyanarról a síkról van szó.
+
+c) Az $\overrightarrow{AB} = (1, 2, 1, 3)$ és az $\overrightarrow{AC} = (2, 1, 0, -1)$ vektorok segítségével fölírható a sík egyenlete:
+$$\begin{bmatrix} x \\ y \\ z \\ w \end{bmatrix} = \begin{bmatrix} 1 \\ 1 \\ 1 \\ 1 \end{bmatrix} + s\begin{bmatrix} 1 \\ 2 \\ 1 \\ 3 \end{bmatrix} + t\begin{bmatrix} 2 \\ 1 \\ 0 \\ -1 \end{bmatrix}.$$
+Kiküszöbölve az $s$ és $t$ paramétereket két egyenletet kaphatunk, például
+$$\begin{alignedat}{9}
+x &{}-{}& 2y &{}+{}& 3z &&&{}={}& 2 \\
+&& y &{}-{}& 5z &{}+{}& w &{}={}& -3.
+\end{alignedat}$$
+
+**2.8.** a) $\overrightarrow{AB} = (0, 1, 2, 3)$, $\overrightarrow{AC} = (1, 1, 0, 0)$, $\overrightarrow{AD} = (0, 0, 1, 1)$. Innen a vektoregyenlet:
+$$\begin{bmatrix} x \\ y \\ z \\ w \end{bmatrix} = \begin{bmatrix} 0 \\ 1 \\ 1 \\ 1 \end{bmatrix} + \begin{bmatrix} 0 \\ 1 \\ 2 \\ 3 \end{bmatrix} r + \begin{bmatrix} 1 \\ 1 \\ 0 \\ 0 \end{bmatrix} s + \begin{bmatrix} 0 \\ 0 \\ 1 \\ 1 \end{bmatrix} t.$$
+Az explicit egyenletrendszer
+$$\begin{aligned} x &= s \\ y &= 1 + r + s \\ z &= 1 + 2r + t \\ w &= 1 + 3r + t \end{aligned}$$
+Ebben az explicit egyenletrendszerben keressünk három olyan egyenletrendszert, melyek megoldhatók az $r$, $s$, $t$ ismeretlenekre nézve, és ezeket helyettesítsük be a negyedik egyenletbe. Eredményül az
+$$x - y - z + w = 1$$
+egyenletet kapjuk, mely a hipersík implicit egyenlete.
+
+b) $\overrightarrow{AB} = (0, 1, 2, 3)$, $\overrightarrow{AC} = (0, 1, 0, 0)$, $\overrightarrow{AD} = (0, 0, 1, 1)$. Innen a vektoregyenlet:
+$$\begin{bmatrix} x \\ y \\ z \\ w \end{bmatrix} = \begin{bmatrix} 0 \\ 1 \\ 1 \\ 1 \end{bmatrix} + \begin{bmatrix} 0 \\ 1 \\ 2 \\ 3 \end{bmatrix} r + \begin{bmatrix} 0 \\ 1 \\ 0 \\ 0 \end{bmatrix} s + \begin{bmatrix} 0 \\ 0 \\ 1 \\ 1 \end{bmatrix} t.$$
+Az implicit egyenlet $x = 0$.
+
+c) $\overrightarrow{AB} = (0, 1, 0, 3)$, $\overrightarrow{AC} = (1, 1, 0, 0)$, $\overrightarrow{AD} = (0, 0, 1, 1)$. Innen a vektoregyenlet:
+$$\begin{bmatrix} x \\ y \\ z \\ w \end{bmatrix} = \begin{bmatrix} 1 \\ 1 \\ 1 \\ 1 \end{bmatrix} + \begin{bmatrix} 0 \\ 1 \\ 0 \\ 3 \end{bmatrix} r + \begin{bmatrix} 1 \\ 1 \\ 0 \\ 0 \end{bmatrix} s + \begin{bmatrix} 0 \\ 0 \\ 1 \\ 1 \end{bmatrix} t.$$
+Az implicit egyenlet $y + z = 0$.
+
+**2.9.** Mivel $(A, B)$ az egyenes egy normálvektora, ezért ha $\mathbf{r}$ az egyenes egy tetszőleges, $\mathbf{r}_0$ egy rögzített pontjába mutató vektor, akkor az $\mathbf{r} - \mathbf{r}_0 = (x - x_0, y - y_0)$ merőleges a normálvektorra, így skaláris szorzatuk 0, azaz
+$$(A, B) \cdot (x - x_0, y - y_0) = 0.$$
+E skaláris szorzást elvégezve az $Ax + By = Ax_0 + By_0$ formulát kapjuk, ami a kívánt alakú. Másrészt ha $Ax + By = C$, akkor $(A, B) \neq (0, 0)$ miatt az $Ax_0 + By_0 = C$ egyenlet megoldható. Egy ilyen megoldásra $Ax + By = Ax_0 + By_0$, amiből $(A, B) \cdot (x - x_0, y - y_0) = 0$, tehát $(x, y)$ csak az $(x_0, y_0)$ ponton átmenő, $(A, B)$-re merőleges egyenes pontja lehet.
+
+**2.13.** a) igen, b) igen, c) nem, d) igen, e) igen, f) nem.
+
+**2.14.** Könnyen látható, hogy mindkét egyenletrendszer egyetlen megoldása: $x = 2$, $y = 1$, tehát a két egyenletrendszer ekvivalens.
+
+**2.15.** Az első egyenletrendszer nem oldható meg a $0 = 3$ alakú egyenlet miatt, de a második sem, mivel nincs olyan $x$ és $y$, melyre $x + y = 2$ és $x + y = 7$ lenne, hisz $2 \neq 7$.
+
+**2.16.** Behelyettesítés után mindkét egyenlet $0 = 0$ alakú, amit tetszőleges $x$ és $y$ kielégít, így az összes $(x, y)$ számpár megoldása az egyenletrendszernek.
+
+**2.17.** $x = 1$, $y$ tetszőleges, azaz az összes $(1, y)$ alakú számpár megoldás.
+
+**2.18.** A második egyenlet behelyettesítés után $0 = 1$ alakú, így az egyenletrendszernek nincs megoldása.
+
+**2.19.** $x = 1$, $y = 2$, azaz $(x, y) = (1, 2)$ az egyetlen megoldás.
+
+**2.21.** a) A sormodellben két metsző egyenest kell megrajzolni ($y = \frac{7}{3} - \frac{2}{3}x$, $y = -2 + \frac{3}{2}x$), melyek a $(2, 1)$ pontban metszik egymást, míg az oszlopmodellben a $(2, 3)$, a $(3, -2)$ vektorokat és az azok lineáris kombinációjaként előállított $(7, 4)$ vektort!
+
+b) A sormodellben két párhuzamos egyenest kell megrajzolni, míg az oszlopmodellben a $(2, 3)$ és a $(4, 6)$ vektorokat, melyek egymással párhuzamosak, így lineáris kombinációjuk sem adja ki a $(3, 4)$ vektort!
+
+**2.22.** A három sík közül semelyik kettő nem párhuzamos, másrészt a normálvektoraik egy síkba esnek, ugyanis $2(1, 1, 2) + (1, 2, 4) = (3, 4, 8)$. Ez azt jelenti, hogy van olyan vektor, mely mindhárom síkkal párhuzamos. Az első esetben a három sík egyenesbe megy át, mivel a síkoknak közös pontjuk, pl. a $(3, 0, 0)$ pont, így végtelen sok megoldása is van, míg a második esetben a síkoknak nincs közös pontjuk.
+
+Az egyenletrendszerek ekvivalensek a következő vektoregyenletekkel:
+$$\begin{bmatrix} 1 \\ 1 \\ 3 \end{bmatrix} x + \begin{bmatrix} 1 \\ 2 \\ 4 \end{bmatrix} y + \begin{bmatrix} 2 \\ 4 \\ 8 \end{bmatrix} z = \begin{bmatrix} 3 \\ 3 \\ 9 \end{bmatrix}, \quad \begin{bmatrix} 1 \\ 1 \\ 3 \end{bmatrix} x + \begin{bmatrix} 1 \\ 2 \\ 4 \end{bmatrix} y + \begin{bmatrix} 2 \\ 4 \\ 8 \end{bmatrix} z = \begin{bmatrix} 3 \\ 3 \\ 1 \end{bmatrix}.$$
+Itt a közös együtthatómátrix minden oszlopvektora benne van a
+$$2x + y - z = 0$$
+egyenletű síkban, (ez könnyen ellenőrizhető a vektorok koordinátáinak a sík egyenletébe való helyettesítésével), és ki is feszítik a síkot, mert a három vektor nem kollineáris. Másrészt a $(3, 3, 9)$ vektor is benne van e síkban, a $(3, 3, 1)$ vektor viszont nem. Tehát az első egyenletrendszer megoldható, a második nem.
+
+**2.23.** A sormodell szerinti ábra az a) esetben 3 síkbeli egyenest tartalmaz, melyek közt van két párhuzamos, így az egyenletrendszer nem oldható meg. A b) esetben a három egyenes egy ponton megy át, ez a megoldás: $x = 2$, $y = 1$. A c) esetben ugyan nincsenek párhuzamos egyenesek, de nincs közös pontjuk sem, így az egyenletrendszer nem oldható meg. Az oszlopmodell szerint az a)
+$$\begin{alignedat}{9}
+x &{}+{}& y &{}={}& 3 \\
+x &{}+{}& y &{}={}& 4 \\
+x &{}+{}& 2y &{}={}& 4
+\end{alignedat}$$
+egyenletrendszer ekvivalens a következővel:
+$$\begin{bmatrix} 1 \\ 1 \\ 1 \end{bmatrix} x + \begin{bmatrix} 1 \\ 1 \\ 2 \end{bmatrix} y = \begin{bmatrix} 3 \\ 4 \\ 4 \end{bmatrix}.$$
+Az $(1, 1, 1)$ és $(1, 1, 2)$ vektorok benne fekszenek az $x = y$ egyenletű síkban, mivel első két koordinátájuk megegyezik, ezért minden lineáris kombinációjuk is ebbe a síkba esik. A $(3, 4, 4)$ vektor viszont nem esik e síkba, így *független* az előbbi kettőtől, tehát nem áll elő azok lineáris kombinációjaként. Vagyis ez az egyenletrendszer nem oldható meg. A b) és c) egyenletrendszerekben a bal oldali két vektor, az $(1, 1, 1)$ és az $(1, 2, 3)$ az $x - 2y + z = 0$ egyenletű síkban van, melyben a $(3, 4, 5)$ vektor benne van, míg a $(3, 3, 5)$ vektor nincs benne, tehát b) megoldható, c) nem.
+
+**2.24.** a) hamis, az állítás csak úgy igaz, ha a párhuzamos hipersíkok különbözőek is (két azonos hipersíkot párhuzamosnak tekintünk), b) hamis, például a 2.9. (a) ábrán látható esetben nincsenek párhuzamos síkok, és mégsincs megoldás, c) igaz, mert akkor a jobb oldalon álló bármely vektor kifejezhető e két kétdimenziós vektor lineáris kombinációjaként, tehát az egyenletrendszer megoldható.
+
+**2.25.**
+- a) Egy két egyenletből álló háromismeretlenes egyenletrendszer sormodellje szerinti ábra a **három**dimenziós térben **két** darab **síkból** áll, melyek ha **párhuzamosak, de nem azonosak,** akkor az egyenletrendszernek nincs megoldása, egyébként megoldásainak száma **végtelen.** Oszlopmodellje a **két**dimenziós térben **négy** darab **vektorból** áll (három lineáris kombinációja a negyedik).
+- b) Egy három egyenletből álló kétismeretlenes egyenletrendszer sormodellje szerinti ábra a **két**dimenziós térben **három egyenesből** áll, míg az oszlopmodellje a **három**dimenziós térben **három** darab **vektorból.**
+- c) Egy négy egyenletből álló ötismeretlenes egyenletrendszer sormodellje szerinti ábra az **öt**dimenziós térben **négy** darab **hipersíkból** áll. Oszlopmodellje a **négy**dimenziós térben **hat** darab **vektorból** áll.
+
+**2.26.** a) Igaz, ez a szám megegyezik a főelemek számával. b) Igaz, ez a szám megegyezik a főelemek számával. c) Hamis, van lépcsős alakja minden mátrixnak, de csak a redukált lépcsős alak egyértelmű. d) Hamis. e) Igaz.
+
+**2.27.** $\begin{bmatrix} 1 & 0 & 1 & 0 & -1 \\ 0 & 1 & 0 & 1 & 2 \\ 0 & 0 & 0 & 0 & 0 \end{bmatrix}$
+
+**2.28.** $\begin{bmatrix} 1 & 0 & 0 & 0 & 0 \\ 0 & 1 & 0 & 1 & 2 \\ 0 & 0 & 1 & 0 & -1 \end{bmatrix}$
+
+**2.29.** A sorcsere előállítható a beszorzás és a hozzáadás segítségével, nevezetesen az $S_i \leftrightarrow S_j$ sorcsere ekvivalens az
+$$S_i + S_j, \; S_j - S_i, \; S_i + S_j, \; -S_j,$$
+elemi sorműveletekkel. Ellenőrzésül a mátrixokon való hatásukat is megadjuk:
+$$\begin{bmatrix} \vdots \\ \mathbf{s}_i \\ \vdots \\ \mathbf{s}_j \\ \vdots \end{bmatrix} \xrightarrow{S_i + S_j} \begin{bmatrix} \vdots \\ \mathbf{s}_i + \mathbf{s}_j \\ \vdots \\ \mathbf{s}_j \\ \vdots \end{bmatrix} \xrightarrow{S_j - S_i} \begin{bmatrix} \vdots \\ \mathbf{s}_i + \mathbf{s}_j \\ \vdots \\ -\mathbf{s}_i \\ \vdots \end{bmatrix} \xrightarrow{S_i + S_j} \begin{bmatrix} \vdots \\ \mathbf{s}_j \\ \vdots \\ -\mathbf{s}_i \\ \vdots \end{bmatrix} \xrightarrow{-S_j} \begin{bmatrix} \vdots \\ \mathbf{s}_j \\ \vdots \\ \mathbf{s}_i \\ \vdots \end{bmatrix}$$
+
+**2.30.** Az egyenletrendszernek és lépcsős alakjának bővített mátrixa:
+$$\left[\begin{array}{ccccc|c} 1 & 1 & 1 & 0 & 0 & 1 \\ 0 & 1 & 1 & 1 & 0 & 2 \\ 0 & 0 & 1 & 1 & 1 & 2 \\ 1 & 0 & 0 & 1 & 1 & 1 \end{array}\right] \longrightarrow \left[\begin{array}{ccccc|c} 1 & 1 & 1 & 0 & 0 & 1 \\ 0 & 1 & 1 & 1 & 0 & 2 \\ 0 & 0 & 1 & 1 & 1 & 2 \\ 0 & 0 & 0 & 2 & 1 & 2 \end{array}\right]$$
+Legyen $x_5 = t$, az utolsó egyenletből $x_4 = 1 - \frac{1}{2}t$, a harmadik egyenletbe való helyettesítés után $x_3 = 1 - \frac{1}{2}t$, a második egyenletből $x_2 = t$, végül az első egyenletből $x_1 = -\frac{1}{2}t$. Tehát a megoldás
+$$\begin{bmatrix} x_1 \\ x_2 \\ x_3 \\ x_4 \\ x_5 \end{bmatrix} = \begin{bmatrix} -\frac{1}{2}t \\ t \\ 1 - \frac{1}{2}t \\ 1 - \frac{1}{2}t \\ t \end{bmatrix} = \begin{bmatrix} 0 \\ 0 \\ 1 \\ 1 \\ 0 \end{bmatrix} + t\begin{bmatrix} -\frac{1}{2} \\ 1 \\ -\frac{1}{2} \\ -\frac{1}{2} \\ 1 \end{bmatrix}.$$
+Az $x_4 = t$ paraméterválasztás esetén az eredmény törtmentes alakot ölt:
+$$\begin{bmatrix} x_1 \\ x_2 \\ x_3 \\ x_4 \\ x_5 \end{bmatrix} = \begin{bmatrix} t - 1 \\ -2t + 2 \\ t \\ t \\ -2t + 2 \end{bmatrix} = \begin{bmatrix} -1 \\ 2 \\ 0 \\ 0 \\ 2 \end{bmatrix} + t\begin{bmatrix} 1 \\ -2 \\ 1 \\ 1 \\ -2 \end{bmatrix}.$$
+
+**2.31.** Egyetlen elemi sorművelet világossá teszi, hogy az egyenletrendszer inkonzisztens:
+$$\left[\begin{array}{ccc|c} 1 & 1 & 1 & 4 \\ -1 & 1 & -1 & 2 \\ 2 & 1 & 2 & 1 \\ 4 & 4 & 4 & 1 \end{array}\right] \xrightarrow{S_4 - 4S_1} \left[\begin{array}{ccc|c} 1 & 1 & 1 & 4 \\ -1 & 1 & -1 & 2 \\ 2 & 1 & 2 & 1 \\ 0 & 0 & 0 & -15 \end{array}\right]$$
+
+**2.32.** Az elemi sorműveletek:
+$$\left[\begin{array}{ccc|c} 7 & 14 & -21 & 7 \\ 1 & 2 & -3 & 1 \\ 5 & 10 & 15 & 5 \\ 3 & 6 & -9 & 3 \end{array}\right] \xrightarrow{\frac{1}{7}S_1, \frac{1}{5}S_3, \frac{1}{3}S_4} \left[\begin{array}{ccc|c} 1 & 2 & -3 & 1 \\ 1 & 2 & -3 & 1 \\ 1 & 2 & 3 & 1 \\ 1 & 2 & -3 & 1 \end{array}\right] \xrightarrow{\substack{S_2 - S_1 \\ S_3 - S_1 \\ S_4 - S_1}}$$
+$$\left[\begin{array}{ccc|c} 1 & 2 & -3 & 1 \\ 0 & 0 & 0 & 0 \\ 0 & 0 & 6 & 0 \\ 0 & 0 & 0 & 0 \end{array}\right] \longrightarrow \left[\begin{array}{ccc|c} 1 & 2 & -3 & 1 \\ 0 & 0 & 1 & 0 \\ 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 \end{array}\right].$$
+Innen a megoldás:
+$$\begin{bmatrix} x \\ y \\ z \end{bmatrix} = \begin{bmatrix} 1 - 2t \\ t \\ 0 \end{bmatrix} = \begin{bmatrix} 1 \\ 0 \\ 0 \end{bmatrix} + t\begin{bmatrix} -2 \\ 1 \\ 0 \end{bmatrix}.$$
+E feladat arra példa, hogy abból, hogy az egyenletek száma több az ismeretleneknél, nem következik, hogy az egyenletrendszer inkonzisztens. Sőt, mint látjuk, akár végtelen sok megoldása is lehet!
+
+**2.33.** $(x, y, z) = (19/3, -2, 2/3)$ az egyetlen megoldás. E feladat arra példa, hogy abból, hogy az egyenletek száma több az ismeretleneknél, nem következik, hogy az egyenletrendszer inkonzisztens.
+
+**2.34.** Az egyenletrendszer inkonzisztens.
+
+**2.35.** $$\begin{bmatrix} x_1 \\ x_2 \\ x_3 \\ x_4 \end{bmatrix} = \begin{bmatrix} 2 - s - t \\ 1 + s - 3t \\ s \\ t \end{bmatrix} = \begin{bmatrix} 2 \\ 1 \\ 0 \\ 0 \end{bmatrix} + s\begin{bmatrix} -1 \\ 1 \\ 1 \\ 0 \end{bmatrix} + t\begin{bmatrix} -1 \\ -3 \\ 0 \\ 1 \end{bmatrix}.$$
+
+**2.36.** a) Felírjuk a bővített mátrixot, majd használjuk a Gauss–Jordan-módszert:
+$$\left[\begin{array}{cc|cc} 2 & 1 & 1 & 0 \\ 5 & 3 & 0 & 1 \end{array}\right] \xrightarrow{S_2 - \frac{5}{2}S_1} \left[\begin{array}{cc|cc} 2 & 1 & 1 & 0 \\ 0 & \frac{1}{2} & -\frac{5}{2} & 1 \end{array}\right] \xrightarrow{2S_2}$$
+$$\left[\begin{array}{cc|cc} 2 & 1 & 1 & 0 \\ 0 & 1 & -5 & 2 \end{array}\right] \xrightarrow{S_1 - S_2} \left[\begin{array}{cc|cc} 2 & 0 & 6 & -2 \\ 0 & 1 & -5 & 2 \end{array}\right] \xrightarrow{\frac{1}{2}S_1}$$
+$$\left[\begin{array}{cc|cc} 1 & 0 & 3 & -1 \\ 0 & 1 & -5 & 2 \end{array}\right].$$
+Az első egyenletrendszer megoldása $x = 3$, $y = -5$, a másodiké $x = -1$, $y = 2$.
+b) Az első egyenletrendszer ellentmondásos, a második megoldásai $x = 1 - \frac{1}{2}t$, $y = t$, ugyanis
+$$\left[\begin{array}{cc|cc} 2 & 1 & 1 & 2 \\ 4 & 2 & 0 & 4 \end{array}\right] \xrightarrow{\operatorname{rref}} \left[\begin{array}{cc|cc} 1 & \frac{1}{2} & 0 & 1 \\ 0 & 0 & 1 & 0 \end{array}\right].$$
+
+<!-- OCR: through PDF p.107 -->
