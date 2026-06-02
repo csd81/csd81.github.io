@@ -1126,4 +1126,119 @@ Egy halmaz diszjunkt részhalmazok uniójára való fölbontását a halmaz elem
 
 **1.73. Vektor iránya.** Milyen halmazon értelmezett ekvivalenciareláció segítségével definiálható a vektor irányának és állásának fogalma?
 
-<!-- OCR: through PDF p.53 -->
+## Megoldások
+
+**1.1.** a) Igaz. b) Hamis, például ha $O = A$, akkor $\overrightarrow{OA} + \overrightarrow{OB} = \overrightarrow{AB}$, míg ha $O = B$, akkor $\overrightarrow{OA} + \overrightarrow{OB} = \overrightarrow{BA}$. c) Igaz, az eredmény $O$ választásától függetlenül $\overrightarrow{BA}$. d) Igaz. e) Hamis, lehetnek ellenkező irányúak is. f) Igaz.
+
+**1.2.** a) Hamis. Lehet, hogy a három közül két vektor egy egyenesbe esik, és a harmadik független tőlük: ez a harmadik nem állítható elő a másik kettő lineáris kombinációjaként. b) Igaz, például $\mathbf{i}$, $\mathbf{j}$ és $\mathbf{i} + \mathbf{j}$ ilyenek. De bármely három egy síkba eső nemzérus-vektor ilyen, ha közülük bármely kettő lineárisan független. c) Igaz, például ha $\mathbf{b} = \mathbf{c}$ és $\mathbf{a}$ független $\mathbf{b}$-től. d) Igaz. Ha a térben három vektor lineárisan független, akkor a tér minden vektora kifejezhető lineáris kombinációjukként, ezért a negyedik vektor már nem lehet független. e) Igen, ilyen pl. két független vektor mellé vett három zérusvektor.
+
+**1.3.** Az első esetben: a) egy egyenesbe esnek, mert az együtthatók összege 1, b) $P$ az $A$ ponthoz esik közelebb, mert $\overrightarrow{OA}$ együtthatója nagyobb, és c) $P$ a szakaszon kívül van, mert nem pozitív mindkét együttható. A második esetben: a) $A$, $B$ és $P$ egy egyenesbe esnek, mert az együtthatók összege 1, b) $P$ az $A$ ponthoz esik közelebb, mert $\overrightarrow{OA}$ együtthatója nagyobb, és c) $P$ a szakaszra esik, mert mindkét együttható pozitív.
+
+**1.4.** a) igen, b) nem.
+
+**1.5.** Igen.
+
+**1.6.** „Ha az irányított szakasz a hal, akkor a vektor a halraj."
+
+**1.13.** $\overrightarrow{P_1P_2} + \overrightarrow{P_2P_3} + \overrightarrow{P_3P_4} + \ldots + \overrightarrow{P_{n-1}P_n} = \overrightarrow{P_1P_n}$, illetve $\overrightarrow{P_1P_2} + \overrightarrow{P_2P_3} + \overrightarrow{P_3P_4} + \ldots + \overrightarrow{P_{n-1}P_n} + \overrightarrow{P_nP_1} = \mathbf{0}$.
+
+**1.16.** A $C$-ből induló súlyvonal $\frac{1}{2}(\mathbf{a} + \mathbf{b})$, az $A$-ból induló súlyvonal $\frac{1}{2}\mathbf{b} - \mathbf{a}$, a $B$-ből induló $\frac{1}{2}\mathbf{a} - \mathbf{b}$. E három vektor összege $\mathbf{0}$, így lehetnek egy háromszög oldalvektorai.
+
+**1.17.** Egyik lehetőség a megoldásra, hogy megmutatjuk, az $\overrightarrow{OP_1}, \overrightarrow{OP_2}, \ldots, \overrightarrow{OP_n}$ vektorokból egy szabályos $n$-szög szerkeszthető, így összegük $\mathbf{0}$. Egy elegánsabb és egyszerűbb bizonyítást kapunk, ha meggondoljuk, mi történik az összeggel, ha a vektorokat $2\pi/n$ szöggel elforgatjuk. Mivel az elforgatás az $\overrightarrow{OP_k}$ vektorokat önmagukba forgatja, az összeg nem változik, ugyanakkor elfordul. E feltételt csak a nullvektor elégíti ki.
+
+**1.18.** Jelölje az $ABCD$ négyszög $AB$ oldalának felezőpontját $B_1$, $BC$ oldaláét $B_2$, $CD$ oldaláét $D_2$, $DA$ oldaláét $D_1$. Így
+$$\overrightarrow{AB_1} = \tfrac{1}{2}(\overrightarrow{AB}), \qquad \overrightarrow{AD_1} = \tfrac{1}{2}(\overrightarrow{AD}),$$
+$$\overrightarrow{AB_2} = \tfrac{1}{2}(\overrightarrow{AB} + \overrightarrow{AC}), \qquad \overrightarrow{AD_2} = \tfrac{1}{2}(\overrightarrow{AD} + \overrightarrow{AC}).$$
+Innen
+$$\overrightarrow{B_1B_2} = \overrightarrow{AB_2} - \overrightarrow{AB_1} = \tfrac{1}{2}\overrightarrow{AC}, \qquad \overrightarrow{D_1D_2} = \overrightarrow{AD_2} - \overrightarrow{AD_1} = \tfrac{1}{2}\overrightarrow{AC},$$
+tehát $\overrightarrow{B_1B_2} = \overrightarrow{D_1D_2}$. Ez épp azt jelenti, hogy a $B_1B_2$ és $D_1D_2$ szakaszok párhuzamosak és egyenlő hosszúak.
+
+**1.19.** A felezőpontokra $\overrightarrow{OF_k} = \frac{1}{2}(\overrightarrow{OP_k} + \overrightarrow{OP_{k+1}})$, ha $k = 1, 2, \ldots, n-1$, és $\overrightarrow{OF_n} = \frac{1}{2}(\overrightarrow{OP_n} + \overrightarrow{OP_1})$. Ezeket az egyenleteket váltakozva $+1$-gyel és $-1$-gyel megszorozva és összeadva $n$ páratlan volta miatt kapjuk, hogy $\overrightarrow{OP_1} = \overrightarrow{OF_1} - \overrightarrow{OF_2} + \ldots + \overrightarrow{OF_n}$.
+
+**1.20.** Ha $\mathbf{v}$ és $\mathbf{w}$ lineárisan összefüggők, akkor az 1.7. állítás szerint valamely $k$ számra $\mathbf{v} = k\mathbf{w}$ (itt kihasználtuk, hogy a feltételek szerint $\mathbf{w}$ nem lehet $\mathbf{0}$). Eszerint $c_1\mathbf{a} + c_2\mathbf{b} + c_3\mathbf{c} = kd_1\mathbf{a} + kd_2\mathbf{b} + kd_3\mathbf{c}$. Így az 1.12. tétel alapján kapjuk, hogy $c_1 = kd_1$, $c_2 = kd_2$, $c_3 = kd_3$, azaz $\frac{c_1}{d_1} = \frac{c_2}{d_2} = \frac{c_3}{d_3}$. Fordítva, ha $\frac{c_1}{d_1} = \frac{c_2}{d_2} = \frac{c_3}{d_3}\ (= k)$, akkor a $c_1 = kd_1$, $c_2 = kd_2$, $c_3 = kd_3$ behelyettesítésével $\mathbf{v} = c_1\mathbf{a} + c_2\mathbf{b} + c_3\mathbf{c} = k(d_1\mathbf{a} + d_2\mathbf{b} + d_3\mathbf{c}) = k\mathbf{w}$. Tehát $\mathbf{v}$ és $\mathbf{w}$ lineárisan összefüggők (kollineárisak).
+
+**1.21.** 1. $c = 4$, 2. $c$ tetszőleges, 3. nincs ilyen $c$, 4. $c = \frac{2}{3}$, $d = 2$, 5. bármely $c = d$ megfelel, 6. $c$ tetszőleges, $d = 2$.
+
+**1.22.** Az $\mathbf{r}$, $\mathbf{s}$, $\mathbf{t}$ vektorok lineárisan a) összefüggők (a $\mathbf{0}$ köztük van), b) függetlenek, c) összefüggők ($\mathbf{t} = \mathbf{r} + \mathbf{s}$), d) összefüggők ($2\mathbf{r} + 3\mathbf{s} - 5\mathbf{t} = \mathbf{0}$).
+
+**1.23.** Megfelelő konstansokkal $\overrightarrow{AM} = c_1\overrightarrow{AE}$, $\overrightarrow{BM} = c_2\overrightarrow{BF}$. Ekkor $\overrightarrow{AM} = \overrightarrow{AB} + \overrightarrow{BM}$, $\overrightarrow{AE} = \mathbf{b} + \frac{1}{2}\mathbf{d}$ és $\overrightarrow{BF} = \mathbf{d} - \frac{1}{2}\mathbf{b}$, ahonnan $\left(c_1 + \frac{c_2}{2} - 1\right)\mathbf{b} + \left(\frac{c_1}{2} - c_2\right)\mathbf{d} = \mathbf{0}$ adódik. Mivel $\mathbf{b}$ és $\mathbf{d}$ lineárisan függetlenek, ezért $c_1 + \frac{c_2}{2} - 1 = 0$ és $\frac{c_1}{2} - c_2 = 0$, ahonnan $c_1 = \frac{4}{5}$, $c_2 = \frac{2}{5}$. Visszahelyettesítve $\overrightarrow{AM} = \frac{4}{5}\mathbf{b} + \frac{2}{5}\mathbf{d}$.
+
+**1.24.** Ha $|\overrightarrow{AP}| : |\overrightarrow{PB}| = m : n$, akkor $|\overrightarrow{AB}| : |\overrightarrow{PB}| = (m + n) : n$, amiből $\overrightarrow{PB} = \frac{n}{m+n}\overrightarrow{BA}$. De $\overrightarrow{OP} = \overrightarrow{OB} + \frac{n}{m+n}\overrightarrow{BA}$ és $\overrightarrow{BA} = \overrightarrow{OA} - \overrightarrow{OB}$, így $\overrightarrow{OP} = \overrightarrow{OB} + \frac{n}{m+n}(\overrightarrow{OA} - \overrightarrow{OB})$, amiből azonnal következik a bizonyítandó formula. A felezőpontot az $m = n = 1$ esetben kapjuk, és ekkor valóban $\overrightarrow{OP} = \frac{1}{2}\overrightarrow{OA} + \frac{1}{2}\overrightarrow{OB}$.
+
+**1.25.** Az 1.16. feladat megoldását és jelöléseit használva ($\mathbf{a} = \overrightarrow{CA}$, $\mathbf{b} = \overrightarrow{CB}$) a $C$ pontból induló súlyvonal $C$-től távolabbi harmadolópontjába mutató vektor $\frac{2}{3} \cdot \frac{1}{2}(\mathbf{a} + \mathbf{b}) = \frac{1}{3}(\mathbf{a} + \mathbf{b})$. A $C$-ből induló és az $A$ ponthoz tartozó súlyvonal harmadolópontjába mutató vektor az 1.24. feladat szerint $\frac{1}{3}\mathbf{a} + \frac{2}{3}\left(\frac{1}{2}\mathbf{b}\right) = \frac{1}{3}(\mathbf{a} + \mathbf{b})$. Hasonló eredményt kapunk a $B$-ből induló súlyvonalra is. Ez bizonyítja a feladat első állítását.
+
+Legyen $O$ egy tetszőleges pont, és $S$ az $ABC$ háromszög súlypontja. Az előzőek szerint $\overrightarrow{OS} = \overrightarrow{OC} + \frac{1}{3}(\overrightarrow{CA} + \overrightarrow{CB})$. Mivel $\overrightarrow{CA} = \overrightarrow{OA} - \overrightarrow{OC}$, $\overrightarrow{CB} = \overrightarrow{OB} - \overrightarrow{OC}$, ezért $\overrightarrow{OS} = \frac{1}{3}(\overrightarrow{OA} + \overrightarrow{OB} + \overrightarrow{OC})$.
+
+**1.26.** Jelölje az $ABCD$ tetraéder $ABC$ lapjának súlypontját $S_D$, és legyen $O$ a tér tetszőleges pontja. Az előző feladat szerint $\overrightarrow{OS_D} = \frac{1}{3}(\overrightarrow{OA} + \overrightarrow{OB} + \overrightarrow{OC})$. Jelölje $S$ a $DS_D$ szakasz $S_D$ ponthoz közelebbi negyedelő pontját. Ekkor az 1.24. feladatot az $m = 3$, $n = 1$ értékekkel alkalmazva kapjuk, hogy $\overrightarrow{OS} = \frac{1}{4}(\overrightarrow{OD} + 3\overrightarrow{OS_D})$. Innen $\overrightarrow{OS} = \frac{1}{4}(\overrightarrow{OA} + \overrightarrow{OB} + \overrightarrow{OC} + \overrightarrow{OD})$ következik. A képlet szimmetrikus volta bizonyítja, hogy bármely másik oldal súlypontjából indulva ugyanerre az eredményre jutottunk volna, azaz $S$ pont mind a négy súlyvonalon rajta van, és negyedeli azokat.
+
+**1.28.** Ha $D$ az $AB$ szakaszt $x : y$ arányban osztja, és $m$ a magasság hossza, akkor $\frac{y}{m} = \frac{m}{x} = \frac{a}{b}$. Innen $\frac{x}{y} = \frac{b^2}{a^2}$. Ebből az 1.24. alapján
+$$\overrightarrow{CD} = \frac{a^2}{a^2 + b^2}\overrightarrow{CA} + \frac{b^2}{a^2 + b^2}\overrightarrow{CB}.$$
+
+**1.29.** a) igaz, b) hamis, az egységvektor egyenesére eső merőleges vetületének előjeles hosszával egyenlő, c) igaz, d) hamis (asszociativitásról nem lehet szó, mert a két szorzás művelet egyike skaláris szorzás, a másika skalárral való szorzás az $\mathbf{a}(\mathbf{b} \cdot \mathbf{c})$ szorzatban), e) igaz, f) igaz, g) hamis, lásd még az 1.38. feladatot.
+
+**1.30.** a) hamis, nem kommutatív és nem asszociatív, b) hamis, hisz $(\mathbf{a} - \mathbf{b}) \times \mathbf{c} = \mathbf{0}$ akkor is fönnáll, ha $\mathbf{a} - \mathbf{b} \parallel \mathbf{c}$, nem csak akkor, ha $\mathbf{a} - \mathbf{b} = \mathbf{0}$. c) igaz, d) igaz, e) hamis, f) igaz, g) igaz.
+
+**1.31.** $|\mathbf{a}||\mathbf{b}|\cos\gamma = 1 \cdot 2 \cdot \frac{1}{2} = 1$.
+
+**1.32.** $|\mathbf{a}||\mathbf{b}|\cos\gamma = \sqrt{2} \cdot 2 \cdot \left(-\frac{1}{\sqrt{2}}\right) = -2$.
+
+**1.33.** $1 \cdot 2 \cdot (-1) = -2$.
+
+**1.34.** $0$, hisz merőlegesek ($|\mathbf{a}||\mathbf{b}|\cos\gamma = \sqrt{2} \cdot 2 \cdot 0 = 0$).
+
+**1.35.** Legyenek $\mathbf{a}$ és $\mathbf{c}$ független vektorok, $\mathbf{b}$ pedig tetszőleges. Ekkor az $(\mathbf{a} \cdot \mathbf{b})\mathbf{c}$ szorzat párhuzamos a $\mathbf{c}$ vektorral, míg az $\mathbf{a}(\mathbf{b} \cdot \mathbf{c})$ szorzat az $\mathbf{a}$ vektorral, tehát $(\mathbf{a} \cdot \mathbf{b})\mathbf{c} \neq \mathbf{a}(\mathbf{b} \cdot \mathbf{c})$.
+
+**1.36.** a) $\mathbf{a} \cdot \mathbf{a} - \mathbf{b} \cdot \mathbf{b} = |\mathbf{a}|^2 - |\mathbf{b}|^2$. b) $\mathbf{a} \cdot \mathbf{a} + 2\mathbf{b} \cdot \mathbf{a} - 2\mathbf{a} \cdot \mathbf{b} = \mathbf{a} \cdot \mathbf{a} = |\mathbf{a}|^2$.
+
+**1.37.** A Pithagorász-tétel következményeként $\mathbf{a}$ és $\mathbf{b}$ merőlegesek.
+
+**1.38.** Ha $\mathbf{a} = \mathbf{0}$ és $c = 0$, akkor az $X$ pontok kiadják a tér összes pontját, ha viszont $c \neq 0$, akkor egyetlen ilyen $X$ pont sincs. Mivel $\mathbf{e} = \mathbf{a}/|\mathbf{a}|$ egységvektor, ezért
+$$\left(c\frac{\mathbf{a}}{|\mathbf{a}|}\right) \cdot \frac{\mathbf{a}}{|\mathbf{a}|} = \left(c\frac{\mathbf{a}}{|\mathbf{a}|^2}\right) \cdot \mathbf{a} = c,$$
+ezért ha $Y$ jelöli azt a pontot, melyre
+$$\overrightarrow{OY} = c\frac{\mathbf{a}}{|\mathbf{a}|^2},$$
+akkor $\overrightarrow{OY} \cdot \mathbf{a} = c$. Az összes olyan $X$ pont, melyre $\overrightarrow{OX} \cdot \mathbf{a} = c$, az $Y$ ponton átmenő és $\mathbf{a}$ vektorra merőleges sík pontjaiból áll. Egyrészt ha $X$ eleget tesz a feltételnek, akkor $\overrightarrow{XY} \cdot \mathbf{a} = (\overrightarrow{OY} - \overrightarrow{OX}) \cdot \mathbf{a} = \overrightarrow{OY} \cdot \mathbf{a} - \overrightarrow{OX} \cdot \mathbf{a} = 0$, tehát $X$ e sík egy pontja. Másrészt, ha $X$ e sík egy pontja, akkor $\overrightarrow{XY} \cdot \mathbf{a} = 0$, így $\overrightarrow{OX} \cdot \mathbf{a} = (\overrightarrow{OX} + \overrightarrow{XY}) \cdot \mathbf{a} = \overrightarrow{OY} \cdot \mathbf{a} = c$, tehát $X$ eleget tesz a feltételnek.
+
+*Ábra: az $\mathbf{a}$ vektorra merőleges sík egy $X$ pontja és az $Y$ talppont.*
+
+**1.39.** Geometriai megoldás: a három egységvektor egy szabályos háromszög három oldalvektora azonos körüljárás szerint irányítva, mivel összegük $\mathbf{0}$. Így hajlásszögük $2\pi/3 = 120°$, tehát a vektorpárok skaláris szorzata $-\frac{1}{2}$, így az összeg $-\frac{3}{2}$.
+
+Algebrai megoldás: $(\mathbf{e}_1 + \mathbf{e}_2 + \mathbf{e}_3) \cdot (\mathbf{e}_1 + \mathbf{e}_2 + \mathbf{e}_3) = 0$, tehát $0 = \mathbf{e}_1 \cdot \mathbf{e}_1 + \mathbf{e}_2 \cdot \mathbf{e}_2 + \mathbf{e}_3 \cdot \mathbf{e}_3 + 2(\mathbf{e}_1 \cdot \mathbf{e}_2 + \mathbf{e}_1 \cdot \mathbf{e}_3 + \mathbf{e}_2 \cdot \mathbf{e}_3)$. Kihasználva, hogy a vektorok egységvektorok, kapjuk, hogy $\mathbf{e}_1 \cdot \mathbf{e}_2 + \mathbf{e}_1 \cdot \mathbf{e}_3 + \mathbf{e}_2 \cdot \mathbf{e}_3 = -\frac{3}{2}$.
+
+**1.40.** Az 1.12. tétel szerint a $\mathbf{v}$ vektor megfelelő konstans együtthatókkal előállítható $\mathbf{v} = c_1\mathbf{a} + c_2\mathbf{b} + c_3\mathbf{c}$ alakban. Az egyenlőség mindkét oldalát (skalárisan) megszorozva $\mathbf{v}$-vel, majd kihasználva a feltételekből következő $\mathbf{a} \cdot \mathbf{v} = \mathbf{b} \cdot \mathbf{v} = \mathbf{c} \cdot \mathbf{v} = 0$ egyenlőségeket, $\mathbf{v}^2 = 0$ adódik, ami csak úgy teljesülhet, hogy $\mathbf{v} = \mathbf{0}$.
+
+**1.41.** Az $\mathbf{a}$ vektor hossza $\sqrt{2^2 + 2^2} = 2\sqrt{2}$, a $\mathbf{b}$ vektor hossza $\sqrt{4^2 + 3^2} = 5$, az $\mathbf{a}$ vektornak a vízszintes rácsvonalakkal bezárt szöge $\pi/4$, a $\mathbf{b}$ vektornál a szög szögfüggvényei $\cos\gamma = \frac{4}{5}$, $\sin\gamma = \frac{3}{5}$. Így
+$$\cos\left(\gamma + \frac{\pi}{4}\right) = \cos\gamma\cos\frac{\pi}{4} - \sin\gamma\sin\frac{\pi}{4} = \frac{4}{5}\frac{\sqrt{2}}{2} - \frac{3}{5}\frac{\sqrt{2}}{2} = \frac{1}{5}\frac{\sqrt{2}}{2},$$
+tehát a skaláris szorzat $\mathbf{a} \cdot \mathbf{b} = 2\sqrt{2} \cdot 5 \cdot \frac{1}{5}\frac{\sqrt{2}}{2} = 2$.
+
+**1.42.** Mivel $\mathbf{a} \cdot \mathbf{b} = 2$, $|\mathbf{a}| = 2\sqrt{2}$, ezért
+$$\operatorname{proj}_{\mathbf{a}} \mathbf{b} = \frac{\mathbf{a} \cdot \mathbf{b}}{\mathbf{a} \cdot \mathbf{a}}\mathbf{a} = \frac{2}{8}\mathbf{a} = \frac{1}{4}\mathbf{a},$$
+míg az $\mathbf{a}$-ra merőleges összetevő $\mathbf{b} - \frac{1}{4}\mathbf{a}$. Ezt mutatja az alábbi ábra.
+
+*1.43. ábra. Az 1.42. feladat: a $\mathbf{b}$ vektor felbontása $\mathbf{a}$-val párhuzamos és rá merőleges összetevőkre.*
+
+**1.44.** a) $|\mathbf{a} \times \mathbf{b}| = |\mathbf{a}||\mathbf{b}|\sin\gamma = 1 \cdot 2 \cdot \frac{1}{2} = 1$. b) $\mathbf{0}$, hisz párhuzamosak ($\sin\gamma = 0$, így abszolút értéke 0).
+
+**1.45.** a) $(\mathbf{a} + \mathbf{b}) \times (\mathbf{a} - \mathbf{b}) = \mathbf{a} \times \mathbf{a} - \mathbf{a} \times \mathbf{b} + \mathbf{b} \times \mathbf{a} - \mathbf{b} \times \mathbf{b} = -\mathbf{a} \times \mathbf{b} - \mathbf{a} \times \mathbf{b} = -2\mathbf{a} \times \mathbf{b}$. b) $(\mathbf{i} + \mathbf{j} + \mathbf{k}) \times (\mathbf{i} + \mathbf{j}) = \mathbf{i} \times \mathbf{j} + \mathbf{j} \times \mathbf{i} + \mathbf{k} \times \mathbf{i} + \mathbf{k} \times \mathbf{j} = \mathbf{0} + \mathbf{j} - \mathbf{i} = \mathbf{j} - \mathbf{i}$.
+
+**1.46.** Jelölje $P$ szomszédait $Q$, $R$ és $S$.
+a) Ekkor két lapátló-vektor például a $\overrightarrow{PQ} + \overrightarrow{PR}$ és a $\overrightarrow{PR} + \overrightarrow{PS}$ vektorok. Ezek szorzata:
+$$\left(\overrightarrow{PQ} + \overrightarrow{PR}\right) \cdot \left(\overrightarrow{PR} + \overrightarrow{PS}\right) = \overrightarrow{PQ} \cdot \overrightarrow{PR} + \overrightarrow{PQ} \cdot \overrightarrow{PS} + \overrightarrow{PR} \cdot \overrightarrow{PR} + \overrightarrow{PR} \cdot \overrightarrow{PS} = \overrightarrow{PR} \cdot \overrightarrow{PR} = 1.$$
+Kihasználtuk, hogy merőleges vektorok skaláris szorzata 0.
+b) Hasonlóan kapható meg egy lapátló-vektor és a testátló-vektor ($\overrightarrow{PQ} + \overrightarrow{PR} + \overrightarrow{PS}$) szorzata:
+$$\left(\overrightarrow{PQ} + \overrightarrow{PR}\right) \cdot \left(\overrightarrow{PQ} + \overrightarrow{PR} + \overrightarrow{PS}\right) = \overrightarrow{PQ} \cdot \overrightarrow{PQ} + \overrightarrow{PR} \cdot \overrightarrow{PR} = 2.$$
+c) A $Q$, $R$ és $S$ csúcsok olyan sorrendben legyenek megválasztva, hogy $\overrightarrow{PQ}$, $\overrightarrow{PR}$ és $\overrightarrow{PS}$ ebben a sorrendben jobbrendszert alkosson. Ki fogjuk használni, hogy ekkor $\overrightarrow{PQ} \times \overrightarrow{PR} = \overrightarrow{PS}$. Egy élvektor és egy szomszédos lapátló-vektor vektori szorzata:
+$$\overrightarrow{PQ} \times \left(\overrightarrow{PQ} + \overrightarrow{PR}\right) = \overrightarrow{PQ} \times \overrightarrow{PQ} + \overrightarrow{PQ} \times \overrightarrow{PR} = \mathbf{0} + \overrightarrow{PS} = \overrightarrow{PS},$$
+vagyis a szorzat a két vektor lapjára merőleges élvektor.
+d) Legyen a lapátló a $\overrightarrow{PR}$, a nem szomszédos lapátló-vektor $\overrightarrow{PR} + \overrightarrow{PS}$. Ezek szorzata:
+$$\overrightarrow{PQ} \times \left(\overrightarrow{PR} + \overrightarrow{PS}\right) = \overrightarrow{PQ} \times \overrightarrow{PR} + \overrightarrow{PQ} \times \overrightarrow{PS} = \overrightarrow{PS} - \overrightarrow{PR},$$
+ami a lapátló-vektor síkjának másik lapátló-vektora.
+
+**1.47.** Ha $\mathbf{u} \perp \mathbf{v}$ és $\mathbf{u} \perp \mathbf{w}$, akkor $\mathbf{u} \cdot \mathbf{v} = 0$ és $\mathbf{u} \cdot \mathbf{w} = 0$, így bármely $c, d \in \mathbb{R}$ számokra $\mathbf{u} \cdot (c\mathbf{v} + d\mathbf{w}) = \mathbf{u} \cdot (c\mathbf{v}) + \mathbf{u} \cdot (d\mathbf{w}) = c\,\mathbf{u} \cdot \mathbf{v} + d\,\mathbf{u} \cdot \mathbf{w} = c \cdot 0 + d \cdot 0 = 0$, tehát $\mathbf{u}$ merőleges a $c\mathbf{v} + d\mathbf{w}$ lineáris kombinációra.
+
+**1.48.** Három különböző dolog (így három vektor is) hatféleképp rakható sorba. Ha az $\mathbf{a}$, $\mathbf{b}$ és $\mathbf{c}$ vektorok jobbrendszert alkotnak, akkor ugyancsak jobbrendszert alkotnak a $\mathbf{b}$, $\mathbf{c}$, $\mathbf{a}$ és a $\mathbf{c}$, $\mathbf{a}$, $\mathbf{b}$ vektorhármasok is. A további három esetben, azaz a $\mathbf{c}$, $\mathbf{b}$, $\mathbf{a}$, valamint a $\mathbf{b}$, $\mathbf{a}$, $\mathbf{c}$ és az $\mathbf{a}$, $\mathbf{c}$, $\mathbf{b}$ hármasok esetén balrendszert kapunk a vegyes szorzatról tanultak szerint.
+
+**1.50.** Egyik lehetőség a megoldásra: $\big||\mathbf{b}|\mathbf{a}\big| = \big||\mathbf{a}|\mathbf{b}\big| = |\mathbf{a}||\mathbf{b}|$, ezért a paralelogramma-módszert egy rombuszra kell alkalmazni. Egy másik lehetőség: az $\mathbf{a}/|\mathbf{a}|$ és $\mathbf{b}/|\mathbf{b}|$ két egységvektor, így összegük szögfelező, mivel a paralelogramma-módszer rombuszt ad. E vektor $|\mathbf{a}||\mathbf{b}|$-szerese ugyanúgy szögfelező, és épp ez a feladatbeli vektor. A második kérdés megválaszolásához használjuk az 1.24. példa eredményét!
+
+**1.51.** Milyen irányokat cserél föl a tükör, és milyeneket nem? Nem cseréli föl a tükör síkjával párhuzamos irányokat: minden, a tükör síkjával párhuzamos vektor tükörképe önmaga. Tehát, ha a tükör előtt állunk, és a tükör is függőleges, akkor a „fölfelé" irány a tükörképen sem változik. Viszont a tükör fölcseréli a tükörre merőleges irányokat.
+
+<!-- OCR: through PDF p.56 -->
