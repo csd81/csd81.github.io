@@ -5541,4 +5541,229 @@ egyenlőség a paraméterek semmilyen értékére sem áll fönn.
 $$\begin{bmatrix} 1 & 1 & 1 \\ 0 & 0 & 0 \\ 0 & 0 & 0 \end{bmatrix} = \begin{bmatrix} 1 & 0 & 0 \\ 0 & 1 & 0 \\ 0 & a & 1 \end{bmatrix}\begin{bmatrix} 1 & 1 & 1 \\ 0 & 0 & 0 \\ 0 & 0 & 0 \end{bmatrix}$$
 felbontás minden $a$ paraméterértékre fönnáll. Megmutatható viszont, hogy ha $\mathbf{A}$ invertálható, és létezik LU-felbontása, akkor az egyértelmű (ld. 5.37. tétel).
 
-<!-- OCR: through PDF p.198 -->
+**5.35. példa (Az LU-felbontás kiszámítása).** *Elemi sorműveletekkel hozzuk felső háromszögalakra az*
+$$\mathbf{A} = \begin{bmatrix} 4 & 8 & 4 & 8 \\ 2 & 6 & 4 & 4 \\ 1 & 3 & 2 & 4 \end{bmatrix} \quad \text{és a} \quad \mathbf{B} = \begin{bmatrix} 4 & 8 & 8 \\ 2 & 6 & 4 \\ 1 & 3 & 4 \end{bmatrix}$$
+*mátrixot, majd e lépéseket fölhasználva írjuk föl mindkét mátrix egy-egy LU-felbontását!*
+
+*Megoldás.* Először nézzük az $\mathbf{A}$ mátrixot! Oszloponként haladva végezzük el a Gauss-kiküszöbölést. Minden elemi sorművelet mellett (zárójelben) megadjuk a hozzá tartozó elemi mátrixot:
+$$\mathbf{A} = \begin{bmatrix} 4 & 8 & 4 & 8 \\ 2 & 6 & 4 & 4 \\ 1 & 3 & 2 & 4 \end{bmatrix} \xrightarrow{S_2 - \frac{1}{2}S_1} \left(\mathbf{E}_1 = \begin{bmatrix} 1 & 0 & 0 \\ -1/2 & 1 & 0 \\ 0 & 0 & 1 \end{bmatrix}\right)$$
+$$\mathbf{E}_1\mathbf{A} = \begin{bmatrix} 4 & 8 & 4 & 8 \\ 0 & 2 & 2 & 0 \\ 1 & 3 & 2 & 4 \end{bmatrix} \xrightarrow{S_3 - \frac{1}{4}S_1} \left(\mathbf{E}_2 = \begin{bmatrix} 1 & 0 & 0 \\ 0 & 1 & 0 \\ -1/4 & 0 & 1 \end{bmatrix}\right)$$
+$$\mathbf{E}_2\mathbf{E}_1\mathbf{A} = \begin{bmatrix} 4 & 8 & 4 & 8 \\ 0 & 2 & 2 & 0 \\ 0 & 1 & 1 & 2 \end{bmatrix} \xrightarrow{S_3 - \frac{1}{2}S_2} \left(\mathbf{E}_3 = \begin{bmatrix} 1 & 0 & 0 \\ 0 & 1 & 0 \\ 0 & -1/2 & 1 \end{bmatrix}\right)$$
+$$\mathbf{E}_3\mathbf{E}_2\mathbf{E}_1\mathbf{A} = \begin{bmatrix} 4 & 8 & 4 & 8 \\ 0 & 2 & 2 & 0 \\ 0 & 0 & 0 & 2 \end{bmatrix} = \mathbf{U}.$$
+Tehát $\mathbf{E}_3\mathbf{E}_2\mathbf{E}_1\mathbf{A} = \mathbf{U}$, amiből az $(\mathbf{E}_3\mathbf{E}_2\mathbf{E}_1)^{-1} = \mathbf{E}_1^{-1}\mathbf{E}_2^{-1}\mathbf{E}_3^{-1}$ mátrixszal való beszorzás után $\mathbf{A} = (\mathbf{E}_1^{-1}\mathbf{E}_2^{-1}\mathbf{E}_3^{-1})\mathbf{U}$. Kiszámoljuk az elemi mátrixok inverzeinek szorzatát, azaz az $\mathbf{L} = \mathbf{E}_1^{-1}\mathbf{E}_2^{-1}\mathbf{E}_3^{-1}$ mátrixot. Fölhasználjuk a 179. oldalon mondottakat, miszerint az $S_i + cS_j$ sorművelet mátrixának inverze egyenlő az $S_i - cS_j$ mátrixával:
+$$\mathbf{L} = \begin{bmatrix} 1 & 0 & 0 \\ 1/2 & 1 & 0 \\ 0 & 0 & 1 \end{bmatrix}\begin{bmatrix} 1 & 0 & 0 \\ 0 & 1 & 0 \\ 1/4 & 0 & 1 \end{bmatrix}\begin{bmatrix} 1 & 0 & 0 \\ 0 & 1 & 0 \\ 0 & 1/2 & 1 \end{bmatrix} = \begin{bmatrix} 1 & 0 & 0 \\ 1/2 & 1 & 0 \\ 1/4 & 1/2 & 1 \end{bmatrix}.$$
+Meglepő (de általánosítható) módon ezeknek az elemi mátrixoknak a szorzata a főátló alatti számok átmásolásával megkapható. Az eredmény egy alsó egység háromszögmátrix. Így az $\mathbf{A}$ mátrix LU-felbontása:
+$$\mathbf{A} = \begin{bmatrix} 4 & 8 & 4 & 8 \\ 2 & 6 & 4 & 4 \\ 1 & 3 & 2 & 4 \end{bmatrix} = \begin{bmatrix} 1 & 0 & 0 \\ 1/2 & 1 & 0 \\ 1/4 & 1/2 & 1 \end{bmatrix}\begin{bmatrix} 4 & 8 & 4 & 8 \\ 0 & 2 & 2 & 0 \\ 0 & 0 & 0 & 2 \end{bmatrix} \tag{5.2}$$
+Mivel az $\mathbf{A}$ átalakítása közben az oszlopok közt nem végeztünk műveletet, és a $\mathbf{B}$ mátrix az $\mathbf{A}$-ból a harmadik oszlopa elhagyásával kapható meg, ezért az előző felbontásból azonnal adódik a $\mathbf{B}$ felbontása is:
+$$\mathbf{B} = \begin{bmatrix} 4 & 8 & 8 \\ 2 & 6 & 4 \\ 1 & 3 & 4 \end{bmatrix} = \begin{bmatrix} 1 & 0 & 0 \\ 1/2 & 1 & 0 \\ 1/4 & 1/2 & 1 \end{bmatrix}\begin{bmatrix} 4 & 8 & 8 \\ 0 & 2 & 0 \\ 0 & 0 & 2 \end{bmatrix} \tag{5.3}$$
+$\square$
+
+*5.3. kód. Egy mátrix LU-felbontásának kiszámítása mátrixalapú nyelvben.*
+```octave
+OCTAVE: A
+A =
+   4   8   4   8
+   2   6   4   4
+   1   3   2   4
+OCTAVE: [L U]=lu(A)
+L =
+   1.00   0.00   0.00
+   0.50   1.00   0.00
+   0.25   0.50   1.00
+U =
+   4   8   4   8
+   0   2   2   0
+   0   0   0   2
+OCTAVE: B
+B =
+   4   8   8
+   2   6   4
+   1   3   4
+OCTAVE: [L U]=lu(B)
+L =
+   1.00   0.00   0.00
+   0.50   1.00   0.00
+   0.25   0.50   1.00
+U =
+   4   8   8
+   0   2   0
+   0   0   2
+```
+
+Az 5.35. példában követett eljárás egyszerűen általánosítható tetszőleges mátrixra.
+
+Az alábbi algoritmus a Gauss-elimináció lépcsős alak helyett felső háromszögalakú mátrixot adó megváltoztatásával vagy talál egy $m \times m$-es $\mathbf{L}$ és egy $m \times n$-es $\mathbf{U}$ mátrixot, melyekre $\mathbf{A} = \mathbf{LU}$, vagy hibaüzenetet ad.
+
+**5.36. algoritmus (Egy LU-felbontás előállítása).** *Legyen $\mathbf{A}$ egy tetszőleges $m \times n$-es valós (vagy bármely más test feletti) mátrix.*
+
+*Első lépésként tekintsük az $\mathbf{A}$ mátrix első sorának első elemét. Ha ez 0, de az első oszlopban alatta nemnulla elem is van, akkor „a mátrixnak nincs LU-felbontása" üzenettel az algoritmus leáll. Ha alatta minden elem 0, az algoritmust a második sor második elemével folytatjuk (Gauss-kiküszöbölés esetén az első sor második elemével folytatnánk). Ha pedig az első sor első eleme nem 0, akkor az első oszlop további elemei elimináhatók az $S_2 - l_{21}S_1$, $S_3 - l_{31}S_1, \ldots, S_n - l_{n1}S_1$ sorműveletekkel, ahol $l_{k1} = a_{k1}/a_{11}$.*
+
+*Az algoritmust hasonlóan folytatjuk sorban haladva a főátló elemein. Ha valamelyikük 0, de alatta van a mátrixnak nemnulla eleme, leállunk, ha alatta már minden elem 0, folytatjuk a következő főátlóbeli elemmel, ha pedig nemnulla, akkor elimináljuk az alatta lévő elemeket. Az $i$-edik lépésben tehát az $S_{i+1} - l_{i+1,i}S_i$, $S_{i+2} - l_{i+2,i}S_i, \ldots, S_n - l_{ni}S_i$ sorműveleteket hajtjuk végre.*
+
+*Az elimináció végén megmaradt felső háromszögmátrix lesz $\mathbf{U}$. A kiküszöbölés konstans $l_{ij}$ elemeit írjuk az $\mathbf{I}_m$ egységmátrix $i$-edik sorának $j$-edik oszlopába. Ez lesz az $\mathbf{L}$ mátrix, azaz*
+$$\mathbf{L} = \begin{bmatrix} 1 & 0 & \ldots & 0 \\ l_{21} & 1 & \ldots & 0 \\ \vdots & \vdots & \ddots & \vdots \\ l_{m1} & l_{m2} & \ldots & 1 \end{bmatrix}. \tag{5.4}$$
+
+**5.37. tétel (Az LU-felbontás létezése és egyértelműsége).** *A fenti algoritmusra igaz, hogy*
+- a) *pontosan akkor áll le a hibaüzenettel, ha $\mathbf{A}$-nak nincs LU-felbontása,*
+- b) *a megkonstruált $\mathbf{L}$ és $\mathbf{U}$ mátrixok LU-felbontást adnak,*
+- c) *ha $\mathbf{A}$ invertálható, akkor e felbontás egyértelmű.*
+
+*Bizonyítás.* Csak a b) állítást igazoljuk, a többit az Olvasóra hagyjuk (ld. 5.48. feladat). Jelölje az $S_j - l_{ji}S_i$ sorművelet elemi mátrixát $\mathbf{E}_{ji}$ ($1 \leq i < j \leq m$). Jelölje e mátrixoknak a végrehajtás sorrendjében jobbról balra vett szorzatát $\mathbf{E}$, azaz legyen
+$$\mathbf{E} = (\mathbf{E}_{m-1,m})(\mathbf{E}_{m-2,m}\mathbf{E}_{m-2,m-1}) \ldots (\mathbf{E}_{m2} \ldots \mathbf{E}_{42}\mathbf{E}_{32})(\mathbf{E}_{m1} \ldots \mathbf{E}_{31}\mathbf{E}_{21}).$$
+Az algoritmus szerint ekkor $\mathbf{EA} = \mathbf{U}$. Vizsgáljuk meg az $\mathbf{EL}$ szorzatot az algoritmusbeli $\mathbf{L}$ mátrixszal. Mivel $\mathbf{L}$ főátlójában csupa 1, $ji$-edik helyén $l_{ji}$ áll, ezért az elemi $\mathbf{E}_{ji}$ mátrix épp ezt az elemet fogja eliminálni, és így $\mathbf{E}$ minden főátló alatti elemet eliminál, azaz $\mathbf{EL} = \mathbf{I}$. Eszerint $\mathbf{E}^{-1} = \mathbf{L}$, tehát $\mathbf{A} = \mathbf{E}^{-1}\mathbf{U} = \mathbf{LU}$. $\square$
+
+### Egyenletrendszer megoldása LU-felbontással
+
+Ha már ismerjük egy $\mathbf{A}$ mátrix LU-felbontását, akkor az $\mathbf{Ax} = \mathbf{b}$ egyenletrendszer könnyen megoldható. Az $\mathbf{Ax} = \mathbf{b}$ egyenletrendszer megoldása az $\mathbf{Ly} = \mathbf{b}$, $\mathbf{Ux} = \mathbf{y}$ egyenletrendszerek megoldásával ekvivalens. Ha ugyanis $\mathbf{x}$ megoldása az $\mathbf{Ax} = \mathbf{b}$ egyenletrendszernek, akkor $\mathbf{LUx} = \mathbf{b}$, és az $\mathbf{y} = \mathbf{Ux}$ jelöléssel $\mathbf{Ly} = \mathbf{b}$. Másrészt, ha $\mathbf{y}$ megoldása az $\mathbf{Ly} = \mathbf{b}$ egyenletrendszernek, és $\mathbf{x}$ az $\mathbf{Ux} = \mathbf{y}$ egyenletrendszernek, akkor $\mathbf{y}$-t behelyettesítve $\mathbf{L}(\mathbf{Ux}) = \mathbf{b}$, azaz $\mathbf{Ax} = \mathbf{b}$. Tömören:
+$$\mathbf{Ax} = \mathbf{b} \text{ megoldható} \iff \mathbf{Ly} = \mathbf{b}, \; \mathbf{Ux} = \mathbf{y} \text{ megoldható.}$$
+Az $\mathbf{L}$ és $\mathbf{U}$ alakjából következik, hogy az $\mathbf{Ly} = \mathbf{b}$, és az $\mathbf{Ux} = \mathbf{y}$ egyenletrendszerek egyszerű visszahelyettesítésekkel megoldhatók.
+
+**5.38. példa (Egyenletrendszer megoldása LU-felbontással).** *Oldjuk meg a következő egyenletrendszert!*
+$$\begin{alignedat}{9} 4x_1 &{}+{}& 8x_2 &{}+{}& 8x_3 &{}={}& 8 \\ 2x_1 &{}+{}& 6x_2 &{}+{}& 4x_3 &{}={}& 4 \\ x_1 &{}+{}& 3x_2 &{}+{}& 4x_3 &{}={}& 4 \end{alignedat}$$
+
+*Megoldás.* Mivel ismerjük az együtthatómátrix LU-felbontását – az épp az (5.3)-beli felbontás –, ezért ezt használjuk, és először megoldjuk az $\mathbf{Ly} = \mathbf{b}$ egyenletrendszert:
+$$\begin{bmatrix} 1 & 0 & 0 \\ 1/2 & 1 & 0 \\ 1/4 & 1/2 & 1 \end{bmatrix}\begin{bmatrix} y_1 \\ y_2 \\ y_3 \end{bmatrix} = \begin{bmatrix} 8 \\ 4 \\ 4 \end{bmatrix}.$$
+Ebből $y_1 = 8$, ezt a második egyenletbe helyettesítve kapjuk, hogy $y_2 = 0$, majd ezeket a harmadikba helyettesítve kapjuk, hogy $y_3 = 2$. Ezután megoldjuk az $\mathbf{Ux} = \mathbf{y}$ egyenletrendszert, aminek alakja
+$$\begin{bmatrix} 4 & 8 & 8 \\ 0 & 2 & 0 \\ 0 & 0 & 2 \end{bmatrix}\begin{bmatrix} x_1 \\ x_2 \\ x_3 \end{bmatrix} = \begin{bmatrix} 8 \\ 0 \\ 2 \end{bmatrix}.$$
+Ismét egyszerű visszahelyettesítésekkel kapjuk, hogy $x_3 = 1$, $x_2 = 0$ és $x_1 = 0$. A megoldás $\mathbf{x} = (0, 0, 1)$. $\square$
+
+### Mátrix invertálása LU-felbontással
+
+Mátrix invertálásához elég megoldanunk az $\mathbf{AX} = \mathbf{I}$ egyenletrendszert. Ha $\mathbf{A} = \mathbf{LU}$ egy LU-felbontása $\mathbf{A}$-nak, akkor az $\mathbf{LUX} = \mathbf{I}$ megoldása a vele ekvivalens két mátrixegyenlet megoldásával megkapható:
+$$\mathbf{AX} = \mathbf{I} \iff \mathbf{LY} = \mathbf{I}, \; \mathbf{UX} = \mathbf{Y}.$$
+E két utóbbi egyenletrendszer viszont megoldható kizárólag visszahelyettesítésekkel is!
+
+**5.39. példa (Mátrix invertálása LU-felbontással).** *Invertáljuk az 5.35. példában megadott*
+$$\mathbf{B} = \begin{bmatrix} 4 & 8 & 8 \\ 2 & 6 & 4 \\ 1 & 3 & 4 \end{bmatrix} = \begin{bmatrix} 1 & 0 & 0 \\ 1/2 & 1 & 0 \\ 1/4 & 1/2 & 1 \end{bmatrix}\begin{bmatrix} 4 & 8 & 8 \\ 0 & 2 & 0 \\ 0 & 0 & 2 \end{bmatrix}$$
+*mátrixot az LU-felbontása segítségével!*
+
+*Megoldás.* A $\mathbf{B}$ mátrix LU-felbontását használva először megoldjuk az $\mathbf{LY} = \mathbf{I}$ mátrixegyenletet:
+$$\begin{bmatrix} 1 & 0 & 0 \\ 1/2 & 1 & 0 \\ 1/4 & 1/2 & 1 \end{bmatrix}\begin{bmatrix} y_{11} & y_{12} & y_{13} \\ y_{21} & y_{22} & y_{23} \\ y_{31} & y_{32} & y_{33} \end{bmatrix} = \begin{bmatrix} 1 & 0 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \end{bmatrix}.$$
+Az $\mathbf{L}$ első sorával való szorzásból: $[y_{11}\; y_{12}\; y_{13}] = [1\; 0\; 0]$. A második sorral való szorzásból $\frac{1}{2}[y_{11}\; y_{12}\; y_{13}] + [y_{21}\; y_{22}\; y_{23}] = [0\; 1\; 0]$. Behelyettesítés után $[y_{21}\; y_{22}\; y_{23}] = [-\frac{1}{2}\; 1\; 0]$. Végül a harmadik sorral való szorzásból:
+$$\tfrac{1}{4}\begin{bmatrix} y_{11} & y_{12} & y_{13} \end{bmatrix} + \tfrac{1}{2}\begin{bmatrix} y_{21} & y_{22} & y_{23} \end{bmatrix} + \begin{bmatrix} y_{31} & y_{32} & y_{33} \end{bmatrix} = \begin{bmatrix} 0 & 0 & 1 \end{bmatrix},$$
+amiből behelyettesítés után kifejezve $\mathbf{Y}$ harmadik sorát kapjuk, így $[y_{31}\; y_{32}\; y_{33}] = [0\; -\frac{1}{2}\; 1]$. Azaz
+$$\mathbf{Y} = \begin{bmatrix} 1 & 0 & 0 \\ -1/2 & 1 & 0 \\ 0 & -1/2 & 1 \end{bmatrix}.$$
+Ezután ugyanígy, egyszerű helyettesítésekkel megoldható az $\mathbf{UX} = \mathbf{Y}$, azaz a
+$$\begin{bmatrix} 4 & 8 & 8 \\ 0 & 2 & 0 \\ 0 & 0 & 2 \end{bmatrix}\begin{bmatrix} x_{11} & x_{12} & x_{13} \\ x_{21} & x_{22} & x_{23} \\ x_{31} & x_{32} & x_{33} \end{bmatrix} = \begin{bmatrix} 1 & 0 & 0 \\ -1/2 & 1 & 0 \\ 0 & -1/2 & 1 \end{bmatrix}$$
+mátrixegyenlet is, melynek megoldása
+$$\mathbf{X} = \begin{bmatrix} 3/4 & -1/2 & -1 \\ -1/4 & 1/2 & 0 \\ 0 & -1/4 & 1/2 \end{bmatrix}.$$
+$\square$
+
+### Az LU-felbontás a gyakorlatban
+
+Ismét végigszámoljuk az 5.35. példabeli mátrix felbontását. Először írjunk le egy egységmátrixot, de a főátló alatti mátrix helyeket üresen hagyva, ebből lesz $\mathbf{L}$. Írjuk mellé az $\mathbf{A}$ mátrixot, és amikor elvégzünk egy $S_i - l_{ji}S_j$ sorműveletet rajta, akkor az $l_{ji}$ értéket bejegyezzük az $\mathbf{L}$ mátrix $j$-edik sorának $i$-edik oszlopába. Az alábbi számítások bal hasábjában látjuk a fentiek szerinti lépéseket.
+$$\left[\begin{array}{ccc} 1 & 0 & 0 \\ {} & 1 & 0 \\ {} & {} & 1 \end{array}\right]\left[\begin{array}{ccc} 4 & 1 & 2 \\ 2 & 4 & 1 \\ 1 & 2 & 4 \end{array}\right] \;\Downarrow\; \left[\begin{array}{ccc} 1 & 0 & 0 \\ 1/2 & 1 & 0 \\ {} & {} & 1 \end{array}\right]\left[\begin{array}{ccc} 4 & 1 & 2 \\ 0 & 7/2 & 0 \\ 1 & 2 & 4 \end{array}\right]$$
+$$\Downarrow\; \left[\begin{array}{ccc} 1 & 0 & 0 \\ 1/2 & 1 & 0 \\ 1/4 & {} & 1 \end{array}\right]\left[\begin{array}{ccc} 4 & 1 & 2 \\ 0 & 7/2 & 0 \\ 0 & 7/4 & 7/2 \end{array}\right] \;\Downarrow\; \left[\begin{array}{ccc} 1 & 0 & 0 \\ 1/2 & 1 & 0 \\ 1/4 & 1/2 & 1 \end{array}\right]\left[\begin{array}{ccc} 4 & 1 & 2 \\ 0 & 7/2 & 0 \\ 0 & 0 & 7/2 \end{array}\right]$$
+A jobb hasábban ugyanezen lépések a számítógépes (egyetlen mátrixban, tizedes alakban tárolt, az $\mathbf{L}$-beli elemeket kiemelve mutató) technikával:
+$$\begin{bmatrix} 4.00 & 1.00 & 2.00 \\ 2.00 & 4.00 & 1.00 \\ 1.00 & 2.00 & 4.00 \end{bmatrix} \Rightarrow \begin{bmatrix} 4.00 & 1.00 & 2.00 \\ \mathbf{0.50} & 3.50 & 0.00 \\ 1.00 & 2.00 & 4.00 \end{bmatrix} \Rightarrow \begin{bmatrix} 4.00 & 1.00 & 2.00 \\ \mathbf{0.50} & 3.50 & 0.00 \\ \mathbf{0.25} & 1.75 & 3.50 \end{bmatrix} \Rightarrow \begin{bmatrix} 4.00 & 1.00 & 2.00 \\ \mathbf{0.50} & 3.50 & 0.00 \\ \mathbf{0.25} & \mathbf{0.50} & 3.50 \end{bmatrix}$$
+Vegyük észre, hogy az $\mathbf{A}$ mátrixon folytatott elemi átalakítások eredménye és az $\mathbf{L}$ már kiszámolt elemei egyetlen mátrixban is „elférnek", ugyanis $\mathbf{L}$-ben épp akkor és oda kerül egy elem, amikor és ahova $\mathbf{A}$-ban 0. Ezt a számítógépprogramok kihasználják, ha igen nagy méretű $\mathbf{A}$ mátrixot kell felbontani, és az $\mathbf{L}$ és $\mathbf{U}$ mátrixot az $\mathbf{A}$ helyében konstruálják meg. A fenti számítások jobb hasábjában ezt a számítógépes technikát alkalmazzuk. Színes háttérrel jelöljük az $\mathbf{L}$-beli elemeket.
+
+Az LU-felbontás műveletigénye megegyezik a Gauss-kiküszöbölésével, azaz egy $n$-edrendű mátrixra nagyságrendileg $2n^3/3$. Egyenletrendszer megoldásánál is azonos a lépésszám, hisz a Gauss-módszernél a kiküszöbölést a jobb oldallal is meg kell csinálni, az LU-felbontásnál viszont az alsó háromszögmátrixhoz tartozó egyenletrendszert is meg kell oldani: mindkettő $n(n-1)/2$ összeadás/kivonás és ugyanennyi szorzás/osztás. Az LU-felbontásnak viszont több olyan előnyös tulajdonsága van, ami miatt használata meghatározó az egyenletrendszerek megoldásában és amellett több más feladatban is. Néhány a legfontosabbak közül:
+
+1. Mivel az egyenletrendszer együtthatómátrixának LU-felbontásához nincs szükség az egyenletrendszer jobb oldalára, ezért használható olyan esetekben, amikor a jobb oldal még nem ismeretes, vagy több különböző jobb oldallal is dolgozni kell.
+
+2. Az LU-felbontás ismeretében több mátrixokkal kapcsolatos számítás gyorsabban elvégezhető mint egyébként, pl. ilyen a mátrix inverzének, vagy a később tanulandó determinánsának meghatározása.
+
+3. Korábban említettük, hogy az LU-felbontás igen memóriatakarékos, ráadásul vannak olyan speciális mátrixosztályok (pl. a szalagmátrixok, vagy a ritka mátrixok), melyekre létezik a kiküszöbölésnél gyorsabb algoritmus az LU-felbontásra.
+
+4. A computer algebra programok úgy működnek, hogy ha egy mátrixon valamilyen számítást kell elvégezni, ami megoldható az LU-felbontással (vagy a következő pontban tárgyalandó PLU-felbontással), akkor azzal oldják meg. Így ha később egy másik számítást is el kell e mátrixszal végezni, e felbontás ismeretében az már sokkal gyorsabb lehet.
+
+### PLU-felbontás
+
+Nincs minden $\mathbf{A}$ mátrixnak LU-felbontása, de sorcserékkel – azaz egy permutáló mátrixszal való balról szorzással – olyan alakra hozható, melynek van LU-felbontása. Létezik tehát olyan $\mathbf{P}$ permutáló mátrix, hogy
+$$\mathbf{PA} = \mathbf{LU}, \quad \text{azaz} \quad \mathbf{A} = \mathbf{P}^{\mathsf{T}}\mathbf{LU}.$$
+(Itt kihasználtuk, hogy permutáló mátrix inverze megegyezik transzponáltjával.)
+
+**5.40. definíció (PLU-felbontás).** *Egy tetszőleges $m \times n$-es $\mathbf{A}$ mátrixnak egy permutáló, egy egység főátlójú négyzetes alsó háromszög- és egy $m \times n$-es felső háromszögmátrix szorzatára való bontását PLU-felbontásnak nevezzük.*
+
+> *Ha $m > n$, akkor $\mathbf{U}$ utolsó $m - n$ sora zérussor, ezért ezeket, és $\mathbf{L}$ utolsó $m - n$ oszlopa is elhagyható, vagyis ha $r = \min(m, n)$, akkor $\mathbf{P}$ $m \times m$-es permutáló mátrix, $\mathbf{L}$ 1-esekből álló főátlójú $m \times r$-es alsó, míg az $\mathbf{U}$ $r \times n$-es felső háromszögmátrix. Például a következő első felbontás a definíciót, a második e megjegyzés szerinti felbontást adja:*
+> $$\begin{bmatrix} 0 & 1 \\ 1 & 2 \\ 2 & 3 \end{bmatrix} = \begin{bmatrix} 0 & 1 & 0 \\ 0 & 0 & 1 \\ 1 & 0 & 0 \end{bmatrix}\begin{bmatrix} 1 & 0 & 0 \\ 0 & 1 & 0 \\ 1/2 & 1/2 & 1 \end{bmatrix}\begin{bmatrix} 2 & 3 \\ 0 & 1 \\ 0 & 0 \end{bmatrix} = \begin{bmatrix} 0 & 1 & 0 \\ 0 & 0 & 1 \\ 1 & 0 & 0 \end{bmatrix}\begin{bmatrix} 1 & 0 \\ 0 & 1 \\ 1/2 & 1/2 \end{bmatrix}\begin{bmatrix} 2 & 3 \\ 0 & 1 \end{bmatrix}$$
+
+A PLU-felbontást megadó algoritmus minimális változtatással megkapható az LU-felbontáséból. Az algoritmust – épp ahogy a számítógépek is számolnak – az $\mathbf{L}$ és $\mathbf{U}$ mátrix elemeit egyetlen mátrixban
+
+tárolva fogjuk végrehajtani. Az LU-hoz képest csak annyi a változás, hogy sorcserék elvégzését is megengedjük. Az LU-felbontás algoritmusa akkor akad el, amikor egy főátlóbeli elem 0, de van alatta nem nulla elem az oszlopban. Most ilyen esetben e két sort kicseréljük. Sőt, olyankor is kicserélhetünk egy sort egy alatta lévővel, ha főátlóbeli eleme nem 0. Egy ilyen csere a kerekítési hibák csökkentése érdekében lehet érdemes megtenni. A korábban már említett részleges főelemkiválasztás szabálya szerint mindig a legnagyobb abszolút értékű elemet érdemes főelemnek választani. Hogy az algoritmus végén tudjuk, hogyan változott a sorvektorok sorrendje, az indexek változását folyamatosan följegyezzük – praktikusan a mátrix sorvektorai elé írva. Lássunk egy példát. Azt, hogy az $\mathbf{L}$ és $\mathbf{U}$ mátrixok összeolvasztásából kapott mátrixon is elvégezhetők a sorcserék, később igazoljuk!
+
+**5.41. példa (PLU-felbontás).** *Határozzuk meg az*
+$$\mathbf{A} = \begin{bmatrix} -1 & 6 & 1 & -7 & 4 \\ 1 & 4 & 4 & -7 & 5 \\ 4 & -8 & 4 & 8 & -4 \\ 3 & -6 & 8 & 6 & -8 \end{bmatrix} \tag{5.5}$$
+*mátrix PLU-felbontását úgy, hogy minden lépésben részleges főelem-kiválasztással a főátlóbeli elem alatti legnagyobb abszolút értékű elemet választjuk ki.*
+
+*Megoldás.* A mátrix sorindexeit a következőképp fogjuk jelölni:
+$$\begin{array}{c} 1 \\ 2 \\ 3 \\ 4 \end{array}\begin{bmatrix} -1 & 6 & 1 & -7 & 4 \\ 1 & 4 & 4 & -7 & 5 \\ 4 & -8 & 4 & 8 & -4 \\ 3 & -6 & 8 & 6 & -8 \end{bmatrix} \tag{5.6}$$
+Mivel az első oszlopban 4 a legnagyobb abszolút értékű szám, végrehajtunk egy $S_{i \leftrightarrow j}$ sorcserét, majd elimináljuk az első oszlop összes többi elemét:
+$$\begin{array}{c} 3 \\ 2 \\ 1 \\ 4 \end{array}\begin{bmatrix} 4 & -8 & 4 & 8 & -4 \\ 1 & 4 & 4 & -7 & 5 \\ -1 & 6 & 1 & -7 & 4 \\ 3 & -6 & 8 & 6 & -8 \end{bmatrix} \to \begin{array}{c} 3 \\ 2 \\ 1 \\ 4 \end{array}\begin{bmatrix} 4 & -8 & 4 & 8 & -4 \\ \mathbf{1/4} & 6 & 3 & -9 & 6 \\ \mathbf{-1/4} & 4 & 2 & -5 & 3 \\ \mathbf{3/4} & 0 & 5 & 0 & -5 \end{bmatrix}$$
+A második oszlop második eleme alatt nincs nagyobb abszolút értékű szám, most nem kell sort cserélni, a negyedik sort eliminálni sem kell, (azaz kivonhatjuk belőle a második sor 0-szorosát):
+$$\to \begin{array}{c} 3 \\ 2 \\ 1 \\ 4 \end{array}\begin{bmatrix} 4 & -8 & 4 & 8 & -4 \\ \mathbf{1/4} & 6 & 3 & -9 & 6 \\ \mathbf{-1/4} & \mathbf{2/3} & 0 & 1 & -1 \\ \mathbf{3/4} & \mathbf{0} & 5 & 0 & -5 \end{bmatrix}$$
+A harmadik oszlopban 0 áll a főátlón, kicseréljük a harmadik és negyedik sort. Az eddig még nem indokolt mozzanat: az $\mathbf{L}$ és az $\mathbf{U}$ mátrixba eső részén egyaránt végrehajtható e művelet, és épp ezt tesszük a sorindexekkel is:
+$$\to \begin{array}{c} 3 \\ 2 \\ 4 \\ 1 \end{array}\begin{bmatrix} 4 & -8 & 4 & 8 & -4 \\ \mathbf{1/4} & 6 & 3 & -9 & 6 \\ \mathbf{3/4} & \mathbf{0} & 5 & 0 & -5 \\ \mathbf{-1/4} & \mathbf{2/3} & 0 & 1 & -1 \end{bmatrix} \to \begin{array}{c} 3 \\ 2 \\ 4 \\ 1 \end{array}\begin{bmatrix} 4 & -8 & 4 & 8 & -4 \\ \mathbf{1/4} & 6 & 3 & -9 & 6 \\ \mathbf{3/4} & \mathbf{0} & 5 & 0 & -5 \\ \mathbf{-1/4} & \mathbf{2/3} & \mathbf{0} & 1 & -1 \end{bmatrix}$$
+Az utolsó lépésben nem is volt tennivalónk, mivel a főátló alatt 0 volt, így csak jeleztük, hogy mi kerül az $\mathbf{L}$ mátrixba e helyen. (Az a két nulla ugyanaz a nulla! A második már az $\mathbf{L}$ eleme!) Végül ebből az alakból leolvasható az $\mathbf{L}$, $\mathbf{U}$ és az indexekből a $\mathbf{P}$ mátrix. Ezeket egyből a $\mathbf{PA} = \mathbf{LU}$ egyenlőségben adjuk meg:
+$$\begin{bmatrix} 0 & 0 & 1 & 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 0 & 1 \\ 1 & 0 & 0 & 0 \end{bmatrix}\begin{bmatrix} -1 & 6 & 1 & -7 & 4 \\ 1 & 4 & 4 & -7 & 5 \\ 4 & -8 & 4 & 8 & -4 \\ 3 & -6 & 8 & 6 & -8 \end{bmatrix} = \begin{bmatrix} 1 & 0 & 0 & 0 \\ 1/4 & 1 & 0 & 0 \\ 3/4 & 0 & 1 & 0 \\ -1/4 & 2/3 & 0 & 1 \end{bmatrix}\begin{bmatrix} 4 & -8 & 4 & 8 & -4 \\ 0 & 6 & 3 & -9 & 6 \\ 0 & 0 & 5 & 0 & -5 \\ 0 & 0 & 0 & 1 & -1 \end{bmatrix}.$$
+Mindkét oldalt $\mathbf{P}^{\mathsf{T}}$-tal szorozva megkapjuk a PLU-felbontást, azaz az $\mathbf{A} = \mathbf{P}^{\mathsf{T}}\mathbf{LU}$ egyenlőséget:
+$$\begin{bmatrix} -1 & 6 & 1 & -7 & 4 \\ 1 & 4 & 4 & -7 & 5 \\ 4 & -8 & 4 & 8 & -4 \\ 3 & -6 & 8 & 6 & -8 \end{bmatrix} = \begin{bmatrix} 0 & 0 & 0 & 1 \\ 0 & 1 & 0 & 0 \\ 1 & 0 & 0 & 0 \\ 0 & 0 & 1 & 0 \end{bmatrix}\begin{bmatrix} 1 & 0 & 0 & 0 \\ 1/4 & 1 & 0 & 0 \\ 3/4 & 0 & 1 & 0 \\ -1/4 & 2/3 & 0 & 1 \end{bmatrix}\begin{bmatrix} 4 & -8 & 4 & 8 & -4 \\ 0 & 6 & 3 & -9 & 6 \\ 0 & 0 & 5 & 0 & -5 \\ 0 & 0 & 0 & 1 & -1 \end{bmatrix}.$$
+Ezzel megoldottuk a feladatot! $\square$
+
+*5.4. kód. Egy mátrix PLU-felbontásának kiszámítása mátrixalapú nyelvben.*
+```octave
+OCTAVE: A = [
+> -1  6 1 -7  4
+>  1  4 4 -7  5
+>  4 -8 4  8 -4
+>  3 -6 8  6 -8]
+A =
+  -1   6   1  -7   4
+   1   4   4  -7   5
+   4  -8   4   8  -4
+   3  -6   8   6  -8
+OCTAVE: [L U P] = lu(a)
+L =
+   1.00   0.00   0.00   0.00
+   0.25   1.00   0.00   0.00
+   0.75   0.00   1.00   0.00
+  -0.25   0.67   0.00   1.00
+U =
+   4  -8   4   8  -4
+   0   6   3  -9   6
+   0   0   5   0  -5
+   0   0   0   1  -1
+P =
+Permutation Matrix
+   0   0   1   0
+   0   1   0   0
+   0   0   0   1
+   1   0   0   0
+OCTAVE: transpose(P)*L*U
+ans =
+  -1   6   1  -7   4
+   1   4   4  -7   5
+   4  -8   4   8  -4
+   3  -6   8   6  -8
+```
+
+E felbontás egy lehetséges használatára mutatunk példát.
+
+**5.42. példa.** *Oldjuk meg az*
+$$\begin{bmatrix} -1 & 6 & 1 & -7 & 4 \\ 1 & 4 & 4 & -7 & 5 \\ 4 & -8 & 4 & 8 & -4 \\ 3 & -6 & 8 & 6 & -8 \end{bmatrix}\mathbf{x} = \begin{bmatrix} 1 \\ 4 \\ 4 \\ 8 \end{bmatrix}$$
+*egyenletrendszert az együtthatómátrix PLU-felbontását használva!*
+
+*Megoldás.* Az $\mathbf{Ax} = \mathbf{b}$ egyenletet $\mathbf{P}$-vel szorozva és $\mathbf{PA}$ helyébe $\mathbf{LU}$-t írva kapjuk, hogy $\mathbf{LUx} = \mathbf{Pb}$ egyenletrendszert kell megoldani, ahol $\mathbf{b} = (1, 4, 4, 8)$. Ez – hasonlóan az LU-felbontásnál tanultakhoz – az $\mathbf{Ly} = \mathbf{Pb}$ és az $\mathbf{Ux} = \mathbf{y}$ egyenletrendszerek megoldásával ekvivalens.
+$$\begin{bmatrix} 1 & 0 & 0 & 0 \\ 1/4 & 1 & 0 & 0 \\ 3/4 & 0 & 1 & 0 \\ -1/4 & 2/3 & 0 & 1 \end{bmatrix}\mathbf{y} = \begin{bmatrix} 0 & 0 & 1 & 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 0 & 1 \\ 1 & 0 & 0 & 0 \end{bmatrix}\begin{bmatrix} 1 \\ 4 \\ 4 \\ 8 \end{bmatrix} = \begin{bmatrix} 4 \\ 4 \\ 8 \\ 1 \end{bmatrix}$$
+Ennek az egyenletrendszernek a megoldása fejben számolva is leolvasható: $\mathbf{y} = (4, 3, 5, 0)$. Az $\mathbf{Ux} = \mathbf{y}$ egyenletrendszer bővített mátrixa, és annak redukált lépcsős alakja:
+$$\left[\begin{array}{ccccc|c} 4 & -8 & 4 & 8 & -4 & 4 \\ 0 & 6 & 3 & -9 & 6 & 3 \\ 0 & 0 & 5 & 0 & -5 & 5 \\ 0 & 0 & 0 & 1 & -1 & 0 \end{array}\right] \to \left[\begin{array}{ccccc|c} 1 & 0 & 0 & 0 & 2 & 0 \\ 0 & 1 & 0 & 0 & 0 & 0 \\ 0 & 0 & 1 & 0 & -1 & 1 \\ 0 & 0 & 0 & 1 & -1 & 0 \end{array}\right]$$
+Innen a megoldás $\mathbf{x} = (-2t, 0, 1 + t, t, t)$. $\square$
+
+**5.43. algoritmus (Egy PLU-felbontás előállítása).** *Legyen $\mathbf{A}$ egy (test fölött értelmezett) tetszőleges $m \times n$-es mátrix, legyen $r = \min(m, n)$, és képezzük az $\mathbf{A}_k, \mathbf{P}_k, \mathbf{L}_k, \mathbf{U}_k$ ($k = 0, 1, \ldots, r$) mátrixok sorozatát a következő eljárás szerint:*
+- a) *$\mathbf{A}_0 = \mathbf{U}_0 = \mathbf{A}$, $\mathbf{L}_0 = \mathbf{I}$, így $\mathbf{A}_0 = \mathbf{L}_0\mathbf{U}_0$,*
+- b) *a $k$-adik lépésben az $\mathbf{A}_{k-1} = \mathbf{L}_{k-1}\mathbf{U}_{k-1}$ összefüggés mátrixaiból megkonstruáljuk az $\mathbf{A}_k = \mathbf{L}_k\mathbf{U}_k$ egyenlőségbeli mátrixokat:*
+  1. *ha $\mathbf{U}_{k-1}$ főátlóján a $k$-adik elem és alatta minden elem 0, akkor legyen $\mathbf{A}_k = \mathbf{A}_{k-1}$, $\mathbf{L}_k = \mathbf{L}_{k-1}$, $\mathbf{U}_k = \mathbf{U}_{k-1}$, $\mathbf{P}_k = \mathbf{I}$, megnöveljük $k$ értékét 1-gyel és visszatérünk e pontra, egyébként a következővel folytatjuk.*
+  2. *ha $\mathbf{U}_{k-1}$ főátlóján a $k$-adik elem 0, és van olyan $i > k$, hogy az $i$-edik sorában alatta nem nulla elem van, akkor az $S_k \leftrightarrow S_i$ sorcserét végző $\mathbf{P}_k$ elemi mátrixszal kicseréljük e két sort, kapjuk az $\mathbf{U}'_{k-1} = \mathbf{P}_k\mathbf{U}_{k-1}$. E sorcserét végrehajtjuk az $\mathbf{A}_{k-1}$ mátrixon is, ez lesz az $\mathbf{A}_k$. Kihasználva, hogy $\mathbf{P}_k\mathbf{P}_k = \mathbf{I}$, az $\mathbf{L}_{k-1}$-en elvégzendő transzformáció is adódik:*
+  $$\begin{aligned} \mathbf{A}_k = \mathbf{P}_k\mathbf{A}_{k-1} &= \mathbf{P}_k\mathbf{L}_{k-1}\mathbf{U}_{k-1} = \mathbf{P}_k\mathbf{L}_{k-1}\mathbf{I}\mathbf{U}_{k-1} \\ &= \mathbf{P}_k\mathbf{L}_{k-1}\mathbf{P}_k\mathbf{P}_k\mathbf{U}_{k-1} = (\mathbf{P}_k\mathbf{L}_{k-1}\mathbf{P}_k)(\mathbf{P}_k\mathbf{U}_{k-1}) \\ &= \mathbf{L}'_k\mathbf{U}'_k. \end{aligned}$$
+  *Itt tehát $\mathbf{L}'_k = \mathbf{P}_k\mathbf{L}_{k-1}\mathbf{P}_k$, azaz az $\mathbf{L}_{k-1}$ mátrix $k$-adik, és egy $i \geq k$ indexre az $i$-edik sorának főátló alatti részei felcserélődnek. A $\mathbf{P}_k\mathbf{L}_{k-1}$ szorzat megcseréli az $\mathbf{L}_{k-1}$ mátrix $k$-adik és $i$-edik sorát, megcserélve a főátlóbeli 1-eseket is. A $\mathbf{P}_k$-val való jobbról szorzás eredményeként a $k$-adik és $i$-edik oszlopok helyet cserélnek, mivel azonban $\mathbf{L}_{k-1}$-ben ezekben az oszlopokban csak zérusok vannak a főátló elemein kívül, ezért e két 1-es visszakerül a főátlóra. Szemléltetésként legyen $m = 5$, $k = 3$, $i = 5$:*
+  $$\mathbf{P}_k = \begin{bmatrix} 1 & 0 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 & 1 \\ 0 & 0 & 0 & 1 & 0 \\ 0 & 0 & 1 & 0 & 0 \end{bmatrix} \qquad \mathbf{L}_{k-1} = \left[\begin{array}{cc|ccc} 1 & 0 & 0 & 0 & 0 \\ * & 1 & 0 & 0 & 0 \\ k_1 & k_2 & 1 & 0 & 0 \\ * & * & 0 & 1 & 0 \\ i_1 & i_2 & 0 & 0 & 1 \end{array}\right]$$
+  $$\mathbf{P}_k\mathbf{L}_{k-1} = \left[\begin{array}{cc|ccc} 1 & 0 & 0 & 0 & 0 \\ * & 1 & 0 & 0 & 0 \\ i_1 & i_2 & 0 & 0 & 1 \\ * & * & 0 & 1 & 0 \\ k_1 & k_2 & 1 & 0 & 0 \end{array}\right] \qquad \mathbf{P}_k\mathbf{L}_{k-1}\mathbf{P}_k = \left[\begin{array}{cc|ccc} 1 & 0 & 0 & 0 & 0 \\ * & 1 & 0 & 0 & 0 \\ i_1 & i_2 & 1 & 0 & 0 \\ * & * & 0 & 1 & 0 \\ k_1 & k_2 & 0 & 0 & 1 \end{array}\right]$$
+  3. *Ezután az $\mathbf{U}'_{k-1}$ mátrix $k$-adik oszlopának főátló alatti elemeit egymás után elimináljuk, mindegyiket egy $S_i \leftarrow S_i - cS_k$ elemi sorműveletet végző $\mathbf{E}$ elemi mátrixszal. Ennek inverze a vele való jobbról szorzás esetén az $O_k \leftarrow O_k + cO_i$ oszlopműveletet végzi, így az*
+  $$\mathbf{L}'_k\mathbf{U}'_k = \mathbf{L}'_k\mathbf{I}\mathbf{U}'_k = \mathbf{L}'_k\mathbf{E}^{-1}\mathbf{E}\mathbf{U}'_k$$
+  *egyenlőségnek megfelelően az $\mathbf{U}'_k$-n végrehajtott sorművelet mellett az $\mathbf{L}'_k$ mátrix $i$-edik oszlopának $c$-szeresét kell a $k$-adik oszlophoz adni, azaz a $c$ számot beírni az $i$-edik sor $k$-adik oszlopába. Az eliminációt a kapott mátrixokon tovább folytatjuk, míg az összes elemet nem elimináltuk a $k$-adik oszlopban a főátló alatt. $\mathbf{L}_k$ és $\mathbf{U}_k$ jelöli e procedúra végén kapott mátrixokat, tehát $\mathbf{U}_k$-ban már a főátló alatt minden elem 0, és $\mathbf{L}_k$ a párja, melyekre $\mathbf{A}_k = \mathbf{L}_k\mathbf{U}_k$. Megnöveljük $k$ értékét, és ha $k < r$, visszatérünk 1. pontra, egyébként a következő pontra lépünk.*
+- c) *Legyen $\mathbf{P} = \mathbf{P}_r\mathbf{P}_{r-1} \ldots \mathbf{P}_1$, $\mathbf{L} = \mathbf{L}_r$, $\mathbf{U} = \mathbf{U}_r$. Ekkor a fentiek szerint $\mathbf{PA} = \mathbf{LU}$ az $\mathbf{A}$ egy PLU-felbontása.*
+
+Az, hogy ez az algoritmus valóban PLU-felbontást ad, az algoritmus leírásában bizonyítottuk, illetve onnan kiolvasható.
+
+<!-- OCR: through PDF p.208 -->
