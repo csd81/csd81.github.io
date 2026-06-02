@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
 import type { Components } from 'react-markdown';
+import { FIGURES } from './figures';
 
 /**
  * Szalkai/calculus-style callout boxing for the /practice content. A rehype
@@ -234,6 +235,19 @@ export function CopyButton({ tex }: { tex: string }) {
 export const practiceBoxComponents: Components = {
   // @ts-expect-error custom element injected by rehypePracticeBoxes
   pcopy: ({ node }: any) => <CopyButton tex={String(node?.properties?.tex ?? '')} />,
+  /** Render figures extracted from the source PDFs; fall back to an italic
+   *  caption for references whose image isn't available. */
+  img: ({ src, alt }: any) => {
+    const name = decodeURIComponent(String(src ?? '').split('/').pop() ?? '');
+    if (FIGURES.has(name)) {
+      return (
+        <figure className="practice__fig">
+          <img src={`/figures/${name}`} alt={String(alt ?? '')} loading="lazy" />
+        </figure>
+      );
+    }
+    return alt ? <span className="practice__figcap">{String(alt)}</span> : null;
+  },
 };
 
 /**
