@@ -5045,4 +5045,238 @@ Például a $\begin{bmatrix} -2 & 4 \\ -1 & 2 \end{bmatrix}$ mátrix nilpotens, 
 
 > Általában egy algebrai struktúra egy elemének egy műveletre vonatkozó inverzéhez a művelet *semleges eleme* szükséges. Az összeadás semleges eleme a 0, mert bármely $a$ elemhez adva $a$-t kapunk, hasonlóképp a szorzás semleges eleme az 1, mert bármely $a$ elemet vele szorozva $a$-t kapunk. Összeadás esetén egy elem ellentettjét az $a + x = 0$ egyenlet megoldásával kapjuk, szorzás esetén a reciprokot az $ax = 1$ megoldásával. Az ellentettet, illetve a reciprokot additív, illetve multiplikatív *inverznek* is nevezzük. Mátrixszorzás semleges eleme az egységmátrix.
 
-<!-- OCR: through PDF p.178 -->
+*Megoldás.* Megmutatjuk, hogy $(\mathbf{I} - \mathbf{A})(\mathbf{I} + \mathbf{A} + \mathbf{A}^2 + \ldots + \mathbf{A}^{k-1}) = \mathbf{I}$.
+$$\begin{aligned} (\mathbf{I} - \mathbf{A})(\mathbf{I} + \mathbf{A} + \mathbf{A}^2 + \ldots + \mathbf{A}^{k-1}) &= \mathbf{I} + \mathbf{A} + \mathbf{A}^2 + \ldots + \mathbf{A}^{k-1} - \mathbf{A} - \mathbf{A}^2 - \ldots - \mathbf{A}^{k-1} - \mathbf{A}^k \\ &= \mathbf{I} - \mathbf{A}^k \\ &= \mathbf{I} \end{aligned}$$
+Az $(\mathbf{I} + \mathbf{A} + \mathbf{A}^2 + \ldots + \mathbf{A}^{k-1})(\mathbf{I} - \mathbf{A}) = \mathbf{I}$ összefüggés ugyanígy bizonyítható. $\square$
+
+### Elemi mátrixok inverze
+
+Minden $R$ elemi sorművelethez van egy olyan $R'$ sorművelet, hogy az $R$ sorművelettel átalakított mátrixot az $R'$ visszaalakítja (ld. 5.21. feladat). Nevezzük ezt az $R'$ sorműveletet az $R$ sorművelet inverzének. Könnyen ellenőrizhető, hogy az $S_i \leftrightarrow S_j$ sorművelet inverze önmaga, a $cS_i$ inverze $\frac{1}{c}S_i$, és $S_i + cS_j$ inverze $S_i - cS_j$.
+
+**5.9. állítás (Sorművelet inverzének mátrixa).** *Minden elemi mátrix invertálható, nevezetesen egy sorművelet elemi mátrixának inverze megegyezik a sorművelet inverzéhez tartozó elemi mátrixszal.*
+
+A bizonyításhoz elég belátni, hogy egy sorművelet és az inverz sorművelet mátrixainak szorzata az egységmátrix. Az általános bizonyítás végiggondolását az Olvasóra hagyjuk, itt csak egy-egy konkrét esetet mutatunk meg, nevezetesen $3 \times 3$-as mátrixokon az $S_2 \leftrightarrow S_3$, a $3S_2$ és az $S_1 + 4S_3$ sorműveletek és inverzeik mátrixának szorzatát:
+$$\begin{bmatrix} 1 & 0 & 0 \\ 0 & 0 & 1 \\ 0 & 1 & 0 \end{bmatrix}\begin{bmatrix} 1 & 0 & 0 \\ 0 & 0 & 1 \\ 0 & 1 & 0 \end{bmatrix} = \begin{bmatrix} 1 & 0 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \end{bmatrix},$$
+$$\begin{bmatrix} 1 & 0 & 0 \\ 0 & 3 & 0 \\ 0 & 0 & 1 \end{bmatrix}\begin{bmatrix} 1 & 0 & 0 \\ 0 & \frac{1}{3} & 0 \\ 0 & 0 & 1 \end{bmatrix} = \begin{bmatrix} 1 & 0 & 0 \\ 0 & \frac{1}{3} & 0 \\ 0 & 0 & 1 \end{bmatrix}\begin{bmatrix} 1 & 0 & 0 \\ 0 & 3 & 0 \\ 0 & 0 & 1 \end{bmatrix} = \begin{bmatrix} 1 & 0 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \end{bmatrix},$$
+$$\begin{bmatrix} 1 & 0 & 4 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \end{bmatrix}\begin{bmatrix} 1 & 0 & -4 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \end{bmatrix} = \begin{bmatrix} 1 & 0 & -4 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \end{bmatrix}\begin{bmatrix} 1 & 0 & 4 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \end{bmatrix} = \begin{bmatrix} 1 & 0 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \end{bmatrix}.$$
+
+### Az inverz kiszámítása
+
+A négyzetes $\mathbf{A}$ mátrix inverzének kiszámításához meg kell oldani az $\mathbf{AX} = \mathbf{I}$ mátrixegyenletet, ami egyúttal egy szimultán egyenletrendszer is, és az elemi sorműveletekkel megoldható. Előbb azonban egy kérdésre válaszolnunk kell: nem fordulhat-e elő, hogy az $\mathbf{AX} = \mathbf{I}$ mátrixegyenlet megoldható, de a megoldás nem tesz eleget az $\mathbf{XA} = \mathbf{I}$ mátrixegyenletnek? Négyzetes mátrixok esetén *nem* a válasz, ami azt jelenti, hogy mátrix invertálásához elég az $\mathbf{AX} = \mathbf{I}$ mátrixegyenlet megoldása!
+
+**5.10. tétel (Az inverz létezéséhez elég egy feltétel).** *A négyzetes $\mathbf{A}$ mátrix pontosan akkor invertálható, ha létezik olyan $\mathbf{B}$ mátrix, hogy az $\mathbf{AB} = \mathbf{I}$ és a $\mathbf{BA} = \mathbf{I}$ feltételek egyike teljesül. Ha ilyen $\mathbf{B}$ mátrix létezik, az egyértelmű.*
+
+*Bizonyítás.* Az inverz mátrix egyértelműségét beláttuk az 5.7. definíció utáni megjegyzések közt. Így elég belátnunk, hogy négyzetes mátrixokra az $\mathbf{AB} = \mathbf{I}$ és a $\mathbf{BA} = \mathbf{I}$ feltételek bármelyikének teljesülése maga után vonja a másik teljesülését is! Sőt, elég e két állítás egyikét igazolni: megmutatjuk, hogy ha a négyzetes $\mathbf{A}$ és $\mathbf{B}$ mátrixok kielégítik az $\mathbf{AB} = \mathbf{I}$ egyenletet, akkor $\mathbf{BA} = \mathbf{I}$ is fönnáll, azaz $\mathbf{A}$ és $\mathbf{B}$ inverzei egymásnak.
+
+Tekintsük az $\mathbf{AX} = \mathbf{I}$ mátrixegyenletet. Ezt úgy oldjuk meg, hogy az $[\mathbf{A}|\mathbf{I}]$ mátrixot redukált lépcsős alakra hozzuk. Ha ez $[\mathbf{I}|\mathbf{B}]$ alakú, akkor $\mathbf{B}$ az $\mathbf{AX} = \mathbf{I}$ egyenlet megoldása, ezért $\mathbf{AB} = \mathbf{I}$ fennáll. A redukált lépcsős alakban zérus sor nem keletkezhet, mert a mátrix jobb oldalát az $\mathbf{I}$ mátrixból kaptuk, ami redukált lépcsős alak, s így egyértelmű. Ha elemi sorműveletekkel zérus sort kapnánk a jobb oldali félmátrixban, akkor volna olyan redukált lépcsős alakja is, mely zérus sort tartalmazna, ami ellentmondás. Ha csak a mátrix bal felén kapnánk zérus sort, akkor az $\mathbf{AX} = \mathbf{I}$ egyenletnek nem lenne megoldása, vagyis nem állhatna fenn az $\mathbf{AB} = \mathbf{I}$ egyenlőség sem.
+
+Ezután megmutatjuk, hogy $\mathbf{BA} = \mathbf{I}$. Ehhez tekintsük a $\mathbf{BY} = \mathbf{I}$ mátrixegyenletet. Ennek megoldásához a $[\mathbf{B}|\mathbf{I}]$ mátrixot kell redukált lépcsős alakra hozni. A előzőekből tudjuk, hogy elemi sorműveletekkel az
+$$[\mathbf{A}|\mathbf{I}] \Longrightarrow [\mathbf{I}|\mathbf{B}]$$
+átalakítás megvalósítható. Az átalakítás lépéseinek inverzeit fordított sorrendben elvégezve az
+$$[\mathbf{I}|\mathbf{B}] \Longrightarrow [\mathbf{A}|\mathbf{I}]$$
+transzformációt kapjuk. Itt minden lépésben fölcserélve a két részmátrixot a kívánt
+$$[\mathbf{B}|\mathbf{I}] \Longrightarrow [\mathbf{I}|\mathbf{A}]$$
+átalakítást kapjuk. Ez azt jelenti, hogy a $\mathbf{BY} = \mathbf{I}$ mátrixegyenletetnek az $\mathbf{Y} = \mathbf{A}$ megoldása, azaz $\mathbf{BA} = \mathbf{I}$. $\square$
+
+Összefoglalva:
+
+**5.11. állítás (Inverz kiszámítása elemi sorműveletekkel).** *A négyzetes $\mathbf{A}$ mátrix invertálható, ha az $[\mathbf{A}|\mathbf{I}]$ mátrix elemi sorműveletekkel $[\mathbf{I}|\mathbf{B}]$ alakra hozható, ekkor $\mathbf{A}$ inverze $\mathbf{B}$. Ha $\mathbf{A}$ redukált lépcsős alakja nem az $\mathbf{I}$ mátrix, akkor $\mathbf{A}$ nem invertálható.*
+
+**5.12. példa (Az inverz kiszámítása).** *Számítsuk ki az*
+$$\mathbf{A} = \begin{bmatrix} 1 & 2 & 3 \\ 2 & 3 & 4 \\ 3 & 4 & 6 \end{bmatrix} \quad \text{és a} \quad \mathbf{B} = \begin{bmatrix} 1 & 0 & 0 & 0 \\ 2 & 1 & 0 & 0 \\ 3 & 2 & 1 & 0 \\ 4 & 3 & 2 & 1 \end{bmatrix}$$
+*mátrixok inverzét!*
+
+*Megoldás.* A kiküszöböléssel oszloponként haladva:
+$$\left[\begin{array}{ccc|ccc} 1 & 2 & 3 & 1 & 0 & 0 \\ 2 & 3 & 4 & 0 & 1 & 0 \\ 3 & 4 & 6 & 0 & 0 & 1 \end{array}\right] \Rightarrow \left[\begin{array}{ccc|ccc} 1 & 2 & 3 & 1 & 0 & 0 \\ 0 & -1 & -2 & -2 & 1 & 0 \\ 0 & -2 & -3 & -3 & 0 & 1 \end{array}\right] \Rightarrow$$
+$$\left[\begin{array}{ccc|ccc} 1 & 0 & -1 & -3 & 2 & 0 \\ 0 & 1 & 2 & 2 & -1 & 0 \\ 0 & 0 & 1 & 1 & -2 & 1 \end{array}\right] \Rightarrow \left[\begin{array}{ccc|ccc} 1 & 0 & 0 & -2 & 0 & 1 \\ 0 & 1 & 0 & 0 & 3 & -2 \\ 0 & 0 & 1 & 1 & -2 & 1 \end{array}\right]$$
+Tehát
+$$\mathbf{A}^{-1} = \begin{bmatrix} -2 & 0 & 1 \\ 0 & 3 & -2 \\ 1 & -2 & 1 \end{bmatrix}.$$
+A $\mathbf{B}$ inverzének kiszámítása hasonló lépésekkel:
+$$\left[\begin{array}{cccc|cccc} 1 & 0 & 0 & 0 & 1 & 0 & 0 & 0 \\ 2 & 1 & 0 & 0 & 0 & 1 & 0 & 0 \\ 3 & 2 & 1 & 0 & 0 & 0 & 1 & 0 \\ 4 & 3 & 2 & 1 & 0 & 0 & 0 & 1 \end{array}\right] \Rightarrow \left[\begin{array}{cccc|cccc} 1 & 0 & 0 & 0 & 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 & -2 & 1 & 0 & 0 \\ 0 & 2 & 1 & 0 & -3 & 0 & 1 & 0 \\ 0 & 3 & 2 & 1 & -4 & 0 & 0 & 1 \end{array}\right] \Rightarrow$$
+$$\left[\begin{array}{cccc|cccc} 1 & 0 & 0 & 0 & 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 & -2 & 1 & 0 & 0 \\ 0 & 0 & 1 & 0 & 1 & -2 & 1 & 0 \\ 0 & 0 & 2 & 1 & 2 & -3 & 0 & 1 \end{array}\right] \Rightarrow \left[\begin{array}{cccc|cccc} 1 & 0 & 0 & 0 & 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 & -2 & 1 & 0 & 0 \\ 0 & 0 & 1 & 0 & 1 & -2 & 1 & 0 \\ 0 & 0 & 0 & 1 & 0 & 1 & -2 & 1 \end{array}\right]$$
+Tehát
+$$\mathbf{B}^{-1} = \begin{bmatrix} 1 & 0 & 0 & 0 \\ -2 & 1 & 0 & 0 \\ 1 & -2 & 1 & 0 \\ 0 & 1 & -2 & 1 \end{bmatrix}. \qquad \square$$
+
+**5.13. tétel ($2 \times 2$-es mátrix inverze).** *Az $\mathbf{A} = \begin{bmatrix} a & b \\ c & d \end{bmatrix}$ mátrix pontosan akkor invertálható, ha $ad - bc \neq 0$, és ekkor*
+$$\mathbf{A}^{-1} = \begin{bmatrix} a & b \\ c & d \end{bmatrix}^{-1} = \frac{1}{ad - bc}\begin{bmatrix} d & -b \\ -c & a \end{bmatrix}.$$
+
+*Bizonyítás.* Azt, hogy az $\mathbf{A}$ mátrixnak valóban a fenti mátrix az inverze, egyszerű mátrixszorzással ellenőrizhetjük. Azt, hogy az $ad - bc \neq 0$ feltétel az invertálhatóságnak elégséges feltétele, a képlet bizonyítja. A feltétel szükségességének belátásához vegyük észre, hogy $ad - bc = 0$, azaz $ad = bc$ pontosan akkor áll fenn, ha $\mathbf{A}$ egyik sora a másik skalárszorosa. Ekkor viszont az egyik sor kinullázható, vagyis az $\mathbf{A}$ mátrix nem alakítható elemi sorműveletekkel egységmátrixszá. $\square$
+
+### Az inverz tulajdonságai
+
+Megvizsgáljuk a mátrixinvertálás más műveletekkel való kapcsolatát.
+
+**5.14. tétel (Az inverz alaptulajdonságai).** *Tegyük fel, hogy $\mathbf{A}$ és $\mathbf{B}$ egyaránt $n \times n$-es invertálható mátrixok, $c \neq 0$ skalár és $k$ pozitív egész. Ekkor igazak a következők:*
+- a) *$\mathbf{A}^{-1}$ invertálható, és inverze $(\mathbf{A}^{-1})^{-1} = \mathbf{A}$,*
+- b) *$c\mathbf{A}$ invertálható, és inverze $\frac{1}{c}\mathbf{A}^{-1}$,*
+- c) *$\mathbf{AB}$ invertálható, és inverze $\mathbf{B}^{-1}\mathbf{A}^{-1}$,*
+- d) *$\mathbf{A}^k$ invertálható, és inverze $(\mathbf{A}^k)^{-1} = (\mathbf{A}^{-1})^k$, definíció szerint ezt értjük $\mathbf{A}^{-k}$-n,*
+- e) *$\mathbf{A}^\mathsf{T}$ invertálható, és $(\mathbf{A}^\mathsf{T})^{-1} = (\mathbf{A}^{-1})^\mathsf{T}$.*
+
+*Bizonyítás.* Az állítások közül a fontosabbakat bizonyítjuk, a többit feladatként az Olvasóra hagyjuk:
+
+c) Az
+$$(\mathbf{AB})(\mathbf{B}^{-1}\mathbf{A}^{-1}) = \mathbf{A}(\mathbf{BB}^{-1})\mathbf{A}^{-1} = \mathbf{AA}^{-1} = \mathbf{I}$$
+szorzat bizonyítja, hogy $\mathbf{AB}$ invertálható, és inverze $\mathbf{B}^{-1}\mathbf{A}^{-1}$.
+
+d) Az $(\mathbf{A}^k)^{-1} = (\mathbf{A}^{-1})^k$ egyenlőség igaz volta a
+$$\underbrace{\mathbf{AA} \ldots \mathbf{A}}_{k \text{ tényező}}\underbrace{\mathbf{A}^{-1}\mathbf{A}^{-1} \ldots \mathbf{A}^{-1}}_{k \text{ tényező}} = \underbrace{\mathbf{A}^{-1}\mathbf{A}^{-1} \ldots \mathbf{A}^{-1}}_{k \text{ tényező}}\underbrace{\mathbf{AA} \ldots \mathbf{A}}_{k \text{ tényező}} = \mathbf{I}$$
+felírásból leolvasható, mert a szorzatok közepén lévő két mátrix szorzata mindig $\mathbf{I}$, ami elhagyható, és e lépést $k$-szor ismételve végül a kívánt eredményt kapjuk:
+$$\underbrace{\mathbf{AA} \ldots (\mathbf{A}\mathbf{A}^{-1})\mathbf{A}^{-1} \ldots \mathbf{A}^{-1}}_{} = \underbrace{\mathbf{AA} \ldots \mathbf{A}}_{k-1}\underbrace{\mathbf{A}^{-1} \ldots \mathbf{A}^{-1}}_{k-1} = \cdots = \mathbf{I}. \qquad \square$$
+
+▶ A c) állítás indukcióval általánosítható véges sok mátrix szorzatára: ha az azonos méretű négyzetes $\mathbf{A}_1$, $\mathbf{A}_2, \ldots \mathbf{A}_m$ mátrixok mindegyike invertálható, akkor szorzatuk is, és
+$$(\mathbf{A}_1\mathbf{A}_2 \ldots \mathbf{A}_m)^{-1} = \mathbf{A}_m^{-1} \ldots \mathbf{A}_2^{-1}\mathbf{A}_1^{-1}.$$
+
+*5.2. ábra. Jelölje $A$ a bűvös kocka alsó, $B$ a jobb hátsó oldalának elforgatását, és jelölje $AB$ a $B$, majd az $A$ egymás után való elvégzésével kapott transzformációt. (Ahogy a függvények összetételénél, előbb a jobb oldali, majd a bal oldali függvényt értékeljük ki, hajtjuk végre.) Ennek inverze $(AB)^{-1}$ úgy kapható meg, ha előbb végrehajtjuk az $A^{-1}$ majd a $B^{-1}$ transzformációt. Ezek szorzata $B^{-1}A^{-1}$, tehát $(AB)^{-1} = B^{-1}A^{-1}$.*
+
+▶ A c) állításbeli összefüggéshez hasonlóval találkozhatunk a Rubik-kocka forgatása közben is. Egy forgatást jelöljön $A$, egy másikat $B$. A függvények kompozíciójához hasonlóan definiáljuk a két transzformáció szorzatát: a $B$ majd az $A$ forgatás egymás után való elvégzésével kapott transzformációt jelölje $AB$ (ld. 5.2 ábra). E transzformáció inverze visszaállítja az eredeti állapotot, ehhez előbb az $A$ transzformáció inverzét kell végrehajtani, majd a $B$ inverzét, tehát $(AB)^{-1} = B^{-1}A^{-1}$.
+▶ Az $\mathbf{A}^{-k}$ d) pontbeli definíciója is megfelel a precedencia elvnek. Pl. az $\mathbf{A}^m\mathbf{A}^n = \mathbf{A}^{m+n}$ összefüggés kiterjesztése negatív kitevőre az $\mathbf{A}^k\mathbf{A}^{-k} = \mathbf{A}^0$ formulához vezet, amiből azt kapjuk, hogy $\mathbf{A}^{-k} = (\mathbf{A}^k)^{-1}$.
+
+### Az invertálhatóság és az egyenletrendszerek megoldhatósága
+
+A következő tétel a mátrixok invertálhatóságát, az egyenletrendszerek megoldásánál használt elemi sorműveleteket és az egyenletrendszerek megoldhatóságát kapcsolja össze.
+
+**5.15. tétel (Az invertálhatóság és az egyenletrendszerek).** *Adva van egy $n \times n$-es $\mathbf{A}$ mátrix. Az alábbi állítások ekvivalensek:*
+- a) *$\mathbf{A}$ invertálható;*
+- b) *az $\mathbf{AX} = \mathbf{B}$ mátrixegyenlet bármely $n \times t$-es $\mathbf{B}$ mátrixra egyértelműen megoldható;*
+- c) *az $\mathbf{Ax} = \mathbf{b}$ egyenletrendszer bármely $n$ dimenziós $\mathbf{b}$ vektorra egyértelműen megoldható;*
+- d) *a homogén lineáris $\mathbf{Ax} = \mathbf{0}$ egyenletrendszernek a triviális $\mathbf{x} = \mathbf{0}$ az egyetlen megoldása;*
+- e) *$\mathbf{A}$ redukált lépcsős alakja $\mathbf{I}$;*
+- f) *$\mathbf{A}$ előáll elemi mátrixok szorzataként.*
+
+*Bizonyítás.* Az állítások ekvivalenciáját az $(a) \Rightarrow (b) \Rightarrow (c) \Rightarrow (d) \Rightarrow (e) \Rightarrow (f) \Rightarrow (a)$, implikációk igazolásával bizonyítjuk.
+
+$(a) \Rightarrow (b)$: Legyen tehát $\mathbf{A}$ invertálható és legyen $\mathbf{B}$ egy tetszőleges $n \times t$ méretű mátrix. Ekkor az $\mathbf{AX} = \mathbf{B}$ egyenlet mindkét oldalát $\mathbf{A}^{-1}$-gyel balról szorozva kapjuk, hogy $\mathbf{A}^{-1}\mathbf{AX} = \mathbf{A}^{-1}\mathbf{B}$, azaz $\mathbf{X} = \mathbf{A}^{-1}\mathbf{B}$. Ez azt mutatja, hogy egyrészt a mátrixegyenletnek van megoldása, másrészt hogy más megoldása nincs, mivel így minden megoldás megkapható, és $\mathbf{A}$ inverze egyértelmű.
+
+$(b) \Rightarrow (c)$: Nyilvánvaló a $\mathbf{B} = \mathbf{b}$ választással.
+
+$(c) \Rightarrow (d)$: Nyilvánvaló a $\mathbf{b} = \mathbf{0}$ választással.
+
+$(d) \Rightarrow (e)$: Egy $n$-ismeretlenes, $n$ egyenletből álló homogén lineáris egyenletrendszer pontosan akkor oldható meg egyértelműen, ha együtthatómátrixának redukált lépcsős alakja $\mathbf{I}_n$.
+
+$(e) \Rightarrow (f)$: Ha $\mathbf{A}$ redukált lépcsős alakja $\mathbf{I}_n$, akkor létezik elemi sorműveletek olyan sorozata, mely az $\mathbf{A} \Rightarrow \mathbf{I}_n$ transzformációt elvégzi. Jelölje az elemi sorműveletekhez tartozó elemi mátrixokat $\mathbf{E}_1, \ldots \mathbf{E}_k$. Ekkor tehát $\mathbf{E}_1\mathbf{E}_2 \ldots \mathbf{E}_k\mathbf{A} = \mathbf{I}_n$. Innen $\mathbf{A}$ kifejezhető az $\mathbf{E}_1^{-1}, \ldots \mathbf{E}_k^{-1}$-nel balról való beszorzás után:
+$$\mathbf{A} = \mathbf{E}_k^{-1} \ldots \mathbf{E}_2^{-1}\mathbf{E}_1^{-1}.$$
+Elemi mátrixok inverze elemi mátrix, tehát $\mathbf{A}$ előáll elemi mátrixok szorzataként.
+
+$(f) \Rightarrow (a)$: Az $\mathbf{A} = \mathbf{E}_k^{-1} \ldots \mathbf{E}_2^{-1}\mathbf{E}_1^{-1}$ mátrix minden tényezője invertálható, mivel mindegyik elemi mátrix, így szorzatuk is, és az inverz
+$$\mathbf{A}^{-1} = \mathbf{E}_1\mathbf{E}_2 \ldots \mathbf{E}_k. \qquad \square$$
+
+▶ A tétel sok pontjának ekvivalenciája azt jelenti, hogy közülük bármely kettőre igaz, hogy „az egyik pontosan akkor igaz, ha a másik". Például „$\mathbf{A}$ pontosan akkor invertálható, ha az $\mathbf{Ax} = \mathbf{b}$ egyenletrendszer minden $\mathbf{b}$ vektorra egyértelműen megoldható".
+▶ Később megmutatjuk azt is, hogy $\mathbf{A}$ pontosan akkor invertálható, ha az $\mathbf{Ax} = \mathbf{b}$ egyenletrendszer minden $\mathbf{b}$ vektorra megoldható. Azaz az egyértelműség a feltételből kihagyható. Másként fogalmazva, ha $\mathbf{Ax} = \mathbf{b}$ minden $\mathbf{b}$ vektorra megoldható, akkor a megoldás minden $\mathbf{b}$-re egyértelmű.
+
+**5.16. példa (Egyenletrendszer megoldása mátrixinvertálással).** *Oldjuk meg az*
+$$\begin{alignedat}{9} 2x &{}+{}& y &{}={}& 2 \\ 5x &{}+{}& 3y &{}={}& 3 \end{alignedat}$$
+*egyenletrendszert mátrixinvertálással.*
+
+*Megoldás.* Az együtthatómátrix és inverze az 5.13. tétel szerint
+$$\mathbf{A} = \begin{bmatrix} 2 & 1 \\ 5 & 3 \end{bmatrix}, \quad \mathbf{A}^{-1} = \begin{bmatrix} 3 & -1 \\ -5 & 2 \end{bmatrix},$$
+így az ismeretlenek $(x, y)$ vektorára
+$$\begin{bmatrix} x \\ y \end{bmatrix} = \mathbf{A}^{-1}\begin{bmatrix} 2 \\ 3 \end{bmatrix} = \begin{bmatrix} 3 & -1 \\ -5 & 2 \end{bmatrix}\begin{bmatrix} 2 \\ 3 \end{bmatrix} = \begin{bmatrix} 3 \\ -4 \end{bmatrix}. \qquad \square$$
+
+**5.17. példa (Mátrixegyenlet megoldása mátrixinvertálással).** *Oldjuk meg az $\mathbf{AX} = \mathbf{B}$ mátrixegyenletet, ahol*
+$$\mathbf{A} = \begin{bmatrix} 2 & 1 \\ 5 & 3 \end{bmatrix}, \quad \text{és} \quad \mathbf{B} = \begin{bmatrix} 1 & 3 & 2 \\ 4 & 3 & 1 \end{bmatrix}.$$
+
+*1. megoldás.* Az $\mathbf{A}$ mátrix megegyezik az előző feladatbeli mátrixszal, így tudjuk, hogy invertálható, és ismerjük az inverzét. Az $\mathbf{AX} = \mathbf{B}$ mátrixegyenlet megoldása:
+$$\mathbf{X} = \mathbf{A}^{-1}\mathbf{B} = \begin{bmatrix} 3 & -1 \\ -5 & 2 \end{bmatrix}\begin{bmatrix} 1 & 3 & 2 \\ 4 & 3 & 1 \end{bmatrix} = \begin{bmatrix} -1 & 6 & 5 \\ 3 & -9 & -8 \end{bmatrix}. \qquad \square$$
+
+*2. megoldás.* Minden $\mathbf{AX} = \mathbf{B}$ alakú mátrixegyenlet invertálható $\mathbf{A}$ esetén megoldható szimultán egyenletrendszerként az $[\mathbf{A}|\mathbf{B}]$ mátrix redukált lépcsős alakra hozásával. Tehát így számolható minden $\mathbf{A}^{-1}\mathbf{B}$ szorzat. E példában:
+$$\left[\begin{array}{cc|ccc} 2 & 1 & 1 & 3 & 2 \\ 5 & 3 & 4 & 3 & 1 \end{array}\right] \Longrightarrow \left[\begin{array}{cc|ccc} 1 & 0 & -1 & 6 & 5 \\ 0 & 1 & 3 & -9 & -8 \end{array}\right] \qquad \square$$
+
+▶ Megjegyezzük, hogy lineáris egyenletrendszert mátrixinvertálással ritkán oldunk meg, mert műveleigénye valamivel nagyobb, mint az egyszerű kiküszöbölésnek.
+
+**5.18. példa (Mátrix elemi mátrixok szorzatára bontása).** *Bontsuk fel az $\mathbf{A} = \begin{bmatrix} 1 & 2 \\ 3 & 5 \end{bmatrix}$ mátrixot elemi mátrixok szorzatára!*
+
+*Megoldás.* Az 5.15. tétel bizonyításának $(e) \Rightarrow (f)$ lépése szerint ha egy $\mathbf{A}$ mátrixot elemi sorműveletekkel az egységmátrixba lehet transzformálni, akkor az elemi sorműveletek inverzei fordított sorrendben elvégezve az $\mathbf{I}$-t $\mathbf{A}$-ba transzformálják. Ez viszont azt jelenti, hogy a hozzájuk tartozó elemi mátrixok szorzata épp $\mathbf{A}$.
+
+| Elemi sorműveletek | Elemi mátrixok | Elemi mátrixok inverzei |
+|---|---|---|
+| $\begin{bmatrix} 1 & 2 \\ 3 & 5 \end{bmatrix}$ | | |
+| $\Downarrow\; S_2 - 3S_1$ | $\mathbf{E}_1 = \begin{bmatrix} 1 & 0 \\ -3 & 1 \end{bmatrix}$ | $\mathbf{E}_1^{-1} = \begin{bmatrix} 1 & 0 \\ 3 & 1 \end{bmatrix}$ |
+| $\begin{bmatrix} 1 & 2 \\ 0 & -1 \end{bmatrix}$ | | |
+| $\Downarrow\; -S_2$ | $\mathbf{E}_2 = \begin{bmatrix} 1 & 0 \\ 0 & -1 \end{bmatrix}$ | $\mathbf{E}_2^{-1} = \begin{bmatrix} 1 & 0 \\ 0 & -1 \end{bmatrix}$ |
+| $\begin{bmatrix} 1 & 2 \\ 0 & 1 \end{bmatrix}$ | | |
+| $\Downarrow\; S_1 - 2S_2$ | $\mathbf{E}_3 = \begin{bmatrix} 1 & -2 \\ 0 & 1 \end{bmatrix}$ | $\mathbf{E}_3^{-1} = \begin{bmatrix} 1 & 2 \\ 0 & 1 \end{bmatrix}$ |
+| $\begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}$ | | |
+
+A fenti átalakítás nyomán tehát $\mathbf{E}_3\mathbf{E}_2\mathbf{E}_1\mathbf{A} = \mathbf{I}$, amiből $\mathbf{A} = \mathbf{E}_1^{-1}\mathbf{E}_2^{-1}\mathbf{E}_3^{-1}$, azaz
+$$\begin{bmatrix} 1 & 2 \\ 3 & 5 \end{bmatrix} = \begin{bmatrix} 1 & 0 \\ 3 & 1 \end{bmatrix}\begin{bmatrix} 1 & 0 \\ 0 & -1 \end{bmatrix}\begin{bmatrix} 1 & 2 \\ 0 & 1 \end{bmatrix},$$
+így $\mathbf{A}$-t három elemi mátrix szorzatára bontottuk. $\square$
+
+### Invertálhatóság és bázis
+
+Az 5.15. tétel szerint a négyzetes $\mathbf{A}$ mátrix invertálhatósága azzal ekvivalens, hogy a homogén lineáris $\mathbf{Ax} = \mathbf{0}$ egyenletrendszernek a triviális az egyetlen megoldása. Mivel $\mathbf{Ax}$ az $\mathbf{A}$ oszlopvektorainak egy lineáris kombinációja, ezért ez azt jelenti,
+
+hogy a nullvektor csak egyféleképp áll elő $\mathbf{A}$ oszlopvektorainak lineáris kombinációjaként, a triviális módon. Tehát $\mathbf{A}$ oszlopvektorai lineárisan függetlenek! Ez egyúttal azt is jelenti, hogy $\mathbf{A}$ oszlopvektorai bázist alkotnak, és hogy $\operatorname{r}(\mathbf{A}) = n$. Felhasználva a ?? tételt, mely szerint a sortér és az oszloptér dimenziója megegyezik a ranggal, a következő tételt kapjuk:
+
+**5.19. következmény (Invertálhatóság és bázis).** *Adva van egy valós $n \times n$-es $\mathbf{A}$ mátrix. Az alábbi állítások ekvivalensek:*
+- a) *$\mathbf{A}$ invertálható;*
+- b) *$\mathbf{A}$ oszlopvektorai lineárisan függetlenek;*
+- c) *$\mathbf{A}$ oszlopvektorai bázist alkotnak $\mathbb{R}^n$-ben;*
+- d) *$\mathbf{A}$ sorvektorai lineárisan függetlenek;*
+- e) *$\mathbf{A}$ sorvektorai bázist alkotnak $\mathbb{R}^n$-ben;*
+- f) *$\operatorname{r}(\mathbf{A}) = n$.*
+
+A fenti állításokat a tagadásukkal helyettesítjük és kiegészítjük azzal, hogy ha egy mátrix sorvektorai közt lineáris kapcsolat van, akkor a redukált lépcsős alakban szükségképpen lesz zérussor:
+
+**5.20. következmény (Szinguláris mátrixok).** *Adva van egy valós $n \times n$-es $\mathbf{A}$ mátrix. Az alábbi állítások ekvivalensek:*
+- a) *$\mathbf{A}$ szinguláris (azaz nem invertálható);*
+- b) *$\mathbf{A}$ oszlopvektorai lineárisan összefüggők;*
+- c) *az $\mathbf{A}$ oszlopvektorai által kifeszített altér dimenziója kisebb $n$-nél;*
+- d) *$\mathbf{A}$ sorvektorai lineárisan összefüggők;*
+- e) *az $\mathbf{A}$ sorvektorai által kifeszített altér dimenziója kisebb $n$-nél;*
+- f) *$\mathbf{A}$ bármely lépcsős alakjának (így a redukáltnak is) van zérus sora;*
+- g) *$\operatorname{r}(\mathbf{A}) < n$.*
+
+### Báziscsere
+
+Legyen $\mathcal{B}$ és $\mathcal{C}$ az $\mathbb{R}^n$ két bázisa, és jelölje $\mathbf{X}_{\mathcal{C} \leftarrow \mathcal{B}}$ a $\mathcal{B}$-ről $\mathcal{C}$-re, $\mathbf{Y}_{\mathcal{B} \leftarrow \mathcal{C}}$ a $\mathcal{C}$-ről $\mathcal{B}$-re való áttérés mátrixát. Legyen továbbá $\mathbf{v}$ a tér egy tetszőleges vektora, a $\mathcal{B}$ bázisbeli alakja $[\mathbf{v}]_{\mathcal{B}}$. A 4.24. tétel szerint
+$$[\mathbf{v}]_{\mathcal{C}} = \mathbf{X}_{\mathcal{C} \leftarrow \mathcal{B}}[\mathbf{v}]_{\mathcal{B}}, \quad \text{és} \quad [\mathbf{v}]_{\mathcal{B}} = \mathbf{Y}_{\mathcal{B} \leftarrow \mathcal{C}}[\mathbf{v}]_{\mathcal{C}}.$$
+A második egyenletbe helyettesítve az elsőt kapjuk, hogy
+$$[\mathbf{v}]_{\mathcal{B}} = \mathbf{Y}_{\mathcal{B} \leftarrow \mathcal{C}}\mathbf{X}_{\mathcal{C} \leftarrow \mathcal{B}}[\mathbf{v}]_{\mathcal{B}},$$
+azaz $\mathbf{Y}_{\mathcal{B} \leftarrow \mathcal{C}}\mathbf{X}_{\mathcal{C} \leftarrow \mathcal{B}}$ minden vektort önmagába visz, tehát egyenlő az egységmátrixszal.
+
+**5.21. tétel (Az áttérés mátrixának inverze).** *Ha $\mathcal{B}$ és $\mathcal{C}$ az $\mathbb{R}^n$ két bázisa, akkor az áttérések $\mathbf{X}_{\mathcal{C} \leftarrow \mathcal{B}}$ és $\mathbf{Y}_{\mathcal{B} \leftarrow \mathcal{C}}$ mátrixa egymás inverze, azaz $\mathbf{X}_{\mathcal{C} \leftarrow \mathcal{B}}\mathbf{Y}_{\mathcal{B} \leftarrow \mathcal{C}} = \mathbf{I}_n$.*
+
+**5.22. példa (Az áttérés mátrixának inverze).** *Az $\mathbb{R}^3$ egy $\mathcal{B} = \{ \mathbf{b}_1, \mathbf{b}_2, \mathbf{b}_3 \}$ bázisában felírtuk a standard egységvektorokat:*
+$$\mathbf{i} = \begin{bmatrix} 1 \\ 1 \\ 1 \end{bmatrix}_{\mathcal{B}}, \quad \mathbf{j} = \begin{bmatrix} 1 \\ 2 \\ 2 \end{bmatrix}_{\mathcal{B}}, \quad \mathbf{k} = \begin{bmatrix} 1 \\ 3 \\ 4 \end{bmatrix}_{\mathcal{B}}.$$
+*Írjuk fel $\mathcal{B}$ bázisvektorainak standard bázisbeli koordinátás alakját!*
+
+*Megoldás.* Jelölje $\mathcal{E}$ a standard bázist. Ennek vektorait kifejeztük a $\mathcal{B}$ bázis elemeivel, az ezekből képzett mátrixszal tehát az $\mathcal{E}$-beli vektorok $\mathcal{B}$-beli koordinátás alakja fölírható, tehát ez a $\mathcal{B} \leftarrow \mathcal{E}$ áttérés mátrixa, azaz
+$$\mathbf{X}_{\mathcal{B} \leftarrow \mathcal{E}} = \begin{bmatrix} 1 & 1 & 1 \\ 1 & 2 & 3 \\ 1 & 2 & 4 \end{bmatrix}.$$
+Ennek inverze a keresett mátrix:
+$$\mathbf{Y}_{\mathcal{E} \leftarrow \mathcal{B}} = \mathbf{X}_{\mathcal{B} \leftarrow \mathcal{E}}^{-1} = \begin{bmatrix} 1 & 1 & 1 \\ 1 & 2 & 3 \\ 1 & 2 & 4 \end{bmatrix}^{-1} = \begin{bmatrix} 2 & -2 & 1 \\ -1 & 3 & -2 \\ 0 & -1 & 1 \end{bmatrix}.$$
+Ennek oszlopvektorai adják a $\mathcal{B}$ vektorainak $\mathcal{E}$-beli alakját. $\square$
+
+**5.23. példa (Áttérés mátrixa).** *Legyen*
+$$\mathcal{B} = \{ (1, 0, 0), (1, 1, 0), (1, 1, 1) \}, \text{ és } \mathcal{C} = \{ (1, 2, 3), (0, 1, 2), (0, 0, 1) \}$$
+*két bázis $\mathbb{R}^3$-ben. Írjuk fel a $\mathcal{B}$-ről a $\mathcal{C}$-re való áttérés mátrixát!*
+
+*1. megoldás.* A bázisokból a következő áttérésmátrixok olvashatók le:
+$$\mathbf{B}_{\mathcal{E} \leftarrow \mathcal{B}} = \begin{bmatrix} 1 & 1 & 1 \\ 0 & 1 & 1 \\ 0 & 0 & 1 \end{bmatrix}, \quad \mathbf{C}_{\mathcal{E} \leftarrow \mathcal{C}} = \begin{bmatrix} 1 & 0 & 0 \\ 2 & 1 & 0 \\ 3 & 2 & 1 \end{bmatrix}.$$
+Innen $\mathbf{D}_{\mathcal{C} \leftarrow \mathcal{E}} = \mathbf{C}_{\mathcal{E} \leftarrow \mathcal{C}}^{-1}$, így $\mathbf{X}_{\mathcal{C} \leftarrow \mathcal{B}} = \mathbf{D}_{\mathcal{C} \leftarrow \mathcal{E}}\mathbf{B}_{\mathcal{E} \leftarrow \mathcal{B}}$, azaz
+$$\mathbf{X}_{\mathcal{C} \leftarrow \mathcal{B}} = \begin{bmatrix} 1 & 0 & 0 \\ 2 & 1 & 0 \\ 3 & 2 & 1 \end{bmatrix}^{-1}\begin{bmatrix} 1 & 1 & 1 \\ 0 & 1 & 1 \\ 0 & 0 & 1 \end{bmatrix} = \begin{bmatrix} 1 & 1 & 1 \\ -2 & -1 & -1 \\ 1 & -1 & 0 \end{bmatrix}. \qquad \square$$
+
+*2. megoldás.* A bázisokból leolvasható mátrixok közt az $\mathbf{C}_{\mathcal{E} \leftarrow \mathcal{C}}\mathbf{X}_{\mathcal{C} \leftarrow \mathcal{B}} = \mathbf{B}_{\mathcal{E} \leftarrow \mathcal{B}}$ összefüggés áll fenn, ahol $\mathbf{X}_{\mathcal{C} \leftarrow \mathcal{B}}$ az ismeretlen mátrix, mely az $[\mathbf{C}_{\mathcal{E} \leftarrow \mathcal{C}}|\mathbf{B}_{\mathcal{E} \leftarrow \mathcal{B}}]$ redukált lépcsős alakjából olvasható le:
+$$\left[\begin{array}{ccc|ccc} 1 & 0 & 0 & 1 & 1 & 1 \\ 2 & 1 & 0 & 0 & 1 & 1 \\ 3 & 2 & 1 & 0 & 0 & 1 \end{array}\right] \Longrightarrow \left[\begin{array}{ccc|ccc} 1 & 0 & 0 & 1 & 1 & 1 \\ 0 & 1 & 0 & -2 & -1 & -1 \\ 0 & 0 & 1 & 1 & -1 & 0 \end{array}\right],$$
+tehát
+$$\mathbf{X}_{\mathcal{C} \leftarrow \mathcal{B}} = \begin{bmatrix} 1 & 1 & 1 \\ -2 & -1 & -1 \\ 1 & -1 & 0 \end{bmatrix},$$
+ami megegyezik az előző megoldással. $\square$
+
+### Gyorsszorzás
+
+Két $2 \times 2$-es mátrix szokásos módon való összeszorzásához 8 szorzásra és 4 összeadásra van szükség. Strassen 1969-ben egy olyan módszert talált, mellyel e mátrixszorzást 7 szorzással is el lehet végezni, igaz azon az áron, hogy az összeadások száma 16-ra nő.
+
+**5.1. (Strassen-formulák).** *Legyen $\mathbf{A}$, $\mathbf{B}$ és $\mathbf{C}$ is $2 \times 2$-es. A $\mathbf{C} = \mathbf{AB}$ szorzás elvégezhető a következő formulákkal:*
+$$\begin{aligned}
+d_1 &= (a_{11} + a_{22})(b_{11} + b_{22}) & \qquad c_{11} &= d_1 + d_4 - d_5 + d_7 \\
+d_2 &= (a_{21} + a_{22})b_{11} & c_{21} &= d_2 + d_4 \\
+d_3 &= a_{11}(b_{12} - b_{22}) & c_{12} &= d_3 + d_5 \\
+d_4 &= a_{22}(-b_{11} + b_{21}) & c_{22} &= d_1 + d_3 - d_2 + d_6 \\
+d_5 &= (a_{11} + a_{12})b_{22} \\
+d_6 &= (-a_{11} + a_{21})(b_{11} + b_{12}) \\
+d_7 &= (a_{12} - a_{22})(b_{21} + b_{22})
+\end{aligned}$$
+
+Az ötlet nagyszerűsége abban van, hogy e módszer kiterjeszthető tetszőleges méretű négyzetes mátrixokra is, és elegendően nagy $n$-ekre az e módon elvégzett mátrixszorzás műveletigénye kisebb lesz a hagyományos módon elvégzettnél. A standard mátrixszorzás műveletigénye $2n^3 - n^2$ (ebből $n^3$ szorzás és $n^3 - n^2$ összeadás – gondoljunk utána!), a Strassen-formulákkal való szorzás $n = 2^k$ esetén legföljebb $7 \cdot 7^k - 6 \cdot 4^k$. Ez $n = 2^{10}$ esetén már kevesebb műveletet ad. Az általánosítás lényege, hogy a Strassen-formulák $2 \times 2$-es blokkmátrixokra is használhatók, mert a szorzás kommutativitását nem használják, így ha $M(n)$ jelöli két $n \times n$-es mátrix összeszorzásához szükséges szorzások, és $S(n)$ a szükséges összeadások számát, akkor $M(2n) \leq 7M(n)$ és $S(2n) \leq 18n^2 + 7S(n)$. Az $M(1) = 1$, $S(1) = 0$ kezdeti feltételeket is használva megmutatható, hogy $M(2^k) \leq 7^k$, $S(2^k) \leq 6(7^k - 4^k)$. E képletekből a felső egészrész jelét használva és a $k = \lceil \log_2 n \rceil$ jelöléssel az műveletek összámára a $cn^{\log_2 7} \leq cn^{2.81}$ felső becslést kapjuk, ami a $2n^3 - n^2$ értéknél jobb, függetlenül a $c$ konstans konkrét értékétől. Mivel a két összeszorzandó mátrix mindegyikének mind az $n^2$ elemét használni kell, ezért a szükséges műveletek számának alsó becslése $cn^2$. A $cn^{2.81}$ felső becslés 1990-ben $cn^{2.375477}$ lett javítva (Coppersmith és Winograd), a 2015-ben ismert legjobb korlát $cn^{2.3728639}$, de az a sejtés, hogy a kitevő 2-re, de legalább $2 + \varepsilon$-ra lenyomható, ahol $\varepsilon$
+
+<!-- OCR: through PDF p.188 -->
