@@ -3118,4 +3118,77 @@ A 3.8. állítás az altér fogalmát és az előző tételt használva a követ
 A 2.35. példában megoldottunk egy homogén lineáris egyenletrendszert, így ezzel meghatároztuk együtthatómátrixának nullterét is, azaz
 $$\mathcal{N}\left(\begin{bmatrix} 1 & 2 & 1 & 2 & 1 \\ 1 & 2 & 3 & 3 & 1 \\ 3 & 6 & 7 & 8 & 3 \end{bmatrix}\right) = \left\{ s\begin{bmatrix} -2 \\ 1 \\ 0 \\ 0 \\ 0 \end{bmatrix} + t\begin{bmatrix} -\frac{3}{2} \\ 0 \\ -\frac{1}{2} \\ 1 \\ 0 \end{bmatrix} + u\begin{bmatrix} -1 \\ 0 \\ 0 \\ 0 \\ 1 \end{bmatrix} \;\middle|\; s, t, u \in \mathbb{R} \right\}.$$
 
-<!-- OCR: through PDF p.116 -->
+### Az inhomogén lineáris egyenletrendszer megoldásai
+
+Az inhomogén lineáris egyenletrendszer megoldásai nem alkotnak alteret, mivel a zérusvektor minden altérnek eleme, viszont egyetlen inhomogén egyenletrendszernek sem megoldása! Ugyanakkor az inhomogén lineáris egyenletrendszer és a hozzá tartozó homogén egyenletrendszer megoldásai közt szoros kapcsolat van.
+
+**3.16. tétel (Homogén és inhomogén egyenletrendszer megoldásai).** *Az $[\mathbf{A}|\mathbf{b}]$ mátrixú lineáris egyenletrendszer általános megoldása megegyezik egy tetszőleges partikuláris megoldásának és a hozzá tartozó homogén $[\mathbf{A}|\mathbf{0}]$ mátrixú egyenletrendszer általános megoldásának összegével. Speciálisan*
+$$(\text{inhomogén általános megoldása}) = (\text{inhomogén egy partikuláris megoldása}) + (\text{homogén általános megoldása})$$
+
+*Bizonyítás.* Ha $\mathbf{b} = \mathbf{0}$, akkor az állítás nyilván igaz, hisz a megoldások alteret alkotnak, ezért tegyük fel, hogy a konstansok vektora $\mathbf{b} = (b_1, b_2, \ldots, b_m) \neq \mathbf{0}$. Jelölje az egyenletrendszer együtthatómátrixát $\mathbf{A}$, annak sorvektorait $\mathbf{a}_{1*}, \mathbf{a}_{2*}, \ldots, \mathbf{a}_{m*}$. Legyen $\mathbf{x}$ az inhomogén egyenletrendszer egy partikuláris megoldása, és jelölje $\mathcal{H}$ a homogén, $\mathcal{I}$ az inhomogén egyenletrendszer megoldáshalmazát. Megmutatjuk, hogy $\mathbf{x} + \mathcal{H} = \mathcal{I}$, ahol a bal oldali összeadást elemenként értjük.
+
+$\mathbf{x} + \mathcal{H} \subseteq \mathcal{I}$: Meg kell mutatnunk, hogy ha $\mathbf{x}$-hez adjuk a $\mathcal{H}$ egy tetszőleges $\mathbf{y}$ elemét, az inhomogén egyenletrendszer egy megoldását kapjuk. Valóban, $\mathbf{x}$, illetve $\mathbf{y}$ eleget tesz az
+$$\begin{aligned}
+\mathbf{a}_{i*} \cdot \mathbf{x} &= b_i, \\
+\mathbf{a}_{i*} \cdot \mathbf{y} &= 0, \qquad (i = 1, 2, \ldots, m)
+\end{aligned}$$
+egyenleteknek. Ebből
+$$\mathbf{a}_{i*} \cdot (\mathbf{x} + \mathbf{y}) = \mathbf{a}_{i*} \cdot \mathbf{x} + \mathbf{a}_{i*} \cdot \mathbf{y} = b_i + 0 = b_i.$$
+tehát $\mathbf{x} + \mathbf{y}$ megoldása az inhomogén egyenletrendszernek, azaz $\mathbf{x} + \mathbf{y} \in \mathcal{I}$.
+
+$\mathbf{x} + \mathcal{H} \supseteq \mathcal{I}$: Meg kell mutatnunk, hogy ha $\mathbf{z}$ az inhomogén egy tetszőleges megoldása, azaz $\mathbf{z} \in \mathcal{I}$, akkor található olyan $\mathbf{y} \in \mathcal{H}$, hogy $\mathbf{z} = \mathbf{x} + \mathbf{y}$. Valóban, az $\mathbf{y} = \mathbf{z} - \mathbf{x}$ megteszi, mert
+$$\mathbf{a}_{i*} \cdot (\mathbf{z} - \mathbf{x}) = \mathbf{a}_{i*} \cdot \mathbf{z} - \mathbf{a}_{i*} \cdot \mathbf{x} = b_i - b_i = 0.$$
+fennáll minden $i = 1, 2, \ldots, m$ indexre, azaz $\mathbf{z} - \mathbf{x} \in \mathcal{H}$. $\square$
+
+E tétel azt jelenti, hogy ugyan az inhomogén lineáris egyenletrendszer megoldásainak halmaza *nem altér,* de egy *altér eltoltja.* E halmazokat geometriai nyelven *affin altereknek* nevezzük. Ilyeneket mutat a 3.7. ábra. E tételt szemléltetik a 2.33. és a 2.35. példák is.
+
+*3.7. ábra. a) Egy háromismeretlenes inhomogén lineáris egyenletrendszer megoldáshalmaza, ha az általános megoldás egyparaméteres; b) Egy háromismeretlenes inhomogén lineáris egyenletrendszer megoldáshalmaza, ha az általános megoldás kétparaméteres.*
+
+Az inhomogén egyenletrendszer megoldásának szemléltetését a levéldiagramon a 3.8. ábra mutatja.
+
+Az előző tétel szerint az inhomogén egyenletrendszer összes megoldása a homogén összes megoldásának – azaz $\mathcal{N}(\mathbf{A})$-nak – az inhomogén valamelyik megoldásával való eltoltja. Fontos látnunk, hogy mindegy melyik megoldást választjuk az inhomogén megoldásai közül, bár az eltolás mértéke változik, az eredmény ugyanaz lesz. Ezt jól szemlélteti a 3.7. ábra: ha az origón átmenő egyenes origónál lévő pontját nem $\mathbf{x}$-be, hanem az eltolt egyenes egy másik pontjába toljuk, akkor a két eltolt egyenes fedi egymást, vagyis a két affin altér azonos.
+
+Azok a $\mathbf{b}$ vektorok, melyre az $[\mathbf{A}|\mathbf{b}]$ egyenletrendszer konzisztens, alteret alkotnak. Ezek ugyanis az oszlopmodell szerint épp azok a vektorok, melyek az együtthatómátrix oszlopvektorainak lineáris kombinációjaként előállnak.
+
+**3.17. definíció (Sortér, oszloptér).** *Egy mátrix oszlopvektorai által kifeszített alteret* oszloptérnek, *a sorvektorai által kifeszített alteret* sortérnek *nevezzük. A sorterét $\mathcal{S}(\mathbf{A})$, oszlopterét $\mathcal{O}(\mathbf{A})$ jelöli.*
+
+Az $m \times n$-es $\mathbf{A}$ mátrix $\mathcal{S}(\mathbf{A})$ sortere $\mathbb{R}^n$, $\mathcal{O}(\mathbf{A})$ oszloptere $\mathbb{R}^m$ altere, azaz $\mathcal{S}(\mathbf{A}) \leqslant \mathbb{R}^n$, $\mathcal{O}(\mathbf{A}) \leqslant \mathbb{R}^m$ (ld. 3.9. ábra). Az $[\mathbf{A}|\mathbf{b}]$ és a $[\mathbf{A}|\mathbf{0}]$ egyenletrendszerek megoldásainak kapcsolatát a 3.10. ábra szemlélteti.
+
+Az oszlopmodellből adódik a következő állítás:
+
+**3.18. következmény (Inhomogén egyenletrendszer megoldhatósága).** *Az $[\mathbf{A}|\mathbf{b}]$ mátrixú egyenletrendszer pontosan akkor oldható meg, ha $\mathbf{b}$ előáll az $\mathbf{A}$ oszlopainak lineáris kombinációjaként, azaz $\mathbf{b}$ benne van az $\mathbf{A}$ oszlopterében. A lineáris kombináció együtthatói megegyeznek a megoldásvektor koordinátáival.*
+
+**3.19. példa (Kifeszített altér vektorai).** *Az $\mathbf{u} = (-1, 2, -3, 6)$ és $\mathbf{w} = (-1, 2, -3, 4)$ vektorok elemei-e a $\mathbf{v}_1 = (1, 0, 1, 2)$, $\mathbf{v}_2 = (-1, 2, -2, 1)$ és $\mathbf{v}_3 = (1, 1, 1, 1)$ vektorok által kifeszített altérnek? Ha igen, adjunk meg egy ezt bizonyító lineáris kombinációt!*
+
+*Megoldás.* Az $x_1 \mathbf{v}_1 + x_2 \mathbf{v}_2 + x_3 \mathbf{v}_3 = \mathbf{u}$ és az $y_1 \mathbf{v}_1 + y_2 \mathbf{v}_2 + y_3 \mathbf{v}_3 = \mathbf{w}$ egyenletrendszereket kell megoldani. Ez egy négy egyenletből álló szimultán egyenletrendszer, amelynek bővített mátrixa a $\mathbf{v}_1$, $\mathbf{v}_2$, $\mathbf{v}_3$, $\mathbf{u}$ és $\mathbf{w}$ oszlopvektorokból áll. Ennek lépcsős alakja:
+$$\left[\begin{array}{ccc|cc} 1 & -1 & 1 & -1 & -1 \\ 0 & 2 & 1 & 2 & 2 \\ 1 & -2 & 1 & -3 & -3 \\ 2 & 1 & 1 & 6 & 4 \end{array}\right] \Rightarrow \left[\begin{array}{ccc|cc} 1 & -1 & 1 & -1 & -1 \\ 0 & 1 & 0 & 2 & 2 \\ 0 & 0 & 1 & -2 & -2 \\ 0 & 0 & 0 & 0 & 1 \end{array}\right]$$
+amiből $(x_1, x_2, x_3) = (3, 2, -2)$, és $\mathbf{w}$ nem áll elő lineáris kombinációként, mert a jobb oldalán a $\mathbf{w}$ vektort tartalmazó egyenletrendszer ellentmondásos. $\square$
+
+*3.8. ábra. Az $\mathbf{A}$ együtthatómátrixú homogén egyenletrendszer megoldása a nulltér, azaz $\mathcal{N}(\mathbf{A})$, az inhomogéné e tér egy $\mathbf{x}_0 + \mathcal{N}(\mathbf{A})$ eltoltja, ahol $\mathbf{x}_0$ az inhomogén egyenletrendszer egy megoldása.*
+
+*3.9. ábra. Az $\mathbf{A}$ mátrix sortere ($\mathcal{S}(\mathbf{A})$), oszloptere ($\mathcal{O}(\mathbf{A})$) és nulltere ($\mathcal{N}(\mathbf{A})$).*
+
+*3.10. ábra. A nulltér, a sortér, és az oszloptér, valamint a homogén $\mathbf{A}\mathbf{y} = \mathbf{0}$ és az inhomogén $\mathbf{A}\mathbf{x} = \mathbf{b}$ egyenletrendszer egy-egy megoldása a levéldiagramban.*
+
+### Vektorok lineáris függetlensége
+
+A lineáris egyenletrendszerek megoldása és vektorok lineáris függetlenségével vagy összefüggőségével kapcsolatos kérdések szoros kapcsolatban vannak egymással.
+
+Az előző 3.19. példa tanulsága úgy is összefoglalható, hogy egy $\mathbf{w}$ vektor pontosan akkor független az $\mathbf{A}$ mátrix oszlopvektoraitól, vagyis az $\{ \mathbf{a}_1, \mathbf{a}_2, \ldots, \mathbf{a}_n \}$ vektorrendszertől, ha az $[\mathbf{A}|\mathbf{w}]$ egyenletrendszer nem oldható meg.
+
+Egy $\{ \mathbf{a}_1, \mathbf{a}_2, \ldots, \mathbf{a}_n \}$ vektorrendszer lineáris függetlenségének eldöntéséhez meg kell oldani az
+$$x_1 \mathbf{a}_1 + x_2 \mathbf{a}_2 + \cdots + x_n \mathbf{a}_n = \mathbf{0}$$
+homogén lineáris egyenletrendszert. Ha van nemtriviális megoldása, akkor a vektorrendszer lineárisan összefüggő, egyébként lineárisan független. Ez igazolja az alábbi ekvivalenciákat:
+
+**3.20. következmény (Lineáris függetlenség eldöntése).** *Tekintsük az $\mathbf{A} = \begin{bmatrix} \mathbf{a}_1 & \mathbf{a}_2 & \ldots & \mathbf{a}_k \end{bmatrix}$ mátrixot! Az alábbi állítások ekvivalensek:*
+- a) *az $\mathbf{a}_1, \mathbf{a}_2, \ldots, \mathbf{a}_k$ vektorok lineárisan függetlenek;*
+- b) *az $\mathbf{A}$ együtthatómátrixú homogén lineáris egyenletrendszernek a triviálison kívül nincs más megoldása;*
+- c) *az $\mathbf{A}$ lépcsős alakjának minden oszlopában van főelem, azaz $\operatorname{r}(\mathbf{A}) = k$.*
+
+**3.21. példa (Vektorok lineáris függetlenségének eldöntése).** *Mutassuk meg, hogy a 4-dimenziós $(1, 2, 3, 4)$, $(0, 1, 0, 1)$ és $(1, 1, 1, 0)$ vektorok lineárisan függetlenek.*
+
+*Megoldás.* A vektorokból képzett mátrix és lépcsős alakja
+$$\begin{bmatrix} 1 & 0 & 1 \\ 2 & 1 & 1 \\ 3 & 0 & 1 \\ 4 & 1 & 0 \end{bmatrix} \Rightarrow \begin{bmatrix} 1 & 0 & 1 \\ 0 & 1 & -1 \\ 0 & 0 & -2 \\ 0 & 0 & 0 \end{bmatrix},$$
+ami azt mutatja, hogy a homogén lineáris egyenletrendszernek csak egyetlen megoldása van, azaz az oszlopvektorok lineárisan függetlenek. $\square$
+
+<!-- OCR: through PDF p.119 -->
