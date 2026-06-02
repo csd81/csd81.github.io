@@ -3431,4 +3431,76 @@ $$\begin{aligned}
 &= c_1 0 + c_2 0 + \cdots + c_m 0 = 0. \qquad \square
 \end{aligned}$$
 
-<!-- OCR: through PDF p.128 -->
+Ez a következő definíciókra vezet: egy vektortér két altere *merőleges,* ha bárhogy választva mindegyikükből egy-egy vektort, azok merőlegesek egymásra. Így az előző állítás szerint bármely valós mátrix sortere és nulltere merőleges egymásra. Ennél több is igaz, a nulltér az összes olyan vektort tartalmazza, mely merőleges a sortérre. Az $\mathbb{R}^n$ $\mathcal{W}$ alterére merőleges vektorok alterét a $\mathcal{W}$ *merőleges kiegészítő alterének* (vagy $\mathcal{W}$ *merőlegesének*) nevezzük és $\mathcal{W}^\perp$-pel jelöljük. A két fogalom közti különbséget a 3.11. ábra a 3-dimenziós térben szemlélteti.
+
+Később látni fogjuk, hogy általánosan is igaz az, hogy bármely $\mathcal{V}$ altérre $(\mathcal{V}^\perp)^\perp = \mathcal{V}$ (ld. 7.43. tétel), vagy másként fogalmazva, ha $\mathcal{V}^\perp = \mathcal{W}$, akkor $\mathcal{W}^\perp = \mathcal{V}$. Így mondhatjuk azt, hogy két altér merőleges kiegészítő alterei, vagy merőlegesei egymásnak.
+
+Tekintsük az $\mathbf{A}$ mátrix transzponáltját! Az $\mathbf{A}^\mathsf{T}$ együtthatómátrixú homogén lineáris egyenletrendszer megoldásai merőlegesek $\mathbf{A}^\mathsf{T}$ sorvektoraira, azaz az $\mathbf{A}$ oszlopvektoraira. E két-két altér merőlegességét szemlélteti a 3.12. ábra. E négy altér igen fontos lesz a továbbiakban is, ezért nevet adunk nekik:
+
+**3.36. definíció (Kitüntetett alterek).** *Egy mátrix négy kitüntetett alterének nevezzük a mátrix sorterét, oszlopterét, nullterét és transzponáltjának nullterét. Az $\mathbf{A}$ mátrix kitüntetett alterei tehát $\mathcal{S}(\mathbf{A}) = \mathcal{O}(\mathbf{A}^\mathsf{T})$, $\mathcal{O}(\mathbf{A}) = \mathcal{S}(\mathbf{A}^\mathsf{T})$, $\mathcal{N}(\mathbf{A})$, $\mathcal{N}(\mathbf{A}^\mathsf{T})$.*
+
+**3.37. tétel (A lineáris algebra alaptétele).** *Minden valós mátrix sortere és nulltere merőleges kiegészítő alterei egymásnak.*
+
+*Bizonyítás.* Láttuk, hogy a sortér merőleges kiegészítő altere a nulltér. A később bizonyítandó 7.43. tételre hivatkozva ez azt jelenti, hogy a nulltér kiegészítő altere a sortér, ami bizonyítja a tételt. E hivatkozást nem használó bizonyítás is adható, amit az Olvasóra hagyunk (ld. 3.27. feladat)! $\square$
+
+▶ A tétel állítása képletben kifejezve azt mondja, hogy $\mathcal{S}(\mathbf{A})^\perp = \mathcal{N}(\mathbf{A})$, ami egyúttal azt is jelenti, hogy $\mathcal{N}(\mathbf{A})^\perp = \mathcal{S}(\mathbf{A})$.
+▶ A tételt az $\mathbf{A}^\mathsf{T}$ mátrixra alkalmazva, és az $\mathcal{O}(\mathbf{A}) = \mathcal{S}(\mathbf{A}^\mathsf{T})$ összefüggést használva kapjuk, hogy $\mathcal{O}(\mathbf{A})^\perp = \mathcal{N}(\mathbf{A}^\mathsf{T})$.
+▶ A 3.27. feladatban bizonyítjuk, hogy a sortér egy $\{ \mathbf{s}_1, \mathbf{s}_2, \ldots, \mathbf{s}_k \}$ bázisa és a nulltér egy $\{ \mathbf{e}_1, \mathbf{e}_2, \ldots, \mathbf{e}_{n-k} \}$ bázisa együtt a tér bázisát adják. Mivel minden $\mathbf{x}$ vektor egyértelműen áll elő e bázisvektorok lineáris kombinációjaként, egyúttal egyértelmű az $\mathbf{x}$ vektornak egy sortérbe és egy nulltérbe eső vektor összegére való bontása is:
+$$\mathbf{x} = \underbrace{c_1\mathbf{s}_1 + \cdots + c_r\mathbf{s}_r}_{\mathbf{c}} + \underbrace{d_1\mathbf{e}_1 + \cdots + d_{n-r}\mathbf{e}_{n-r}}_{\mathbf{d}}.$$
+
+*3.11. ábra. a) $\mathcal{U}$ és $\mathcal{V}$ két egymásra merőleges 1-dimenziós altér a 3-dimenziós térben; b) Egy altér és merőleges kiegészítő altere: $\mathcal{U}$ (egy 1-dimenziós altér) és $\mathcal{U}^\perp$, a merőlegese 2-dimenziós.*
+
+*3.12. ábra. Az $\mathbf{A}$ mátrix sortere merőleges nullterére, oszloptere az $\mathbf{A}^\mathsf{T}$ nullterére. A berajzolt két ív az alterek merőlegességét jelöli.*
+
+*3.13. ábra. A lineáris algebra alaptétele: az $\mathbf{A}$ mátrix sortere és nulltere merőleges kiegészítő alterek. Eszerint a sortér bármely vektora merőleges a nulltér bármely vektorára, és $\mathbb{R}^n$ bármely vektora egyértelműen felbomlik egy sortérbe és egy nulltérbe eső vektor összegére.*
+
+Az előző megjegyzések és a lineáris algebra alaptételének következménye az alábbi tétel:
+
+**3.38. tétel (A négy kitüntetett altér).** *Tekintsük az $m \times n$-es valós $\mathbf{A}$ mátrixot. Ekkor a következő állítások teljesülnek:*
+- a) *$\mathcal{S}(\mathbf{A})^\perp = \mathcal{N}(\mathbf{A})$, $\mathcal{O}(\mathbf{A})^\perp = \mathcal{N}(\mathbf{A}^\mathsf{T})$.*
+- b) *$\mathbb{R}^n$ minden vektora egyértelműen felbomlik egy $\mathcal{S}(\mathbf{A})$- és egy $\mathcal{N}(\mathbf{A})$-beli vektor összegére,*
+- c) *$\mathbb{R}^m$ minden vektora egyértelműen felbomlik egy $\mathcal{O}(\mathbf{A})$- és egy $\mathcal{N}(\mathbf{A}^\mathsf{T})$-beli vektor összegére.*
+
+### A lineáris egyenletrendszer megoldásainak jellemzése
+
+Az eddigiekre építve szép leírását kapjuk a lineáris egyenletrendszerek megoldásai.
+
+**3.39. tétel (Lineáris egyenletrendszer megoldásai).** *Minden valós együtthatós konzisztens lineáris egyenletrendszerre igaz a következők:*
+- a) *egyetlen megoldása esik az együtthatómátrix sorterébe;*
+- b) *e sortérbe eső megoldás a megoldások közül a legkisebb abszolút értékű;*
+- c) *az összes megoldás előáll úgy, hogy a sortérbe eső megoldáshoz hozzáadjuk a homogén rész összes megoldását.*
+
+*Bizonyítás.* A tétel a homogén lineáris egyenletrendszerekre semmitmondó, hisz ekkor a megoldások a nullteret adják, és mivel annak metszete a sortérrel csak a nullvektorból áll, a nullvektor esik a sortérbe, mely a legkisebb abszolút értékű megoldás.
+
+a) Tegyük fel, hogy $\mathbf{x}_1$ és $\mathbf{x}_2$ két megoldása az $[\mathbf{A}|\mathbf{b}]$ mátrixú egyenletrendszernek, és mindkettő a sortérbe esik. Az $i$-edik egyenlet alakja $\mathbf{a}_{i*} \cdot \mathbf{x} = b_i$, így $\mathbf{a}_{i*} \cdot \mathbf{x}_1 = b_i$ és $\mathbf{a}_{i*} \cdot \mathbf{x}_2 = b_i$ is fönnáll minden $i = 1, 2, \ldots m$ értékre. A két megoldás különbsége is a sortérbe esik, hisz sortérbeli vektorok lineáris kombinációja a sortérbe esik. Ekkor viszont minden $i$ esetén
+$$\mathbf{a}_{i*} \cdot (\mathbf{x}_1 - \mathbf{x}_2) = b_i - b_i = 0,$$
+vagyis $\mathbf{x}_1 - \mathbf{x}_2$ megoldása a homogén egyenletrendszernek, tehát a nulltérbe esik. Annak metszete a sortérrel csak a nullvektort tartalmazza, így $\mathbf{x}_1 - \mathbf{x}_2 = \mathbf{0}$, vagyis $\mathbf{x}_1 = \mathbf{x}_2$.
+
+Megmutatjuk, hogy mindig van sortérbe eső megoldás. Legyen $\mathbf{x}$ egy tetszőleges megoldás, és tekintsük az egyértelműen létező felbontását egy sortérbeli és egy nulltérbeli vektor összegére, azaz legyen
+$$\mathbf{x} = \mathbf{x}_\mathcal{S} + \mathbf{x}_\mathcal{N}.$$
+E megoldásvektort beírva az $i$-edik egyenletbe kapjuk, hogy
+$$b_i = \mathbf{a}_{i*} \cdot \mathbf{x} = \mathbf{a}_{i*} \cdot (\mathbf{x}_\mathcal{S} + \mathbf{x}_\mathcal{N}) = \mathbf{a}_{i*} \cdot \mathbf{x}_\mathcal{S} + \mathbf{a}_{i*} \cdot \mathbf{x}_\mathcal{N} = \mathbf{a}_{i*} \cdot \mathbf{x}_\mathcal{S}.$$
+Tehát bármely megoldás sortérbeli összetevője is megoldása az egyenletrendszernek! Egyúttal azt is beláttuk, hogy az összes megoldás e sortérbeli megoldás és a homogén egy megoldásának összege, másrészt hogy az $\mathbf{x}_\mathcal{S}$ megoldáshoz bármely nulltérbeli vektort adva az egyenletrendszer egy megoldását kapjuk, így igazoltuk a c) állítást is.
+
+A sortér és a nulltér merőlegessége miatt az $\mathbf{x} = \mathbf{x}_\mathcal{S} + \mathbf{x}_\mathcal{N}$ felbontás vektorai merőlegesek, azaz $\mathbf{x}_\mathcal{S} \perp \mathbf{x}_\mathcal{N}$. Használhatjuk tehát Pithagorász-tételét:
+$$\mathbf{x}^2 = \mathbf{x}_\mathcal{S}^2 + \mathbf{x}_\mathcal{N}^2 \geq \mathbf{x}_\mathcal{S}^2, \text{ azaz } |\mathbf{x}| \geq |\mathbf{x}_\mathcal{S}|.$$
+Így tehát minden megoldás abszolút értéke nagyobb vagy egyenlő a sortérbeli megoldás abszolút értékénél, ami bizonyítja a b) állítást. $\square$
+
+A sortérbe eső egyetlen megoldás létezése azt sugallja, hogy minden megoldható egyenletrendszer további egyenletek hozzávételével kiegészíthető olyan egyenletrendszerré, melynek már csak egyetlen megoldása van, a sortérbe eső. Ez valóban igaz.
+
+**3.40. példa (Lineáris egyenletrendszer sortérbe eső megoldása).** *Határozzuk meg az*
+$$\begin{alignedat}{9}
+x &{}+{}& y &{}+{}& z &{}+{}& 3u &{}+{}& 2w &{}={}& 4 \\
+x &{}+{}& 2y &{}+{}& z &{}+{}& 5u &{}+{}& 2w &{}={}& 5 \\
+2x &{}+{}& 3y &{}+{}& z &{}+{}& 8u &{}+{}& 3w &{}={}& 7 \\
+2x &{}+{}& 3y &{}+{}& 2z &{}+{}& 8u &{}+{}& 4w &{}={}& 9
+\end{alignedat}$$
+*egyenletrendszer minimális abszolút értékű megoldását! Adjunk az egyenletrendszerhez olyan további egyenlet(ek)et, hogy az így kapott egyenletrendszernek csak ez legyen az egyetlen megoldása!*
+
+*Megoldás.* Először oldjuk meg az egyenletrendszert! A bővített mátrixból annak redukált lépcsős alakja könnyen adódik:
+$$\left[\begin{array}{ccccc|c} 1 & 1 & 1 & 3 & 2 & 4 \\ 1 & 2 & 1 & 5 & 2 & 5 \\ 2 & 3 & 1 & 8 & 3 & 7 \\ 2 & 3 & 2 & 8 & 4 & 9 \end{array}\right] \Longrightarrow \left[\begin{array}{ccccc|c} 1 & 0 & 0 & 1 & 1 & 1 \\ 0 & 1 & 0 & 2 & 0 & 1 \\ 0 & 0 & 1 & 0 & 0 & 2 \end{array}\right]$$
+Így a megoldás:
+$$(x, y, z, u, w) = (1, 1, 2, 0, 0) + (-1, -2, 0, 1, 0)u + (-1, 0, -1, 0, 1)w.$$
+Mivel a sortér merőleges a nulltérre, és mi egy sortérbe eső megoldást keresünk, ezért e megoldásnak merőlegesnek kell lennie a nullteret kifeszítő vektorokra, vagyis a $(-1, -2, 0, 1, 0)$ és a $(-1, 0, -1, 0, 1)$ vektorra. Így a következő két egyenletet kell az eredeti egyenletrendszerhez, vagy az egyszerűség kedvéért inkább a redukált lépcsős alak szerinti
+
+<!-- OCR: through PDF p.131 -->
