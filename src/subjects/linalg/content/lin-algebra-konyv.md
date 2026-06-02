@@ -904,4 +904,98 @@ Egy vektorrendszert *lineárisan összefüggőnek* nevezünk, ha nem független,
 
 **1.45. tétel (Lineáris összefüggőség).** *Egy nullvektortól különböző elemekből álló, legalább kételemű $\mathbb{R}^n$-beli $V = \{\mathbf{v}_1, \mathbf{v}_2, \ldots, \mathbf{v}_k\}$ vektorrendszer pontosan akkor lineárisan összefüggő, ha van olyan $t \geq 2$ index, hogy $\mathbf{v}_t$ a $\mathbf{v}_1, \mathbf{v}_2, \ldots, \mathbf{v}_{t-1}$ vektorok lineáris kombinációja.*
 
-<!-- OCR: through PDF p.47 -->
+Másként fogalmazva, ha egy nullvektort nem tartalmazó vektorrendszerben találunk olyan vektort, mely a többi lineáris kombinációja, akkor a vektorok bármely sorba rendezése mellett olyat is találunk, mely csak az őt sorrendben megelőző vektor(ok) lineáris kombinációja.
+
+*Bizonyítás.* Először tegyük fel, hogy a vektorrendszer összefüggő, és legyen $t$ a legkisebb egész, melyre a $\mathbf{v}_1, \mathbf{v}_2, \ldots, \mathbf{v}_t$ vektorok már összefüggők. Mivel $\mathbf{v}_1 \neq \mathbf{0}$, ezért az első vektor nem lehet összefüggő, ezért $t \geqslant 2$. E vektorok összefüggősége miatt vannak olyan $c_i$ konstansok, melyekkel
+$$c_1\mathbf{v}_1 + c_2\mathbf{v}_2 + \ldots + c_t\mathbf{v}_t = \mathbf{0}.$$
+Biztos, hogy $c_t \neq 0$, különben már a $\mathbf{v}_1, \mathbf{v}_2, \ldots, \mathbf{v}_{t-1}$ vektorok is lineárisan összefüggők lennének, és ez ellentmond $t$ definíciójának. Így
+$$\mathbf{v}_t = \frac{-c_1}{c_t}\mathbf{v}_1 + \frac{-c_2}{c_t}\mathbf{v}_2 + \cdots + \frac{-c_{t-1}}{c_t}\mathbf{v}_{t-1},$$
+ami bizonyítja, hogy összefüggő vektorrendszerben létezik ilyen vektor.
+
+A másik irányú implikáció definíció szerint igaz, hisz ha létezik ilyen $\mathbf{v}_t$ vektor, akkor ez valóban lineáris kombinációja az összes többi vektornak. $\square$
+
+### Skaláris szorzás $\mathbb{R}^n$-ben
+
+A skaláris szorzást először abból az alakból általánosítjuk, amelyet a 2- és 3-dimenziós térben ortonormált bázis esetén láttunk.
+
+**1.46. definíció (Skaláris szorzás $\mathbb{R}^n$-ben).** *Legyen $\mathbf{u} = (u_1, u_2, \ldots, u_n)$ és $\mathbf{v} = (v_1, v_2, \ldots, v_n)$ az $\mathbb{R}^n$ tér két tetszőleges vektora. Skaláris szorzatukon a következő kifejezést értjük:*
+$$\mathbf{u} \cdot \mathbf{v} = u_1v_1 + u_2v_2 + \ldots + u_nv_n.$$
+
+**1.47. tétel (A skaláris szorzás alaptulajdonságai).** *Legyen $\mathbf{u}$, $\mathbf{v}$ és $\mathbf{w}$ az $\mathbb{R}^n$ három tetszőleges vektora, és legyen $c$ egy tetszőleges valós. Ekkor*
+- *a)* $\mathbf{u} \cdot \mathbf{v} = \mathbf{v} \cdot \mathbf{u}$ — *kommutatív*
+- *b)* $\mathbf{u} \cdot (\mathbf{v} + \mathbf{w}) = \mathbf{u} \cdot \mathbf{v} + \mathbf{u} \cdot \mathbf{w}$ — *disztributív*
+- *c)* $(c\mathbf{u}) \cdot \mathbf{v} = c(\mathbf{u} \cdot \mathbf{v})$ — *kompatibilis a két szorzás*
+- *d)* $\mathbf{u} \cdot \mathbf{u} \geqslant 0$ és $\mathbf{u} \cdot \mathbf{u} = 0 \iff \mathbf{u} = \mathbf{0}$ — *pozitív definit*
+
+*Bizonyítás.* A bizonyítás itt is igen egyszerű, ezért csak az a) pontét mutatjuk meg, a többit az Olvasóra hagyjuk.
+$$\begin{aligned}
+\mathbf{u} \cdot \mathbf{v} &= u_1v_1 + u_2v_2 + \ldots + u_nv_n \\
+&= v_1u_1 + v_2u_2 + \ldots + v_nu_n \\
+&= \mathbf{v} \cdot \mathbf{u}.
+\end{aligned}$$
+$\square$
+
+További tulajdonságok találhatók az 1.64. feladatban.
+
+### Távolság és szög $\mathbb{R}^n$-ben
+
+Két 2- vagy 3-dimenziós vektor távolságának és szögének a skaláris szorzatukkal való kapcsolatát használjuk e fogalmaknak a magasabb dimenziós terekben való definíciójához.
+
+**1.48. definíció (Abszolút érték, szög, merőlegesség, távolság).** *Legyen $\mathbf{u}$ és $\mathbf{v}$ az $\mathbb{R}^n$ tér két tetszőleges vektora.*
+- *a) Az $\mathbf{u}$ vektor hosszán önmagával vett skaláris szorzatának gyökét értjük:*
+$$|\mathbf{u}| := \sqrt{\mathbf{u} \cdot \mathbf{u}}. \tag{1.4}$$
+- *b) Az $\mathbf{u}$ és $\mathbf{v}$ vektorok (hajlás)szögének koszinusza az alábbi tört:*
+$$\cos(\mathbf{u},\mathbf{v})_\angle := \frac{\mathbf{u} \cdot \mathbf{v}}{|\mathbf{u}||\mathbf{v}|} \tag{1.5}$$
+- *c) Azt mondjuk, hogy az $\mathbf{u}$ és $\mathbf{v}$ vektorok merőlegesek egymásra, ha*
+$$\mathbf{u} \cdot \mathbf{v} = 0. \tag{1.6}$$
+- *d) A két vektor végpontjának távolságán, amit egyszerűen a két vektor távolságának nevezünk, a különbségük abszolút értékét értjük:*
+$$d(\mathbf{u},\mathbf{v}) := |\mathbf{u} - \mathbf{v}|. \tag{1.7}$$
+
+▶ A fenti definíciók koordinátás alakja
+$$\begin{aligned}
+|\mathbf{u}| &= \sqrt{u_1^2 + u_2^2 + \ldots + u_n^2}, \\
+\cos(\mathbf{u},\mathbf{v})_\angle &= \frac{u_1v_1 + u_2v_2 + \ldots + u_nv_n}{\sqrt{u_1^2 + u_2^2 + \ldots + u_n^2}\,\sqrt{v_1^2 + v_2^2 + \ldots + v_n^2}}.
+\end{aligned}$$
+
+▶ A vektorok hajlásszögének definíciójáról még igazolnunk kell, hogy értelmes, ugyanis egy szög koszinusza csak a $[-1, 1]$ intervallumba eshet. Azaz be kell látnunk, hogy az (1.5) képletben $|\mathbf{u} \cdot \mathbf{v}| \leqslant |\mathbf{u}||\mathbf{v}|$. Ez épp a CBS-egyenlőtlenség. Hamarosan igazoljuk!
+
+**1.49. példa (Vektorok szöge és távolsága).** *Az $\mathbf{u} = (2, 3, 4, 14)$ vektornak mennyi az abszolút értéke, mennyi a $\mathbf{v} = (4, 6, -10, 10)$ vektortól való távolsága, és mennyi a $\mathbf{w} = (0, 3, 6, -2)$ vektorral bezárt szögének koszinusza?*
+
+*Megoldás.* Az (1.4), az (1.7) és az (1.5) képleteket használjuk:
+$$\begin{aligned}
+|\mathbf{u}| &= \sqrt{2^2 + 3^2 + 4^2 + 14^2} = \sqrt{225} = 15, \\
+d(\mathbf{u},\mathbf{v}) &= \sqrt{(2-4)^2 + (3-6)^2 + (4-(-10))^2 + (14-10)^2} \\
+&= \sqrt{2^2 + 3^2 + 14^2 + 4^2} = 15, \\
+\cos(\mathbf{u},\mathbf{w})_\angle &= \frac{2 \cdot 0 + 3 \cdot 3 + 4 \cdot 6 + 14 \cdot (-2)}{\sqrt{2^2 + 3^2 + 4^2 + 14^2}\,\sqrt{0^2 + 3^2 + 6^2 + (-2)^2}} = \frac{1}{21}.
+\end{aligned}$$
+$\square$
+
+Az egységvektor $\mathbb{R}^n$-ben is a korábbihoz hasonlóan definiálható, és világos, hogy ha $\mathbf{a} \neq \mathbf{0}$, akkor $\mathbf{a}/|\mathbf{a}|$ egységvektor, hisz
+$$\left|\frac{\mathbf{a}}{|\mathbf{a}|}\right| = \frac{1}{|\mathbf{a}|}|\mathbf{a}| = 1.$$
+Az egységvektorral szorzás szerepe is azonos:
+
+**1.50. állítás (Vektorral párhuzamos és merőleges összetevő).** *Ha $\mathbf{b} \in \mathbb{R}^n$ tetszőleges és $\mathbf{e} \in \mathbb{R}^n$ egy egységvektor, akkor $\mathbf{b}$ a következőképp bontható fel egy $\mathbf{e}$-vel párhuzamos és egy rá merőleges vektor összegére:*
+$$\mathbf{b} = (\mathbf{b} \cdot \mathbf{e})\mathbf{e} + (\mathbf{b} - (\mathbf{b} \cdot \mathbf{e})\mathbf{e}).$$
+
+*Bizonyítás.* $(\mathbf{b} \cdot \mathbf{e})\mathbf{e}$ párhuzamos $\mathbf{e}$-vel, így csak azt kell megmutatni, hogy a két vektor merőleges.
+$$(\mathbf{b} \cdot \mathbf{e})\mathbf{e} \cdot (\mathbf{b} - (\mathbf{b} \cdot \mathbf{e})\mathbf{e}) = (\mathbf{b} \cdot \mathbf{e})(\mathbf{e} \cdot \mathbf{b}) - (\mathbf{b} \cdot \mathbf{e})^2(\mathbf{e} \cdot \mathbf{e}) = 0.$$
+$\square$
+
+Ennek alapján változatlanul mondható, hogy $\operatorname{proj}_{\mathbf{e}} \mathbf{b} = (\mathbf{b} \cdot \mathbf{e})\mathbf{e}$ a $\mathbf{b}$ vektor $\mathbf{e}$ egyenesére eső merőleges vetülete, és így tetszőleges $\mathbf{a} \neq \mathbf{0}$ vektor esetén $\operatorname{proj}_{\mathbf{a}} \mathbf{b} = \frac{\mathbf{a} \cdot \mathbf{b}}{\mathbf{a} \cdot \mathbf{a}}\mathbf{a}$ (ld. 1.23. tétel).
+
+**1.51. tétel (Cauchy–Bunyakovszkij–Schwarz-egyenlőtlenség).** *Tetszőleges $\mathbf{u}, \mathbf{v} \in \mathbb{R}^n$ vektorokra*
+$$|\mathbf{u} \cdot \mathbf{v}| \leqslant |\mathbf{u}||\mathbf{v}|. \tag{1.8}$$
+*Egyenlőség pontosan akkor áll fenn, ha $\mathbf{u}$ és $\mathbf{v}$ lineárisan összefüggők, azaz ha egyik vektor a másik skalárszorosa.*
+
+*Bizonyítás.* Tegyük fel először, hogy $\mathbf{v} = \mathbf{0}$. Ekkor a tétel állításának mindkét része nyilván igaz, hisz egyenlőség áll fenn, és a két vektor lineárisan összefüggő. Ha $\mathbf{v} \neq \mathbf{0}$, akkor legyen $\mathbf{e} = \mathbf{v}/|\mathbf{v}|$ a $\mathbf{v}$ irányú egységvektor. Az $\mathbf{u}$ vektor $\mathbf{e}$ egyenesére merőleges összetevőjének hossza, illetve annak négyzete nyilván nem negatív, azaz
+$$\begin{aligned}
+0 &\leqslant |\mathbf{u} - (\mathbf{u} \cdot \mathbf{e})\mathbf{e}|^2 && (|\mathbf{a}|^2 = \mathbf{a} \cdot \mathbf{a}\text{ alkalmazása}) \\
+&= (\mathbf{u} - (\mathbf{u} \cdot \mathbf{e})\mathbf{e}) \cdot (\mathbf{u} - (\mathbf{u} \cdot \mathbf{e})\mathbf{e}) && (\text{disztributivitás}) \\
+&= |\mathbf{u}|^2 - 2|\mathbf{u} \cdot \mathbf{e}|^2 + |\mathbf{u} \cdot \mathbf{e}|^2 && (\mathbf{a} \cdot \mathbf{a} = |\mathbf{a}|^2) \\
+&= |\mathbf{u}|^2 - |\mathbf{u} \cdot \mathbf{e}|^2 \\
+&= |\mathbf{u}|^2 - \frac{|\mathbf{u} \cdot \mathbf{v}|^2}{|\mathbf{v}|^2} && (\mathbf{e} = \mathbf{v}/|\mathbf{v}|\text{ visszahelyettesítése}).
+\end{aligned}$$
+
+Innen átrendezéssel azonnal megkapjuk a bizonyítandó állítást. Másrészt az is világos, hogy $0 = |\mathbf{u} - (\mathbf{u} \cdot \mathbf{e})\mathbf{e}|$ csak akkor állhat fönn, ha $\mathbf{u} = (\mathbf{u} \cdot \mathbf{e})\mathbf{e}$, azaz ha $\mathbf{u}$ és $\mathbf{e}$ párhuzamosak, azaz ha $\mathbf{u}$ a $\mathbf{v}$ skalárszorosa, vagyis ha a két vektor lineárisan összefüggő. $\square$
+
+<!-- OCR: through PDF p.50 -->
