@@ -142,6 +142,7 @@
 .pbox--blockquote,
 .pbox--table,
 .pbox--pre   { --pbox-c: #cbd5e1; }
+.pbox--math  { --pbox-c: #d97706; background: rgba(217, 119, 6, 0.06); overflow-x: auto; }
 .pbox__num {
   font-weight: 800;
   color: var(--pbox-c);

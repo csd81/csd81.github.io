@@ -66,9 +66,46 @@ const boxEl = (kind: string, children: any[]): any => ({
 /** Box EVERY block individually: each paragraph, list item, blockquote, table
  *  and code block becomes its own box with a copy button. Headings stay as plain
  *  section titles; a paragraph led by a theorem/definition/etc. is colour-coded. */
+const cls = (n: any): string => {
+  const c = n?.properties?.className;
+  return Array.isArray(c) ? c.join(' ') : (c || '');
+};
+/** A KaTeX display-math block (`$$…$$`) — the element itself, or a wrapper. */
+const isDisplayMath = (n: any): boolean => {
+  if (n?.type !== 'element') return false;
+  const c = cls(n);
+  if (/math-display/.test(c) || /katex-display/.test(c)) return true;
+  return (n.children || []).some((k: any) => k.type === 'element' && /katex-display/.test(cls(k)));
+};
+
+/** The TeX source stored in a KaTeX node's <annotation>, if any. */
+function katexTeX(n: any): string {
+  if (n?.type === 'element' && n.tagName === 'annotation') return hastText(n);
+  for (const c of n?.children || []) {
+    const r = katexTeX(c);
+    if (r) return r;
+  }
+  return '';
+}
+
 export function rehypePracticeBoxes({ source }: { source: string }) {
   const sliceNode = (n: any) => sliceClean(source, n.position?.start?.offset, n.position?.end?.offset);
+  // Wrap every display-math block (at any depth) in its own colour box.
+  const wrapMathDeep = (node: any) => {
+    const ch = node?.children;
+    if (!Array.isArray(ch)) return;
+    for (let i = 0; i < ch.length; i++) {
+      const c = ch[i];
+      if (c?.type === 'element' && isDisplayMath(c)) {
+        const tex = katexTeX(c);
+        ch[i] = boxEl('math', [copyEl(tex ? `$$${tex}$$` : sliceNode(c)), c]);
+      } else {
+        wrapMathDeep(c);
+      }
+    }
+  };
   return (tree: any) => {
+    wrapMathDeep(tree);
     const out: any[] = [];
     for (const node of tree.children || []) {
       if (node.type !== 'element') { out.push(node); continue; }
@@ -76,6 +113,9 @@ export function rehypePracticeBoxes({ source }: { source: string }) {
 
       // Headings remain section titles (not boxed).
       if (/^h[1-6]$/.test(tag) || tag === 'hr') { out.push(node); continue; }
+
+      // Display math → its own box (distinct colour).
+      if (isDisplayMath(node)) { out.push(boxEl('math', [copyEl(sliceNode(node)), node])); continue; }
 
       // Lists → one box per <li>.
       if (tag === 'ol' || tag === 'ul') {
