@@ -2,8 +2,10 @@ import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import App from './App';
 import Home from './pages/Home';
+import RequireAuth from './shared/auth/RequireAuth';
 import { CHAPTERS } from './chapters/registry';
 
+const Login = lazy(() => import('./pages/Login'));
 const Practice = lazy(() => import('./pages/Practice'));
 const Dimat = lazy(() => import('./subjects/dimat'));
 const Ila = lazy(() => import('./subjects/ila'));
@@ -24,7 +26,16 @@ export default function AppRoutes() {
   return (
     <Routes>
       <Route element={<App />}>
+        {/* Public: Numerical Methods + Practice + login */}
         <Route index element={<Home />} />
+        <Route
+          path="login"
+          element={
+            <Suspense fallback={<Loading />}>
+              <Login />
+            </Suspense>
+          }
+        />
         <Route
           path="practice"
           element={
@@ -33,54 +44,57 @@ export default function AppRoutes() {
             </Suspense>
           }
         />
-        <Route
-          path="dimat/*"
-          element={
-            <Suspense fallback={<Loading />}>
-              <Dimat />
-            </Suspense>
-          }
-        />
-        <Route
-          path="ila/*"
-          element={
-            <Suspense fallback={<Loading />}>
-              <Ila />
-            </Suspense>
-          }
-        />
-        <Route
-          path="algo/*"
-          element={
-            <Suspense fallback={<Loading />}>
-              <Algo />
-            </Suspense>
-          }
-        />
-        <Route
-          path="tetelsor/*"
-          element={
-            <Suspense fallback={<Loading />}>
-              <Tetelsor />
-            </Suspense>
-          }
-        />
-        <Route
-          path="calc/*"
-          element={
-            <Suspense fallback={<Loading />}>
-              <Calc />
-            </Suspense>
-          }
-        />
-        <Route
-          path="linalg/*"
-          element={
-            <Suspense fallback={<Loading />}>
-              <Linalg />
-            </Suspense>
-          }
-        />
+        {/* Protected: signing in unlocks Discrete Math, Calculus, Linear Algebra */}
+        <Route element={<RequireAuth />}>
+          <Route
+            path="dimat/*"
+            element={
+              <Suspense fallback={<Loading />}>
+                <Dimat />
+              </Suspense>
+            }
+          />
+          <Route
+            path="ila/*"
+            element={
+              <Suspense fallback={<Loading />}>
+                <Ila />
+              </Suspense>
+            }
+          />
+          <Route
+            path="algo/*"
+            element={
+              <Suspense fallback={<Loading />}>
+                <Algo />
+              </Suspense>
+            }
+          />
+          <Route
+            path="tetelsor/*"
+            element={
+              <Suspense fallback={<Loading />}>
+                <Tetelsor />
+              </Suspense>
+            }
+          />
+          <Route
+            path="calc/*"
+            element={
+              <Suspense fallback={<Loading />}>
+                <Calc />
+              </Suspense>
+            }
+          />
+          <Route
+            path="linalg/*"
+            element={
+              <Suspense fallback={<Loading />}>
+                <Linalg />
+              </Suspense>
+            }
+          />
+        </Route>
         {CHAPTERS.map((c) => {
           const Chapter = c.load;
           return (

@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom';
 import { useLang } from '../shared/providers/LanguageProvider';
+import { useAuth } from '../shared/providers/AuthProvider';
 import { CHAPTERS } from '../chapters/registry';
 import './home.css';
 
 export default function Home() {
   const { t, lang } = useLang();
+  const { user } = useAuth();
   return (
     <div className="home">
       <header className="home__hero">
@@ -61,6 +63,8 @@ export default function Home() {
         </li>
       </ul>
 
+      {user ? (
+      <>
       <h2 className="home__section-title">
         {lang === 'hu' ? 'Diszkrét matematika' : 'Discrete Math'}
       </h2>
@@ -187,6 +191,31 @@ export default function Home() {
           </Link>
         </li>
       </ul>
+      </>
+      ) : (
+        <section>
+          <h2 className="home__section-title">
+            {lang === 'hu' ? 'További tananyag' : 'More coursework'}
+          </h2>
+          <ul className="home__grid">
+            <li>
+              <Link to="/login" className="chcard chcard--locked">
+                <span className="chcard__num">🔒</span>
+                <span className="chcard__body">
+                  <span className="chcard__title">
+                    {lang === 'hu' ? 'Belépés a folytatáshoz' : 'Sign in to unlock'}
+                  </span>
+                  <span className="chcard__blurb">
+                    {lang === 'hu'
+                      ? 'Diszkrét matematika, kalkulus és lineáris algebra — jelentkezz be a megtekintéshez.'
+                      : 'Discrete math, calculus and linear algebra — sign in to view these.'}
+                  </span>
+                </span>
+              </Link>
+            </li>
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

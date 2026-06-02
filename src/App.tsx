@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useLang } from './shared/providers/LanguageProvider';
 import { useTheme } from './shared/providers/ThemeProvider';
+import { useAuth } from './shared/providers/AuthProvider';
 import { CHAPTERS } from './chapters/registry';
 import { RustSandbox } from './shared/ui/RustSandbox';
 import { AppSectionNav } from './shared/scrolly/AppSectionNav';
@@ -32,6 +33,7 @@ function ChapterJump() {
 export default function App() {
   const { lang, toggle: toggleLang } = useLang();
   const { theme, toggle: toggleTheme } = useTheme();
+  const { user, logout } = useAuth();
   const loc = useLocation();
   const current = CHAPTERS.find((c) => loc.pathname.startsWith(`/${c.slug}`));
 
@@ -67,6 +69,28 @@ export default function App() {
         >
           {theme === 'dark' ? '🌙' : '☀️'}
         </button>
+        {user ? (
+          <button
+            className="btn btn--icon"
+            onClick={() => { logout(); }}
+            aria-label="Log out"
+            title={
+              (user.email ?? (lang === 'hu' ? 'Bejelentkezve' : 'Signed in')) +
+              ' — ' + (lang === 'hu' ? 'kijelentkezés' : 'log out')
+            }
+          >
+            🚪
+          </button>
+        ) : (
+          <Link
+            className="btn btn--icon"
+            to="/login"
+            aria-label={lang === 'hu' ? 'Belépés' : 'Log in'}
+            title={lang === 'hu' ? 'Belépés' : 'Log in'}
+          >
+            🔑
+          </Link>
+        )}
       </nav>
       <main className="site-main">
         <Outlet />
