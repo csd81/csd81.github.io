@@ -1469,4 +1469,107 @@ $$2x - 3y + z = 5.$$
 $$(2, -3, 1) \cdot (x, y, z) = 5, \quad \text{vagy} \quad (2, -3, 1) \cdot (x, y + 1, z - 2) = 0$$
 a sík implicit vektoregyenlete. $\square$
 
-<!-- OCR: through PDF p.65 -->
+### A térbeli egyenes egyenletei
+
+Mindaz, amit a síkbeli egyenes explicit vektoregyenletéről mondtunk a 61. oldalon, lényegében változtatás nélkül megismételhető. Jelöljük ki a térben az origót, és tekintsük azt az $e$ egyenest, melynek irányvektora $\mathbf{v}$, és amely átmegy azon a ponton, melybe az $\mathbf{r}_0$ vektor mutat. Világos, hogy e egyenes bármely pontjába mutató $\mathbf{r}$ vektor előáll $\mathbf{r}_0 + t\mathbf{v}$ alakban, ahol $t$ valós szám, és az $e$-re nem illeszkedő pontokra ez nem áll. Így igaz a következő állítás:
+
+**2.15. állítás (Térbeli egyenes explicit vektoregyenlete).** *A háromdimenziós tér minden egyenesének van*
+$$\mathbf{r} = \mathbf{r}_0 + t\mathbf{v} \tag{2.12}$$
+*alakú vektoregyenlete, és minden ilyen alakú egyenlet egy egyenes egyenlete, ahol $\mathbf{v} \neq \mathbf{0}$ az egyenes egy irányvektora, és $\mathbf{r}_0$ egy tetszőleges, de rögzített pontjába mutató vektor.*
+
+Itt nem tudjuk a paramétert egyetlen vektoregyenletben kiküszöbölni, de az explicit egyenletrendszerré való átírás megy, ha felveszünk egy koordináta-rendszert, melyben $\mathbf{r} = (x, y, z)$, $\mathbf{r}_0 = (x_0, y_0, z_0)$ és $\mathbf{v} = (a, b, c)$:
+
+**2.16. állítás (Térbeli egyenes explicit egyenletrendszere).** *A tér minden egyenesének van*
+$$\begin{aligned}
+x &= x_0 + at \\
+y &= y_0 + bt \\
+z &= z_0 + ct
+\end{aligned} \tag{2.13}$$
+*alakú egyenletrendszere, ahol $(a, b, c) \neq (0, 0, 0)$ az egyenes egy irányvektora, és $(x_0, y_0, z_0)$ az egyenes egy tetszőleges rögzített pontja.*
+
+A (2.13) egyenletrendszerből a paraméter kiküszöbölhető. Szorozzuk be az első egyenletet $b$-vel, a másodikat $a$-val, majd vonjuk ki a második egyenletet az elsőből, kapjuk, hogy $bx - ay = bx_0 - ay_0$. Hasonlóan eljárva az első és harmadik egyenlettel $cx - az = cx_0 - az_0$, végül az második és harmadik egyenletből $cy - bz = cy_0 - bz_0$ adódik. Az egyenleteket átrendezve az alábbi állítást kapjuk:
+
+**2.17. állítás (Térbeli egyenes implicit egyenletrendszere).** *A tér minden egyenesének van két egyenletből álló implicit egyenletrendszere. Ha az $(a, b, c) \neq (0, 0, 0)$ vektor az egyenes egy irányvektora, akkor a két egyenlet az alábbi három közül bármelyik kettő, amelyik nem $0 = 0$ alakú:*
+$$\begin{aligned}
+b(x - x_0) &= a(y - y_0) \\
+c(x - x_0) &= a(z - z_0) \\
+c(y - y_0) &= b(z - z_0)
+\end{aligned} \tag{2.14}$$
+
+> A (2.17.) egyenletrendszer átírható a változók szerint rendezve:
+> $$\begin{alignedat}{9}
+> bx &{}-{}& ay &&    &{}={}& bx_0 &{}-{}& ay_0 \\
+> cx &&     &{}-{}& az &{}={}& cx_0 &&     {}- az_0 \\
+>    && cy  &{}-{}& bz &{}={}& cy_0 &{}-{}& bz_0,
+> \end{alignedat}$$
+> de leggyakrabban az $a \neq 0$, $b \neq 0$, $c \neq 0$ esetre érvényes
+> $$\frac{x - x_0}{a} = \frac{y - y_0}{b} = \frac{z - z_0}{c}.$$
+> alakkal találkozhatunk.
+
+*Bizonyítás.* A (2.14) egyenleteit az állítás előtt már igazoltuk. Mivel $(a, b, c) \neq (0, 0, 0)$, így legalább az egyik koordináta nem $0$. Ha pontosan egyikük nem $0$, pl. legyen $a \neq 0$, $b = c = 0$, akkor az egyenletrendszer
+$$\begin{aligned}
+y &= y_0 \\
+z &= z_0
+\end{aligned}$$
+alakú, ez két sík egyenlete, a mindkét egyenletet kielégítő pontok halmaza a síkok metszete, ami egy egyenes, mert e síkok biztosan nem párhuzamosak. (A harmadik egyenlet $0 = 0$ alakú, ami elhagyható.)
+
+Ha $a$, $b$ és $c$ közül pontosan egy értéke $0$, akkor két egyenlet azonos, így egyikük elhagyható. Például ha $a \neq 0$, $b \neq 0$ de $c = 0$, akkor az egyenletek alakja
+$$\begin{aligned}
+b(x - x_0) &= a(y - y_0) \\
+z &= z_0 \\
+z &= z_0.
+\end{aligned}$$
+
+Végül ha egyik együttható sem $0$, akkor három sík egyenletét kaptuk, melyek közül semelyik kettő sem párhuzamos a bennük szereplő változók különbözősége miatt. Bármelyik kettő metszete egy egyenes, és mivel mindhárom metszete is egy egyenes, ezért bármelyik két egyenlet megtartható.
+
+A tétel úgy is igazolható, hogy a (2.14) három egyenlete lineárisan összefügg, hisz az első egyenlet $c$-szerese mínusz a második $b$-szerese plusz a harmadik $a$-szorosa a $0 = 0$ egyenletet adja. Ez a vektoroknál látotthoz hasonlóan azt jelenti, hogy valamelyik egyenlet előáll a másik kettő lineáris kombinációjaként, ez pedig elhagyható, hisz ha egy pont kielégíti a másik két egyenletet, akkor a lineáris kombinációjukat is. $\square$
+
+**2.18. példa (Térbeli egyenes egyenletrendszerei).** *Írjuk fel annak az egyenesnek az explicit és implicit egyenletrendszerét, mely átmegy az a) $A(1, 3, 4)$ és a) $B(3, 3, 1)$, illetve b) $C(5, 5, -2)$ ponton.*
+
+*Megoldás.* a) Az $A$ és $B$ pontot összekötő vektor $= (2, 0, -3)$. Innen az egyenes explicit egyenletrendszere
+$$\begin{aligned}
+x &= 1 + 2t \\
+y &= 3 \\
+z &= 4 - 3t,
+\end{aligned}$$
+melynek második egyenlete, $y = 3$, egy $xz$-síkkal párhuzamos sík egyenlete. A másik két egyenletből kiküszöbölve $t$-t, egy másik sík egyenletét kapjuk. Az egyenes ennek a két síknak a metszésvonala. Az első egyenletből $t = \frac{1}{2}(x - 1)$, a harmadikból $t = -\frac{1}{3}(z - 4)$ ezért $3x + 2z = 11$. Így az előző egyeneshez a következő implicit (paraméter nélküli) egyenletrendszer tartozik, mely két sík egyenletéből áll:
+$$\begin{alignedat}{9}
+3x && {}+{} 2z &{}={}& 11 \\
+   && y       &{}={}& 3.
+\end{alignedat}$$
+
+b) Az $A$ és $C$ pontot összekötő vektor itt $= (4, 2, -6)$. Innen az egyenes explicit egyenletrendszere
+$$\begin{aligned}
+x &= 1 + 4t \\
+y &= 3 + 2t \\
+z &= 4 - 6t.
+\end{aligned}$$
+Mindegyik egyenletből kifejezve $t$-t kapjuk, hogy
+$$t = \frac{x - 1}{4} = \frac{y - 3}{2} = \frac{z - 4}{-6}.$$
+Ez a következő három sík egyenletét adja:
+$$\begin{alignedat}{9}
+x &{}-{}& 2y &&     &{}={}& -5 \\
+3x &&    &{}+{}& 2z &{}={}& 11 \\
+   && 3y &{}+{}& z  &{}={}& 13.
+\end{alignedat}$$
+E három sík közül bármely kettő meghatározza az adott egyenest, így e három egyenlet közül bármely kettő az egyenes (implicit) egyenletrendszere. $\square$
+
+### Térbeli pont egyenletei
+
+Csak a teljesség és az analógiák megértése céljából vizsgáljuk meg a tér egy pontjának lehetséges egyenleteit. A térbeli $(x_0, y_0, z_0)$ pont explicit egyenletrendszere, illetve vektoregyenlete:
+$$\begin{aligned}
+x &= x_0 \\
+y &= y_0, \\
+z &= z_0
+\end{aligned} \quad \text{illetve} \quad \begin{bmatrix} x \\ y \\ z \end{bmatrix} = \begin{bmatrix} x_0 \\ y_0 \\ z_0 \end{bmatrix}.$$
+Az explicit egyenletrendszert implicit alaknak is tekinthetjük, ekkor három – a koordinátasíkokkal párhuzamos – sík egyenletét látjuk, melyek egyetlen közös pontban metszik egymást.
+
+A síkbeli esethez hasonlóan egy pont implicit egyenletrendszerének tekinthetnénk három egyenletet, melyek egymást az adott pontban metsző egy-egy sík egyenletei. Tehát a pont implicit egyenletrendszerének általános alakja
+$$\begin{aligned}
+A_1 x + B_1 y + C_1 z &= D_1 \\
+A_2 x + B_2 y + C_2 z &= D_2 \\
+A_3 x + B_3 y + C_3 z &= D_3,
+\end{aligned}$$
+feltéve, hogy a síkoknak csak egyetlen közös pontjuk van. E kérdés vizsgálatára visszatérünk a 2. fejezetben.
+
+<!-- OCR: through PDF p.68 -->
