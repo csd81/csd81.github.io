@@ -11,11 +11,15 @@
  * Rewriting each `$$…$$` so the fences sit on their own lines and the body
  * starts on a fresh line fixes both. It's idempotent: blocks already formatted
  * this way are reproduced unchanged.
+ *
+ * Also strips leading blockquote markers (`> `) from inside a display block:
+ * slide "blocks" wrap content (including multi-line `$$…$$`) in a Markdown
+ * blockquote, and those `>` would otherwise render as literal `>` in the math.
  */
 export function normalizeMath(markdown: string): string {
   if (!markdown) return markdown;
   return markdown.replace(
     /\$\$([\s\S]+?)\$\$/g,
-    (_whole, inner: string) => `\n\n$$\n${inner.trim()}\n$$\n\n`,
+    (_whole, inner: string) => `\n\n$$\n${inner.replace(/^[ \t]*>[ \t]?/gm, '').trim()}\n$$\n\n`,
   );
 }
