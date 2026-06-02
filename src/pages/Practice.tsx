@@ -5,7 +5,10 @@ import { MarkdownView } from '../shared/ui/MarkdownView';
 import { CHAPTERS } from '../chapters/registry';
 import { TOPICS } from './practice/content';
 import { CHEATSHEETS } from './practice/cheatsheets';
-import { subsectionsFor, subsectionBySlug, GUIDE_CHAPTERS } from './practice/guides';
+import {
+  subsectionsFor, subsectionBySlug, GUIDE_CHAPTERS,
+  chapterBook, chapterSlides, hasBook, hasSlides,
+} from './practice/guides';
 import glossaryMd from './practice/glossary.md?raw';
 import './practice/practice.css';
 
@@ -159,6 +162,41 @@ function ChapterGuide() {
         <h1>{t(meta.title)}</h1>
         <p className="practice__lead">{t(meta.blurb)}</p>
       </header>
+
+      {(hasBook(chapter) || hasSlides(chapter)) && (
+        <ul className="home__grid">
+          {hasBook(chapter) && (
+            <li>
+              <Link to={`/practice/guide/${chapter}/book`} className="chcard">
+                <span className="chcard__num">📖</span>
+                <span className="chcard__body">
+                  <span className="chcard__title">{lang === 'hu' ? 'Teljes fejezet' : 'Full chapter'}</span>
+                  <span className="chcard__blurb">
+                    {lang === 'hu' ? 'A tankönyv teljes fejezete (angol)' : 'The complete textbook chapter'}
+                  </span>
+                </span>
+              </Link>
+            </li>
+          )}
+          {hasSlides(chapter) && (
+            <li>
+              <Link to={`/practice/guide/${chapter}/slides`} className="chcard">
+                <span className="chcard__num">🖥️</span>
+                <span className="chcard__body">
+                  <span className="chcard__title">{lang === 'hu' ? 'Diák' : 'Slides'}</span>
+                  <span className="chcard__blurb">
+                    {lang === 'hu' ? 'Előadásdiák (Hartung Ferenc)' : 'Lecture slides (Ferenc Hartung)'}
+                  </span>
+                </span>
+              </Link>
+            </li>
+          )}
+        </ul>
+      )}
+
+      <h2 className="practice__h2" style={{ marginTop: '1.6rem' }}>
+        {lang === 'hu' ? 'Alfejezetek' : 'Subsections'}
+      </h2>
       <ul className="home__grid">
         {subs.map((s) => (
           <li key={s.slug}>
@@ -249,11 +287,50 @@ function SubsectionGuide() {
   );
 }
 
+/** Full-chapter book text, or the lecture slides, for one chapter. */
+function ChapterReader({ kind }: { kind: 'book' | 'slides' }) {
+  const { t, lang } = useLang();
+  const { ch } = useParams();
+  const chapter = Number(ch);
+  const meta = CHAPTERS.find((c) => c.num === chapter);
+  const md = kind === 'book' ? chapterBook(chapter) : chapterSlides(chapter, lang);
+
+  if (!meta || !md) {
+    return (
+      <div className="practice">
+        <Link to={`/practice/guide/${chapter}`} className="practice__back">
+          ← {lang === 'hu' ? 'Vissza' : 'Back'}
+        </Link>
+        <p className="practice__lead">{lang === 'hu' ? 'A tartalom nem található.' : 'Content not found.'}</p>
+      </div>
+    );
+  }
+
+  const label = kind === 'book'
+    ? (lang === 'hu' ? 'Teljes fejezet' : 'Full chapter')
+    : (lang === 'hu' ? 'Diák' : 'Slides');
+
+  return (
+    <div className="practice">
+      <Link to={`/practice/guide/${chapter}`} className="practice__back">← {t(meta.title)}</Link>
+      <header className="practice__hero practice__hero--compact">
+        <p className="practice__kicker">
+          {(lang === 'hu' ? `${chapter}. fejezet` : `Chapter ${chapter}`)} · {label}
+        </p>
+        <h1>{t(meta.title)}</h1>
+      </header>
+      <MarkdownView markdown={md} />
+    </div>
+  );
+}
+
 export default function Practice() {
   return (
     <Routes>
       <Route index element={<PracticeHome />} />
       <Route path="guide/:ch" element={<ChapterGuide />} />
+      <Route path="guide/:ch/book" element={<ChapterReader kind="book" />} />
+      <Route path="guide/:ch/slides" element={<ChapterReader kind="slides" />} />
       <Route path="guide/:ch/:sub" element={<SubsectionGuide />} />
     </Routes>
   );

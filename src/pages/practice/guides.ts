@@ -12,6 +12,8 @@
 
 const SHORT = import.meta.glob('./guides/short/*.md', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 const STUDY = import.meta.glob('./guides/study/*.md', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+const BOOK = import.meta.glob('./guides/book/*.md', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+const SLIDES = import.meta.glob('./guides/slides/*.md', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 
 export interface Subsection {
   /** Chapter number 1–10. */
@@ -85,3 +87,40 @@ export function subsectionBySlug(chapter: number, slug: string): Subsection | un
 
 /** Chapters (1–10) that actually have study material, in order. */
 export const GUIDE_CHAPTERS: number[] = [...byChapter.keys()].sort((a, b) => a - b);
+
+/* ── Full book chapters (EN) and presentation slides (HU + EN) ──────────── */
+
+const bookByCh = new Map<number, string>();
+for (const [path, md] of Object.entries(BOOK)) {
+  const m = path.match(/Chapter_(\d+)_/);
+  if (m) bookByCh.set(parseInt(m[1], 10), md);
+}
+
+const slidesEnByCh = new Map<number, string>();
+const slidesHuByCh = new Map<number, string>();
+for (const [path, md] of Object.entries(SLIDES)) {
+  const fname = path.split('/').pop()!;
+  if (/^_num_pres\d+\.md$/.test(fname)) {                       // _num_pres07.md → EN
+    slidesEnByCh.set(parseInt(fname.match(/(\d+)/)![1], 10), md);
+  } else {                                                       // 07num_pres07.md → HU
+    const m = fname.match(/num_pres(\d+)/);
+    if (m) slidesHuByCh.set(parseInt(m[1], 10), md);
+  }
+}
+
+/** Full English book chapter markdown for a chapter (or ''). */
+export function chapterBook(chapter: number): string {
+  return bookByCh.get(chapter) ?? '';
+}
+
+/** Presentation-slide markdown for a chapter in the active language
+ *  (Hungarian when available + requested, English otherwise). */
+export function chapterSlides(chapter: number, lang: 'en' | 'hu'): string {
+  const hu = slidesHuByCh.get(chapter);
+  const en = slidesEnByCh.get(chapter);
+  return (lang === 'hu' ? hu : en) || en || hu || '';
+}
+
+export const hasBook = (chapter: number): boolean => bookByCh.has(chapter);
+export const hasSlides = (chapter: number): boolean =>
+  slidesEnByCh.has(chapter) || slidesHuByCh.has(chapter);
