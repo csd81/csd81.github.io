@@ -27,3 +27,6 @@ la-tamop-wf*.md
 # OCR source PDF (not bundled; Vite globs only *.md)
 src/subjects/linalg/content/*.pdf
 src/subjects/linalg/content/book/*.pdf
+
+# Local lecture videos (large; served locally, not shipped to Pages)
+public/videos/
