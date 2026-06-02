@@ -15,6 +15,7 @@ const STUDY = import.meta.glob('./guides/study/*.md', { query: '?raw', import: '
 const BOOK = import.meta.glob('./guides/book/*.md', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 const SLIDES = import.meta.glob('./guides/slides/*.md', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 const FLASH = import.meta.glob('./guides/flashcards/*.csv', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+const SUB = import.meta.glob('./guides/sub/*.md', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 
 export interface Flashcard { front: string; back: string; }
 
@@ -71,6 +72,11 @@ export interface Subsection {
   study: string;
   /** Self-test flashcards (front/back), empty if none for this subsection. */
   flashcards: Flashcard[];
+  /** Per-subsection textbook prose (HU / EN) and lecture slides (HU / EN). */
+  subBookHu: string;
+  subBookEn: string;
+  subSlidesHu: string;
+  subSlidesEn: string;
 }
 
 /** Title-case-ish: capitalise each word's first letter, keep the rest as-is
@@ -105,6 +111,10 @@ for (const path of Object.keys(SHORT)) {
     shortEn: SHORT[`./guides/short/${base}_short_summary_en.md`] ?? '',
     study: STUDY[`./guides/study/${base}_study_guide.md`] ?? '',
     flashcards: flashcardsFor(base),
+    subBookHu: SUB[`./guides/sub/${base}.book.hu.md`] ?? '',
+    subBookEn: SUB[`./guides/sub/${base}.book.en.md`] ?? '',
+    subSlidesHu: SUB[`./guides/sub/${base}.slides.hu.md`] ?? '',
+    subSlidesEn: SUB[`./guides/sub/${base}.slides.en.md`] ?? '',
   };
   const arr = byChapter.get(chapter) ?? [];
   arr.push(sub);

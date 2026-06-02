@@ -326,6 +326,31 @@ function SubsectionGuide() {
         <MarkdownView markdown={lang === 'en' && s.shortEn ? s.shortEn : s.short} />
       </section>
 
+      {(() => {
+        const book = lang === 'hu' ? (s.subBookHu || s.subBookEn) : (s.subBookEn || s.subBookHu);
+        return book ? (
+          <section className="practice__guide-block">
+            <div className="practice__guide-head">
+              <h2 className="practice__h2">{lang === 'hu' ? '📖 Tankönyv' : '📖 Textbook'}</h2>
+              <CopyButton source={book} />
+            </div>
+            <MarkdownView markdown={book} />
+          </section>
+        ) : null;
+      })()}
+
+      {(() => {
+        const deck = lang === 'hu' ? (s.subSlidesHu || s.subSlidesEn) : (s.subSlidesEn || s.subSlidesHu);
+        return deck ? (
+          <section className="practice__guide-block">
+            <div className="practice__guide-head">
+              <h2 className="practice__h2">{lang === 'hu' ? '🖥️ Diák' : '🖥️ Slides'}</h2>
+            </div>
+            <SlideDeck markdown={deck} />
+          </section>
+        ) : null;
+      })()}
+
       <section className="practice__guide-block">
         <div className="practice__guide-head">
           <h2 className="practice__h2">{lang === 'hu' ? '📘 Tananyag' : '📘 Study guide'}</h2>
@@ -368,10 +393,15 @@ function SubsectionGuide() {
 /** Present a slide deck one slide at a time (split on `---` separators). */
 function SlideDeck({ markdown }: { markdown: string }) {
   const { lang } = useLang();
-  const slides = useMemo(
-    () => markdown.split(/\n-{3,}[ \t]*\n/).map((s) => s.trim()).filter(Boolean),
-    [markdown],
-  );
+  const slides = useMemo(() => {
+    // Primary: explicit `---` separators (chapter decks). Fallback: split before
+    // each `### ` heading (per-subsection `_sl` decks use `### N. fólia` titles).
+    const byRule = markdown.split(/\n-{3,}[ \t]*\n/).map((s) => s.trim()).filter(Boolean);
+    if (byRule.length >= 3) return byRule;
+    const byH3 = markdown.split(/\n(?=###\s)/).map((s) => s.trim()).filter(Boolean);
+    if (byH3.length >= 3) return byH3;
+    return byRule.length ? byRule : [markdown.trim()];
+  }, [markdown]);
   const [i, setI] = useState(0);
   const clamp = (n: number) => Math.min(Math.max(n, 0), slides.length - 1);
 

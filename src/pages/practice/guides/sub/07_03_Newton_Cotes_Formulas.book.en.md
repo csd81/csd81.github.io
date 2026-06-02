@@ -1,0 +1,288 @@
+## 7.3. Newton–Cotes Formulas
+
+Let $f \in C[a, b]$. The definite integral, similarly to the derivative, is defined by a limit. The definition using Riemann's sum is the following: consider a finite partition of the interval $[a, b]$ using the mesh points $a = x_0 < x_1 < \cdots < x_n = b$, and in each subinterval $[x_{i-1}, x_i]$ select a point $\xi_i$. Then the integral $\int_a^b f(x)\,dx$ is a limit of the Riemann's sum $\sum_{i=1}^{n} f(\xi_i)(x_i - x_{i-1})$ as the norm of the partition, $\max\{x_i - x_{i-1} : i = 1, \ldots, n\}$ goes to zero. Such a Riemann's sum is for example
+
+$$
+\int_a^b f(x)\,dx \approx \frac{b - a}{n}\left(f\left(\frac{x_0 + x_1}{2}\right) + f\left(\frac{x_1 + x_2}{2}\right) + \cdots + f\left(\frac{x_{n-1} + x_n}{2}\right)\right),
+\tag{7.27}
+$$
+
+where $x_i = a + i(b - a)/n$, $i = 0, 1, \ldots, n$. This formula is called **midpoint rule** or **rectangle rule**. (See Exercises 5 and 6.)
+
+Similarly to the numerical differentiation, we can use the Lagrange's method to derive approximation formulas for definite integrals. Consider a partition of the interval $[a, b]$ (typically with equidistant mesh points), and let $L_n$ be the Lagrange interpolating polynomial of the function $f$ corresponding to the given mesh. Consider $\int_a^b L_n(x)\,dx$ as an approximation of $\int_a^b f(x)\,dx$. We suppose that $f \in C^{n+1}[a, b]$. Then Theorem 6.5 yields the error of the approximation:
+
+$$
+\begin{aligned}
+\int_a^b f(x)\,dx ={}& \sum_{k=0}^{n} f(x_k)\int_a^b l_k(x)\,dx \\
+&+ \int_a^b \frac{f^{(n+1)}(\xi(x))}{(n+1)!}(x - x_0)(x - x_1)\cdots(x - x_n)\,dx,
+\end{aligned}
+\tag{7.28}
+$$
+
+where $l_k(x)$ (corresponding to the mesh points) is the Lagrange basis polynomial of degree $n$ defined by (6.2). Here we get an approximation formula of the form
+
+$$
+\int_a^b f(x)\,dx \approx \sum_{k=0}^{n} c_k f(x_k),
+\tag{7.29}
+$$
+
+where the weights $c_k$ are defined by
+
+$$
+c_k = \int_a^b l_k(x)\,dx.
+\tag{7.30}
+$$
+
+Approximation formulas of the form (7.29) are called **quadrature formulas**. Those quadrature formulas when the weights $c_k$ are defined by the integrals (7.30) are called **Newton–Cotes formulas**. If the end points of the interval $a$ and $b$ belong to the mesh points, then formulas (7.29)–(7.30) are called **closed Newton–Cotes formulas**, and if all mesh points belong to the open interval $(a, b)$, then they are called **open Newton–Cotes formulas**.
+
+We say that the **degree of precision** of a quadrature formula is $n$ if the formula gives back the exact value of the definite integral for all polynomials with degree at most $n$, and there exists a polynomial of degree $n + 1$ for which the quadrature formula is not exact. Therefore, the degree of precision of the $(n+1)$-point Newton–Cotes formula (7.29)–(7.30) is at least $n$, since in this case the Lagrange polynomial $L_n$ is identical to the function $f$. It is possible to show that for even $n$ the $(n + 1)$-point Newton–Cotes formulas are exact for polynomials with degree $n + 1$ too.
+
+Next we consider the closed Newton–Cotes formula for $n = 1$. Let $x_0 = a$, $x_1 = b$ and $h = b - a$. Then
+
+$$
+L_1(x) = f(x_0)\frac{x - x_1}{x_0 - x_1} + f(x_1)\frac{x - x_0}{x_1 - x_0},
+$$
+
+so
+
+$$
+\begin{aligned}
+\int_{x_0}^{x_1} L_1(x)\,dx &= f(x_0)\int_{x_0}^{x_1} \frac{x - x_1}{x_0 - x_1}\,dx + f(x_1)\int_{x_0}^{x_1} \frac{x - x_0}{x_1 - x_0}\,dx \\
+&= \left[f(x_0)\frac{(x - x_1)^2}{2(x_0 - x_1)} + f(x_1)\frac{(x - x_0)^2}{2(x_1 - x_0)}\right]_{x_0}^{x_1} \\
+&= \frac{h}{2}\bigl(f(x_0) + f(x_1)\bigr).
+\end{aligned}
+$$
+
+The error of this formula, according to (7.28), is
+
+$$
+\int_{x_0}^{x_1} f(x)\,dx - \frac{h}{2}\bigl(f(x_0) + f(x_1)\bigr) = \int_{x_0}^{x_1} \frac{f''(\xi(x))}{2}(x - x_0)(x - x_1)\,dx.
+$$
+
+To simplify the formula of the error term we use that $(x - x_0)(x - x_1) < 0$ for $x \in (x_0, x_1)$, and hence Theorem 2.6 can be used. Therefore, there exists $\eta \in (x_0, x_1)$ such that
+
+$$
+\int_{x_0}^{x_1} \frac{f''(\xi(x))}{2}(x - x_0)(x - x_1)\,dx = \frac{f''(\eta)}{2}\int_{x_0}^{x_1}(x - x_0)(x - x_1)\,dx.
+$$
+
+Hence
+
+$$
+\begin{aligned}
+\int_{x_0}^{x_1} f(x)\,dx - \frac{h}{2}\bigl(f(x_0) + f(x_1)\bigr) &= \frac{f''(\eta)}{2}\int_{x_0}^{x_1}(x - x_0)^2 - h(x - x_0)\,dx \\
+&= \frac{f''(\eta)}{2}\left[\frac{(x - x_0)^3}{3} - h\frac{(x - x_0)^2}{2}\right]_{x_0}^{x_1} \\
+&= -\frac{h^3}{12}f''(\eta).
+\end{aligned}
+$$
+
+We obtained the so-called **trapezoidal rule**:
+
+$$
+\int_a^b f(x)\,dx = \frac{h}{2}\bigl(f(a) + f(b)\bigr) - \frac{h^3}{12}f''(\xi), \qquad \xi \in (a, b).
+\tag{7.31}
+$$
+
+The name of the formula comes from the fact that $\frac{h}{2}\bigl(f(a) + f(b)\bigr)$ gives back the area of the region bounded by the secant line of the function corresponding to the points $a$ and $b$, the $x$-axis, and the vertical lines $x = a$ and $x = b$.
+
+The trapezoidal rule gives a good approximation of the integral if the length of the interval is small. If we have a large interval, then we divide it into $n$ subintervals of equal length by the mesh points $x_i = a + ih$ ($i = 0, 1, \ldots, n$), where $h = (b - a)/n$, and we apply the trapezoidal rule for each subintervals:
+
+$$
+\begin{aligned}
+\int_a^b f(x)\,dx &= \sum_{i=1}^{n}\int_{x_{i-1}}^{x_i} f(x)\,dx \\
+&= \sum_{i=1}^{n}\frac{h}{2}\bigl(f(x_{i-1}) + f(x_i)\bigr) - \frac{h^3}{12}\sum_{i=1}^{n} f''(\xi_i) \\
+&= \frac{h}{2}\left(f(x_0) + 2\sum_{i=1}^{n-1} f(x_i) + f(x_n)\right) - \frac{nh^3}{12}\frac{1}{n}\sum_{i=1}^{n} f''(\xi_i).
+\end{aligned}
+$$
+
+We suppose that $f \in C^2[a, b]$. Then it follows from Theorem 2.2 that the average value $\frac{1}{n}\sum_{i=1}^{n} f''(\xi_i)$ can be replaced by a single function value of the form $f''(\xi)$. Therefore, using $hn = b - a$, we get
+
+$$
+\int_a^b f(x)\,dx = \frac{h}{2}\left(f(x_0) + 2\sum_{i=1}^{n-1} f(x_i) + f(x_n)\right) - \frac{(b - a)h^2}{12}f''(\xi), \qquad \xi \in (a, b).
+\tag{7.32}
+$$
+
+This formula is called **composite trapezoidal rule**.
+
+**Example 7.7.** We compute approximate values of the integral $\int_0^1 x^2 e^x\,dx$ using the basic or composite trapezoidal rule with $h = 1$, $h = 0.5$ and $h = 0.25$, respectively. It can be checked that the exact value of the integral is $\int_0^1 x^2 e^x\,dx = e - 2 = 0.7182818$ (with 7 digits precision). For the first case we have
+
+$$
+\int_0^1 x^2 e^x\,dx \approx \frac{1}{2}(0 + e) = 1.3591409,
+$$
+
+where we computed the numerical values with 7 digits precision. The error in this case is $0.6408591$. With $h = 0.5$ the composite trapezoidal rule gives
+
+$$
+\int_0^1 x^2 e^x\,dx \approx \frac{0.5}{2}(0 + 2 \cdot 0.5^2 e^{0.5} + e) = 0.8856606.
+$$
+
+Hence its error is $0.1673788$. Finally, for $h = 0.25$ we get
+
+$$
+\int_0^1 x^2 e^x\,dx \approx \frac{0.25}{2}(0 + 2 \cdot 0.25^2 e^{0.25} + 2 \cdot 0.5^2 e^{0.5} + 2 \cdot 0.75^2 e^{0.75} + e) = 0.7605963,
+$$
+
+so its error is $0.0423145$. We can observe that if the step size reduces to its half, then the corresponding error in the approximation reduces to its quarter, which indicates that the error in $h$ is quadratic. $\quad\square$
+
+Consider formula (7.28) for $n = 2$ and using equidistant mesh points, i.e., $x_0 = a$, $x_1 = x_0 + h$, $x_2 = b$, $h = (b - a)/2$.
+
+$$
+\begin{aligned}
+\int_{x_0}^{x_2} L_2(x)\,dx ={}& f(x_0)\int_{x_0}^{x_2} \frac{(x - x_1)(x - x_2)}{(x_0 - x_1)(x_0 - x_2)}\,dx + f(x_1)\int_{x_0}^{x_2} \frac{(x - x_0)(x - x_2)}{(x_1 - x_0)(x_1 - x_2)}\,dx \\
+&+ f(x_2)\int_{x_0}^{x_2} \frac{(x - x_0)(x - x_1)}{(x_2 - x_0)(x_2 - x_1)}\,dx \\
+={}& \frac{f(x_0)}{2h^2}\int_{x_0}^{x_2}(x - x_2 + h)(x - x_2)\,dx - \frac{f(x_1)}{h^2}\int_{x_0}^{x_2}(x - x_0)(x - x_0 - 2h)\,dx \\
+&+ \frac{f(x_2)}{2h^2}\int_{x_0}^{x_2}(x - x_0)(x - x_0 - h)\,dx \\
+={}& \frac{f(x_0)}{2h^2}\left[\frac{(x - x_2)^3}{3} + h\frac{(x - x_2)^2}{2}\right]_{x_0}^{x_2} - \frac{f(x_1)}{h^2}\left[\frac{(x - x_0)^3}{3} - 2h\frac{(x - x_0)^2}{2}\right]_{x_0}^{x_2} \\
+&+ \frac{f(x_2)}{2h^2}\left[\frac{(x - x_0)^3}{3} - h\frac{(x - x_0)^2}{2}\right]_{x_0}^{x_2} \\
+={}& \frac{h}{3}\bigl(f(x_0) + 4f(x_1) + f(x_2)\bigr).
+\end{aligned}
+$$
+
+The truncation error is
+
+$$
+\int_{x_0}^{x_2} \frac{f'''(\xi(x))}{6}(x - x_0)(x - x_1)(x - x_2)\,dx.
+$$
+
+Now there is a difference compared to the previous case: the function $(x - x_0)(x - x_1)(x - x_2)$ has opposite signs on the intervals $(x_0, x_1)$ and $(x_1, x_2)$, so Theorem 2.6 is not applicable on $(x_0, x_2)$. We have a different method to simplify the formula for the error term. Let
+
+$$
+\begin{aligned}
+p(x) &:= \int_{x_0}^{x}(t - x_0)(t - x_1)(t - x_2)\,dt \\
+&= \int_{x_0}^{x}(t - x_1 + h)(t - x_1)(t - x_1 - h)\,dt \\
+&= \left[\frac{(t - x_1)^4}{4} - h^2\frac{(t - x_1)^2}{2}\right]_{x_0}^{x} \\
+&= \frac{(x - x_1)^4}{4} - \frac{h^2(x - x_1)^2}{2} + \frac{h^4}{4} \\
+&= \frac{1}{4}\bigl((x - x_1)^2 - h^2\bigr)^2.
+\end{aligned}
+$$
+
+Then $p(x_0) = p(x_2) = 0$, so integration by parts gives
+
+$$
+\int_{x_0}^{x_2} \frac{f'''(\xi(x))}{6}(x - x_0)(x - x_1)(x - x_2)\,dx = -\int_{x_0}^{x_2} \frac{d}{dx}\frac{f'''(\xi(x))}{6}\,p(x)\,dx.
+$$
+
+$p$ is a nonnegative function, hence applying Theorems 2.6 and 6.8, we get
+
+$$
+\int_{x_0}^{x_2} \frac{f'''(\xi(x))}{6}(x - x_0)(x - x_1)(x - x_2)\,dx = -\frac{f^{(4)}(\eta)}{24}\int_{x_0}^{x_2} p(x)\,dx = -\frac{h^5}{90}f^{(4)}(\eta).
+$$
+
+We have proved the relation
+
+$$
+\int_{x_0}^{x_2} f(x)\,dx = \frac{h}{3}\bigl(f(x_0) + 4f(x_1) + f(x_2)\bigr) - \frac{h^5}{90}f^{(4)}(\eta), \qquad \eta \in (x_0, x_2),
+\tag{7.33}
+$$
+
+which is called **Simpson's rule**.
+
+This error formula yields that the Simpson's rule is precise for third-order polynomials, since then $f^{(4)}$ is identically equal to 0. On the other hand, the order of approximation in $h$ is five. Similar higher order of precision can be shown for all Newton–Cotes formulas with even $n$.
+
+Similarly to the composite trapezoidal rule, we can derive the composite Simpson's rule: We divide the interval $[a, b]$ into $2n$ equal parts, so let $h = (b - a)/2n$. Then
+
+$$
+\begin{aligned}
+\int_a^b f(x)\,dx ={}& \frac{h}{3}\left(f(x_0) + 4\sum_{i=1}^{n} f(x_{2i-1}) + 2\sum_{i=1}^{n-1} f(x_{2i}) + f(x_{2n})\right) \\
+&- \frac{(b - a)h^4}{180}f^{(4)}(\xi), \qquad \xi \in (a, b).
+\end{aligned}
+\tag{7.34}
+$$
+
+**Example 7.8.** Compute the approximate values of $\int_0^1 x^2 e^x\,dx$ using (composite) Simpson's formula with $h = 0.5$, $h = 0.25$ and $h = 0.125$. First we get
+
+$$
+\int_0^1 x^2 e^x\,dx \approx \frac{0.5}{3}(0 + 4 \cdot 0.5^2 e^{0.5} + e) = 0.7278339.
+$$
+
+The error is $0.0095520$. For $h = 0.25$ we apply the composite Simpson's formula:
+
+$$
+\int_0^1 x^2 e^x\,dx \approx \frac{0.25}{3}(0 + 4 \cdot 0.25^2 e^{0.25} + 2 \cdot 0.5^2 e^{0.5} + 4 \cdot 0.75^2 e^{0.75} + e) = 0.7189082.
+$$
+
+Its error is $0.0006264$. Finally, for $h = 0.125$ we get
+
+$$
+\begin{aligned}
+\int_0^1 x^2 e^x\,dx \approx{}& \frac{0.125}{3}\Bigl(0 + 4 \cdot 0.125^2 e^{0.125} + 2 \cdot 0.25^2 e^{0.25} + 4 \cdot 0.375^2 e^{0.375} + 2 \cdot 0.5^2 e^{0.5} \\
+&+ 4 \cdot 0.625^2 e^{0.625} + 2 \cdot 0.75^2 e^{0.75} + 4 \cdot 0.875^2 e^{0.875} + e\Bigr) = 0.7183215,
+\end{aligned}
+$$
+
+which has the error $0.0000396$. $\quad\square$
+
+Next we present some other closed Newton–Cotes formulas.
+
+**Simpson's $\frac{3}{8}$ formula:**
+
+$$
+\int_{x_0}^{x_3} f(x)\,dx = \frac{3h}{8}\bigl(f(x_0) + 3f(x_1) + 3f(x_2) + f(x_3)\bigr) - \frac{3h^5}{80}f^{(4)}(\xi)
+\tag{7.35}
+$$
+
+**$n = 4$:**
+
+$$
+\int_{x_0}^{x_4} f(x)\,dx = \frac{2h}{45}\bigl(7f(x_0) + 32f(x_1) + 12f(x_2) + 32f(x_3) + 7f(x_4)\bigr) - \frac{8h^7}{945}f^{(6)}(\xi)
+\tag{7.36}
+$$
+
+Finally, we present some open Newton–Cotes formulas:
+
+$$
+\int_{x_{-1}}^{x_1} f(x)\,dx = 2hf(x_0) + \frac{h^3}{3}f''(\xi),
+\tag{7.37}
+$$
+
+$$
+\int_{x_{-1}}^{x_2} f(x)\,dx = \frac{3h}{2}\bigl(f(x_0) + f(x_1)\bigr) + \frac{3h^3}{4}f''(\xi),
+\tag{7.38}
+$$
+
+$$
+\int_{x_{-1}}^{x_3} f(x)\,dx = \frac{4h}{3}\bigl(2f(x_0) - f(x_1) + 2f(x_2)\bigr) + \frac{14h^5}{45}f^{(4)}(\xi),
+\tag{7.39}
+$$
+
+$$
+\int_{x_{-1}}^{x_4} f(x)\,dx = \frac{5h}{24}\bigl(11f(x_0) + f(x_1) + f(x_2) + 11f(x_3)\bigr) + \frac{95h^5}{144}f^{(4)}(\xi).
+\tag{7.40}
+$$
+
+We close this section with the investigation of the numerical stability of the integration.
+
+**Theorem 7.9.** Let $\sum_{i=1}^{n} c_i f(x_i)$ be a quadrature formula which is exact for constant functions and each coefficient $c_i$ is positive. Let $y_i$ be an approximate value of the exact function value $f(x_i)$, and suppose $|y_i - f(x_i)| \leq \varepsilon$. Then
+
+$$
+\left|\sum_{i=1}^{n} c_i f(x_i) - \sum_{i=1}^{n} c_i y_i\right| \leq \varepsilon(b - a).
+$$
+
+*Proof.* According to the assumptions, $(b - a) = \int_a^b 1\,dx = \sum_{i=1}^{n} c_i$, therefore,
+
+$$
+\left|\sum_{i=1}^{n} c_i f(x_i) - \sum_{i=1}^{n} c_i y_i\right| \leq \sum_{i=1}^{n} c_i |f(x_i) - y_i| \leq \varepsilon\sum_{i=1}^{n} c_i = \varepsilon(b - a). \qquad\square
+$$
+
+We note that all quadrature formulas we presented in this section were exact for constant functions, and most of them had positive weights. Therefore, all such formulas are stable for the rounding error.
+
+### Exercises
+
+1. Compute approximate values of the integrals using the trapezoidal rule with step sizes $h = 0.5, 0.25, 0.125$, respectively:
+   - (a) $\int_0^1 \sin^3 x\,dx$,
+   - (b) $\int_1^2 \ln(x + 1)\,dx$,
+   - (c) $\int_1^2 e^{1/x}\,dx$.
+
+2. Repeat Exercise 1 using the Simpson's rule.
+
+3. Repeat Exercise 1 using formulas (7.35)–(7.36).
+
+4. Repeat Exercise 1 using formulas Newton–Cotes Formulas (7.37)–(7.40).
+
+5. Prove that the midpoint formula (7.27) gives back the sum of the areas under tangent lines at the midpoints of the intervals $[x_i, x_{i+1}]$.
+
+6. Show that the midpoint formula is a Newton–Cotes formula, and derive its error term.
+
+7. Derive formulas (7.35)–(7.36) (without computing the error terms).
+
+8. Derive formulas (7.37)–(7.40) (without computing the error terms).
+

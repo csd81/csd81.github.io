@@ -1,0 +1,109 @@
+## 7.2. Richardson's extrapolation
+
+Suppose given a value $M$, and let $K(h)$ be its approximation, where $h$ denotes the discretization parameter of the approximation method. We also suppose that the truncation error of the approximation is known, and it has a special form, the error can be given by an even-order Taylor polynomial (or possibly Taylor series) approximation of the form
+
+$$
+M = K(h) + a_2 h^2 + a_4 h^4 + a_6 h^6 + \cdots + a_{2m} h^{2m} + b(h),
+\tag{7.21}
+$$
+
+where $|b(h)| \leq B h^{2m+2}$ with some constant $B > 0$. The error here is second-order in $h$. Now we present a general method to generate higher order approximation formulas using $K(h)$. Consider relation (7.21) corresponding to parameter $h/2$:
+
+$$
+M = K(h/2) + a_2 \frac{h^2}{4} + a_4 \frac{h^4}{16} + a_6 \frac{h^6}{64} + \cdots + a_{2m}\frac{h^{2m}}{2^{2m}} + b(h/2).
+\tag{7.22}
+$$
+
+Multiplying both sides of (7.22) by 4, and subtracting equation (7.21) from it, the second-order term in $h$ cancels out, and solving it for $M$ we get
+
+$$
+\begin{aligned}
+M ={}& \frac{4K(h/2) - K(h)}{3} - \frac{1}{4}a_4 h^4 - \frac{5}{16}a_6 h^6 \\
+&- \cdots - \frac{2^{2m-2} - 1}{2^{2m-2}\cdot 3}a_{2m}h^{2m} + \frac{4b(h/2) - b(h)}{3}.
+\end{aligned}
+\tag{7.23}
+$$
+
+This relation can be written in the form
+
+$$
+M = K^{(1)}(h) + a_4^{(1)} h^4 + a_6^{(1)} h^6 + \cdots + a_{2m}^{(1)} h^{2m} + b^{(1)}(h),
+\tag{7.24}
+$$
+
+where
+
+$$
+K^{(1)}(h) := \frac{4K(h/2) - K(h)}{3}, \qquad b^{(1)}(h) := \frac{4b(h/2) - b(h)}{3}, \qquad a_{2i}^{(1)} := \frac{1 - 4^{i-1}}{4^{i-1}\cdot 3}a_{2i},
+$$
+
+$i = 2, \ldots, m$. Relation (7.24) yields that formula $K^{(1)}(h)$ approximates $M$ with a fourth-order error in $h$. The previous method can be repeated: we use (7.24) with $h/2$, multiply it by 16, subtract from it equation (7.24), and then solve it for $M$. Then the fourth-order error term cancels out, and we get relation
+
+$$
+M = K^{(2)}(h) + a_6^{(2)} h^6 + \cdots + a_{2m}^{(2)} h^{2m} + b^{(2)}(h),
+\tag{7.25}
+$$
+
+where
+
+$$
+K^{(2)}(h) := \frac{16K^{(1)}(h/2) - K^{(1)}(h)}{15}, \qquad b^{(2)}(h) := \frac{16b^{(1)}(h/2) - b^{(1)}(h)}{15},
+$$
+
+$$
+a_{2i}^{(2)} := \frac{1 - 4^{i-2}}{4^{i-2}\cdot 15}a_{2i}^{(1)}, \qquad i = 3, \ldots, m.
+$$
+
+Relation (7.25) means that $K^{(2)}(h)$ approximates $M$ with a sixth-order error in $h$. The generation of new approximation formulas can be continued as
+
+$$
+K^{(i+1)}(h) := K^{(i)}(h/2) + \frac{K^{(i)}(h/2) - K^{(i)}(h)}{4^{i+1} - 1}, \qquad i = 0, 1, \ldots, m - 1,
+\tag{7.26}
+$$
+
+where $K^{(0)}(h) := K(h)$. This procedure to generate higher order approximation formulas is called **Richardson's extrapolation**. A similar procedure can be applied also in the case when the Taylor expansion of the truncation error contains all powers of $h$ (see Exercises 2 and 3), but later we will use the case presented in this section.
+
+**Example 7.6.** In the previous section we saw that the central difference formula (7.9) is second-order in $h$. Using Taylor's method we get a more precise form of the truncation error. Suppose that $f \in C^{2m+3}$, and consider the following Taylor's expansion:
+
+$$
+f(x_0 + h) = f(x_0) + f'(x_0)h + \cdots + \frac{f^{(2m+2)}(x_0)}{(2m+2)!}h^{2m+2} + \frac{f^{(2m+3)}(\xi_1)}{(2m+3)!}h^{2m+3}.
+$$
+
+We apply the previous relation with $-h$ instead of $h$, subtracting the two equations, and solving it for $f'(x_0)$ we get:
+
+$$
+\begin{aligned}
+f'(x_0) ={}& \frac{f(x_0 + h) - f(x_0 - h)}{2h} - \frac{f'''(x_0)}{3!}h^2 - \frac{f^{(5)}(x_0)}{5!}h^4 \\
+&- \cdots - \frac{f^{(2m+1)}(x_0)}{(2m+1)!}h^{2m} - \frac{f^{(2m+3)}(\xi_1) + f^{(2m+3)}(\xi_2)}{(2m+3)!}h^{2m+2}.
+\end{aligned}
+$$
+
+Hence we have that the central difference satisfies relation (7.21). Therefore, we get a higher order formula using Richardson's extrapolation. We have that formula
+
+$$
+\begin{aligned}
+K^{(1)}(h) &= \frac{4\,\dfrac{f(x_0 + h/2) - f(x_0 - h/2)}{h} - \dfrac{f(x_0 + h) - f(x_0 - h)}{2h}}{3} \\
+&= \frac{f(x_0 - h) - 8f(x_0 - h/2) + 8f(x_0 + h/2) - f(x_0 + h)}{6h}
+\end{aligned}
+$$
+
+has fourth-order error in $h$. We note that this formula is equivalent to (7.11). $\quad\square$
+
+### Exercises
+
+1. Derive a sixth-order approximation formula for the first derivative of a function starting from the central difference formula (7.9) using the Richardson's extrapolation. Apply the formula for approximating the first derivative of $f(x) = e^x \sin x$ at $x = 0$ using step size $h = 0.25$.
+
+2. Reformulate the Richardson's extrapolation for the case when the Taylor expansion of the truncation error contains all powers of $h$, i.e.,
+$$
+M = K(h) + a_1 h + a_2 h^2 + \cdots + a_m h^m + b(x),
+$$
+where $|b(h)| \leq B h^{m+1}$ with some $B > 0$.
+
+3. Reformulate the Richardson's extrapolation for the general case when
+$$
+M = K(h) + a_1 h^{\alpha_1} + a_2 h^{\alpha_2} + \cdots + a_m h^{\alpha_m} + b(x),
+$$
+where $1 \leq \alpha_1 < \alpha_2 < \cdots < \alpha_m$ are integers, and $|b(h)| \leq B h^{\alpha_m + 1}$ with some $B > 0$.
+
+4. Derive a third-order approximation of the first derivative using Richardson's extrapolation starting from the first-order difference formula.
+
