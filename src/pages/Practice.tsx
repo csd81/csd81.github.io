@@ -2,6 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, Route, Routes, useParams } from 'react-router-dom';
 import { useLang } from '../shared/providers/LanguageProvider';
 import { MarkdownView } from '../shared/ui/MarkdownView';
+import { normalizeMath } from '../shared/ui/normalizeMath';
+import {
+  rehypePracticeBoxes, rehypeConceptEm, practiceBoxComponents, prepareStudyGuide,
+} from '../shared/ui/practiceBoxes';
 import { CHAPTERS } from '../chapters/registry';
 import { TOPICS } from './practice/content';
 import { CHEATSHEETS } from './practice/cheatsheets';
@@ -190,6 +194,7 @@ function FlashcardDeck({ cards }: { cards: Flashcard[] }) {
     <div className="flashcards">
       <div className="flashcards__bar">
         <span className="flashcards__count">{pos + 1} / {cards.length}</span>
+        <CopyButton source={`${card.front}\n\n---\n\n${card.back}`} />
         <span className="flashcards__spacer" />
         <button type="button" className="flashcards__btn" onClick={shuffle}>
           {lang === 'hu' ? '🔀 Keverés' : '🔀 Shuffle'}
@@ -353,7 +358,10 @@ function SubsectionGuide() {
           <h2 className="practice__h2">{lang === 'hu' ? '⚡ Rövid összefoglaló' : '⚡ Short summary'}</h2>
           <CopyButton source={lang === 'en' && s.shortEn ? s.shortEn : s.short} />
         </div>
-        <MarkdownView markdown={lang === 'en' && s.shortEn ? s.shortEn : s.short} />
+        <MarkdownView
+          markdown={lang === 'en' && s.shortEn ? s.shortEn : s.short}
+          rehypePlugins={[rehypeConceptEm]}
+        />
       </section>
 
       {(() => {
@@ -364,7 +372,7 @@ function SubsectionGuide() {
               <h2 className="practice__h2">{lang === 'hu' ? '📖 Tankönyv' : '📖 Textbook'}</h2>
               <CopyButton source={book} />
             </div>
-            <MarkdownView markdown={book} />
+            <BoxedMarkdown md={book} />
           </section>
         ) : null;
       })()}
@@ -387,7 +395,7 @@ function SubsectionGuide() {
           {s.study.trim() && <CopyButton source={s.study} />}
         </div>
         {s.study.trim() ? (
-          <MarkdownView markdown={s.study} />
+          <BoxedMarkdown md={prepareStudyGuide(s.study)} />
         ) : (
           <p className="practice__muted">
             {lang === 'hu' ? 'Ehhez az alfejezethez még nincs tananyag.' : 'No study guide for this subsection yet.'}
@@ -419,6 +427,20 @@ function SubsectionGuide() {
         )}
       </nav>
     </div>
+  );
+}
+
+/** Markdown rendered with Szalkai/calculus-style callout boxes (numbered
+ *  theorems/defs/examples/list items boxed, each with a copy button) and
+ *  coloured concept emphasis. */
+function BoxedMarkdown({ md }: { md: string }) {
+  const source = useMemo(() => normalizeMath(md), [md]);
+  return (
+    <MarkdownView
+      markdown={md}
+      components={practiceBoxComponents}
+      rehypePlugins={[[rehypePracticeBoxes, { source }], rehypeConceptEm]}
+    />
   );
 }
 
@@ -459,6 +481,7 @@ function SlideDeck({ markdown }: { markdown: string }) {
           ‹ {lang === 'hu' ? 'Előző' : 'Prev'}
         </button>
         <span className="flashcards__count">{i + 1} / {slides.length}</span>
+        <CopyButton source={slides[i]} />
         <button
           type="button"
           className="flashcards__btn"

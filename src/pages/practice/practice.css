@@ -116,6 +116,58 @@
   margin: 0.8rem 0 0;
 }
 
+/* Szalkai/calculus-style callout boxes (numbered items / glossary / Q&A). */
+.pbox {
+  position: relative;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--pbox-c, var(--brand-500));
+  border-radius: var(--radius-sm, 8px);
+  background: var(--surface-2);
+  padding: 0.7rem 0.9rem 0.7rem 1rem;
+  margin: 0.7rem 0;
+}
+.pbox > :first-child { margin-top: 0; }
+.pbox > :last-child { margin-bottom: 0; }
+.pbox--thm   { --pbox-c: #7c3aed; }
+.pbox--def   { --pbox-c: #2563eb; }
+.pbox--ex    { --pbox-c: #16a34a; }
+.pbox--claim { --pbox-c: #0d9488; }
+.pbox--cor   { --pbox-c: #4f46e5; }
+.pbox--note  { --pbox-c: #6b7280; }
+.pbox--proof { --pbox-c: #64748b; }
+.pbox--algo  { --pbox-c: #b45309; }
+.pbox--num   { --pbox-c: var(--brand-500); }
+.pbox--item  { --pbox-c: #94a3b8; }
+.pbox__num {
+  font-weight: 800;
+  color: var(--pbox-c);
+  margin-right: 0.35rem;
+}
+.pbox__copy {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.4rem;
+  background: var(--surface);
+  border: 1px solid var(--pbox-c, var(--border));
+  color: var(--pbox-c, var(--text));
+  border-radius: 0.3rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.18rem 0.4rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.pbox:hover .pbox__copy,
+.pbox__copy:focus { opacity: 0.9; }
+/* Coloured concept emphasis (short italic runs). */
+.concept {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--brand-700, #b45309);
+}
+
 /* Lecture-video player (16:9, responsive). */
 .subvideo {
   position: relative;
