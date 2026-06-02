@@ -219,4 +219,131 @@ A fenti gondolatmenet lépésein visszafelé haladva látható, hogy minden val�
 
 *1.20. ábra. Az $X$ pont pontosan akkor van az $AB$ egyenesen, ha azon $r$ és $s$ valósokra, melyekre $\overrightarrow{OX} = r\overrightarrow{OA} + s\overrightarrow{OB}$, $r + s = 1$ teljesül. Ezen az ábrán $r = -0.5$, $s = 1.5$.*
 
-<!-- OCR: through PDF p.26 -->
+**1.14. állítás (Intervallum pontjainak jellemzése).** *Legyen $O$, $A$ és $B$ a sík vagy a tér három pontja. Az $r\overrightarrow{OA} + s\overrightarrow{OB}$ vektor pontosan akkor mutat az $A$ és $B$ pontot összekötő szakasz valamely pontjába, ha $r + s = 1$ és $0 \leqslant r, s \leqslant 1$.*
+
+*Bizonyítás.* Megismételjük az előző feladat megoldását azzal a különbséggel, hogy itt a $\overrightarrow{BX} = r\overrightarrow{BA}$ összefüggés csak 0 és 1 közé eső $r$ értékekre igaz. Tehát $\mathbf{x} = r\mathbf{a} + (1-r)\mathbf{b}$, ahol $0 \leqslant r \leqslant 1$. Másként fogalmazva az $\mathbf{a}$ és $\mathbf{b}$ vektorok végpontjait összekötő szakasz összes pontját pontosan azok az $r\mathbf{a} + s\mathbf{b}$ alakú lineáris kombinációk adják, amelyekben $r + s = 1$ és $0 \leqslant r, s \leqslant 1$ (ld. 1.21 ábra). $\square$
+
+Hasonló összefüggés igaz három vektor esetén is, azaz megmutatható, hogy a nem kollineáris $\mathbf{a}$, $\mathbf{b}$ és $\mathbf{c}$ vektorok végpontjaira fektetett sík pontjaiba pontosan azok a vektorok mutatnak, melyeket $r\mathbf{a} + s\mathbf{b} + t\mathbf{c}$ alakba írva $r + s + t = 1$. Ha még azt is kikötjük e három számról, hogy legyen $0 \leqslant r, s, t \leqslant 1$, akkor az $r\mathbf{a} + s\mathbf{b} + t\mathbf{c}$ alakú vektorok a három vektor végpontja által meghatározott háromszög pontjaiba mutatnak (ld. az 1.22. ábrát és az 1.27. feladatot).
+
+Szemléletesen világos, például a mellékelt 1.23. ábráról leolvasható, de nem bizonyítjuk, hogy két tetszőleges nem kollineáris vektor összes olyan lineáris kombinációja, amelyben az együtthatók 0 és 1 közé esnek, egy paralelogrammát ad. Pontosabban fogalmazva egy $r\mathbf{a} + s\mathbf{b}$ alakú vektor végpontja pontosan akkor tartozik az $\mathbf{a}$ és $\mathbf{b}$ által meghatározott (kifeszített) *paralelogrammához*, ha $0 \leqslant r, s \leqslant 1$.
+
+Hasonló mondható három, nem egy síkba eső vektorról: egy $r\mathbf{a} + s\mathbf{b} + t\mathbf{c}$ alakú vektor végpontja pontosan akkor tartozik az $\mathbf{a}$, $\mathbf{b}$ és $\mathbf{c}$ által kifeszített *paralelepipedonhoz*, ha $0 \leqslant r, s, t \leqslant 1$ (1.23. ábra).
+
+*1.21. ábra. Az $X$ pont pontosan akkor van az $AB$ intervallumban, ha valamely 0 és 1 közé eső $r$ és $s$ valósokra $\overrightarrow{OX} = r\overrightarrow{OA} + s\overrightarrow{OB}$, és $r + s = 1$.*
+
+*1.22. ábra. Az $X$ pont pontosan akkor esik az $A$, $B$ és $C$ pontokon átmenő síkba, ha $\overrightarrow{OX} = r\overrightarrow{OA} + s\overrightarrow{OB} + t\overrightarrow{OC}$ és $r + s + t = 1$. Az $X$ az $ABC$ háromszögbe pedig pontosan akkor esik, ha ezen kívül még $0 \leqslant r, s, t \leqslant 1$ is fönnáll.*
+
+*1.23. ábra. A paralelogramma és a paralelepipedon olyan lineáris kombinációkkal állítható elő, ahol az együtthatók 0 és 1 közé esnek.*
+
+## Feladatok
+
+### Ellenőrző kérdések
+
+**1.1.● Vektorok: igaz – hamis.** Melyek igazak, melyek hamisak az alábbi állítások közül?
+- a) Ha az $\mathbf{a}$ és $\mathbf{b}$ vektorok hajlásszöge $\alpha$, akkor $\mathbf{a}$ és $-\mathbf{b}$ hajlásszöge $\pi - \alpha$.
+- b) Ha $A$ és $B$ két adott pont, akkor az $\overrightarrow{OA} + \overrightarrow{OB}$ vektor független az $O$ megválasztásától.
+- c) Ha $A$ és $B$ két adott pont, akkor az $\overrightarrow{OA} - \overrightarrow{OB}$ vektor független az $O$ megválasztásától.
+- d) Ha két vektor egyirányú, akkor egyikük a másik skalárszorosa.
+- e) Ha két vektor egyike a másik skalárszorosa, akkor egyirányúak.
+- f) Ha két vektor egyike a másik skalárszorosa, akkor párhuzamosak.
+
+**1.2.● Lineáris összefüggőség: igaz – hamis.** Melyek igazak, melyek hamisak az alábbi állítások közül?
+- a) Ha három vektor a térben lineárisan összefüggő, akkor bármelyikük a másik kettő lineáris kombinációja.
+- b) Megadható a térben három vektor, hogy egyikük sem lineárisan független a többitől.
+- c) Megadható a térben három vektor, $\mathbf{a}$, $\mathbf{b}$ és $\mathbf{c}$, hogy $\mathbf{a}$ független a $\mathbf{b}$ és $\mathbf{c}$ vektoroktól, de $\mathbf{b}$ nem független az $\mathbf{a}$ és $\mathbf{c}$ vektoroktól.
+- d) A tér bármely legalább 4 vektora lineárisan összefüggő.
+- e) Megadható a térben 5 olyan vektor, melyek közül pontosan kettőre igaz az, hogy független a többi négy vektortól.
+
+**1.3.** Legyen $O$, $A$ és $B$ három tetszőleges nem egy egyenesbe eső pont. Tegyük fel, hogy $P$ eleget tesz az
+$$\overrightarrow{OP} = \frac{1+\sqrt{5}}{2}\overrightarrow{OA} + \frac{1-\sqrt{5}}{2}\overrightarrow{OB}$$
+összefüggésnek. *a)* Egy egyenesbe esnek-e a $P$, $A$ és $B$ pontok? *b)* Az $A$ vagy a $B$ ponthoz esik a $P$ közelebb? *c)* A $P$ pont az $\overline{AB}$ szakasz belsejébe esik? Válaszoljuk meg e három kérdést arra a $P$ pontra is, melyre
+$$\overrightarrow{OP} = \frac{\sqrt{5}-1}{2}\overrightarrow{OA} + \frac{3-\sqrt{5}}{2}\overrightarrow{OB}.$$
+
+**1.4.** Legyen $O$, $A$, $B$ és $C$ négy tetszőleges nem egy síkba eső pont. Tegyük fel, hogy $P$ eleget tesz az
+$$\overrightarrow{OP} = \frac{7}{13}\overrightarrow{OA} - \frac{3}{13}\overrightarrow{OB} + \frac{9}{13}\overrightarrow{OC}$$
+összefüggésnek. *a)* Egy síkba esnek-e a $P$, $A$, $B$ és $C$ pontok? *b)* A $P$ pont az $ABC$ háromszög belsejébe esik?
+
+**1.5.** Benne van-e az $\mathbf{a}$, $\mathbf{b}$ és $\mathbf{c}$ vektorok által kifeszített paralelepipedon belsejében a $\frac{2}{9}\mathbf{a} + \frac{3}{9}\mathbf{b} + \frac{2}{9}\mathbf{c}$ vektor végpontja?
+
+### Vektorműveletek a 2- és 3-dimenziós térben
+
+**1.6.** Egy matematikán kívüli szemléltetés a vektor fogalmához: hogyan fejeznénk be az alábbi hasonlatot? „Ha az irányított szakasz a hal, akkor a vektor a…"
+
+*Ábra: halrajok (irányított szakaszok mint halak).*
+
+**1.7.** Adva van a síkban két tetszőleges vektor, $\mathbf{a}$ és $\mathbf{b}$. Szerkesszük meg a következő vektorokat: *a)* $\mathbf{c} = 2\mathbf{a} + \mathbf{b}$, *b)* $\mathbf{d} = 2\mathbf{a} - \mathbf{b}$, *c)* $\mathbf{e} = \frac{2}{3}\mathbf{a} + \frac{1}{2}\mathbf{b}$, *d)* $\mathbf{f} = \frac{2}{3}\mathbf{a} + \frac{3}{5}\mathbf{b}$.
+
+**1.8.** Legyen $\mathbf{u} = \mathbf{a} + \mathbf{b}$, $\mathbf{v} = \mathbf{a} - \mathbf{b}$. Fejezzük ki az $\mathbf{a}$ és $\mathbf{b}$ vektor segítségével a következő vektorokat: *a)* $2\mathbf{u} + 2\mathbf{v}$, *b)* $3\mathbf{u} - 3\mathbf{v}$, *c)* $3\mathbf{u} - \mathbf{v}$, *d)* $2\mathbf{u} - \frac{1}{2}\mathbf{v}$.
+
+**1.9.** Tekintsük az $ABCD$ négyzetet. Határozzuk meg a következő összegeket! *a)* $\overrightarrow{AB} + \overrightarrow{CD}$, *b)* $\overrightarrow{AB} + \overrightarrow{BC} + \overrightarrow{CD}$, *c)* $\overrightarrow{AB} - \overrightarrow{AC}$, *d)* $\overrightarrow{AC} + \overrightarrow{DB}$, *e)* $\overrightarrow{AC} - \overrightarrow{DB}$, *f)* $\overrightarrow{DC} - \overrightarrow{DB}$, *g)* $2\overrightarrow{AB} + \overrightarrow{BD}$.
+
+**1.10.** Tekintsük az $ABCD$ négyzetet. Jelölje a $BC$ oldal felezőpontját $E$, a $CD$ oldal felezőpontját $O$. Fejezzük ki az egymásra merőleges $\mathbf{b} = \overrightarrow{AB}$ és $\mathbf{d} = \overrightarrow{AD}$ vektorok segítségével az $\overrightarrow{AE}$, $\overrightarrow{AF}$, $\overrightarrow{AO}$, $\overrightarrow{EF}$, $\overrightarrow{OF}$ vektorokat!
+
+**1.11.** Tekintsük az $ABCDEF$ tetraédert! Határozzuk meg az
+- a) $\overrightarrow{AB} + \overrightarrow{BC} + \overrightarrow{CD} + \overrightarrow{DA}$,
+- b) $\overrightarrow{AB} - \overrightarrow{CB} + \overrightarrow{CD} - \overrightarrow{AD}$,
+- c) $\overrightarrow{AD} - \overrightarrow{AC} - \overrightarrow{BD}$
+
+vektorokat.
+
+**1.12.** Tekintsük a szabályos $ABCDEF$ hatszöget, melynek geometriai középpontját jelölje $O$. Fejezzük ki az $\mathbf{a} = \overrightarrow{OA}$ és $\mathbf{b} = \overrightarrow{OB}$ vektorok segítségével az *a)* $\overrightarrow{OC}$, *b)* $\overrightarrow{OE}$, *c)* $\overrightarrow{OF}$, *d)* $\overrightarrow{AC}$, *e)* $\overrightarrow{BD}$, *f)* $\overrightarrow{BF}$, *g)* $\overrightarrow{AB} + \overrightarrow{CD} + \overrightarrow{EF}$ vektorokat!
+
+**1.13.● ** Adva van $n$ tetszőleges, nem feltétlenül különböző $P_1, P_2, \ldots, P_n$ pont a térben. Mivel egyenlő a
+$$\overrightarrow{P_1P_2} + \overrightarrow{P_2P_3} + \overrightarrow{P_3P_4} + \ldots + \overrightarrow{P_{n-1}P_n}$$
+és a
+$$\overrightarrow{P_1P_2} + \overrightarrow{P_2P_3} + \overrightarrow{P_3P_4} + \ldots + \overrightarrow{P_{n-1}P_n} + \overrightarrow{P_nP_1}$$
+összeg?
+
+**1.14.** Mutassuk meg, hogy az $\mathbf{a}$, $\mathbf{b}$ és $\mathbf{c}$ vektorok pontosan akkor lehetnek egy (esetleg szakasszá vagy ponttá elfajuló) háromszög oldalvektorai, ha az
+$$\mathbf{a} + \mathbf{b} + \mathbf{c}, \quad \mathbf{a} + \mathbf{b} - \mathbf{c}, \quad \mathbf{a} - \mathbf{b} + \mathbf{c}, \quad \mathbf{a} - \mathbf{b} - \mathbf{c}$$
+vektorok legalább egyike zérus. Másként fogalmazva: ha a három vektor összege $\mathbf{0}$, vagy valamelyik vektor egyenlő a másik kettő összegével.
+
+**1.15.** Legyen $\mathbf{a}$ és $\mathbf{b}$ két tetszőleges vektor. Mutassuk meg, hogy van olyan (esetleg elfajuló) háromszög, melynek oldalvektorai $2\mathbf{a} - \mathbf{b}$, $\mathbf{a} + 2\mathbf{b}$ és $3\mathbf{a} + \mathbf{b}$.
+
+### Lineáris kombináció, lineáris függetlenség
+
+**1.16. Súlyvonal.** Fejezzük ki az $ABC$ háromszög ($A$, $B$, illetve $C$ csúcsból induló) három súlyvonal-vektorát az $\mathbf{a} = \overrightarrow{CA}$ és $\mathbf{b} = \overrightarrow{CB}$ vektorok lineáris kombinációjaként! Lehet-e e három vektor egy háromszög három oldalvektora?
+
+**1.17.** Legyen $P_1 P_2 \ldots P_n$ egy szabályos $n$-szög, középpontját jelölje $O$. Nyilvánvaló, hogy az $\overrightarrow{OP_1} + \overrightarrow{OP_2} + \cdots + \overrightarrow{OP_n}$ összeg $\mathbf{0}$, ha $n$ páros. Vajon $\mathbf{0}$-e az összeg akkor is, ha $n$ páratlan?
+
+**1.18. Négyszög oldalfelezői.** Vektoralgebrai eszközökkel igazoljuk, hogy egy tetszőleges (akár térbeli) négyszög oldalfelező pontjai paralelogrammát alkotnak.
+
+**1.19.** Legyen $P_1 P_2 \ldots P_n$ egy tetszőleges páratlan csúcsú síkbeli $n$-szög, legyen $O$ egy tetszőleges pontja, és legyen $F_k$ a $P_k P_{k+1}$ szakasz felezőpontja ($k = 1, 2, \ldots, n-1$), illetve $F_n$ a $P_n P_1$ felezőpontja. Fejezzük ki az $\overrightarrow{OP_1}$ vektort az $\overrightarrow{OF_k}$ vektorok lineáris kombinációjaként!
+
+**1.20.** Legyen az $\{\mathbf{a}, \mathbf{b}, \mathbf{c}\}$ vektorrendszer lineárisan független, és legyen $\mathbf{v} = c_1\mathbf{a} + c_2\mathbf{b} + c_3\mathbf{c}$, $\mathbf{w} = d_1\mathbf{a} + d_2\mathbf{b} + d_3\mathbf{c}$ két lineáris kombináció, ahol $d_1$, $d_2$, $d_3$ egyike sem 0. Igazoljuk, hogy $\mathbf{v}$ és $\mathbf{w}$ akkor és csak akkor lineárisan összefüggők (kollineárisak), ha $\frac{c_1}{d_1} = \frac{c_2}{d_2} = \frac{c_3}{d_3}$.
+
+**1.21.** Az alábbi $\mathbf{v}$ és $\mathbf{w}$ vektorok a $c$ és $d$ paraméterek mely értékeinél lineárisan összefüggők, ha $\mathbf{a}$, $\mathbf{b}$ és $\mathbf{c}$ lineárisan függetlenek?
+- a) $\mathbf{v} = 3\mathbf{a} + 2\mathbf{b}$, $\mathbf{w} = 6\mathbf{a} + c\mathbf{b}$
+- b) $\mathbf{v} = 2\mathbf{a} + c\mathbf{b} - \mathbf{c}$, $\mathbf{w} = 4\mathbf{a} + 2c\mathbf{b} - 2\mathbf{c}$
+- c) $\mathbf{v} = -2\mathbf{a} + c\mathbf{c}$, $\mathbf{w} = c\mathbf{a} + \mathbf{b} - \mathbf{c}$
+- d) $\mathbf{v} = \mathbf{a} + c\mathbf{b} + d\mathbf{c}$, $\mathbf{w} = 3\mathbf{a} + d\mathbf{b} + 6\mathbf{c}$
+- e) $\mathbf{v} = \mathbf{a} + c\mathbf{b} + d\mathbf{c}$, $\mathbf{w} = 3\mathbf{a} + 3d\mathbf{b} + 3c\mathbf{c}$
+- f) $\mathbf{v} = \mathbf{a} - c\mathbf{b} + d\mathbf{c}$, $\mathbf{w} = 2\mathbf{a} - 2c\mathbf{b} + 4\mathbf{c}$
+
+**1.22.** Függetlenek-e az $\mathbf{r}$, $\mathbf{s}$, $\mathbf{t}$ vektorok, ha $\mathbf{a}$, $\mathbf{b}$ és $\mathbf{c}$ lineárisan függetlenek?
+- a) $\mathbf{r} = \mathbf{a} + 2\mathbf{b} + \mathbf{c}$, $\mathbf{s} = \mathbf{a} - 3\mathbf{b} - \mathbf{c}$, $\mathbf{t} = \mathbf{0}$
+- b) $\mathbf{r} = \mathbf{a} + \mathbf{b} + \mathbf{c}$, $\mathbf{s} = \mathbf{b} + \mathbf{c}$, $\mathbf{t} = \mathbf{c}$
+- c) $\mathbf{r} = \mathbf{a} + \mathbf{b} + \mathbf{c}$, $\mathbf{s} = \mathbf{a} - \mathbf{b}$, $\mathbf{t} = 2\mathbf{a} + \mathbf{c}$
+- d) $\mathbf{r} = \mathbf{a} + 2\mathbf{b} - \mathbf{c}$, $\mathbf{s} = \mathbf{a} - 3\mathbf{b} - \mathbf{c}$, $\mathbf{t} = \mathbf{a} - \mathbf{b} - \mathbf{c}$
+
+**1.23.✶** Jelölje az $ABCD$ paralelogramma $BC$ oldalának felezőpontját $E$, a $CD$ oldalét $F$, az $AE$ és $BF$ szakaszok metszéspontját $M$. Állítsuk elő az $\overrightarrow{AM}$ vektort az $\mathbf{b} = \overrightarrow{AB}$ és $\mathbf{d} = \overrightarrow{AD}$ vektorok lineáris kombinációjaként!
+
+### Speciális lineáris kombinációk
+
+**1.24.● Szakaszt $m:n$ arányban osztó pont.** Ha az $\overline{AB}$ szakaszt a $P$ pont úgy bontja ketté, hogy $|\overline{AP}| : |\overline{PB}| = m : n$, akkor bármely $O$ pontra igaz, hogy
+$$\overrightarrow{OP} = \frac{n}{m+n}\overrightarrow{OA} + \frac{m}{m+n}\overrightarrow{OB}.$$
+Speciálisan, az $\overline{AB}$ szakasz felezőpontjába az
+$$\frac{\overrightarrow{OA} + \overrightarrow{OB}}{2}$$
+vektor mutat.
+
+**1.25. Háromszög súlypontja.** Igazoljuk, hogy a háromszög súlyvonalai egy pontban (melyet súlypontnak nevezünk), harmadolva metszik egymást! Egy tetszőleges (akár térbeli) $O$ pontból a súlypontba mutató vektor a csúcsokba mutató vektorok összegének harmada.
+
+**1.26. Tetraéder súlypontja.** Igazoljuk, hogy a tetraéder súlyvonalai egy ponton mennek át, és negyedelve metszik egymást! E metszéspontot nevezzük a tetraéder súlypontjának. Egy tetszőleges $O$ pontból a súlypontba mutató vektor a csúcsokba mutató vektorok összegének negyede.
+
+**1.27. Háromszög pontjaiba mutató vektorok.** Igazoljuk, hogy tetszőleges $A$, $B$, $C$ és a tőlük különböző $O$ pontra egy $P$ pont pontosan akkor esik az $ABC$ háromszög belsejébe, ha van olyan
+$$\overrightarrow{OP} = a\overrightarrow{OA} + b\overrightarrow{OB} + c\overrightarrow{OC}$$
+lineáris kombináció, hogy $0 \leqslant a, b, c \leqslant 1$ és $a + b + c = 1$.
+
+**1.28.** Az $ABC$ derékszögű háromszög $C$ csúcsból induló magasságvonala messe az $AB$ átfogót a $D$ pontban. Jelölje a két befogó hosszát $a$ és $b$. Állítsuk elő a $\overrightarrow{CD}$ vektort a $\overrightarrow{CA}$ és $\overrightarrow{CB}$ vektorok lineáris kombinációjaként csak e két számadatot felhasználva.
+
+<!-- OCR: through PDF p.29 -->
