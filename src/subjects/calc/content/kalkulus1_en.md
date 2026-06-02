@@ -2151,3 +2151,830 @@ $$
 $$
 \left|\int_a^b f\right| \le \int_a^b |f|.
 $$
+
+**4.7.4. Theorem.** *If $f$ is integrable on the interval $[a,b]$ and $c \in (a,b)$, then $f$ is also integrable on $[a,c]$ and $[c,b]$, and*
+
+$$
+\int_a^b f=\int_a^c f+\int_c^b f.
+$$
+
+## 4.8. Calculation of the Riemann integral
+
+From the point of view of calculating the Riemann integral, the following theorem is of fundamental importance.
+
+**4.8.1. Theorem (Newton-Leibniz rule).** *If $f$ is integrable on the interval $[a,b] \subset \mathbb{R}$, $F$ is continuous on $[a,b]$, furthermore $F$ is a primitive function of $f$ on $(a,b)$, then*
+
+$$
+\int_a^b f(x)\,dx=F(b)-F(a).
+$$
+
+**4.8.2. Definition.** Let $[a,b] \subset \mathbb{R}$ be an interval. The difference $F(b)-F(a)$ is denoted by the symbol $[F(x)]_a^b$, and is called the *change* of the function $F$ on the interval $[a,b]$.
+
+The Newton-Leibniz rule can be verified with the help of Lagrange's mean value theorem.
+
+**4.8.3. Example.** According to the Newton-Leibniz rule
+
+$$
+\int_2^3 x^2\,dx
+=\left[\frac{x^3}{3}\right]_2^3
+=\frac{3^3}{3}-\frac{2^3}{3}
+=\frac{27}{3}-\frac{8}{3}
+=\frac{19}{3}.
+$$
+
+Integration by parts can be reformulated for definite integrals as follows.
+
+<!-- PDF page 46 -->
+
+**4.8.4. Theorem (Integration by parts).** *If $f$ and $g$ are continuously differentiable on the interval $[a,b] \subset \mathbb{R}$, then*
+
+$$
+\int_a^b f'(x)g(x)\,dx=[f(x)g(x)]_a^b-\int_a^b f(x)g'(x)\,dx.
+$$
+
+**4.8.5. Example.**
+
+$$
+\begin{aligned}
+\int_1^2 \ln x\,dx
+&=\int_1^2 1\cdot \ln x\,dx
+=\int_1^2 (x)'\ln x\,dx \\
+&=[x\ln x]_1^2-\int_1^2 x\frac{1}{x}\,dx
+=2\ln 2-\int_1^2 1\,dx \\
+&=2\ln 2-[x]_1^2
+=2\ln 2-1.
+\end{aligned}
+$$
+
+Let us introduce the following notation.
+
+**4.8.6. Definition.** For any $a \in D(f)$, let
+
+$$
+\int_a^a f=0,
+$$
+
+furthermore for $b<a$
+
+$$
+\int_a^b f=-\int_b^a f,
+$$
+
+provided that $f$ is integrable on the interval $[b,a] \subset \mathbb{R}$.
+
+**4.8.7. Theorem (Integration by substitution).** *Suppose that $g$ is not constant and is continuously differentiable on the interval $[a,b] \subset \mathbb{R}$ and $f$ is continuous on the interval $g([a,b])$. Then*
+
+$$
+\int_{g(a)}^{g(b)} f(x)\,dx=\int_a^b f(g(u))g'(u)\,du.
+$$
+
+**4.8.8. Example.** With the substitution $2-x=u$, or $x=g(u)=2-u$ we get that
+
+$$
+\begin{aligned}
+\int_0^1 \frac{x}{\sqrt{2-x}}\,dx
+&=-\int_{g(1)}^{g(2)}\frac{x}{\sqrt{2-x}}\,dx
+=\int_1^2 \frac{2-u}{\sqrt{u}}\,du \\
+&=\int_1^2 \left(\frac{2}{\sqrt{u}}-\sqrt{u}\right)\,du
+=\left[4\sqrt{u}-\frac{2}{3}\sqrt{u^3}\right]_1^2 \\
+&=4(\sqrt{2}-1)-\frac{2}{3}(\sqrt{8}-1).
+\end{aligned}
+$$
+
+## 4.9. The integral function
+
+**4.9.1. Definition.** Let $I \subset \mathbb{R}$ be an interval, and suppose that $f$ is integrable on any closed subinterval of $I$. For a fixed $c \in I$, let
+
+$$
+G(x)=\int_c^x f, \qquad \text{if } x \in I.
+$$
+
+The function $G : I \to \mathbb{R}$ is called the *integral function* of the function $f$ belonging to the point $c$.
+
+<!-- PDF page 47 -->
+
+If $f$ is integrable on every closed subinterval of $I$, then for arbitrary $c,d,x \in I$
+
+$$
+\int_c^x f=\int_d^x f+\int_c^d f.
+$$
+
+Therefore if $G$ is an integral function of the function $f$ belonging to some point $c \in I$, then an integral function of $f$ belonging to any other point is of the form $G+k$, where $k$ is a constant.
+
+The next theorems describe two important properties of the integral function.
+
+**4.9.2. Theorem.** *If $G$ is an integral function of $f$ belonging to some point $c \in I$ on the interval $I \subset \mathbb{R}$, then $G$ is continuous on $I$.*
+
+**4.9.3. Theorem.** *Let $G$ be an integral function of $f$ belonging to some point $c \in I$ on the interval $I \subset \mathbb{R}$, and $a \in I$. If $a$ is not a right (left) endpoint of $I$, and $f$ is continuous from the right (left) here, then $G$ is differentiable from the right (left) at the point $a$, and*
+
+$$
+G'_+(a)=f(a) \qquad (G'_-(a)=f(a)).
+$$
+
+An important consequence of the previous theorem is that every continuous function has a primitive function. More precisely:
+
+**4.9.4. Theorem.** *If $f$ is continuous on the interval $I \subset \mathbb{R}$, then it has a primitive function here, and its primitive functions coincide with its integral functions.*
+
+## 4.10. The improper integral
+
+Two fundamental disadvantages of the Riemann integral are that it is defined only on a bounded interval and only for bounded functions. A possible extension of the definition of integrability to unbounded functions and unbounded intervals is the following:
+
+**4.10.1. Definition.** Let $a,b \in \overline{\mathbb{R}}$, $a<b$, and suppose that $f$ is integrable on every closed subinterval of the interval $(a,b)$. We say that the *improper integral* of the function $f$ on $(a,b)$ is *convergent*, if for the integral function
+
+$$
+G(x)=\int_c^x f, \qquad \text{if } x \in (a,b),
+$$
+
+belonging to some point $c \in (a,b)$, the limits
+
+$$
+\lim_{x \to a+}G(x) \qquad \text{and} \qquad \lim_{x \to b-}G(x)
+$$
+
+exist and are finite. Then the number
+
+$$
+I=\lim_{x \to b-}G(x)-\lim_{x \to a+}G(x)
+=\lim_{x \to b-}\int_c^x f+\lim_{x \to a+}\int_x^c f
+$$
+
+is called the *improper integral* of the function $f$ on $(a,b)$, and is denoted by the symbol
+
+$$
+\int_a^b f, \qquad \text{or} \qquad \int_a^b f(x)\,dx.
+$$
+
+If the improper integral of $f$ on $(a,b)$ is not convergent, then we say it is *divergent*.
+
+<!-- PDF page 48 -->
+
+The word "improper" is of Latin origin and means "not genuine".
+
+The fact that we denote the value of the improper integral by the same symbol $\int_a^b f$ as the Riemann integral does not cause confusion, because the following is true:
+
+**4.10.2. Theorem.** *Let $a,b \in \mathbb{R}$, $a<b$, and $f$ be bounded on $[a,b]$. Then the improper integral of $f$ on $(a,b)$ is the number $I$ if and only if $f$ is integrable (in the sense of Riemann) on $[a,b]$, and its integral is $I$.*
+
+If $a \in \mathbb{R}$ and $f$ is bounded in a right or left neighborhood of $a$, then we can characterize the improper integral more simply.
+
+**4.10.3. Theorem.** *Let $a \in \mathbb{R}$, $b \in \overline{\mathbb{R}}$ ($a \in \overline{\mathbb{R}}$, $b \in \mathbb{R}$), $a<b$. Suppose that $f$ is bounded in a right neighborhood of $a$ (in a left neighborhood of $b$), furthermore $f$ is integrable on every closed subinterval of $(a,b)$. The improper integral of the function $f$ on $(a,b)$ is convergent if and only if the limit*
+
+$$
+\lim_{x \to b-}\int_a^x f
+\qquad
+\left(\lim_{x \to a+}\int_x^b f\right)
+$$
+
+*exists and is finite, and in case of convergence*
+
+$$
+\int_a^b f=\lim_{x \to b-}\int_a^x f
+\qquad
+\left(\int_a^b f=\lim_{x \to a+}\int_x^b f\right).
+$$
+
+The Newton-Leibniz rule can also be modified to calculate improper integrals.
+
+**4.10.4. Theorem.** *Let $a,b \in \overline{\mathbb{R}}$, $a<b$, $f$ be integrable on every closed subinterval of $(a,b)$, and suppose that $F$ is a primitive function of $f$ on $(a,b)$. Then the improper integral of $f$ on $(a,b)$ is convergent if and only if the limits*
+
+$$
+\lim_{x \to a+}F(x) \qquad \text{and} \qquad \lim_{x \to b-}F(x)
+$$
+
+*exist and are finite, and in case of convergence*
+
+$$
+\int_a^b f=\lim_{x \to b-}F(x)-\lim_{x \to a+}F(x).
+$$
+
+**4.10.5. Definition.** Similar to the function change, the difference
+
+$$
+\lim_{x \to b-}F(x)-\lim_{x \to a+}F(x)
+$$
+
+(provided that the left and right limits exist and are finite) is denoted by the symbol
+
+$$
+[F(x)]_{a+}^{b-}
+$$
+
+<!-- PDF page 49 -->
+
+**4.10.6. Example.** According to the previous theorem
+
+$$
+\int_0^1 \frac{1}{\sqrt{x}}\,dx
+=[2\sqrt{x}]_{0+}^{1-}
+=\lim_{x \to 1-}2\sqrt{x}-\lim_{x \to 0+}2\sqrt{x}
+=2.
+$$
+
+We note that this integral does not exist in the Riemann sense, because due to
+
+$$
+\lim_{x \to 0+}\frac{1}{\sqrt{x}}=+\infty
+$$
+
+the integrand is not bounded.
+
+**4.10.7. Example.**
+
+$$
+\int_{-\infty}^{\infty}\frac{1}{1+x^2}\,dx
+=\lim_{x \to \infty}\arctan x-\lim_{x \to -\infty}\arctan x
+=\pi.
+$$
+
+A frequently useful sufficient condition for the convergence of an improper integral is the following:
+
+**4.10.8. Theorem.** *Let $a,b \in \overline{\mathbb{R}}$, $a<b$. If $f$ and $g$ are integrable on every closed subinterval of $(a,b)$, furthermore $|f| \le g$ on $(a,b)$, and the improper integral*
+
+$$
+\int_a^b g
+$$
+
+*is convergent, then the improper integral*
+
+$$
+\int_a^b f
+$$
+
+*is also convergent.*
+
+**4.10.9. Example.** The improper integral
+
+$$
+\int_1^\infty \frac{\sin x}{x^2}\,dx
+$$
+
+is convergent, because
+
+$$
+\left|\frac{\sin x}{x^2}\right| \le \frac{1}{x^2}, \qquad \text{if } x \in (1,\infty),
+$$
+
+and the improper integral
+
+$$
+\int_1^\infty \frac{1}{x^2}\,dx
+=\left[-\frac{1}{x}\right]_1^\infty
+=\lim_{x \to \infty}\left(-\frac{1}{x}\right)+1
+=1
+$$
+
+is convergent.
+
+<!-- PDF page 50 -->
+
+## 4.11. Some applications of integral calculus
+
+The Riemann integral can be well used to calculate the area of plane regions and the volume of solids of revolution. (We will return to a more detailed discussion of the concepts of area and volume later.)
+
+**4.11.1. Theorem (Area calculation).** *Let $[a,b] \subset \mathbb{R}$. Suppose that $f$ and $g$ are continuous functions on $[a,b]$ for which $g \le f$ on $[a,b]$. The area of the plane region which is bounded from above by the graph of $f$, from below by the graph of $g$, and from the sides by the lines $x=a$ and $x=b$ (see the following figure) is:*
+
+$$
+T=\int_a^b (f(x)-g(x))\,dx.
+$$
+
+![Figure 4.2](pages_300/page-50.png)
+
+**4.11.2. Example.** The area $T$ of the plane region bounded from above by the graph of the function $f(x)=\sqrt{x}$, and from below by $g(x)=x^2$ (on the interval $[0,1]$) is:
+
+$$
+T=\int_0^1(\sqrt{x}-x^2)\,dx
+=\left[\frac{2}{3}\sqrt{x^3}-\frac{x^3}{3}\right]_0^1
+=\frac{2}{3}-\frac{1}{3}
+=\frac{1}{3}.
+$$
+
+**4.11.3. Theorem (Volume of a solid of revolution).** *If $f$ is a non-negative continuous function on the interval $[a,b] \subset \mathbb{R}$, then the volume of the solid generated by revolving the graph of $f$ around the $x$-axis (see the following figure) is:*
+
+$$
+V=\pi\int_a^b f^2(x)\,dx.
+$$
+
+<!-- PDF page 51 -->
+
+![Figure 4.3](pages_300/page-51.png)
+
+**4.11.4. Example.** The volume of the solid generated by revolving the graph of the function $f(x)=1+e^x$, $x \in [0,2]$ around the $x$-axis is:
+
+$$
+\begin{aligned}
+V
+&=\pi\int_0^2 (1+e^x)^2\,dx
+=\pi\int_0^2 (1+2e^x+e^{2x})\,dx \\
+&=\pi\left[x+2e^x+\frac{e^{2x}}{2}\right]_0^2
+=2\pi e^2+\frac{\pi(e^4-1)}{2}.
+\end{aligned}
+$$
+
+With the help of the Riemann integral, we can also calculate the arc length of a function graph. The definition of arc length is the following:
+
+**4.11.5. Definition.** Let a function $f$ be given on the interval $[a,b] \subset \mathbb{R}$. If $\Phi=\{x_0,\ldots,x_k\}$ is a partition of $[a,b]$, then the segments connecting the pairs of points $(x_{i-1},f(x_{i-1}))$ and $(x_i,f(x_i))$ of the graph of $f$ ($i \in \{1,\ldots,k\}$) form a *broken line* (*polygon*), the length of which is:
+
+$$
+\ell_\Phi=\sum_{i=1}^k \sqrt{(x_i-x_{i-1})^2+(f(x_i)-f(x_{i-1}))^2}.
+$$
+
+If
+
+$$
+\ell=\sup\{\ell_\Phi \mid \Phi \text{ is a partition of } [a,b]\}<\infty,
+$$
+
+then the graph of $f$ is said to be *rectifiable*, and the number $\ell$ is called the *arc length* of the graph.
+
+**4.11.6. Theorem (Arc length of a function graph).** *If $f$ is continuously differentiable on the interval $[a,b] \subset \mathbb{R}$, then the graph of $f$ is rectifiable, and its arc length is:*
+
+$$
+\ell=\int_a^b \sqrt{1+(f'(x))^2}\,dx.
+$$
+
+**4.11.7. Example.** The derivative of the function $f(x)=\frac{2}{3}\sqrt{(1+x)^3}$ on the interval $[0,1]$ is:
+
+$$
+f'(x)=\sqrt{1+x}, \qquad x \in [0,1].
+$$
+
+<!-- PDF page 52 -->
+
+Therefore the arc length of the graph of $f$ is:
+
+$$
+\ell=\int_0^1 \sqrt{2+x}\,dx
+=\left[\frac{2}{3}\sqrt{(2+x)^3}\right]_0^1
+=\frac{2}{3}(\sqrt{27}-\sqrt{8}).
+$$
+
+<!-- PDF page 53 -->
+
+# Chapter 5
+
+# An electrical engineering problem
+
+## 5.1. Series RLC circuit
+
+If we connect an $R$ ohm resistor, an $L$ inductance coil and a $C$ capacitance capacitor in series to an alternating current power source, we obtain the so-called series RLC circuit [1]:
+
+![Figure 5.1](pages_300/page-53.png)
+
+Suppose that $R$, $L$, $C$ are constant values. Let $E(t)$ denote the "external" voltage supplied to the circuit by the power source at time $t$, $I(t)$ the current flowing in the circuit, and $Q(t)$ the charge of the capacitor. Then a self-induction voltage $L\frac{dI}{dt}$ appears across the coil, and a voltage $Q/C$ across the capacitor, therefore according to Kirchhoff's second law
+
+$$
+E=L\frac{dI}{dt}+\frac{Q}{C}+RI.
+$$
+
+Taking into account the relation $I=\frac{dQ}{dt}=Q'$, we obtain that
+
+$$
+LQ''(t)+RQ'(t)+\frac{1}{C}Q(t)=E(t).
+$$
+
+The initial values belonging to this second order differential equation are:
+
+$$
+Q(0)=Q_0, \qquad Q'(0)=I(0)=I_0.
+$$
+
+We will examine this problem with the help of the Laplace transform introduced in the next section.
+
+<!-- PDF page 54 -->
+
+## 5.2. Complex functions of a real variable
+
+For any $(x,y)$, $(u,v) \in \mathbb{R}^2$, let
+
+$$
+(x,y)+(u,v)=(x+u,y+v),
+$$
+
+$$
+(x,y)\cdot(u,v)=(xu-yv,xv+yu).
+$$
+
+The set $\mathbb{R}^2$ with the operations of addition and multiplication defined by the above formulas is called the *field of complex numbers*, and is denoted by $\mathbb{C}$. The complex number $i=(0,1)$ is the *imaginary unit*. If we identify the complex numbers of the form $(x,0)$ with the real number $x$, then $i^2=-1$, furthermore any complex number $z=(x,y)$ can be written in the *algebraic form* $z=x+iy$, where $x=\operatorname{Re} z$ is the *real part* of the number $z$, and $y=\operatorname{Im} z$ is the *imaginary part* of $z$. The *absolute value* (*modulus*) of the number $z=x+iy$ is
+
+$$
+|z|=\sqrt{x^2+y^2},
+$$
+
+and its conjugate is
+
+$$
+\overline{z}=x-iy.
+$$
+
+Any complex number $0 \ne z=x+iy$ can also be written in the
+
+$$
+z=r[\cos\varphi+i\sin\varphi]
+$$
+
+*trigonometric form*, where $r=|z|$, and $\varphi \in \mathbb{R}$ (the argument of $z$) is such that $\cos\varphi=\frac{x}{r}$ and $\sin\varphi=\frac{y}{r}$. If
+
+$$
+z_1=r_1[\cos\varphi_1+i\sin\varphi_1]
+\qquad \text{and} \qquad
+z_2=r_2[\cos\varphi_2+i\sin\varphi_2]
+$$
+
+are two non-zero complex numbers written in trigonometric form, then
+
+$$
+z_1z_2=r_1r_2[\cos(\varphi_1+\varphi_2)+i\sin(\varphi_1+\varphi_2)],
+$$
+
+$$
+\frac{z_1}{z_2}=\frac{r_1}{r_2}[\cos(\varphi_1-\varphi_2)+i\sin(\varphi_1-\varphi_2)].
+$$
+
+From the first relation we get that if $z=r[\cos\varphi+i\sin\varphi]$ and $n \in \mathbb{N}^+$, then
+
+$$
+z^n=r^n[\cos(n\varphi)+i\sin(n\varphi)].
+$$
+
+This is de Moivre's theorem.
+
+The definitions of finite limit, continuity, differentiability and integrability of complex functions of a real variable, i.e., functions of type $\mathbb{R} \to \mathbb{C}$, can be reduced to the corresponding definitions of functions of type $\mathbb{R} \to \mathbb{R}$ already discussed earlier. If $f : \mathbb{R} \to \mathbb{C}$, then for $t \in D(f)$
+
+$$
+f(t)=\operatorname{Re} f(t)+i\operatorname{Im} f(t).
+$$
+
+The functions $\operatorname{Re} f$ and $\operatorname{Im} f$ defined by the formulas
+
+$$
+(\operatorname{Re} f)(t)=\operatorname{Re} f(t), \qquad
+(\operatorname{Im} f)(t)=\operatorname{Im} f(t), \qquad t \in D(f),
+$$
+
+<!-- PDF page 55 -->
+
+are called the *real part* of $f$, respectively the *imaginary part* of $f$.
+
+The number $c \in \mathbb{C}$ is the limit of $f$ at the point $a \in \mathbb{R}$, in notation $\lim_{t \to a} f(t)=c$, if
+
+$$
+\lim_{t \to a}(\operatorname{Re} f)(t)=\operatorname{Re} c,
+\qquad \text{and} \qquad
+\lim_{t \to a}(\operatorname{Im} f)(t)=\operatorname{Im} c.
+$$
+
+So
+
+$$
+\lim_{t \to a} f(t)
+=\lim_{t \to a}(\operatorname{Re} f)(t)
++i\lim_{t \to a}(\operatorname{Im} f)(t),
+$$
+
+provided that the limits on the right side exist and are finite.
+
+The function $f$ is continuous at the point $a \in D(f)$ or on the interval $I \subset D(f)$ if and only if the functions $\operatorname{Re} f$ and $\operatorname{Im} f$ are such.
+
+The differential quotient of the function $f$ at the point $a \in D(f)$ is
+
+$$
+f'(a)=(\operatorname{Re} f)'(a)+i(\operatorname{Im} f)'(a),
+$$
+
+provided that the differential quotients on the right side exist.
+
+The function $f$ is integrable on the interval $[a,b] \subset \mathbb{R}$ if and only if the functions $\operatorname{Re} f$ and $\operatorname{Im} f$ are such, and in case of integrability
+
+$$
+\int_a^b f=\int_a^b \operatorname{Re} f+i\int_a^b \operatorname{Im} f.
+$$
+
+If $(a,b) \subset \mathbb{R}$, then the improper integral of $f$ on $(a,b)$ is convergent if and only if the improper integrals of $\operatorname{Re} f$ and $\operatorname{Im} f$ on $(a,b)$ are convergent, and in case of convergence
+
+$$
+\int_a^b f=\int_a^b \operatorname{Re} f+i\int_a^b \operatorname{Im} f.
+$$
+
+It follows from the above that most of the rules of limit calculation, differential calculus and integral calculus can be transferred to complex functions of a real variable as well.
+
+In the following we will need the extension of the exponential function to complex numbers. One possible way of extension: for any $z \in \mathbb{C}$ let
+
+$$
+e^z=e^{\operatorname{Re} z}[\cos(\operatorname{Im} z)+i\sin(\operatorname{Im} z)].
+$$
+
+This is the so-called Euler formula.
+
+## 5.3. The concept of the Laplace transform
+
+**5.3.1. Definition.** Let a real or complex function $f$ defined on $[0,\infty)$ be given, and suppose that $f$ is integrable (in a broader sense) on any bounded closed subinterval of $[0,\infty)$. We say that the *Laplace transform* of the function $f : [0,\infty) \to \mathbb{C}$ *exists* at the point $s \in \mathbb{C}$, if the improper integral
+
+$$
+\int_0^\infty e^{-st}f(t)\,dt
+$$
+
+<!-- PDF page 56 -->
+
+is convergent. And the function $F : \mathbb{C} \to \mathbb{C}$, which is defined by the formula
+
+$$
+F(s)=\int_0^\infty e^{-st}f(t)\,dt
+$$
+
+for all $s \in \mathbb{C}$ for which the improper integral is convergent, is called the *Laplace transform* of the function $f$, and is denoted by $F=\mathcal{L}\{f\}$. The function $f$ is the *generator function* of the Laplace transform $\mathcal{L}\{f\}$.
+
+The notation $\mathcal{L}\{f(t)\}(s)$ is also used, which is especially convenient when the generator function is not named, only its formula is known.
+
+The function $\mathcal{L}\{f\}$ (if it exists) is a complex-valued function of a complex variable.
+
+**5.3.2. Definition.** Let $\lambda \in \mathbb{R}$. We say that the function $f$ defined on $[0,\infty)$ is $\lambda$-*exponentially bounded*, if there exists $M \ge 0$ such that for all $t \ge 0$
+
+$$
+|f(t)| \le Me^{\lambda t}.
+$$
+
+Let $\Lambda$ be the set of real or complex-valued functions defined on $[0,\infty)$, which are integrable on every closed subinterval of $[0,\infty)$ and are $\lambda$-exponentially bounded for some $\lambda \in \mathbb{R}$.
+
+It can be shown that the Laplace transform of functions belonging to $\Lambda$ is well-defined. More precisely:
+
+**5.3.3. Theorem (Existence theorem).** *If $f \in \Lambda$ and $\operatorname{Re}s$ is sufficiently large, then the Laplace transform $\mathcal{L}\{f\}(s)$ exists.*
+
+**5.3.4. Theorem (Uniqueness theorem).** *Let $f,g \in \Lambda$, and suppose that*
+
+$$
+\mathcal{L}\{f(t)\}(s)=\mathcal{L}\{g(t)\}(s), \qquad \text{if } \operatorname{Re}s \text{ is sufficiently large}.
+$$
+
+*If $f$ and $g$ are continuous on $[0,\infty)$, then $f(t)=g(t)$ for all $t \ge 0$.*
+
+## 5.4. Properties of the Laplace transform
+
+The following theorems summarize the more important properties of the Laplace transform.
+
+**5.4.1. Theorem (Linearity).** *If $f,g \in \Lambda$ and $a,b \in \mathbb{C}$, then $af+bg \in \Lambda$, and*
+
+$$
+\mathcal{L}\{af+bg\}(s)=a\mathcal{L}\{f\}(s)+b\mathcal{L}\{g\}(s),
+\qquad \text{if } \operatorname{Re}s \text{ is sufficiently large}.
+$$
+
+**5.4.2. Theorem (Transforms of derivatives).** *If $f,f' \in \Lambda$, then*
+
+$$
+\mathcal{L}\{f'\}(s)=s\mathcal{L}\{f\}(s)-f(0+),
+\qquad \text{if } \operatorname{Re}s \text{ is sufficiently large},
+$$
+
+where
+
+$$
+f(0+)=\lim_{t \to 0+}f(t).
+$$
+
+More generally, if for some $n \in \mathbb{N}^+$ $f,f',\ldots,f^{(n)} \in \Lambda$, then
+
+$$
+\mathcal{L}\{f^{(n)}\}(s)
+=s^n\mathcal{L}\{f\}(s)-s^{n-1}f(0+)-s^{n-2}f'(0+)-\cdots-f^{(n-1)}(0+),
+$$
+
+if $\operatorname{Re}s$ is sufficiently large.
+
+<!-- PDF page 57 -->
+
+Let us introduce the following concept.
+
+**5.4.3. Definition.** Let $f$ and $g$ be complex functions defined on $[0,\infty)$. Suppose that $f$ and $g$ are integrable on every closed subinterval of $[0,\infty)$. For any $t \in [0,\infty)$, let
+
+$$
+(f*g)(t)=\int_0^t f(t-u)g(u)\,du.
+$$
+
+The function $f*g$ is called the *convolution* of $f$ and $g$.
+
+**5.4.4. Theorem (Convolution theorem).** *If $f,g \in \Lambda$, then $f*g \in \Lambda$, and*
+
+$$
+\mathcal{L}\{f*g\}(s)=\mathcal{L}\{f\}(s)\cdot\mathcal{L}\{g\}(s),
+\qquad \text{if } \operatorname{Re}s \text{ is sufficiently large}.
+$$
+
+**5.4.5. Theorem (Damping theorem).** *Let $f \in \Lambda$ and $z \in \mathbb{C}$. Then the function*
+
+$$
+g(t)=e^{-zt}f(t), \qquad t \in [0,\infty),
+$$
+
+*also belongs to the class $\Lambda$, and with the notation $\mathcal{L}\{f\}=F$*
+
+$$
+\mathcal{L}\{e^{-zt}f(t)\}(s)=F(s+z),
+\qquad \text{if } \operatorname{Re}s \text{ is sufficiently large}.
+$$
+
+The following table contains the Laplace transform of some elementary functions belonging to the class $\Lambda$.
+
+| $f(t)$ | $F(s)=\mathcal{L}\{f(t)\}(s)$ |
+|---|---|
+| $1$ | $\dfrac{1}{s}$ |
+| $t^n$ | $\dfrac{n!}{s^{n+1}}$ |
+| $e^{at}$ | $\dfrac{1}{s-a}$ |
+| $\sin bt$ | $\dfrac{b}{s^2+b^2}$ |
+| $\cos bt$ | $\dfrac{s}{s^2+b^2}$ |
+| $e^{at}\sin bt$ | $\dfrac{b}{(s-a)^2+b^2}$ |
+| $e^{at}\cos bt$ | $\dfrac{s-a}{(s-a)^2+b^2}$ |
+| $t\sin bt$ | $\dfrac{2bs}{(s^2+b^2)^2}$ |
+| $t\cos bt$ | $\dfrac{s^2-b^2}{(s^2+b^2)^2}$ |
+
+$$
+(n \in \mathbb{N}, \quad a \text{ and } b \in \mathbb{R})
+$$
+
+<!-- PDF page 58 -->
+
+The following theorem makes it possible to apply the Laplace transform to differential equations.
+
+**5.4.6. Theorem.** *Let $a_0,\ldots,a_{n-1} \in \mathbb{R}$ and $g \in \Lambda$. Suppose that $x$ is a real function $n$ times differentiable on $[0,\infty)$, furthermore*
+
+$$
+x^{(n)}(t)+a_{n-1}x^{(n-1)}(t)+\cdots+a_0x(t)=g(t), \qquad \text{if } t>0.
+$$
+
+*Then $x,x',\ldots,x^{(n)} \in \Lambda$.*
+
+## 5.5. Examination of the series RLC circuit
+
+Now let us return to the initial value problem that arose in connection with the series RLC circuit discussed in the introduction
+
+$$
+LQ''(t)+RQ'(t)+\frac{1}{C}Q(t)=E(t),
+$$
+
+$$
+Q(0)=Q_0, \qquad Q'(0)=I(0)=I_0
+$$
+
+to its examination.
+
+Taking the Laplace transform of both sides of the first equation we obtain
+
+$$
+Ls^2\mathcal{L}\{Q\}(s)-LsQ(0)-LQ'(0)
++Rs\mathcal{L}\{Q\}(s)-RQ(0)
++\frac{1}{C}\mathcal{L}\{Q\}(s)
+=\mathcal{L}\{E\}(s).
+$$
+
+From here
+
+$$
+\mathcal{L}\{Q\}(s)=\Phi(s)+\Psi(s),
+$$
+
+where
+
+$$
+\Phi(s)=\frac{(Ls+R)Q_0+LI_0}{Ls^2+Rs+\frac{1}{C}},
+\qquad
+\Psi(s)=\frac{\mathcal{L}\{E\}(s)}{Ls^2+Rs+\frac{1}{C}}.
+$$
+
+Notice that if $\phi$ is the solution of the problem
+
+$$
+Ly''(t)+Ry'(t)+\frac{1}{C}y(t)=0, \qquad y(0)=Q_0, \qquad y'(0)=I_0
+$$
+
+and $\psi$ is the solution of the problem
+
+$$
+Ly''(t)+Ry'(t)+\frac{1}{C}y(t)=E(t), \qquad y(0)=0, \qquad y'(0)=0
+$$
+
+then
+
+$$
+\mathcal{L}\{\phi(t)\}(s)=\Phi(s)
+\qquad \text{and} \qquad
+\mathcal{L}\{\psi(t)\}(s)=\Psi(s),
+$$
+
+that is $Q=\phi+\psi$.
+
+Now let us consider 4 special cases of the initial value problem.
+
+<!-- PDF page 59 -->
+
+![Figure 5.2](pages_300/page-59.png)
+
+**Case 1:** Suppose that the resistance of the elements in the circuit is $0$ (so-called LC circuit), that is $R=0$, and there is no external voltage on the system ($E(t)=0$), i.e. we charge the capacitor with a battery and then disconnect the battery from the circuit:
+
+Then the form of the differential equation is:
+
+$$
+LQ''(t)+\frac{1}{C}Q(t)=0.
+$$
+
+As we have already shown,
+
+$$
+\mathcal{L}\{Q\}(s)=\Phi(s)=\frac{L(sQ_0+I_0)}{Ls^2+\frac{1}{C}}.
+$$
+
+Let us introduce the notation
+
+$$
+\omega_0=\frac{1}{\sqrt{LC}}
+$$
+
+Then
+
+$$
+\mathcal{L}\{Q\}(s)=Q_0\frac{s}{s^2+\omega_0^2}
++\frac{I_0}{\omega_0}\frac{\omega_0}{s^2+\omega_0^2},
+$$
+
+and therefore
+
+$$
+Q(t)=\phi(t)=Q_0\cos\omega_0t+\frac{I_0}{\omega_0}\sin\omega_0t.
+$$
+
+Thus the system performs a free oscillation of frequency $\omega_0$. (The number $\omega_0$ is called the *natural frequency* of the system.)
+
+**Case 2:** Suppose that $R=0$, $Q_0=0$, $I_0=0$, and an external voltage $E(t)=E_0\cos\omega t$ acts on the system, where $\omega \ne \omega_0$, $E_0 \in \mathbb{R}$. Then
+
+$$
+\mathcal{L}\{Q\}(s)=\Psi(s)
+=\frac{E_0}{L\omega_0}\frac{\omega_0}{s^2+\omega_0^2}\frac{s}{s^2+\omega^2},
+$$
+
+<!-- PDF page 60 -->
+
+and therefore according to the convolution and uniqueness theorem
+
+$$
+\begin{aligned}
+Q(t)&=\psi(t) \\
+&=\frac{E_0}{L\omega_0}\int_0^t \sin(\omega_0(t-u))\cos\omega u\,du \\
+&=\frac{E_0}{2L\omega_0}\int_0^t
+\left(\sin(\omega_0(t-u)+\omega u)+\sin(\omega_0(t-u)-\omega u)\right)\,du \\
+&=\frac{E_0}{2L\omega_0}
+\left(\frac{\cos\omega t-\cos\omega_0t}{\omega_0-\omega}
++\frac{\cos\omega t-\cos\omega_0t}{\omega_0+\omega}\right) \\
+&=\frac{E_0}{L(\omega_0^2-\omega^2)}(\cos\omega t-\cos\omega_0t) \\
+&=\frac{2E_0}{L(\omega_0^2-\omega^2)}
+\sin\frac{(\omega_0-\omega)t}{2}
+\sin\frac{(\omega_0+\omega)t}{2}.
+\end{aligned}
+$$
+
+If $|\omega_0-\omega|$ is small, then $\omega_0+\omega>|\omega_0-\omega|$, and thus the latter formula of the solution can also be considered as a fast-oscillating function, $\sin\frac{(\omega_0+\omega)t}{2}$, whose amplitude,
+
+$$
+\frac{2E_0}{L(\omega_0^2-\omega^2)}
+\sin\frac{(\omega_0-\omega)t}{2}
+$$
+
+oscillates slowly. This phenomenon is called *beating*, which can thus be observed if the frequency of the external force is close to the natural frequency of the system. The graph of such a solution is shown in the following figure:
+
+$$
+L=2,\quad C=\frac{1}{8},\quad E_0=1,\quad \omega_0=2,\quad \omega=2.1.
+$$
+
+![Figure 5.3](pages_300/page-60.png)
+
+**Case 3:** Suppose that $R=0$, $Q_0=0$, $I_0=0$, and $E(t)=E_0\cos\omega_0t$, that is, an external force with a frequency equal to the natural frequency of the system acts on the oscillating circuit. Then
+
+$$
+\mathcal{L}\{Q\}(s)=\Psi(s)
+=\frac{E_0}{L\omega_0}\frac{\omega_0}{s^2+\omega_0^2}\frac{s}{s^2+\omega_0^2},
+$$
+
+<!-- PDF page 61 -->
+
+and therefore according to the convolution theorem
+
+$$
+\begin{aligned}
+Q(t)&=\psi(t) \\
+&=\frac{E_0}{L\omega_0}\int_0^t \sin(\omega_0(t-u))\cos\omega_0u\,du \\
+&=\frac{E_0}{2L\omega_0}\int_0^t
+\left(\sin(\omega_0(t-u)+\omega_0u)+\sin(\omega_0(t-u)-\omega_0u)\right)\,du \\
+&=\frac{E_0}{2L\omega_0}t\sin\omega_0t.
+\end{aligned}
+$$
+
+We obtained an oscillating solution whose amplitude tends to infinity as $t \to \infty$. This phenomenon is called *resonance*.
+
+$$
+L=1,\quad C=\frac{1}{25},\quad E_0=1,\quad \omega_0=5.
+$$
+
+![Figure 5.4](pages_300/page-61.png)
+
+**Case 4:** Suppose that $R=0$, $Q_0 \in \mathbb{R}$, $I_0 \in \mathbb{R}$, and an external voltage $E(t)=E_0\cos\omega t$ acts on the system, where $\omega \ne \omega_0$, $E_0 \in \mathbb{R}$. Then the solution will be the sum of the two functions calculated in case 1 and 2:
+
+$$
+Q(t)=Q_0\cos\omega_0t+\frac{I_0}{\omega_0}\sin\omega_0t
++\frac{E_0}{L(\omega_0^2-\omega^2)}(\cos\omega t-\cos\omega_0t).
+$$
