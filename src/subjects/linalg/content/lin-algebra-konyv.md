@@ -2046,4 +2046,78 @@ Az egyenletrendszer megoldásában az együtthatómátrix eddig látott átlós 
 A következő mátrixok lépcsős alakúak:
 $$\begin{bmatrix} 3 & 2 \\ 0 & 4 \end{bmatrix}, \quad \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}, \quad \begin{bmatrix} 1 & -2 & 3 & -4 \\ 0 & 0 & -5 & 6 \\ 0 & 0 & 0 & 0 \end{bmatrix}, \quad \begin{bmatrix} 0 & 1 & 0 & 1 & 1 & 0 \\ 0 & 0 & 0 & 1 & 0 & 1 \\ 0 & 0 & 0 & 0 & 1 & 1 \\ 0 & 0 & 0 & 0 & 0 & 0 \end{bmatrix}.$$
 
-<!-- OCR: through PDF p.80 -->
+### Gauss-módszer
+
+A *Gauss-módszer*, más néven *Gauss-kiküszöbölés* vagy *Gauss-elimináció* a lineáris egyenletrendszerek megoldásának egy módszere. Lényege, hogy a lineáris egyenletrendszer bővített mátrixát elemi sorműveletekkel lépcsős alakra hozzuk, és abból visszahelyettesítéssel meghatározzuk a megoldás általános alakját. A módszer könnyen algoritmizálható, ha sorban haladunk az oszlopokon. A módszert már használtuk a 2.25. példa első megoldásában.
+
+**2.32. példa (Gauss-módszer, egy megoldás).** *Oldjuk meg az alábbi egyenletrendszert Gauss-módszerrel:*
+$$\begin{alignedat}{9}
+x &{}+{}& y &{}+{}& 2z &{}={}& 0 \\
+2x &{}+{}& 2y &{}+{}& 3z &{}={}& 2 \\
+x &{}+{}& 3y &{}+{}& 3z &{}={}& 4 \\
+x &{}+{}& 2y &{}+{}& z &{}={}& 5
+\end{alignedat}$$
+
+*Megoldás.* Írjuk fel az egyenletrendszer bővített mátrixát, és *oszloponként haladva* küszöböljük ki – nullázzuk ki – a főelemek alatti elemeket!
+$$\left[\begin{array}{ccc|c} 1 & 1 & 2 & 0 \\ 2 & 2 & 3 & 2 \\ 1 & 3 & 3 & 4 \\ 1 & 2 & 1 & 5 \end{array}\right] \xrightarrow{\substack{S_2 - 2S_1 \\ S_3 - S_1 \\ S_4 - S_1}} \left[\begin{array}{ccc|c} 1 & 1 & 2 & 0 \\ 0 & 0 & -1 & 2 \\ 0 & 2 & 1 & 4 \\ 0 & 1 & -1 & 5 \end{array}\right] \xrightarrow{S_2 \leftrightarrow S_3} \left[\begin{array}{ccc|c} 1 & 1 & 2 & 0 \\ 0 & 2 & 1 & 4 \\ 0 & 0 & -1 & 2 \\ 0 & 1 & -1 & 5 \end{array}\right] \xrightarrow{S_4 - \frac{1}{2}S_2}$$
+$$\left[\begin{array}{ccc|c} 1 & 1 & 2 & 0 \\ 0 & 2 & 1 & 4 \\ 0 & 0 & -1 & 2 \\ 0 & 0 & -\frac{3}{2} & 3 \end{array}\right] \xrightarrow{S_4 - \frac{3}{2}S_3} \left[\begin{array}{ccc|c} 1 & 1 & 2 & 0 \\ 0 & 2 & 1 & 4 \\ 0 & 0 & -1 & 2 \\ 0 & 0 & 0 & 0 \end{array}\right] \longrightarrow \begin{alignedat}{9}
+x &{}+{}& y &{}+{}& 2z &{}={}& 0 \\
+&& 2y &{}+{}& z &{}={}& 4 \\
+&& && -z &{}={}& 2
+\end{alignedat}$$
+A harmadik egyenletből $z = -2$, ezt a másodikba helyettesítve $y = 3$, ezeket az elsőbe helyettesítve kapjuk, hogy $x = 1$, azaz az egyetlen megoldás $(x, y, z) = (1, 3, -2)$. $\square$
+
+Mit csinálunk akkor, ha a lépcsős alak szerint kevesebb a főelemek, mint az oszlopok száma? Egyelőre bevezetünk két elnevezést, melyek jelentése hamarosan világos lesz: az egyenletrendszer azon változóit, melyek főelemek oszlopaihoz tartoznak, *kötött változóknak,* míg az összes többi változót *szabad változónak* nevezzük.
+
+**2.33. példa (Gauss-módszer, végtelen sok megoldás).** *Oldjuk meg az alábbi egyenletrendszert Gauss-módszerrel:*
+$$\begin{alignedat}{9}
+x_1 &{}+{}& 2x_2 &{}+{}& x_3 &{}+{}& 2x_4 &{}+{}& x_5 &{}={}& 1 \\
+x_1 &{}+{}& 2x_2 &{}+{}& 3x_3 &{}+{}& 3x_4 &{}+{}& x_5 &{}={}& 0 \\
+3x_1 &{}+{}& 6x_2 &{}+{}& 7x_3 &{}+{}& 8x_4 &{}+{}& 3x_5 &{}={}& 1
+\end{alignedat}$$
+
+*Megoldás.* Írjuk fel az egyenletrendszer bővített mátrixát, és oszloponként haladva küszöböljük ki a főelemek alatti elemeket!
+$$\left[\begin{array}{ccccc|c} 1 & 2 & 1 & 2 & 1 & 1 \\ 1 & 2 & 3 & 3 & 1 & 0 \\ 3 & 6 & 7 & 8 & 3 & 1 \end{array}\right] \xrightarrow{\substack{S_2 - S_1 \\ S_3 - 3S_1}} \left[\begin{array}{ccccc|c} 1 & 2 & 1 & 2 & 1 & 1 \\ 0 & 0 & 2 & 1 & 0 & -1 \\ 0 & 0 & 4 & 2 & 0 & -2 \end{array}\right] \xrightarrow{S_3 - 2S_2}$$
+$$\left[\begin{array}{ccccc|c} 1 & 2 & 1 & 2 & 1 & 1 \\ 0 & 0 & 2 & 1 & 0 & -1 \\ 0 & 0 & 0 & 0 & 0 & 0 \end{array}\right] \longrightarrow \begin{alignedat}{9}
+x_1 &{}+{}& 2x_2 &{}+{}& x_3 &{}+{}& 2x_4 &{}+{}& x_5 &{}={}& 1 \\
+&& && 2x_3 &{}+{}& x_4 && &{}={}& -1
+\end{alignedat}$$
+Az egyenletrendszer kötött változói a lépcsős alak főoszlopaihoz tartozó változók, azaz $x_1$ és $x_3$. A szabad változók: $x_2$, $x_4$, $x_5$. A szabad változóknak tetszőleges értékeket adhatunk, a kötöttek értéke kifejezhető velük. Legyen például a szabad változók értéke $x_2 = s$, $x_4 = t$, $x_5 = u$. Ezek behelyettesítése után a fenti egyenletek közül először a másodikból kifejezzük $x_3$-at, majd azt behelyettesítjük az elsőbe, ahonnan kifejezzük az $x_1$-et, azaz a fenti egyenletekből kifejezzük a kötött változókat:
+$$\begin{aligned}
+x_1 &= \tfrac{3}{2} - 2s - \tfrac{3}{2}t - u \\
+x_3 &= -\tfrac{1}{2} - \tfrac{1}{2}t
+\end{aligned}$$
+Innen az egyenletrendszer megoldása:
+$$(x_1, x_2, x_3, x_4, x_5) = \left(\tfrac{3}{2} - 2s - \tfrac{3}{2}t - u, \; s, \; -\tfrac{1}{2} - \tfrac{1}{2}t, \; t, \; u\right),$$
+vagy mátrixjelöléssel
+$$\begin{bmatrix} x_1 \\ x_2 \\ x_3 \\ x_4 \\ x_5 \end{bmatrix} = \begin{bmatrix} \tfrac{3}{2} - 2s - \tfrac{3}{2}t - u \\ s \\ -\tfrac{1}{2} - \tfrac{1}{2}t \\ t \\ u \end{bmatrix} = \begin{bmatrix} \tfrac{3}{2} \\ 0 \\ -\tfrac{1}{2} \\ 0 \\ 0 \end{bmatrix} + s\begin{bmatrix} -2 \\ 1 \\ 0 \\ 0 \\ 0 \end{bmatrix} + t\begin{bmatrix} -\tfrac{3}{2} \\ 0 \\ -\tfrac{1}{2} \\ 1 \\ 0 \end{bmatrix} + u\begin{bmatrix} -1 \\ 0 \\ 0 \\ 0 \\ 1 \end{bmatrix}.$$
+Később különösen ez utóbbi felírásmód lesz hasznos, melyben vektorok lineáris kombinációja szerepel. $\square$
+
+Világos, hogy e példa utolsó alakjában a szabad változóknak tetszőleges értéket adhatunk, melyből a kötött változók egyértelműen kifejezhetők, és így e módszerrel az egyenletrendszer összes megoldását megkaptuk. Az ilyen módon megadott megoldást az egyenletrendszer *általános megoldásának,* a konkrét paraméterértékekhez tartozó megoldásokat *partikuláris megoldásoknak* nevezzük. Például az előző példabeli egyenletrendszer egy partikuláris megoldása az $s = 0$, $t = 1$, $u = 2$ értékekhez tartozó
+$$(x_1, x_2, x_3, x_4, x_5) = (-2, 0, -1, 1, 2).$$
+
+Kérdés, hogy e módszerrel minden lineáris egyenletrendszer megoldáshalmaza meghatározható-e? A választ a következő tétel adja:
+
+**2.34. tétel (Lépcsős alakra hozás).** *Bármely mátrix elemi sorműveletekkel lépcsős alakra hozható.*
+
+*Bizonyítás.* Tekintsünk egy tetszőleges $m \times n$-es mátrixot. A következő eljárás egyes lépéseiben a mátrixnak le fogjuk takarni egy-egy sorát vagy oszlopát. Az egyszerűség kedvéért a letakarás után keletkezett mátrix sorainak és oszlopainak számát ismét $m$ és $n$ fogja jelölni, $a_{ij}$ pedig a letakarások után maradt mátrix $i$-edik sorának $j$-edik elemét.
+1. Ha az első oszlopban csak $0$ elemek állnak, takarjuk le ezt az oszlopot, és tekintsük a maradék mátrixot. Ha ennek első oszlopában ismét csak $0$ elemek vannak, azt is takarjuk le, és ezt addig folytassuk, míg egy olyan oszlopot nem találunk, amelyben van nem $0$ elem. Ha ilyen oszlopot *nem találunk,* az eljárásnak vége, a mátrix lépcsős alakú.
+2. Ha az első oszlop első sorában álló elem $0$, akkor cseréljük ki e sort egy olyannal, melynek első eleme nem $0$. Így olyan mátrixot kapunk, amelyben $a_{11} \neq 0$.
+3. Tekintsük az $i$-edik sort $i = 2$-től $i = m$-ig. Ha az $i$-edik sor első eleme $a_{i1} \neq 0$, akkor az első sor $-a_{i1}/a_{11}$-szeresét adjuk hozzá, azaz hajtsuk végre az $S_i - \frac{a_{i1}}{a_{11}}S_1$ elemi átalakítást. Mivel $a_{i1} - \frac{a_{i1}}{a_{11}}a_{11} = 0$, ezért e lépés után az $a_{11}$ alatti elemek mind $0$-k lesznek.
+4. A fenti átalakítás után takarjuk le az első sort és az első oszlopot. Ha ekkor *nem marad* a mátrixban több sor, vége az eljárásnak, a korábban letakart részeket feltárva megkaptuk a lépcsős alakot. Egyébként ugorjunk vissza az 1. lépéshez, és folytassuk az eljárást.
+
+Világos, hogy ez az eljárás véges sok lépésben véget ér, melynek eredményeként eljutunk az eredeti mátrix egy lépcsős alakjához. $\square$
+
+Egy *inhomogén lineáris egyenletrendszerhez tartozó homogén lineáris egyenletrendszeren* azt a homogén egyenletrendszert értjük, melyet az inhomogénből a konstans tagok $0$-ra változtatásával kapunk.
+
+**2.35. példa (Homogén lineáris egyenletrendszer megoldása).** *Oldjuk meg a 2.33. példabeli egyenletrendszerhez tartozó*
+$$\begin{alignedat}{9}
+x_1 &{}+{}& 2x_2 &{}+{}& x_3 &{}+{}& 2x_4 &{}+{}& x_5 &{}={}& 0 \\
+x_1 &{}+{}& 2x_2 &{}+{}& 3x_3 &{}+{}& 3x_4 &{}+{}& x_5 &{}={}& 0 \\
+3x_1 &{}+{}& 6x_2 &{}+{}& 7x_3 &{}+{}& 8x_4 &{}+{}& 3x_5 &{}={}& 0
+\end{alignedat}$$
+*homogén lineáris egyenletrendszert.*
+
+*Megoldás.* Mivel homogén lineáris egyenletrendszerről van szó, a megoldáshoz szükségtelen a bővített mátrixot használni, hisz annak utolsó oszlopa csak nullákból áll, így az elemi sorműveletek közben
+
+<!-- OCR: through PDF p.83 -->
