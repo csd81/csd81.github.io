@@ -6068,4 +6068,259 @@ $$\begin{vmatrix} 3 & 0 & 0 & 0 & 0 \\ 3 & 0 & 0 & 2 & 0 \\ 3 & 0 & 2 & 0 & 0 \\
 
 A determináns kézzel való kiszámításának módja tehát a következő: elemi sorműveletekkel hozzuk a determinánst olyan alakra, melynek
 
-<!-- OCR: through PDF p.218 -->
+vagy van egy zérussora, vagy háromszög alakú. Az elemi sorműveletek közben pedig gondosan adminisztráljuk hatásukat, azaz
+- két sor cseréjekor szorozzuk meg a determinánst $-1$-gyel,
+- egy sorának $c$-vel való szorzásakor pedig szorozzuk meg a determinánst $1/c$-vel.
+
+A háttérben lényegében ezt teszik a számítógépek is (ld. a 6.4. kódot).
+
+**6.7. példa (Determináns kiszámítása háromszög alakra hozással).** *Számítsuk ki a*
+$$\begin{vmatrix} 2 & 2 & -3 \\ 2 & 2 & -4 \\ 4 & 5 & -6 \end{vmatrix} \quad \text{és a} \quad \begin{vmatrix} 1 & 1 & 1 & 1 \\ 1 & 2 & 3 & 4 \\ 1 & 3 & 6 & 10 \\ 1 & 4 & 10 & 20 \end{vmatrix}$$
+*determinánsok értékét!*
+
+*Megoldás.* Elemi sorműveletekkel kapjuk, hogy
+$$\begin{vmatrix} 2 & 2 & -3 \\ 2 & 2 & -4 \\ 4 & 5 & -6 \end{vmatrix} \overset{\substack{S_2 - S_1 \\ S_3 - 2S_1}}{=} \begin{vmatrix} 2 & 2 & -3 \\ 0 & 0 & -1 \\ 0 & 1 & 0 \end{vmatrix} \overset{S_2 \leftrightarrow S_3}{=} -\begin{vmatrix} 2 & 2 & -3 \\ 0 & 1 & 0 \\ 0 & 0 & -1 \end{vmatrix} = -(-2) = 2.$$
+A következő determinánsnál sorcsere nélkül eliminálhatók a főátló alatti elemek, ezért a sorműveleteket nem is jelezzük.
+$$\begin{vmatrix} 1 & 1 & 1 & 1 \\ 1 & 2 & 3 & 4 \\ 1 & 3 & 6 & 10 \\ 1 & 4 & 10 & 20 \end{vmatrix} = \begin{vmatrix} 1 & 1 & 1 & 1 \\ 0 & 1 & 2 & 3 \\ 0 & 2 & 5 & 9 \\ 0 & 3 & 9 & 19 \end{vmatrix} = \begin{vmatrix} 1 & 1 & 1 & 1 \\ 0 & 1 & 2 & 3 \\ 0 & 0 & 1 & 3 \\ 0 & 0 & 3 & 10 \end{vmatrix} = \begin{vmatrix} 1 & 1 & 1 & 1 \\ 0 & 1 & 2 & 3 \\ 0 & 0 & 1 & 3 \\ 0 & 0 & 0 & 1 \end{vmatrix} = 1.$$
+Egy érdekes észrevétel: a fenti determinánsban és sorlépcsős alakjában is a Pascal-háromszög számai találhatók. Ez nem véletlen, erről szólnak a 6.15. és a 6.16. feladatok. $\square$
+
+*6.4. kód. Determináns kiszámítása.*
+```
+sage: M = matrix(3,range(9))
+sage: M[2,2]=9
+sage: M
+[0 1 2]
+[3 4 5]
+[6 7 9]
+sage: M.det()
+-3
+sage: det(M)
+-3
+```
+
+### Elemi mátrixok determinánsa
+
+Az elemi mátrixok egyetlen sorművelettel kaphatók az egységmátrixból, így ezek determinánsa könnyen számolható.
+
+**6.8. következmény (Elemi mátrixok determinánsa).** *A hozzáadás sorművelettel kapott elemi mátrix determinánsa 1, a sorcserével kapotté $-1$, egy sor $c$-vel való szorzásával kapotté $c$.*
+
+*Bizonyítás.* Az állítás abból következik, hogy az elemi mátrixok az 1 determinánsú egységmátrixból kaphatók egyetlen sorművelettel. $\square$
+
+Például:
+$$\begin{vmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ 0 & 4 & 0 & 1 \end{vmatrix} = 1, \quad \begin{vmatrix} 1 & 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 & 1 \\ 0 & 0 & 1 & 0 & 0 \\ 0 & 0 & 0 & 1 & 0 \\ 0 & 1 & 0 & 0 & 0 \end{vmatrix} = -1, \quad \begin{vmatrix} 1 & 0 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & 3 \end{vmatrix} = 3.$$
+
+### Permutáló mátrix determinánsa
+
+A permutáló mátrix minden sorában és oszlopában egyetlen 1-es van, így csak elemi sorcserékkel megkapható az egységmátrixból. A sorcsere csak a determináns előjelét változtatja meg, ezért permutáló mátrix determinánsa 1, ha páros sok sorcserére volt szükség, $-1$, ha páratlan sokra. Például az alábbi determinánsok közül az első determináns két sorcserével, a második három sorcserével kapható meg az egységmátrixból, tehát
+$$\begin{vmatrix} 0 & 1 & 0 & 0 & 0 \\ 0 & 0 & 1 & 0 & 0 \\ 1 & 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 1 & 0 \\ 0 & 0 & 0 & 0 & 1 \end{vmatrix} = 1, \quad \begin{vmatrix} 0 & 1 & 0 & 0 & 0 \\ 0 & 0 & 1 & 0 & 0 \\ 1 & 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 & 1 \\ 0 & 0 & 0 & 1 & 0 \end{vmatrix} = -1.$$
+Azt mondjuk, hogy egy permutáló mátrix két sora *inverzióban* áll, ha az előbb álló sorbeli 1-es hátrébb van, mint a másik sorbeli. A
+$$\begin{bmatrix} 0 & 0 & 1 & 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 0 & 1 \\ 1 & 0 & 0 & 0 \end{bmatrix}$$
+mátrix inverzióinak száma például 4, ugyanis az első-második, első-negyedik, második-negyedik, harmadik-negyedik sorpárok inverzióban vannak.
+
+**6.9. tétel (Permutáló mátrix determinánsa).** *A permutáló mátrix determinánsa aszerint $+1$ vagy $-1$, hogy inverzióban álló sorpárjainak száma páros vagy páratlan.*
+
+*Bizonyítás.* Elég megmutatni, hogy egy sorcsere mindig megváltoztatja az inverziók számának paritását, vagyis azok száma párosból páratlanra, páratlanból párosra változik. Így ha egy permutáló mátrix inverzióinak száma páros, akkor csak páros sok sorcserével vihető az identikus mátrixba. Hasonlóan, ha az inverziók száma páratlan, akkor csak páratlan sokkal.
+
+Ha a két megcserélendő sor szomszédos, akkor a sorcsere megváltoztatja e két sor viszonyát: ha inverzióban álltak, akkor ezután nem fognak, és fordítva. Az előttük és mögöttük álló sorokhoz való viszonyuk és azok egymáshoz való viszonya nem változott. Eszerint az inverziók száma eggyel nőtt vagy eggyel csökkent, azaz paritása megváltozott.
+
+Ezután cseréljük fel az $i$-edik és $j$-edik sorokat (legyen $i < j$). Az inverziók számának nyomon követése érdekében ezt szomszédos sorok cseréjével valósítjuk meg. Cseréljük ki az $i$-ediket az $(i+1)$-edikkel, majd azt az $(i+2)$-edikkel,$\ldots$, míg az eredetileg $i$-edik sora a $j$-edik helyére nem kerül. Ehhez $j - i$ sorcserére van szükség. Ezután az eredetileg $j$-edik sort $j - i - 1$ sorcserével az $i$-edik helyre visszük. Ez összesen $2(j - i) - 1$, azaz páratlan sok szomszédos sor cseréje, ami a paritást valóban ellenkezőjére változtatja. $\square$
+
+### Mátrixműveletek és determináns
+
+Kérdés, hogy milyen kapcsolat van a mátrixműveletek és a determináns között. Fontos megjegyezni, hogy a determinánsfüggvénynek *nincs* a mátrixösszeadásra és a skalárral való szorzásra nézve művelettartó tulajdonsága, azaz általában $\det(\mathbf{A} + \mathbf{B}) \neq \det(\mathbf{A}) + \det(\mathbf{B})$, és $\det(c\mathbf{A}) \neq c\det(\mathbf{A})$.
+
+A skalárral való szorzás esetén mondható valami: mivel egy mátrix $c$-szeresének determinánsa minden sorából kiemelhető $c$, ez annyi kiemelést jelent, ahány sora van a mátrixnak. Így tetszőleges $n \times n$-es $\mathbf{A}$ mátrixra és tetszőleges $c$ skalárra $\det(c\mathbf{A}) = c^n\det(\mathbf{A})$. Ez az $\mathbb{R}^2$- vagy $\mathbb{R}^3$-beli geometriai interpretációból is világos: egy paralelogramma előjeles területe 4-szeresére, egy paralelepipedon előjeles térfogata 8-szorosára nő, ha minden élét 2-szeresére növeljük.
+
+A determináns művelettartó a négyzetes mátrixok szorzására nézve. Ezt mondja ki a következő állítás.
+
+**6.10. állítás (Determinánsok szorzásszabálya).** *Ha $\mathbf{A}$ és $\mathbf{B}$ azonos méretű négyzetes mátrixok, akkor $\det(\mathbf{AB}) = \det(\mathbf{A})\det(\mathbf{B})$.*
+
+*Bizonyítás.* A 6.8. tétel következtében egy elemi mátrixszal való balról szorzás egy mátrixon olyan sorműveletet hajt végre, mely determinánsát épp annyiszorosára változtatja, amennyi az elemi mátrix determinánsa. Így egy $\mathbf{E}$ elemi mátrix és egy tetszőleges négyzetes $\mathbf{B}$ mátrix szorzatának determinánsa megegyezik determinánsaik szorzatával, azaz
+$$|\mathbf{EB}| = |\mathbf{E}|\,|\mathbf{B}|.$$
+Tudjuk, hogy ha $\mathbf{A}$ szinguláris, akkor $\mathbf{AB}$ is, azaz ha $|\mathbf{A}| = 0$, akkor $|\mathbf{AB}|$ is 0, tehát $|\mathbf{AB}| = |\mathbf{A}|\,|\mathbf{B}|$. Ha $\mathbf{A}$ nem szinguláris, akkor felbontható elemi mátrixok szorzatára: $\mathbf{A} = \mathbf{E}_1\mathbf{E}_2 \ldots \mathbf{E}_k$, így $\mathbf{AB} = \mathbf{E}_1\mathbf{E}_2 \ldots \mathbf{E}_k\mathbf{B}$. A $|\mathbf{EB}| = |\mathbf{E}|\,|\mathbf{B}|$ összefüggést az $\mathbf{E}_1\mathbf{E}_2 \ldots \mathbf{E}_k$-ra és $\mathbf{E}_1\mathbf{E}_2 \ldots \mathbf{E}_k\mathbf{B}$-re is
+
+használva kapjuk, hogy
+$$\begin{aligned} |\mathbf{A}|\,|\mathbf{B}| &= |\mathbf{E}_1\mathbf{E}_2\mathbf{E}_3 \ldots \mathbf{E}_k|\,|\mathbf{B}| \\ &= |\mathbf{E}_1|\,|\mathbf{E}_2\mathbf{E}_3 \ldots \mathbf{E}_k|\,|\mathbf{B}| \\ &= |\mathbf{E}_1|\,|\mathbf{E}_2|\,|\mathbf{E}_3 \ldots \mathbf{E}_k|\,|\mathbf{B}| = \ldots = \\ &= |\mathbf{E}_1|\,|\mathbf{E}_2|\,|\mathbf{E}_3| \ldots |\mathbf{E}_k|\,|\mathbf{B}|, \quad \text{másrészt} \\ |\mathbf{AB}| &= |\mathbf{E}_1\mathbf{E}_2\mathbf{E}_3 \ldots \mathbf{E}_k\mathbf{B}| \\ &= |\mathbf{E}_1|\,|\mathbf{E}_2\mathbf{E}_3 \ldots \mathbf{E}_k\mathbf{B}| \\ &= |\mathbf{E}_1|\,|\mathbf{E}_2|\,|\mathbf{E}_3 \ldots \mathbf{E}_k\mathbf{B}| = \ldots = \\ &= |\mathbf{E}_1|\,|\mathbf{E}_2|\,|\mathbf{E}_3| \ldots |\mathbf{E}_k|\,|\mathbf{B}|, \end{aligned}$$
+ami bizonyítja az állítást. Egy másik, nagyon szép bizonyítás található a 6.12. feladatban. $\square$
+
+A determinánsok szorzásszabályának egy fontos alkalmazása a determináns értékének kiszámítása PLU-felbontással (ld. 6.5. kód).
+
+**6.11. példa (Determináns kiszámolása PLU-felbontásból).** *Hogyan határozzuk meg egy $\mathbf{A}$ mátrix determinánsát, ha ismerjük PLU-felbontását? Konkrétan mennyi a következő mátrix determinánsa?*
+$$\begin{bmatrix} 0 & 1 & 2 \\ 3 & 5 & 6 \\ 4 & 7 & 9 \end{bmatrix} = \begin{bmatrix} 0 & 0 & 1 \\ 1 & 0 & 0 \\ 0 & 1 & 0 \end{bmatrix}\begin{bmatrix} 1 & 0 & 0 \\ 0 & 1 & 0 \\ 3/4 & -1/4 & 1 \end{bmatrix}\begin{bmatrix} 4 & 7 & 9 \\ 0 & 1 & 2 \\ 0 & 0 & -1/4 \end{bmatrix}.$$
+
+*Megoldás.* Egy PLU-felbontásban szereplő mindegyik mátrix determinánsa könnyen meghatározható. $\mathbf{P}$ két sorcserével egységmátrixszá válik, tehát $\det\mathbf{P} = 1$. $\mathbf{L}$ és $\mathbf{U}$ háromszögmátrixok, amelyek determinánsa a főátlóbeli elemek szorzata, ami $\mathbf{L}$ esetén mindig 1. A megadott konkrét esetben tehát $\det\mathbf{A} = 4 \cdot 1 \cdot (-1/4) = -1$. $\square$
+
+*6.5. kód. Determináns kiszámítása a PLU-felbontásból. A felbontás az egészek gyűrűjében nem működik, ezért gyűrűt váltunk és dupla pontosságú lebegőpontos számokkal számolunk (RDF).*
+```
+sage: M = matrix(3,range(9))
+sage: M[2,2]=9
+sage: N=M.change_ring(RDF)
+sage: N
+[0.0 1.0 2.0]
+[3.0 4.0 5.0]
+[6.0 7.0 9.0]
+sage: N.det()
+-3.0
+sage: P,L,U = N.LU()
+sage: P
+[0.0 0.0 1.0]
+[1.0 0.0 0.0]
+[0.0 1.0 0.0]
+sage: U
+[ 6.0  7.0  9.0]
+[ 0.0  1.0  2.0]
+[ 0.0  0.0 -0.5]
+sage: P.det()
+1.0
+sage: U.det()
+-3.0
+```
+
+Mátrix determinánsa és transzponáltjának determinánsa megegyezik. Ez lehetővé teszi, hogy a determináns kiszámításához nem csak az elemi sor-, de az elemi oszlopműveleteket is használjuk, hisz egy mátrixon végzett oszlopművelet a transzponált sorművelete.
+
+**6.12. állítás (Transzponált determinánsa).** *Mátrix determinánsa megegyezik transzponáltjának determinánsával, azaz bármely négyzetes $\mathbf{A}$ mátrixra $\det(\mathbf{A}) = \det(\mathbf{A}^{\mathsf{T}})$.*
+
+*Bizonyítás.* Az $\mathbf{A}$ mátrix redukált lépcsős alakra hozásának mátrixszorzatos alakja legyen $\mathbf{A} = \mathbf{E}_1\mathbf{E}_2 \ldots \mathbf{E}_k\mathbf{R}$, ahol $\mathbf{E}_i$ elemi mátrix, $\mathbf{R}$ az $\mathbf{A}$ redukált lépcsős alakja. A transzponált lépcsős alakja
+$$|\mathbf{A}^{\mathsf{T}}| = |\mathbf{R}^{\mathsf{T}}\mathbf{E}_k^{\mathsf{T}} \ldots \mathbf{E}_2^{\mathsf{T}}\mathbf{E}_1^{\mathsf{T}}| = |\mathbf{R}^{\mathsf{T}}|\,|\mathbf{E}_k^{\mathsf{T}}| \ldots |\mathbf{E}_2^{\mathsf{T}}|\,|\mathbf{E}_1^{\mathsf{T}}|.$$
+Könnyen ellenőrizhető, hogy minden elemi mátrix determinánsa megegyezik transzponáltjának determinánsával (ellenőrizzük!). Mivel $\mathbf{R}$ redukált lépcsős alak, ezért $\mathbf{R} = \mathbf{I}$, vagy $\mathbf{R}$-nek van egy zérus sora. Ha $\mathbf{R} = \mathbf{I}$, akkor $|\mathbf{R}^{\mathsf{T}}| = |\mathbf{R}| = |\mathbf{I}| = 1$, ha pedig $\mathbf{R}$-nek van zérus sora, akkor $\mathbf{R}^{\mathsf{T}}$-nak zérus oszlopa, és egy ilyen mátrix nem alakítható elemi sorműveletekkel egységmátrixszá, tehát determinánsa 0. Azaz $|\mathbf{R}| = |\mathbf{R}^{\mathsf{T}}|$ ekkor is fönnáll. Ekkor pedig
+$$\begin{aligned} |\mathbf{A}^{\mathsf{T}}| &= |\mathbf{R}^{\mathsf{T}}|\,|\mathbf{E}_k^{\mathsf{T}}| \ldots |\mathbf{E}_2^{\mathsf{T}}|\,|\mathbf{E}_1^{\mathsf{T}}| = |\mathbf{R}|\,|\mathbf{E}_k| \ldots |\mathbf{E}_2|\,|\mathbf{E}_1| \\ &= |\mathbf{E}_1|\,|\mathbf{E}_2| \ldots |\mathbf{E}_k|\,|\mathbf{R}| = |\mathbf{E}_1\mathbf{E}_2 \ldots \mathbf{E}_k\mathbf{R}| = |\mathbf{A}|. \end{aligned}$$
+Tehát $|\mathbf{A}^{\mathsf{T}}| = |\mathbf{A}|$. $\square$
+
+**6.13. példa (Determináns kiszámítása elemi oszlopműveletekkel).** *Az alábbi determinánst elemi sor- és oszlopműveletek alkalmazásával 2 lépésben kiszámíthatjuk:*
+$$\begin{vmatrix} 1 & 0 & 0 & 1 & 0 \\ 2 & 2 & 1 & 3 & 1 \\ 1 & 1 & 1 & 1 & 0 \\ 1 & 1 & 1 & 2 & 0 \\ 1 & 1 & 1 & 2 & 1 \end{vmatrix} \overset{S_2 - S_5}{=} \begin{vmatrix} 1 & 0 & 0 & 1 & 0 \\ 1 & 1 & 0 & 1 & 0 \\ 1 & 1 & 1 & 1 & 0 \\ 1 & 1 & 1 & 2 & 0 \\ 1 & 1 & 1 & 2 & 1 \end{vmatrix} \overset{O_4 - O_1}{=} \begin{vmatrix} 1 & 0 & 0 & 0 & 0 \\ 1 & 1 & 0 & 0 & 0 \\ 1 & 1 & 1 & 0 & 0 \\ 1 & 1 & 1 & 1 & 0 \\ 1 & 1 & 1 & 1 & 1 \end{vmatrix} = 1$$
+
+### Determinánsok soronkénti additivitása
+
+A determinánsok egy fontos tulajdonságát a paralelogramma előjeles területével szemléltetünk. Tekintsük a síkban az $\mathbf{u}$, $\mathbf{v}$ és $\mathbf{w}$ vektorokat, valamint az $\mathbf{u}$ és $\mathbf{v}$ által, valamint az $\mathbf{u}$ és $\mathbf{w}$ által kifeszített paralelogrammákat, ahogy azt a 6.6. ábra mutatja. Igazolható, de az ábráról is leolvasható, hogy (előjeles) területük összege megegyezik az $\mathbf{u}$ és a $\mathbf{v} + \mathbf{w}$ vektorok által kifeszített paralelogramma (előjeles) területével. Az előjeles területet $f$-fel jelölve igaz tehát az $f(\mathbf{u}, \mathbf{v}) + f(\mathbf{u}, \mathbf{w}) = f(\mathbf{u}, \mathbf{v} + \mathbf{w})$ összefüggés. Hasonlóképp igaz, hogy $f(\mathbf{u}, \mathbf{v}) + f(\mathbf{w}, \mathbf{v}) = f(\mathbf{u} + \mathbf{w}, \mathbf{v})$ bármely három $\mathbf{u}$, $\mathbf{v}$, $\mathbf{w}$ vektorra. Szavakban kifejezve $f$ additív mindkét változójában.
+
+*6.6. ábra. Az $f(\mathbf{u}, \mathbf{v}) + f(\mathbf{u}, \mathbf{w}) = f(\mathbf{u}, \mathbf{v} + \mathbf{w})$ összefüggés szemléltetése.*
+
+**6.14. tétel (Soronkénti additivitás).** *Legyen $\mathbf{A}$, $\mathbf{B}$ és $\mathbf{C}$ három olyan mátrix, melyek $i$-edik sorukat kivéve megegyeznek egymással. A három mátrix $i$-edik sorvektora legyen rendre $\mathbf{a}_i$, $\mathbf{b}_i$ és $\mathbf{a}_i + \mathbf{b}_i$. Ekkor $|\mathbf{A}| + |\mathbf{B}| = |\mathbf{C}|$, azaz*
+$$\begin{vmatrix} \mathbf{a}_1 \\ \mathbf{a}_2 \\ \vdots \\ \mathbf{a}_i \\ \vdots \\ \mathbf{a}_n \end{vmatrix} + \begin{vmatrix} \mathbf{a}_1 \\ \mathbf{a}_2 \\ \vdots \\ \mathbf{b}_i \\ \vdots \\ \mathbf{a}_n \end{vmatrix} = \begin{vmatrix} \mathbf{a}_1 \\ \mathbf{a}_2 \\ \vdots \\ \mathbf{a}_i + \mathbf{b}_i \\ \vdots \\ \mathbf{a}_n \end{vmatrix}.$$
+
+*Bizonyítás.* Ha az $\mathbf{a}_1, \mathbf{a}_2, \ldots, \mathbf{a}_{i-1}, \mathbf{a}_{i+1}, \ldots, \mathbf{a}_n$ vektorok lineárisan összefüggők, akkor $|\mathbf{A}| = |\mathbf{B}| = |\mathbf{C}| = 0$, így a tétel állítása fönnáll. Ugyanez igaz akkor is, ha $\mathbf{a}_i$ és $\mathbf{b}_i$ is előáll a fenti vektorok lineáris kombinációjaként, mert akkor összegük is előáll, és így ismét mindhárom determináns 0. Feltesszük tehát, hogy $\mathbf{a}_i$ és $\mathbf{b}_i$ legalább egyike független a többi sorvektortól. Az általánosság megszorítása nélkül feltehető, hogy $\mathbf{a}_i$ független a többi sorvektortól, vagyis $\mathbf{A}$ sorvektorai függetlenek, így bázist alkotnak. Ekkor $\mathbf{b}_i$ előáll lineáris kombinációjukként:
+$$\mathbf{b}_i = b_1\mathbf{a}_1 + b_2\mathbf{a}_2 + \ldots + b_i\mathbf{a}_i + \ldots + b_n\mathbf{a}_n.$$
+Vonjuk ki a $|\mathbf{B}|$ determináns $i$-edik sorából a $b_k\mathbf{a}_k$ sorokat, ahol $k = 1, 2, \ldots, i - 1, i + 1, \ldots, n$. E műveletek közben a determináns értéke nem változik, és az $i$-edik sorban csak a $b_i\mathbf{a}_i$ vektor marad. Ezután emeljük ki az $i$-edik sorból a $b_i$ konstanst, kapjuk, hogy $|\mathbf{B}| = b_i|\mathbf{A}|$. A $\mathbf{C}$ mátrixszal is megismételjük e műveleteket, csak ott a végén az $i$-edik sorban az $(1 + b_i)\mathbf{a}_i$ vektor marad, így kapjuk, hogy $|\mathbf{C}| = (1 + b_i)|\mathbf{A}|$. Innen pedig
+$$|\mathbf{A}| + |\mathbf{B}| = |\mathbf{A}| + b_i|\mathbf{A}| = (1 + b_i)|\mathbf{A}| = |\mathbf{C}|,$$
+és ezzel kész a bizonyítás. $\square$
+
+> Az előbbi tételt használva a determinánsok második soraira, a determinánsok kiszámítása nélkül is látjuk, hogy
+> $$\begin{vmatrix} 2 & 2 & 2 \\ 1 & 2 & 3 \\ 9 & 8 & 6 \end{vmatrix} + \begin{vmatrix} 2 & 2 & 2 \\ 2 & 1 & 1 \\ 9 & 8 & 6 \end{vmatrix} = \begin{vmatrix} 2 & 2 & 2 \\ 3 & 3 & 4 \\ 9 & 8 & 6 \end{vmatrix}.$$
+
+> A tétel indukcióval kettőnél több sora is igazolható, így például a következő egyenlőség is igaz:
+> $$\begin{vmatrix} 2 & 2 & 2 \\ 1 & 2 & 3 \\ 9 & 8 & 6 \end{vmatrix} + \begin{vmatrix} 2 & 2 & 2 \\ 2 & 1 & 1 \\ 9 & 8 & 6 \end{vmatrix} + \begin{vmatrix} 2 & 2 & 2 \\ 1 & 1 & 1 \\ 9 & 8 & 6 \end{vmatrix} = \begin{vmatrix} 2 & 2 & 2 \\ 4 & 4 & 6 \\ 9 & 8 & 6 \end{vmatrix}.$$
+
+> A tételbeli képletet fordított irányban is használni fogjuk, nevezetesen egy determináns fölbontható több determináns összegére. Például:
+> $$\begin{vmatrix} 1 & 2 & 3 \\ 4 & 5 & 6 \\ 7 & 9 & 0 \end{vmatrix} = \begin{vmatrix} 1 & 0 & 0 \\ 4 & 5 & 6 \\ 7 & 9 & 0 \end{vmatrix} + \begin{vmatrix} 0 & 2 & 0 \\ 4 & 5 & 6 \\ 7 & 9 & 0 \end{vmatrix} + \begin{vmatrix} 0 & 0 & 3 \\ 4 & 5 & 6 \\ 7 & 9 & 0 \end{vmatrix},$$
+> mivel $(1, 2, 3) = (1, 0, 0) + (0, 2, 0) + (0, 0, 3)$.
+
+> Mivel a transzponálás nem változtat a determináns értékén, e tétel sorvektorok helyett oszlopvektorokra is kimondható.
+
+> E tétel a determináns definíciójának D1. feltételével együtt azt mondja, hogy a determináns olyan függvénye bármelyik sorának (a többi sor rögzítése mellett), mely megőrzi a lineáris kombinációt. Ezen azt értjük, hogy ha egy determináns $i$-edik sorvektora egyenlő a $c\mathbf{x} + d\mathbf{y}$ vektorral, akkor a determináns felbontható a következő képlet szerint:
+> $$\begin{vmatrix} \mathbf{a}_1 \\ \vdots \\ \mathbf{a}_{i-1} \\ c\mathbf{x} + d\mathbf{y} \\ \mathbf{a}_{i+1} \\ \vdots \\ \mathbf{a}_n \end{vmatrix} = c\begin{vmatrix} \mathbf{a}_1 \\ \vdots \\ \mathbf{a}_{i-1} \\ \mathbf{x} \\ \mathbf{a}_{i+1} \\ \vdots \\ \mathbf{a}_n \end{vmatrix} + d\begin{vmatrix} \mathbf{a}_1 \\ \vdots \\ \mathbf{a}_{i-1} \\ \mathbf{y} \\ \mathbf{a}_{i+1} \\ \vdots \\ \mathbf{a}_n \end{vmatrix}.$$
+
+E tulajdonsággal rendelkező függvényeket *lineárisaknak* fogjuk nevezni, azokat a többváltozós függvényeket pedig, amelyek minden változójukban lineárisak, *multilineárisaknak*. Tehát a determináns, mint $n$-változós függvény multilineáris, ugyanis bármely $i$-re ($i = 1, 2, \ldots, n$):
+$$\det(\mathbf{a}_1, \ldots, \mathbf{a}_{i-1}, c\mathbf{x} + d\mathbf{y}, \mathbf{a}_{i+1}, \ldots, \mathbf{a}_n) = c\det(\mathbf{a}_1, \ldots, \mathbf{a}_{i-1}, \mathbf{x}, \mathbf{a}_{i+1}, \ldots, \mathbf{a}_n) + d\det(\mathbf{a}_1, \ldots, \mathbf{a}_{i-1}, \mathbf{y}, \mathbf{a}_{i+1}, \ldots, \mathbf{a}_n).$$
+
+### Feladatok
+
+**6.1.** Melyek igazak az alábbi állítások közül? (Az $\mathbf{A}$ itt mindig négyzetes mátrixot jelöl.)
+1. Ha egy determináns értéke 0, akkor van két azonos sora.
+2. Ha egy determináns értéke nem 0, akkor oszlopvektorai lineárisan függetlenek.
+3. Ha az $\mathbf{Ax} = \mathbf{0}$ egyenletrendszernek van nemtriviális megoldása, akkor $|\mathbf{A}| \neq 0$.
+4. $|\mathbf{A}| \neq 0$ pontosan akkor igaz, ha az $\mathbf{Ax} = \mathbf{b}$ egyenletrendszer nem oldható meg.
+5. $|\mathbf{A}| = 0$ pontosan akkor igaz, ha az $\mathbf{Ax} = \mathbf{b}$ egyenletrendszer egyértelműen megoldható.
+
+**6.2.** Számítsuk ki az alábbi determinánsok értékét fejben!
+a) $\begin{vmatrix} 1 & 2 \\ 3 & 4 \end{vmatrix}$  b) $\begin{vmatrix} 0 & 0 & 0 \\ 1 & 2 & 3 \\ 4 & 5 & 6 \end{vmatrix}$  c) $\begin{vmatrix} 1 & 2 & 3 \\ 1 & 2 & 3 \\ 1 & 2 & 3 \end{vmatrix}$
+d) $\begin{vmatrix} 1 & 2 & 3 \\ 2 & 4 & 6 \\ 3 & 6 & 9 \end{vmatrix}$  e) $\begin{vmatrix} 1 & 1 & 0 \\ 0 & 1 & 1 \\ 0 & 0 & 1 \end{vmatrix}$  f) $\begin{vmatrix} 1 & 0 & 0 \\ 2 & 2 & 0 \\ 3 & 3 & 3 \end{vmatrix}$
+g) $\begin{vmatrix} 1 & -2 & 1 & 2 \\ 4 & 3 & 4 & -1 \\ 5 & 1 & 5 & 4 \\ 5 & 6 & 5 & 0 \end{vmatrix}$
+
+**6.3.** Mutassuk meg – lineáris összefüggőséget keresve a sorok közt –, hogy az alábbi determinánsok értéke 0.
+a) $\begin{vmatrix} 1 & 1 & 1 \\ 2 & 3 & 5 \\ 3 & 4 & 6 \end{vmatrix}$  b) $\begin{vmatrix} 1 & -2 & 3 \\ -2 & 4 & -6 \\ 3 & 6 & 9 \end{vmatrix}$  c) $\begin{vmatrix} 2 & 1 & 0 \\ 3 & 2 & 1 \\ 5 & 3 & 1 \end{vmatrix}$
+d) $\begin{vmatrix} 1 & 2 & 3 \\ 2 & 3 & 4 \\ 3 & 4 & 5 \end{vmatrix}$  e) $\begin{vmatrix} 1 & 2 & 3 \\ 4 & 5 & 6 \\ 7 & 8 & 9 \end{vmatrix}$  f) $\begin{vmatrix} 1 & 1 & -2 \\ 1 & -2 & 1 \\ -2 & 1 & 1 \end{vmatrix}$
+g) $\begin{vmatrix} \sin\alpha & \cos\alpha & \sin(\alpha + \delta) \\ \sin\beta & \cos\beta & \sin(\beta + \delta) \\ \sin\gamma & \cos\gamma & \sin(\gamma + \delta) \end{vmatrix}$  h) $\begin{vmatrix} \ln 10 & \ln 4 & \ln 40 \\ \ln 5 & \ln 4 & \ln 20 \\ \ln 2 & 0 & \ln 2 \end{vmatrix}$
+
+**6.4.** Fölhasználva, hogy
+$$\begin{vmatrix} a & b & c \\ d & e & f \\ g & h & i \end{vmatrix} = -2,$$
+számítsuk ki az alábbi determinánsok értékét:
+a) $\begin{vmatrix} a & b & c \\ g & h & i \\ d & e & f \end{vmatrix}$  b) $\begin{vmatrix} a & b & c \\ 2d & 2e & 2f \\ g & h & i \end{vmatrix}$
+c) $\begin{vmatrix} a & b & c \\ a + d & b + e & c + f \\ g & h & i \end{vmatrix}$  d) $\begin{vmatrix} a & d & g \\ b & e & h \\ c & f & i \end{vmatrix}$
+e) $\begin{vmatrix} a & 3b & c \\ d & 3e & f \\ g & 3h & i \end{vmatrix}$  f) $\begin{vmatrix} a & b & c + a \\ d & e & f + d \\ g & h & i + g \end{vmatrix}$
+g) $\begin{vmatrix} 2a & 3b & c + a \\ 2d & 3e & f + d \\ 2g & 3h & i + g \end{vmatrix}$  h) $\begin{vmatrix} 2a & 2b & 2c \\ 3d & 3e & 3f \\ g + 4a & h + 4b & i + 4c \end{vmatrix}$
+
+**6.5.** Legyen $\mathbf{A}$ és $\mathbf{B}$ két $3 \times 3$-as mátrix, és legyen $\det(\mathbf{A}) = 5$, $\det(\mathbf{B}) = 4$. Számítsuk ki a következő determinánsok értékét!
+a) $\det(\mathbf{A}^2)$  b) $\det(2\mathbf{A})$  c) $\det((2\mathbf{A})^2)$
+d) $\det(\mathbf{A}^{-1})$  e) $\det(5\mathbf{A}^{-1})$  f) $\det((5\mathbf{A})^{-1})$
+g) $\det(\mathbf{AB}^{-1})$  h) $\det(\mathbf{A}^{\mathsf{T}}\mathbf{B})$  i) $|\mathbf{A}^{-1}|\,|\mathbf{B}^{-1}\mathbf{A}|\,|\mathbf{B}|$
+
+**6.6.** Csak sorcserék segítségével hozzuk egyszerűbb alakra (például háromszögalakra) az alábbi determinánsokat, és így számítsuk ki értéküket:
+a) $\begin{vmatrix} 0 & 2 & 0 \\ 0 & 0 & 3 \\ 1 & 0 & 0 \end{vmatrix}$  b) $\begin{vmatrix} 0 & 1 & 0 & 0 & 0 \\ 0 & 0 & 2 & 0 & 0 \\ 0 & 0 & 0 & 0 & 3 \\ 0 & 0 & 0 & 4 & 0 \\ 5 & 0 & 0 & 0 & 0 \end{vmatrix}$
+c) $\begin{vmatrix} 0 & 1 \\ 1 & 0 \end{vmatrix}$, $\begin{vmatrix} 0 & 0 & 1 \\ 0 & 1 & 0 \\ 1 & 0 & 0 \end{vmatrix}$, $\begin{vmatrix} 0 & 0 & 0 & 1 \\ 0 & 0 & 1 & 0 \\ 0 & 1 & 0 & 0 \\ 1 & 0 & 0 & 0 \end{vmatrix}$
+d) $\begin{vmatrix} 0 & 0 & 0 & 1 \\ 0 & 0 & 2 & 5 \\ 0 & 3 & 6 & 8 \\ 4 & 7 & 9 & 2 \end{vmatrix}$  e) $\begin{vmatrix} 1 & 1 & 1 & 1 \\ 2 & 2 & 2 & 0 \\ 3 & 3 & 0 & 0 \\ 4 & 0 & 0 & 0 \end{vmatrix}$
+f) $\begin{vmatrix} 0 & 0 & \ldots & 0 & 1 \\ 0 & 0 & \ldots & 1 & 0 \\ \vdots & & & \vdots & \vdots \\ 0 & 1 & \ldots & 0 & 0 \\ 1 & 0 & \ldots & 0 & 0 \end{vmatrix}$  g) $\begin{vmatrix} 0 & 0 & \ldots & 0 & 1 & 1 \\ 0 & 0 & \ldots & 1 & 1 & 1 \\ \vdots & & & & & \vdots \\ 0 & 1 & \ldots & 1 & 1 & 1 \\ 1 & 1 & \ldots & 1 & 1 & 1 \end{vmatrix}$
+
+**6.7.** Számítsuk ki elemi sorműveletekkel az alábbi determinánsokat!
+a) $\begin{vmatrix} 1 & 2 & 3 \\ 1 & 3 & 5 \\ 1 & 3 & 6 \end{vmatrix}$  b) $\begin{vmatrix} 1 & 1 & 1 & 1 \\ 1 & 2 & 3 & 4 \\ 1 & 3 & 5 & 7 \\ 1 & 4 & 7 & 10 \end{vmatrix}$
+c) $\begin{vmatrix} 3 & 8 & 6 & 3 \\ 1 & 3 & 0 & 1 \\ 1 & 1 & -1 & 2 \\ 1 & 5 & 1 & 5 \end{vmatrix}$  d) $\begin{vmatrix} 1 & 2 & 3 & 4 & 5 \\ 2 & 0 & 0 & 0 & 4 \\ 3 & 0 & 1 & 0 & 3 \\ 4 & 0 & 0 & 0 & 2 \\ 5 & 4 & 3 & 2 & 1 \end{vmatrix}$
+
+**6.8. Mellékátlóban egyesek.** Hány sor áll inverzióban abban a mátrixban, melynek mellékátlójában egyesek, egyébként nullák állnak, és mennyi ennek determinánsa?
+
+**6.9.** Számítsuk ki elemi sorműveletekkel az alábbi $n$-edrendű determinánsokat!
+a) $\begin{vmatrix} 1 + x_1y_1 & 1 + x_1y_2 & \ldots & 1 + x_1y_n \\ 1 + x_2y_1 & 1 + x_2y_2 & \ldots & 1 + x_2y_n \\ \vdots & \vdots & & \vdots \\ 1 + x_ny_1 & 1 + x_ny_2 & \ldots & 1 + x_ny_n \end{vmatrix}$
+b) $\begin{vmatrix} 1 & a & a^2 & \ldots & a^{n-1} \\ a^{n-1} & 1 & a & \ldots & a^{n-2} \\ a^{n-2} & a^{n-1} & 1 & \ldots & a^{n-3} \\ \vdots & \vdots & \vdots & \ddots & \vdots \\ a & a^2 & a^3 & \ldots & 1 \end{vmatrix}$
+c) $\begin{vmatrix} a & b & b & \ldots & b \\ b & a & b & \ldots & b \\ b & b & a & \ldots & b \\ \vdots & \vdots & \vdots & \ddots & \vdots \\ b & b & b & \ldots & a \end{vmatrix}$  d) $\begin{vmatrix} a & b & b & \ldots & b \\ c & a & b & \ldots & b \\ c & c & a & \ldots & b \\ \vdots & \vdots & \vdots & \ddots & \vdots \\ c & c & c & \ldots & a \end{vmatrix}$
+
+**6.10.** Számítsuk ki a Petersen-gráf szomszédsági mátrixának determinánsát!
+
+**6.11.** Írjuk fel a determináns definícióját oly módon, hogy det egy $n$-változós, $n$-dimenziós vektorokon értelmezett skalár értékű függvény legyen.
+
+**6.12.** Adjunk új bizonyítást a determinánsok szorzásszabályára azt igazolva, hogy az $\mathbf{A} \mapsto \det(\mathbf{AB})/\det(\mathbf{B})$ leképezés eleget tesz a determináns definíciójában kirótt feltételeknek.
+
+**6.13.** Bizonyítsuk be az LU-felbontás fölhasználásával a transzponált determinánsára vonatkozó 6.12. állítást!
+
+**6.14.** Fejezzük ki az elemi mátrixokra használt jelöléseket használva ($\mathbf{E}_{S_i + cS_j}$, $\mathbf{E}_{S_i \leftrightarrow S_j}$, $\mathbf{E}_{cS_i}$) azok determinánsát!
+
+**6.15.** Számítsuk ki a 6.7. példa Pascal-háromszöget tartalmazó
+$$\begin{vmatrix} 1 & 1 & 1 & 1 \\ 1 & 2 & 3 & 4 \\ 1 & 3 & 6 & 10 \\ 1 & 4 & 10 & 20 \end{vmatrix}$$
+determinánsának értékét úgy, hogy az első oszlop főátló alatti elemeinek kinullázásához először vonjuk ki az utolsó előtti sort az utolsóból, majd a második sort a harmadikból, végül az elsőt a másodikból, és kövessük e módszert a többi főátló alatti elemre is.
+
+**6.16.** Számítsuk ki az
+$$\left|\binom{i + j - 2}{j - 1}\right|_{n \times n} = \begin{vmatrix} \binom{0}{0} & \binom{1}{1} & \ldots & \binom{n-1}{n-1} \\ \binom{1}{0} & \binom{2}{1} & \ldots & \binom{n}{n-1} \\ \vdots & \vdots & \ddots & \vdots \\ \binom{n-1}{0} & \binom{n}{1} & \ldots & \binom{2n-2}{n-1} \end{vmatrix}$$
+determináns értékét! (Útmutatás: az utolsó sorral kezdve mindegyik sorból vonjuk ki az előzőt!)
+
+**6.17.** Mutassuk meg, hogy egy legalább 3-adrendű determináns értéke 0, ha elemei sorfolytonosan olvasva számtani sorozatot adnak. Például
+$$\begin{vmatrix} 1 & 2 & 3 \\ 4 & 5 & 6 \\ 7 & 8 & 9 \end{vmatrix} = 0.$$
+
+**6.18.** Mutassuk meg, hogy egy legalább 3-adrendű determináns értéke 0, ha minden sora számtani sorozat, például
+$$\begin{vmatrix} 1 & 2 & 3 \\ 1 & 4 & 7 \\ 1 & 3 & 5 \end{vmatrix} = 0.$$
+
+**6.19.** Mutassuk meg, hogy ha egy determináns elemei sorfolytonosan olvasva mértani sorozatot alkotnak, akkor értéke 0. Például
+$$\begin{vmatrix} \frac{1}{8} & \frac{1}{4} & \frac{1}{2} \\ 1 & 2 & 4 \\ 8 & 16 & 32 \end{vmatrix} = 0.$$
+
+**6.20.** Mutassuk meg, hogy tetszőleges $a$, $b$, $c$ és $d$ valósokra
+$$\begin{vmatrix} a^2 & (a+1)^2 & (a+2)^2 & (a+3)^2 \\ b^2 & (b+1)^2 & (b+2)^2 & (b+3)^2 \\ c^2 & (c+1)^2 & (c+2)^2 & (c+3)^2 \\ d^2 & (d+1)^2 & (d+2)^2 & (d+3)^2 \end{vmatrix} = 0.$$
+
+**6.21.** Mutassuk meg, hogy ha $\mathbf{C}$ invertálható, akkor $\det(\mathbf{CAC}^{-1}) = \det(\mathbf{A})$ tetszőleges azonos méretű $\mathbf{A}$ mátrixra fennáll.
+
+**6.22. Vektorok determinánsa másik bázisban.** Igazoljuk, hogy ha $\mathbf{A}_{\mathcal{C} \leftarrow \mathcal{B}}$ az áttérés mátrixa, akkor a $\mathbf{v}_1, \mathbf{v}_2, \ldots, \mathbf{v}_n$ vektorok $\mathcal{B}$- és $\mathcal{C}$-beli koordinátás alakjaiból képzett $\mathbf{V}_{\mathcal{B}}$ és $\mathbf{V}_{\mathcal{C}}$ mátrixok determinánsára $|\mathbf{V}_{\mathcal{C}}| = |\mathbf{A}_{\mathcal{C} \leftarrow \mathcal{B}}|\,|\mathbf{V}_{\mathcal{B}}|$.
+
+**6.23.** Igazoljuk, hogy páratlan rendű ferdén szimmetrikus mátrix determinánsa 0.
+
+**6.24. Mátrix négyzetének determinánsa.** Igazoljuk, hogy bármely négyzetes $\mathbf{A}$ mátrixra $|\mathbf{A}^2| = |\mathbf{A}\mathbf{A}^{\mathsf{T}}|$.
+
+**6.25.** A determináns négyzetének kiszámításával (6.24. feladat) és a determinánsok szorzástételének alkalmazásával számítsuk ki az alábbi determinánsok értékét:
+$$\begin{vmatrix} a & b \\ -b & a \end{vmatrix}, \quad \begin{vmatrix} a & b & c & d \\ -b & a & -d & c \\ -c & d & a & -b \\ -d & -c & b & a \end{vmatrix},$$
+$$\begin{vmatrix} a & b & c & d & e & f & g & h \\ b & -a & -d & c & f & -e & h & -g \\ c & d & -a & -b & g & -h & -e & f \\ d & -c & b & -a & h & g & -f & -e \\ e & -f & -g & -h & -a & b & c & d \\ f & e & h & -g & b & -a & d & -c \\ g & -h & e & f & -c & -d & -a & b \\ h & g & -f & e & -d & c & -b & -a \end{vmatrix}.$$
+
+**6.26.** Mutassuk meg, hogy az $(x_1^2 + x_2^2)(y_1^2 + y_2^2)$ szorzat előállítható két szám négyzetének összegeként, azaz
+$$(x_1^2 + x_2^2)(y_1^2 + y_2^2) = (z_1^2 + z_2^2),$$
+ahol $z_1$ és $z_2$ mindegyike külön az $x_i$ és külön az $y_i$ változóknak is lineáris kifejezése ($i = 1, 2$). (Hasonló összefüggések bizonyíthatóak négy illetve nyolc négyzetszám összegéről is. Például a négy szám négyzetösszegére vonatkozó képlet
+$$(x_1^2 + x_2^2 + x_3^2 + x_4^2)(y_1^2 + y_2^2 + y_3^2 + y_4^2) = (z_1^2 + z_2^2 + z_3^2 + z_4^2),$$
+ahol $z_i$ az $x_i$ és az $y_i$ ($i = 1, 2, 3, 4$) változókban lineáris. A megoldáshoz használjuk fel az előző feladat állítását.)
+
+**6.27. Téglalap képének területe.** Legyen egy téglalap négy csúcsa $(p, q)$, $(p + x, q)$, $(p, q + y)$, $(p + x, q + y)$, ahol $x, y > 0$. Tehát a téglalap oldalhossza $x$ és $y$, területe $xy$. Mekkora lesz a területe annak a síkidomnak, mely e téglalapból keletkezik az $\left[\begin{smallmatrix} a & b \\ c & d \end{smallmatrix}\right]$ mátrixú lineáris transzformáció hatására.
+
+**6.28. Orientáció.** Azt mondjuk, hogy $\mathbb{R}^n$ két bázisa azonos orientációjú, ha az egyiket a másikba vivő lineáris transzformáció determinánsa pozitív. Mutassuk meg, hogy $\mathbb{R}^n$ bázisain az „azonos orientációjú" reláció ekvivalencia reláció, amely így az összes bázist két osztályba sorolja.
+
+<!-- OCR: through PDF p.228 -->
