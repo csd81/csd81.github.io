@@ -76,6 +76,8 @@ export const DOCS: Doc[] = [
   // --- Jegyzetek ---
   { id: 'linalg-bevezeto', group: 'jegyzet', icon: '📖', title: 'Lineáris algebra alapfogalmak',
     blurb: 'Dr. Szalkai István · Pannon Egyetem — bázis, koordináták és az elemi bázistranszformáció részletes magyarázattal.' },
+  { id: 'lin-algebra-konyv', group: 'jegyzet', icon: '📘', title: 'Lineáris algebra (tankönyv)',
+    blurb: 'Wettl Ferenc · BME — teljes lineáris algebra tankönyv: vektorok, egyenletrendszerek, mátrixok, determináns, sajátérték, SVD, Jordan-alak … (OCR folyamatban).' },
 ];
 
 const BY_ID = new Map(DOCS.map((d) => [d.id, d]));

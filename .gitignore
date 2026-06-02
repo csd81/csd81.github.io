@@ -23,3 +23,6 @@ linAlgPeldatar.md
 tamop_37_53.md
 tamop_pages/
 la-tamop-wf*.md
+
+# OCR source PDF (not bundled; Vite globs only *.md)
+src/subjects/linalg/content/*.pdf
