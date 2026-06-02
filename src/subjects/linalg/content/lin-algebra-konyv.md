@@ -2202,4 +2202,75 @@ Az $x_2 = s$, $x_4 = t$, $x_5 = u$ helyettesítés és az $x_1$ és $x_3$ válto
 $$(x_1, x_2, x_3, x_4, x_5) = \left(\tfrac{3}{2} - 2s - \tfrac{3}{2}t - u, \; s, \; -\tfrac{1}{2} - \tfrac{1}{2}t, \; t, \; u\right),$$
 $$\begin{bmatrix} x_1 \\ x_2 \\ x_3 \\ x_4 \\ x_5 \end{bmatrix} = \begin{bmatrix} \tfrac{3}{2} - 2s - \tfrac{3}{2}t - u \\ s \\ -\tfrac{1}{2} - \tfrac{1}{2}t \\ t \\ u \end{bmatrix} = \begin{bmatrix} \tfrac{3}{2} \\ 0 \\ -\tfrac{1}{2} \\ 0 \\ 0 \end{bmatrix} + s\begin{bmatrix} -2 \\ 1 \\ 0 \\ 0 \\ 0 \end{bmatrix} + t\begin{bmatrix} -\tfrac{3}{2} \\ 0 \\ -\tfrac{1}{2} \\ 1 \\ 0 \end{bmatrix} + u\begin{bmatrix} -1 \\ 0 \\ 0 \\ 0 \\ 1 \end{bmatrix} \qquad \square$$
 
-<!-- OCR: through PDF p.86 -->
+### A redukált lépcsős alak egyértelműsége
+
+Fontos következményei vannak a következő tételnek:
+
+**2.41. tétel (A redukált lépcsős alak egyértelmű).** *Minden mátrix redukált lépcsős alakra hozható, amely egyértelmű.*
+
+*Bizonyítás.* A redukált lépcsős alak létezését már beláttuk, az egyértelműségre indirekt bizonyítást adunk. Tegyük fel, hogy van egy olyan mátrix, mely elemi sorműveletekkel két különböző redukált lépcsős alakra hozható. Jelölje ezeket $\mathbf{R}$ és $\mathbf{S}$. Mivel mindketten ugyanazzal a mátrixszal ekvivalensek, elemi sorműveletekkel egymásba alakíthatóak, vagyis egymással is ekvivalensek. Válasszuk ki oszlopaik közül azt a balról első oszlopot, melyben különböznek, valamint az összes előttük álló vezéroszlopot. Az így kapott mátrixokat jelölje $\hat{\mathbf{R}}$ és $\hat{\mathbf{S}}$. Tehát $\hat{\mathbf{R}} \neq \hat{\mathbf{S}}$, mert különböznek az utolsó oszlopukban. Például, ha
+$$\mathbf{R} = \begin{bmatrix} 1 & 2 & 0 & 4 & 5 \\ 0 & 0 & 1 & 2 & 3 \\ 0 & 0 & 0 & 0 & 0 \end{bmatrix} \quad \text{és} \quad \mathbf{S} = \begin{bmatrix} 1 & 2 & 0 & 4 & 5 \\ 0 & 0 & 1 & 9 & 3 \\ 0 & 0 & 0 & 0 & 0 \end{bmatrix},$$
+akkor
+$$\hat{\mathbf{R}} = \begin{bmatrix} 1 & 0 & 4 \\ 0 & 1 & 2 \\ 0 & 0 & 0 \end{bmatrix} \quad \text{és} \quad \hat{\mathbf{S}} = \begin{bmatrix} 1 & 0 & 4 \\ 0 & 1 & 9 \\ 0 & 0 & 0 \end{bmatrix}.$$
+Ez az oszlop, melyben különböznek, nem lehet az első oszlop, mert ha az a zérusvektor az egyik mátrixban, akkor a sorekvivalencia miatt a másikban is az lenne, egyébként pedig ez az oszlop mindenképp az első helyen 1-est, alatta 0-kat tartalmaz.
+
+Tekintsük az így kapott $\hat{\mathbf{R}}$, $\hat{\mathbf{S}}$ mátrixokat egy-egy egyenletrendszer bővített együtthatómátrixának. Ezek általános alakja így a következő:
+$$\hat{\mathbf{R}} = \left[\begin{array}{cccc|c} 1 & 0 & \ldots & 0 & r_1 \\ 0 & 1 & \ldots & 0 & r_2 \\ \vdots & \vdots & \ddots & \vdots & \vdots \\ 0 & 0 & \ldots & 1 & r_k \\ 0 & 0 & \ldots & 0 & 0 \\ \vdots & \vdots & & \vdots & \vdots \\ 0 & 0 & \ldots & 0 & 0 \end{array}\right] \quad \text{vagy} \quad \hat{\mathbf{R}} = \left[\begin{array}{cccc|c} 1 & 0 & \ldots & 0 & 0 \\ 0 & 1 & \ldots & 0 & 0 \\ \vdots & \vdots & \ddots & \vdots & \vdots \\ 0 & 0 & \ldots & 1 & 0 \\ 0 & 0 & \ldots & 0 & 1 \\ 0 & 0 & \ldots & 0 & 0 \\ \vdots & \vdots & & \vdots & \vdots \\ 0 & 0 & \ldots & 0 & 0 \end{array}\right] \quad \text{és}$$
+$$\hat{\mathbf{S}} = \left[\begin{array}{cccc|c} 1 & 0 & \ldots & 0 & s_1 \\ 0 & 1 & \ldots & 0 & s_2 \\ \vdots & \vdots & \ddots & \vdots & \vdots \\ 0 & 0 & \ldots & 1 & s_k \\ 0 & 0 & \ldots & 0 & 0 \\ \vdots & \vdots & & \vdots & \vdots \\ 0 & 0 & \ldots & 0 & 0 \end{array}\right] \quad \text{vagy} \quad \hat{\mathbf{S}} = \left[\begin{array}{cccc|c} 1 & 0 & \ldots & 0 & 0 \\ 0 & 1 & \ldots & 0 & 0 \\ \vdots & \vdots & \ddots & \vdots & \vdots \\ 0 & 0 & \ldots & 1 & 0 \\ 0 & 0 & \ldots & 0 & 1 \\ 0 & 0 & \ldots & 0 & 0 \\ \vdots & \vdots & & \vdots & \vdots \\ 0 & 0 & \ldots & 0 & 0 \end{array}\right]$$
+Mivel oszlopok kihagyása nem változtat a sorekvivalencián – hisz elemi sorműveletekben műveletet csak egy oszlopon belül végzünk –, ezért az $\hat{\mathbf{R}}$ és $\hat{\mathbf{S}}$ mátrixok ekvivalensek, azaz a hozzájuk tartozó két egyenletrendszernek ugyanaz a megoldása. Ez csak úgy lehet, ha vagy minden $i = 1, \ldots, k$ indexre $r_i = s_i$, vagy egyik egyenletrendszer sem oldható meg, azaz mindkét esetben azt kaptuk, hogy $\hat{\mathbf{R}} = \hat{\mathbf{S}}$, ami ellentmondás. Ez bizonyítja, hogy a kiinduló $\mathbf{R} \neq \mathbf{S}$ feltevés helytelen volt, tehát $\mathbf{R} = \mathbf{S}$. (Holzmann[^4] bizonyítása alapján.) $\square$
+
+[^4]: *Wolf Holzmann. Uniqueness of reduced row echelon form. http://www.cs.uleth.ca/~holzmann/notes/reduceduniq.pdf, 2002*
+
+Mivel a redukált lépcsős alak egyértelmű, definiálhatunk egy függvényt, mely minden mátrixhoz annak ezt az alakját rendeli. Az $\operatorname{rref}(\mathbf{A})$ jelölést mi arra a függvényre fogjuk alkalmazni, mely egy $m \times n$-es mátrixhoz a redukált lépcsős alakjának – ellentétben a programnyelvekkel – a zérussorok elhagyásával kapott alakját rendeli. Például
+$$\operatorname{rref}\begin{bmatrix} 1 & 0 & 0 \\ 0 & 1 & 0 \\ 1 & 1 & 0 \end{bmatrix} = \begin{bmatrix} 1 & 0 & 0 \\ 0 & 1 & 0 \end{bmatrix}.$$
+
+### Szimultán egyenletrendszerek
+
+Gyakori feladat az alkalmazásokban, hogy sok olyan egyenletrendszert kell megoldani, amelyek csak a konstans tagokban térnek el egymástól. A kiküszöböléses módszerekkel ezek egyszerre is megoldhatók alig több erőforrás felhasználásával, mint ami egyetlen egyenletrendszer megoldásához szükséges.
+
+**2.42. definíció (Szimultán egyenletrendszerek).** *Több egyenletrendszer halmazát szimultán egyenletrendszernek nevezünk, ha együtthatómátrixaik azonosak.*
+
+**2.43. példa (Szimultán egyenletrendszer megoldása).** *Oldjuk meg az alábbi egyenletrendszereket!*
+$$\begin{alignedat}{9}
+x &{}+{}& y &{}+{}& z &{}={}& 3 \\
+2x &{}+{}& 3y &{}+{}& 2z &{}={}& 7 \\
+2x &{}+{}& 2y &{}+{}& 3z &{}={}& 6
+\end{alignedat} \qquad \begin{alignedat}{9}
+u &{}+{}& v &{}+{}& w &{}={}& 3 \\
+2u &{}+{}& 3v &{}+{}& 2w &{}={}& 7 \\
+2u &{}+{}& 2v &{}+{}& 3w &{}={}& 7
+\end{alignedat} \qquad \begin{alignedat}{9}
+r &{}+{}& s &{}+{}& t &{}={}& 0 \\
+2r &{}+{}& 3s &{}+{}& 2t &{}={}& 0 \\
+2r &{}+{}& 2s &{}+{}& 3t &{}={}& 1
+\end{alignedat}$$
+
+*Megoldás.* Mivel e három egyenletrendszer együtthatómátrixa azonos, a bal oldal átalakítását elég egyszer elvégezni, a jobb oldalak átalakítását pedig vele együtt. Ehhez a szimultán egyenletrendszerre a következő bővített mátrixot érdemes képezni:
+$$\left[\begin{array}{ccc|ccc} 1 & 1 & 1 & 3 & 3 & 0 \\ 2 & 3 & 2 & 7 & 7 & 0 \\ 2 & 2 & 3 & 6 & 7 & 1 \end{array}\right]$$
+A megoldáshoz használjuk a Gauss–Jordan-módszert:
+$$\left[\begin{array}{ccc|ccc} 1 & 1 & 1 & 3 & 3 & 0 \\ 2 & 3 & 2 & 7 & 7 & 0 \\ 2 & 2 & 3 & 6 & 7 & 1 \end{array}\right] \xrightarrow{\substack{S_2 - 2S_1 \\ S_3 - 2S_1}} \left[\begin{array}{ccc|ccc} 1 & 1 & 1 & 3 & 3 & 0 \\ 0 & 1 & 0 & 1 & 1 & 0 \\ 0 & 0 & 1 & 0 & 1 & 1 \end{array}\right] \xrightarrow{\substack{S_1 - S_2 \\ S_1 - S_3}}$$
+$$\left[\begin{array}{ccc|ccc} 1 & 0 & 0 & 2 & 1 & -1 \\ 0 & 1 & 0 & 1 & 1 & 0 \\ 0 & 0 & 1 & 0 & 1 & 1 \end{array}\right].$$
+Ebből leolvasható mindhárom egyenletrendszer megoldása:
+$$\begin{bmatrix} x \\ y \\ z \end{bmatrix} = \begin{bmatrix} 2 \\ 1 \\ 0 \end{bmatrix}, \quad \begin{bmatrix} u \\ v \\ w \end{bmatrix} = \begin{bmatrix} 1 \\ 1 \\ 1 \end{bmatrix}, \quad \begin{bmatrix} r \\ s \\ t \end{bmatrix} = \begin{bmatrix} -1 \\ 0 \\ 1 \end{bmatrix}. \qquad \square$$
+
+▶ Ha tudjuk, hogy több egyenletrendszerből álló szimultán egyenletrendszerről van szó, mindegyik egyenletrendszerben használhatjuk ugyanazokat a változókat.
+
+▶ Később látni fogjuk, hogy ha $\mathbf{A}$ invertálható, $\mathbf{B}$ tetszőleges mátrix, és soraik száma azonos, akkor az $[\mathbf{A}|\mathbf{B}]$ redukált lépcsős alakjából leolvasható az $\mathbf{A}^{-1}\mathbf{B}$ mátrix.
+
+### Kiküszöbölés $\mathbb{Z}_p$-ben
+
+Ha $p$ prím, akkor a modulo $p$ maradékosztályok közti műveletek minden olyan tulajdonsággal rendelkeznek, melyet a kiküszöbölés során a valós számok körében használtunk. Ennek következtében a Gauss- és Gauss–Jordan-módszerek minden további nélkül használhatók $\mathbb{Z}_p$ fölötti egyenletrendszerekre is. (Lásd még az 549. oldalon az algebrai testről írtakat.)
+
+**2.44. példa (Egyenletrendszer $\mathbb{Z}_2$ fölött).** *4-bites kódszavakat küldünk, bitjeit jelölje $a$, $b$, $c$ és $d$. Hibajavító kódot készítünk úgy, hogy minden kódszó végére három paritásbitet teszünk, nevezetesen a $b + c + d$, $a + c + d$ és a $a + b + d$ bitet. Az összeadás itt természetesen $\mathbb{Z}_2$ fölött értendő. Például a $0110$ kódszó helyett a $0110011$ kódszót küldjük. Egy üzenetben az egyik ilyen 7-bites kódszó első 4 bitjét a vevő szerkezet bizonytalanul érzékeli, amit kapunk, az a $(?, ?, ?, ?, 1, 0, 1)$ kódvektor. Mi lehetett az eredeti üzenet, ha az utolsó 3 bit biztosan jó?*
+
+> *E feladatban definiált kódot $[7, 4, 3]_2$ bináris* Hamming-kódnak *nevezzük. $16 = 2^4$ kódszóból áll, és bármely két kódszava legalább 3 helyen különbözik, így bármely 5 bit egyértelműen megadja a maradék kettőt. Eszerint legföljebb 2 bithiba felismerhető (jelezhető), és legföljebb 1 bithiba ki is javítható.*
+
+*Megoldás.* Az $a$, $b$, $c$ és $d$ bitek ismeretlenek, melyekre
+$$\begin{alignedat}{9}
+&& b &{}+{}& c &{}+{}& d &{}={}& 1 \\
+a &{}+{}& && c &{}+{}& d &{}={}& 0 \\
+a &{}+{}& b &{}+{}& && d &{}={}& 1
+\end{alignedat}$$
+Oldjuk meg ezt az egyenletrendszert Gauss–Jordan kiküszöböléssel $\mathbb{Z}_2$ fölött. Ne felejtsük, hogy $\mathbb{Z}_2$-ben $1 + 1 = 0$, így $1 = -1$, azaz a
+
+<!-- OCR: through PDF p.89 -->
