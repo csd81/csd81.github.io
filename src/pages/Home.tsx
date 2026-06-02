@@ -63,7 +63,7 @@ export default function Home() {
         </li>
       </ul>
 
-      {user ? (
+      {user && (
       <>
       <h2 className="home__section-title">
         {lang === 'hu' ? 'Diszkrét matematika' : 'Discrete Math'}
@@ -192,29 +192,6 @@ export default function Home() {
         </li>
       </ul>
       </>
-      ) : (
-        <section>
-          <h2 className="home__section-title">
-            {lang === 'hu' ? 'További tananyag' : 'More coursework'}
-          </h2>
-          <ul className="home__grid">
-            <li>
-              <Link to="/login" className="chcard chcard--locked">
-                <span className="chcard__num">🔒</span>
-                <span className="chcard__body">
-                  <span className="chcard__title">
-                    {lang === 'hu' ? 'Belépés a folytatáshoz' : 'Sign in to unlock'}
-                  </span>
-                  <span className="chcard__blurb">
-                    {lang === 'hu'
-                      ? 'Diszkrét matematika, kalkulus és lineáris algebra — jelentkezz be a megtekintéshez.'
-                      : 'Discrete math, calculus and linear algebra — sign in to view these.'}
-                  </span>
-                </span>
-              </Link>
-            </li>
-          </ul>
-        </section>
       )}
     </div>
   );

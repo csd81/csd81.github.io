@@ -81,10 +81,18 @@ function splitChapters(md: string): Chapter[] {
 }
 
 /** Active-language chapters: HU is canonical; in EN use the translated chapter
- *  where it exists (by key) and fall back to the HU chapter otherwise. */
+ *  (numbered ones matched by number, unnumbered back-matter matched in order)
+ *  while keeping the HU `key` so routes stay stable across a language toggle.
+ *  Falls back to the HU chapter where no translation exists. */
 function chaptersFor(hu: Chapter[], en: Chapter[], lang: Lang): Chapter[] {
   if (lang !== 'en' || en.length === 0) return hu;
-  return hu.map((h) => en.find((e) => e.key === h.key) ?? h);
+  const enByNum = new Map(en.filter((e) => e.num != null).map((e) => [e.num, e]));
+  const enExtra = en.filter((e) => e.num == null);
+  let ei = 0;
+  return hu.map((h) => {
+    const e = h.num != null ? enByNum.get(h.num) : enExtra[ei++];
+    return e ? { ...e, key: h.key } : h;
+  });
 }
 
 const chDisplay = (c: Chapter) => (c.num != null ? `${c.num}. ${c.title}` : c.title);

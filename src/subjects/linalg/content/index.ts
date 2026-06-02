@@ -93,8 +93,8 @@ export const DOCS: Doc[] = [
     blurb: 'Wettl Ferenc · BME — II. rész: Mátrixok algebrája és geometriája (mátrixműveletek, determináns, mátrixleképezések és geometriájuk). Magyar és angol nyelven.',
     srcHu: 'lin-algebra-part2-hu.md', srcEn: 'lin-algebra-part2-en.md' },
   { id: 'lin-algebra-konyv3', group: 'jegyzet', icon: '📕', title: 'Lineáris algebra (tankönyv) — III. rész',
-    blurb: 'Wettl Ferenc · BME — III. rész: Mátrixok sajátságai (sajátérték és diagonalizálás, szinguláris érték/SVD, Jordan-féle normálalak, nemnegatív mátrixok).',
-    srcHu: 'lin-algebra-part3-hu.md' },
+    blurb: 'Wettl Ferenc · BME — III. rész: Mátrixok sajátságai (sajátérték és diagonalizálás, szinguláris érték/SVD, Jordan-féle normálalak, nemnegatív mátrixok). Magyar és angol nyelven.',
+    srcHu: 'lin-algebra-part3-hu.md', srcEn: 'lin-algebra-part3-en.md' },
 ];
 
 const BY_ID = new Map(DOCS.map((d) => [d.id, d]));
