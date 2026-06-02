@@ -438,4 +438,72 @@ $$\begin{aligned}
 \end{aligned}$$
 $\square$
 
-<!-- OCR: through PDF p.32 -->
+### Egységvektorral való szorzás és a merőleges vetítés
+
+Minden olyan vektort, melynek abszolút értéke 1, *egységvektornak* nevezünk.
+
+Ha $\mathbf{a}$ egy tetszőleges nemzérus vektor, akkor $\mathbf{a}/|\mathbf{a}|$ egységvektor, ugyanis abszolút értéke 1:
+$$\left|\frac{\mathbf{a}}{|\mathbf{a}|}\right| = \frac{1}{|\mathbf{a}|}|\mathbf{a}| = 1.$$
+
+**1.22. tétel (Egységvektorral való szorzás geometriai jelentése).** *Ha $\mathbf{e}$ egységvektor, akkor a $\hat{\mathbf{b}} = (\mathbf{e} \cdot \mathbf{b})\mathbf{e}$ vektor a $\mathbf{b}$ vektornak az $\mathbf{e}$ egyenesére való merőleges vetülete. Az $\mathbf{e} \cdot \mathbf{b}$ szorzat e vetület előjeles hossza, mely pozitív, ha $\hat{\mathbf{b}}$ és $\mathbf{e}$ egyirányúak, és negatív, ha ellenkező irányúak.*
+
+*Bizonyítás.* Ha $\mathbf{e}$ egységvektor, azaz abszolút értéke 1, akkor $\mathbf{e} \cdot \mathbf{b} = |\mathbf{b}|\cos(\mathbf{e},\mathbf{b})_\angle$, ez pedig a koszinusz függvény definíciója szerint $\mathbf{b}$ merőleges vetületének előjeles hosszát jelenti. E szám $\mathbf{e}$-szerese pedig egy $\mathbf{e}$ irányú, és ilyen hosszú vektort ad, mely épp $\mathbf{b}$ vetületi vektora. $\square$
+
+Jelölje a $\mathbf{b}$ vektornak az $\mathbf{a}$ egyenesére eső merőleges vetületi vektorát $\operatorname{proj}_{\mathbf{a}} \mathbf{b}$. Eszerint ha $\mathbf{e}$ egységvektor, akkor
+$$\operatorname{proj}_{\mathbf{e}} \mathbf{b} = (\mathbf{e} \cdot \mathbf{b})\mathbf{e}.$$
+
+Alapvető feladat egy vektornak egy másikkal párhuzamos és rá merőleges vektorok összegére való felbontása, amit másként *merőleges összetevőkre bontásnak* nevezünk.
+
+**1.23. tétel (Vektor felbontása merőleges összetevőkre).** *Ha $\mathbf{a}$ és $\mathbf{b}$ a sík vagy a tér két vektora, és $\mathbf{a} \neq \mathbf{0}$, akkor $\mathbf{b}$-nek az $\mathbf{a}$ egyenesére eső merőleges vetülete*
+$$\operatorname{proj}_{\mathbf{a}} \mathbf{b} = \frac{\mathbf{a} \cdot \mathbf{b}}{\mathbf{a} \cdot \mathbf{a}}\mathbf{a}.$$
+*A $\mathbf{b}$-nek az $\mathbf{a}$ egyenesére merőleges összetevője*
+$$\mathbf{b} - \operatorname{proj}_{\mathbf{a}} \mathbf{b} = \mathbf{b} - \frac{\mathbf{a} \cdot \mathbf{b}}{\mathbf{a} \cdot \mathbf{a}}\mathbf{a}.$$
+
+*Bizonyítás.* Az első képlet az egységvektorral szorzás geometriai jelentéséről szóló 1.22. tételből következik. Legyen $\mathbf{e} = \frac{\mathbf{a}}{|\mathbf{a}|}$ az $\mathbf{a}$-irányú egységvektor. Ekkor
+$$\operatorname{proj}_{\mathbf{e}} \mathbf{b} = (\mathbf{e} \cdot \mathbf{b})\mathbf{e} = \left(\frac{\mathbf{a}}{|\mathbf{a}|} \cdot \mathbf{b}\right)\frac{\mathbf{a}}{|\mathbf{a}|} = \frac{1}{|\mathbf{a}|^2}(\mathbf{a} \cdot \mathbf{b})\mathbf{a} = \frac{\mathbf{a} \cdot \mathbf{b}}{\mathbf{a} \cdot \mathbf{a}}\mathbf{a}.$$
+(Az utolsó egyenlőségnél kihasználtuk, hogy $|\mathbf{a}|^2 = \mathbf{a} \cdot \mathbf{a}$.) Mivel $\mathbf{e}$ és $\mathbf{a}$ párhuzamosak, ezért $\operatorname{proj}_{\mathbf{a}} \mathbf{b} = \operatorname{proj}_{\mathbf{e}} \mathbf{b}$, ami bizonyítja első állításunkat. Az állítás második fele abból adódik, hogy a két összetevő összege $\mathbf{b}$. $\square$
+
+*1.24. ábra. A $\mathbf{b}$ vektor és az $\mathbf{e}$ egységvektor egyenesére eső vetülete. A felső ábrán $\mathbf{e} \cdot \mathbf{b} > 0$, az alsón $\mathbf{e} \cdot \mathbf{b} < 0$.*
+
+*1.25. ábra. A $\mathbf{b}$ vektor felbontása az $\mathbf{a}$ vektorral párhuzamos és rá merőleges vektorok összegére.*
+
+### Merőlegesség és orientáció
+
+Ha $\mathbf{a}$ és $\mathbf{b}$ egymásra merőleges síkbeli nemzérus vektorok, akkor $\mathbf{a}$ és $-\mathbf{b}$ is merőlegesek, így $(\mathbf{a},\mathbf{b})_\angle = (\mathbf{a},-\mathbf{b})_\angle = \pi/2$. Csak az $\mathbf{a}$ ismeretében meg tudjuk-e különböztetni a $\mathbf{b}$ és $-\mathbf{b}$ vektorokat? Hasonló kérdés a térben is fölmerül: ha $\mathbf{c}$ merőleges a nem kollineáris $\mathbf{a}$ és $\mathbf{b}$ vektorok mindegyikére, akkor $-\mathbf{c}$ is. Megkülönböztethető-e egymástól $\mathbf{c}$ és $-\mathbf{c}$ csak $\mathbf{a}$-hoz és $\mathbf{b}$-hez való viszonyuk alapján? A válaszhoz az *orientáció* fogalma vezet.
+
+Először szemléltetve közelítünk e fogalomhoz (definíció a determináns fogalmára építhető). A síkban a két független vektorból álló párokat két osztályba sorolhatjuk aszerint, hogy a tenyérrel fölfelé fordított jobb vagy bal kezünk első két ujjával szemléltethetőek (1.26. ábra) (hüvelyk az első, mutató a második vektor).
+
+Hasonlóképp a térben a független vektorokból álló hármasokat két osztályba sorolhatjuk aszerint, hogy jobb vagy bal kezünk első három ujjával szemléltethetőek. Az 1.27. ábra első 2-2 képe azt is mutatja, hogy kultúránként különböző módon mi e három ujj sorrendje (ld. ki hogy mutatja a kettőt). Aszerint, hogy egy vektorpár a síkban, illetve egy vektorhármas a térben melyik osztályba esik, azt mondjuk, hogy *jobbrendszert*, illetve *balrendszert* alkot. Az 1.27. ábra mindkét sorának harmadik képén látható mód (az ökölbe szoruló kéz mozgása) azt is megmutatja, hogy milyen egy egyenes körül való pozitív (negatív) forgás iránya. A síkban ezt azzal is ki tudjuk fejezni, hogy két független vektor szögét előjellel látjuk el, nevezetesen pozitívval, ha jobbrendszert, és negatívval, ha balrendszert alkotnak. Az így kapott szöget a két vektor *irányított szögének* nevezzük. Az $\mathbf{a}$ és $\mathbf{b}$ irányított szögét $(\mathbf{a},\mathbf{b})_\sphericalangle$ jelöli. Tehát míg $(\mathbf{a},\mathbf{b})_\angle = (\mathbf{b},\mathbf{a})_\angle$, addig $(\mathbf{a},\mathbf{b})_\sphericalangle = -(\mathbf{b},\mathbf{a})_\sphericalangle$, és ha $(\mathbf{a},\mathbf{b})_\sphericalangle = \pi/2$, akkor $(\mathbf{a},-\mathbf{b})_\sphericalangle = -\pi/2$. Ez a válasz a paragrafus elején feltett kérdésre.
+
+*1.26. ábra. Két vektor egymáshoz való viszonya jobbrendszert (felső ábra) vagy balrendszert (alsó ábra) alkot. A közbe zárt irányított szög az előbbi esetben pozitív, utóbbiban negatív.*
+
+*1.27. ábra. Az $\mathbf{a}$, $\mathbf{b}$ és $\mathbf{c}$ vektorok ebben a sorrendben jobbrendszert alkotnak, ha irányuk a jobb kezünkkel mutatható a mellékelt három ábra bármelyike szerint: (1) hüvelyk–mutató–középső ujj, (2) mutató–középső–hüvelykujj, (3) a hüvelyk mutatja a $\mathbf{c}$ vektort, ökölbe szoruló kezünk ujjai pedig az $\mathbf{a}$ felől a $\mathbf{b}$ felé haladnak. Ugyanezen vektorok ebben a sorrendben balrendszert alkotnak, ha irányuk a bal kezünkkel mutatható hasonló módon.*
+
+### Vektori szorzás
+
+A fizikában több olyan jelenség is van, melyben két térbeli vektorhoz keresünk egy mindkettőre merőleges harmadikat. Legismertebb példa a *forgatónyomaték*.
+
+Hasson egy $\mathbf{F}$ erő egy test $P$ pontjában, és legyen a test rögzítve az $O$ pontjában. A $P$ ponton átmenő, $\mathbf{F}$ irányú egyenesnek az $O$-tól való távolságát az erő karjának nevezzük. Az $\mathbf{F}$ hatására a test $O$ körül elfordul. Ennek jellemzésére tudnunk kell a forgás tengelyét, a forgás „nagyságát", és azt, hogy a tengely körüli két forgásirány közül melyikről van szó. Erre alkalmas lehet egy vektor – ezt nevezzük *forgatónyomaték*-nak –, melynek iránya a forgástengellyel párhuzamos, hossza a forgás nagyságát írja le, és a forgástengellyel párhuzamos két vektorirány a két forgásirányt különbözteti meg. Hogyan definiálható a forgatónyomaték-vektor, ha tudjuk, hogy abszolút értéke az erőkar hosszának és az erő abszolút értékének szorzata?
+
+Az erő karja $|\overrightarrow{OP}|\sin(\overrightarrow{OP},\mathbf{F})_\angle$, így az $\mathbf{M}$ forgatónyomaték abszolút értéke:
+$$|\mathbf{M}| = |\mathbf{F}||\overrightarrow{OP}|\sin(\overrightarrow{OP},\mathbf{F})_\angle.$$
+
+A forgás tengelye nyilván merőleges $\mathbf{F}$-re és $\overrightarrow{OP}$-re is, csak abban kell megegyezni, hogy az $\overrightarrow{OP}$, $\mathbf{F}$ és $\mathbf{M}$ vektorok jobb- vagy balrendszert alkossanak. A fizikusok a jobbrendszert választották.
+
+A forgatónyomaték és több hasonló fizikai fogalom a következő definícióhoz vezet:
+
+**1.24. definíció (Vektori szorzás).** *A 3-dimenziós tér két vektorának vektori szorzatán azt a vektort értjük, melynek*
+- *a) abszolút értéke a két vektor abszolút értékének és közbezárt szöge szinuszának szorzata,*
+- *b) iránya merőleges mindkét vektor irányára és – ha a szorzat nem a nullvektor, akkor – az első tényező, a második tényező és a szorzat ebben a sorrendben jobbrendszert alkot.*
+
+▶ Az $\mathbf{a}$ és $\mathbf{b}$ vektorok vektori szorzatát $\mathbf{a} \times \mathbf{b}$ jelöli, amit „a kereszt b"-nek olvasunk. Képletekkel megfogalmazva: $\mathbf{a} \times \mathbf{b}$ egy vektor, melyre
+$$|\mathbf{a} \times \mathbf{b}| = |\mathbf{a}||\mathbf{b}|\sin(\mathbf{a},\mathbf{b})_\angle,$$
+$\mathbf{a} \times \mathbf{b} \perp \mathbf{a}$, $\mathbf{a} \times \mathbf{b} \perp \mathbf{b}$, továbbá $\mathbf{a}$, $\mathbf{b}$ és $\mathbf{a} \times \mathbf{b}$ ebben a sorrendben jobbrendszert alkot, ha $|\mathbf{a} \times \mathbf{b}| \neq 0$.
+
+▶ A vektor abszolút értékére a fenti képlet valóban nem negatív számot ad, mert a szinusz függvény $[0,\pi]$ intervallumon nem negatív.
+
+▶ E definíció bármely két 3-dimenziós vektor vektori szorzatát egyértelműen definiálja, ugyanis minden olyan esetben, amikor nem dönthető el, hogy a vektorok jobbrendszert alkotnak-e, a szorzat a nullvektor.
+
+*1.28. ábra. A test az $O$ pontban rögzítve van, a $P$ pontban hat az $\mathbf{F}$ erő, a forgás tengelye merőleges lesz az $\overrightarrow{OP}$ és az $\mathbf{F}$ vektorok síkjára, az $\overrightarrow{OP}$, az $\mathbf{F}$ és $\mathbf{M}$ jobbrendszert alkotnak, ahol $\mathbf{M}$ a forgatónyomaték, melynek iránya megadja a forgatás irányát. Az $|\mathbf{F}|\sin(\overrightarrow{OP},\mathbf{F})_\angle$ szakaszt szaggatott vonal jelöli.*
+
+<!-- OCR: through PDF p.35 -->
