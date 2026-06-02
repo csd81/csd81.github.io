@@ -1793,4 +1793,117 @@ Az $\mathbf{A}$ mátrix $i$-edik sorvektorát $\mathbf{a}_{i*}$ vagy $(\mathbf{A
 **2.24. példa (Mátrixok és elemeik).** *Ha*
 $$\mathbf{C} = \begin{bmatrix} 1 & 2 & 3 \\ 4 & 5 & 7 \end{bmatrix}, \text{akkor } c_{23} = 7, \; \mathbf{c}_2 = \mathbf{c}_{*2} = \begin{bmatrix} 2 \\ 5 \end{bmatrix}, \; \mathbf{c}_{2*} = \begin{bmatrix} 4 & 5 & 7 \end{bmatrix}.$$
 
-<!-- OCR: through PDF p.74 -->
+### Egyenletrendszer mátrixa és bővített mátrixa
+
+Az egyenletrendszer *együtthatómátrixa* az egyenletek együtthatóit, míg *bővített* mátrixa, vagy egyszerűen csak *mátrixa* az egyenletek együtthatóit és konstans tagjait tartalmazza. Az áttekinthetőség érdekében a bővített mátrixban egy függőleges vonallal választhatjuk el az együtthatókat a konstans tagoktól. A 2.20. definícióbeli általános alak együttható- és bővített mátrixa:
+$$\begin{bmatrix} a_{11} & a_{12} & \ldots & a_{1n} \\ a_{21} & a_{22} & \ldots & a_{2n} \\ \vdots & \vdots & \ddots & \vdots \\ a_{m1} & a_{m2} & \ldots & a_{mn} \end{bmatrix}, \quad \left[\begin{array}{cccc|c} a_{11} & a_{12} & \ldots & a_{1n} & b_1 \\ a_{21} & a_{22} & \ldots & a_{2n} & b_2 \\ \vdots & \vdots & \ddots & \vdots & \vdots \\ a_{m1} & a_{m2} & \ldots & a_{mn} & b_m \end{array}\right].$$
+
+**2.25. példa (Mátrix használata a megoldáshoz).** *Oldjuk meg a következő – egyenleteivel és mátrixával is megadott – egyenletrendszert!*
+$$\begin{alignedat}{9}
+2x &{}+{}& 3y &{}+{}& 2z &{}={}& 7 \\
+x &{}+{}& y &{}+{}& z &{}={}& 3 \\
+2x &{}+{}& 2y &{}+{}& 3z &{}={}& 6
+\end{alignedat} \qquad \left[\begin{array}{ccc|c} 2 & 3 & 2 & 7 \\ 1 & 1 & 1 & 3 \\ 2 & 2 & 3 & 6 \end{array}\right].$$
+
+*Megoldás.* A megoldást párhuzamosan mindkét alakon szemléltetjük. Első lépésként kicseréljük az első két egyenletet/sort:
+$$\begin{alignedat}{9}
+x &{}+{}& y &{}+{}& z &{}={}& 3 \\
+2x &{}+{}& 3y &{}+{}& 2z &{}={}& 7 \\
+2x &{}+{}& 2y &{}+{}& 3z &{}={}& 6
+\end{alignedat} \qquad \left[\begin{array}{ccc|c} 1 & 1 & 1 & 3 \\ 2 & 3 & 2 & 7 \\ 2 & 2 & 3 & 6 \end{array}\right].$$
+Az első egyenlet/sor 2-szeresét kivonjuk a második, majd a harmadik egyenletből/sorból (azaz $-2$-szeresét hozzáadjuk a második majd a harmadik egyenlethez/sorhoz).
+$$\begin{alignedat}{9}
+x &{}+{}& y &{}+{}& z &{}={}& 3 \\
+&& y && &{}={}& 1 \\
+&& && z &{}={}& 0
+\end{alignedat} \qquad \left[\begin{array}{ccc|c} 1 & 1 & 1 & 3 \\ 0 & 1 & 0 & 1 \\ 0 & 0 & 1 & 0 \end{array}\right].$$
+E ponton az egyenletrendszerről leolvasható $y$ és $z$ értéke: $y = 1$, $z = 0$. Ezeket az első egyenletbe helyettesítve az $x + 1 + 0 = 3$ egyenletet kapjuk, amiből kifejezhető $x$ értéke: $x = 2$.
+
+Másik megoldási módszerhez jutunk, ha a visszahelyettesítés helyett folytathatjuk az ekvivalens átalakítások sorozatát. Vonjuk ki a második, majd a harmadik egyenletet/sort az elsőből:
+$$\begin{alignedat}{9}
+x && && &{}={}& 2 \\
+&& y && &{}={}& 1 \\
+&& && z &{}={}& 0
+\end{alignedat} \qquad \left[\begin{array}{ccc|c} 1 & 0 & 0 & 2 \\ 0 & 1 & 0 & 1 \\ 0 & 0 & 1 & 0 \end{array}\right].$$
+Így olyan alakra hoztuk az egyenletrendszert, illetve a bővített mátrixot, amiből azonnal leolvasható a megoldás: $(x, y, z) = (2, 1, 0)$. $\square$
+
+### Sormodell: hipersíkok metszete
+
+A lineáris egyenletrendszerek szemléltetésére két geometriai modellt mutatunk, melyek segíteni fognak az általánosabb fogalmak megértésében, szemléltetésében.
+
+Tudjuk, hogy a kétváltozós lineáris $ax + by = c$ egyenletet kielégítő pontok halmaza egyenest alkot, ha $a$ és $b$ legalább egyike nem $0$. (Ha $a = b = 0$, akkor az egyenlet alakja $0x + 0y = 0$, azaz $0 = 0$, ami minden $(x, y)$ számpárra fennáll, tehát a megoldások halmaza a sík összes pontjának halmazával azonos. Ha $a = b = 0$, de $c \neq 0$, akkor az egyenletnek nincs megoldása, a megoldáshalmaz üres.)
+
+**2.26. példa (Sormodell két kétismeretlenes egyenlettel).** *Ábrázoljuk az alábbi egyenletrendszereket és megoldásukat a sormodellben!*
+$$\begin{alignedat}{9}
+x &{}+{}& y &{}={}& 3 \\
+x &{}+{}& 2y &{}={}& 4
+\end{alignedat} \qquad \begin{alignedat}{9}
+x &{}+{}& 2y &{}={}& 3 \\
+2x &{}+{}& 4y &{}={}& 7
+\end{alignedat} \qquad \begin{alignedat}{9}
+x &{}+{}& 2y &{}={}& 3 \\
+2x &{}+{}& 4y &{}={}& 6
+\end{alignedat}$$
+
+*Megoldás.* Az első egyenletrendszer szerinti ábra egy metsző egyenespárt tartalmaz. Metszéspontjuk a megoldás. Ezt a 2.6 ábra felső rajza mutatja. Oldjuk meg az egyenletrendszert! A megoldás közben két újabb egyenletrendszert kapunk:
+$$\begin{alignedat}{9}
+x &{}+{}& y &{}={}& 3 \\
+x &{}+{}& 2y &{}={}& 4
+\end{alignedat} \quad \Rightarrow \quad \begin{alignedat}{9}
+x &{}+{}& y &{}={}& 3 \\
+&& y &{}={}& 1
+\end{alignedat} \quad \Rightarrow \quad \begin{alignedat}{9}
+x && &{}={}& 2 \\
+&& y &{}={}& 1
+\end{alignedat}$$
+Ezek sormodelljeit a 2.6 ábra mutatja.
+
+A második egyenletrendszer nem oldható meg, mert az egyenleteknek megfelelő két egyenes párhuzamos, és nincs közös pontjuk. Az algebrai megközelítés is ezt adja: ha az első egyenlet kétszeresét kivonjuk a másodikból, az ellentmondó $0 = 1$ egyenletet kapjuk. Másként fogalmazva: az $0x + 0y = 1$ egyenletet kielégítő pontok halmaza üres.
+
+A harmadik egyenletrendszer egyenleteihez két egybeeső egyenes tartozik. Az egyenletrendszer megoldáshalmaza tehát ennek az egyenesnek a pontjaiból áll. Ha az első egyenlet kétszeresét kivonjuk a másodikból, a $0 = 0$ egyenletet kapjuk, amely így elhagyható. A megmaradó $x + 2y = 3$ egyenlet összes megoldása paraméteres alakba írva például $(x, y) = (3 - 2t, t)$. $\square$
+
+> *Egyenletrendszer megoldásának szemléltetése a sormodellben jól nyomon követhető a SagePlayer sormodell című demonstrációján. Ott saját bővített mátrixokkal is lehet kísérletezni.*
+
+*2.6. ábra. Egyenletrendszer megoldásának szemléltetése.*
+
+*2.7. ábra. A megoldás szemléltetése, ha a két egyenlet egyikének bal oldala nullává tehető.*
+
+Röviden áttekintjük a három egyenletből álló háromismeretlenes egyenletrendszerek sormodelljeit a 3-dimenziós térben.
+
+Ha a három egyenlettel meghatározott három sík általános helyzetű, azaz normálvektoraik lineárisan függetlenek, akkor az egyenletrendszernek egyetlen megoldása van (ld. 2.8. (a) ábra). Például a 2.25. példabeli egyenletrendszernek egyetlen megoldása van: $(x, y, z) = (2, 1, 0)$.
+
+Ha a normálvektorok közt lineáris kapcsolat van, akkor a megoldások száma vagy $0$ vagy végtelen lesz. Tekintsük az
+$$\begin{alignedat}{9}
+2x &{}+{}& y &{}+{}& 2z &{}={}& 5 \\
+x &{}+{}& y &{}+{}& z &{}={}& 3 \\
+3x &{}+{}& 2y &{}+{}& 3z &{}={}& 8
+\end{alignedat} \quad \text{és az} \quad \begin{alignedat}{9}
+2x &{}+{}& y &{}+{}& 2z &{}={}& 5 \\
+x &{}+{}& y &{}+{}& z &{}={}& 3 \\
+3x &{}+{}& 2y &{}+{}& 3z &{}={}& 9
+\end{alignedat}$$
+egyenletrendszereket. A normálvektorok mindkettőben egy síkba (de nem egy egyenesbe) esnek, mivel $(2, 1, 2) + (1, 1, 1) = (3, 2, 3) = \mathbf{0}$, így a síkok párhuzamosak egy egyenessel. Az első egyenletrendszer esetén ugyanez a lineáris kapcsolat az egyenletek közt is, azaz az első kettőt kivonva a harmadikból a $0 = 0$ egyenletre jutunk, ami elhagyható, a maradék két sík metszete pedig egyenes (ld. a 2.8 b) ábrát). A második egyenletrendszer esetén a $0 = 1$ egyenletre jutunk, azaz a bal oldalak közti lineáris kapcsolat nincs meg a jobb oldalak közt. Ekkor a síkoknak nincs közös pontjuk (ld. a 2.9. (b) ábrát).
+
+Végül ha a síkok közt vannak párhuzamosak, de nem egybe esők, akkor az egyenletrendszernek nincs megoldása (ld. a 2.9. (a) ábrát), míg ha mindhárom sík egybe esik, a sík pontjai adják az összes megoldást (ld. a 2.8. (c) ábrát).
+
+**2.27. állítás (Sormodell).** *Ha egy $n$-ismeretlenes egyenlet bal oldalán nem minden együttható $0$, akkor az egyenletet kielégítő pontok (azaz az egyenlet megoldásai) egy hipersíkot alkotnak $\mathbb{R}^n$-ben. Ha egy $n$-ismeretlenes egyenletrendszer $m$ ilyen egyenletből áll, akkor az egyenletrendszer megoldása a nekik megfelelő $m$ hipersík közös része $\mathbb{R}^n$-ben.*
+
+Az $m$ egyenlet a skaláris szorzás segítségével tömörebb alakban is fölírható. Az $m \times n$-es $\mathbf{A}$ együtthatómátrixú lineáris egyenletrendszer $i$-edik egyenletének alakja
+$$a_{i1}x_1 + a_{i2}x_2 + \cdots + a_{in}x_n = b_i.$$
+Ha $\mathbf{a}_{i*}$ jelöli az $\mathbf{A}$ mátrix $i$-edik sorvektorát, és $\mathbf{x}$ az ismeretlenek vektorát, akkor az előző egyenlet a következő alakot ölti:
+$$\mathbf{a}_{i*} \cdot \mathbf{x} = b_i. \tag{2.20}$$
+Ez különösen akkor lesz érdekes, ha homogén lineáris egyenletrendszereket fogunk vizsgálni, mert ott mindegyik egyenlet $\mathbf{a}_{i*} \cdot \mathbf{x} = 0$ alakot ölt, ami azt jelenti, hogy olyan $\mathbf{x}$ vektort keresünk, mely merőleges az $\mathbf{a}_{i*}$ vektorok mindegyikére.
+
+*2.8. ábra. Konzisztens (megoldható) egyenletrendszerek ábrázolása (a megoldáshalmazt kék szín jelzi). (a) Három általános helyzetű sík: egyetlen megoldás. (b) Egy egyenesen átmenő, de nem csupa azonos sík: végtelen sok megoldás, a megoldások egy egyenest alkotnak. (c) Azonos síkok: végtelen sok megoldás, a megoldások egy síkot alkotnak.*
+
+*2.9. ábra. Nem megoldható egyenletrendszerek szemléltetése. (a) A síkok közül legalább kettő párhuzamos, de nem azonos. (b) Egy egyenessel párhuzamos, de egymással nem párhuzamos és közös egyenest sem tartalmazó három sík.*
+
+### Oszlopmodell: vektor előállítása lineáris kombinációként
+
+E modellben az egyenletrendszerre úgy tekintünk, mint egy olyan vektoregyenletre, amelyben egy vektort kell előállítani adott vektorok lineáris kombinációjaként. Például az
+$$\begin{alignedat}{9}
+x &{}+{}& y &{}={}& 3 \\
+x &{}+{}& 2y &{}={}& 4
+\end{alignedat} \quad \text{és az} \quad \begin{bmatrix} 1 \\ 1 \end{bmatrix}x + \begin{bmatrix} 1 \\ 2 \end{bmatrix}y = \begin{bmatrix} 3 \\ 4 \end{bmatrix}.$$
+
+<!-- OCR: through PDF p.77 -->
