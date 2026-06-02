@@ -52,13 +52,7 @@ function nodeLeadKind(node: any): string | null {
   return leadKindFromText(hastText(first));
 }
 
-const isBoldHeader = (node: any): boolean => {
-  if (!node || node.type !== 'element' || node.tagName !== 'p') return false;
-  const sig = (node.children || []).filter((c: any) => !(c.type === 'text' && !c.value.trim()));
-  return sig.length === 1 && sig[0].type === 'element' && sig[0].tagName === 'strong';
-};
-
-const sliceClean = (source: string, a?: number, b?: number): string =>
+const sliceClean =(source: string, a?: number, b?: number): string =>
   source.slice(a ?? 0, b ?? source.length).replace(/^\[\^[^\]]+\]:.*$/gm, '').trim();
 
 const copyEl = (tex: string): any => ({ type: 'element', tagName: 'pcopy', properties: { tex }, children: [] });
@@ -69,53 +63,42 @@ const boxEl = (kind: string, children: any[]): any => ({
   type: 'element', tagName: 'div', properties: { className: ['pbox', `pbox--${kind}`] }, children,
 });
 
-/** Box numbered theorem-like items, proofs, and every list item. */
+/** Box EVERY block individually: each paragraph, list item, blockquote, table
+ *  and code block becomes its own box with a copy button. Headings stay as plain
+ *  section titles; a paragraph led by a theorem/definition/etc. is colour-coded. */
 export function rehypePracticeBoxes({ source }: { source: string }) {
+  const sliceNode = (n: any) => sliceClean(source, n.position?.start?.offset, n.position?.end?.offset);
   return (tree: any) => {
-    const kids: any[] = tree.children || [];
     const out: any[] = [];
-    let i = 0;
-    while (i < kids.length) {
-      const node = kids[i];
+    for (const node of tree.children || []) {
+      if (node.type !== 'element') { out.push(node); continue; }
+      const tag = node.tagName;
+
+      // Headings remain section titles (not boxed).
+      if (/^h[1-6]$/.test(tag) || tag === 'hr') { out.push(node); continue; }
 
       // Lists → one box per <li>.
-      if (node.type === 'element' && (node.tagName === 'ol' || node.tagName === 'ul')) {
-        const ordered = node.tagName === 'ol';
+      if (tag === 'ol' || tag === 'ul') {
+        const ordered = tag === 'ol';
         let idx = Number(node.properties?.start) || 1;
         for (const li of node.children || []) {
           if (li.type !== 'element' || li.tagName !== 'li') continue;
-          const tex = sliceClean(source, li.position?.start?.offset, li.position?.end?.offset);
-          const head: any[] = [copyEl(tex)];
+          const head: any[] = [copyEl(sliceNode(li))];
           if (ordered) head.push(numEl(`${idx}.`));
           out.push(boxEl(ordered ? 'num' : 'item', [...head, ...(li.children || [])]));
           if (ordered) idx++;
         }
-        i++;
         continue;
       }
 
-      // Theorem/def/example/proof lead → box the run up to the next lead/break.
-      const kind = nodeLeadKind(node);
-      if (kind) {
-        const group = [node];
-        let j = i + 1;
-        for (; j < kids.length; j++) {
-          const n = kids[j];
-          const brk =
-            (n.type === 'element' && (/^h[1-6]$/.test(n.tagName) || n.tagName === 'section' || n.tagName === 'ol' || n.tagName === 'ul')) ||
-            isBoldHeader(n) || nodeLeadKind(n);
-          if (brk) break;
-          group.push(n);
-        }
-        const start = node.position?.start?.offset;
-        const end = kids[j]?.position?.start?.offset;
-        out.push(boxEl(kind, [copyEl(sliceClean(source, start, end)), ...group]));
-        i = j;
+      // Every paragraph / blockquote / table / code block → its own box.
+      if (tag === 'p' || tag === 'blockquote' || tag === 'table' || tag === 'pre') {
+        const kind = (tag === 'p' && nodeLeadKind(node)) || (tag === 'p' ? 'para' : tag);
+        out.push(boxEl(kind, [copyEl(sliceNode(node)), node]));
         continue;
       }
 
       out.push(node);
-      i++;
     }
     tree.children = out;
   };

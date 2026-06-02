@@ -99,7 +99,7 @@ function PracticeHome() {
               <span className="practice__example-title">{`${i + 1}. ${t(c.title)}`}</span>
               <CopyButton source={t(c.body)} />
             </summary>
-            <MarkdownView markdown={t(c.body)} />
+            <BoxedMarkdown md={t(c.body)} />
           </details>
         ))}
       </section>
@@ -115,7 +115,7 @@ function PracticeHome() {
                   <span className="practice__example-title">{t(it.label)}</span>
                   <CopyButton source={t(it.body)} />
                 </summary>
-                <MarkdownView markdown={t(it.body)} />
+                <BoxedMarkdown md={t(it.body)} />
               </details>
             ))}
           </div>
@@ -131,7 +131,7 @@ function PracticeHome() {
             </span>
             <CopyButton source={glossaryMd} />
           </summary>
-          <MarkdownView markdown={glossaryMd} />
+          <BoxedMarkdown md={glossaryMd} />
         </details>
       </section>
     </div>
@@ -358,10 +358,7 @@ function SubsectionGuide() {
           <h2 className="practice__h2">{lang === 'hu' ? '⚡ Rövid összefoglaló' : '⚡ Short summary'}</h2>
           <CopyButton source={lang === 'en' && s.shortEn ? s.shortEn : s.short} />
         </div>
-        <MarkdownView
-          markdown={lang === 'en' && s.shortEn ? s.shortEn : s.short}
-          rehypePlugins={[rehypeConceptEm]}
-        />
+        <BoxedMarkdown md={lang === 'en' && s.shortEn ? s.shortEn : s.short} />
       </section>
 
       {(() => {
@@ -433,11 +430,12 @@ function SubsectionGuide() {
 /** Markdown rendered with Szalkai/calculus-style callout boxes (numbered
  *  theorems/defs/examples/list items boxed, each with a copy button) and
  *  coloured concept emphasis. */
-function BoxedMarkdown({ md }: { md: string }) {
+function BoxedMarkdown({ md, className }: { md: string; className?: string }) {
   const source = useMemo(() => normalizeMath(md), [md]);
   return (
     <MarkdownView
       markdown={md}
+      className={className}
       components={practiceBoxComponents}
       rehypePlugins={[[rehypePracticeBoxes, { source }], rehypeConceptEm]}
     />
@@ -474,7 +472,7 @@ function SlideDeck({ markdown }: { markdown: string }) {
   return (
     <div className="slidedeck">
       <div className="slidedeck__stage">
-        <MarkdownView className="slidedeck__slide" markdown={slides[i]} />
+        <BoxedMarkdown className="slidedeck__slide" md={slides[i]} />
       </div>
       <div className="slidedeck__nav">
         <button type="button" className="flashcards__btn" onClick={() => setI((n) => clamp(n - 1))} disabled={i === 0}>
@@ -527,7 +525,7 @@ function ChapterReader({ kind }: { kind: 'book' | 'slides' }) {
         </p>
         <h1>{t(meta.title)}</h1>
       </header>
-      {kind === 'slides' ? <SlideDeck markdown={md} /> : <MarkdownView markdown={md} />}
+      {kind === 'slides' ? <SlideDeck markdown={md} /> : <BoxedMarkdown md={md} />}
     </div>
   );
 }
