@@ -3503,4 +3503,131 @@ $$\left[\begin{array}{ccccc|c} 1 & 1 & 1 & 3 & 2 & 4 \\ 1 & 2 & 1 & 5 & 2 & 5 \\
 $$(x, y, z, u, w) = (1, 1, 2, 0, 0) + (-1, -2, 0, 1, 0)u + (-1, 0, -1, 0, 1)w.$$
 Mivel a sortér merőleges a nulltérre, és mi egy sortérbe eső megoldást keresünk, ezért e megoldásnak merőlegesnek kell lennie a nullteret kifeszítő vektorokra, vagyis a $(-1, -2, 0, 1, 0)$ és a $(-1, 0, -1, 0, 1)$ vektorra. Így a következő két egyenletet kell az eredeti egyenletrendszerhez, vagy az egyszerűség kedvéért inkább a redukált lépcsős alak szerinti
 
-<!-- OCR: through PDF p.131 -->
+egyenletrendszerhez adni:
+$$\begin{alignedat}{9}
+-x &{}-{}& 2y &&&{}+{}& u &&&{}={}& 0 \\
+-x &&&{}-{}& z &&&{}+{}& w &{}={}& 0
+\end{alignedat}$$
+Így a kiegészített egyenletrendszer bővített mátrixa és annak redukált lépcsős alakja
+$$\left[\begin{array}{ccccc|c} 1 & 0 & 0 & 1 & 1 & 1 \\ 0 & 1 & 0 & 2 & 0 & 1 \\ 0 & 0 & 1 & 0 & 1 & 2 \\ -1 & -2 & 0 & 1 & 0 & 0 \\ -1 & 0 & -1 & 0 & 1 & 0 \end{array}\right] \Longrightarrow \left[\begin{array}{ccccc|c} 1 & 0 & 0 & 0 & 0 & -4/17 \\ 0 & 1 & 0 & 0 & 0 & 5/17 \\ 0 & 0 & 1 & 0 & 0 & 19/17 \\ 0 & 0 & 0 & 1 & 0 & 6/17 \\ 0 & 0 & 0 & 0 & 1 & 15/17 \end{array}\right],$$
+tehát a keresett megoldás $(-4/17, 5/17, 19/17, 6/17, 15/17)$. $\square$
+
+### Elemi bázistranszformáció
+
+Az előző paragrafusokban azt láttuk, hogy az elemi sorműveletek eredményeként az eredeti mátrix oszlopainak egy másik bázisban felírt koordinátás alakját kapjuk meg. Ez adja az ötletet ahhoz, hogy más nézőpontból lássuk, mi történik, ha egy oszlopban főelemet választunk, és az oszlop többi elemét elimináljuk.
+
+A lényeg egy kétoszlopos mátrixon is szemléltethető: a két oszlop legyen $\mathbf{a}$ és $\mathbf{b}$, a bázis, melyben e vektorok meg vannak adva, a standard bázis. Tegyük fel, hogy $a_i \neq 0$. Ekkor az $a_i$ pozícióját választva, a kiküszöbölés eredménye:
+$$\begin{bmatrix} a_1 & b_1 \\ a_2 & b_2 \\ \vdots & \vdots \\ a_i & b_i \\ \vdots & \vdots \\ a_m & b_m \end{bmatrix} \Longrightarrow \begin{bmatrix} 0 & b_1 - \frac{b_i}{a_i}a_1 \\ 0 & b_2 - \frac{b_i}{a_i}a_2 \\ \vdots & \vdots \\ 1 & \frac{b_i}{a_i} \\ \vdots & \vdots \\ 0 & b_m - \frac{b_i}{a_i}a_m \end{bmatrix}$$
+Megmutatjuk, hogy e transzformáció után mindkét vektor az
+$$\mathbf{e}_1, \mathbf{e}_2, \ldots, \mathbf{e}_{i-1}, \mathbf{a}, \mathbf{e}_{i+1}, \ldots, \mathbf{e}_m$$
+bázisban lett felírva. Az $\mathbf{a}$ vektorra ez nyilvánvaló. Nézzük a $\mathbf{b}$ vektort! Fejezzük ki az $\mathbf{e}_i$ vektort az $\mathbf{a} = a_1\mathbf{e}_1 + \ldots + a_i\mathbf{e}_i + \ldots + a_m\mathbf{e}_m$ felírásból:
+$$\mathbf{e}_i = -\frac{1}{a_i}a_1\mathbf{e}_1 - \frac{1}{a_i}a_2\mathbf{e}_2 - \ldots + \frac{1}{a_i}\mathbf{a} - \ldots - \frac{1}{a_i}a_m\mathbf{e}_m.$$
+Ezt behelyettesítjük a $\mathbf{b} = b_1\mathbf{e}_1 + \ldots + b_i\mathbf{e}_i + \ldots + b_m\mathbf{e}_m$ kifejezésbe:
+$$\mathbf{b} = \left(b_1 - \frac{b_i}{a_i}a_1\right)\mathbf{e}_1 + \left(b_2 - \frac{b_i}{a_i}a_2\right)\mathbf{e}_2 + \ldots + \frac{b_i}{a_i}\mathbf{a} + \ldots + \left(b_m - \frac{b_i}{a_i}a_m\right)\mathbf{e}_m.$$
+Tehát valóban, a $\mathbf{b}$ koordinátás alakja e módosított bázisban épp az, amit az eredeti mátrix eliminálása után kaptunk a második oszlopban. Az imént tárgyalt lépést *elemi bázistranszformációnak* nevezzük, mert egy másik bázisra való áttérés egy elemi lépésének tekintjük, amikor egyetlen bázisvektort cserélünk ki. A lépések jelzésére a mátrixot fejléccel együtt egy táblázatba írjuk, a sorok elé az $\mathbf{e}_1, \ldots, \mathbf{e}_m$ bázisvektorok, az oszlopok fölé az oszlopvektorok neve kerül.
+
+| | $\mathbf{a}$ | $\mathbf{b}$ |
+|---|---|---|
+| $\mathbf{e}_1$ | $a_1$ | $b_1$ |
+| $\mathbf{e}_2$ | $a_2$ | $b_2$ |
+| $\vdots$ | $\vdots$ | $\vdots$ |
+| $\mathbf{e}_i$ | $a_i$ | $b_i$ |
+| $\vdots$ | $\vdots$ | $\vdots$ |
+| $\mathbf{e}_m$ | $a_m$ | $b_m$ |
+
+$\Longrightarrow$
+
+| | $\mathbf{a}$ | $\mathbf{b}$ |
+|---|---|---|
+| $\mathbf{e}_1$ | $0$ | $b_1 - \frac{b_i}{a_i}a_1$ |
+| $\mathbf{e}_2$ | $0$ | $b_2 - \frac{b_i}{a_i}a_2$ |
+| $\vdots$ | $\vdots$ | $\vdots$ |
+| $\mathbf{a}$ | $1$ | $\frac{b_i}{a_i}$ |
+| $\vdots$ | $\vdots$ | $\vdots$ |
+| $\mathbf{e}_m$ | $0$ | $b_m - \frac{b_i}{a_i}a_m$ |
+
+Összefoglalva és egyúttal általánosabban megfogalmazva a fentieket:
+
+**3.41. tétel (Elemi bázistranszformáció).** *Tegyük fel, hogy az $\mathbf{a}$ vektor $E = \{ \mathbf{e}_1, \ldots, \mathbf{e}_m \}$ bázisra vonatkozó $i$-edik koordinátája $a_i \neq 0$. Ekkor az $E$ által generált $\mathcal{E}$ altérnek az*
+$$\mathbf{e}_1, \mathbf{e}_2, \ldots, \mathbf{e}_{i-1}, \mathbf{a}, \mathbf{e}_{i+1}, \ldots, \mathbf{e}_m$$
+*vektorok is bázisát alkotják. Az $\mathcal{E}$ egy tetszőleges $\mathbf{b}$ vektorának koordinátás alakja megkapható e bázisban elemi sorműveletekkel, ha $a_i$-t választjuk főelemnek.*
+
+Az elemi bázistranszformáció alkalmas arra, hogy a bázisok változásán keresztül egy más nézőpontból világítsa meg a redukált lépcsős alakra hozással megoldható feladatokat. Példaként vizsgáljuk meg, mi történik egy egyenletrendszer megoldásakor. Megjegyezzük, hogy itt nincs szükség sorcserére, mert egy oszlopból szabadon választhatunk olyan sort, amelynek fejlécében még az eredeti bázisvektor szerepel.
+
+**3.42. példa (Egyenletrendszer megoldása elemi bázistranszformációval).** *Oldjuk meg a 2.32. és a 2.39. példában megoldott egyenletrendszert elemi bázistranszformációval.*
+
+*Megoldás.* A táblázatokat egybefűzzük, a sorok fejlécein mindig jelezzük az aktuális bázist, az oszlopok fejléceit a jobb érthetőség végett mindig kiírjuk, a kiválasztott főelemeket külön jelöljük:
+
+| | $\mathbf{a}_1$ | $\mathbf{a}_2$ | $\mathbf{a}_3$ | $\mathbf{b}$ |
+|---|---|---|---|---|
+| $\mathbf{e}_1$ | **1** | 1 | 2 | 0 |
+| $\mathbf{e}_2$ | 2 | 2 | 3 | 2 |
+| $\mathbf{e}_3$ | 1 | 3 | 3 | 4 |
+| $\mathbf{e}_4$ | 1 | 2 | 1 | 5 |
+
+$\Longrightarrow$
+
+| | $\mathbf{a}_1$ | $\mathbf{a}_2$ | $\mathbf{a}_3$ | $\mathbf{b}$ |
+|---|---|---|---|---|
+| $\mathbf{a}_1$ | 1 | 1 | 2 | 0 |
+| $\mathbf{e}_2$ | 0 | 0 | -1 | 2 |
+| $\mathbf{e}_3$ | 0 | 2 | 1 | 4 |
+| $\mathbf{e}_4$ | 0 | **1** | -1 | 5 |
+
+$\Longrightarrow$
+
+| | $\mathbf{a}_1$ | $\mathbf{a}_2$ | $\mathbf{a}_3$ | $\mathbf{b}$ |
+|---|---|---|---|---|
+| $\mathbf{a}_1$ | 1 | 0 | 3 | -5 |
+| $\mathbf{e}_2$ | 0 | 0 | -1 | 2 |
+| $\mathbf{e}_3$ | 0 | 0 | **3** | -6 |
+| $\mathbf{a}_2$ | 0 | 1 | -1 | 5 |
+
+$\Longrightarrow$
+
+| | $\mathbf{a}_1$ | $\mathbf{a}_2$ | $\mathbf{a}_3$ | $\mathbf{b}$ |
+|---|---|---|---|---|
+| $\mathbf{a}_1$ | 1 | 0 | 0 | 1 |
+| $\mathbf{e}_2$ | 0 | 0 | 0 | 0 |
+| $\mathbf{a}_3$ | 0 | 0 | 1 | -2 |
+| $\mathbf{a}_2$ | 0 | 1 | 0 | 3 |
+
+A táblázaton kicsit lehet egyszerűsíteni, azt az oszlopot, amelyben már csak egy standard egységvektor van, felesleges kiírni, az oszlopok és a sorok fejléceibe pedig elég csak azt a változót írni, amelyik a bázisba vett oszlopvektorhoz tartozik. Így a következőt kapjuk:
+
+| | $x$ | $y$ | $z$ | $\mathbf{b}$ |
+|---|---|---|---|---|
+| | **1** | 1 | 2 | 0 |
+| | 2 | 2 | 3 | 2 |
+| | 1 | 3 | 3 | 4 |
+| | 1 | 2 | 1 | 5 |
+
+$\Longrightarrow$
+
+| | $y$ | $z$ | $\mathbf{b}$ |
+|---|---|---|---|
+| $x$ | 1 | 2 | 0 |
+| | 0 | -1 | 2 |
+| | 2 | 1 | 4 |
+| | **1** | -1 | 5 |
+
+$\Longrightarrow$
+
+| | $z$ | $\mathbf{b}$ |
+|---|---|---|
+| $x$ | 3 | -5 |
+| | -1 | 2 |
+| | **3** | -6 |
+| $y$ | -1 | 5 |
+
+$\Longrightarrow$
+
+| | $\mathbf{b}$ |
+|---|---|
+| $x$ | 1 |
+| | 0 |
+| $z$ | -2 |
+| $y$ | 3 |
+
+Az egyenletrendszer megoldása tehát $x = 1$, $y = 3$, $z = -2$. $\square$
+
+<!-- OCR: through PDF p.134 -->
