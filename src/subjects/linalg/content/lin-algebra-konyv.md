@@ -346,4 +346,96 @@ lineáris kombináció, hogy $0 \leqslant a, b, c \leqslant 1$ és $a + b + c = 
 
 **1.28.** Az $ABC$ derékszögű háromszög $C$ csúcsból induló magasságvonala messe az $AB$ átfogót a $D$ pontban. Jelölje a két befogó hosszát $a$ és $b$. Állítsuk elő a $\overrightarrow{CD}$ vektort a $\overrightarrow{CA}$ és $\overrightarrow{CB}$ vektorok lineáris kombinációjaként csak e két számadatot felhasználva.
 
-<!-- OCR: through PDF p.29 -->
+## Távolság, szög, orientáció
+
+*A címben jelzett három alapfogalomhoz három vektorművelet visz közelebb. Egyikük eredményéül nem vektort, hanem skalárt ad, másikuk nem felcserélhető, és kétváltozós műveletként csak a 3-dimenziós térben definiálható, a harmadik művelet pedig nem két- hanem háromváltozós.*
+
+### Skaláris szorzás
+
+A fizikában az erő által végzett munka az út hosszának és az erő elmozdulás irányába eső merőleges vetülete hosszának szorzata. Vagyis két vektorjellegű mennyiségből egy skalármennyiséget kapunk eredményül. Ha $\mathbf{F}$ jelöli az erővektort, $\mathbf{s}$ az elmozdulásvektort, $\mathbf{F}_s$ az erőnek az elmozdulás irányába eső merőleges vetületi vektorát és $\gamma$ az $\mathbf{F}$ és $\mathbf{s}$ vektorok hajlásszögét, akkor a munka értéke $|\mathbf{F}_s||\mathbf{s}| = |\mathbf{F}||\mathbf{s}|\cos\gamma$. Ez a következő definícióhoz vezet:
+
+**1.15. definíció (Két vektor skaláris szorzata).** *Két vektor skaláris szorzatán a vektorok abszolút értékének és az általuk bezárt szög koszinuszának szorzatát értjük. Az $\mathbf{a}$ és $\mathbf{b}$ vektorok skaláris szorzatát $\mathbf{a} \cdot \mathbf{b}$ jelöli, tehát*
+$$\mathbf{a} \cdot \mathbf{b} = |\mathbf{a}||\mathbf{b}|\cos(\mathbf{a},\mathbf{b})_\angle,$$
+*ahol a két vektor által bezárt szög $(\mathbf{a},\mathbf{b})_\angle$.*
+
+Ha $\mathbf{a}$ és $\mathbf{b}$ valamelyike zérusvektor, akkor a két vektor szöge, s így annak koszinusza sem határozható meg egyértelműen, a skaláris szorzat viszont ekkor is egyértelmű, éspedig 0, hisz a zérusvektor abszolút értéke 0, és 0 bármivel vett szorzata 0.
+
+Szokás $\mathbf{a}$ és $\mathbf{b}$ skaláris szorzatát $\mathbf{ab}$-vel is jelölni, de ezt más szorzásoktól megkülönböztetendő e könyvben nem fogjuk használni.
+
+**1.16. példa (Skaláris szorzat).** *Mennyi a skaláris szorzata egy 1 és egy 2 egység hosszú, egymással $60°$-os szöget bezáró két vektornak?*
+
+*Megoldás.* A szorzat $1 \cdot 2 \cdot \cos 60° = 1 \cdot 2 \cdot \frac{1}{2} = 1$. $\square$
+
+**1.17. tétel (Mikor 0 a skaláris szorzat).** *Két vektor skaláris szorzata pontosan akkor 0, ha a két vektor merőleges egymásra.*
+
+*Bizonyítás.* ($\Leftarrow$) Ha $\mathbf{a} \perp \mathbf{b}$, akkor $(\mathbf{a},\mathbf{b})_\angle = \pi/2$, azaz $\cos(\mathbf{a},\mathbf{b})_\angle = 0$, tehát $\mathbf{a} \cdot \mathbf{b} = 0$.
+
+($\Rightarrow$) Ha $\mathbf{a} \cdot \mathbf{b} = 0$, azaz $|\mathbf{a}||\mathbf{b}|\cos(\mathbf{a},\mathbf{b})_\angle = 0$, akkor $|\mathbf{a}| = 0$, $|\mathbf{b}| = 0$ vagy $\cos(\mathbf{a},\mathbf{b})_\angle = 0$. Ha valamelyik vektor zérusvektor, akkor iránya bármely vektoréra merőlegesnek tekinthető. Ha sem $\mathbf{a}$ sem $\mathbf{b}$ nem a zérusvektor, akkor $\cos(\mathbf{a},\mathbf{b})_\angle = 0$, a cos függvénynek pedig a $[0,\pi]$ intervallumban csak $\pi/2$-ben van zérushelye, tehát a két vektor merőleges egymásra. $\square$
+
+▶ A tétel bizonyításából látszik, a zérusvektorra úgy tekintünk, mint ami bármely vektorra merőleges. Korábban – a skalárral való szorzásnál – a zérusvektorra úgy tekintettünk, mint ami bármely vektorral párhuzamos, hisz skalárszorosa. A zérusvektorra tehát úgy tekintünk, mint ami egy adott vektorral akkora szöget zár be, mint amekkorára épp szükségünk van. Ezt megtehetjük, hisz a zérusvektor iránya tetszőleges. Ez megóv minket attól, hogy minden tételbe a zérusvektor esetét külön, mint valami rendhagyó esetet bele kelljen fogalmaznunk.
+
+**1.18. tétel (A skaláris szorzás műveleti tulajdonságai).** *Ha $\mathbf{a}$, $\mathbf{b}$ és $\mathbf{c}$ tetszőleges térbeli (síkbeli) vektorok és $r$ tetszőleges valós szám, akkor igazak az alábbi összefüggések:*
+- *a)* $\mathbf{a} \cdot \mathbf{b} = \mathbf{b} \cdot \mathbf{a}$ *(kommutativitás)*
+- *b)* $(\mathbf{a} + \mathbf{b}) \cdot \mathbf{c} = \mathbf{a} \cdot \mathbf{c} + \mathbf{b} \cdot \mathbf{c}$ *(disztributivitás)*
+- *c)* $r(\mathbf{a} \cdot \mathbf{b}) = (r\mathbf{a}) \cdot \mathbf{b} = \mathbf{a} \cdot (r\mathbf{b})$
+- *d)* $\mathbf{a} \cdot \mathbf{a} > 0$, ha $\mathbf{a} \neq \mathbf{0}$, és $\mathbf{a} \cdot \mathbf{a} = 0$, ha $\mathbf{a} = \mathbf{0}$.
+
+A bizonyítást az Olvasóra hagyjuk.
+
+▶ Két vektor skaláris szorzata skalár, ezért az asszociativitás (csoportosíthatóság) kérdése értelmetlen, mivel az $(\mathbf{a} \cdot \mathbf{b})\mathbf{c}$ szorzatban két különböző szorzásművelet szerepel. Mindezzel együtt $(\mathbf{a} \cdot \mathbf{b})\mathbf{c} \neq \mathbf{a}(\mathbf{b} \cdot \mathbf{c})$ bármely $\mathbf{a}$, $\mathbf{b}$, $\mathbf{c}$ vektorra (ld. az 1.35. feladatot).
+
+### Hosszúság és szög
+
+Egy vektor hossza, és ezzel két pont távolsága, valamint két vektor hajlásszöge kifejezhető a skaláris szorzat segítségével.
+
+Egy tetszőleges $\mathbf{a}$ vektorra $\mathbf{a} \cdot \mathbf{a} = |\mathbf{a}||\mathbf{a}|\cos 0 = |\mathbf{a}||\mathbf{a}|$, tehát
+$$|\mathbf{a}|^2 = \mathbf{a} \cdot \mathbf{a}, \quad\text{azaz}\quad |\mathbf{a}| = \sqrt{\mathbf{a} \cdot \mathbf{a}}.$$
+
+E képlet szerint tehát egy *vektor hossza* megegyezik az önmagával vett skaláris szorzatának gyökével. Ebből az is adódik, hogy *két pont távolsága* megegyezik az őket összekötő vektor önmagával vett skaláris szorzatának négyzetgyökével.
+
+Két pontot összekötő vektor egyenlő az oda mutató helyvektorok különbségével, így ha a két pontba mutató helyvektor $\mathbf{a}$ és $\mathbf{b}$, akkor a pontok távolsága – és ezt fogjuk a vektorok távolságának is tekinteni –
+$$d(\mathbf{a},\mathbf{b}) = |\mathbf{a} - \mathbf{b}|.$$
+
+Két vektor skaláris szorzatának és a vektorok hosszának ismeretében a *szögük* meghatározható:
+$$\cos(\mathbf{a},\mathbf{b})_\angle = \frac{\mathbf{a} \cdot \mathbf{b}}{|\mathbf{a}||\mathbf{b}|}, \tag{1.2}$$
+mivel a $[0,\pi]$ intervallumon a koszinusz függvény kölcsönösen egyértelmű.
+
+### Három tétel vektorok hosszáról
+
+Vektor hosszáról három fontos összefüggést igazolunk, melyek később is fontos szerepet kapnak.
+
+**1.19. tétel (Pithagorász-tétel).** *Az $\mathbf{a}$ és $\mathbf{b}$ vektorokra pontosan akkor teljesül az $|\mathbf{a} + \mathbf{b}|^2 = |\mathbf{a}|^2 + |\mathbf{b}|^2$ összefüggés, ha $\mathbf{a}$ és $\mathbf{b}$ merőlegesek egymásra.*
+
+*Bizonyítás.* Az alább ?-lel megjelölt egyenlőség pontosan akkor teljesül, ha $\mathbf{a} \cdot \mathbf{b} = 0$, azaz ha $\mathbf{a}$ és $\mathbf{b}$ merőlegesek egymásra.
+$$\begin{aligned}
+|\mathbf{a} + \mathbf{b}|^2 &= (\mathbf{a} + \mathbf{b}) \cdot (\mathbf{a} + \mathbf{b}) \\
+&= \mathbf{a} \cdot \mathbf{a} + \mathbf{a} \cdot \mathbf{b} + \mathbf{b} \cdot \mathbf{a} + \mathbf{b} \cdot \mathbf{b} && \text{(disztributivitás)} \\
+&= \mathbf{a} \cdot \mathbf{a} + 2(\mathbf{a} \cdot \mathbf{b}) + \mathbf{b} \cdot \mathbf{b} && \text{(kommutativitás)} \\
+&\overset{?}{=} \mathbf{a} \cdot \mathbf{a} + \mathbf{b} \cdot \mathbf{b} && (?) \\
+&= |\mathbf{a}|^2 + |\mathbf{b}|^2.
+\end{aligned}$$
+$\square$
+
+Mivel a koszinusz függvény értéke abszolút értékben sosem nagyobb 1-nél, ezért a skaláris szorzat definíciójából azonnal látszik, hogy
+$$\mathbf{a} \cdot \mathbf{b} = |\mathbf{a}||\mathbf{b}|\cos(\mathbf{a},\mathbf{b})_\angle \leqslant |\mathbf{a}||\mathbf{b}|.$$
+Ezzel bizonyítottuk a következő tételt:
+
+**1.20. tétel (Cauchy–Bunyakovszkij–Schwarz-egyenlőtlenség).** *Két vektor skaláris szorzatának abszolút értéke sosem nagyobb abszolút értékeik szorzatánál, azaz*
+$$|\mathbf{a} \cdot \mathbf{b}| \leqslant |\mathbf{a}||\mathbf{b}|.$$
+
+A Cauchy–Bunyakovszkij–Schwarz-egyenlőtlenség segítségével bizonyítjuk a geometriából jól ismert háromszög-egyenlőtlenséget. E bizonyítás változtatás nélkül működni fog általánosabb körülmények között is.
+
+**1.21. tétel (Háromszög-egyenlőtlenség).** *Bármely két $\mathbf{a}$ és $\mathbf{b}$ vektorra*
+$$|\mathbf{a} + \mathbf{b}| \leqslant |\mathbf{a}| + |\mathbf{b}|.$$
+
+*Bizonyítás.* Mivel az egyenlőtlenség mindkét oldalán nemnegatív szám áll, ezért vele ekvivalens egyenlőtlenséghez jutunk, ha mindkét oldalt négyzetre emeljük.
+$$\begin{aligned}
+|\mathbf{a} + \mathbf{b}|^2 &= (\mathbf{a} + \mathbf{b}) \cdot (\mathbf{a} + \mathbf{b}) \\
+&= \mathbf{a} \cdot \mathbf{a} + 2(\mathbf{a} \cdot \mathbf{b}) + \mathbf{b} \cdot \mathbf{b} \\
+&= |\mathbf{a}|^2 + 2|\mathbf{a}||\mathbf{b}|\cos(\mathbf{a},\mathbf{b})_\angle + |\mathbf{b}|^2 \\
+&\leqslant |\mathbf{a}|^2 + 2|\mathbf{a}||\mathbf{b}| + |\mathbf{b}|^2 \\
+&= (|\mathbf{a}| + |\mathbf{b}|)^2.
+\end{aligned}$$
+$\square$
+
+<!-- OCR: through PDF p.32 -->
