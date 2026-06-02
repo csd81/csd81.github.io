@@ -3820,4 +3820,127 @@ Eddig a mátrixokat csak egyszerű jelölésnek tekintettük, mely az egyenletre
 
 *Enter The Matrix – 3D picture (CC) on flickr by Grégory Tonon*
 
-<!-- OCR: through PDF p.139 -->
+# 4. Mátrixműveletek definíciói
+
+Az egyenletrendszerek megoldásához és vizsgálatához hatékony eszközökhöz jutunk a mátrixműveletek bevezetésével. E műveletek számtalan egyéb alkalmazásban játszanak fontos szerepet, melyekkel a könyv további részében mindenütt találkozni fogunk.
+
+## Műveletek táblázatokkal – műveletek mátrixokkal
+
+*A valós számok közti műveletek természetes módon kiterjeszthetők mátrixokkal való műveletekké. Ezek definícióihoz az összeadás és a szorzás hétköznapi alkalmazásainak táblázatokra való kiterjesztésén keresztül fogunk eljutni.*
+
+A *táblázat* számszerű adatok téglalap alakban sorokban és oszlopokban való elrendezése. A sorok előtt és az oszlopok fölött *fejléc* állhat, melyben az adott sor, illetve oszlop adatait jellemző valamely információ áll (például az oszlop számadatainak közös mértékegysége).
+
+> A mátrixra úgy is tekinthetünk, mint amelyet egy olyan absztrakció során kapunk a táblázatból, melyben azt megfosztjuk fejléceitől, az adatokból pedig csak a számokat őrizzük meg, azok jelentésétől, mértékegységétől eltekintünk.
+
+### Táblázatok összeadása és skalárral szorzása
+
+Az összeadás művelete természetes módon kiterjeszthető számadatokat tartalmazó táblázatokra. Ha két gyümölcsoskosárban piros és zöld alma és szőlő van az alábbi táblázatok szerint, akkor összeöntésük után számuk így számolható:
+
+| | alma (db) | szőlő (fürt) |
+|---|---|---|
+| *piros* | 3 | 2 |
+| *zöld* | 2 | 1 |
+
+$+$
+
+| | alma (db) | szőlő (fürt) |
+|---|---|---|
+| *piros* | 2 | 2 |
+| *zöld* | 0 | 1 |
+
+$=$
+
+| | alma (db) | szőlő (fürt) |
+|---|---|---|
+| *piros* | 5 | 4 |
+| *zöld* | 2 | 2 |
+
+Azonos méretű, azonos fejlécű táblázatok összeadásának egy lehetséges módja az, ha az azonos pozícióiban lévő elemek összeadásával képezzük az összeget.
+
+Az asztalon 2 alma van. Ha számukat megháromszorozzuk, összeszorzunk egy mértékegység nélküli számot (3) egy mértékegységgel rendelkezővel (2 darab), és az eredmény mértékegysége is ez. Ezt megtehetjük egy kosár egész tartalmával is:
+
+$3 \cdot$
+
+| | alma (db) | szőlő (fürt) |
+|---|---|---|
+| *piros* | 3 | 2 |
+| *zöld* | 2 | 1 |
+
+$=$
+
+| | alma (db) | szőlő (fürt) |
+|---|---|---|
+| *piros* | 9 | 6 |
+| *zöld* | 6 | 3 |
+
+### Táblázatok szorzása
+
+Egy adag (a továbbiakban mindig 10 dkg) alma energiatartalma 30 kcal. 5 adag energiatartalmát ismét szorzással kapjuk meg – most mindkét mennyiség rendelkezik mértékegységgel:
+$$5\,\text{adag} \cdot 30\,\frac{\text{kcal}}{\text{adag}} = 150\,\text{kcal}.$$
+Több gyümölcsből (alma, banán, narancs) többféle (A, B, C) gyümölcssalátát készítünk, és a szénhidrát- és energiatartalmukat vizsgáljuk. Két táblázat egyikébe a gyümölcssaláták összetételét, a másikába az összetevők szénhidrát- és energiatartalmát írjuk. Mindkét táblázatban a sorokba kerülnek azok a tételek, melyek összetételét/összetevőit részletezzük, az oszlopokba pedig az összetevők.
+
+| | Alma (adag) | Banán (adag) | Narancs (adag) |
+|---|---|---|---|
+| *A* | 5 | 1 | 4 |
+| *B* | 4 | 4 | 2 |
+| *C* | 4 | 2 | 4 |
+
+| | Szénhidrát (g/adag) | Energia (kcal/adag) |
+|---|---|---|
+| *Alma* | 7 | 30 |
+| *Banán* | 24 | 105 |
+| *Narancs* | 8 | 40 |
+
+A következőképp tudjuk az A saláta energiatartalmát kiszámítani:
+$$5\,\text{adag} \cdot 30\,\frac{\text{kcal}}{\text{adag}} + 1\,\text{adag} \cdot 105\,\frac{\text{kcal}}{\text{adag}} + 4\,\text{adag} \cdot 40\,\frac{\text{kcal}}{\text{adag}} = 415\,\text{kcal},$$
+vagyis az első táblázat egy sorának és a második táblázat egy oszlopának kellett a skaláris szorzatát venni. Végezzük el e számításokat mindhárom gyümölcssaláta szénhidrát és energiatartalmára is, és az eredményt ismét egy olyan táblázatba tegyük, melynek soraiba a részletezendő tételek (A, B, C saláta), oszlopaiba a tartalmi összetevők (szénhidrát-, energiatartalom) kerüljenek.
+
+| | Szénhidrát (g) | Energia (kcal) |
+|---|---|---|
+| *A* | 91 | 415 |
+| *B* | 140 | 620 |
+| *C* | 108 | 490 |
+
+Az áttekinthetőség kedvéért a két összeszorzandó mátrixot és az eredményt a fejléceihez igazítva helyeztük el (a második tényező a tartalmi táblázat, az első a salátaösszetétel, az eredmény a salátánkénti összesítés):
+
+| | Szénhidrát (g/adag) | Energia (kcal/adag) |
+|---|---|---|
+| *Alma* | 7 | 30 |
+| *Banán* | 24 | 105 |
+| *Narancs* | 8 | 40 |
+
+| | Alma (adag) | Banán (adag) | Narancs (adag) | | Szénhidrát (g) | Energia (kcal) |
+|---|---|---|---|---|---|---|
+| *A* | 5 | 1 | 4 | | 91 | 415 |
+| *B* | 4 | 4 | 2 | | 140 | 620 |
+| *C* | 4 | 2 | 4 | | 108 | 490 |
+
+> Az A saláta energiatartalmának kiszámítását kiemeltük. Érdemes azt is megfigyelni, hogy ha csak az A és C gyümölcssalátákra vagyunk kíváncsiak, elég az első táblázat és a végeredmény második sorát elhagyni, hasonlóképp ha csak az energiatartalmat figyeljük, elég a második táblázat és a végeredmény második oszlopát megtartani. Az is látszik, hogy az első táblázat oszlopainak és a második táblázat sorainak száma megegyezik. Általában az igaz, hogy (a fejléceket nem számolva) egy $m \times n$-es táblázat csak olyan $p \times k$-as táblázattal szorozható össze, ahol $p = n$, és az eredmény $m \times k$-as lesz.
+
+### Lineáris helyettesítések kompozíciója
+
+A lineáris algebra több alapvető fogalma megfogalmazható a lineáris helyettesítés nyelvén.
+
+**4.1. definíció (Lineáris helyettesítés).** *Lineáris helyettesítésről akkor beszélünk, ha változók egy halmazát más változók lineáris kifejezéseivel tesszük egyenlővé (e lineáris kifejezésekkel helyettesítjük).*
+
+**4.2. példa (Lineáris helyettesítések kompozíciója).** *Tekintsük a következő két lineáris helyettesítést:*
+$$\begin{aligned} a &= 5x + y + 4z \\ b &= 4x + 4y + 2z \\ c &= 4x + 2y + 4z \end{aligned} \quad \text{és} \quad \begin{aligned} x &= 7s + 30k \\ y &= 24s + 105k \\ z &= 8s + 40k \end{aligned} \tag{4.1}$$
+*Írjuk fel a két helyettesítés egymás után való elvégzésével, azaz* kompozíciójával *kapott lineáris helyettesítés egyenleteit!*
+
+*Megoldás.* Elemi számítás mutatja, hogy a két lineáris helyettesítés egymásutáni elvégzése (kompozíciója) az
+$$\begin{aligned} a &= 91s + 415k \\ b &= 140s + 620k \\ c &= 108s + 490k \end{aligned}$$
+lineáris helyettesítést adja. Figyeljük meg, hogy ha a két lineáris helyettesítést is táblázatokkal írjuk le, ahol a sorok fejlécébe annak a változónak a nevét írjuk, amit helyettesítünk, oszlopaiba azt, amivel helyettesítjük, a kompozíció művelete e két táblázat szorzatával számolható. (A számadatok előző példában szereplőkkel való azonossága nem a véletlen műve.) $\square$
+
+| | $s$ | $k$ |
+|---|---|---|
+| $x$ | 7 | 30 |
+| $y$ | 24 | 105 |
+| $z$ | 8 | 40 |
+
+| | $x$ | $y$ | $z$ | | $s$ | $k$ |
+|---|---|---|---|---|---|---|
+| $a$ | 5 | 1 | 4 | | 91 | 415 |
+| $b$ | 4 | 4 | 2 | | 140 | 620 |
+| $c$ | 4 | 2 | 4 | | 108 | 490 |
+
+<!-- OCR: through PDF p.143 -->
