@@ -2120,4 +2120,86 @@ x_1 &{}+{}& 2x_2 &{}+{}& 3x_3 &{}+{}& 3x_4 &{}+{}& x_5 &{}={}& 0 \\
 
 *Megoldás.* Mivel homogén lineáris egyenletrendszerről van szó, a megoldáshoz szükségtelen a bővített mátrixot használni, hisz annak utolsó oszlopa csak nullákból áll, így az elemi sorműveletek közben
 
-<!-- OCR: through PDF p.83 -->
+nem változik. Az együtthatómátrix lépcsős alakja ugyanazokkal a sorműveletekkel megkapható, mint a 2.33. példa megoldásában, azaz
+$$\begin{bmatrix} 1 & 2 & 1 & 2 & 1 \\ 1 & 2 & 3 & 3 & 1 \\ 3 & 6 & 7 & 8 & 3 \end{bmatrix} \longrightarrow \begin{bmatrix} 1 & 2 & 1 & 2 & 1 \\ 0 & 0 & 2 & 1 & 0 \\ 0 & 0 & 0 & 0 & 0 \end{bmatrix} \longrightarrow \begin{alignedat}{9}
+x_1 &{}+{}& 2x_2 &{}+{}& x_3 &{}+{}& 2x_4 &{}+{}& x_5 &{}={}& 0 \\
+&& && 2x_3 &{}+{}& x_4 && &{}={}& 0
+\end{alignedat}$$
+Innen a megoldás is ugyanúgy kapható meg, sőt, ugyanaz a lineáris kombináció szerepel benne a konstans tagok nélkül:
+$$(x_1, x_2, x_3, x_4, x_5) = \left(-2s - \tfrac{3}{2}t - u, \; s, \; -\tfrac{1}{2}t, \; t, \; u\right),$$
+vagy mátrixjelöléssel
+$$\begin{bmatrix} x_1 \\ x_2 \\ x_3 \\ x_4 \\ x_5 \end{bmatrix} = \begin{bmatrix} -2s - \tfrac{3}{2}t - u \\ s \\ -\tfrac{1}{2}t \\ t \\ u \end{bmatrix} = s\begin{bmatrix} -2 \\ 1 \\ 0 \\ 0 \\ 0 \end{bmatrix} + t\begin{bmatrix} -\tfrac{3}{2} \\ 0 \\ -\tfrac{1}{2} \\ 1 \\ 0 \end{bmatrix} + u\begin{bmatrix} -1 \\ 0 \\ 0 \\ 0 \\ 1 \end{bmatrix}.$$
+A homogén és inhomogén egyenletrendszerek e példából sejthető kapcsolatára még visszatérünk a 3.16. tételben. $\square$
+
+Az egyenletrendszer megoldása tehát geometriailag egy alakzat implicit alakjából az explicit alak fölírását jelenti.
+
+**2.36. példa (Síkok metszésvonalának meghatározása).** *Határozzuk meg az alábbi két sík metszésvonalának explicit (paraméteres) alakját!*
+$$\begin{alignedat}{9}
+x &{}+{}& y &{}+{}& z &{}={}& 1 \\
+3x &{}+{}& 4y && &{}={}& 2
+\end{alignedat}$$
+
+*Megoldás.* A fenti egyenletekkel megadott két sík metszésvonalának meghatározásához, pontosabban a metszésvonal explicit, paraméteres egyenletrendszerének felírásához egyszerűen meg kell oldani a két egyenletből álló egyenletrendszert:
+$$\left[\begin{array}{ccc|c} 1 & 1 & 1 & 1 \\ 3 & 4 & 0 & 2 \end{array}\right] \xrightarrow{S_2 - 3S_1} \left[\begin{array}{ccc|c} 1 & 1 & 1 & 1 \\ 0 & 1 & -3 & -1 \end{array}\right] \longrightarrow \begin{alignedat}{9}
+x &{}+{}& y &{}+{}& z &{}={}& 1 \\
+&& y &{}-{}& 3z &{}={}& -1
+\end{alignedat}$$
+Ebből $z = t$ paraméterválasztással $y = -1 + 3t$ és $x = 2 - 4t$, azaz
+$$(x, y, z) = (-4t + 2, 3t - 1, t) = (2, -1, 0) + t(-4, 3, 1),$$
+vagy mátrixjelöléssel
+$$\begin{bmatrix} x \\ y \\ z \end{bmatrix} = \begin{bmatrix} 2 \\ -1 \\ 0 \end{bmatrix} + t\begin{bmatrix} -4 \\ 3 \\ 1 \end{bmatrix}. \qquad \square$$
+
+### Redukált lépcsős alak
+
+A visszahelyettesítés lépése kihagyható, ha folytatjuk a kiküszöbölést, mint azt már láttuk a 2.25. példában.
+
+**2.37. definíció (Redukált lépcsős alak).** *Egy mátrix redukált lépcsős, vagy redukált sorlépcsős alakú, ha kielégíti a következő feltételeket:*
+1. *lépcsős alakú;*
+2. *minden főelem egyenlő 1-gyel;*
+3. *a főelemek oszlopaiban a főelemeken kívül minden elem 0;*
+
+*A főelemet itt* vezéregyesnek *vagy vezető egyesnek is szokás nevezni.*
+
+Például a következő mátrixok redukált lépcsős alakúak:
+$$\begin{bmatrix} 1 & 0 \\ 0 & 0 \end{bmatrix}, \quad \begin{bmatrix} 0 & 1 \\ 0 & 0 \end{bmatrix}, \quad \begin{bmatrix} 1 & -2 & 0 & -4 \\ 0 & 0 & 1 & 6 \\ 0 & 0 & 0 & 0 \end{bmatrix}, \quad \begin{bmatrix} 0 & 1 & 0 & 0 & 0 & 1 \\ 0 & 0 & 0 & 1 & 0 & 1 \\ 0 & 0 & 0 & 0 & 1 & 1 \\ 0 & 0 & 0 & 0 & 0 & 0 \end{bmatrix}.$$
+
+Minden valós, vagy racionális elemű mátrix redukált lépcsős alakra hozható, azonban az egészegyütthatós mátrixok általában nem, ha az egészeken belül akarunk maradni. Azonban az egészegyütthatós mátrixok is redukált lépcsős alakra hozhatók a racionálisok számkörében.
+
+**2.38. példa (Redukált lépcsős alakra hozás).** *Hozzuk redukált lépcsős alakra a következő mátrixot!*
+$$\begin{bmatrix} 1 & 3 & 0 \\ 1 & 1 & 2 \\ 2 & 2 & 4 \end{bmatrix}$$
+
+*Megoldás.* Egy lehetséges megoldás:
+$$\begin{bmatrix} 1 & 3 & 0 \\ 1 & 1 & 2 \\ 2 & 2 & 4 \end{bmatrix} \xrightarrow{\substack{S_2 - S_1 \\ S_3 - 2S_1}} \begin{bmatrix} 1 & 3 & 0 \\ 0 & -2 & 2 \\ 0 & -4 & 4 \end{bmatrix} \xrightarrow{-\frac{1}{2}S_2}$$
+$$\begin{bmatrix} 1 & 3 & 0 \\ 0 & 1 & -1 \\ 0 & -4 & 4 \end{bmatrix} \xrightarrow{S_3 + 4S_2} \begin{bmatrix} 1 & 3 & 0 \\ 0 & 1 & -1 \\ 0 & 0 & 0 \end{bmatrix} \xrightarrow{S_1 - 3S_2} \begin{bmatrix} 1 & 0 & 3 \\ 0 & 1 & -1 \\ 0 & 0 & 0 \end{bmatrix}.$$
+Egy másik lehetséges megoldás, mely *azonos megoldásra vezet*!
+$$\begin{bmatrix} 1 & 3 & 0 \\ 1 & 1 & 2 \\ 2 & 2 & 4 \end{bmatrix} \xrightarrow{S_1 \leftrightarrow S_2} \begin{bmatrix} 1 & 1 & 2 \\ 1 & 3 & 0 \\ 2 & 2 & 4 \end{bmatrix} \xrightarrow{\substack{S_2 - S_1 \\ S_3 - 2S_1}} \begin{bmatrix} 1 & 1 & 2 \\ 0 & 2 & -2 \\ 0 & 0 & 0 \end{bmatrix} \xrightarrow{\frac{1}{2}S_2}$$
+$$\begin{bmatrix} 1 & 1 & 2 \\ 0 & 1 & -1 \\ 0 & 0 & 0 \end{bmatrix} \xrightarrow{S_1 - S_2} \begin{bmatrix} 1 & 0 & 3 \\ 0 & 1 & -1 \\ 0 & 0 & 0 \end{bmatrix}. \qquad \square$$
+
+### Gauss–Jordan-módszer
+
+A *Gauss–Jordan-módszer* (*Gauss–Jordan-kiküszöbölés, Gauss–Jordan-elimináció*) a lineáris egyenletrendszerek olyan megoldási módszere, melyben a bővített mátrixot elemi sorműveletekkel *redukált* lépcsős alakra hozzuk. Innen leolvasható a megoldás.
+
+**2.39. példa (Gauss–Jordan-módszer, egy megoldás).** *Oldjuk meg a 2.32. példában felírt egyenletrendszert Gauss–Jordan-módszerrel!*
+
+*Megoldás.* Felírjuk az egyenletrendszer bővített mátrixát, és a 2.32. példában látott módon eljutunk a lépcsős alakhoz, majd folytatjuk, először beszorozzuk a sorokat a főátlóbeli elem reciprokával, majd a harmadik oszlopot, végül a másodikat kinullázzuk:
+$$\left[\begin{array}{ccc|c} 1 & 1 & 2 & 0 \\ 2 & 2 & 3 & 2 \\ 1 & 3 & 3 & 4 \\ 1 & 2 & 1 & 5 \end{array}\right] \dashrightarrow \left[\begin{array}{ccc|c} 1 & 1 & 2 & 0 \\ 0 & 2 & 1 & 4 \\ 0 & 0 & -1 & 2 \\ 0 & 0 & 0 & 0 \end{array}\right] \xrightarrow{\substack{\frac{1}{2}S_2 \\ -S_3}} \left[\begin{array}{ccc|c} 1 & 1 & 2 & 0 \\ 0 & 1 & \frac{1}{2} & 2 \\ 0 & 0 & 1 & -2 \\ 0 & 0 & 0 & 0 \end{array}\right] \xrightarrow{\substack{S_2 - \frac{1}{2}S_3 \\ S_1 - 2S_3}}$$
+$$\left[\begin{array}{ccc|c} 1 & 1 & 0 & 4 \\ 0 & 1 & 0 & 3 \\ 0 & 0 & 1 & -2 \\ 0 & 0 & 0 & 0 \end{array}\right] \xrightarrow{S_1 - S_2} \left[\begin{array}{ccc|c} 1 & 0 & 0 & 1 \\ 0 & 1 & 0 & 3 \\ 0 & 0 & 1 & -2 \\ 0 & 0 & 0 & 0 \end{array}\right] \longrightarrow \begin{alignedat}{9}
+x && && &{}={}& 1 \\
+&& y && &{}={}& 3 \\
+&& && z &{}={}& -2
+\end{alignedat}$$
+Tehát az egyenletrendszer egyetlen megoldása $(x, y, z) = (1, 3, -2)$. $\square$
+
+**2.40. példa (Gauss–Jordan-módszer, végtelen sok megoldás).** *Oldjuk meg a 2.33. példabeli egyenletrendszert Gauss–Jordan-módszerrel!*
+
+*Megoldás.* A 2.33. példában eljutottunk egy lépcsős alakig. Az eljárást folytatjuk, míg a redukált lépcsős alakra nem jutunk.
+$$\left[\begin{array}{ccccc|c} 1 & 2 & 1 & 2 & 1 & 1 \\ 1 & 2 & 3 & 3 & 1 & 0 \\ 3 & 6 & 7 & 8 & 3 & 1 \end{array}\right] \dashrightarrow \left[\begin{array}{ccccc|c} 1 & 2 & 1 & 2 & 1 & 1 \\ 0 & 0 & 2 & 1 & 0 & -1 \\ 0 & 0 & 0 & 0 & 0 & 0 \end{array}\right] \xrightarrow{\substack{\frac{1}{2}S_2 \\ S_1 - S_2}}$$
+$$\left[\begin{array}{ccccc|c} 1 & 2 & 0 & 3/2 & 1 & 3/2 \\ 0 & 0 & 1 & 1/2 & 0 & -1/2 \\ 0 & 0 & 0 & 0 & 0 & 0 \end{array}\right] \longrightarrow \begin{aligned}
+x_1 + 2x_2 + \tfrac{3}{2}x_4 + x_5 &= \tfrac{3}{2} \\
+x_3 + \tfrac{1}{2}x_4 &= -\tfrac{1}{2}
+\end{aligned}$$
+Az $x_2 = s$, $x_4 = t$, $x_5 = u$ helyettesítés és az $x_1$ és $x_3$ változók kifejezése után a megoldás vektor- és mátrixjelöléssel:
+$$(x_1, x_2, x_3, x_4, x_5) = \left(\tfrac{3}{2} - 2s - \tfrac{3}{2}t - u, \; s, \; -\tfrac{1}{2} - \tfrac{1}{2}t, \; t, \; u\right),$$
+$$\begin{bmatrix} x_1 \\ x_2 \\ x_3 \\ x_4 \\ x_5 \end{bmatrix} = \begin{bmatrix} \tfrac{3}{2} - 2s - \tfrac{3}{2}t - u \\ s \\ -\tfrac{1}{2} - \tfrac{1}{2}t \\ t \\ u \end{bmatrix} = \begin{bmatrix} \tfrac{3}{2} \\ 0 \\ -\tfrac{1}{2} \\ 0 \\ 0 \end{bmatrix} + s\begin{bmatrix} -2 \\ 1 \\ 0 \\ 0 \\ 0 \end{bmatrix} + t\begin{bmatrix} -\tfrac{3}{2} \\ 0 \\ -\tfrac{1}{2} \\ 1 \\ 0 \end{bmatrix} + u\begin{bmatrix} -1 \\ 0 \\ 0 \\ 0 \\ 1 \end{bmatrix} \qquad \square$$
+
+<!-- OCR: through PDF p.86 -->
