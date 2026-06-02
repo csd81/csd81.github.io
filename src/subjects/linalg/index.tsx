@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type CSSProperties } from 'react';
 import { Link, Route, Routes, useParams } from 'react-router-dom';
 import { useLang, type Bi } from '../../shared/providers/LanguageProvider';
 import { MarkdownView } from '../../shared/ui/MarkdownView';
@@ -16,7 +16,22 @@ const UI = {
   },
   back: { en: '← All topics', hu: '← Témakörök' },
   notFound: { en: 'Document not found.', hu: 'A dokumentum nem található.' },
+  soon: { en: 'Coming soon', hu: 'Hamarosan' },
 } satisfies Record<string, Bi>;
+
+const soonBadge: CSSProperties = {
+  display: 'inline-block',
+  alignSelf: 'flex-start',
+  marginTop: '.4rem',
+  padding: '.1rem .5rem',
+  borderRadius: '999px',
+  fontSize: '.72rem',
+  fontWeight: 700,
+  letterSpacing: '.02em',
+  textTransform: 'uppercase',
+  background: 'rgba(180,83,9,.14)',
+  color: '#b45309',
+};
 
 function Landing() {
   const { t } = useLang();
@@ -35,17 +50,35 @@ function Landing() {
           <section key={g}>
             <h2 className="home__section-title">{t(GROUP_LABEL[g])}</h2>
             <ul className="dimat__grid">
-              {docs.map((d) => (
-                <li key={d.id}>
-                  <Link to={`/linalg/${d.id}`} className="chcard">
+              {docs.map((d) => {
+                const inner = (
+                  <>
                     <span className="chcard__num">{d.icon}</span>
                     <span className="chcard__body">
                       <span className="chcard__title">{d.title}</span>
                       <span className="chcard__blurb">{d.blurb}</span>
+                      {d.comingSoon && <span style={soonBadge}>{t(UI.soon)}</span>}
                     </span>
-                  </Link>
-                </li>
-              ))}
+                  </>
+                );
+                return (
+                  <li key={d.id}>
+                    {d.comingSoon ? (
+                      <div
+                        className="chcard"
+                        aria-disabled="true"
+                        style={{ cursor: 'default', opacity: 0.7 }}
+                      >
+                        {inner}
+                      </div>
+                    ) : (
+                      <Link to={`/linalg/${d.id}`} className="chcard">
+                        {inner}
+                      </Link>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </section>
         );

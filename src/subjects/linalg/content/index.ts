@@ -6,7 +6,7 @@ function byId(id: string): string {
   return RAW[`./${id}.md`] ?? '';
 }
 
-export type GroupKey = 'eloismeretek' | 'linalg' | 'jegyzet' | 'feladatok';
+export type GroupKey = 'eloismeretek' | 'linalg' | 'alkalmazasok' | 'jegyzet' | 'feladatok';
 
 export interface Doc {
   id: string;
@@ -15,16 +15,19 @@ export interface Doc {
   group: GroupKey;
   /** Short glyph shown on the card. */
   icon: string;
+  /** Placeholder: card is shown but not yet linked (content in progress). */
+  comingSoon?: boolean;
 }
 
 export const GROUP_LABEL: Record<GroupKey, { hu: string; en: string }> = {
   eloismeretek: { hu: 'Előismeretek', en: 'Prerequisites' },
   linalg: { hu: 'Lineáris algebra', en: 'Linear algebra' },
+  alkalmazasok: { hu: 'Alkalmazások', en: 'Applications' },
   feladatok: { hu: 'Feladatok', en: 'Exercises' },
   jegyzet: { hu: 'Jegyzetek', en: 'Lecture notes' },
 };
 
-export const GROUP_ORDER: GroupKey[] = ['linalg', 'eloismeretek', 'feladatok', 'jegyzet'];
+export const GROUP_ORDER: GroupKey[] = ['linalg', 'eloismeretek', 'alkalmazasok', 'feladatok', 'jegyzet'];
 
 /** Curated order + titles. Slugs match the .md filenames in this folder. */
 export const DOCS: Doc[] = [
@@ -61,6 +64,11 @@ export const DOCS: Doc[] = [
     blurb: 'Függvényfogalom, elemi függvények és tulajdonságaik, függvénytranszformációk.' },
   { id: 'koordinata-geometria', group: 'eloismeretek', icon: 'xy', title: 'Koordináta-geometria',
     blurb: 'Vektorok a koordináta-rendszerben, egyenes és kör egyenletei a síkban.' },
+
+  // --- Alkalmazások (készül) ---
+  { id: 'tamop-alkalmazasok', group: 'alkalmazasok', icon: '∂', title: 'A lineáris algebra alkalmazásai',
+    blurb: 'Wettl Ferenc · BME — differenciálhatóság és Jacobi-mátrix, differencia-/differenciálegyenletek, kombinatorika, Markov-láncok, lineáris programozás, kódelmélet, SVD.',
+    comingSoon: true },
 
   // --- Feladatok ---
   { id: 'peldatar', group: 'feladatok', icon: '✎', title: 'Lineáris algebra példatár',
