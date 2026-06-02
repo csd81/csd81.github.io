@@ -89,7 +89,7 @@ function Landing() {
 
 function DocView() {
   const { id } = useParams();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const doc = useMemo(() => (id ? docById(id) : undefined), [id]);
 
   if (!doc) {
@@ -108,7 +108,7 @@ function DocView() {
         <p className="dimat__kicker">{t(UI.kicker)}</p>
         <h1 className="dimat__title">{doc.title}</h1>
       </header>
-      <MarkdownView markdown={doc.markdown} />
+      <MarkdownView markdown={lang === 'en' && doc.markdownEn ? doc.markdownEn : doc.markdown} />
     </div>
   );
 }

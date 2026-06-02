@@ -1,9 +1,15 @@
 /** Linear-algebra reference documents (Markdown, KaTeX). One .md per lecture/jegyzet. */
 
 const RAW = import.meta.glob('./*.md', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+const BOOK = import.meta.glob('./book/*.md', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 
 function byId(id: string): string {
   return RAW[`./${id}.md`] ?? '';
+}
+
+/** Read a markdown file from the ./book/ folder by filename (e.g. 'lin-algebra-part1-hu.md'). */
+function bookFile(name: string): string {
+  return BOOK[`./book/${name}`] ?? '';
 }
 
 export type GroupKey = 'eloismeretek' | 'linalg' | 'alkalmazasok' | 'jegyzet' | 'feladatok';
@@ -17,6 +23,10 @@ export interface Doc {
   icon: string;
   /** Placeholder: card is shown but not yet linked (content in progress). */
   comingSoon?: boolean;
+  /** Source markdown filename in ./book/ (Hungarian). When set, content loads from there instead of ./<id>.md. */
+  srcHu?: string;
+  /** Optional English translation filename in ./book/ (shown when the site language is English). */
+  srcEn?: string;
 }
 
 export const GROUP_LABEL: Record<GroupKey, { hu: string; en: string }> = {
@@ -76,14 +86,24 @@ export const DOCS: Doc[] = [
   // --- Jegyzetek ---
   { id: 'linalg-bevezeto', group: 'jegyzet', icon: '📖', title: 'Lineáris algebra alapfogalmak',
     blurb: 'Dr. Szalkai István · Pannon Egyetem — bázis, koordináták és az elemi bázistranszformáció részletes magyarázattal.' },
-  { id: 'lin-algebra-konyv', group: 'jegyzet', icon: '📘', title: 'Lineáris algebra (tankönyv)',
-    blurb: 'Wettl Ferenc · BME — teljes lineáris algebra tankönyv: vektorok, egyenletrendszerek, mátrixok, determináns, sajátérték, SVD, Jordan-alak … (OCR folyamatban).' },
+  { id: 'lin-algebra-konyv-1', group: 'jegyzet', icon: '📘', title: 'Lineáris algebra (tankönyv) — I. rész',
+    blurb: 'Wettl Ferenc · BME — I. rész: A lineáris algebra forrásai (vektorok, lineáris egyenletrendszerek, megoldhatóság és a megoldások tere). Magyar és angol nyelven.',
+    srcHu: 'lin-algebra-part1-hu.md', srcEn: 'lin-algebra-part1-en.md' },
+  { id: 'lin-algebra-konyv-2', group: 'jegyzet', icon: '📗', title: 'Lineáris algebra (tankönyv) — II. rész',
+    blurb: 'Wettl Ferenc · BME — II. rész: Mátrixok algebrája és geometriája (mátrixműveletek, determináns, mátrixleképezések és geometriájuk).',
+    srcHu: 'lin-algebra-part2-hu.md' },
+  { id: 'lin-algebra-konyv3', group: 'jegyzet', icon: '📕', title: 'Lineáris algebra (tankönyv) — III. rész',
+    blurb: 'Wettl Ferenc · BME — III. rész: Mátrixok sajátságai (sajátérték és diagonalizálás, szinguláris érték/SVD, Jordan-féle normálalak, nemnegatív mátrixok).',
+    srcHu: 'lin-algebra-part3-hu.md' },
 ];
 
 const BY_ID = new Map(DOCS.map((d) => [d.id, d]));
 
-export function docById(id: string): (Doc & { markdown: string }) | undefined {
+export function docById(id: string): (Doc & { markdown: string; markdownEn?: string }) | undefined {
   const meta = BY_ID.get(id);
   if (!meta) return undefined;
+  if (meta.srcHu) {
+    return { ...meta, markdown: bookFile(meta.srcHu), markdownEn: meta.srcEn ? bookFile(meta.srcEn) : undefined };
+  }
   return { ...meta, markdown: byId(id) };
 }
