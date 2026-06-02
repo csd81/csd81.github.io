@@ -6,6 +6,45 @@
 .practice__hero {
   margin-bottom: 2rem;
 }
+.practice__hero--compact {
+  margin-bottom: 1.2rem;
+}
+.practice__back {
+  display: inline-block;
+  margin-bottom: 1rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+.practice__back:hover { color: var(--brand-700, var(--text)); }
+.practice__muted { color: var(--text-muted); font-style: italic; }
+
+/* Subsection page: a short-summary block and a study-guide block. */
+.practice__guide-block {
+  margin: 1.6rem 0;
+  padding: 0 0 0.4rem;
+  border-top: 1px solid var(--border);
+}
+.practice__guide-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 1.1rem 0 0.4rem;
+}
+.practice__guide-head .practice__h2 { margin: 0; flex: 1 1 auto; }
+.practice__guide-head .practice__copy { opacity: 0.7; }
+
+/* Prev / next navigation between subsections. */
+.practice__chnav {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 2.2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
 .practice__kicker {
   text-transform: uppercase;
   letter-spacing: 0.12em;

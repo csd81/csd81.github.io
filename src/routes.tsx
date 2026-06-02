@@ -37,7 +37,7 @@ export default function AppRoutes() {
           }
         />
         <Route
-          path="practice"
+          path="practice/*"
           element={
             <Suspense fallback={<Loading />}>
               <Practice />

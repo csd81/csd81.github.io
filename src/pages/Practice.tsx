@@ -1,8 +1,11 @@
 import { useState } from 'react';
+import { Link, Route, Routes, useParams } from 'react-router-dom';
 import { useLang } from '../shared/providers/LanguageProvider';
 import { MarkdownView } from '../shared/ui/MarkdownView';
+import { CHAPTERS } from '../chapters/registry';
 import { TOPICS } from './practice/content';
 import { CHEATSHEETS } from './practice/cheatsheets';
+import { subsectionsFor, subsectionBySlug, GUIDE_CHAPTERS } from './practice/guides';
 import glossaryMd from './practice/glossary.md?raw';
 import './practice/practice.css';
 
@@ -30,7 +33,9 @@ function CopyButton({ source }: { source: string }) {
   );
 }
 
-export default function Practice() {
+/** The /practice landing page: study-guide chapter cards + cheatsheets,
+ *  worked examples and the glossary. */
+function PracticeHome() {
   const { t, lang } = useLang();
   return (
     <div className="practice">
@@ -39,15 +44,42 @@ export default function Practice() {
         <h1>{lang === 'hu' ? 'Vizsgafelkészülés' : 'Exam preparation'}</h1>
         <p className="practice__lead">
           {lang === 'hu'
-            ? 'Vizsga-puskák, kidolgozott példák és fogalomtár egy helyen.'
-            : 'Exam cheatsheets, worked examples and a glossary in one place.'}
+            ? 'Tananyagok és összefoglalók fejezetenként, vizsga-puskák, kidolgozott példák és fogalomtár egy helyen.'
+            : 'Per-chapter study guides and summaries, exam cheatsheets, worked examples and a glossary in one place.'}
         </p>
         <nav className="practice__toc">
+          <a href="#guides">{lang === 'hu' ? 'Tananyagok' : 'Study guides'}</a>
           <a href="#cheatsheets">{lang === 'hu' ? 'Puskák' : 'Cheatsheets'}</a>
           <a href="#examples">{lang === 'hu' ? 'Kidolgozott példák' : 'Worked examples'}</a>
           <a href="#glossary">{lang === 'hu' ? 'Fogalomtár' : 'Glossary'}</a>
         </nav>
       </header>
+
+      <section className="practice__section" id="guides">
+        <h2 className="practice__h2">
+          {lang === 'hu' ? '📚 Tananyagok és összefoglalók' : '📚 Study guides & summaries'}
+        </h2>
+        <p className="practice__lead">
+          {lang === 'hu'
+            ? 'Válassz fejezetet, majd alfejezetet — minden alfejezethez egy rövid összefoglaló és egy részletes tananyag tartozik.'
+            : 'Pick a chapter, then a subsection — each has a short summary and a detailed study guide.'}
+        </p>
+        <ul className="home__grid">
+          {CHAPTERS.filter((c) => GUIDE_CHAPTERS.includes(c.num)).map((c) => (
+            <li key={c.num}>
+              <Link to={`/practice/guide/${c.num}`} className="chcard">
+                <span className="chcard__num">{String(c.num).padStart(2, '0')}</span>
+                <span className="chcard__body">
+                  <span className="chcard__title">{t(c.title)}</span>
+                  <span className="chcard__blurb">
+                    {subsectionsFor(c.num).length} {lang === 'hu' ? 'alfejezet' : 'subsections'}
+                  </span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
 
       <section className="practice__section" id="cheatsheets">
         <h2 className="practice__h2">
@@ -95,5 +127,134 @@ export default function Practice() {
         </details>
       </section>
     </div>
+  );
+}
+
+/** Subsection chooser for one chapter. */
+function ChapterGuide() {
+  const { t, lang } = useLang();
+  const { ch } = useParams();
+  const chapter = Number(ch);
+  const meta = CHAPTERS.find((c) => c.num === chapter);
+  const subs = subsectionsFor(chapter);
+
+  if (!meta || subs.length === 0) {
+    return (
+      <div className="practice">
+        <Link to="/practice" className="practice__back">← {lang === 'hu' ? 'Gyakorlat' : 'Practice'}</Link>
+        <p className="practice__lead">{lang === 'hu' ? 'A fejezet nem található.' : 'Chapter not found.'}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="practice">
+      <Link to="/practice#guides" className="practice__back">
+        ← {lang === 'hu' ? 'Tananyagok' : 'Study guides'}
+      </Link>
+      <header className="practice__hero practice__hero--compact">
+        <p className="practice__kicker">
+          {lang === 'hu' ? `${chapter}. fejezet` : `Chapter ${chapter}`}
+        </p>
+        <h1>{t(meta.title)}</h1>
+        <p className="practice__lead">{t(meta.blurb)}</p>
+      </header>
+      <ul className="home__grid">
+        {subs.map((s) => (
+          <li key={s.slug}>
+            <Link to={`/practice/guide/${chapter}/${s.slug}`} className="chcard">
+              <span className="chcard__num">{s.number}</span>
+              <span className="chcard__body">
+                <span className="chcard__title">{s.title}</span>
+                <span className="chcard__blurb">
+                  {lang === 'hu' ? 'Összefoglaló + tananyag' : 'Summary + study guide'}
+                </span>
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** One subsection: its short summary (HU) and study guide (EN). */
+function SubsectionGuide() {
+  const { lang } = useLang();
+  const { ch, sub } = useParams();
+  const chapter = Number(ch);
+  const subs = subsectionsFor(chapter);
+  const idx = subs.findIndex((s) => s.slug === sub);
+  const s = sub ? subsectionBySlug(chapter, sub) : undefined;
+
+  if (!s) {
+    return (
+      <div className="practice">
+        <Link to={`/practice/guide/${chapter}`} className="practice__back">
+          ← {lang === 'hu' ? 'Alfejezetek' : 'Subsections'}
+        </Link>
+        <p className="practice__lead">{lang === 'hu' ? 'Az alfejezet nem található.' : 'Subsection not found.'}</p>
+      </div>
+    );
+  }
+
+  const prev = subs[idx - 1];
+  const next = subs[idx + 1];
+
+  return (
+    <div className="practice">
+      <Link to={`/practice/guide/${chapter}`} className="practice__back">
+        ← {lang === 'hu' ? 'Alfejezetek' : 'Subsections'}
+      </Link>
+      <header className="practice__hero practice__hero--compact">
+        <p className="practice__kicker">{lang === 'hu' ? `${chapter}. fejezet` : `Chapter ${chapter}`}</p>
+        <h1>{s.number}. {s.title}</h1>
+      </header>
+
+      <section className="practice__guide-block">
+        <div className="practice__guide-head">
+          <h2 className="practice__h2">{lang === 'hu' ? '⚡ Rövid összefoglaló' : '⚡ Short summary'}</h2>
+          <CopyButton source={s.short} />
+        </div>
+        <MarkdownView markdown={s.short} />
+      </section>
+
+      <section className="practice__guide-block">
+        <div className="practice__guide-head">
+          <h2 className="practice__h2">{lang === 'hu' ? '📘 Tananyag' : '📘 Study guide'}</h2>
+          {s.study.trim() && <CopyButton source={s.study} />}
+        </div>
+        {s.study.trim() ? (
+          <MarkdownView markdown={s.study} />
+        ) : (
+          <p className="practice__muted">
+            {lang === 'hu' ? 'Ehhez az alfejezethez még nincs tananyag.' : 'No study guide for this subsection yet.'}
+          </p>
+        )}
+      </section>
+
+      <nav className="practice__chnav">
+        {prev ? (
+          <Link to={`/practice/guide/${chapter}/${prev.slug}`} className="practice__back">← {prev.number} {prev.title}</Link>
+        ) : (
+          <span />
+        )}
+        {next ? (
+          <Link to={`/practice/guide/${chapter}/${next.slug}`} className="practice__back">{next.number} {next.title} →</Link>
+        ) : (
+          <span />
+        )}
+      </nav>
+    </div>
+  );
+}
+
+export default function Practice() {
+  return (
+    <Routes>
+      <Route index element={<PracticeHome />} />
+      <Route path="guide/:ch" element={<ChapterGuide />} />
+      <Route path="guide/:ch/:sub" element={<SubsectionGuide />} />
+    </Routes>
   );
 }
