@@ -998,4 +998,132 @@ $$\begin{aligned}
 
 Innen átrendezéssel azonnal megkapjuk a bizonyítandó állítást. Másrészt az is világos, hogy $0 = |\mathbf{u} - (\mathbf{u} \cdot \mathbf{e})\mathbf{e}|$ csak akkor állhat fönn, ha $\mathbf{u} = (\mathbf{u} \cdot \mathbf{e})\mathbf{e}$, azaz ha $\mathbf{u}$ és $\mathbf{e}$ párhuzamosak, azaz ha $\mathbf{u}$ a $\mathbf{v}$ skalárszorosa, vagyis ha a két vektor lineárisan összefüggő. $\square$
 
-<!-- OCR: through PDF p.50 -->
+**1.52. tétel (Háromszög-egyenlőtlenség $\mathbb{R}^n$-ben).** *Tetszőleges $\mathbf{u}, \mathbf{v} \in \mathbb{R}^n$ vektorokra*
+$$|\mathbf{u} + \mathbf{v}| \leqslant |\mathbf{u}| + |\mathbf{v}|.$$
+
+A bizonyítás megegyezik a 3-dimenziós változatra, azaz az 1.21. tételre adott bizonyítással.
+
+A vektor abszolút értékét a skaláris szorzat segítségével definiáltuk, de fordítva, a skaláris szorzat is kifejezhető a vektor abszolút értékével. E formulákat *polarizációs formuláknak* nevezzük.
+
+**1.53. tétel (Polarizációs formulák $\mathbb{R}^n$-ben).** *Tetszőleges $\mathbf{u}, \mathbf{v} \in \mathbb{R}^n$ vektorokra*
+$$\mathbf{u} \cdot \mathbf{v} = \frac{1}{4}\left(|\mathbf{u} + \mathbf{v}|^2 - |\mathbf{u} - \mathbf{v}|^2\right) \tag{1.9}$$
+$$\mathbf{u} \cdot \mathbf{v} = \frac{1}{2}\left(|\mathbf{u} + \mathbf{v}|^2 - |\mathbf{u}|^2 - |\mathbf{v}|^2\right) \tag{1.10}$$
+
+*Bizonyítás.* A bizonyításban az abszolút érték (1.4)-beli definícióját használjuk:
+$$\begin{aligned}
+\frac{1}{4}\left(|\mathbf{u} + \mathbf{v}|^2 - |\mathbf{u} - \mathbf{v}|^2\right) &= \frac{1}{4}\left((\mathbf{u} + \mathbf{v}) \cdot (\mathbf{u} + \mathbf{v}) - (\mathbf{u} - \mathbf{v}) \cdot (\mathbf{u} - \mathbf{v})\right) \\
+&= \frac{1}{4}(\mathbf{u} \cdot \mathbf{u} + \mathbf{u} \cdot \mathbf{v} + \mathbf{v} \cdot \mathbf{u} + \mathbf{v} \cdot \mathbf{v} - \mathbf{u} \cdot \mathbf{u} + \mathbf{u} \cdot \mathbf{v} + \mathbf{v} \cdot \mathbf{u} - \mathbf{v} \cdot \mathbf{v}) \\
+&= \frac{1}{4}(4\mathbf{u} \cdot \mathbf{v}) = \mathbf{u} \cdot \mathbf{v}.
+\end{aligned}$$
+A másik formula hasonlóan bizonyítható. $\square$
+
+Végül egy fontos összefüggés az ortogonális vektorrendszerekről:
+
+**1.54. állítás (Ortogonális vektorrendszer lineáris függetlensége).** *Tegyük fel, hogy a zérusvektortól különböző $\mathbb{R}^n$-beli $\mathbf{v}_1, \mathbf{v}_2, \ldots, \mathbf{v}_k$ vektorok páronként ortogonálisak, azaz bármely $i \neq j$ esetén $\mathbf{v}_i \cdot \mathbf{v}_j = 0$. Ekkor e vektorok lineárisan függetlenek.*
+
+*Bizonyítás.* Tegyük fel, hogy valamely $c_1, c_2, \ldots, c_k$ konstansokra
+$$c_1\mathbf{v}_1 + c_2\mathbf{v}_2 + \cdots + c_k\mathbf{v}_k = \mathbf{0}.$$
+Szorozzuk be az egyenlőség mindkét oldalát skalárisan a $\mathbf{v}_i$ vektorral. Mivel $i \neq j$ esetén $\mathbf{v}_i \cdot \mathbf{v}_j = 0$, ezért azt kapjuk, hogy
+$$c_i\mathbf{v}_i \cdot \mathbf{v}_i = 0,$$
+amiből $\mathbf{v}_i \cdot \mathbf{v}_i \neq 0$ miatt következik, hogy $c_i = 0$. Mivel ez minden $i = 1, 2, \ldots, k$ indexre igaz, ezért a vektorok valóban lineárisan függetlenek. $\square$
+
+## Feladatok
+
+### Ellenőrző kérdések
+
+**1.55.● Koordinátás alak a 3-dimenziós térben: igaz – hamis.** Melyek igazak, melyek hamisak az alábbi állítások közül? Válaszunkat indokoljuk.
+- a) A tér vektorainak koordinátázásához elég egy bázis megadása.
+- b) A tér pontjainak koordinátázásához elég egy bázis megadása.
+- c) Két koordinátás alakjával megadott vektor összegét a bázistól függetlenül ugyanazzal a képlettel számoljuk.
+- d) Két koordinátás alakjával megadott vektor skaláris szorzatát a bázistól függetlenül ugyanazzal a képlettel számoljuk.
+
+**1.56.●** Legyenek $\mathbf{u}, \mathbf{v} \in \mathbb{R}^n$.
+- a) Mit állíthatunk a vektorokról, ha $|\mathbf{u}| = 3$, $|\mathbf{v}| = 2$ és $\mathbf{u} \cdot \mathbf{v} = 7$?
+- b) Mennyi $\mathbf{u} \cdot \mathbf{v}$, ha $|\mathbf{u}| = 5$, $|\mathbf{v}| = 3$ és $|\mathbf{u} + \mathbf{v}| = 4$?
+- c) Mennyi $\mathbf{u} \cdot \mathbf{v}$, ha $|\mathbf{u}| = 2$, $|\mathbf{v}| = 3$ és $|\mathbf{u} - \mathbf{v}| = 6$?
+- d) Mennyi $\mathbf{u} \cdot \mathbf{v}$, ha $|\mathbf{u}| = 3$, $|\mathbf{v}| = 5$ és $|\mathbf{u} - \mathbf{v}| = 5$?
+- e) Mennyi $d(\mathbf{u}, \mathbf{v})$ értéke, ha $|\mathbf{u}| = 8$, $|\mathbf{v}| = 15$, és $\mathbf{u} \cdot \mathbf{v} = 0$?
+
+### Műveletek $\mathbb{R}^n$-ben
+
+**1.57.** Számítsuk ki az alábbi vektorok skaláris és vektori szorzatát!
+- a) $\mathbf{a} = (1, 2, -1)$, $\mathbf{b} = (2, 1, 1)$
+- b) $\mathbf{a} = (1, 0, 1)$, $\mathbf{b} = (0, 2, 1)$
+- c) $\mathbf{u} = (1, 2, 3)$, $\mathbf{v} = (3, 2, 1)$
+
+**1.58.●** Határozzuk meg az alábbi vektorok összegét, skalárszorzatát, és hajlásszögét!
+- a) $\mathbf{u} = (1, -3)$, $\mathbf{v} = (-6, -2)$
+- b) $\mathbf{a} = (1, 2, -1)$, $\mathbf{b} = (2, 1, 1)$
+- c) $\mathbf{u} = (1, 1, 2, 2)$, $\mathbf{v} = (0, 1, 2, 0)$
+- d) $\mathbf{x} = (1, 1, 2, 2)$, $\mathbf{y} = (0, -1, -2, 0)$
+- e) $\mathbf{u} = (1, 0, 1, 0, \ldots)$, $\mathbf{v} = (-1, -1, -1, \ldots) \in \mathbb{R}^n$, $n$ páros
+
+**1.59.** Határozzuk meg az alábbi vektorok hajlásszögének numerikus közelítő értékét fokban!
+- a) $\mathbf{a} = (1, 2, 3, 4, 5)$, $\mathbf{b} = (-1, -1, -1, -1, -1)$
+- b) $\mathbf{x} = (1, 2, 3, 2.592116)$, $\mathbf{y} = (2, 2, -2, -2.602112)$
+
+**1.60.** Jellemezzük az $ABC$ háromszöget szögei szerint (pl. derékszögű, tompaszögű, …)!
+- a) $A(1, 1, 1)$, $B(2, 2, 2)$, $C(2, 0, 2)$
+- b) $A(1, 1, 1)$, $B(2, 2, 2)$, $C(2, 0, 2)$
+- c) $A(2, 0, 1, 1)$, $B(2, 2, 1, 1)$, $C(3, 3, 2, 2)$
+
+**1.61.** Határozzuk meg az $n$-dimenziós kocka testátlójának és egy oldalélének szögét! Mekkora ez a szög $n = 2$ és $n = 4$ esetén?
+
+**1.62.** Bontsuk fel a $\mathbf{b}$ vektort $\mathbf{a}$-val párhuzamos és rá merőleges összetevőkre. Határozzuk meg a $\mathbf{b}$ vektor $\mathbf{a}$ egyenesére eső merőleges vetületének hosszát!
+- a) $\mathbf{a} = (1, 2, -2)$, $\mathbf{b} = (4, 6, -1)$,
+- b) $\mathbf{a} = (2, 3, 6)$, $\mathbf{b} = (5, -3, 8)$,
+- c) $\mathbf{a} = (1, 1, 1, 1)$, $\mathbf{b} = (1, 4, 0, 3)$,
+- d) $\mathbf{a} = (1, 2, 2, 4)$, $\mathbf{b} = (4, 3, 6, 7)$.
+
+### Bizonyítások
+
+**1.63.** Bizonyítsuk be a skaláris szorzás 1.47. tételbeli tulajdonságait!
+
+**1.64. Skaláris szorzás további tulajdonságai.** Igazoljuk, hogy tetszőleges $\mathbf{u}, \mathbf{v}, \mathbf{w} \in \mathbb{R}^n$ vektorokra és $c \in \mathbb{R}$ számra
+- a) $c(\mathbf{u} \cdot \mathbf{v}) = \mathbf{u} \cdot (c\mathbf{v})$,
+- b) $\mathbf{u} \cdot (\mathbf{v} - \mathbf{w}) = \mathbf{u} \cdot \mathbf{v} - \mathbf{u} \cdot \mathbf{w}$,
+- c) $(\mathbf{u} \pm \mathbf{v}) \cdot (\mathbf{u} \pm \mathbf{v}) = \mathbf{u} \cdot \mathbf{u} \pm 2\mathbf{u} \cdot \mathbf{v} + \mathbf{v} \cdot \mathbf{v}$,
+- d) $(\mathbf{u} + \mathbf{v}) \cdot (\mathbf{u} - \mathbf{v}) = \mathbf{u} \cdot \mathbf{u} - \mathbf{v} \cdot \mathbf{v}$.
+
+**1.65. Vektor abszolút értéke (normája).** Mutassuk meg, hogy tetszőleges $\mathbf{u}, \mathbf{v}, \mathbf{w} \in \mathbb{R}^n$ vektorokra és $c \in \mathbb{R}$ számra
+- a) $|\mathbf{u}| = 0 \iff \mathbf{u} = \mathbf{0}$,
+- b) $|c\mathbf{u}| = |c||\mathbf{u}|$,
+- c) $\big||\mathbf{u}| - |\mathbf{v}|\big| \leqslant |\mathbf{u} - \mathbf{v}|$.
+
+**1.66. Háromszög-egyenlőtlenség általánosítása.** Igazoljuk, hogy tetszőleges $k > 2$ egészre és tetszőleges $\mathbf{u}_1, \mathbf{u}_2, \ldots, \mathbf{u}_k \in \mathbb{R}^n$ vektorokra
+$$|\mathbf{u}_1 + \mathbf{u}_2 + \ldots + \mathbf{u}_k| \leqslant |\mathbf{u}_1| + |\mathbf{u}_2| + \ldots + |\mathbf{u}_k|.$$
+
+**1.67. Pithagorász-tétel.** Az $\mathbf{a}, \mathbf{b} \in \mathbb{R}^n$ vektorokra pontosan akkor teljesül az
+$$|\mathbf{a} + \mathbf{b}|^2 = |\mathbf{a}|^2 + |\mathbf{b}|^2$$
+összefüggés, ha $\mathbf{a}$ és $\mathbf{b}$ merőlegesek egymásra.
+
+**1.68. Paralelogramma-tétel.** Igazoljuk, hogy bármely paralelogramma oldalainak négyzetösszege megegyezik átlóinak négyzetösszegével. Az állítás vektorokat használó ekvivalens alakja: igazoljuk, hogy tetszőleges $\mathbf{a}, \mathbf{b} \in \mathbb{R}^n$ vektorokra
+$$|\mathbf{a} + \mathbf{b}|^2 + |\mathbf{a} - \mathbf{b}|^2 = 2(|\mathbf{a}|^2 + |\mathbf{b}|^2).$$
+
+**1.69. Távolságokra vonatkozó háromszög-egyenlőtlenség.** Igazoljuk, hogy tetszőleges $\mathbf{a}, \mathbf{b}, \mathbf{c} \in \mathbb{R}^n$ vektorokra
+$$d(\mathbf{a}, \mathbf{b}) + d(\mathbf{b}, \mathbf{c}) \geqslant d(\mathbf{a}, \mathbf{c}).$$
+
+**1.70.●** Igazoljuk, hogy
+- a) tetszőleges $u, v, x, y \in \mathbb{R}$ számokra
+$$(ux + vy)^2 \leqslant (u^2 + v^2)(x^2 + y^2).$$
+- b) tetszőleges $x_1, x_2, \ldots, x_n, y_1, y_2, \ldots, y_n \in \mathbb{R}$ számokra
+$$\left(\sum_{i=1}^n x_iy_i\right)^2 \leqslant \left(\sum_{i=1}^n x_i^2\right)\left(\sum_{i=1}^n y_i^2\right).$$
+
+### Projekt: ekvivalencia reláció
+
+Egy $X$ halmazon értelmezett *(bináris) reláción* az $X$ elempárjainak egy $R$ halmazát értjük. Ha egy $(a, b)$ pár benne van ebben a halmazban, azt mondjuk, hogy $a$ az $R$ relációban van $b$-vel, és úgy jelöljük, hogy $a\,R\,b$. Például, ha $X$ az összes valaha élt ember halmaza, akkor az összes olyan $(a, b)$ emberpár halmaza, ahol $a$ anyja $b$-nek, egy reláció (anya-gyermek reláció). Ha $X$ a valósok halmaza, és $R$ azokból az $(a, b)$ párokból áll, melyekre $a$ kisebb vagy egyenlő mint $b$, akkor $R$ egy reláció, melyet a valósok rendezési relációjának nevezünk. E reláció szokásos jele $\leqslant$, így ha $(a, b) \in R$, akkor az $a\,R\,b$ helyett az $a \leqslant b$ jelölést használjuk.
+
+Egy halmaz diszjunkt részhalmazok uniójára való fölbontását a halmaz elemei *osztályozásának* vagy *particionálásának* nevezzük. Egy ilyen osztályozáshoz természetes módon hozzárendelhető egy reláció, melyet a halmazon értelmezett *ekvivalenciarelációnak* nevezünk. E szerint két elem pontosan akkor van relációban (pontosan akkor ekvivalensek), ha azonos osztályba tartoznak. Kérdés, egy relációról hogyan állapítható meg, hogy ekvivalenciareláció-e?
+
+**1.55. tétel (Ekvivalenciareláció).** *Legyen $R$ egy tetszőleges reláció az $X$ halmazon. $R$ pontosan akkor ekvivalenciareláció, ha tetszőleges $a, b, c \in X$ elemre fennáll az alábbi három tulajdonság:*
+- *a) $R$ reflexív, azaz $a\,R\,a$, vagyis minden elem relációban van önmagával,*
+- *b) $R$ szimmetrikus, azaz ha $a\,R\,b$, akkor $b\,R\,a$,*
+- *c) $R$ tranzitív, azaz ha $a\,R\,b$ és $b\,R\,c$, akkor $a\,R\,c$.*
+
+**1.71.** Legyen $R$ a fenti tétel szerinti reláció, és jelölje $R_a$ az $a$-val relációban lévő elemek halmazát. Mutassuk meg, hogy bármely két $a, b \in X$ elemre $R_a$ és $R_b$ vagy azonos, vagy diszjunkt. Ezzel bizonyítsuk az előző tételt!
+
+**1.72. Szabad vektor fogalma.** Mutassuk meg, hogy a 3-dimenziós tér szabad vektorai definiálhatók egy – az irányított szakaszok halmazán értelmezett – ekvivalenciareláció ekvivalenciaosztályaival. Mi ez a reláció?
+
+**1.73. Vektor iránya.** Milyen halmazon értelmezett ekvivalenciareláció segítségével definiálható a vektor irányának és állásának fogalma?
+
+<!-- OCR: through PDF p.53 -->
