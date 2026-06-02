@@ -4247,4 +4247,82 @@ $$\mathbf{a}_1 \otimes \mathbf{a}_2 \otimes \cdots \otimes \mathbf{a}_d = [a_{1i
 hipermátrixot értjük. Számítsuk ki a következő Segre-féle külső szorzatot:
 $$\begin{bmatrix} 0 \\ 1 \\ 2 \end{bmatrix} \otimes \begin{bmatrix} 1 \\ 0 \\ 2 \end{bmatrix} \otimes \begin{bmatrix} 1 \\ 2 \\ 0 \end{bmatrix}.$$
 
-<!-- OCR: through PDF p.152 -->
+## A mátrixszorzás használata
+
+*Mátrixszorzással az eddig tanultak áttekinthetőbbé és könnyebben kezelhetővé válnak (pl. vektorok lineáris kombinációja, az egyenletrendszerek és megoldásuk felírása).*
+
+### Skaláris szorzat és diadikus szorzat mátrixszorzatos alakja
+
+Két oszlopvektor nem szorozható össze, ha 1-nél nagyobb dimenziósak. Viszont az egyikük transzponálása után a szorzás elvégezhető.
+
+Legyen $\mathbf{a}$ és $\mathbf{b}$ két $\mathbb{R}^n$-beli vektor. Az $\mathbf{a}^\mathsf{T}\mathbf{b}$ szorzat a két vektor skaláris szorzatát adja, azaz
+$$\mathbf{a}^\mathsf{T}\mathbf{b} = \mathbf{a} \cdot \mathbf{b},$$
+ugyanis
+$$\mathbf{a}^\mathsf{T}\mathbf{b} = \begin{bmatrix} a_1 & a_2 & \ldots & a_n \end{bmatrix} \begin{bmatrix} b_1 \\ b_2 \\ \vdots \\ b_n \end{bmatrix} = a_1 b_1 + a_2 b_2 + \ldots + a_n b_n = \mathbf{a} \cdot \mathbf{b}.$$
+Ha a második vektort transzponáljuk, a két vektor lehet különböző dimenziós is.
+
+**4.15. definíció (Diadikus szorzat).** *Legyen $\mathbf{u} \in \mathbb{R}^m$, $\mathbf{v} \in \mathbb{R}^n$. Az $\mathbf{u}\mathbf{v}^\mathsf{T}$ szorzatot a két vektor diadikus szorzatának, röviden diádnak nevezzük. E szorzat egy $m \times n$-es mátrix:*
+$$\mathbf{u}\mathbf{v}^\mathsf{T} = \begin{bmatrix} u_1 \\ u_2 \\ \vdots \\ u_m \end{bmatrix} \begin{bmatrix} v_1 & v_2 & \ldots & v_n \end{bmatrix} = \begin{bmatrix} u_1 v_1 & u_1 v_2 & \ldots & u_1 v_n \\ u_2 v_1 & u_2 v_2 & \ldots & u_2 v_n \\ \vdots & \vdots & \ddots & \vdots \\ u_m v_1 & u_m v_2 & \ldots & u_m v_n \end{bmatrix}.$$
+*Két vektor diadikus szorzatát $\mathbf{u} \otimes \mathbf{v}$ jelöli.*
+
+**4.16. példa (Skaláris és diadikus szorzat).** *Legyen $\mathbf{u} = (1, 0, 2)$, $\mathbf{v} = (3, 2, 1)$. Írjuk fel mátrixszorzatos alakba skaláris és diadikus szorzatukat, és számítsuk ki!*
+
+*Megoldás.*
+$$\mathbf{u} \cdot \mathbf{v} = \mathbf{u}^\mathsf{T}\mathbf{v} = \begin{bmatrix} 1 & 0 & 2 \end{bmatrix} \begin{bmatrix} 3 \\ 2 \\ 1 \end{bmatrix} = 5,$$
+$$\mathbf{u} \otimes \mathbf{v} = \mathbf{u}\mathbf{v}^\mathsf{T} = \begin{bmatrix} 1 \\ 0 \\ 2 \end{bmatrix} \begin{bmatrix} 3 & 2 & 1 \end{bmatrix} = \begin{bmatrix} 3 & 2 & 1 \\ 0 & 0 & 0 \\ 6 & 4 & 2 \end{bmatrix} \qquad \square$$
+
+### Lineáris egyenletrendszer mátrixszorzatos alakja
+
+A mátrixszorzást felhasználva a lineáris egyenletrendszerek egyszerű alakba írhatók.
+
+**4.17. állítás (Lineáris egyenletrendszer mátrixszorzatos alakja).** *Ha $\mathbf{A}$ jelöli egy egyenletrendszer együtthatómátrixát, illetve $\mathbf{b}$ a konstans tagok és $\mathbf{x}$ az ismeretlenek oszlopvektorát, azaz*
+$$\mathbf{A} = \begin{bmatrix} a_{11} & a_{12} & \ldots & a_{1n} \\ a_{21} & a_{22} & \ldots & a_{2n} \\ \vdots & \vdots & \ddots & \vdots \\ a_{m1} & a_{m2} & \ldots & a_{mn} \end{bmatrix}, \quad \mathbf{x} = \begin{bmatrix} x_1 \\ x_2 \\ \vdots \\ x_n \end{bmatrix}, \quad \text{és} \quad \mathbf{b} = \begin{bmatrix} b_1 \\ b_2 \\ \vdots \\ b_m \end{bmatrix},$$
+*akkor az*
+$$\begin{alignedat}{9}
+a_{11}x_1 &{}+{}& a_{12}x_2 &{}+{}& \ldots &{}+{}& a_{1n}x_n &{}={}& b_1 \\
+a_{21}x_1 &{}+{}& a_{22}x_2 &{}+{}& \ldots &{}+{}& a_{2n}x_n &{}={}& b_2 \\
+\vdots && \vdots && && \vdots && \;\,\vdots \\
+a_{m1}x_1 &{}+{}& a_{m2}x_2 &{}+{}& \ldots &{}+{}& a_{mn}x_n &{}={}& b_m
+\end{alignedat}$$
+*egyenletrendszer $\mathbf{Ax} = \mathbf{b}$ alakba írható.*
+
+Könnyen ellenőrizhető a mátrixszorzás elvégzésével, hogy a
+$$2x_1 + 3x_2 - x_3 = 5, \qquad \begin{alignedat}{9} ax &&&{}={}& u \\ && by &{}={}& v \\ && cz &{}={}& w \end{alignedat} \qquad \text{és} \qquad \begin{alignedat}{9} x &{}+{}& 2y &{}={}& 1 \\ && y &{}={}& 1 \\ && 0 &{}={}& 1 \end{alignedat}$$
+egyenletrendszerek mátrixszorzatos alakjai rendre:
+$$\begin{bmatrix} 2 & 3 & -1 \end{bmatrix}\begin{bmatrix} x_1 \\ x_2 \\ x_3 \end{bmatrix} = 5, \quad \begin{bmatrix} a & 0 & 0 \\ 0 & b & 0 \\ 0 & 0 & c \end{bmatrix}\begin{bmatrix} x \\ y \\ z \end{bmatrix} = \begin{bmatrix} u \\ v \\ w \end{bmatrix}, \quad \begin{bmatrix} 1 & 2 \\ 0 & 1 \\ 0 & 0 \end{bmatrix}\begin{bmatrix} x \\ y \end{bmatrix} = \begin{bmatrix} 1 \\ 1 \\ 1 \end{bmatrix}.$$
+
+**4.18. példa (Szimultán egyenletrendszer mátrixszorzatos alak).** *Írjuk az alábbi két egyenletrendszert egyetlen mátrixszorzatos alakba!*
+$$\begin{alignedat}{9} 2x_{11} &{}+{}& 3x_{21} &{}={}& 7 \\ 3x_{11} &{}-{}& 4x_{21} &{}={}& 2 \end{alignedat} \qquad \begin{alignedat}{9} 2x_{12} &{}+{}& 3x_{22} &{}={}& 9 \\ 3x_{12} &{}-{}& 4x_{22} &{}={}& 5 \end{alignedat}$$
+
+*Megoldás.* A két egyenletrendszer mátrixszorzatos alakjai külön-külön
+$$\begin{bmatrix} 2 & 3 \\ 3 & -4 \end{bmatrix}\begin{bmatrix} x_{11} \\ x_{21} \end{bmatrix} = \begin{bmatrix} 7 \\ 2 \end{bmatrix}, \quad \begin{bmatrix} 2 & 3 \\ 3 & -4 \end{bmatrix}\begin{bmatrix} x_{12} \\ x_{22} \end{bmatrix} = \begin{bmatrix} 9 \\ 5 \end{bmatrix}.$$
+Ezek egyetlen mátrixszorzattá olvaszthatók:
+$$\begin{bmatrix} 2 & 3 \\ 3 & -4 \end{bmatrix}\begin{bmatrix} x_{11} & x_{12} \\ x_{21} & x_{22} \end{bmatrix} = \begin{bmatrix} 7 & 9 \\ 2 & 5 \end{bmatrix}.$$
+Általánosan a szimultán egyenletrendszerek $\mathbf{AX} = \mathbf{B}$ alakba írhatók, ahol $\mathbf{X}$ az ismeretlenekből, $\mathbf{B}$ a jobb oldalakból alkotott mátrix. $\square$
+
+### Lineáris helyettesítés mátrixszorzatos alakja
+
+Az egyenletrendszer mátrixszorzatos alakjához hasonlóan adódik a lineáris helyettesítés mátrixszorzatos alakja. Egyszerűen csak úgy kell tekintenünk az $\mathbf{Ax} = \mathbf{b}$ egyenlőségre, hogy ott $\mathbf{b}$ koordinátái a helyettesítendő változók, melyek helyébe az $\mathbf{x}$ koordinátáinak egy lineáris kifejezését helyettesítjük. Ilyenkor inkább a $\mathbf{b} = \mathbf{Ax}$ alakot használjuk, és az $\mathbf{A}$ mátrixot a *lineáris helyettesítés mátrixának* nevezzük. Részletesebben lásd még a 4.36. feladatot.
+
+Példaként íme egy lineáris helyettesítés és mátrixszorzatos alakja:
+$$\begin{aligned} x &= 3a + 2b + 4c \\ y &= a - 3b + 2c \\ z &= 2a - b + 2c \end{aligned} \qquad \begin{bmatrix} x \\ y \\ z \end{bmatrix} = \begin{bmatrix} 3 & 2 & 4 \\ 1 & -3 & 2 \\ 2 & -1 & 2 \end{bmatrix}\begin{bmatrix} a \\ b \\ c \end{bmatrix}.$$
+
+### Szorzás vektorral
+
+Egy $m \times n$-es mátrix vektorral kétféleképp szorozható: jobbról egy $n \times 1$-es oszlopvektorral, balról egy $1 \times m$-es sorvektorral.
+
+Az $\mathbf{Ax} = \mathbf{b}$ egyenletrendszer oszlopmodelljéből láttuk, hogy az egyenletrendszer bal oldala az $\mathbf{A}$ oszlopvektorainak az $\mathbf{x}$ koordinátáival vett lineáris kombinációja. Hasonló állítás igaz a sorvektorral balról való szorzásra is.
+
+**4.19. állítás (Mátrixszorzás és lineáris kombináció).** *Legyen $\mathbf{A}$ $m \times n$-es mátrix, $\mathbf{x}$ $n$-dimenziós, $\mathbf{y}$ $m$-dimenziós vektor. Ekkor az $\mathbf{Ax}$ szorzat az $\mathbf{A}$ oszlopvektorainak*
+$$\mathbf{a}_{*1}x_1 + \mathbf{a}_{*2}x_2 + \cdots + \mathbf{a}_{*n}x_n$$
+*lineáris kombinációját, míg az $\mathbf{y}^\mathsf{T}\mathbf{A}$ szorzat az $\mathbf{A}$ sorvektorainak*
+$$\mathbf{a}_{1*}y_1 + \mathbf{a}_{2*}y_2 + \cdots + \mathbf{a}_{m*}y_m$$
+*lineáris kombinációját adja.*
+
+**4.20. példa (Nulltér felírása mátrixszorzással).** *Írjuk fel az*
+$$\begin{bmatrix} 1 & 2 & 3 & 4 & 5 \\ 2 & 3 & 5 & 7 & 11 \\ 0 & 1 & 1 & 1 & -1 \end{bmatrix}$$
+*mátrix nullterének vektorait egy mátrix és egy vektor szorzataként!*
+
+*Megoldás.* A nulltér, azaz a mátrixhoz tartozó homogén lineáris egyenletrendszer megoldásainak tere könnyen leolvasható a redukált lép-
+
+<!-- OCR: through PDF p.155 -->
