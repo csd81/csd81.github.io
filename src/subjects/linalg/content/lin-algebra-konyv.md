@@ -506,4 +506,96 @@ $\mathbf{a} \times \mathbf{b} \perp \mathbf{a}$, $\mathbf{a} \times \mathbf{b} \
 
 *1.28. ábra. A test az $O$ pontban rögzítve van, a $P$ pontban hat az $\mathbf{F}$ erő, a forgás tengelye merőleges lesz az $\overrightarrow{OP}$ és az $\mathbf{F}$ vektorok síkjára, az $\overrightarrow{OP}$, az $\mathbf{F}$ és $\mathbf{M}$ jobbrendszert alkotnak, ahol $\mathbf{M}$ a forgatónyomaték, melynek iránya megadja a forgatás irányát. Az $|\mathbf{F}|\sin(\overrightarrow{OP},\mathbf{F})_\angle$ szakaszt szaggatott vonal jelöli.*
 
-<!-- OCR: through PDF p.35 -->
+**1.25. példa (Vektori szorzat meghatározása).** *Tegyük fel, hogy a tér két vektora 3 illetve 5 hosszú, az általuk bezárt szög koszinusza $\frac{4}{5}$. Mit tudunk a vektori szorzatról?*
+
+*Megoldás.* Ha $\cos\gamma = \frac{4}{5}$, akkor $\sin\gamma = \sqrt{1 - \left(\frac{4}{5}\right)^2} = \frac{3}{5}$, így a vektori szorzat hossza $|\mathbf{a}||\mathbf{b}|\sin(\mathbf{a},\mathbf{b})_\angle = 3 \cdot 5 \cdot \frac{3}{5} = 9$, iránya merőleges mindkét vektorra és $\mathbf{a}$, $\mathbf{b}$, $\mathbf{a} \times \mathbf{b}$ ebben a sorrendben jobbrendszert alkot (ld. 1.29. ábra). $\square$
+
+**1.26. példa ($\mathbf{i}$, $\mathbf{j}$, $\mathbf{k}$ vektori szorzata).** *Legyen $\mathbf{i}$, $\mathbf{j}$, $\mathbf{k}$ három, páronként egymásra merőleges, ebben a sorrendben jobbrendszert alkotó egységvektor. Készítsünk művelettáblát vektori szorzataikról!*
+
+*Megoldás.* Mivel $(\mathbf{i},\mathbf{i})_\angle = 0$, ezért $|\mathbf{i} \times \mathbf{i}| = 0$, így $\mathbf{i} \times \mathbf{i} = \mathbf{0}$. Hasonlóan $\mathbf{j} \times \mathbf{j} = \mathbf{0}$ és $\mathbf{k} \times \mathbf{k} = \mathbf{0}$.
+
+Mivel $|\mathbf{i}| = |\mathbf{j}| = 1$ és $(\mathbf{i},\mathbf{j})_\angle = 90°$, ezért $|\mathbf{i} \times \mathbf{j}| = 1$, azaz $\mathbf{i} \times \mathbf{j}$ is egységvektor. Ráadásul $\mathbf{i} \times \mathbf{j}$ merőleges $\mathbf{i}$-re és $\mathbf{j}$-re, és $\mathbf{i}$, $\mathbf{j}$ valamint $\mathbf{i} \times \mathbf{j}$ jobbrendszert alkotnak épp úgy, mint $\mathbf{i}$, $\mathbf{j}$ és $\mathbf{k}$. Ebből következik, hogy $\mathbf{i} \times \mathbf{j} = \mathbf{k}$. Hasonlóképp $\mathbf{j} \times \mathbf{k} = \mathbf{i}$ és $\mathbf{k} \times \mathbf{i} = \mathbf{j}$. Ha $\mathbf{i}$, $\mathbf{j}$, $\mathbf{k}$ jobbrendszert alkot, akkor $\mathbf{j}$, $\mathbf{i}$ és $\mathbf{k}$ balrendszert, így $\mathbf{j} \times \mathbf{i} = -\mathbf{k}$. Mindezeket összefoglalva a következő művelettáblát kapjuk.
+
+| $\times$ | $\mathbf{i}$ | $\mathbf{j}$ | $\mathbf{k}$ |
+|---|---|---|---|
+| $\mathbf{i}$ | $\mathbf{0}$ | $\mathbf{k}$ | $-\mathbf{j}$ |
+| $\mathbf{j}$ | $-\mathbf{k}$ | $\mathbf{0}$ | $\mathbf{i}$ |
+| $\mathbf{k}$ | $\mathbf{j}$ | $-\mathbf{i}$ | $\mathbf{0}$ |
+
+E három vektor közti szorzatok könnyen megjegyezhetőek, ha egy szabályos háromszög csúcsaira írjuk őket pozitív körüljárás szerint, mint azt a táblázat melletti ábra mutatja. Ekkor két különböző vektor szorzata a harmadik, ha a két vektor pozitív körüljárás szerint követi egymást. Ha negatív körüljárás szerint követik egymást, a szorzat a harmadik vektor $-1$-szerese. $\square$
+
+**1.27. tétel (Mikor $\mathbf{0}$ a vektori szorzat?).** *Két térbeli vektor vektori szorzata pontosan akkor zérusvektor, ha a két vektor párhuzamos.*
+
+*Bizonyítás.* Ha $\mathbf{a}$ vagy $\mathbf{b}$ valamelyike zérusvektor, akkor egyrészt a két vektor tekinthető párhuzamosnak, másrészt $\mathbf{a} \times \mathbf{b} = \mathbf{0}$, az állítás tehát igaz, ezért a továbbiakban feltesszük, hogy a két tényező egyike sem zérusvektor.
+
+($\Leftarrow$) Ha $\mathbf{a}$ és $\mathbf{b}$ párhuzamosak, akkor $(\mathbf{a},\mathbf{b})_\angle = 0$ vagy $\pi$, tehát $\sin(\mathbf{a},\mathbf{b})_\angle = 0$, így $|\mathbf{a} \times \mathbf{b}| = |\mathbf{a}||\mathbf{b}| \cdot 0 = 0$, azaz $\mathbf{a} \times \mathbf{b} = \mathbf{0}$.
+
+($\Rightarrow$) Ha $\mathbf{a} \times \mathbf{b} = \mathbf{0}$, azaz $|\mathbf{a}||\mathbf{b}|\sin(\mathbf{a},\mathbf{b})_\angle = 0$, akkor $|\mathbf{a}| \neq 0$ és $|\mathbf{b}| \neq 0$ miatt $\sin(\mathbf{a},\mathbf{b})_\angle = 0$. A szinusz függvénynek a $[0,\pi]$ intervallumban a 0 és a $\pi$ helyen van zérushelye, tehát a két vektor vagy egyirányú, vagy ellenkező irányú, vagyis párhuzamos. $\square$
+
+*1.29. ábra. Az $\mathbf{a}$, $\mathbf{b}$ és az $\mathbf{a} \times \mathbf{b}$ vektorok.*
+
+**1.28. tétel (Vektori szorzat abszolút értékének geometriai jelentése).** *Két vektor vektori szorzatának abszolút értéke a két vektor által kifeszített paralelogramma területének mérőszámával egyenlő.*
+
+*Bizonyítás.* Az $\mathbf{a}$ és $\mathbf{b}$ vektorok által kifeszített paralelogramma oldalainak hossza $|\mathbf{a}|$ és $|\mathbf{b}|$, az $\mathbf{a}$ oldalhoz tartozó magassága pedig $m = |\mathbf{b}|\sin(\mathbf{a},\mathbf{b})_\angle$. A paralelogramma területe $|\mathbf{a}|m = |\mathbf{a}||\mathbf{b}|\sin(\mathbf{a},\mathbf{b})_\angle = |\mathbf{a} \times \mathbf{b}|$ (1.30. ábra). $\square$
+
+**1.29. tétel (Vektori szorzás műveleti tulajdonságai).** *Tetszőleges $\mathbf{a}$, $\mathbf{b}$ és $\mathbf{c}$ vektorokra, valamint tetszőleges $r$ valós számra igazak az alábbi összefüggések:*
+- *a)* $\mathbf{a} \times \mathbf{b} = -\mathbf{b} \times \mathbf{a}$ *(alternáló tulajdonság)*
+- *b)* $(\mathbf{a} + \mathbf{b}) \times \mathbf{c} = \mathbf{a} \times \mathbf{c} + \mathbf{b} \times \mathbf{c}$, illetve $\mathbf{a} \times (\mathbf{b} + \mathbf{c}) = \mathbf{a} \times \mathbf{b} + \mathbf{a} \times \mathbf{c}$ *(disztributivitás)*
+- *c)* $r(\mathbf{a} \times \mathbf{b}) = (r\mathbf{a}) \times \mathbf{b} = \mathbf{a} \times (r\mathbf{b})$
+- *d)* $|\mathbf{a} \times \mathbf{b}| = \sqrt{|\mathbf{a}|^2|\mathbf{b}|^2 - |\mathbf{a} \cdot \mathbf{b}|^2}$
+- *e)* $\mathbf{a} \times (\mathbf{b} \times \mathbf{c}) = (\mathbf{a} \cdot \mathbf{c})\mathbf{b} - (\mathbf{a} \cdot \mathbf{b})\mathbf{c}$ *(kifejtési tétel)*
+
+▶ E tétel a) pontja szerint a vektori szorzás *nem kommutatív*!
+
+▶ A vektori szorzás nem is asszociatív. Az 1.26. példa eredményét használva könnyen látható, hogy
+$$(\mathbf{i} \times \mathbf{j}) \times \mathbf{j} \neq \mathbf{i} \times (\mathbf{j} \times \mathbf{j}),$$
+ugyanis $(\mathbf{i} \times \mathbf{j}) \times \mathbf{j} = \mathbf{k} \times \mathbf{j} = -\mathbf{i}$, másrészt $\mathbf{i} \times (\mathbf{j} \times \mathbf{j}) = \mathbf{i} \times \mathbf{0} = \mathbf{0}$.
+
+▶ A tétel bizonyítását az 1.49. feladatra hagyjuk.
+
+### Paralelepipedon térfogata és előjeles térfogata
+
+Az 1.28. tételben megmutattuk, hogy a vektori szorzat abszolút értéke a két vektor által kifeszített paralelogramma területét adja.
+
+**1.30. tétel (Paralelepipedon térfogata).** *Az $\mathbf{a}$, $\mathbf{b}$ és $\mathbf{c}$ vektorok által kifeszített paralelepipedon térfogata $|(\mathbf{a} \times \mathbf{b}) \cdot \mathbf{c}|$. A $(\mathbf{a} \times \mathbf{b}) \cdot \mathbf{c}$ kifejezés értéke pozitív, ha a vektorok jobbrendszert, negatív, ha balrendszert alkotnak, és nulla, ha lineárisan összefüggők.*
+
+*Bizonyítás.* Az $\mathbf{a}$ és $\mathbf{b}$ által kifeszített paralelogramma területe $|\mathbf{a} \times \mathbf{b}|$, és mivel $\mathbf{a} \times \mathbf{b}$ merőleges a paralelogramma síkjára, ezért a paralelepipedon magassága $\mathbf{c}$-nek az $\mathbf{a} \times \mathbf{b}$ egyenesére eső merőleges vetülete hosszával egyenlő. Ez az $\mathbf{a} \times \mathbf{b}$ irányú egységvektorral való skaláris szorzással számolható. Az egységvektor
+$$\mathbf{e} = \frac{\mathbf{a} \times \mathbf{b}}{|\mathbf{a} \times \mathbf{b}|},$$
+a magasság $|\mathbf{e} \cdot \mathbf{c}|$, és így a térfogat (azaz az alapterületszer magasság) értéke
+$$|\mathbf{a} \times \mathbf{b}|\left|\frac{\mathbf{a} \times \mathbf{b}}{|\mathbf{a} \times \mathbf{b}|} \cdot \mathbf{c}\right| = |(\mathbf{a} \times \mathbf{b}) \cdot \mathbf{c}|.$$
+
+*1.30. ábra. $|\mathbf{a} \times \mathbf{b}|$ megegyezik a paralelogramma területével.*
+
+Tehát a paralelepipedon térfogata $|(\mathbf{a} \times \mathbf{b}) \cdot \mathbf{c}|$. A $(\mathbf{a} \times \mathbf{b}) \cdot \mathbf{c}$ skalár pontosan akkor negatív, ha a $\mathbf{c}$ vektor $\mathbf{a} \times \mathbf{b}$ egyenesére eső merőleges vetülete és $\mathbf{a} \times \mathbf{b}$ ellenkező irányú. Vagyis ha a $\mathbf{c}$ vektor az $\mathbf{a} \times \mathbf{b}$ síkjának másik oldalán van, mint az $\mathbf{a} \times \mathbf{b}$ vektor, azaz ha $\mathbf{a}$, $\mathbf{b}$ és $\mathbf{c}$ balrendszert alkot! Végül $(\mathbf{a} \times \mathbf{b}) \cdot \mathbf{c} = 0$ pontosan akkor teljesül, ha $\mathbf{a} \times \mathbf{b} \perp \mathbf{c}$, azaz ha a három vektor egy síkba esik. $\square$
+
+▶ A $(\mathbf{a} \times \mathbf{b}) \cdot \mathbf{c}$ skalárt az $\mathbf{a}$, $\mathbf{b}$ és $\mathbf{c}$ vektorok által kifeszített paralelepipedon *előjeles térfogatának* nevezzük.
+
+### Vegyes szorzat
+
+Az előző paragrafusban megmutattuk az $(\mathbf{a} \times \mathbf{b}) \cdot \mathbf{c}$ kifejezés fontosságát. Ez vezet a következő definícióhoz:
+
+**1.31. definíció (Vegyes szorzat).** *A 3-dimenziós tér három tetszőleges $\mathbf{a}$, $\mathbf{b}$ és $\mathbf{c}$ vektorából képzett*
+$$(\mathbf{a} \times \mathbf{b}) \cdot \mathbf{c}$$
+*skalárt a három vektor vegyes szorzatának nevezzük.*
+
+▶ Az $\mathbf{a}$, $\mathbf{b}$ és $\mathbf{c}$ vektorok vegyes szorzatának szokásos jelölése $\mathbf{abc}$, de mi a későbbi fejezetekben nem fogjuk használni.
+
+▶ Mivel a skaláris szorzás kommutatív, ezért $(\mathbf{a} \times \mathbf{b}) \cdot \mathbf{c} = \mathbf{c} \cdot (\mathbf{a} \times \mathbf{b})$.
+
+▶ A paralelepipedon térfogatára ugyanazt az értéket kell kapnunk, bármelyik oldallapot is választjuk alapnak, így a három vektorból a vektorok különböző sorrendjeivel képzett vegyes szorzatok csak előjelükben térhetnek el egymástól. Mivel az előjel az orientáció függvénye, ezért – figyelembe véve az előző megjegyzést is – kapjuk, hogy
+$$(\mathbf{a} \times \mathbf{b}) \cdot \mathbf{c} = (\mathbf{b} \times \mathbf{c}) \cdot \mathbf{a} = (\mathbf{c} \times \mathbf{a}) \cdot \mathbf{b} = \mathbf{abc} = \mathbf{bca} = \mathbf{cab}$$
+$$= -(\mathbf{c} \times \mathbf{b}) \cdot \mathbf{a} = -(\mathbf{b} \times \mathbf{a}) \cdot \mathbf{c} = -(\mathbf{a} \times \mathbf{c}) \cdot \mathbf{b} = -\mathbf{acb} = -\mathbf{cba} = -\mathbf{bac}.$$
+
+**1.32. példa (Vegyes szorzat).** *Határozzuk meg egy egységélű kocka egy csúcsból induló három lapátló-vektorának vegyes szorzatát (1.31 ábra)!*
+
+*Megoldás.* Jelölje a kocka egyik csúcsából induló három élvektorát $\mathbf{i}$, $\mathbf{j}$ és $\mathbf{k}$. E három vektor ebben a sorrendben alkosson jobbrendszert. Ekkor az előző megjegyzés szerint $\mathbf{ijk} = \mathbf{jki} = \mathbf{kij} = 1$, $\mathbf{kji} = \mathbf{jik} = \mathbf{ikj} = -1$. Mivel a vegyes szorzat egy paralelepipedon térfogatát vagy annak ellentettjét adja, ezért ha egy szorzatban egy vektor többször is szerepel, akkor annak értéke 0. Például $\mathbf{iji} = (\mathbf{i} \times \mathbf{j}) \cdot \mathbf{i} = \mathbf{k} \cdot \mathbf{i} = 0$. A három lapátló-vektor: $\mathbf{i} + \mathbf{j}$, $\mathbf{j} + \mathbf{k}$, $\mathbf{k} + \mathbf{i}$. Ezek vegyes szorzata
+$$\begin{aligned}
+((\mathbf{i} + \mathbf{j}) \times (\mathbf{j} + \mathbf{k})) \cdot (\mathbf{k} + \mathbf{i}) &= \mathbf{ijk} + \mathbf{iji} + \mathbf{ikk} + \mathbf{iki} + \mathbf{jjk} + \mathbf{jji} + \mathbf{jkk} + \mathbf{jki} \\
+&= 1 + 0 + 0 + 0 + 0 + 0 + 0 + 1 \\
+&= 2,
+\end{aligned}$$
+tehát a három lapátló-vektor vegyes szorzata 2. Ez azt is jelenti, hogy e három vektor által kifeszített paralelepipedon térfogata 2. $\square$
+
+*1.31. ábra. $(\mathbf{i} + \mathbf{j})(\mathbf{j} + \mathbf{k})(\mathbf{k} + \mathbf{i}) = 2$.*
+
+<!-- OCR: through PDF p.38 -->
