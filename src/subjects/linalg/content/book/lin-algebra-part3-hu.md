@@ -6,9 +6,7 @@ E rész a mátrixok legfontosabb tulajdonságait, sajátságait vizsgálja. A *s
 
 *green&blue (CC) by Joós Andi*
 
-# 8
-
-# Sajátérték, diagonalizálás
+# 8. Sajátérték, diagonalizálás
 
 Egy mátrix jellemzésének különösen hatékony eszköze azoknak a nullvektortól különböző $\mathbf{x}$ vektoroknak a meghatározása, amelyeket a mátrixszal való szorzás önmagukkal párhuzamos vektorokba visz, azaz amelyekre $\mathbf{A}\mathbf{x} = \lambda\mathbf{x}$. E vektorok ismerete olyan bázis megtalálásához is hozzásegít, amelyben e mátrix lényegesen egyszerűbb – például diagonális – alakot ölt.
 
