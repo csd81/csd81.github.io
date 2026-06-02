@@ -168,6 +168,25 @@ export default function Home() {
           </Link>
         </li>
       </ul>
+
+      <h2 className="home__section-title">
+        {lang === 'hu' ? 'Lineáris algebra' : 'Linear Algebra'}
+      </h2>
+      <ul className="home__grid">
+        <li>
+          <Link to="/linalg" className="chcard">
+            <span className="chcard__num">ℝⁿ</span>
+            <span className="chcard__body">
+              <span className="chcard__title">Lineáris algebra</span>
+              <span className="chcard__blurb">
+                {lang === 'hu'
+                  ? 'Leitold Adrien & Szalkai István · Pannon Egyetem — vektorterek, mátrixok, lineáris leképezések, bázistranszformáció + előismeretek (16 téma).'
+                  : 'Leitold Adrien & Szalkai István · University of Pannonia — vector spaces, matrices, linear maps, basis transformation + prerequisites (16 topics).'}
+              </span>
+            </span>
+          </Link>
+        </li>
+      </ul>
     </div>
   );
 }

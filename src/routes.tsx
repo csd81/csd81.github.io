@@ -10,6 +10,7 @@ const Ila = lazy(() => import('./subjects/ila'));
 const Algo = lazy(() => import('./subjects/algo'));
 const Tetelsor = lazy(() => import('./subjects/tetelsor'));
 const Calc = lazy(() => import('./subjects/calc'));
+const Linalg = lazy(() => import('./subjects/linalg'));
 
 function Loading() {
   return (
@@ -69,6 +70,14 @@ export default function AppRoutes() {
           element={
             <Suspense fallback={<Loading />}>
               <Calc />
+            </Suspense>
+          }
+        />
+        <Route
+          path="linalg/*"
+          element={
+            <Suspense fallback={<Loading />}>
+              <Linalg />
             </Suspense>
           }
         />

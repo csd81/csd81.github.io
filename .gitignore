@@ -16,3 +16,7 @@ rust_app/**/*.pdf
 0*/**/dist/
 10/**/node_modules/
 10/**/dist/
+
+# stray source scans / transcripts (not part of the site)
+peldatar_pages/
+linAlgPeldatar.md
