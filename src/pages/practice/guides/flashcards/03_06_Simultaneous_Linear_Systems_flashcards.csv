@@ -1,0 +1,50 @@
+What are 'simultaneous linear systems'?,A set of linear systems that share the same coefficient matrix but have different right-hand sides.
+What is the general form for representing $m$ simultaneous linear systems individually?,"$\mathbf{A}\mathbf{x} = \mathbf{b}^{(i)}$ for $i = 1, \dots, m$."
+How is a set of simultaneous linear systems written concisely as a single matrix equation?,$\mathbf{A}\mathbf{X} = \mathbf{B}$
+"In the equation $\mathbf{A}\mathbf{X} = \mathbf{B}$, what does the $i$-th column of the matrix $\mathbf{B}$ represent?",The right-hand side vector $\mathbf{b}^{(i)}$ of the $i$-th system.
+"In the equation $\mathbf{A}\mathbf{X} = \mathbf{B}$, what does the $i$-th column of the matrix $\mathbf{X}$ represent?",The solution vector $\mathbf{x}^{(i)}$ of the $i$-th system.
+What are the dimensions of the matrix $\mathbf{B}$ if there are $n$ equations and $m$ right-hand side vectors?,$n \times m$
+What are the dimensions of the solution matrix $\mathbf{X}$ in a simultaneous linear system with $n$ variables and $m$ systems?,$n \times m$
+Why can pivoting for simultaneous systems be performed on a single augmented matrix?,"Pivoting depends only on the coefficient matrix $\mathbf{A}$, which is the same for all systems."
+What are the dimensions of the augmented matrix used to solve $m$ simultaneous systems of $n$ equations?,$n \times (n+m)$
+"Performing Gauss-Jordan elimination on the augmented matrix $(\mathbf{A}, \mathbf{B})$ results in a matrix of what form?","$(\mathbf{I}, \mathbf{X})$"
+"Where does the solution $\mathbf{X}$ appear after Gauss-Jordan elimination on the augmented matrix $(\mathbf{A}, \mathbf{B})$?",In the last $m$ columns.
+"What is the operation count for Gaussian elimination on the augmented matrix $(\mathbf{A}, \mathbf{b}^{(1)}, \dots, \mathbf{b}^{(m)})$?",$n^3/3 + mn^2 - n/3$
+"In the Gaussian elimination operation count $n^3/3 + mn^2 - n/3$, what do the operations represent?",The number of multiplications and divisions.
+"What is the operation count for Gauss-Jordan elimination on the augmented matrix $(\mathbf{A}, \mathbf{b}^{(1)}, \dots, \mathbf{b}^{(m)})$?",$n^3/2 + mn^2 - n/2$
+Which term in the operation count formulas scales linearly with the number of systems $m$?,$mn^2$
+How does the $n^3$ term in the operation count compare between Gaussian and Gauss-Jordan elimination for simultaneous systems?,Gauss-Jordan has a higher $n^3$ cost ($n^3/2$) than Gaussian elimination ($n^3/3$).
+Algorithm 3.37 can be reformulated to solve simultaneous systems with what specific structure?,Tridiagonal linear systems.
+The system of equations $\mathbf{A}\mathbf{x}^{(i)} = \mathbf{b}^{(i)}$ is equivalent to the matrix equation \_\_\_\_\_.,$\mathbf{A}\mathbf{X} = \mathbf{B}$
+"Concept: Augmented Matrix $(\mathbf{A}, \mathbf{B})$",Definition: A combined matrix where the coefficient matrix $\mathbf{A}$ is followed by the matrix of all right-hand sides $\mathbf{B}$.
+"In the augmented matrix $(\mathbf{A}, \mathbf{B})$, what does the sub-matrix $\mathbf{A}$ represent?",The shared coefficient matrix for all systems.
+"In the context of simultaneous systems, what matrix results from the $i$-th column product $\mathbf{A} \cdot \text{column}_i(\mathbf{X})$?",The $i$-th column of matrix $\mathbf{B}$ (the vector $\mathbf{b}^{(i)}$).
+What matrix does the coefficient matrix $\mathbf{A}$ become after successful Gauss-Jordan elimination on an augmented matrix?,The identity matrix $\mathbf{I}$.
+"If $\mathbf{A}$ is $n \times n$, how many rows does the augmented matrix $(\mathbf{A}, \mathbf{B})$ have?",$n$ rows
+"If $\mathbf{B}$ is a matrix of $m$ column vectors, what is the width of the augmented matrix $(\mathbf{A}, \mathbf{B})$?",$n + m$ columns
+"The solution matrix $\mathbf{X}$ is composed of columns $(\mathbf{x}^{(1)}, \mathbf{x}^{(2)}, \dots, \mathbf{x}^{(m)})$, where each column is a \_\_\_\_\_.",solution vector for the corresponding right-hand side $\mathbf{b}^{(i)}$
+"When performing elimination, why is it efficient to solve simultaneous systems together rather than separately?",The elimination steps on the coefficient matrix only need to be performed once.
+"According to the video, what form of elimination is preferred to directly obtain the solution matrix $\mathbf{X}$?",Gauss-Jordan elimination.
+The formula $n^3/3 + mn^2 - n/3$ describes the multiplication/division count for which method?,Gaussian elimination on an augmented matrix.
+"In the operation count $n^3/2 + mn^2 - n/2$, what does the '$- n/2$' term represent?",A linear correction factor in the Gauss-Jordan operation count.
+How is the matrix $\mathbf{X}$ related to $\mathbf{A}$ and $\mathbf{B}$ in terms of matrix multiplication?,"$\mathbf{X}$ is the matrix that, when multiplied on the left by $\mathbf{A}$, yields $\mathbf{B}$."
+"What is the identity matrix dimension in the result $(\mathbf{I}, \mathbf{X})$?",$n \times n$
+True or False: Pivoting decisions in simultaneous systems are affected by the values in matrix $\mathbf{B}$.,False (pivoting depends only on the coefficient matrix $\mathbf{A}$).
+"If $m=1$, the operation count $n^3/3 + mn^2 - n/3$ simplifies to the standard count for a \_\_\_\_\_.",single linear system solved by Gaussian elimination
+"The matrix $\mathbf{B} = (\mathbf{b}^{(1)}, \mathbf{b}^{(2)}, \dots, \mathbf{b}^{(m)})$ is called the \_\_\_\_\_ matrix.",right-hand side
+"The matrix $\mathbf{X} = (\mathbf{x}^{(1)}, \mathbf{x}^{(2)}, \dots, \mathbf{x}^{(m)})$ is called the \_\_\_\_\_ matrix.",solution
+"What is the row size of the augmented matrix $(\mathbf{A}, \mathbf{B})$?",$n$ (the number of equations).
+What is the column size of matrix $\mathbf{X}$ in a simultaneous system with $m$ right-hand sides?,$m$
+"In the equation $\mathbf{A}\mathbf{X} = \mathbf{B}$, which matrix is the coefficient matrix?",$\mathbf{A}$
+The process of solving simultaneous systems is equivalent to solving the matrix equation $\mathbf{A}\mathbf{X} = \mathbf{B}$ for the unknown matrix \_\_\_\_\_.,$\mathbf{X}$
+"The Gauss-Jordan method transforms the augmented matrix $(\mathbf{A}, \mathbf{B})$ into \_\_\_\_\_.","$(\mathbf{I}, \mathbf{X})$"
+How many individual linear systems are being solved in a simultaneous system with $m$ right-hand sides?,$m$
+"What is the term for the matrix $(\mathbf{A}, \mathbf{b}^{(1)}, \ldots, \mathbf{b}^{(m)})$?",The augmented matrix.
+What determines whether Gaussian or Gauss-Jordan elimination can be performed on the augmented matrix?,The properties and pivoting requirements of the coefficient matrix $\mathbf{A}$.
+"In the term $mn^2$ of the operation counts, what does $n^2$ represent for each system $i$?",The operations required to process a single right-hand side vector through the elimination and back-substitution.
+What is the result of multiplying the coefficient matrix by the first column of the solution matrix?,The first column of the right-hand side matrix $\mathbf{B}$ (the vector $\mathbf{b}^{(1)}$).
+"In Gauss-Jordan elimination, the solution for the $i$-th system is found in the $(n+i)$-th \_\_\_\_\_ of the final augmented matrix.",column
+Which operation count term $n^3/3$ or $n^3/2$ represents the cost of reducing the coefficient matrix $\mathbf{A}$?,The term independent of $m$.
+"To solve $\mathbf{A}\mathbf{x} = \mathbf{b}^{(i)}$ for multiple $i$, one performs elimination on $\mathbf{A}$ and applies the same operations to all \_\_\_\_\_.",$\mathbf{b}^{(i)}$ vectors (or the matrix $\mathbf{B}$)
+What is the total number of entries in the solution matrix $\mathbf{X}$?,$n \cdot m$
+Which matrix equation proves that $AX=B$ is equivalent to solving $m$ individual systems?,"$(\mathbf{A}\mathbf{x}^{(1)}, \dots, \mathbf{A}\mathbf{x}^{(m)}) = (\mathbf{b}^{(1)}, \dots, \mathbf{b}^{(m)})$"

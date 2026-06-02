@@ -1,0 +1,40 @@
+A sequence $p_k$ converges to $p$ with order $\alpha$ if there exists a constant $c \ge 0$ such that $|p_{k+1} - p| \le c |p_k - p|^\alpha$. What is the required range for $\alpha$?,$\alpha \ge 1$
+"In the definition of order of convergence, what additional constraint is placed on the constant $c$ if the order $\alpha$ is exactly 1?",$c < 1$
+"If a sequence satisfies $|p_{k+1} - p| \le c |p_k - p|^\alpha$ for a specific $\alpha$, but not for any larger exponent, the order of convergence is said to be \_\_\_\_\_.",exactly $\alpha$
+Terminology: What is the specific name for convergence where the order $\alpha = 1$?,Linear convergence
+Terminology: What is the specific name for convergence where the order $\alpha = 2$?,Quadratic convergence
+A sequence $p_k$ is said to converge linearly if it satisfies $|p_k - p| \le c^k |p_0 - p|$ for a constant $c$ in what range?,$0 \le c < 1$
+Formula: Define the asymptotic error constant $\lambda$ for a sequence $p_k$ converging to $p$ with order $\alpha$.,$\lambda = \lim_{k \to \infty} \frac{p_{k+1} - p}{(p_k - p)^\alpha}$
+A sequence converges \_\_\_\_\_ if it has linear convergence ($\alpha = 1$) and its asymptotic error constant $\lambda$ is 0.,superlinearly
+"If a sequence $p_k$ converges with order $\alpha$ and asymptotic error constant $\lambda \ne 0$, what is the limit of $\frac{|p_{k+1} - p|}{|p_k - p|^\beta}$ for all $\beta < \alpha$?",0
+"If a sequence $p_k$ converges with order $\alpha$ and asymptotic error constant $\lambda \ne 0$, what is the limit of $\frac{|p_{k+1} - p|}{|p_k - p|^\beta}$ for all $\beta > \alpha$?",$\infty$
+"For a sequence with convergence order $\alpha > 1$, local convergence to $p$ is guaranteed if the initial term $p_0$ satisfies what condition involving $c$?",$c^{\frac{1}{\alpha-1}}|p_0 - p| < 1$
+"In a fixed-point iteration $p_{k+1} = g(p_k)$, what condition on the derivative $g'(p)$ at the fixed point $p$ ensures local linear convergence?",$|g'(p)| < 1$
+"In a fixed-point iteration $p_{k+1} = g(p_k)$, if $g'(p) = g''(p) = \dots = g^{(m-1)}(p) = 0$, what is the order of convergence?",$m$
+Formula: What is the asymptotic error constant for a fixed-point iteration of order $m$?,$\frac{g^{(m)}(p)}{m!}$
+Concept: Root Multiplicity,Definition: $p$ is a root of multiplicity $m$ of $f$ if $f(x) = (x - p)^m q(x)$ where $q(p) \ne 0$.
+"If $p$ is a root of multiplicity $m$ for a function $f \in C^m$, what is the value of the derivatives $f'(p), f''(p), \dots, f^{(m-1)}(p)$?",0
+"If $p$ is a root of multiplicity $m$ for a function $f \in C^m$, what is known about the $m$-th derivative $f^{(m)}(p)$?",$f^{(m)}(p) \ne 0$
+What is the order of convergence for the Newton iteration when $p$ is a simple root ($f(p)=0$ and $f'(p) \ne 0$)?,Quadratic (order 2)
+What is the order of convergence for the Newton iteration when $p$ is a multiple root ($m > 1$)?,Linear (order 1)
+"Formula: If $p$ is a root of multiplicity $m$, what is the value of the derivative of the Newton iteration function $g'(p)$?",$g'(p) = 1 - \frac{1}{m}$
+What is the order of convergence of the Secant method for a simple root $p$?,$\alpha = \frac{1+\sqrt{5}}{2} \approx 1.618$
+"To restore quadratic convergence for a multiple root $p$, one can apply Newton's method to which modified function $\mu(x)$?",$\mu(x) = \frac{f(x)}{f'(x)}$
+"If $p$ is a root of multiplicity $m$ of $f(x)$, what is the multiplicity of $p$ as a root of the function $\mu(x) = \frac{f(x)}{f'(x)}$?",1 (simple root)
+Formula: What is the iteration step for the modified Newton's method that uses second derivatives to handle multiple roots?,$p_{k+1} = p_k - \frac{f(p_k)f'(p_k)}{(f'(p_k))^2 - f(p_k)f''(p_k)}$
+"Formula: According to the exercises, what simple modification to the standard Newton step $p_{k+1} = p_k - \frac{f(p_k)}{f'(p_k)}$ can be used if the multiplicity $m$ is known?",$p_{k+1} = p_k - m\frac{f(p_k)}{f'(p_k)}$
+Why is quadratic convergence preferred over linear convergence in numerical methods?,"The error decreases much faster, requiring significantly fewer iterations to reach a target precision."
+"In the proof for fixed-point iteration order, what mathematical tool is used to expand $g(p_k)$ around $p$?",Taylor approximation (or Taylor's Theorem)
+"If a sequence $p_k$ satisfies $|p_{k+1} - p| \le c |p_k - p|^2$, the convergence is at least \_\_\_\_\_.",quadratic
+"In the example $f(x) = x^3 + x^2 - 8x - 12$, Newton's method converges \_\_\_\_\_ to the root $x = 3$ and \_\_\_\_\_ to the root $x = -2$.",quadratically; linearly
+What defines the 'local' nature of convergence for methods like Newton's iteration with $\alpha > 1$?,The iteration only converges if the initial guess $p_0$ is sufficiently close to the limit $p$.
+"In the context of the Secant method, is the order of convergence typically an integer?","No, it is approximately 1.618."
+"For the function $f(x) = (x-p)^m q(x)$, the first $m-1$ derivatives of $f$ at $p$ are 0 because $(x-p)$ remains a \_\_\_\_\_ in those derivative expressions.",factor
+"If the asymptotic error constant $\lambda$ exists and is finite, can we conclude the sequence is convergent?","Yes, it implies convergence with order $\alpha$."
+The sequence $p_k = 10^{-2^k}$ is an example of \_\_\_\_\_ convergence.,quadratic
+Which iterative method is described as a 'two-step' iteration in the source materials?,The Secant method
+"In the modified Newton formula $p_{k+1} = p_k - \frac{\mu(p_k)}{\mu'(p_k)}$, what is the value of $\mu'(p)$ if $p$ is a root of multiplicity $m$ of $f$?",$\frac{1}{m}$
+Concept: Deflation Method,"Definition: A technique to find further roots of a function $f$ by applying root-finding to $g(x) = \frac{f(x)}{x - x_1}$, where $x_1$ is a previously determined root."
+"True or False: The order of convergence for a fixed-point iteration is always a positive integer, provided $g$ is sufficiently smooth.",True
+"When $\alpha=1$ and $c=0.5$, the error $|p_k - p|$ is bounded by \_\_\_\_\_.",$(0.5)^k |p_0 - p|$
+"In the example of $f(x) = e^x - 2\cos x$, why did the ratio $\frac{|p_{k+1}-p|}{|p_k-p|^3}$ converge to $\infty$?",Because the actual order of convergence was lower than 3 (it was exactly 2).

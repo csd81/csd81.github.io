@@ -1,0 +1,60 @@
+What is the primary objective of Gauss–Jordan elimination regarding the coefficient matrix?,To transform the coefficient matrix part of the augmented matrix into the identity matrix $I$.
+"In Gauss–Jordan elimination, into what form is the augmented matrix $(\mathbf{A}, \mathbf{b})$ converted?","The form $(\mathbf{I}, \mathbf{b}^{(n-1)})$."
+"Once the augmented matrix is in the form $(\mathbf{I}, \mathbf{b}^{(n-1)})$, how is the solution vector $\mathbf{x}$ determined?",$\mathbf{x} = \mathbf{b}^{(n-1)}$.
+Gauss–Jordan elimination is described as a modified version of which existing method?,Gaussian elimination.
+What specific procedural step required in standard Gaussian elimination is eliminated in the Gauss–Jordan method?,Backward substitution.
+"In the Gauss–Jordan algorithm, what is the range of the outer loop index $k$?",$1$ to $n$.
+"During the elimination process for a pivot column $k$, which rows $i$ are processed?",All rows from $1$ to $n$ where $i \ne k$.
+What is the formula for calculating the multiplier $l_{ik}$ in the Gauss–Jordan algorithm?,$l_{ik} = a_{ik} / a_{kk}$.
+What is the update rule for the element $a_{ij}$ within the elimination loops?,$a_{ij} = a_{ij} - l_{ik} a_{kj}$.
+"In the update step $a_{ij} = a_{ij} - l_{ik} a_{kj}$, what is the range of the index $j$?",$k+1$ to $n+1$.
+How is each variable $x_i$ calculated in the final step of the algorithm?,"$x_i = a_{i, n+1} / a_{ii}$."
+What is the asymptotic time complexity of Gauss–Jordan elimination for multiplications and divisions?,$\frac{n^3}{2} + \mathcal{O}(n^2)$.
+What is the asymptotic complexity of Gauss–Jordan elimination for additions and subtractions?,$\frac{n^3}{2} + \mathcal{O}(n^2)$.
+"According to the exercises, what is the exact number of multiplications and divisions needed for Gauss–Jordan elimination?",$\frac{n^3}{2} + n^2 - \frac{n}{2}$.
+How does the computational cost of Gauss–Jordan elimination compare to standard Gaussian elimination?,"It is higher, requiring more calculations."
+What defines the 'diagonal form' resulting from the first set of nested loops in the algorithm?,A matrix where all elements $a_{ij}$ are zero if $i \ne j$.
+"In the context of the provided examples, what are the solution values for the linear system?","$x_1 = -3, x_2 = 2, x_3 = 4, x_4 = -2$."
+Which strategy can be combined with Gauss–Jordan elimination to improve numerical stability?,Pivoting strategies (partial or total).
+"In Gauss–Jordan elimination with partial pivoting, what is the first step before eliminating a column?",Finding the maximum absolute value in the current column and interchanging the necessary rows.
+Why does Gauss–Jordan elimination allow for the solution to be read 'immediately'?,"Because the coefficient matrix is reduced to the identity matrix, leaving the solution in the last column."
+The process of transforming the coefficient matrix to the identity matrix involves making elements zero both below and \_\_\_\_\_ the diagonal.,Above.
+Gauss–Jordan elimination is specifically useful for performing calculations on which type of device?,A computer or calculator.
+"What does the notation $(\mathbf{A}, \mathbf{b})$ represent in the source material?",The augmented coefficient matrix of a linear system.
+"If the multiplier $l_{ik}$ is applied to a row $i$ where $i < k$, which part of the matrix is being eliminated?",The elements above the main diagonal.
+"If the multiplier $l_{ik}$ is applied to a row $i$ where $i > k$, which part of the matrix is being eliminated?",The elements below the main diagonal.
+"In the provided algorithm, which variable represents the number of equations in the linear system?",$n$.
+What is the range of indices for the input augmented coefficient matrix $a_{ij}$?,"$i = 1, \dots, n$ and $j = 1, \dots, n+1$."
+"True or False: In Gauss–Jordan elimination, the coefficient matrix is always transformed into a triangular matrix as the final result.",False.
+What is the purpose of multiplying a row by the reciprocal of its diagonal element in the final stage of the algorithm?,"To convert the diagonal elements to ones, forming the identity matrix."
+The complexity of simple Gaussian elimination is roughly $\frac{n^3}{3}$; what is the approximate complexity of Gauss–Jordan?,$\frac{n^3}{2}$.
+"In the step $l_{ik} \leftarrow a_{ik}/a_{kk}$, what is the term $a_{kk}$ called?",The pivot element.
+What prevents the modification of previously zeroed columns in the step $a_{ij} \leftarrow a_{ij} - l_{ik}a_{kj}$?,The fact that $a_{kj}$ is zero for $j < k$ in the pivot row (once processing reaches that column).
+"In Example 3.35, what happens to the element in the first row, second column ($a_{12}$) during the second iteration of $k$?",It is reduced to zero using the second row as a reference.
+What is the Hungarian term for Gauss–Jordan elimination mentioned in the sources?,Gauss–Jordan-elimináció.
+Term: Partial Pivoting,Definition: Selecting the largest available absolute value in a column to use as the pivot and swapping rows accordingly.
+Term: Identity Matrix,Definition: A square matrix where all elements on the main diagonal are ones and all other elements are zeros.
+"What is the result of the final loop: **for** $i = 1, \dots, n$ **do** $x_i \leftarrow a_{i, n+1}/a_{ii}$?",The normalization of the diagonal elements to one and the extraction of the solution values.
+"In the provided YouTube transcript, what is mentioned as the 'goal' of the Gauss-Jordan elimination?",To get the identity matrix in the last step of the coefficient matrix part.
+"Why does the first column remain unchanged ($1, 0, 0, 0$) in later steps of the example elimination?",Because the corresponding elements in the pivot rows used for subtraction are zero.
+"If the algorithm successfully converts $(A, b)$ to $(I, x)$, what matrix property of $A$ was necessary?",$A$ must be non-singular (invertible).
+How does Gauss–Jordan elimination facilitate solving the system $\mathbf{A}\mathbf{x} = \mathbf{b}$?,By performing row operations until the equation reads $I\mathbf{x} = \mathbf{b}^{(n-1)}$.
+"In the Hungarian source, what is the alternate name given for Gauss–Jordan-elimináció?",Jordan-elimináció.
+Concept: Time Complexity,Definition: The number of arithmetic operations required by an algorithm as a function of the input size $n$.
+"In the context of the Gauss–Jordan algorithm, what does $a_{i, n+1}$ represent?",The element in the $i$-th row of the augmented part (the vector $\mathbf{b}$).
+"In the partial pivoting example, why were rows 1 and 2 interchanged initially?",To move the largest absolute value in the first column ($2$) to the pivot position $a_{11}$.
+What happens to the row swap in partial pivoting if the maximum value is already on the diagonal?,No row interchange is performed.
+The solution $x_4 = -2$ in the examples is derived from which ratio in the final matrix?,"$a_{4,5} / a_{4,4}$ (specifically $\frac{52}{5} / -\frac{26}{5}$)."
+"In the YouTube transcript, what is the 'standard Gaussian elimination' end state?",A triangular linear system.
+How many loops are nested in the main 'diagonal form' conversion part of the algorithm?,"Three (indices $k$, $i$, and $j$)."
+What is the role of the 'if $i \neq k$' condition in the algorithm?,It ensures that the pivot row itself is not modified during the elimination step for that column.
+"According to the transcript, which version of the method is specifically useful for numerical calculations on a computer?",Gauss–Jordan elimination with partial pivoting.
+"In the examples, what value does the multiplier $l_{ik}$ have if $a_{ik}$ is already zero?","Zero, resulting in no change to row $i$ for that step."
+What does the superscript $(n-1)$ in $\mathbf{b}^{(n-1)}$ signify?,The state of the vector $\mathbf{b}$ after $n$ iterations of the elimination process.
+Which index in $a_{ij}$ represents the column number?,$j$.
+Which index in $a_{ij}$ represents the row number?,$i$.
+"In the complexity term $\mathcal{O}(n^2)$, what does the symbol $\mathcal{O}$ represent?","Big O notation, indicating the upper bound of the growth rate for lower-order terms."
+What is the resulting matrix type after the triple-nested loop but before the final normalization loop?,A diagonal matrix.
+"In the YouTube explanation, what happens to the values in the first column when subtracting the second row from the first?",They are unchanged because the second row has a zero in the first column.
+"The transition from $(\mathbf{A}, \mathbf{b}) \sim (\dots) \sim (\mathbf{I}, \mathbf{x})$ is achieved through what type of operations?",Elementary row operations.
+"If $n=3$, how many variables are being solved for in the algorithm?","Three ($x_1, x_2, x_3$)."

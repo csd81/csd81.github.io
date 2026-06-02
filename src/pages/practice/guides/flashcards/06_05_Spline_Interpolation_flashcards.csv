@@ -1,0 +1,40 @@
+"What is the definition of a spline function of degree $k$ on an interval $[a, b]$ with mesh $\{x_i\}$?","A continuous function $S$ that is a polynomial of degree at most $k$ on each sub-interval and $S \in C^{k-1}[a, b]$."
+What is the common name for a spline function of degree $k = 1$?,Linear spline function.
+A spline function of degree $k = 2$ is referred to as a \_\_\_\_\_ spline function.,quadratic
+A spline function of degree $k = 3$ is referred to as a \_\_\_\_\_ spline function.,cubic
+How many parameters define a cubic spline $S$ consisting of $n$ polynomial segments?,$4n$ parameters.
+"In cubic spline interpolation, how many conditions are provided by the interpolation requirements and the continuity of the first and second derivatives?",$4n - 2$ conditions.
+What additional boundary conditions define a 'natural' cubic spline?,$S_0''(x_0) = 0$ and $S_{n-1}''(x_n) = 0$.
+What additional boundary conditions define a 'clamped' (or complete) cubic spline?,$S'(x_0) = y_0'$ and $S'(x_n) = y_n'$.
+"In the cubic polynomial form $S_i(x) = a_i + b_i(x - x_i) + c_i(x - x_i)^2 + d_i(x - x_i)^3$, what does $a_i$ represent?","The function value at the point $x_i$, such that $a_i = y_i$."
+What is the relationship between the coefficient $c_i$ and the second derivative $S_i''(x_i)$ in a cubic spline segment?,$c_i = \frac{S_i''(x_i)}{2}$.
+What is the definition of the notation $\Delta x_i$ used in spline interpolation formulas?,$\Delta x_i = x_{i+1} - x_i$.
+What is the definition of the notation $\Delta y_i$ used in spline interpolation formulas?,$\Delta y_i = y_{i+1} - y_i$.
+Formula: How is the coefficient $d_i$ expressed in terms of $c_i$ and $c_{i+1}$?,$d_i = \frac{c_{i+1} - c_i}{3\Delta x_i}$.
+"How is the coefficient $b_i$ expressed using $\Delta y_i$, $\Delta x_i$, $c_i$, and $c_{i+1}$?",$b_i = \frac{\Delta y_i}{\Delta x_i} - \frac{2c_i + c_{i+1}}{3}\Delta x_i$.
+What type of matrix characterizes the system $Ax = b$ used to solve for the cubic spline coefficients $c_i$?,A tridiagonal matrix.
+Why is the system $Ax = b$ for natural cubic splines guaranteed to have a unique solution?,Because the matrix $A$ is diagonally dominant.
+"In the system $Ax = b$ for a natural spline, what are the values of the first and last elements of the solution vector $x = (c_0, c_1, \ldots, c_n)^T$?",$c_0 = 0$ and $c_n = 0$.
+Which boundary condition for cubic splines involves specifying the slope of the tangent line at the endpoints?,Clamped spline (or complete spline) conditions.
+What is the primary visual disadvantage of linear spline interpolation compared to cubic spline interpolation?,Linear splines are not smooth (not differentiable at the mesh points).
+"Theorem 6.24: For a natural cubic spline $S$ and any other $C^2$ interpolating function $f$, what inequality holds regarding their second derivatives?","$\int_a^b (S''(x))^2 \, dx \leq \int_a^b (f''(x))^2 \, dx$."
+What does the minimal property of natural cubic splines (the integral of the squared second derivative) signify physically?,It represents the 'smoothest' interpolation among all possible $C^2$ interpolating functions.
+"In the error bounds for clamped cubic splines, what does $M_4$ represent?","$M_4 = \max\{|f^{(4)}(x)| : x \in [a, b]\}$."
+"In the error bounds for cubic splines, what does $h$ represent?",The maximum length of the sub-intervals ($h = \max \Delta x_i$).
+The error bound for $|f(x) - S(x)|$ in clamped cubic spline interpolation is proportional to what power of the step size $h$?,$h^4$.
+The error bound for $|f'(x) - S'(x)|$ in clamped cubic spline interpolation is proportional to what power of the step size $h$?,$h^3$.
+The error bound for $|f''(x) - S''(x)|$ in clamped cubic spline interpolation is proportional to what power of the step size $h$?,$h^2$.
+True or False: Natural cubic spline interpolation is better at avoiding oscillations near the ends of an interval compared to high-degree Lagrange interpolation.,True.
+Which numerical algorithm is recommended for efficiently solving the tridiagonal system $Ax = b$ in spline calculations?,Gaussian elimination for tridiagonal systems (Algorithm 3.37).
+What is the condition for $c_0$ in the linear system for a clamped spline with given $y_0'$?,$2c_0 \Delta x_0 + c_1 \Delta x_0 = 3\frac{\Delta y_0}{\Delta x_0} - 3y_0'$.
+What is the condition for $c_n$ in the linear system for a clamped spline with given $y_n'$?,$c_{n-1}\Delta x_{n-1} + 2c_n \Delta x_{n-1} = 3y_n' - 3\frac{\Delta y_{n-1}}{\Delta x_{n-1}}$.
+"Process: To prove $\int_a^b S''(x)g''(x) \, dx = 0$, what calculus technique is applied after splitting the integral over sub-intervals?",Integration by parts.
+"If $S$ is a cubic spline, what is the nature of its third derivative $S'''$ on any sub-interval $[x_i, x_{i+1}]$?",It is a constant function.
+"In the proof of the minimal property, why does $\int_{x_{i-1}}^{x_i} g'(x) \, dx$ equal zero?",Because $g(x_i) = f(x_i) - S(x_i) = 0$ for all $i$ (both functions interpolate the same data).
+"What is the continuity class of a $k$-th degree spline function on the interval $(a, b)$?","$C^{k-1}(a, b)$."
+How many conditions are required to uniquely determine a cubic spline with $n$ sub-intervals?,$4n$ conditions.
+Concept: Piecewise linear interpolation,"Definition: Connecting data points $(x_i, y_i)$ with straight line segments; geometrically equivalent to a linear spline."
+"In the context of spline error bounds, what does $k$ represent in the formula $|f''(x) - S''(x)| \leq (\frac{1}{12} + \frac{h}{3k})M_4 h^2$?",The minimum length of the sub-intervals ($k = \min \Delta x_i$).
+What term is used for $S'(x_n)$ and $S''(x_n)$ in equations where $x_n$ is the right endpoint?,Left-sided derivatives.
+"Which equation relates $c_i, c_{i+1}, c_{i+2}$ for $i = 0, \ldots, n-2$ in a general cubic spline?",$c_i \Delta x_i + 2c_{i+1}(\Delta x_i + \Delta x_{i+1}) + c_{i+2}\Delta x_{i+1} = 3\frac{\Delta y_{i+1}}{\Delta x_{i+1}} - 3\frac{\Delta y_i}{\Delta x_i}$.
+What property of cubic splines makes them 'smooth enough' for most practical applications?,They are twice continuously differentiable ($C^2$).

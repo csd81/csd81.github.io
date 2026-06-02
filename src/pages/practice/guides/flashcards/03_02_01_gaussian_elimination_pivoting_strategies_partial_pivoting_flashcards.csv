@@ -1,0 +1,55 @@
+What is the alternative name for 'partial pivoting' in Gaussian elimination?,Maximal column pivoting
+"In partial pivoting, from which set of elements in the $k$-th column is the pivot selected?",The elements in and under the main diagonal (from row $k$ to $n$).
+"In the $k$-th step of partial pivoting, what criteria determines the selection of the pivot row $l$?","$|a_{lk}| = \max\{|a_{ik}| : i = k, \dots, n\}$"
+What physical action is performed once the pivot row $l$ is identified in partial pivoting?,The $k$-th and $l$-th rows are interchanged.
+"According to the provided theorem, a linear system $\mathbf{A}\mathbf{x} = \mathbf{b}$ can be solved by Gaussian elimination with partial pivoting if and only if $\det(\mathbf{A})$ is \_\_\_\_\_.",Non-zero ($\neq 0$)
+The invertibility of matrix $\mathbf{A}$ is equivalent to the existence of a \_\_\_\_\_ solution for the system $\mathbf{A}\mathbf{x} = \mathbf{b}$ for all $\mathbf{b}$.,Unique
+"In the proof of the equivalence theorem, if a row change occurs in the $k$-th step, how does $\det(\mathbf{A}^{(k)})$ relate to $\det(\mathbf{A}^{(k-1)})$?",$\det(\mathbf{A}^{(k)}) = -\det(\mathbf{A}^{(k-1)})$
+"If no row change is needed during the $k$-th step of Gaussian elimination, what is the relationship between $\det(\mathbf{A}^{(k)})$ and $\det(\mathbf{A}^{(k-1)})$?",$\det(\mathbf{A}^{(k)}) = \det(\mathbf{A}^{(k-1)})$
+"If partial pivoting terminates at step $k$ because all $a_{ik}^{(k-1)} = 0$ for $i = k, \dots, n$, what is the value of $\det(\mathbf{A})$?",Zero
+Why is it numerically advantageous to move the largest magnitude element to the pivot position?,It minimizes rounding errors by ensuring the division factor is as small as possible.
+How does partial pivoting prevent algorithm failure when the diagonal element $a_{kk}$ is zero?,It swaps the row with a lower row containing a non-zero element in that column.
+"In the provided $4 \times 4$ matrix example, which two rows are interchanged in the very first step?",The first row and the third row.
+"In the first step of the example matrix, why is the row beginning with $-3$ swapped to the top?",The value $|-3|$ is the maximum absolute value in the first column.
+The effect of all row changes in partial pivoting can be represented by multiplying $\mathbf{A}$ by a \_\_\_\_\_ matrix $\mathbf{P}$.,Permutation
+"If $\det(\mathbf{A}) \neq 0$, there exists a permutation matrix $\mathbf{P}$ such that $\mathbf{P}\mathbf{A}\mathbf{x} = \mathbf{P}\mathbf{b}$ is solvable without \_\_\_\_\_.",Row changes (or further pivoting)
+Why do humans often prefer using fractions when performing Gaussian elimination by hand?,Fractions allow for an exact solution without introducing rounding errors.
+What is the main drawback of standard Gaussian elimination without pivoting when implemented on a computer?,Small pivots can lead to large rounding errors that degrade the precision of the result.
+"In a system of $n$ equations, what is the label of the coefficient matrix after the final step of Gaussian elimination?",$\mathbf{A}^{(n-1)}$
+How is the final triangular system solved once Gaussian elimination is complete?,Backward substitution
+"If the Gaussian elimination process reaches a state where the bottom-right submatrix has a column of zeros, what does this indicate about the system's solvability?",The system cannot be solved uniquely because the determinant is zero.
+"In the second elimination step of the example, why are the second and fourth rows interchanged?",The element $\frac{14}{3}$ in the fourth row is larger in magnitude than $-\frac{1}{3}$ in the second row.
+"According to the transcript, how does the numerical result from partial pivoting relate to the exact solution?",It is an approximation due to rounding at each step to a certain precision.
+Concept: Pivot element,Definition: The element in the diagonal position used to eliminate coefficients in the rows below it.
+True or False: Partial pivoting requires searching the entire remaining submatrix for the largest element.,False (That is complete pivoting; partial pivoting only searches the current column).
+"If a matrix is invertible, what does the theorem guarantee about Gaussian elimination with partial pivoting?",The elimination process can be successfully performed to completion.
+How many row interchanges are required if the largest magnitude element is already in the $a_{kk}$ position?,Zero
+Formula: The value of the determinant of $\mathbf{A}$ in terms of the final upper triangular matrix $\mathbf{A}^{(n-1)}$ after $m$ row swaps.,$\det(\mathbf{A}) = (-1)^m \det(\mathbf{A}^{(n-1)})$
+What is the value of $\det(\mathbf{A}^{(n-1)})$ if the triangular system is solvable?,It is non-zero.
+"In the context of the proof, what property of determinants allows $\det(\mathbf{A}^{(k)})$ to equal $-\det(\mathbf{A}^{(k-1)})$?",Swapping two rows of a matrix reverses the sign of its determinant.
+"If a matrix $\mathbf{A}$ has $\det(\mathbf{A}) = 0$, what will eventually happen during partial pivoting?",A step will be reached where all elements in the current column on and below the diagonal are zero.
+What is the first row of the final upper triangular matrix in the provided example?,$\begin{pmatrix} -3 & 1 & 1 & -2 & -5 \end{pmatrix}$
+"In the $4 \times 4$ example, what is the final value found for $x_4$?",$-1$
+"Step: After finding the pivot and swapping rows, what is the next procedural step in the elimination?",Subtracting multiples of the pivot row from the rows below to create zeros in the current column.
+How is the multiplier calculated for row $i$ in the $k$-th step of elimination?,By dividing the element to be eliminated ($a_{ik}$) by the pivot element ($a_{kk}$).
+Why does dividing by a 'largest possible number' during multiplier calculation help with rounding?,"It prevents the multipliers from becoming excessively large, which would amplify errors in subsequent subtractions."
+"In the example, the solution for $x_1$ is \_\_\_\_\_.",$4$
+What does the Hungarian text suggest about the necessity of partial pivoting?,"It is sometimes necessary to perform the calculation at all, and often advisable to reduce errors."
+"If partial pivoting is used, is it possible to have a zero pivot if the matrix is non-singular?","No, if the matrix is non-singular, at least one element in the column must be non-zero."
+The determinant of an upper triangular matrix is the \_\_\_\_\_ of its diagonal elements.,Product
+What is the result for $x_3$ in the $4 \times 4$ example?,$2$
+"In the $k$-th step, the pivot search is restricted to rows $i$ where $i \ge$ \_\_\_\_\_.",$k$
+The process of moving the largest magnitude element to the diagonal is intended to avoid dividing by \_\_\_\_\_ numbers.,Small (or zero)
+True or False: Partial pivoting always results in a positive determinant.,False (The sign depends on the number of row swaps and the final diagonal products).
+"In the third step of the example, which rows are swapped?",The third and fourth rows.
+What is the second variable solved for in the backward substitution of the example?,$x_3$
+Term: Permutation Matrix,"Definition: An identity matrix with its rows reordered, used to perform row exchanges via matrix multiplication."
+"If $\mathbf{A}$ is invertible, the system $\mathbf{A}\mathbf{x}=\mathbf{b}$ has \_\_\_\_\_ solution(s).",Exactly one (or a unique)
+"In the provided example, the final pivot element in the fourth row after elimination is \_\_\_\_\_.",$-\frac{143}{24}$
+What happens to the augmented part of the matrix (the $\mathbf{b}$ vector) during a row swap?,The corresponding elements in the $\mathbf{b}$ vector are swapped along with the rows.
+What is the value of $x_2$ in the example problem?,$3$
+"In the proof, why is $\det(\mathbf{A}^{(n-1)})$ non-zero if (i) holds?",Because the assumption is that the elimination can be completed to form a solvable triangular system.
+Under what condition does the determinant of a matrix equal zero based on its structure during elimination?,When a column (from the diagonal down) consists entirely of zeros.
+Why is the row swap done *before* the elimination step?,To ensure the current step uses the most stable pivot available for the entire column.
+How does the transcript characterize the result of Gaussian elimination when $a_{kk} = 0$ and no swaps are possible?,The algorithm terminates because it cannot continue without a non-zero pivot.
+"In the Hungarian text, what is the '3.26. tétel' (Theorem 3.26) equivalent to in the English source?","The theorem stating the equivalence of system solvability, non-zero determinant, and invertibility."

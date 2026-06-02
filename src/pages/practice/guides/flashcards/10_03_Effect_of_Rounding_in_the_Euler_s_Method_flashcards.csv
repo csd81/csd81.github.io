@@ -1,0 +1,50 @@
+"In the analysis of rounding errors in Euler's method, what does the variable $z_i$ represent?",The exact value of the Euler sequence without rounding errors.
+"In numerical computation, what does the variable $w_i$ represent in the context of Euler's method?","The actual value computed by the machine, which includes rounding errors."
+How is $w_0$ defined in the context of numerical initial value problems?,The machine number stored in the computer to represent the true initial value $y_0$.
+What is the formula for the initial rounding error $\delta_0$?,$\delta_0 = y_0 - w_0$
+What does the term $\delta_i$ represent in the $i$-th iteration of Euler's method?,The rounding error specifically committed during the $i$-th calculation step.
+"According to the source, what is the iterative formula for the computed value $w_{i+1}$?","$w_{i+1} = w_i + hf(t_i, w_i) + \delta_{i+1}$"
+What equation is subtracted from the computed $w_{i+1}$ equation to analyze error propagation?,"$z_{i+1} = z_i + hf(t_i, z_i)$"
+The function $f$ is assumed to be Lipschitz continuous in which of its variables?,Its second variable.
+What constant is used to denote the Lipschitz constant of function $f$?,$L$
+How is the aggregate rounding error $\delta$ defined for a sequence of $n$ steps?,"$\delta := \max\{|\delta_1|, |\delta_2|, \ldots, |\delta_n|\}$"
+Which inequality is used to transition from $|w_{i+1} - z_{i+1}|$ to the sum of individual error magnitudes?,The triangle inequality.
+"In the step $|w_{i+1} - z_{i+1}| \le |w_i - z_i| + h|f(t_i, w_i) - f(t_i, z_i)| + |\delta_{i+1}|$, what does the middle term become after applying the Lipschitz property?",$hL|w_i - z_i|$
+"When estimating $|w_i - z_i|$, what value is assigned to the parameter $a$ to apply the standard lemma?",$a = hL$
+"When estimating $|w_i - z_i|$, what value is assigned to the parameter $b$ to apply the standard lemma?",$b = \delta$
+"What is the resulting upper bound for the computation error $|w_i - z_i|$ expressed using $L$, $T$, and $t_0$?",$\frac{e^{L(T - t_0)} - 1}{L}\frac{\delta}{h} + |\delta_0|e^{L(T - t_0)}$
+"In the computation error bound, what does the term $|\delta_0|e^{L(T - t_0)}$ specifically account for?",The propagation of the error from the initial machine representation of $y_0$.
+What is the formula for the discretization error $|y(t_i) - z_i|$ in Euler's method?,$(e^{L(T - t_0)} - 1)\frac{hM_2}{2L}$
+How is the constant $M_2$ defined in the context of the Euler error bound?,"$M_2 := \max\{|y''(t)| \colon t \in [t_0, T]\}$"
+"To find the total error $|y(t_i) - w_i|$, which two specific errors are summed using the triangle inequality?",The discretization error $|y(t_i) - z_i|$ and the computation error $|z_i - w_i|$.
+State the full upper bound for the total error $|y(t_i) - w_i|$ as given in Theorem 10.6.,$\frac{e^{L(T - t_0)} - 1}{L}\left(\frac{hM_2}{2} + \frac{\delta}{h}\right) + |\delta_0|e^{L(T - t_0)}$
+What happens to the factor $\frac{hM_2}{2} + \frac{\delta}{h}$ as the step size $h$ approaches $0$?,It approaches infinity.
+Why is the total error in Euler's method no longer linear in $h$ when rounding is considered?,"Because of the inclusion of the $\frac{\delta}{h}$ term, which represents inversely proportional rounding error accumulation."
+"In Theorem 10.6, $f$ must be continuously \_\_\_\_\_ differentiable with respect to both variables.",Partially
+"According to the text, under what condition is the effect of rounding typically small in practice?",When the step size $h$ is significantly larger than the rounding error $\delta$.
+What are the domain and codomain of the function $f$ as defined in Theorem 10.6?,"$f \colon [t_0, T] \times \mathbb{R} \to \mathbb{R}$"
+The factor $\frac{hM_2}{2}$ in the total error bound represents the \_\_\_\_\_ error.,Discretization (or truncation)
+The factor $\frac{\delta}{h}$ in the total error bound represents the \_\_\_\_\_ error.,Rounding (or computation)
+Function: $g(h) = \frac{hM_2}{2} + \frac{\delta}{h}$,Purpose: To determine the optimal step size $h$ that minimizes the combined discretization and rounding error.
+"If a step size $h$ is chosen to be 'too small', how does it impact the Euler method's output?",The error becomes significant due to the dominance of accumulated rounding errors.
+"In the derivation, the inequality $|w_{i+1} - z_{i+1}| \le (1 + hL)|w_i - z_i| + \delta$ describes the \_\_\_\_\_ of error between steps.",Propagation
+What is the range of the index $i$ for the steps defined in Theorem 10.6?,"$i = 0, 1, \ldots, n$"
+What is the physical meaning of $T - t_0$ in the error formulas?,The total length of the time interval over which the differential equation is being solved.
+Term: Lipschitz Condition,"Definition: $|f(t, y_1) - f(t, y_2)| \le L|y_1 - y_2|$, used here to bound the difference in function values based on the difference in state values."
+"True or False: In practice, decreasing $h$ always leads to a more accurate solution in Euler's method.","False, because below a certain threshold, rounding errors begin to increase the total error."
+Which theorem is cited as the basis for deriving the final total error bound in Euler's method?,Theorem 10.3 (referred to in the Hungarian and English source excerpts).
+"In the exercise provided, what specific value is given for the rounding error $\delta$?",$0.00001$
+"How is the total number of steps $n$ related to $T$, $t_0$, and $h$?",$n = \frac{T - t_0}{h}$
+"In the total error formula, what is the role of the exponential term $e^{L(T - t_0)}$?",It accounts for the potential exponential growth of errors over the integration interval.
+What property of the triangle inequality allows us to state $|y - w| \le |y - z| + |z - w|$?,Subadditivity (the magnitude of a sum is less than or equal to the sum of magnitudes).
+Which derivative of the solution $y(t)$ is critical for determining the truncation error bound?,"The second derivative, $y''(t)$."
+"In the expression $\frac{e^{L(T-t_0)} - 1}{L}$, what happens as $L$ becomes very small?","The expression approaches $(T - t_0)$, the length of the interval."
+"When $h$ is very large, which component of the error factor $\frac{hM_2}{2} + \frac{\delta}{h}$ dominates?","The discretization error component, $\frac{hM_2}{2}$."
+The error bound for $|w_i - z_i|$ is found using a recursive inequality of the form $x_{i+1} \le (1+a)x_i + b$. What is $x_i$ in this context?,"The magnitude of the difference between the computed and exact Euler sequences, $|w_i - z_i|$."
+Why does the rounding error term $\frac{\delta}{h}$ contain $h$ in the denominator?,Because the number of steps (and thus the number of times rounding error is added) is inversely proportional to $h$.
+"Cloze: In numerical analysis, the discretization error is $O(h)$, but the total error including rounding is not, because the latter involves a term proportional to \_\_\_\_\_.",$h^{-1}$ (or $1/h$)
+What does the 'max' in the definition of $M_2$ ensure about the resulting error bound?,It ensures the bound is valid for the 'worst-case' curvature of the solution over the entire interval.
+"In the context of Exercise 2, finding the 'minimum point' of $g(h)$ helps a programmer identify the \_\_\_\_\_.",Optimal step size.
+Is the Lipschitz constant $L$ dependent on the step size $h$?,"No, it is a property of the function $f$ and the region of interest."
+What does the term $(e^{L(T - t_0)} - 1)$ represent in the context of the sensitivity of the differential equation?,The amplification factor of errors due to the dynamics of the system.
+How does Theorem 10.6 differ from a standard Euler error theorem that ignores rounding?,It includes an extra term $\frac{\delta}{h}$ and an initial error term $|\delta_0|e^{L(T-t_0)}$.

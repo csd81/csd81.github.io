@@ -1,0 +1,60 @@
+"What is the general form of an $n$-point quadrature formula for the integral $\int_a^b f(x)\,dx$?",$\sum_{i=1}^{n} c_i f(x_i)$
+"A quadrature formula is exact for polynomials of degree at most $m$ if and only if it is exact for all \_\_\_\_\_ $x^i$ where $i = 0, 1, \ldots, m$.",monomials
+How many parameters ($c_i$ and $x_i$) are contained in a general $n$-point quadrature formula?,$2n$
+What is the maximum degree of a polynomial for which an $n$-point Gaussian quadrature formula can be exact?,$2n - 1$
+"To find the parameters of an $n$-point Gaussian quadrature formula, one must solve a system of $2n$ \_\_\_\_\_ equations.",nonlinear
+"In a 2-point Gaussian quadrature formula on the interval $[-1, 1]$, what are the values of the weights $c_1$ and $c_2$?","$c_1 = 1, c_2 = 1$"
+"What are the nodes $x_1$ and $x_2$ for a 2-point Gaussian quadrature formula on $[-1, 1]$?","$x_1 = -\frac{\sqrt{3}}{3}, x_2 = \frac{\sqrt{3}}{3}$"
+"What is the 2-point Gaussian quadrature formula for the interval $[-1, 1]$?","$\int_{-1}^{1} f(x)\,dx \approx f(-\frac{\sqrt{3}}{3}) + f(\frac{\sqrt{3}}{3})$"
+"Under what condition are two functions $f$ and $g$ considered orthogonal on the interval $[a, b]$?","$\int_a^b f(x)g(x)\,dx = 0$"
+"The sequence of polynomials $(P_i)$ that are pairwise orthogonal on $[-1, 1]$ where $P_i$ has degree $i$ are called \_\_\_\_\_ polynomials.",Legendre
+"What is the first Legendre polynomial, $P_0(x)$?",$1$
+"What is the second Legendre polynomial, $P_1(x)$?",$x$
+What method is used to construct the sequence of orthogonal Legendre polynomials?,Gram-Schmidt orthogonalization
+"In the Gram-Schmidt process for Legendre polynomials, $P_{i+1}(x)$ is sought in the form $x^{i+1} + \sum_{j=0}^{i} a_{i+1,j} P_j(x)$. How is $a_{i+1,j}$ calculated?","$a_{i+1,j} = -\frac{\int_{-1}^{1} x^{i+1} P_j(x)\,dx}{\int_{-1}^{1} P_j^2(x)\,dx}$"
+What is the specific formula for the Legendre polynomial $P_2(x)$?,$x^2 - \frac{1}{3}$
+What is the specific formula for the Legendre polynomial $P_3(x)$?,$x^3 - \frac{3}{5}x$
+What is the specific formula for the Legendre polynomial $P_4(x)$?,$x^4 - \frac{6}{7}x^2 + \frac{3}{35}$
+Which recurrence relation do Legendre polynomials satisfy?,$P_{n+1}(x) = xP_n(x) - \frac{n^2}{4n^2 - 1}P_{n-1}(x)$
+Property of Legendre polynomials: $P_i$ is orthogonal to any polynomial of degree at most \_\_\_\_\_.,$i - 1$
+How does the parity of the Legendre polynomial $P_i$ relate to the index $i$?,It is even if $i$ is even and odd if $i$ is odd.
+"How many distinct real roots does the $n$th Legendre polynomial $P_n$ have in the interval $(-1, 1)$?",$n$
+What is the geometric distribution of the roots of a Legendre polynomial relative to the origin?,The roots are symmetric to the origin.
+"The nodes $x_1, \dots, x_n$ of the $n$-point Gaussian quadrature formula are the roots of which polynomial?",The $n$th-order Legendre polynomial $P_n$
+What is the required differentiability class for a function $f$ to apply the Gaussian quadrature truncation error formula involving $f^{(2n)}$?,"$C^{2n}[a, b]$"
+"What is the truncation error formula for the $n$-point Gaussian quadrature on $[-1, 1]$?","$\frac{f^{(2n)}(\xi)}{(2n)!}\int_{-1}^{1} P_n^2(x)\,dx$"
+What is the approximate form of the Gaussian quadrature error term if $f^{(2n)}$ is bounded?,$\frac{\pi f^{(2n)}(\xi)}{4^n (2n)!}$
+"As $n \to \infty$, the error of Gaussian quadrature tends to zero at a(n) \_\_\_\_\_ speed.",exponential
+How does the convergence speed of Gaussian quadrature compare to Newton-Cotes formulas as $n \to \infty$?,Gaussian is exponential; Newton-Cotes is only polynomial.
+"For $n=3$, what is the root $x_i$ located at the origin?",$0.0000000000$
+"For $n=3$, what is the weight $c_i$ corresponding to the node $x=0$?",$0.8888888889$ (or $\frac{8}{9}$)
+"In the 3-point Gaussian formula, what is the value of the weights for the nodes $\pm 0.7745966692$?",$0.5555555556$ (or $\frac{5}{9}$)
+"What substitution is used to transform the integral $\int_a^b f(x)\,dx$ to the interval $[-1, 1]$?",$x = \frac{(b - a)t + a + b}{2}$
+"When transforming $\int_a^b f(x)\,dx$ to the interval $[-1, 1]$, what is the differential $dx$ in terms of $dt$?","$dx = \frac{b - a}{2}\,dt$"
+Formula: Interval Transformation,"$\int_a^b f(x)\,dx = \frac{b - a}{2}\int_{-1}^{1} f(\frac{(b - a)t + a + b}{2})\,dt$"
+"Example: If using 2-point Gauss to approximate $\int_0^1 x^2 e^x\,dx$, what is the scaling factor applied to the integral on $[-1, 1]$?",$\frac{1}{2}$
+"The 2-point Gaussian approximation of $\int_{-1}^1 e^x\,dx$ is approximately $2.3426961$. What is the exact value?",$e - \frac{1}{e} \approx 2.350424$
+True or False: Gaussian quadrature weights $c_i$ are always positive.,True
+"If a sequence of polynomials $(p_i)$ is pairwise orthogonal on $[-1, 1]$, what is the relationship between $p_i$ and the Legendre polynomial $P_i$?",$p_i(x) = c_i P_i(x)$ for some constant $c_i \ne 0$
+"The formula $c_i = \int_{-1}^{1} \prod_{j \ne i} \frac{x - x_j}{x_i - x_j}\,dx$ defines the \_\_\_\_\_ of the Gaussian quadrature.",weights (or coefficients)
+"In the 2-point case on $[-1, 1]$, the equation $c_1 x_1 + c_2 x_2 = 0$ follows from integrating which monomial?",$x$
+"In the 2-point case on $[-1, 1]$, the equation $c_1 + c_2 = 2$ follows from integrating which function?",$1$ (or $x^0$)
+Why can case (i) $x_1 = x_2$ not happen in the 2-point Gaussian derivation?,"It would imply $c_1 + c_2 = 0$, contradicting the integral of 1 which equals 2."
+Concept: $n$-point Gaussian Quadrature,Definition: A quadrature formula where nodes and weights are chosen to integrate polynomials up to degree $2n-1$ exactly.
+Which theorem states that nodes $x_i$ are the roots of $P_n$ and provides the formula for $c_i$?,Theorem 7.13
+"For $n=4$, how many nodes are positive and how many are negative?",2 positive and 2 negative (due to symmetry).
+What is the value of $P_2(x)$ at $x=0$?,$-\frac{1}{3}$
+"What is the result of the 2-point Gaussian approximation for $\int_0^1 x^2 e^x\,dx$?",$0.7119418$
+"What is the error in the 2-point Gaussian approximation for $\int_0^1 x^2 e^x\,dx$?",$0.0063400$
+True or False: The nodes $x_i$ in Gaussian quadrature must be inside the interval of integration.,"True (Theorem 7.12 states roots are in $(-1, 1)$)."
+"In the recursive formula $P_{n+1}(x) = xP_n(x) - \gamma_n P_{n-1}(x)$, what is the coefficient $\gamma_n$?",$\frac{n^2}{4n^2 - 1}$
+"Legendre polynomials are constructed to be \_\_\_\_\_ on the interval $[-1, 1]$.",orthogonal
+"The error of the 2-point Gaussian formula for $e^x$ on $[-1, 1]$ is $0.0077062$. This is considered \_\_\_\_\_ given the formula's simplicity.",very small
+"If $i=3$ (odd), what is the value of $P_3(0)$?",$0$ (because it is an odd function).
+How does the degree of $P_i$ relate to the index $i$?,The degree of $P_i$ is exactly $i$.
+"The formula $\int_{-1}^1 p(x)\,dx = \sum c_i p(x_i)$ is exact for $p$ of degree 5. What is the minimum $n$ required?",$n = 3$ (since $2(3)-1 = 5$)
+"What is the weight $c_i$ for $n=2$ in the Gaussian quadrature on $[-1, 1]$?",$1.0000000000$
+The 5-point Gaussian quadrature uses nodes derived from which Legendre polynomial?,$P_5(x)$
+"In the system of equations for $n=2$, the equation $\frac{2}{3} = c_1 x_1^2 + c_2 x_2^2$ comes from the integral of \_\_\_\_\_.",$x^2$
+The $n$-point Gaussian quadrature is derived from a system of \_\_\_\_\_ equations (count).,$2n$
+"For an arbitrary interval $[a, b]$, the transformed function's argument in the integral is \_\_\_\_\_.",$\frac{(b - a)t + a + b}{2}$

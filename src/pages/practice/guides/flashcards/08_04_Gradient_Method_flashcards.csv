@@ -1,0 +1,55 @@
+What is the geometric relationship between the gradient vector $f'(\mathbf{p})$ and the level curve of $f$ passing through point $\mathbf{p}$?,The gradient vector is perpendicular (orthogonal) to the level curve's tangent line at that point.
+"If $\gamma(t)$ is a parametrization of a level curve $f(\gamma(t)) = c$, what is the result of $\frac{d}{dt} f(\gamma(t))$?",$0$
+"According to the chain rule, how is the derivative $\frac{d}{dt} f(\gamma(t))$ expressed using the gradient?",$f'(\gamma(t))^T \gamma'(t)$
+"In the context of level curves, what does the expression $f'(\mathbf{p})^T \gamma'(t_0) = 0$ prove?",The gradient is perpendicular to the direction vector of the tangent line at point $\mathbf{p}$.
+In which direction does a continuously differentiable function $f$ decrease most rapidly at point $\mathbf{p}$?,In the direction of the negative gradient vector $-f'(\mathbf{p})$.
+What is the minimum value of the directional derivative at point $\mathbf{p}$ for a unit vector $\mathbf{u}$?,The minimum occurs when $\mathbf{u} = -f'(\mathbf{p})/\|f'(\mathbf{p})\|_2$.
+Term: Descent direction,Definition: A direction $\mathbf{u}$ where there exists $\delta > 0$ such that $f(\mathbf{p} + t\mathbf{u}) < f(\mathbf{p})$ for all $0 < t < \delta$.
+The gradient method is also known by what alternative name?,The steepest descent method.
+What is the general iterative formula for the gradient method?,$\mathbf{p}^{(k+1)} = \mathbf{p}^{(k)} - \alpha_k f'(\mathbf{p}^{(k)})$
+"In the gradient method formula, what role does the parameter $\alpha_k$ serve?",It is a scaling parameter that determines the step size.
+What is the formula for the factor $\alpha_k$ in the constant step size variant of the gradient method?,$\alpha_k = h/\|f'(\mathbf{p}^{(k)})\|_2$
+"In the constant step size variant of the gradient method, what is the fixed distance between consecutive points?",$h$
+Why is the accuracy of the constant step size gradient method limited by the value $h$?,Because the fixed step length generally prevents approximating the exact minimum more closely than the step size itself.
+How is the step size $\alpha_k$ chosen in the optimal gradient method?,It is chosen to minimize the function $\phi_k(t) = f(\mathbf{p}^{(k)} - t f'(\mathbf{p}^{(k)}))$ with respect to $t$.
+"In the optimal gradient method, what kind of problem must be solved at each step to determine the step size?",A one-dimensional (single variable) function minimization problem.
+"In the optimal gradient method, where does the step forward from $\mathbf{p}^{(k)}$ end relative to the level curves?",It ends at a point where the search line is tangent to a level curve of $f$.
+What is the geometric relationship between consecutive search directions in the optimal gradient method?,Consecutive directions are perpendicular (orthogonal) to each other.
+What is the local convergence rate of the optimal gradient method?,Locally linearly convergent.
+Why can the convergence of the optimal gradient method be slow despite being 'optimal' at each step?,The asymptotic error constant can be close to $1$.
+What visual behavior is characteristic of the optimal gradient method when approaching a minimum in a narrow 'valley'?,The sequence zigzags slowly toward the minimum point.
+"When using a constant step size $h=0.3$, how does the gradient method sequence behave near the minimum?",It approximates the minimum slowly and oscillates around it.
+Which variant of the gradient method should be used if the analytical gradient vector is too expensive to compute?,A numerical approximation variant using function values at small displacements.
+What is the formula for the $i$-th component $v_i^{(k)}$ of the approximated gradient vector?,$v_i^{(k)} = \frac{1}{h}(f(\mathbf{p}^{(k)} + h\mathbf{e}^{(i)}) - f(\mathbf{p}^{(k)}))$
+"In the numerical gradient approximation, what does the vector $\mathbf{e}^{(i)}$ represent?",The $i$-th unit vector.
+"If the gradient vector is not used directly, what is the update rule for point $\mathbf{p}^{(k+1)}$ using the approximate vector $\mathbf{v}^{(k)}$?",$\mathbf{p}^{(k+1)} = \mathbf{p}^{(k)} - \alpha_k \mathbf{v}^{(k)}$
+"Theorem: For $f \in C^1$, the direction of the steepest descent at point $\mathbf{p}$ is \_\_\_\_.",$-f'(\mathbf{p})$
+"In the function $f(x, y) = 4 - 3x^2 - y^2$, what is the gradient at $\mathbf{p} = (0.5, 0.5)$?","$f'(\mathbf{p}) = (-3, -1)$"
+What defines the function $\phi_k(t)$ used in the optimal gradient method?,$\phi_k(t) = f(\mathbf{p}^{(k)} - t f'(\mathbf{p}^{(k)}))$
+Why do the steps in the optimal gradient method always result in perpendicular directions?,The step ends at a point where the gradient is perpendicular to the current search direction.
+The constant step size factor $\alpha_k = h/\|f'(\mathbf{p}^{(k)})\|_2$ ensures the Euclidean distance between $\mathbf{p}^{(k)}$ and $\mathbf{p}^{(k+1)}$ is exactly \_\_\_\_.,$h$
+What happens to the gradient method's path if a function's level curves are very elongated?,The method tends to zigzag and progress slowly toward the minimum.
+"In the proof of the gradient's perpendicularity, what does $\gamma'(t_0)$ represent?",The direction vector of the tangent to the level curve at point $\mathbf{p}$.
+Under what condition is the direction $\mathbf{u}$ considered a descent at point $\mathbf{p}$?,The function value must decrease for sufficiently small steps in direction $\mathbf{u}$ from $\mathbf{p}$.
+How does the starting point affect the convergence path in Example 8.9?,"Different starting points can lead to different numbers of steps or different trajectories (e.g., direct vs. zigzagging)."
+"If the gradient method oscillates around the minimum, what can be adjusted to stabilize it?",The step size parameter $h$ or the scaling factor $\alpha_k$ can be reduced.
+What is the primary drawback of the constant step size gradient method mentioned in the text?,It cannot approximate the exact minimum point with a precision greater than the step size $h$.
+The optimal gradient method minimizes the function value along the \_\_\_\_ of the gradient.,line (or negative gradient direction)
+How many dimensions is the minimization problem in Equation 8.6?,One dimension (single variable $t$).
+True or False: The gradient vector always points in the direction of the steepest increase of the function.,True
+Concept: Steepest Descent Method,Definition: An optimization algorithm that takes repeated steps in the direction of the negative gradient to find a local minimum.
+"In Example 8.9, the function $f(x, y) = (x^2 - 2y)^2 + 2(x - 1)^2$ has a minimum point at \_\_\_\_.","$(1, 0.5)$"
+What is the meaning of $f \in C^1$ in the context of the gradient method theorems?,The function is continuously differentiable.
+Formula: $v_i^{(k)} = \frac{1}{h}(f(\mathbf{p}^{(k)} + h\mathbf{e}^{(i)}) - f(\mathbf{p}^{(k)}))$ is an approximation of which mathematical object?,The $i$-th partial derivative of $f$ at point $\mathbf{p}^{(k)}$.
+How is the next point $\mathbf{p}^{(k+1)}$ related to the current point $\mathbf{p}^{(k)}$ and current gradient in the gradient method?,It is the current point minus a scaled version of the gradient vector.
+What does the 'optimal' in 'optimal gradient method' refer to specifically?,It refers to selecting the step size that yields the maximum possible decrease in function value along the current gradient direction.
+"In the constant step size gradient method, if $h=0.3$, what is the distance $\|\mathbf{p}^{(k+1)} - \mathbf{p}^{(k)}\|_2$?",$0.3$
+The condition $f'(\mathbf{p})^T \gamma'(t_0) = 0$ implies that the angle between the gradient and the level curve tangent is \_\_\_\_.,$90$ degrees (or $\pi/2$ radians).
+What determines if the convergence of the optimal gradient method is fast or slow?,The shape of the function's level curves (the asymptotic error constant).
+"In the notation $\mathbf{p} + t\mathbf{u}$, what does $t \to 0+$ signify in the directional derivative formula?",The limit as the step size $t$ approaches zero from the positive side.
+"If the optimal gradient method enters a 'valley' in the contour lines, how does its trajectory appear?",It zigzags between the sides of the valley.
+What is the dot product of two consecutive step vectors in the optimal gradient method?,$0$ (because they are orthogonal).
+What is the purpose of the unit vector $\mathbf{e}^{(i)}$ in the numerical gradient approximation?,To isolate the change in the function value along the $i$-th coordinate axis.
+The sequence $\mathbf{p}^{(k)}$ generated by the gradient method always moves in a direction \_\_\_\_ to the local contour lines.,perpendicular
+Under what condition does the gradient vector $f'(\mathbf{p})$ exist for a function $f$?,The function must be differentiable at point $\mathbf{p}$.
+How does the asymptotic error constant affect linear convergence?,"A constant close to $1$ results in very slow convergence, while a smaller constant results in faster convergence."

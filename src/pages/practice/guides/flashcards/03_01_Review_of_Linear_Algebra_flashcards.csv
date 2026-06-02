@@ -1,0 +1,57 @@
+What notation represents the set of all real $n \times n$ dimensional matrices?,$\mathbb{R}^{n \times n}$
+What notation represents the set of all $n \times n$ matrices with complex entries?,$\mathbb{C}^{n \times n}$
+"In linear algebra notation, how is the $n \times n$ dimensional identity matrix denoted?",$\mathbf{I}$
+What is the condition for a square matrix $\mathbf{A}$ to be called 'invertible' or 'nonsingular'?,Its inverse $\mathbf{A}^{-1}$ exists such that $\mathbf{A}\mathbf{A}^{-1} = \mathbf{A}^{-1}\mathbf{A} = \mathbf{I}$.
+A square matrix is defined as \_\_\_\_\_ if it has no inverse.,singular
+What is the value of $\det(\mathbf{A})$ if each element of a single row or column in $\mathbf{A}$ is equal to 0?,0
+What is the value of $\det(\mathbf{A})$ if two rows or two columns of $\mathbf{A}$ are identical?,0
+"According to the properties of determinants, what does $\det(\mathbf{A}\mathbf{B})$ equal?",$\det(\mathbf{A})\det(\mathbf{B})$
+How does the determinant of a matrix $\mathbf{A}$ compare to the determinant of its transpose $\mathbf{A}^T$?,They are equal: $\det(\mathbf{A}^T) = \det(\mathbf{A})$.
+"If $\mathbf{A}$ is an invertible matrix, what is the formula for $\det(\mathbf{A}^{-1})$?",$1/\det(\mathbf{A})$
+"If matrix $\mathbf{B}$ is obtained by multiplying one row of matrix $\mathbf{A}$ by a constant $c$, how is $\det(\mathbf{B})$ related to $\det(\mathbf{A})$?",$\det(\mathbf{B}) = c\det(\mathbf{A})$
+What happens to the determinant of a matrix if two of its rows or columns are swapped?,The sign of the determinant changes: $\det(\mathbf{B}) = -\det(\mathbf{A})$.
+How is the determinant affected if a constant multiple of one row is added to another row?,The determinant remains unchanged: $\det(\mathbf{B}) = \det(\mathbf{A})$.
+Formula: Determinant expansion by the $i$-th row.,$\det(\mathbf{A}) = \sum_{j=1}^{n} (-1)^{i+j} a_{ij} \det(\mathbf{A}_{ij})$
+"In the context of determinant expansion, what does $\mathbf{A}_{ij}$ represent?",The $(n-1) \times (n-1)$ matrix obtained by omitting the $i$-th row and $j$-th column of $\mathbf{A}$.
+"Besides having a non-zero determinant, what is an equivalent condition for a matrix $\mathbf{A}$ to have a unique solution for $\mathbf{A}\mathbf{x} = \mathbf{b}$ for any $\mathbf{b}$?",The matrix $\mathbf{A}$ must be invertible.
+Under what condition regarding the determinant does the linear system $\mathbf{A}\mathbf{x} = \mathbf{0}$ have a nontrivial (nonzero) solution?,$\det(\mathbf{A}) = 0$
+"If matrices $\mathbf{A}$ and $\mathbf{B}$ are both invertible, what is the formula for $(\mathbf{A}\mathbf{B})^{-1}$?",$\mathbf{B}^{-1}\mathbf{A}^{-1}$
+A square matrix is called \_\_\_\_\_ if $a_{ij} = 0$ for all $i > j$.,upper triangular
+A square matrix is called \_\_\_\_\_ if $a_{ij} = 0$ for all $i < j$.,lower triangular
+What is the determinant of a triangular matrix $\mathbf{A}$?,The product of its diagonal elements: $a_{11}a_{22}\cdots a_{nn}$.
+The product of two lower triangular matrices results in a \_\_\_\_\_ matrix.,lower triangular
+The inverse of an invertible upper triangular matrix is always \_\_\_\_\_.,upper triangular
+What is a permutation matrix?,A square matrix obtained from the identity matrix by interchanging its rows or columns.
+"In a permutation matrix, how many '1's are present in each row and column?",Exactly one.
+Multiplying a matrix $\mathbf{A}$ on the left by a permutation matrix $\mathbf{P}$ results in what transformation of $\mathbf{A}$?,Interchanging the rows of $\mathbf{A}$.
+What is the condition for a matrix $\mathbf{A}$ to be 'row diagonally dominant'?,"$|a_{ii}| > \sum_{j \ne i} |a_{ij}|$ for all $i = 1, \ldots, n$."
+"If a matrix $\mathbf{A}$ is column diagonally dominant, what property does its transpose $\mathbf{A}^T$ possess?",It is row diagonally dominant.
+"According to Theorem 3.8, what property is guaranteed for a matrix that is diagonally dominant?",It is invertible.
+What are the two requirements for a square matrix $\mathbf{A}$ to be 'positive definite'?,It must be symmetric and $\mathbf{x}^T\mathbf{A}\mathbf{x} > 0$ for all $\mathbf{x} \ne \mathbf{0}$.
+"If a square matrix $\mathbf{A}$ is symmetric and $\mathbf{x}^T\mathbf{A}\mathbf{x} \ge 0$ for all $\mathbf{x}$, it is called \_\_\_\_\_.",positive semi-definite
+"According to Theorem 3.9, if a matrix is positive definite, what can be said about its diagonal elements $a_{ii}$?",They are all strictly positive ($a_{ii} > 0$).
+Theorem 3.10 states that a symmetric matrix is positive definite if and only if all of its \_\_\_\_\_ are positive.,principal minors (upper left minors)
+What defines an 'orthogonal' matrix $\mathbf{A}$?,$\mathbf{A}$ is invertible and $\mathbf{A}^{-1} = \mathbf{A}^T$.
+"If $\mathbf{A}$ and $\mathbf{B}$ are orthogonal matrices, what is the nature of their product $\mathbf{A}\mathbf{B}$?",The product is also orthogonal.
+What is an eigenvalue $\lambda$ of a square matrix $\mathbf{A}$?,A complex number such that $\mathbf{A}\mathbf{x} = \lambda\mathbf{x}$ has a nontrivial solution $\mathbf{x} \ne \mathbf{0}$.
+The algebraic equation $\det(\mathbf{A} - \lambda\mathbf{I}) = 0$ used to find eigenvalues is known as the \_\_\_\_\_.,characteristic equation
+"What is the relationship between the determinant of a matrix $\mathbf{A}$ and its eigenvalues $\lambda_1, \ldots, \lambda_n$?",$\det(\mathbf{A}) = \lambda_1\lambda_2\cdots\lambda_n$
+"Based on eigenvalues, when is a square matrix $\mathbf{A}$ invertible?",When all of its eigenvalues are non-zero ($\lambda_i \ne 0$ for all $i$).
+"If $\lambda$ is an eigenvalue of an invertible matrix $\mathbf{A}$, what is the corresponding eigenvalue for $\mathbf{A}^{-1}$?",$1/\lambda$
+"If $\lambda$ is an eigenvalue of $\mathbf{A}$, what is the corresponding eigenvalue for the matrix $\mathbf{A}^k$?",$\lambda^k$
+Where are the eigenvalues located for a triangular matrix?,"On the main diagonal elements ($a_{11}, a_{22}, \ldots, a_{nn}$)."
+Two square matrices $\mathbf{A}$ and $\mathbf{B}$ are 'similar' if there exists an invertible matrix $\mathbf{P}$ such that \_\_\_\_\_.,$\mathbf{A} = \mathbf{P}^{-1}\mathbf{B}\mathbf{P}$
+What important property do similar matrices share regarding their eigenvalues?,Their eigenvalues are identical.
+Definition: Spectral Radius $\rho(\mathbf{A})$.,The maximum absolute value of the eigenvalues of $\mathbf{A}$: $\max\{|\lambda| : \lambda \text{ is an eigenvalue of } \mathbf{A}\}$.
+How is the spectral radius of $\mathbf{A}^k$ related to the spectral radius of $\mathbf{A}$?,$\rho(\mathbf{A}^k) = (\rho(\mathbf{A}))^k$
+"According to Theorem 3.16, the spectral radius $\rho(\mathbf{A})$ is always less than or equal to any \_\_\_\_\_.",matrix norm $\|\cdot\|$
+"Theorem 3.17: For any $\varepsilon > 0$, there exists a matrix norm $\|\cdot\|$ such that $\|\mathbf{A}\| \le$ \_\_\_\_\_.",$\rho(\mathbf{A}) + \varepsilon$
+How is the spectral norm $\|\mathbf{A}\|_2$ calculated for a general square matrix?,$\|\mathbf{A}\|_2 = \sqrt{\rho(\mathbf{A}^T\mathbf{A})}$
+"If a matrix $\mathbf{A}$ is symmetric, how does its spectral norm $\|\mathbf{A}\|_2$ relate to its spectral radius $\rho(\mathbf{A})$?",They are equal: $\|\mathbf{A}\|_2 = \rho(\mathbf{A})$.
+"What is the name of the determinant where the rows are powers of $a_i$ (e.g., $1, a_i, a_i^2, \ldots, a_i^{n-1}$)?",Vandermonde determinant
+Under what condition is the Vandermonde determinant non-zero?,"The numbers $a_1, \ldots, a_n$ must be pairwise distinct."
+"What is the formula for the value of the Vandermonde determinant given numbers $a_1, \ldots, a_n$?",$\prod_{i>j}(a_i - a_j)$
+"If $\mathbf{A}$ and $\mathbf{B}$ are positive definite matrices, is their sum $\mathbf{A} + \mathbf{B}$ also positive definite?",Yes.
+Is the square of a positive definite matrix ($\mathbf{A}^2$) also positive definite?,Yes.
+Is the transpose of a positive definite matrix ($\mathbf{A}^T$) also positive definite?,Yes.
+Define 'column diagonally dominant' in terms of the matrix's entries.,"$|a_{jj}| > \sum_{i \ne j} |a_{ij}|$ for all $j = 1, \ldots, n$."

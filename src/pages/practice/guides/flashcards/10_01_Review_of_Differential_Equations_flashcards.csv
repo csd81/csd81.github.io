@@ -1,0 +1,50 @@
+"In the context of ordinary differential equations, what does the abbreviation 'IVP' stand for?",Initial Value Problem
+What is the standard mathematical form of a first-order scalar initial value problem?,"$y' = f(t, y), \quad y(t_0) = y_0$"
+"In a scalar IVP $y' = f(t, y)$, what is the typical domain and codomain of the function $f$?","$f \colon [t_0, T] \times \mathbb{R} \to \mathbb{R}$"
+What notation represents the vector-valued version of an initial value problem for a system of $m$ dimensions?,"$\mathbf{y}' = \mathbf{f}(t, \mathbf{y}), \quad \mathbf{y}(t_0) = \mathbf{y}^{(0)}$"
+"In the system-based IVP $\mathbf{y}' = \mathbf{f}(t, \mathbf{y})$, what is the codomain of the function $\mathbf{f}$?",$\mathbb{R}^m$
+"A function $f(t, y)$ is \_\_\_\_\_ in its second variable if there exists a constant $L$ such that $|f(t, y) - f(t, \tilde{y})| \le L|y - \tilde{y}|$.",Lipschitz continuous
+"What is the term for the constant $L$ in the inequality $|f(t, y) - f(t, \tilde{y})| \le L|y - \tilde{y}|$?",Lipschitz constant
+"When generalizing the Lipschitz condition to systems of differential equations, what mathematical tool replaces the absolute value symbol?",A vector norm
+"According to the theory of ODEs, what property of $f$ is generally sufficient to guarantee the *existence* of a solution to an IVP?",Continuity of $f$
+"To guarantee the *uniqueness* of a solution to an IVP, what property must $f$ satisfy in its second variable in addition to continuity?",Lipschitz continuity
+"Theorem 10.1: If $f$ is continuous and Lipschitz continuous in its second variable, on what interval is a unique solution guaranteed to exist?","$[t_0, T]$ (or more generally the finite interval of definition)"
+How does the requirement for *local* Lipschitz continuity differ from *global* Lipschitz continuity regarding the range of $y$?,"It only requires the Lipschitz condition to hold for $y, \tilde{y}$ within a specific interval $[a, b]$ containing $y_0$."
+"If a function $f$ is locally Lipschitz continuous but not globally, what is the potential limitation on the solution's existence interval?","The solution might only exist on a smaller interval $[t_0, \bar{T}]$ where $0 < \bar{T} \le T$."
+What condition regarding the derivative of $f$ with respect to its second variable is sufficient to prove that $f$ is locally Lipschitz continuous?,$f$ is continuously differentiable with respect to its second variable.
+Concept: $m$th-order IVP transformation,An $m$th-order scalar IVP is equivalent to a system of $m$ first-order differential equations.
+"When converting a second-order ODE $y'' = f(t, y, y')$ into a system, what are the components of the vector $\mathbf{y}$?","$\mathbf{y} = (y, y')^T$"
+"When converting an $m$th-order ODE to a first-order system, what is the initial vector $\mathbf{y}^{(0)}$ composed of?","The initial values $(y_0, y_1, \ldots, y_{m-1})^T$"
+"Convert the second-order equation $y'' + 5y' = e^{2t-1}$ into the first component of a vector derivative $\mathbf{y}' = \mathbf{f}(t, \mathbf{y})$ where $y_1 = y$ and $y_2 = y'$.",$y_1' = y_2$
+"For the IVP $y' = \sqrt{|y|}, y(0) = 0$, what are two distinct solutions that demonstrate a lack of uniqueness?",$y(t) = 0$ and $y(t) = t^2/4$
+"Why does the IVP $y' = \sqrt{|y|}, y(0) = 0$ have multiple solutions?",The function $f(y) = \sqrt{|y|}$ is not Lipschitz continuous at $y=0$.
+"The IVP $y' = y^2, y(0) = 1$ fails to have a solution on $[0, T]$ if $T \ge 1$ because $g(y) = y^2$ is not \_\_\_\_\_ Lipschitz continuous.",globally
+Is the function $g(y) = y^2$ locally Lipschitz continuous on any finite interval?,Yes
+"For the system $\mathbf{y}' = \mathbf{f}(t, \mathbf{y})$, how is the Lipschitz condition defined using norms?","$\|\mathbf{f}(t, \mathbf{y}) - \mathbf{f}(t, \tilde{\mathbf{y}})\| \le L\|\mathbf{y} - \tilde{\mathbf{y}}\|$"
+"In the context of numerical methods, why do we often assume global Lipschitz continuity despite it being a strong condition?","To avoid technical problems regarding the existence of the solution over the entire interval $[t_0, T]$."
+True or False: Continuity of $f$ alone guarantees a unique solution to an IVP.,"False (it only guarantees existence, not uniqueness)."
+"In the scalar IVP $y' = f(t, y)$, which variable of $f$ is the Lipschitz condition applied to?",The second variable ($y$).
+What specific property of $f$ is required for the Picard-Lindelöf theorem (Theorem 10.1 in the text) to ensure existence and uniqueness?,$f$ must be continuous and Lipschitz continuous in its second variable.
+"If $y''' + 4y'' - 2y' + 5y = t^3$ is converted to a system $\mathbf{y}' = \mathbf{f}(t, \mathbf{y})$, what is the expression for $y_3'$ if $y_1=y, y_2=y', y_3=y''$?",$y_3' = t^3 - 4y_3 + 2y_2 - 5y_1$
+"What is the initial vector $\mathbf{y}^{(0)}$ for the IVP $y'' + 5y' = e^{2t-1}, y(0)=3, y'(0)=-1$?","$(3, -1)^T$"
+"If a function is continuously parciálisan differenciálható (continuously partially differentiable) with respect to $y$, it implies the function is \_\_\_\_\_ Lipschitz continuous.",locally
+"On the interval $[t_0, T]$, what does the red curve typically represent in a direction field diagram for an IVP?","The specific solution passing through the initial point $(t_0, y_0)$."
+What is the relationship between global Lipschitz continuity and local Lipschitz continuity?,Global Lipschitz continuity is a stronger condition that implies local Lipschitz continuity.
+Why is the function $f(y) = \sqrt{|y|}$ not Lipschitz at $y=0$?,The ratio $|\sqrt{|y|} - \sqrt{0}| / |y - 0| = 1/\sqrt{|y|}$ approaches infinity as $y$ approaches zero.
+"Under local Lipschitz conditions, what defines the sub-interval $[t_0, \bar{T}]$?",It is the interval on which a unique solution is guaranteed to exist before it potentially leaves the region where the Lipschitz condition was defined.
+"In the transformation of an $m$th order ODE to a system, the variable $y_{i+1}$ is defined as the \_\_\_\_\_ of $y_i$.",derivative
+"In the IVP $y' = y^2, y(0) = 1$, at what value of $t$ does the solution 'blow up' or cease to exist?",$t = 1$
+The Lipschitz condition is primarily used to control the \_\_\_\_\_ of the function $f$ relative to changes in $y$.,rate of change (or growth)
+Definition: Kezdeti érték probléma,The Hungarian term for Initial Value Problem (IVP).
+Definition: Iránymező,The Hungarian term for a direction field (or slope field).
+"In Exercise 1(b), $y'' - t^2 y' + ty = 0, y(1)=1, y'(1)=0$. What is the starting time $t_0$?",1
+"If $\mathbf{f}$ is continuous in $t$, what does the Lipschitz property in $\mathbf{y}$ ensure about the solution path?",It ensures the solution path is unique and does not branch.
+"Is the condition $|f(t, y) - f(t, \tilde{y})| \le L|y - \tilde{y}|$ required to hold for all $t$ in the interval $[t_0, T]$?",Yes
+"In the scalar case $y' = f(t, y)$, what does $y'$ represent?",The first derivative of $y$ with respect to $t$ (the slope of the solution curve).
+Does Theorem 10.1 apply to systems of differential equations?,"Yes, it can be generalized to systems using vector norms."
+Which specific example from the text shows that continuity without Lipschitz continuity allows for multiple solutions?,"$y' = \sqrt{|y|}, y(0) = 0$"
+"The Lipschitz constant $L$ must be \_\_\_\_\_ of $t, y,$ and $\tilde{y}$ for global Lipschitz continuity.",independent
+What is the purpose of converting high-order ODEs into systems for numerical analysis?,Numerical methods (like Euler's) are typically defined and analyzed for first-order systems.
+"In the equation $\mathbf{y}' = \mathbf{f}(t, \mathbf{y})$, if $\mathbf{y} \in \mathbb{R}^m$, how many scalar equations are in the system?",$m$
+"If a function is globally Lipschitz continuous, is it also locally Lipschitz continuous?",Yes
+"For the IVP $y' = y^2, y(0)=1$, what is the explicit solution $y(t)$ that exists for $t < 1$?",$y(t) = \frac{1}{1-t}$

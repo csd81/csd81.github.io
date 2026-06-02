@@ -1,0 +1,53 @@
+"In the context of multi-variable calculus, what is the matrix $f''(\mathbf{x})$ commonly called?",The Hessian matrix.
+What is the entry in the $i$-th row and $j$-th column of a Hessian matrix $f''(\mathbf{x})$?,"$\frac{\partial^2 f}{\partial x_i, \partial x_j}(\mathbf{x})$"
+A function $f$ maps from $\mathbb{R}^n$ to which set to allow for the calculation of a Hessian matrix?,$\mathbb{R}$
+What type of derivatives are located on the main diagonal of the Hessian matrix?,"Pure second-order partial derivatives (e.g., $\frac{\partial^2 f}{\partial x_i^2}$)."
+"If $f: \mathbb{R}^n \to \mathbb{R}$ has a local extremum at point $\mathbf{a}$, what must $\frac{\partial f(\mathbf{a})}{\partial x_i}$ equal for all $i = 1, \dots, n$?",$0$
+The first-order necessary condition for a local extremum states that the gradient vector $f'(\mathbf{a})$ must be equal to \_\_\_\_\_.,The zero vector $\mathbf{0}$.
+Which smoothness class must a function $f$ belong to for the Hessian-based sufficient condition for extrema to apply?,$C^2$ (twice continuously differentiable).
+"If $f'(\mathbf{a}) = \mathbf{0}$ and the Hessian matrix $f''(\mathbf{a})$ is positive definite, what kind of extremum does $f$ have at $\mathbf{a}$?",A local minimum.
+"If $f'(\mathbf{a}) = \mathbf{0}$ and the Hessian matrix $f''(\mathbf{a})$ is negative definite, what kind of extremum does $f$ have at $\mathbf{a}$?",A local maximum.
+"For a two-variable function $f(x, y)$, what are the two necessary first-order equations for a local extremum at $(a, b)$?","$\frac{\partial f}{\partial x}(a, b) = 0$ and $\frac{\partial f}{\partial y}(a, b) = 0$."
+"In the second derivative test for two variables, how is the discriminant $D(a, b)$ defined?","$D(a, b) := \frac{\partial^2 f}{\partial x^2}(a, b) \cdot \frac{\partial^2 f}{\partial y^2}(a, b) - \left( \frac{\partial^2 f}{\partial x\, \partial y}(a, b) \right)^2$."
+"What condition on the discriminant $D(a, b)$ indicates that a function $f(x, y)$ has a local extremum at $(a, b)$, provided the first derivatives are zero?","$D(a, b) > 0$"
+"If the discriminant $D(a, b)$ is less than zero ($D < 0$) at a stationary point, what is the conclusion regarding a local extremum?","The function $f$ has no extremum at $(a, b)$."
+"To identify a local maximum in a two-variable function when $D(a, b) > 0$, what must be the sign of $\frac{\partial^2 f}{\partial x^2}(a, b)$?","Negative ($\frac{\partial^2 f}{\partial x^2}(a, b) < 0$)."
+"To identify a local minimum in a two-variable function when $D(a, b) > 0$, what must be the sign of $\frac{\partial^2 f}{\partial x^2}(a, b)$?","Positive ($\frac{\partial^2 f}{\partial x^2}(a, b) > 0$)."
+"Formula: What is the first entry ($1, 1$) of the Hessian matrix $f''(\mathbf{x})$?",$\frac{\partial^2 f}{\partial x_1^2}(\mathbf{x})$
+Formula: What is the entry in the last row and last column of an $n$-variable Hessian matrix?,$\frac{\partial^2 f}{\partial x_n^2}(\mathbf{x})$
+"According to Theorem 8.1, what is the necessary condition for a function $f$ to have a local extremum at $\mathbf{a}$ regarding its partial derivatives?",All partial derivatives $\frac{\partial f(\mathbf{a})}{\partial x_i}$ must equal zero.
+"In Theorem 8.2, which property of $f$ ensures that the mixed partial derivatives $\frac{\partial^2 f}{\partial x \partial y}$ and $\frac{\partial^2 f}{\partial y \partial x}$ are equal?",The assumption that $f \in C^2$.
+"If $D(a, b) > 0$, the function $f(x, y)$ is guaranteed to have a(n) \_\_\_\_\_ at that point, assuming the first-order conditions are met.",Local extremum
+"For $n$ variables, if $f''(\mathbf{a})$ is neither positive nor negative definite at a point where $f'(\mathbf{a})=0$, what can be said about the extremum? (Note: Context restricted to the provided source material's explicit rules).",The provided theorems do not explicitly define the outcome for indefinite matrices.
+What is the dimension of the Hessian matrix for a function $f: \mathbb{R}^n \to \mathbb{R}$?,$n \times n$
+"Identify the subtrahend in the formula for $D(a, b)$: $D(a, b) = f_{xx}f_{yy} - (\dots)^2$.","The mixed partial derivative $\frac{\partial^2 f}{\partial x \, \partial y}(a, b)$."
+Term: Stationary Point (Implicit),"Definition: A point $\mathbf{a}$ where the first derivative (gradient) of a function is the zero vector, $f'(\mathbf{a}) = \mathbf{0}$."
+"True or False: If $\frac{\partial f(\mathbf{a})}{\partial x_i} = 0$ for all $i$, $f$ must have a local extremum at $\mathbf{a}$.",False (it is a necessary but not sufficient condition).
+"For a function of two variables, if $f_{xx}(a, b) = 4$, $f_{yy}(a, b) = 3$, and $f_{xy}(a, b) = 1$, what is the value of $D(a, b)$?",$11$ (calculated as $4 \cdot 3 - 1^2$).
+"If $D(a, b) = 11$ and $f_{xx} = 4$ at a stationary point, what type of extremum is present?",Local minimum.
+"In the Hessian matrix, the entry $\frac{\partial^2 f}{\partial x_1, \partial x_2}$ is located in which row and column?","Row 1, Column 2."
+"The theorem states that if $D(a, b) < 0$, $f$ has \_\_\_\_\_ extremum at $(a, b)$. ",No
+"In the formula for the Hessian matrix, what is represented by the ellipsis ($\dots$) in the first row?",The second-order partial derivatives with respect to $x_1$ and subsequent variables up to $x_n$.
+What is the specific requirement for the Hessian matrix to be used to prove a local maximum at point $\mathbf{a}$ for $f \in \mathbb{R}^n$?,The Hessian matrix $f''(\mathbf{a})$ must be negative definite.
+"How does Theorem 8.2 classify the point $(a, b)$ if $\frac{\partial f}{\partial x} = 0$, $\frac{\partial f}{\partial y} = 0$, and $D(a, b) < 0$?",As a point with no local extremum.
+"In $n$-dimensional space, the derivative $f'(\mathbf{a})$ refers to a vector of \_\_\_\_\_ partial derivatives.",First-order
+"If a function is only partially differentiable but not $C^2$, can the second derivative test using the Hessian be applied?","No, the theorems require $f \in C^2$ for the Hessian-based sufficient conditions."
+What mathematical object is $f'(\mathbf{a})$ in the context of Theorem 8.1?,The gradient vector (or the first derivative vector).
+"In Theorem 8.2, if $D(a, b) > 0$ and $\frac{\partial^2 f}{\partial x^2}(a, b) > 0$, the function has a local \_\_\_\_\_.",Minimum
+"In Theorem 8.2, if $D(a, b) > 0$ and $\frac{\partial^2 f}{\partial x^2}(a, b) < 0$, the function has a local \_\_\_\_\_.",Maximum
+How many separate equations must be satisfied for the first-order necessary condition of an $n$-variable function?,$n$ equations.
+The notation $f: \mathbb{R}^n \to \mathbb{R}$ implies the function takes a \_\_\_\_\_ as input and returns a real number.,Vector (of $n$ components)
+"According to the source, if $f'(\mathbf{a}) = \mathbf{0}$, $\mathbf{a}$ is a candidate for a \_\_\_\_\_.",Local extremum
+"Why is the term $\left( \frac{\partial^2 f}{\partial x\, \partial y}(a, b) \right)^2$ subtracted in the calculation of $D(a, b)$?",It is part of the determinant calculation for the $2 \times 2$ Hessian matrix.
+"If the Hessian $f''(\mathbf{a})$ is negative definite, what is the sign of its diagonal elements $\frac{\partial^2 f}{\partial x_i^2}$?",Negative (less than zero).
+"If the Hessian $f''(\mathbf{a})$ is positive definite, what is the sign of its diagonal elements $\frac{\partial^2 f}{\partial x_i^2}$?",Positive (greater than zero).
+Theorem 8.2 is described as a \_\_\_\_\_ of Theorem 8.1 for the case $n=2$.,Special case
+What is the primary purpose of the Hessian matrix in optimization according to the source material?,To determine the nature of local extrema (minimum or maximum).
+"In Theorem 8.1, the condition $f'(\mathbf{a}) = \mathbf{0}$ is checked \_\_\_\_\_ the definiteness of the Hessian.",Before (or simultaneously with)
+"Concept: $D(a, b)$ in Two Variables","The discriminant of the function at $(a, b)$, used to identify the presence and type of local extrema."
+Can a function have a local extremum at a point where a partial derivative is non-zero?,"No, the necessary condition requires all partial derivatives to be zero."
+"For a two-variable function, if $f_{xx} = -2$, $f_{yy} = -5$, and $f_{xy} = 0$ at a stationary point, what type of extremum is found?",Local maximum (since $D = 10 > 0$ and $f_{xx} = -2 < 0$).
+The provided source material is part of a course on which mathematical discipline?,Numerical Analysis (Szélsőértékszámítás / Minimization of Functions).
+What is the symbol used for the Hessian matrix of $f$ in the provided text?,$f''(\mathbf{x})$
+"In the notation $\frac{\partial^2 f}{\partial x_n, \partial x_1}(\mathbf{x})$, which variable was the function differentiated with respect to first?",$x_1$
+"The second derivative test using $D(a, b)$ fails to provide a conclusion if $D(a, b)$ equals \_\_\_\_\_.",$0$

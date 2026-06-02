@@ -1,0 +1,55 @@
+"What is the primary requirement for a function $f$ to be considered unimodal on the interval $[a, b]$?","The function must be continuous and have a unique local minimum in the interval $[a, b]$."
+Is convexity a necessary condition for a function to be unimodal?,"No, convexity is sufficient but not necessary for a function to be unimodal."
+"In the golden section search method, if $f(x) > f(y)$ where $a < y < x < b$, which interval is chosen for the next step?","The interval $[a, x]$ is chosen."
+"In the golden section search method, if $f(x) \leq f(y)$ where $a < y < x < b$, which interval is chosen for the next step?","The interval $[y, b]$ is chosen."
+"How does the golden section search method define points $x$ and $y$ relative to the interval $[a, b]$ and a ratio $r$?",$x = a + r(b - a)$ and $y = a + (1 - r)(b - a)$.
+What constraint must be placed on the ratio $r$ to ensure that $x > y$ in the golden section search method?,The ratio $r$ must satisfy $0.5 < r < 1$.
+The golden section search method is similar to which root-finding method in its approach to narrowing intervals?,It is similar to the bisection method.
+What is the primary motivation for selecting $r$ specifically as the golden section ratio?,"It allows one of the new mesh points to coincide with a previous mesh point, requiring only one new function evaluation per step."
+"If the next interval is $[a', b'] = [y, b]$, what is the specific requirement for the new point $y'$ to optimize evaluations?",The requirement is that $y' = x$.
+Which quadratic equation must the ratio $r$ satisfy in the golden section search method?,It must satisfy $r^2 + r - 1 = 0$.
+What is the exact value of the positive solution for $r$ in the golden section search method?,$r = \frac{\sqrt{5} - 1}{2}$.
+What is the approximate decimal value of the golden section ratio $r$?,The value is approximately $0.61834$.
+What algebraic relationship involving $r$ and $(1-r)$ defines the golden section ratio?,The relationship is $\frac{r}{1 - r} = \frac{1}{r}$.
+What is the formula for the length of the interval after $n$ steps of the golden section search method?,The length is $(b - a)r^n$.
+Formula: How many steps $n$ are required to reach a tolerance $\varepsilon$ in golden section search?,$n \geq \frac{\log \frac{\varepsilon}{b - a}}{\log r}$.
+"If the minimum point $p$ is located in the interval $[a, x]$, what condition is placed on $x'$ and $y$ to maintain evaluation efficiency?",The condition is that $x' = y$.
+"According to Theorem 8.4, what happens to the golden section search method if the function $f \in C[a, b]$ is unimodal?",The method converges to the unique minimum point of the function $f$.
+What is typically the final output of the golden section search algorithm to approximate the minimum point?,The output is the midpoint of the final interval reached after $n$ steps.
+"In the example function $f(x) = x^2 - 0.8x + 1$, what is the exact minimum point $p$?",The minimum point is $p = 0.4$.
+"For the function $f(x) = x^2 - 0.8x + 1$ on $[-1, 2]$ with $\varepsilon = 0.005$, how many steps $n$ were theoretically required?",Approximately $13.29$ steps were required.
+"In the example provided, what was the approximate minimum value produced by the algorithm after 14 iterations?",The value was $0.3995535068$.
+"In Table 8.1, what were the initial interval bounds ($a_0, b_0$) used for the search?","$[-1.0000000000, 2.0000000000]$."
+The points $x$ and $y$ are chosen such that the lengths of which two sub-intervals are identical?,"The intervals $[a, x]$ and $[y, b]$."
+"If $f$ is continuous and unimodal on $[a, b]$, does the golden section search method always converge?","Yes, it is guaranteed to converge to the minimum point."
+"In golden section search, $y$ is defined as $a + (1 - r)(b - a)$. What does $(1 - r)$ approximately equal?",It approximately equals $0.38196$.
+Term: Unimodal Function,"Definition: A continuous function on an interval $[a, b]$ that possesses exactly one local minimum."
+How many new function evaluations are required in each step of the golden section search after the initialization?,Only one new function value must be evaluated per step.
+What does the expression $x - a = b - y = r(b - a)$ imply about the symmetry of $x$ and $y$?,"The points $x$ and $y$ are placed symmetrically with respect to the midpoint of the interval $[a, b]$."
+The golden section search method reduces the interval size by a factor of \_\_\_\_\_ in every iteration.,The factor is $r$ (approximately $0.618$).
+"If the initial interval is $[a, b]$, what is the length of the interval after the first reduction step?",The length is $r(b - a)$.
+"If a function is defined on $[-1, 1]$ as $f(x) = -1/x^2$, is the golden section search method applicable?","No, because the function is not continuous at $x = 0$ and is not unimodal on that interval."
+Why is the requirement $x > y$ necessary for the algorithm's interval logic?,It ensures that the interior points are distinct and create a valid overlapping structure for comparison.
+"In the derivation of $r$, the expression $r = 1 - r + (1 - r)(1 - (1 - r))$ simplifies directly to which equation?","It simplifies to $r = 1 - r + r - r^2$, which is $r^2 + r - 1 = 0$."
+What happens to the golden section search method if the function has multiple local minima?,The method may converge to only one of the local minima or fail to correctly bracket a minimum if unimodality is violated.
+"In the specific example, what was the length of the initial interval ($b_0 - a_0$)?",The length was $3$.
+"If $b - a = 1$ and $r \approx 0.618$, what is the length of the interval after 2 steps?","The length is $r^2$, which is approximately $0.382$."
+Is the golden section search method used for finding maximums or minimums of functions?,It is primarily used to find the minimum of a unimodal function.
+"To find the maximum of a unimodal function using this method, what modification should be made?",One should search for the minimum of $-f(x)$.
+"In Equation (8.2), if $r = 0.5$, what would happen to the points $x$ and $y$?",The points $x$ and $y$ would coincide at the midpoint of the interval.
+"Given the function $f(x) = |\cos x|$ on $[0, 2]$, why is it considered unimodal?",Because it has a unique local minimum in that interval (at $x = \pi/2$).
+What is the role of the tolerance $\varepsilon$ in Algorithm 8.3?,"It serves as the stopping criterion, determining the maximum allowable length of the final interval."
+"If $x'$ and $y'$ are the new points in the interval $[a', b']$, how are they derived from the original interval variables?",They are calculated using the same ratio $r$ applied to the new interval boundaries $a'$ and $b'$.
+"The sequence of intervals $[a_k, b_k]$ produced by the golden section search is described as being \_\_\_\_\_.",Nested.
+"When $f(x) > f(y)$, we know $p \in [a, x]$. Why is $b$ discarded?","Because for a unimodal function, if the value at $x$ is higher than at $y$ (where $y < x$), the minimum cannot be to the right of $x$."
+True or False: The golden section search requires the derivative of the function to be known.,"False, it only requires function evaluations."
+"In the example table, as $k$ increases, what happens to the distance $b_k - a_k$?",The distance decreases geometrically by a factor of $r$.
+"If the tolerance $\varepsilon$ is halved, how does the required number of steps $n$ change roughly?",It increases by approximately $\frac{\log(0.5)}{\log(r)} \approx 1.44$ steps.
+The method is 'golden' because $r$ is the \_\_\_\_\_.,Golden ratio (specifically the conjugate or reciprocal relationship).
+"If $a=0, b=10$, and $r=0.6$, what is the value of $x$?",$x = 0 + 0.6(10 - 0) = 6$.
+"If $a=0, b=10$, and $r=0.6$, what is the value of $y$?",$y = 0 + (1 - 0.6)(10 - 0) = 4$.
+"In the exercise $f(x) = 1 - 10xe^{-x}$ on $[0, 2]$, what kind of point are we looking for?",The minimum point of the function.
+"If the algorithm terminates at iteration $k=14$ with $[a_{14}, b_{14}]$, how is the result $0.3995535068$ calculated?",It is calculated as $\frac{a_{14} + b_{14}}{2}$.
+"Which of the following functions on $[0, 2]$ is likely unimodal based on the source text: $x^2$ or $x^2 - x^4$?","$x^2$ is unimodal on $[0, 2]$."
+"In step 0 of the example, $y_0$ is $0.1458980338$. In step 1, the interval becomes $[-1, 0.8541]$. What is the value of $x_1$?",$x_1 = 0.1458980338$ (it matches the previous $y_0$).
+"In the golden section search, does the interval $[a, b]$ always contain the minimum $p$?","Yes, the algorithm is designed such that the minimum point $p$ is always contained within each subsequent interval."

@@ -1,0 +1,60 @@
+"In curve fitting, what does the notation $g(x; \mathbf{a})$ represent?",A function $g$ describing a physical process where the general formula is known but parameters $\mathbf{a}$ are unknown.
+What is the primary goal of curve fitting?,To find parameter values such that the function $g$ deviates the 'least' from measured data points.
+"Why is it usually impossible to draw a curve exactly through all measurement points $(x_i, y_i)$?",Measurement errors typically cause data points to lie off the ideal graph of the assumed function.
+Define the maximum error formula $F_1(\mathbf{a})$.,"$F_1(\mathbf{a}) := \max\{|g(x_i; \mathbf{a}) - y_i| : i = 0, 1, \ldots, n\}$"
+Define the absolute error sum formula $F_2(\mathbf{a})$.,$F_2(\mathbf{a}) := \sum_{i=0}^{n} |g(x_i; \mathbf{a}) - y_i|$
+What is the mathematical disadvantage of using $F_1(\mathbf{a})$ or $F_2(\mathbf{a})$ for curve fitting?,They are difficult to minimize because they are not differentiable with respect to the parameters $\mathbf{a}$.
+What is the formula for the quadratic error (least square error) $F(\mathbf{a})$?,$F(\mathbf{a}) := \sum_{i=0}^{n} (g(x_i; \mathbf{a}) - y_i)^2$
+What is the 'method of least squares'?,A method that finds the best-fitting function by minimizing the sum of the squares of the deviations from the data points.
+"In line fitting, what is the standard form of the linear function $g(x)$?",$g(x) = ax + b$
+"For line fitting, what is the error function $F(a, b)$ that needs to be minimized?","$F(a, b) := \sum_{i=0}^{n} (ax_i + b - y_i)^2$"
+"What is the partial derivative of the linear error function $F(a, b)$ with respect to $a$?","$\frac{\partial F}{\partial a}(a, b) = 2\sum_{i=0}^{n} (ax_i + b - y_i)x_i$"
+"What is the partial derivative of the linear error function $F(a, b)$ with respect to $b$?","$\frac{\partial F}{\partial b}(a, b) = 2\sum_{i=0}^{n} (ax_i + b - y_i)$"
+What are the 'Gaussian normal equations' in the context of line fitting?,"The system of equations obtained by setting the partial derivatives of the error function $F(a, b)$ to zero."
+Write the first Gaussian normal equation for line fitting ($a \sum \ldots$).,$a\sum_{i=0}^{n} x_i^2 + b\sum_{i=0}^{n} x_i = \sum_{i=0}^{n} x_i y_i$
+Write the second Gaussian normal equation for line fitting ($a \sum \ldots$).,$a\sum_{i=0}^{n} x_i + b(n + 1) = \sum_{i=0}^{n} y_i$
+"In the second Gaussian normal equation for line fitting, what does the coefficient $n+1$ represent?",The total number of measurement data points.
+What is the formula for the determinant $d$ of the coefficient matrix of the Gaussian normal equations?,$d = (n + 1)\sum_{i=0}^{n} x_i^2 - (\sum_{i=0}^{n} x_i)^2$
+Which mathematical inequality is used to prove that the determinant $d$ of the normal equations is always non-negative?,The Cauchy–Bunyakovsky–Schwarz inequality.
+Under what condition is the determinant $d$ of the Gaussian normal equations strictly positive?,When there are at least two distinct mesh points $x_i$.
+"If $d > 0$, how many solutions does the Gaussian normal equation system have for line fitting?",Exactly one unique solution.
+What is the explicit formula for the optimal slope $\bar{a}$ in line fitting?,$\bar{a} = \frac{(n + 1)(\sum x_i y_i) - (\sum x_i)(\sum y_i)}{(n + 1)(\sum x_i^2) - (\sum x_i)^2}$
+What is the explicit formula for the optimal intercept $\bar{b}$ in line fitting?,$\bar{b} = \frac{(\sum x_i^2)(\sum y_i) - (\sum x_i y_i)(\sum x_i)}{(n + 1)(\sum x_i^2) - (\sum x_i)^2}$
+"What is the value of the second partial derivative $\frac{\partial^2 F}{\partial a^2}(\bar{a}, \bar{b})$?",$2\sum_{i=0}^{n} x_i^2$
+"What is the value of the second partial derivative $\frac{\partial^2 F}{\partial b^2}(\bar{a}, \bar{b})$?",$2(n + 1)$
+"What is the value of the mixed partial derivative $\frac{\partial^2 F}{\partial a \partial b}(\bar{a}, \bar{b})$?",$2\sum_{i=0}^{n} x_i$
+"What is the relationship between the discriminant $D(\bar{a}, \bar{b})$ and the determinant $d$?","$D(\bar{a}, \bar{b}) = 4d$"
+"Why is the stationary point $(\bar{a}, \bar{b})$ specifically a local minimum for $F$?",Because the discriminant $D$ is positive ($4d > 0$) and the second derivative with respect to $a$ is positive.
+Is the local minimum found by the method of least squares for line fitting also a global minimum?,"Yes, it is both a local and a global minimum."
+"According to Theorem 9.1, what condition must the points $(x_i, y_i)$ meet for a unique line of best fit to exist?",There must exist at least two points $i$ and $j$ such that $x_i \neq x_j$.
+"When performing manual line fitting calculations, what values should be computed in the third and fourth columns of the summary table?",The squares of the mesh points ($x_i^2$) and the products of the coordinates ($x_i y_i$).
+"In Example 9.2, for the data set with $n=6$, what were the final calculated values for the slope $a$ and intercept $b$?",$a = 0.630243$ and $b = 0.542163$
+How is the fitting error calculated after finding the optimal parameters $\bar{a}$ and $\bar{b}$?,By evaluating the sum of squares $\sum_{i=0}^{n} (\bar{a}x_i + \bar{b} - y_i)^2$.
+"In Example 9.2, what was the numerical value of the final error of the fitting?",$0.124691$
+The points where the function values are measured are called the \_\_\_\_\_ points.,mesh
+"If a physical process is suspected to be a second-degree polynomial, how many parameters must be determined?",Three parameters (the coefficients of the polynomial).
+True or False: The Gaussian normal equations constitute a non-linear system of equations.,"False, it is a linear system for the parameters $a$ and $b$."
+What property of the least square error $F(\mathbf{a})$ allows the use of derivatives to find its minimum?,It is continuously partially differentiable.
+The determinant of the coefficient matrix $d$ is given by the determinant of which $2 \times 2$ matrix?,$\begin{pmatrix} \sum x_i^2 & \sum x_i \\ \sum x_i & n + 1 \end{pmatrix}$
+What is the Hungarian term for 'curve fitting' mentioned in the source material?,görbeillesztés
+"In the Hungarian source text, what is the term for 'Method of Least Squares'?",legkisebb négyzetek módszere
+"According to the CBS inequality, $(\sum_{i=0}^{n} x_i)^2 \leq (n + 1) \cdot$ \_\_\_\_\_.",$\sum_{i=0}^{n} x_i^2$
+"If all mesh points $x_i$ were identical, what would be the value of the determinant $d$?",Zero.
+"In the provided line fitting examples, what is the range of the index $i$ if there are 8 data points?","$i = 0, 1, \ldots, 7$"
+"What is the next step after calculating the sums of $x_i, y_i, x_i^2,$ and $x_i y_i$ in the least squares procedure?",Substituting the sums into the Gaussian normal equations to solve for $a$ and $b$.
+"In the slide example 'Egyenes illesztése', for the sums $\sum x_i = 23.5$ and $\sum y_i = 19.7$ with 8 points, what was the value of $b$'s coefficient in the second equation?",8
+What does the second Gaussian normal equation $\sum (ax_i + b - y_i) = 0$ imply about the average error?,It implies that the sum of the residuals (deviations) is zero.
+Term: Mesh points,Definition: The specific $x$-coordinates ($x_i$) at which measurement values ($y_i$) are obtained.
+Term: Gaussian normal equations,Definition: A system of linear equations used to find the parameters that minimize the sum of squared residuals.
+Why is the method of least squares preferred over minimizing the maximum deviation ($F_1$)?,The quadratic function $F(\mathbf{a})$ is easier to handle analytically using calculus.
+What is the result of applying Theorem 8.2 to the discriminant $D$ in the proof of line fitting?,"It identifies that the stationary point $(\bar{a}, \bar{b})$ is a local extremum."
+How does Corollary 8.11 extend the findings of the local minimum in line fitting?,It confirms that the local minimum is also the global minimum for the error function $F$.
+"In the example calculation table, what represents the sum of all elements in the $y_i$ column?",$\sum_{i=0}^{n} y_i$
+Which variable represents the independent measurement coordinate in the formula $g(x; \mathbf{a})$?,$x$
+"In the Hungarian text, what is the term used for 'Gaussian normal equations'?",Gauss-féle normálegyenletek
+"If $n=7$, how many terms are included in the summation $\sum_{i=0}^{n} x_i$?",8 terms.
+What is the primary technical problem solved by switching from absolute error to squared error?,Non-differentiability at points where $g(x_i) = y_i$.
+"To find the minimum of $F(a, b)$, we must set the \_\_\_\_\_ derivatives to zero.",partial
+What is the graphical interpretation of the 'best fitted curve'?,The curve for which the sum of the squares of the vertical distances from the data points is minimized.
+"In Example 9.2 (7 points), what was the value of $\sum x_i^2$ used in the normal equations?",89.5
+"In Example 9.2 (7 points), what was the value of $\sum x_i$ used in the normal equations?",20.0

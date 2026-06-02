@@ -1,0 +1,55 @@
+"In the context of linear systems, what is an 'augmented matrix'?",A matrix formed by appending the right-hand side vector $b$ as an additional column to the coefficient matrix $A$.
+What is the primary goal of the 'elimination' phase in Gaussian elimination?,To transform the augmented matrix into an equivalent upper triangular form.
+"What name is given to the diagonal elements $a_{11}, a_{22}^{(1)}, \ldots, a_{nn}^{(n-1)}$ used during the Gaussian elimination process?",Pivot elements
+Under what specific numerical condition can basic Gaussian elimination be performed without any row interchanges?,It can be performed if and only if all the pivot elements are non-zero.
+"In Gaussian elimination, what is the 'backward substitution' phase used for?",Solving the resulting upper triangular system for the unknown variables starting from $x_n$ to $x_1$.
+"In the $k$-th step of Gaussian elimination, what is the formula for the multiplier $l_{ik}$ used to eliminate $a_{ik}$?",$l_{ik} = \frac{a_{ik}^{(k-1)}}{a_{kk}^{(k-1)}}$
+What is the leading term of the time complexity for Gaussian elimination of an $n \times n$ system?,$\frac{n^3}{3}$
+"According to the total operation count, how many multiplications and divisions are required for Gaussian elimination including backward substitution?",$\frac{n^3}{3} + n^2 - \frac{n}{3}$
+"According to the total operation count, how many additions and subtractions are required for Gaussian elimination including backward substitution?",$\frac{n^3}{3} + \frac{n^2}{2} - \frac{5n}{6}$
+Why does dividing by a pivot element close to zero cause issues in floating-point arithmetic?,"It can lead to a significant increase in rounding errors, making the numerical solution unreliable."
+What is the strategy for 'partial pivoting' (also known as maximal column pivoting)?,"Before step $k$, find the element with the largest magnitude in the $k$-th column at or below the diagonal and swap its row with the $k$-th row."
+Which index is selected as the pivot row $l$ in partial pivoting for step $k$?,"The index $l$ such that $|a_{lk}| = \max\{|a_{ik}| : i = k, \ldots, n\}$."
+How does 'complete pivoting' differ from 'partial pivoting'?,It searches for the largest magnitude element in the entire remaining sub-matrix rather than just the current column.
+What is a major disadvantage of complete pivoting compared to partial pivoting?,"It requires more comparisons to find the pivot element, which slows down the algorithm."
+"When performing complete pivoting, what must be tracked in addition to row interchanges?","Column interchanges, which represent changes in the order of the variables $x_1, \ldots, x_n$."
+Theorem 3.26 states that a linear system can be solved by Gaussian elimination with partial pivoting if and only if \_\_\_\_\_.,$\det(\mathbf{A}) \neq 0$ (the matrix is invertible).
+"In matrix notation, how are row changes in Gaussian elimination represented using a permutation matrix $\mathbf{P}$?",The system is transformed from $\mathbf{A}\mathbf{x} = \mathbf{b}$ to $\mathbf{P}\mathbf{A}\mathbf{x} = \mathbf{P}\mathbf{b}$.
+What is the primary motivation for using 'scaled partial pivoting'?,To reduce rounding errors when the magnitudes of coefficients in different rows vary significantly.
+"In scaled partial pivoting, how is the scale factor $s_i$ for row $i$ typically defined?",$s_i = \max\{|a_{ij}| : 1 \leq j \leq n\}$
+"In 'partial pivoting with implicit scaling', why are the rows not actually multiplied by the scaling factors?",To avoid introducing additional rounding errors through unnecessary division operations.
+What is the selection criterion for the pivot row $l$ in scaled partial pivoting?,Select $l$ such that $\frac{|a_{lk}|}{s_l} = \max\limits_{k \leq i \leq n} \frac{|a_{ik}|}{s_i}$.
+"A square matrix $\mathbf{A}$ is 'diagonally dominant' if, for every row $i$, $|a_{ii}|$ is greater than \_\_\_\_\_.",The sum of the magnitudes of the other elements in that row: $\sum_{j \neq i} |a_{ij}|$.
+What does Theorem 3.32 conclude about Gaussian elimination on a diagonally dominant matrix?,It can be performed without pivoting and is stable with respect to rounding errors.
+How does diagonal dominance relate to matrix invertibility?,Any diagonally dominant matrix is guaranteed to be invertible.
+Concept: Symmetric Positive Definite (SPD) Matrix,Definition: A symmetric matrix $\mathbf{A}$ where $\mathbf{x}^T\mathbf{A}\mathbf{x} > 0$ for all $\mathbf{x} \neq \mathbf{0}$.
+What is the 'principal minor' condition for a symmetric matrix to be positive definite?,All the upper-left principal minors must have a positive determinant.
+"If a matrix is symmetric positive definite, what can be said about its pivot elements during Gaussian elimination without pivoting?",All pivot elements are guaranteed to be positive.
+What is the effect of interchanging rows on the determinant of a matrix?,Each row interchange multiplies the determinant by $-1$.
+"In an optimized implementation of Gaussian elimination, what happens to the elements under the main diagonal after they are eliminated?",They are typically overwritten by the multipliers $l_{ik}$ or left as meaningless values to save memory.
+Term: Pivot Row,Definition: The row containing the pivot element used to eliminate variables in the rows below it during Gaussian elimination.
+"In the provided example with 4-digit arithmetic, what was the relative error for $x_1$ when dividing by the small pivot $0.0002$?",$300\%$
+What is the first step in the 'implicit scaling' algorithm before starting elimination?,Compute the scale factor $s_i$ for each row $i$ as the maximum absolute value in that row.
+"True or False: If a system has a unique solution, standard Gaussian elimination without pivoting will always find it.",False; it can fail if a pivot element becomes zero during the process.
+"In programming Gaussian elimination, what is a more efficient alternative to physically interchanging large rows in memory?",Using an index array to keep track of the row order (indirect addressing).
+How does partial pivoting help reduce rounding errors?,"By ensuring the divisor (pivot) is as large as possible, which minimizes the growth of multipliers and rounding errors."
+What property of Symmetric Positive Definite matrices ensures numerical stability without pivoting?,The pivots are always positive and the algorithm is stable with respect to rounding errors for these matrices.
+"In Gaussian elimination, the multiplier $l_{ik}$ is stored to potentially perform what future matrix decomposition?","$LU$ decomposition (though not explicitly detailed in the source, $l_{ik}$ are the components of $L$)."
+"If the algorithm for Gaussian elimination encounters a column where all elements $a_{ik}$ for $i \geq k$ are zero, what does this imply about the matrix $\mathbf{A}$?","The matrix is singular, and $\det(\mathbf{A}) = 0$."
+"In partial pivoting, what happens if multiple rows have the same maximum absolute value in the current column?",The smallest row index $l$ is typically chosen.
+"In the backward substitution formula $x_i = (a_{i,n+1} - \sum_{j=i+1}^{n} a_{ij}x_j)/a_{ii}$, what must be non-zero for the formula to be valid?",The pivot element $a_{ii}$.
+"Why is scaling using powers of the number system base (e.g., $\beta^{r_i}$) preferred in some implementations?",Division by base powers does not introduce rounding errors in floating-point representations.
+What is the effect of scaling a row on the solution $\mathbf{x}$ of the system $\mathbf{A}\mathbf{x} = \mathbf{b}$?,The solution remains identical; only the numerical selection of pivots is affected.
+The proof of Theorem 3.32 uses the \_\_\_\_\_ inequality to show that diagonal dominance is preserved in subsequent steps of elimination.,Triangle Inequality
+"In the complexity analysis, which phase of Gaussian elimination is more expensive: Elimination or Backward Substitution?",Elimination ($O(n^3)$ versus $O(n^2)$ for backward substitution).
+What is the result of applying Gaussian elimination to a symmetric positive definite matrix without pivoting?,The matrix is successfully reduced to upper triangular form with all positive diagonal entries.
+"If $\det(\mathbf{A}) \neq 0$, what does Theorem 3.28 guarantee regarding permutation matrices?",There exists a permutation matrix $\mathbf{P}$ such that $\mathbf{P}\mathbf{A}\mathbf{x} = \mathbf{P}\mathbf{b}$ can be solved without row changes.
+What happens if Gaussian elimination with partial pivoting is attempted on a singular matrix?,"The process will eventually fail because at some step $k$, all elements in the column $k$ from the $k$-th row down will be zero."
+"In the 2D example $0.0002x_1 - 30.5x_2 = -60.99$ and $5.060x_1 - 1.05x_2 = 250.9$, why was the second variable $x_2$ less affected by the error than $x_1$?",The error was introduced while calculating $x_1$ during back-substitution because it depended on the magnified rounding error from the elimination step.
+"Cloze: In Gaussian elimination, the variable $x_k$ is eliminated from rows $i = \dots$ in the $k$-th step.","$k+1, \ldots, n$"
+What is the value of the multiplier $l_{i1}$ in terms of matrix entries?,$l_{i1} = \frac{a_{i1}}{a_{11}}$
+Concept: Time Complexity,Definition: The measure of the number of operations required by an algorithm as a function of the input size $n$.
+What is the relationship between the determinant of a matrix and the pivot elements in Gaussian elimination without row swaps?,The determinant is equal to the product of the pivot elements: $\det(\mathbf{A}) = a_{11} a_{22}^{(1)} \cdots a_{nn}^{(n-1)}$.
+What is the specific purpose of the $l$ and $m$ indices in complete pivoting?,Index $l$ represents the row and $m$ represents the column of the largest available element to be moved to the pivot position.
+True or False: Gaussian elimination with partial pivoting always yields the exact solution in floating-point arithmetic.,False; it reduces rounding error but does not eliminate it entirely.
+Which matrix type is explicitly mentioned as being stable under Gaussian elimination without pivoting?,Diagonally dominant matrices (and symmetric positive definite matrices).

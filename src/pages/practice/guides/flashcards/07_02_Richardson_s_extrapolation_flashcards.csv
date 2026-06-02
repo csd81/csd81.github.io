@@ -1,0 +1,57 @@
+"In the context of Richardson's extrapolation, what does the symbol $M$ represent?",The exact value of a quantity being approximated.
+What does $K(h)$ represent in the equation $M = K(h) + \text{error}$?,The numerical approximation of $M$ using step size $h$.
+What is the standard assumption regarding the form of the truncation error in Richardson's extrapolation?,The error can be expanded in an even-order Taylor polynomial or power series in $h$.
+"If the truncation error is $a_2 h^2 + a_4 h^4 + \dots$, what is the order of accuracy of $K(h)$?",Second-order.
+How is the discretization parameter $h$ typically modified to perform the first step of Richardson's extrapolation?,It is halved to $h/2$.
+Why is $K(h/2)$ calculated in addition to $K(h)$ in Richardson's extrapolation?,To combine the two results and eliminate the leading error term.
+What factor is $K(h/2)$ multiplied by when eliminating the $h^2$ error term in a second-order approximation?,4
+Formula: The first Richardson extrapolation $K^{(1)}(h)$ for a second-order method.,$K^{(1)}(h) = \frac{4K(h/2) - K(h)}{3}$
+What is the order of accuracy of the extrapolated formula $K^{(1)}(h)$?,Fourth-order.
+"In the error series for $K^{(1)}(h)$, which power of $h$ is the leading term?",$h^4$
+"To cancel the $h^4$ error term in $K^{(1)}(h)$, what factor must be applied to $K^{(1)}(h/2)$?",16
+Formula: The second Richardson extrapolation $K^{(2)}(h)$ derived from $K^{(1)}$.,$K^{(2)}(h) = \frac{16K^{(1)}(h/2) - K^{(1)}(h)}{15}$
+What is the order of accuracy of the extrapolated formula $K^{(2)}(h)$?,Sixth-order.
+The general recursive formula for Richardson's extrapolation is $K^{(i+1)}(h) = K^{(i)}(h/2) + \frac{K^{(i)}(h/2) - K^{(i)}(h)}{\dots}$.,$4^{i+1} - 1$
+"In the recursive definition of Richardson's extrapolation, what is the value of the base case $K^{(0)}(h)$?",$K(h)$
+Term: Richardson's extrapolation.,Definition: A procedure used to generate higher-order numerical approximation formulas from lower-order ones by eliminating leading error terms.
+Does the central difference formula satisfy the error form requirement for standard Richardson's extrapolation?,"Yes, because its Taylor expansion contains only even powers of $h$."
+What is the leading error term for the central difference formula $\frac{f(x_0 + h) - f(x_0 - h)}{2h}$?,$- \frac{f'''(x_0)}{3!}h^2$
+"In the Taylor expansion used for central differences, which powers of $h$ cancel out when subtracting $f(x_0 - h)$ from $f(x_0 + h)$?","The even powers ($h^0, h^2, h^4, \dots$)."
+"When applying Richardson's extrapolation to the central difference, the resulting $K^{(1)}(h)$ formula achieves \_\_\_\_\_ order error.",fourth
+The 4th-order derivative approximation $K^{(1)}(h)$ equals $\frac{f(x_0 - h) - 8f(x_0 - h/2) + 8f(x_0 + h/2) - f(x_0 + h)}{\dots}$.,$6h$
+"If the error expansion of $K(h)$ contains ALL powers of $h$ ($h^1, h^2, h^3, \dots$), what is the denominator in the first extrapolation step?",1
+"In the general case where the error is $a_1 h^{\alpha_1} + a_2 h^{\alpha_2}$, how is $K^{(1)}(h)$ constructed using $h$ and $h/2$?",$K^{(1)}(h) = \frac{2^{\alpha_1}K(h/2) - K(h)}{2^{\alpha_1} - 1}$
+True or False: Richardson's extrapolation can only be used if the error consists of even powers of $h$.,False; it can be adapted for any power series error form.
+What determines the denominator in the formula $K^{(1)} = \frac{4K(h/2) - K(h)}{3}$?,The ratio of the leading error terms for $h$ versus $h/2$ (specifically $2^2 - 1 = 3$).
+"Starting from a 1st-order difference formula, what order approximation is produced by one step of Richardson's extrapolation?",Second-order.
+"According to Example 7.6, the 4th-order Richardson-extrapolated central difference is equivalent to which formula?",Formula (7.11).
+What is the purpose of multiplying the $h/2$ equation by 4 in the derivation of $K^{(1)}$?,To match the coefficient of the $a_2 h^2$ term in the original $h$ equation so it cancels out.
+"If $f \in C^{2m+3}$, what is the order of the remainder term $b(h)$ in the central difference derivative expansion?",$h^{2m+2}$
+"In the expression for $a_{2i}^{(1)}$, how is it related to the original coefficient $a_{2i}$?",$a_{2i}^{(1)} = \frac{1 - 4^{i-1}}{4^{i-1} \cdot 3}a_{2i}$
+What is the primary benefit of using Richardson's extrapolation instead of simply decreasing $h$ to a very small value?,"It achieves high accuracy with larger step sizes, potentially avoiding round-off errors and reducing computational cost."
+"In the formula $K^{(2)} = \frac{16K^{(1)}(h/2) - K^{(1)}(h)}{15}$, where does the number 15 come from?",It is $4^2 - 1$ (the ratio of $h^4$ to $(h/2)^4$ minus 1).
+Which specific differentiation formula is used as the starting point for the Richardson examples in the text?,The central difference formula.
+What is the result of applying Richardson's extrapolation to a sequence of approximations that does not have a structured error expansion?,The method may fail to improve accuracy or could even decrease it.
+Concept: Truncation error.,Definition: The error made by truncating an infinite process (like a Taylor series) to a finite one.
+What is the value of $m$ in the term $a_{2m} h^{2m}$ if we want to reach a tenth-order approximation?,5
+"Cloze: To derive a third-order approximation from a first-order one, the leading error term must be proportional to \_\_\_\_\_.",$h^1$ (or $h^2$ for the second step)
+How does the complexity of the approximation formula $K^{(i)}(h)$ change as $i$ increases?,"It involves more function evaluations at different step sizes ($h, h/2, h/4, \dots$)."
+Formula: The general error bound for $b(h)$ in the second-order case.,$|b(h)| \le B h^{2m+2}$
+"If $M$ is being approximated, $K(h)$ is the approximation, and $E(h)$ is the error, what is the basic identity used?",$M = K(h) + E(h)$
+Why is the central difference formula referred to as 'másodrendű' in the Hungarian text?,Because its error is proportional to $h^2$ (second-order).
+"In the exercise to derive a 6th-order formula for $f'(0)$ where $f(x) = e^{x} \sin x$, what is the starting step size $h$?",0.25
+The general case formula uses integers $1 \le \alpha_1 < \alpha_2 < \dots < \alpha_m$. What does $\alpha_i$ represent?,The powers of $h$ present in the error expansion.
+"If the error expansion is $M = K(h) + a_1 h + a_2 h^2 + \dots$, the first extrapolated value $K^{(1)}(h)$ is \_\_\_\_\_.",$2K(h/2) - K(h)$
+"In the central difference expansion, what is the coefficient of the $h^4$ term ($a_4$)?",$- \frac{f^{(5)}(x_0)}{5!}$
+What happens to the coefficients $a_{2i}$ of the remaining error terms after one step of Richardson's extrapolation?,They are transformed into new coefficients $a_{2i}^{(1)}$.
+The Richardson procedure can be viewed as a linear combination of \_\_\_\_\_ at different scales.,approximations
+Formula: The relation for $M$ after the second-order term is cancelled.,$M = \frac{4K(h/2) - K(h)}{3} + O(h^4)$
+Is Richardson's extrapolation limited to derivatives?,"No, it can be applied to integrals (Romberg integration) or any numerical limit process with a known error structure."
+What is the constant $B$ in the error bound $|b(h)| \le B h^{2m+2}$?,A positive constant independent of $h$ that bounds the higher-order terms.
+"In the context of Exercise 4, what is the order of the 'one-sided difference' formula?",First-order.
+"If $K^{(0)}(h) = K(h)$, $K^{(1)}(h)$ requires $K(h/2)$, how many $h$ values does $K^{(2)}(h)$ require?","Three: $h, h/2, h/4$."
+Cloze: The procedure of Richardson's extrapolation generates a \_\_\_\_\_ of approximations of increasing order.,sequence
+What is the denominator of the third extrapolation step $K^{(3)}$ if the error only has even powers?,63 ($4^3 - 1$)
+How does halving the step size twice ($h \to h/2 \to h/4$) assist in reaching a 6th-order approximation?,It provides enough data points to eliminate both the $h^2$ and $h^4$ error terms.
+"In the derivation of $K^{(1)}$, why is $M$ multiplied by 4 on the left side of the intermediate step?",Because the entire equation for $h/2$ was multiplied by 4.
+What is the leading error term of $K^{(2)}(h)$?,$a_6^{(2)} h^6$

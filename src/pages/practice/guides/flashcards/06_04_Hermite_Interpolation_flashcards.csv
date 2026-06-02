@@ -1,0 +1,60 @@
+What secondary values are interpolated in the Hermite interpolation problem alongside the function values $y_i = f(x_i)$?,The derivative values $y_i' = f'(x_i)$.
+"If there are $n + 1$ distinct mesh points, what is the maximum degree of the unique Hermite interpolating polynomial $H_{2n+1}$?",The maximum degree is $2n + 1$.
+How many total equations are specified by the interpolation conditions for $n + 1$ nodes in a standard Hermite problem?,There are $2(n + 1)$ equations.
+"Geometrically, what does $g'(x_i) = y_i'$ ensure about the graph of the Hermite polynomial at node $x_i$?",It ensures the tangent line at $x_i$ has a slope equal to $y_i'$.
+"In the uniqueness proof for Hermite interpolation, what is the multiplicity of each root $x_i$ for the difference polynomial $P = H_{2n+1} - \tilde{H}_{2n+1}$?",Each node $x_i$ is a double root of $P$.
+Why must the difference polynomial $P$ be identically zero if it has $2n + 2$ roots and a degree of at most $2n + 1$?,A non-zero polynomial cannot have more roots than its degree according to the Fundamental Theorem of Algebra.
+"What is the recursive definition of the divided difference $f[x_0, x_0, x_1]$?","$\frac{f[x_0, x_1] - f[x_0, x_0]}{x_1 - x_0}$."
+"What value is substituted for the divided difference $f[x_i, x_i]$ in the construction of the Hermite polynomial?",The derivative value $f'(x_i)$.
+What is the first term of the Hermite interpolating polynomial $H_{2n+1}(x)$ in divided difference form?,$f[x_0]$.
+"What is the coefficient of the second term, $(x - x_0)$, in the Hermite interpolating polynomial?","$f[x_0, x_0]$."
+"What is the coefficient of the third term, $(x - x_0)^2$, in the Hermite interpolating polynomial?","$f[x_0, x_0, x_1]$."
+"In the Hermite polynomial expansion, what is the basis function associated with the coefficient $f[x_0, x_0, x_1, x_1]$?",$(x - x_0)^2(x - x_1)$.
+State the truncation error formula $f(x) - H_{2n+1}(x)$ using a higher-order divided difference.,"$f[x_0, x_0, \dots, x_n, x_n, x](x - x_0)^2 \dots (x - x_n)^2$."
+"According to Theorem 6.19, what is the error term for Hermite interpolation if $f \in C^{2n+2}$?",$\frac{f^{(2n+2)}(\xi)}{(2n+2)!}(x - x_0)^2 \dots (x - x_n)^2$.
+"In the derivative-based error formula for $H_{2n+1}(x)$, what interval must the value $\xi$ belong to?","$\xi \in \langle x_0, x_1, \dots, x_n, x \rangle$."
+Which theorem is used to prove the existence of $\xi$ in the Hermite interpolation error bound?,The generalized Rolle's Theorem.
+What mathematical property of divided differences allows the Hermite polynomial to be viewed as a limit of Lagrange polynomials?,The continuity of the divided difference function.
+"According to Corollary 6.20, the divided difference $f[x_0, x_0, \dots, x_n, x_n, x]$ is equal to which derivative expression?",$\frac{f^{(2n+2)}(\xi)}{(2n+2)!}$.
+"When setting up the divided difference table for Hermite interpolation, how many times must each node $x_i$ be listed in the first column?",Each node must be listed twice.
+"In the Hermite divided difference table, what represents the first-order divided difference for two identical nodes $x_i$?",The given derivative $f'(x_i)$.
+"In the Hermite divided difference table, what represents the first-order divided difference for two distinct nodes $x_i$ and $x_{i+1}$?",$\frac{f(x_{i+1}) - f(x_i)}{x_{i+1} - x_i}$.
+Which values in the completed divided difference table serve as the coefficients for the Hermite polynomial?,The values along the top diagonal of the table.
+"The function $g(z)$ used in the proof of Theorem 6.19 is designed such that $x_0, \dots, x_n$ are \_\_\_\_\_ roots.",Double roots.
+"In Example 6.21, what was the value of the leading coefficient $f[x_0, x_0, x_1, x_1, x_2, x_2]$?",Zero.
+"If a Hermite polynomial $H_5$ corresponds to 3 mesh points, what is its expected maximum degree?",Degree 5.
+"In the Hermite polynomial formula, the factor $(x - x_i)$ is squared once the point $x_i$ has appeared \_\_\_\_\_ times in the divided difference sequence.",Two times.
+Does interchanging the order of nodes $x_i$ change the resulting Hermite interpolating polynomial?,"No, the interpolating polynomial remains the same due to its uniqueness."
+The general Hermite problem can interpolate the first $k_i$ derivatives at node $x_i$; how many conditions does this contribute for that specific node?,$k_i + 1$ conditions.
+"If given $H(x_0)=f(x_0)$, $H'(x_0)=f'(x_0)$, $H''(x_0)=f''(x_0)$, and $H(x_1)=f(x_1)$, what is the minimal degree of the interpolating polynomial?",The minimal degree is 3.
+"What is the coefficient of $(x - x_0)^3$ in a polynomial interpolating $f(x_0)$, $f'(x_0)$, $f''(x_0)$, and $f(x_1)$?","$f[x_0, x_0, x_0, x_1]$."
+Concept: $H_{2n+1}(x)$,Definition: The unique polynomial of degree at most $2n+1$ that interpolates a function and its first derivatives at $n+1$ points.
+"What does the term $\langle x_0, x_1, \dots, x_n, x \rangle$ denote in mathematical error analysis notation?","The smallest interval containing the points $x_0, x_1, \dots, x_n$ and $x$."
+Term: Generalized Rolle's Theorem,"Definition: A theorem stating that if a function has $n$ roots in an interval, its $(n-1)$-th derivative has at least one root in that interval."
+"In the Newton form of the Hermite polynomial, what is the term following $f[x_0, x_0, x_1](x - x_0)^2$?","$f[x_0, x_0, x_1, x_1](x - x_0)^2(x - x_1)$."
+"Cloze: The divided difference $f[x_0, x_0]$ is equivalent to the \_\_\_\_\_ of the function $f$ at $x_0$.",First derivative ($f'$).
+"To calculate $f[x_0, x_0, x_0]$, one would need the value of the \_\_\_\_\_ derivative at $x_0$.",Second derivative ($f''$).
+"In the divided difference table, the column index of the framed coefficients is equal to the \_\_\_\_\_ of the divided difference.",Order.
+Why is the degree of the error term in Hermite interpolation $2n + 2$ rather than $n + 1$?,Because the interpolation conditions provide two pieces of information at each of the $n+1$ nodes.
+"Process: How is the divided difference $f[x_0, x_1, x_1]$ computed?","By taking the difference between $f[x_1, x_1]$ and $f[x_0, x_1]$ and dividing by $x_1 - x_0$."
+What is the total number of terms in the summation formula for $H_{2n+1}(x)$?,$2n + 2$ terms.
+True or False: The Hermite interpolating polynomial is always of degree exactly $2n + 1$.,"False, it is of degree at most $2n + 1$."
+The error bound for Hermite interpolation is generally \_\_\_\_\_ than the error bound for Lagrange interpolation using the same number of points.,Smaller.
+Which specific divided difference value is required to calculate the truncation error at a point $x$?,"$f[x_0, x_0, \dots, x_n, x_n, x]$."
+"If $f(x)$ is a polynomial of degree $2n+1$, what is the resulting truncation error $f(x) - H_{2n+1}(x)$?",The error is zero.
+"In a divided difference table for Hermite interpolation with points $x_0$ and $x_1$, how many rows will the table have?",4 rows.
+"In the sequence of basis polynomials for $H_{2n+1}$, which factor is added to the term following $(x-x_0)^2(x-x_1)^2$?",$(x-x_2)$.
+What is the coefficient of $(x-x_0)^2(x-x_1)^2$ in the Hermite polynomial?,"$f[x_0, x_0, x_1, x_1, x_2]$."
+"The divided difference $f[x_0, x_0, x_1]$ is often called a \_\_\_\_\_ order divided difference.",Second.
+"In the limit as nodes $x_i'$ approach $x_i$, the $L_{2n+1}$ error formula term $(x-x_i)(x-x_i')$ becomes \_\_\_\_\_.",$(x-x_i)^2$.
+"If $f(x) = x^3$, and we use Hermite interpolation at $x_0 = 0$ and $x_1 = 1$, what is the degree of $H_3(x)$?",Degree 3.
+How does the Hermite divided difference table accommodate a node with a given second derivative?,"The node and its function value are listed three times, and the second derivative is used to calculate the second-order divided difference."
+The Fundamental Theorem of Algebra proves that a polynomial of degree $m$ can have at most \_\_\_\_\_ distinct roots unless it is the zero polynomial.,$m$ roots.
+"What is the value of the first-order divided difference $f[x_1, x_1]$ if $f'(x) = 2x + 1$ and $x_1 = 3$?",7.
+"In the Hermite expansion, the term $f[x_0, x_0, \dots, x_k](x - x_0)^2 \dots (x - x_{k-1})^2$ is zero if $f$ is a polynomial of degree less than \_\_\_\_\_.",$2k$.
+"If we have nodes $x_0, x_1, x_2$, what is the final term of the Hermite polynomial $H_5(x)$?","$f[x_0, x_0, x_1, x_1, x_2, x_2](x-x_0)^2(x-x_1)^2(x-x_2)$."
+"Cloze: In the construction of $H_{2n+1}$, we list mesh points twice to simulate nodes having a multiplicity of \_\_\_\_\_.",Two.
+"What is the relationship between the divided difference $f[x_0, x_1, \dots, x_k]$ and the order of nodes?","Divided differences are symmetric, meaning the value is independent of the order of the nodes."
+"When calculating the error of Hermite interpolation, if $f(x)$ is a polynomial of degree $2n+2$, the error term $\frac{f^{(2n+2)}(\xi)}{(2n+2)!}$ becomes a \_\_\_\_\_.",Constant.
+"In Example 6.21, the Hermite polynomial $H_5(x)$ ended with the term $2(x+1)^2(x-1)^2$. What does the coefficient 2 represent?","The divided difference $f[-1, -1, 1, 1, 2]$."
+"If a function $f$ is only $C^1$, can we validly apply the derivative-based error formula for Hermite interpolation?","No, the formula requires $f$ to be at least $C^{2n+2}$."

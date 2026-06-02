@@ -1,0 +1,60 @@
+What is the definition of an eigenvalue $\lambda$ for a square matrix $\mathbf{A} \in \mathbb{R}^{n \times n}$?,A complex number $\lambda$ such that $\mathbf{A}\mathbf{x} = \lambda\mathbf{x}$ has a non-trivial solution $\mathbf{x} \neq \mathbf{0}$.
+What is an eigenvector of a matrix $\mathbf{A}$ corresponding to the eigenvalue $\lambda$?,A non-trivial solution vector $\mathbf{x}$ satisfying the equation $(\mathbf{A} - \lambda\mathbf{I})\mathbf{x} = \mathbf{0}$.
+The characteristic equation of an $n \times n$ matrix $\mathbf{A}$ used to find eigenvalues is written as \_\_\_\_\_.,$\det(\mathbf{A} - \lambda\mathbf{I}) = 0$
+How many eigenvalues (counting multiplicities) does an $n \times n$ matrix $\mathbf{A}$ possess?,It has exactly $n$ eigenvalues.
+Term: Spectral Radius ($\rho(\mathbf{A})$),Definition: The maximum absolute value of the eigenvalues of the matrix $\mathbf{A}$.
+What is the mathematical relationship between the spectral radius $\rho(\mathbf{A})$ and any matrix norm $\|\cdot\|$?,$\rho(\mathbf{A}) \leq \|\mathbf{A}\|$
+"In the proof of $\rho(\mathbf{A}) \leq \|\mathbf{A}\|$, what inequality involving the eigenvector $\mathbf{v}$ and norm $\|\cdot\|$ is used?",$|\lambda| \|\mathbf{v}\| = \|\mathbf{A}\mathbf{v}\| \leq \|\mathbf{A}\| \|\mathbf{v}\|$
+What is the standard form of a linear $n$-dimensional fixed-point iteration?,$\mathbf{x}^{(k+1)} = \mathbf{T}\mathbf{x}^{(k)} + \mathbf{c}$
+"In a linear fixed-point iteration where $\mathbf{c} = \mathbf{0}$, what is the general expression for the $k$-th term $\mathbf{x}^{(k)}$?",$\mathbf{x}^{(k)} = \mathbf{T}^k \mathbf{x}^{(0)}$
+"For a real or complex scalar $a$, under what condition does $\lim_{k \to \infty} a^k = 0$?",$|a| < 1$
+Theorem 4.1 states that $\lim_{k \to \infty} \mathbf{T}^k = \mathbf{0}$ is equivalent to what condition regarding the spectral radius of $\mathbf{T}$?,$\rho(\mathbf{T}) < 1$
+"According to Theorem 4.1, $\lim_{k \to \infty} \mathbf{T}^k \mathbf{x} = \mathbf{0}$ for all $\mathbf{x} \in \mathbb{R}^n$ is equivalent to $\lim_{k \to \infty} \|\mathbf{T}^k\| = \_\_\_\_\_$.",$0$
+Which property of matrix and vector norms proves that (i) $\lim_{k \to \infty} \mathbf{T}^k = \mathbf{0}$ implies (ii) $\lim_{k \to \infty} \mathbf{T}^k \mathbf{x} = \mathbf{0}$?,$\|\mathbf{T}^k \mathbf{x}\| \leq \|\mathbf{T}^k\| \|\mathbf{x}\|$
+"In the proof that $\mathbf{T}^k \mathbf{x} \to \mathbf{0}$ implies $\rho(\mathbf{T}) < 1$, what identity is used for an eigenvector $\mathbf{v}$?",$\mathbf{T}^k \mathbf{v} = \lambda^k \mathbf{v}$
+"If $\|\mathbf{T}\| < 1$ in some matrix norm, what happens to $\|\mathbf{T}^k\|$ as $k \to \infty$?",$\parallel\mathbf{T}^k\parallel \to 0$
+What is the matrix series $\mathbf{I} + \mathbf{A} + \mathbf{A}^2 + \mathbf{A}^3 + \dots$ commonly called?,Geometric series or Neumann series.
+Under what condition on the spectral radius $\rho(\mathbf{A})$ is the geometric series $\sum_{k=0}^{\infty} \mathbf{A}^k$ convergent?,$\rho(\mathbf{A}) < 1$
+"If the geometric series $\sum_{k=0}^{\infty} \mathbf{A}^k$ converges, what is the value of the limit?",$(\mathbf{I} - \mathbf{A})^{-1}$
+"If $\rho(\mathbf{A}) < 1$, why must the matrix $\mathbf{I} - \mathbf{A}$ be invertible?","If it were not, $1$ would be an eigenvalue of $\mathbf{A}$, contradicting $\rho(\mathbf{A}) < 1$."
+Complete the identity: $(\mathbf{I} - \mathbf{A})(\mathbf{I} + \mathbf{A} + \mathbf{A}^2 + \dots + \mathbf{A}^m) = \_\_\_\_\_$.,$\mathbf{I} - \mathbf{A}^{m+1}$
+"If $\|\mathbf{A}\| < 1$ in some matrix norm, what is the upper bound for the norm $\|(\mathbf{I} - \mathbf{A})^{-1}\|$?",$\frac{1}{1 - \|\mathbf{A}\|}$
+"Theorem 4.5: If $\mathbf{A}$ is nonsingular and $\|\mathbf{A} - \mathbf{B}\| < \frac{1}{\|\mathbf{A}^{-1}\|}$, what can be said about matrix $\mathbf{B}$?",Matrix $\mathbf{B}$ is also nonsingular.
+Formula: Bound for $\|\mathbf{B}^{-1}\|$ given $\|\mathbf{A} - \mathbf{B}\| < 1/\|\mathbf{A}^{-1}\|$ and nonsingular $\mathbf{A}$.,$\|\mathbf{B}^{-1}\| \leq \frac{\|\mathbf{A}^{-1}\|}{1 - \|\mathbf{A}^{-1}\| \|\mathbf{A} - \mathbf{B}\|}$
+Formula: Bound for $\|\mathbf{A}^{-1} - \mathbf{B}^{-1}\|$ in Theorem 4.5.,$\|\mathbf{A}^{-1} - \mathbf{B}^{-1}\| \leq \frac{\|\mathbf{A}^{-1}\|^2 \|\mathbf{A} - \mathbf{B}\|}{1 - \|\mathbf{A}^{-1}\| \|\mathbf{A} - \mathbf{B}\|}$
+"In the proof of Theorem 4.5, $\mathbf{B}$ is decomposed as $\mathbf{A}(\mathbf{I} - \_\_\_\_\_)$. ",$\mathbf{A}^{-1}(\mathbf{A} - \mathbf{B})$
+What is the general formula for the $k$-th term $\mathbf{x}^{(k)}$ of a linear fixed-point iteration with $\mathbf{c} \neq \mathbf{0}$?,$\mathbf{x}^{(k)} = \mathbf{T}^k \mathbf{x}^{(0)} + (\mathbf{T}^{k-1} + \dots + \mathbf{I})\mathbf{c}$
+Theorem 4.6: The iteration $\mathbf{x}^{(k+1)} = \mathbf{T}\mathbf{x}^{(k)} + \mathbf{c}$ converges to a unique solution for all $\mathbf{x}^{(0)}$ if and only if \_\_\_\_\_.,$\rho(\mathbf{T}) < 1$
+"If $\rho(\mathbf{T}) < 1$, the unique solution $\mathbf{x}$ to $\mathbf{x} = \mathbf{T}\mathbf{x} + \mathbf{c}$ is explicitly given by \_\_\_\_\_.",$\mathbf{x} = (\mathbf{I} - \mathbf{T})^{-1}\mathbf{c}$
+How is the error $\mathbf{x} - \mathbf{x}^{(k+1)}$ related to the previous error $\mathbf{x} - \mathbf{x}^{(k)}$ in a linear iteration?,$\mathbf{x} - \mathbf{x}^{(k+1)} = \mathbf{T}(\mathbf{x} - \mathbf{x}^{(k)})$
+Formula: The error estimate for the $k$-th iterate given $\|\mathbf{T}\| < 1$.,$\|\mathbf{x} - \mathbf{x}^{(k)}\| \leq \|\mathbf{T}\|^k \|\mathbf{x} - \mathbf{x}^{(0)}\|$
+How does the magnitude of $\|\mathbf{T}\|$ affect the speed of convergence in fixed-point iteration?,"The smaller the $\|\mathbf{T}\|$, the faster the convergence."
+"According to the video transcript, linear fixed-point iterations converge for any initial value, a property called \_\_\_\_\_ convergence.",Global
+How does linear fixed-point iteration convergence criteria (if and only if $\rho(\mathbf{T}) < 1$) compare to nonlinear cases?,"It is a necessary and sufficient condition for global convergence, whereas nonlinear cases often only have sufficient conditions for local convergence."
+"In the rounding error model $\mathbf{y}^{(k+1)} = \mathbf{T}\mathbf{y}^{(k)} + \mathbf{c} + \mathbf{w}^{(k+1)}$, what does $\mathbf{w}^{(k+1)}$ represent?",The rounding error introduced in the $k$-th step of the computation.
+What does $\mathbf{w}^{(0)}$ represent in the fixed-point iteration rounding error analysis?,The rounding error occurring when storing the initial value $\mathbf{x}^{(0)}$.
+"Assuming $\|\mathbf{w}^{(k)}\| \leq \varepsilon$ and $\|\mathbf{T}\| < 1$, what is the upper bound for the total rounding error $\|\mathbf{y}^{(k+1)} - \mathbf{x}^{(k+1)}\|$?",$\frac{1}{1 - \|\mathbf{T}\|}\varepsilon$
+Does a smaller $\|\mathbf{T}\|$ increase or decrease the sensitivity of the iteration to rounding errors?,It decreases sensitivity (the computation is more stable).
+Concept: Stability of linear fixed-point iteration,Definition: The property that the difference between the theoretical sequence and the computed sequence remains bounded by a factor of the rounding error.
+What is the sum of the geometric series $\mathbf{I} + \mathbf{A} + \mathbf{A}^2 + \dots$ if $\mathbf{A}$ is a strictly upper triangular matrix?,"A finite sum of matrices, because $\mathbf{A}$ is nilpotent (powers eventually become zero)."
+"For a diagonal matrix $\mathbf{A} = \text{diag}(d_1, \dots, d_n)$, what is the spectral radius $\rho(\mathbf{A})$?",$\max_i |d_i|$
+"If $\mathbf{A} = \text{diag}(1/2, 1/3, 1/4, 1/5)$, what is the limit of the Neumann series $(\mathbf{I} - \mathbf{A})^{-1}$?","$\text{diag}(2, 3/2, 4/3, 5/4)$"
+What does Theorem 3.17 (referenced in source) guarantee about a matrix $\mathbf{T}$ and $\rho(\mathbf{T})$?,"For any $\varepsilon > 0$, there exists a matrix norm such that $\|\mathbf{T}\| \leq \rho(\mathbf{T}) + \varepsilon$."
+"True or False: If a matrix sequence $\mathbf{T}^k \to \mathbf{0}$ in one matrix norm, it must converge to $\mathbf{0}$ in all matrix norms.",True
+Why do the eigenvalues of a real matrix appear in conjugate pairs on the complex plane?,Because the characteristic equation is a polynomial with real coefficients.
+"On a complex plane plot, all eigenvalues of $\mathbf{A}$ are located within or on a circle centered at the origin with radius \_\_\_\_\_.",$\rho(\mathbf{A})$
+"In the identity $\mathbf{x} - \mathbf{x}^{(k+1)} = \mathbf{T}^{k+1}(\mathbf{x} - \mathbf{x}^{(0)})$, what does $\mathbf{x}$ represent?",The exact unique solution to the fixed-point equation.
+The proof of Theorem 4.3 uses a proof by \_\_\_\_\_ to show $\mathbf{I} - \mathbf{A}$ is invertible when $\rho(\mathbf{A}) < 1$.,Contradiction
+Term: Nilpotent Matrix,Definition: A square matrix $\mathbf{A}$ such that $\mathbf{A}^k = \mathbf{0}$ for some positive integer $k$.
+How is the identity matrix $\mathbf{I}$ defined in the context of eigenvectors?,As the $n \times n$ matrix such that $\mathbf{I}\mathbf{x} = \mathbf{x}$ for all $\mathbf{x}$.
+"If the matrix $\mathbf{B} = \begin{pmatrix} 1 & 2 \\ \alpha & 0 \end{pmatrix}$ results in $\mathbf{B}^k \to \mathbf{0}$, what must be true about its eigenvalues?",Both eigenvalues must have an absolute value strictly less than 1.
+"According to the video, if $\|\mathbf{T}\| < 1$, then $\rho(\mathbf{T})$ is \_\_\_\_\_.",Also less than 1.
+What property of matrix norms allows the interchange of the limit and the norm: $\| \lim \mathbf{A}_m \| = \lim \| \mathbf{A}_m \|$?,Continuity of the matrix norm.
+The assumption $\|\mathbf{A}^{-1}(\mathbf{A} - \mathbf{B})\| < 1$ is sufficient to ensure $(\mathbf{I} - \mathbf{A}^{-1}(\mathbf{A} - \mathbf{B}))$ is \_\_\_\_\_.,Invertible
+"When $\mathbf{c} \neq \mathbf{0}$, the fixed-point iteration is stable if the spectral radius of the iteration matrix $\mathbf{T}$ satisfies \_\_\_\_\_.",$\rho(\mathbf{T}) < 1$
+What happens to the error term $\|\mathbf{T}\|^{k+1} \|\mathbf{y}^{(0)} - \mathbf{x}^{(0)}\|$ as $k \to \infty$ if $\|\mathbf{T}\| < 1$?,It converges to zero.
+Term: Homogeneous Linear System,Definition: A system of linear equations of the form $\mathbf{A}\mathbf{x} = \mathbf{0}$.
+A homogeneous system $(\mathbf{A} - \lambda\mathbf{I})\mathbf{x} = \mathbf{0}$ has a non-trivial solution if and only if the matrix $(\mathbf{A} - \lambda\mathbf{I})$ is \_\_\_\_\_.,Singular (or has a determinant of zero).
+"If $\lambda$ is an eigenvalue, the distance of $\lambda$ from the origin in the complex plane is given by \_\_\_\_\_.",$|\lambda|$
+What is the limit of the finite sum $1 + \|\mathbf{T}\| + \dots + \|\mathbf{T}\|^k$ as $k \to \infty$ for $\|\mathbf{T}\| < 1$?,$\frac{1}{1 - \|\mathbf{T}\|}$
+The error estimate $\|\mathbf{x} - \mathbf{x}^{(k)}\| \leq \|\mathbf{T}\|^k \|\mathbf{x} - \mathbf{x}^{(0)}\|$ is derived by applying the \_\_\_\_\_ property to $\mathbf{T}^k(\mathbf{x} - \mathbf{x}^{(0)})$.,Submultiplicative (or matrix-vector norm compatibility).

@@ -1,0 +1,40 @@
+"In the definition of the definite integral, what is the 'norm' of a partition $a = x_0 < x_1 < \dots < x_n = b$?","The maximum length of the subintervals, defined as $\max\{x_i - x_{i-1} : i = 1, \dots, n\}$."
+Formula: Midpoint Rule (also known as the Rectangle Rule) for numerical integration,"$\int_a^b f(x) \, dx \approx \frac{b - a}{n} \sum_{i=1}^{n} f\left(\frac{x_{i-1} + x_i}{2}\right)$"
+What is the underlying approach of the Lagrange method for deriving numerical integration formulas?,Approximating the function $f$ with its Lagrange interpolating polynomial $L_n$ and then integrating $L_n$.
+"In numerical integration, what is a 'quadrature formula'?",A formula that approximates a definite integral as a weighted sum of function values: $\sum_{k=0}^{n} c_k f(x_k)$.
+How are the weights $c_k$ defined in a Newton-Cotes quadrature formula?,"$c_k = \int_a^b l_k(x) \, dx$, where $l_k(x)$ is the $k$-th Lagrange basis polynomial."
+What distinguishes a 'closed' Newton-Cotes formula from an 'open' one?,"Closed formulas include the endpoints $a$ and $b$ as mesh points, while open formulas only use points within the open interval $(a, b)$."
+What is the 'degree of precision' of a quadrature formula?,The highest integer $n$ such that the formula gives the exact integral for all polynomials of degree $\le n$.
+What is the minimum degree of precision for an $(n+1)$-point Newton-Cotes formula?,$n$
+For which values of $n$ do Newton-Cotes formulas provide an extra degree of precision (exact for polynomials of degree $n+1$)?,Even values of $n$.
+Formula: Elementary Trapezoidal Rule,"$\int_a^b f(x) \, dx \approx \frac{h}{2}(f(a) + f(b))$, where $h = b - a$."
+What is the error term for the elementary Trapezoidal rule?,"$-\frac{h^3}{12}f''(\xi)$ for some $\xi \in (a, b)$."
+What is the geometric interpretation of the Trapezoidal rule?,"The integral is approximated by the area of the trapezoid formed by the secant line connecting $(a, f(a))$ and $(b, f(b))$."
+Formula: Composite Trapezoidal Rule for $n$ subintervals of length $h$,$\frac{h}{2}\left(f(x_0) + 2\sum_{i=1}^{n-1} f(x_i) + f(x_n)\right)$
+What is the error term for the composite Trapezoidal rule?,"$-\frac{(b - a)h^2}{12}f''(\xi)$ for some $\xi \in (a, b)$."
+"If the step size $h$ is halved in the composite Trapezoidal rule, by what factor does the error approximately decrease?",One quarter (indicating quadratic error in $h$).
+"According to the Intermediate Value Theorem for integrals, what condition must $g(x)$ meet for $\int_a^b f(x)g(x) \, dx = f(\xi)\int_a^b g(x) \, dx$ to hold?","$g(x)$ must be integrable and not change sign on the interval $[a, b]$."
+"For the closed Newton-Cotes formula with $n=2$ (Simpson's rule), what is the relationship between $x_0, x_1, x_2$ and $h$?","$x_0 = a$, $x_1 = a + h$, $x_2 = b$, and $h = (b - a)/2$."
+Formula: Elementary Simpson's Rule,"$\int_{x_0}^{x_2} f(x) \, dx \approx \frac{h}{3}(f(x_0) + 4f(x_1) + f(x_2))$"
+What is the error term for the elementary Simpson's rule?,"$-\frac{h^5}{90}f^{(4)}(\eta)$ for some $\eta \in (x_0, x_2)$."
+Why is Simpson's rule exact for polynomials of degree 3 even though it is based on quadratic interpolation?,"Because for even $n$, Newton-Cotes formulas have a higher degree of precision ($n+1$)."
+What is the degree of precision of Simpson's rule?,$3$
+What is the requirement for the number of subintervals in the composite Simpson's rule?,The interval must be divided into an even number of equal parts ($2n$).
+Formula: Composite Simpson's Rule for $2n$ subintervals of length $h$,$\frac{h}{3}\left(f(x_0) + 4\sum_{i=1}^{n} f(x_{2i-1}) + 2\sum_{i=1}^{n-1} f(x_{2i}) + f(x_{2n})\right)$
+What is the error term for the composite Simpson's rule?,"$-\frac{(b - a)h^4}{180}f^{(4)}(\xi)$ for some $\xi \in (a, b)$."
+Formula: Simpson's $\frac{3}{8}$ Rule,"$\int_{x_0}^{x_3} f(x) \, dx \approx \frac{3h}{8}(f(x_0) + 3f(x_1) + 3f(x_2) + f(x_3))$"
+What is the degree of precision for the Simpson's $\frac{3}{8}$ rule?,"$3$ (since $n=3$ is odd, precision is $n$)."
+Formula: Closed Newton-Cotes formula for $n=4$,$\frac{2h}{45}(7f(x_0) + 32f(x_1) + 12f(x_2) + 32f(x_3) + 7f(x_4))$
+What is the error term for the $n=4$ closed Newton-Cotes formula?,$-\frac{8h^7}{945}f^{(6)}(\xi)$
+"Formula: Open Newton-Cotes formula for $n=0$ over interval $[x_{-1}, x_1]$ (Midpoint Rule)",$2hf(x_0) + \frac{h^3}{3}f''(\xi)$
+"Formula: Open Newton-Cotes formula for $n=1$ over interval $[x_{-1}, x_2]$ using points $x_0, x_1$",$\frac{3h}{2}(f(x_0) + f(x_1)) + \frac{3h^3}{4}f''(\xi)$
+"Formula: Open Newton-Cotes formula for $n=2$ over interval $[x_{-1}, x_3]$ using points $x_0, x_1, x_2$",$\frac{4h}{3}(2f(x_0) - f(x_1) + 2f(x_2)) + \frac{14h^5}{45}f^{(4)}(\xi)$
+"Formula: Open Newton-Cotes formula for $n=3$ over interval $[x_{-1}, x_4]$ using points $x_0, x_1, x_2, x_3$",$\frac{5h}{24}(11f(x_0) + f(x_1) + f(x_2) + 11f(x_3)) + \frac{95h^5}{144}f^{(4)}(\xi)$
+What two conditions must a quadrature formula meet to be considered stable according to Theorem 7.9?,The formula must be exact for constant functions and all coefficients $c_i$ must be positive.
+"If function value errors are bounded by $|y_i - f(x_i)| \le \varepsilon$, what is the stability bound for a stable quadrature formula?",$\varepsilon(b - a)$
+"What is the sum of the weights $\sum c_i$ in any quadrature formula that is exact for constant functions over $[a, b]$?",$b - a$
+Why are most standard quadrature formulas (like Trapezoidal or Simpson's) considered numerically stable?,They utilize positive weights and are exact for constant functions.
+The error of the composite Simpson's rule is proportional to which power of the step size $h$?,$h^4$
+"Which Newton-Cotes formula is characterized by weights following the pattern $1, 4, 1$?",Simpson's Rule
+The error of the composite Trapezoidal rule is proportional to which power of the step size $h$?,$h^2$
+How does the error of the composite Simpson's rule respond if the step size $h$ is reduced to $1/2$?,The error is reduced to approximately $1/16$ of its original value.

@@ -1,0 +1,60 @@
+What is the primary motivation for using Runge–Kutta methods instead of high-order Taylor methods?,To avoid the complex computation of higher-order derivatives of $f$ while maintaining high convergence rates.
+"In the context of ODEs, what happens to the computational complexity of Taylor's method as the order increases?",It increases significantly because the formulas for the derivatives $f^{(i)}$ becomes increasingly complicated.
+Runge–Kutta methods aim to reduce computational complexity while preserving the \_\_\_\_\_ of Taylor methods.,high convergence rates
+What mathematical expansion is used to derive the parameters for second-order Runge–Kutta methods?,"The multivariable Taylor formula for $f(t + a, z + b)$."
+"How is the 'essential part' of $f(t + \frac{h}{2}, z + \frac{h}{2}f(t, z))$ related to the second-order Taylor method?","It coincides with the Taylor function $F(t, z; h)$ except for the second-order error term $E$."
+What is the specific iteration formula for the midpoint method?,"$z_{i+1} = z_i + hf(t_i + \frac{h}{2}, z_i + \frac{h}{2}f(t_i, z_i))$"
+What is the order of convergence for the midpoint method?,Quadratic (second-order).
+Under what condition regarding the function $f$ does the midpoint method guaranteed quadratic convergence?,When $f$ is Lipschitz continuous in its second variable and $f \in C^2$.
+"In the general explicit Runge–Kutta formula $F(t, z; h) = \sum_{j=1}^{p}\gamma_j G_j$, what is the definition of $G_1$?","$G_1(t, z; h) = f(t, z)$"
+What is the general recursive formula for the stage values $G_j$ in an explicit Runge–Kutta method?,"$G_j(t, z; h) = f(t + \alpha_j h, z + h\sum_{k=1}^{j-1}\beta_{jk}G_k(t, z; h))$"
+"What is the primary goal when selecting the parameters $\gamma_j$, $\alpha_j$, and $\beta_{jk}$ in Runge–Kutta methods?",To achieve the highest possible order for the local truncation error.
+"For a Runge–Kutta method with $p=2$, what is the general form of the function $F(t, z; h)$?","$F(t, z; h) = \gamma_1 f(t, z) + \gamma_2 f(t + \alpha_1 h, z + \beta_{21}hf(t, z))$"
+Which specific parameter values in a $p=2$ Runge–Kutta method yield the midpoint method?,"$\gamma_1 = 0$, $\gamma_2 = 1$, and $\alpha_1 = \beta_{21} = 1/2$."
+Why is it impossible to construct a third-order Runge–Kutta method using only two stages ($p=2$)?,The $p=2$ formula lacks terms corresponding to $\frac{\partial f}{\partial t}\frac{\partial f}{\partial y}$ and $(\frac{\partial f}{\partial y})^2 f$ found in the third-order Taylor expansion.
+"To ensure a $p=2$ Runge–Kutta method is at least second-order, what must the sum $\gamma_1 + \gamma_2$ equal?",1
+"In a second-order Runge–Kutta method ($p=2$), what is the required value for the product $\gamma_2 \alpha_1$?",$1/2$
+"In a second-order Runge–Kutta method ($p=2$), what is the required value for the product $\gamma_2 \beta_{21}$?",$1/2$
+"What are the parameter values $\gamma_1$, $\gamma_2$, $\alpha_1$, and $\beta_{21}$ for the modified Euler method?","$\gamma_1 = 1/2$, $\gamma_2 = 1/2$, $\alpha_1 = 1$, and $\beta_{21} = 1$."
+What is the iteration formula for the modified Euler method?,"$z_{i+1} = z_i + \frac{h}{2}(f(t_i, z_i) + f(t_{i+1}, z_i + hf(t_i, z_i)))$"
+What is the geometric interpretation of the modified Euler method?,"It moves from $(t_i, z_i)$ using the average of the slopes at the current point and the Euler-predicted next point."
+"In the modified Euler method, what does $w_{i+1} = z_i + hf(t_i, z_i)$ represent?",The intermediate predicted value for $z$ at $t_{i+1}$ calculated via a standard Euler step.
+"What are the parameter values $\gamma_1$, $\gamma_2$, $\alpha_1$, and $\beta_{21}$ for Heun's method as described in the source?","$\gamma_1 = 1/4$, $\gamma_2 = 3/4$, $\alpha_1 = 2/3$, and $\beta_{21} = 2/3$."
+What is the specific iteration formula for Heun's method?,"$z_{i+1} = z_i + \frac{h}{4}(f(t_i, z_i) + 3f(t_i + \frac{2h}{3}, z_i + \frac{2}{3}hf(t_i, z_i)))$"
+Both the modified Euler method and Heun's method belong to which class of Runge–Kutta formulas?,Second-order Runge–Kutta methods.
+"According to the order table, what is the maximum achievable order for a Runge–Kutta method with $p=4$ stages?",4
+"According to the order table, what is the maximum achievable order for a Runge–Kutta method with $p=5$ stages?",4
+"According to the order table, what is the maximum achievable order for a Runge–Kutta method with $p=6$ stages?",5
+"What is the value of the first stage $w_{i,1}$ in the classical fourth-order Runge–Kutta method?","$w_{i,1} = f(t_i, z_i)$"
+"In the classical RK4 method, what is the formula for the second stage $w_{i,2}$?","$w_{i,2} = f(t_i + \frac{h}{2}, z_i + \frac{h}{2}w_{i,1})$"
+"In the classical RK4 method, what is the formula for the third stage $w_{i,3}$?","$w_{i,3} = f(t_i + \frac{h}{2}, z_i + \frac{h}{2}w_{i,2})$"
+"In the classical RK4 method, what is the formula for the fourth stage $w_{i,4}$?","$w_{i,4} = f(t_{i+1}, z_i + hw_{i,3})$"
+What is the final step formula for $z_{i+1}$ in the classical fourth-order Runge–Kutta method?,"$z_{i+1} = z_i + \frac{h}{6}(w_{i,1} + 2w_{i,2} + 2w_{i,3} + w_{i,4})$"
+What smoothness condition on $f$ is required for the classical Runge–Kutta method to have a fourth-order local truncation error?,$f \in C^5$
+How does the classical fourth-order Runge–Kutta method relate to Simpson's rule?,"If $f$ depends only on $t$, the method reduces to Simpson's rule."
+How many function evaluations per step are required for the classical fourth-order Runge–Kutta method?,Four
+How many function evaluations per step are required for the modified Euler method?,Two
+"In the $p=2$ case, how many equations must be satisfied to identify as many second-order terms as possible?",Six (three for first-order agreement and three for partial second-order agreement).
+"For the IVP $y' = 2 - t - y, y(0) = 1$, how do the results of the midpoint, modified Euler, and Heun methods compare?",They generate the same approximate solution for any step size $h$.
+What is the relationship between the local truncation error of the midpoint method ($\tau_{i+1}$) and the second-order Taylor method ($\bar{\tau}_{i+1}$)?,"$\tau_{i+1} = \bar{\tau}_{i+1} - E(t_i, y(t_i), \frac{h}{2}, \frac{h}{2}f(t_i, y(t_i)))$"
+"In the general RK formula, what do the parameters $\alpha_j$ represent?",The fractions of the step size $h$ added to the time variable $t$ for each stage evaluation.
+"In the general RK formula, what do the parameters $\gamma_j$ represent?",The weights assigned to each stage's slope $G_j$ in the final average.
+What is the local truncation error order of a 'third-order' Runge–Kutta method?,Third-order ($O(h^3)$).
+"For $p=1$, the Runge–Kutta method reduces to which well-known numerical method?",The Euler method.
+"If $f$ is Lipschitz continuous in its second variable, the midpoint method's increment function $F$ is also \_\_\_\_\_.",Lipschitz continuous in its second variable
+What is the maximum order of a Runge–Kutta method where the number of stages $p$ equals 10?,7
+What is the maximum order of a Runge–Kutta method where the number of stages $p$ equals 2?,2
+"In the classical RK4 method, the time points used for the four slopes are $t_i$, $t_i + h/2$, $t_i + h/2$, and \_\_\_\_\_.",$t_{i+1}$ (or $t_i + h$)
+Which method uses a slope calculated at $t_i + 2h/3$ as its second stage?,Heun's method.
+Which method uses a slope calculated at $t_i + h/2$ using an intermediate Euler half-step?,The midpoint method.
+What characterizes an 'explicit' Runge–Kutta method compared to an implicit one?,"Each stage $G_j$ is calculated using only previously determined stages $G_1, \dots, G_{j-1}$."
+"The error term $E(t, z, a, b)$ in the derivation of the midpoint method is of what order?",Second-order.
+"In the context of the $p=2$ RK method, what is the role of $\beta_{21}$?",It is the coefficient weighting the first slope $G_1$ in the argument of the second stage $G_2$.
+"When comparing the numerical results for $y' = 2y - 10t^2 + 2t$, which method typically shows the smallest error at $t=1.0$ for $h=0.1$?",The classical fourth-order Runge–Kutta method.
+"The function $F(t, z; h)$ in a Runge–Kutta method is often called the \_\_\_\_\_ function.",increment
+"To achieve a fourth-order local error, what is the minimum number of stages required?",4
+"To achieve a fifth-order local error, what is the minimum number of stages required?",6
+"In the derivation of RK methods, why is the 'Lipschitz continuity' of $f$ important?",It ensures the stability and convergence of the numerical approximation.
+The midpoint method is an example of a \_\_\_\_\_ stage Runge–Kutta method.,two
+"In the modified Euler method, the final slope is the \_\_\_\_\_ of the slopes at the beginning and end of the interval.",arithmetic mean (or average)
+What is the sum of the weights $\gamma_j$ in the classical RK4 method?,1 (from $\frac{1}{6} + \frac{2}{6} + \frac{2}{6} + \frac{1}{6}$).

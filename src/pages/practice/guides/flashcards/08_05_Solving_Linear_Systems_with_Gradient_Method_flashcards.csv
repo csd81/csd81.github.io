@@ -1,0 +1,60 @@
+"In the context of the gradient method, what is the standard form of the quadratic function $g(\mathbf{x})$ used to solve $\mathbf{A}\mathbf{x} = \mathbf{b}$?",$g(\mathbf{x}) = \frac{1}{2}\mathbf{x}^T \mathbf{A}\mathbf{x} - \mathbf{b}^T \mathbf{x} + c$
+What matrix property is required for $g(\mathbf{x})$ to be expressed in terms of the summation $\frac{1}{2} \sum_{i=1}^{n} \sum_{j=1}^{n} a_{ij} x_i x_j$?,The matrix $\mathbf{A}$ must be symmetric ($\mathbf{A}^T = \mathbf{A}$).
+"In the summation form of the quadratic function $g(x_1, \ldots, x_n)$, what term represents the linear component involving $\mathbf{b}$?",$- \sum_{i=1}^{n} b_i x_i$
+What is the result of the partial derivative $\frac{\partial g}{\partial x_i}$ for the quadratic function $g(\mathbf{x}) = \frac{1}{2}\mathbf{x}^T \mathbf{A}\mathbf{x} - \mathbf{b}^T \mathbf{x} + c$?,$\sum_{j=1}^{n} a_{ij} x_j - b_i$
+What is the vectorial form of the gradient vector $g'(\mathbf{x})$ for the quadratic function associated with the system $\mathbf{A}\mathbf{x} = \mathbf{b}$?,$g'(\mathbf{x}) = \mathbf{A}\mathbf{x} - \mathbf{b}$
+"If matrix $\mathbf{A}$ is invertible, how many critical points does the quadratic function $g(\mathbf{x})$ have?",Exactly one.
+A critical point $\bar{\mathbf{x}}$ of the quadratic function $g(\mathbf{x})$ is a solution to which linear equation?,$\mathbf{A}\mathbf{x} = \mathbf{b}$
+What is the relationship between $g(\bar{\mathbf{x}} + \Delta\mathbf{x})$ and $g(\bar{\mathbf{x}})$ when $\bar{\mathbf{x}}$ is a critical point?,$g(\bar{\mathbf{x}} + \Delta\mathbf{x}) - g(\bar{\mathbf{x}}) = \frac{1}{2}(\Delta\mathbf{x})^T \mathbf{A}\Delta\mathbf{x}$
+Under what condition on matrix $\mathbf{A}$ does the critical point $\bar{\mathbf{x}}$ minimize the function $g(\mathbf{x})$?,When $\mathbf{A}$ is a positive definite matrix.
+Under what condition on matrix $\mathbf{A}$ does the function $g(\mathbf{x})$ have a maximum at the critical point $\bar{\mathbf{x}}$?,When $\mathbf{A}$ is a negative definite matrix.
+"According to the theorem on quadratic functions, if $\mathbf{A}$ is symmetric and positive definite, where does the global minimum occur?",At the point $\mathbf{x} = \mathbf{A}^{-1}\mathbf{b}$.
+What is the relationship between a local minimum and a global minimum for a quadratic function?,"If a quadratic function has a local minimum at a point, it is also a global minimum at that point."
+"In the iterative formula $\mathbf{p}^{(k+1)} = \mathbf{p}^{(k)} - \alpha_k \mathbf{v}^{(k)}$, what does $\mathbf{v}^{(k)}$ represent?","The gradient vector at the current point, $\mathbf{v}^{(k)} = g'(\mathbf{p}^{(k)})$."
+How is the step size $\alpha_k$ chosen in the optimal gradient method?,It is the minimum point of the one-variable function $\phi_k(t) = g(\mathbf{p}^{(k)} - t\mathbf{v}^{(k)})$.
+What type of function is $\phi_k(t) = g(\mathbf{p}^{(k)} - t\mathbf{v}^{(k)})$ in the gradient method?,A quadratic polynomial.
+What is the explicit formula for $\alpha_k$ in terms of the gradient vector $\mathbf{v}^{(k)}$ and the current state?,$\alpha_k = \frac{(\mathbf{v}^{(k)})^T (\mathbf{A}\mathbf{p}^{(k)} - \mathbf{b})}{(\mathbf{v}^{(k)})^T \mathbf{A}\mathbf{v}^{(k)}}$
+How is the residual vector $\mathbf{r}^{(k)}$ defined in the gradient method algorithm?,$\mathbf{r}^{(k)} = \mathbf{b} - \mathbf{A}\mathbf{p}^{(k)}$
+What is the relationship between the residual vector $\mathbf{r}^{(k)}$ and the gradient vector $\mathbf{v}^{(k)}$?,$\mathbf{r}^{(k)} = -\mathbf{v}^{(k)}$
+"Using the residual vector $\mathbf{r}^{(k)}$, what is the formula for the step size $\alpha_k$?",$\alpha_k = \frac{(\mathbf{r}^{(k)})^T \mathbf{r}^{(k)}}{(\mathbf{r}^{(k)})^T \mathbf{A}\mathbf{r}^{(k)}}$
+What is the iterative update formula for the point $\mathbf{p}^{(k+1)}$ using the residual vector $\mathbf{r}^{(k)}$?,$\mathbf{p}^{(k+1)} = \mathbf{p}^{(k)} + \alpha_k \mathbf{r}^{(k)}$
+"Why is the gradient method applicable to a linear system where the matrix has entries $a_{11}=4, a_{12}=2, a_{21}=2, a_{22}=5$?",Because the coefficient matrix is symmetric and positive definite.
+"In the provided example, starting from $\mathbf{p}^{(0)} = (3, 3, 3)^T$ for a specific system, what is the exact solution being approached?","$(-1, 2, 0)$"
+Which specific vector calculation represents the 'direction' of the update in the final summarized algorithm (Equations 8.11-8.13)?,The residual vector $\mathbf{r}^{(k)}$.
+"In the expression for $\phi_k(t)$, what is the coefficient of the $t^2$ term?",$\frac{1}{2}(\mathbf{v}^{(k)})^T \mathbf{A}\mathbf{v}^{(k)}$
+"In the expression for $\phi_k(t)$, what is the coefficient of the $-t$ term?",$(\mathbf{v}^{(k)})^T (\mathbf{A}\mathbf{p}^{(k)} - \mathbf{b})$
+Cloze: All positive or negative definite matrices are \_\_\_\_\_.,invertible
+Concept: Residual Vector ($\mathbf{r}^{(k)}$),"Definition: The difference between the target vector $\mathbf{b}$ and the current transformation $\mathbf{A}\mathbf{p}^{(k)}$, used as the search direction in the gradient method."
+Why is the symmetry of matrix $\mathbf{A}$ ($a_{ij} = a_{ji}$) essential for the simplification of $\frac{\partial g}{\partial x_i}$?,"It allows the combination of terms $(a_{ij} x_j + a_{ji} x_j)$ into $2a_{ij} x_j$, which cancels the $\frac{1}{2}$ factor."
+"If a matrix $\mathbf{A}$ is positive definite, what can be said about the sign of $(\Delta\mathbf{x})^T \mathbf{A}\Delta\mathbf{x}$ for any non-zero $\Delta\mathbf{x}$?",It is always positive ($> 0$).
+"In the formula $\mathbf{p}^{(k+1)} = \mathbf{p}^{(k)} + \alpha_k \mathbf{r}^{(k)}$, why is the sign before $\alpha_k$ positive compared to the gradient update form?",Because the residual $\mathbf{r}^{(k)}$ is defined as the negative gradient ($-\mathbf{v}^{(k)}$).
+What is the purpose of the constant $c$ in the quadratic function $g(\mathbf{x})$ during the optimization process?,It acts as a vertical shift and does not affect the location of the critical point or the gradient.
+Formula: Write the denominator of the step size $\alpha_k$ in the optimal gradient method using $\mathbf{r}^{(k)}$.,$(\mathbf{r}^{(k)})^T \mathbf{A}\mathbf{r}^{(k)}$
+Formula: Write the numerator of the step size $\alpha_k$ in the optimal gradient method using $\mathbf{r}^{(k)}$.,$(\mathbf{r}^{(k)})^T \mathbf{r}^{(k)}$
+"Sequence: In the gradient method, what is the first step performed in each iteration $k$?",Calculate the residual vector $\mathbf{r}^{(k)} = \mathbf{b} - \mathbf{A}\mathbf{p}^{(k)}$.
+"Sequence: After calculating the residual $\mathbf{r}^{(k)}$, what is the next step in the gradient method iteration?",Calculate the optimal step size $\alpha_k$.
+Sequence: What is the final step in a single iteration of the gradient method to find the next approximation?,Update the solution estimate: $\mathbf{p}^{(k+1)} = \mathbf{p}^{(k)} + \alpha_k \mathbf{r}^{(k)}$.
+What matrix property ensures that the optimal step size $\alpha_k$ always has a non-zero denominator for a non-zero residual?,Positive definiteness (or negative definiteness).
+True or False: The optimal gradient method for linear systems requires the matrix $\mathbf{A}$ to be symmetric.,True.
+"In the example provided, what is the Euclidean norm error $(\|\mathbf{p}^{(k)} - \mathbf{p}\|_2)$ at the initial guess $\mathbf{p}^{(0)} = (3, 3, 3)^T$?",5.09901951
+How does the error change as $k$ increases in the gradient method example table?,The error consistently decreases towards zero.
+What is the Hessian matrix ($g''(\mathbf{x})$) of the quadratic function $g(\mathbf{x}) = \frac{1}{2}\mathbf{x}^T \mathbf{A}\mathbf{x} - \mathbf{b}^T \mathbf{x} + c$?,$\mathbf{A}$
+"If the gradient method is applied to $f(x, y) = 2x^2 - 12x + 3y^2 + 30y$, what is the equivalent linear system $\mathbf{A}\mathbf{x} = \mathbf{b}$ for the minimum?",$\begin{pmatrix} 4 & 0 \\ 0 & 6 \end{pmatrix} \begin{pmatrix} x \\ y \end{pmatrix} = \begin{pmatrix} 12 \\ -30 \end{pmatrix}$
+Cloze: The optimal gradient method selects $\alpha_k$ to minimize the function along the \_\_\_\_\_ direction.,residual (or negative gradient)
+Why can the solution of $\mathbf{A}\mathbf{x} = \mathbf{b}$ be framed as a minimization problem?,Because the solution occurs where the gradient of the associated quadratic function $g(\mathbf{x})$ is zero.
+"In the vector notation $\mathbf{b}^T \mathbf{x}$, if $\mathbf{b} = (b_1, \ldots, b_n)^T$, how is this expressed as a sum?",$\sum_{i=1}^{n} b_i x_i$
+Under what condition is the critical point $\bar{\mathbf{x}}$ of $g(\mathbf{x})$ unique?,When the matrix $\mathbf{A}$ is invertible.
+What is the purpose of the optimal gradient method in numerical analysis?,To iteratively approximate the solution of a linear system $\mathbf{A}\mathbf{x} = \mathbf{b}$.
+How does the formula for $g(\bar{\mathbf{x}} + \Delta\mathbf{x})$ simplify when $\mathbf{A}\bar{\mathbf{x}} = \mathbf{b}$ and $\mathbf{A}$ is symmetric?,"The linear terms in $\Delta\mathbf{x}$ cancel out, leaving $g(\bar{\mathbf{x}}) + \frac{1}{2}(\Delta\mathbf{x})^T \mathbf{A}\Delta\mathbf{x}$."
+"If $\mathbf{A}$ is negative definite, does the iteration $\mathbf{p}^{(k+1)} = \mathbf{p}^{(k)} + \alpha_k \mathbf{r}^{(k)}$ find a minimum or a maximum?",It finds a maximum.
+"In Exercise 11, for $f(x, y) = \frac{1}{2}x^2 + \frac{9}{2}y^2$ starting from $(9, 1)^T$, what is the asymptotic error constant?",0.8
+What is the residual vector $\mathbf{r}^{(0)}$ if the initial guess $\mathbf{p}^{(0)}$ is exactly the solution $\bar{\mathbf{x}}$?,The zero vector $\mathbf{0}$.
+"In the summation form of $g(\mathbf{x})$, what does the index $j$ represent in the term $a_{ij} x_i x_j$?",The column index of matrix $\mathbf{A}$ and the index of the second vector component.
+What property of the quadratic function $g(\mathbf{x})$ ensures that the gradient $g'(\mathbf{x})$ is linear?,The fact that the highest degree of $\mathbf{x}$ in $g(\mathbf{x})$ is 2.
+Cloze: The function $\phi_k(t)$ represents $g$ evaluated along the line passing through $\mathbf{p}^{(k)}$ in the direction of \_\_\_\_\_. ,$-\mathbf{v}^{(k)}$ (or $\mathbf{r}^{(k)}$)
+How is the symmetry of $\mathbf{A}$ utilized in the step $\bar{\mathbf{x}}^T \mathbf{A}\Delta\mathbf{x} = (\Delta\mathbf{x})^T \mathbf{A}\bar{\mathbf{x}}$?,By taking the transpose of the scalar value: $(\bar{\mathbf{x}}^T \mathbf{A}\Delta\mathbf{x})^T = \Delta\mathbf{x}^T \mathbf{A}^T \bar{\mathbf{x}}$ and applying $\mathbf{A}^T = \mathbf{A}$.
+True or False: The gradient method always reaches the exact solution in a finite number of steps for any symmetric positive definite matrix.,"False (it is an iterative method that provides an approximation, though it may converge to the exact solution in specific cases)."
+"In the example system, what is the value of $b_2$?",8
+"In the example system, what is the value of $a_{31}$?",-1
+What is the primary computational cost per iteration in the optimal gradient method?,The matrix-vector multiplication $\mathbf{A}\mathbf{r}^{(k)}$.
+"Cloze: To minimize $g(\mathbf{x})$, we move in the direction of the \_\_\_\_\_ gradient.",negative

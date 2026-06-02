@@ -1,0 +1,61 @@
+What is the algebraic definition of a tridiagonal square matrix $(a_{ij})$?,$a_{ij} = 0$ for all $|i - j| > 1$.
+"In a tridiagonal matrix, where are the only possible nonzero elements located?",The main diagonal and the diagonals immediately above and below it.
+"In the standard notation for tridiagonal systems, what does the vector $(d_i)$ represent?",The elements of the main diagonal.
+"In the standard notation for tridiagonal systems, what does the vector $(c_i)$ represent?",The elements in the diagonal directly above the main diagonal (superdiagonal).
+"In the standard notation for tridiagonal systems, what does the vector $(a_i)$ represent?",The elements in the diagonal directly below the main diagonal (subdiagonal).
+How many total elements are in the subdiagonal vector $(a_i)$ for an $n \times n$ tridiagonal matrix?,$n - 1$.
+How many total elements are in the superdiagonal vector $(c_i)$ for an $n \times n$ tridiagonal matrix?,$n - 1$.
+How many total elements are in the main diagonal vector $(d_i)$ for an $n \times n$ tridiagonal matrix?,$n$.
+What is the total storage area required to store the coefficients of an $n \times n$ tridiagonal matrix?,$3n - 2$.
+What happens to the elements $a_i$ below the main diagonal during the specialized Gaussian elimination algorithm?,They become $0$.
+Which vector of coefficients remains unchanged during the elimination steps of the tridiagonal algorithm?,The superdiagonal vector $(c_i)$.
+Which two vectors are overridden with new values during the elimination phase of the tridiagonal algorithm?,$(d_i)$ and $(b_i)$.
+"In the elimination loop of the tridiagonal algorithm, what is the range of the index $i$?",From $2$ to $n$.
+Formula: What is the calculation for the temporary multiplier ($temp$) in the $i$-th elimination step?,$temp \leftarrow a_{i-1}/d_{i-1}$.
+Formula: How is $d_i$ updated during the $i$-th step of the tridiagonal elimination phase?,$d_i \leftarrow d_i - temp \cdot c_{i-1}$.
+Formula: How is the right-hand side value $b_i$ updated during the $i$-th step of the elimination phase?,$b_i \leftarrow b_i - temp \cdot b_{i-1}$.
+"In the backward substitution phase, how is the final variable $x_n$ calculated?",$x_n \leftarrow b_n/d_n$.
+"Formula: How is $x_i$ calculated during the backward substitution phase for $i = n-1, \ldots, 1$?",$x_i \leftarrow (b_i - c_i x_{i+1})/d_i$.
+What is the direction of the loop used in the backward substitution phase of the tridiagonal algorithm?,Decrementing from $n-1$ down to $1$.
+How many multiplications and divisions are required to solve a tridiagonal system of size $n$?,$5n - 4$.
+What is the computational complexity (multiplications/divisions) of the standard Gaussian elimination for a general matrix?,$n^3/3$.
+Under what condition is the specialized tridiagonal Gaussian elimination algorithm guaranteed to work without pivoting?,If the tridiagonal matrix $\mathbf{A}$ is diagonally dominant.
+Why is pivoting generally avoided when solving tridiagonal systems?,Pivoting ruins the specific tridiagonal structure of the coefficient matrix.
+Concept: Band Matrix,Definition: A matrix where nonzero elements appear only in the main diagonal and a fixed number of diagonals above and below it.
+"In a band matrix where $a_{ij} = 0$ for $|i - j| > 2$, how many diagonals contain potentially nonzero elements?","Five diagonals (the main diagonal, two above, and two below)."
+Which input vectors are required for the tridiagonal algorithm's elimination phase?,"$a_i, c_{i-1}, d_{i-1}, d_i, b_{i-1},$ and $b_i$."
+What is the Hungarian term for 'tridiagonal linear systems'?,Tridiagonális egyenletrendszerek.
+"In the Hungarian source, what is the Hungarian word for the 'elimination' phase of the algorithm?",Elimináció.
+"In the Hungarian source, what is the Hungarian term for 'backward substitution'?",Visszahelyettesítés.
+What is the primary advantage of using $3n-2$ storage for a tridiagonal matrix instead of $n^2$?,It significantly reduces the amount of memory needed for large systems.
+"Cloze: In the tridiagonal algorithm, the values $c_i$ are \_\_\_\_\_ during the elimination process.",unchanged
+"Cloze: The standard Gaussian elimination requires $n^3/3$ operations, whereas the tridiagonal version requires only \_\_\_\_\_ operations.",$5n - 4$
+True or False: The tridiagonal algorithm is more efficient than standard Gaussian elimination for any matrix size $n > 1$.,True (based on the $5n-4$ vs $n^3/3$ comparison).
+What is the index $i$ for the first $a$ element used in the algorithm ($a_{i-1}$ when $i=2$)?,$a_1$.
+"In the backward substitution step for $x_i$, what variable must already be computed?",$x_{i+1}$.
+Which theorem is cited as the basis for performing the algorithm without pivoting on diagonally dominant matrices?,Theorem 3.32.
+The storage requirement $3n-2$ accounts for $n$ diagonal elements and how many off-diagonal elements?,$2n - 2$ off-diagonal elements ($n-1$ above and $n-1$ below).
+What is the relationship between $n$ and the number of rows in the coefficient matrix?,$n$ is the number of rows (and columns) in the square matrix.
+Identify the vector: used as the denominator in the calculation of $temp$.,The updated main diagonal vector $(d_i)$.
+Identify the vector: its elements are multiplied by $temp$ and subtracted from $d_i$.,The superdiagonal vector $(c_i)$.
+"In the context of the tridiagonal system, what does the vector $(b_i)$ represent?",The right-hand side constants of the linear equations.
+What is the result of the expression $|i-j| > 1$ for elements on the main diagonal?,"It is false, as $|i-i| = 0$."
+"In the Hungarian source, what is the Hungarian term for 'diagonal dominance'?",Diagonálisan domináns.
+"According to the transcript, why is it better to formulate a special version of a general algorithm?",It requires significantly fewer arithmetic operations for specialized problems.
+What happens to the structure of the matrix if pivoting is applied to a tridiagonal system?,The structure is ruined (lost).
+What is the leading term in the operation count for the specialized tridiagonal algorithm?,$5n$.
+"In the provided Exercise 2, what is the value of the coefficient for $x_1$ in the first equation?",1.
+"In the provided Exercise 2, what is the value of the right-hand side constant $b_1$?",1.5.
+"In the provided Exercise 2, what is the coefficient $c_1$ (element above the diagonal in the first row)?",-0.5.
+"In the provided Exercise 2, what is the coefficient $a_1$ (element below the diagonal in the second row)?",0.5.
+How many equations are in the system presented in Exercise 2?,6.
+What is the half-bandwidth $k$ of a tridiagonal matrix?,$k = 1$.
+What is the storage requirement for a general $n \times n$ matrix compared to a tridiagonal one?,$n^2$ vs $3n - 2$.
+"During backward substitution, which $x$ value is used to calculate $x_{n-1}$?",$x_n$.
+Cloze: A matrix is tridiagonal if $a_{ij} = 0$ for all $|i - j| > \_\_\_\_\_$.,1
+Formula: How is $x_i$ updated if $c_i = 0$ in a diagonal matrix (a specific case of tridiagonal)?,$x_i = b_i / d_i$.
+"In the elimination loop, why is $d_{i-1}$ used in the denominator?",It is the pivot element for the current elimination step.
+What is the value of $a_i$ for $i=n$?,"It is undefined or zero, as there are only $n-1$ subdiagonal elements."
+What is the value of $c_i$ for $i=n$?,"It is undefined or zero, as there are only $n-1$ superdiagonal elements."
+"If $n=100$, what is the storage area needed for a tridiagonal matrix?",298 ($3 \cdot 100 - 2$).
+"If $n=100$, how many operations ($5n-4$) are needed for the tridiagonal algorithm?",496 multiplications/divisions.

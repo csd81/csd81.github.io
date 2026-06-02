@@ -1,0 +1,52 @@
+What is the main disadvantage of the standard Lagrange interpolation formula when adding a new mesh point?,The entire formula must be recomputed from scratch.
+How is the Newton form of the Lagrange polynomial superior to the standard form regarding new data points?,It allows adding a new mesh point by simply appending a correction term to the existing formula.
+"In the Newton form derivation, $L_0(x)$ is defined as which constant function?",$f(x_0)$
+"In the derivation of the Newton form, what is the maximum possible degree of the polynomial difference $L_i(x) - L_{i-1}(x)$?",$i$
+Which set of points serves as roots for the polynomial difference $L_i(x) - L_{i-1}(x)$?,"$x_0, x_1, \dots, x_{i-1}$"
+"According to the Fundamental Theorem of Algebra, $L_i(x) - L_{i-1}(x)$ can be factored into $a_i$ multiplied by which product?",$\prod_{j=0}^{i-1} (x - x_j)$
+What mathematical term is used for the coefficients $a_i$ in the Newton form of the interpolating polynomial?,Divided differences
+Write the general Newton form of the $n$-th degree Lagrange interpolating polynomial $L_n(x)$.,"$L_n(x) = f[x_0] + \sum_{i=1}^n f[x_0, \dots, x_i] \prod_{j=0}^{i-1} (x - x_j)$"
+What is the correction term added to $L_n(x)$ to obtain $L_{n+1}(x)$ in the Newton form?,"$f[x_0, x_1, \dots, x_{n+1}](x - x_0)(x - x_1) \dots (x - x_n)$"
+Which efficient numerical method is used to evaluate the Newton form of the interpolating polynomial?,Horner's method
+"If the $n$-th order divided difference $f[x_0, x_1, \dots, x_n]$ is non-zero, what is the degree of the Newton polynomial?",$n$
+"In a divided difference table used for manual calculation, what do the first and second columns represent?",The mesh points $x_i$ and the function values $f(x_i)$.
+Where are the coefficients for the Newton polynomial located in a standard triangular divided difference table?,Along the top diagonal of the table.
+"What is the recursive formula for the $k$-th order divided difference $f[x_0, \dots, x_k]$?","$f[x_0, \dots, x_k] = \frac{f[x_1, \dots, x_k] - f[x_0, \dots, x_{k-1}]}{x_k - x_0}$"
+"Formula: First-order divided difference $f[x_0, x_1]$?","$f[x_0, x_1] = \frac{f(x_1) - f(x_0)}{x_1 - x_0}$"
+"In the error theorem for the Newton form, what is the expression for the truncation error $f(x) - L_n(x)$?","$f[x_0, x_1, \dots, x_n, x] \prod_{i=0}^n (x - x_i)$"
+"What is the relationship between the $n$-th order divided difference $f[x_0, \dots, x_n]$ and the $n$-th derivative of $f$?","$f[x_0, \dots, x_n] = \frac{f^{(n)}(\xi)}{n!}$ for some $\xi \in \langle x_0, \dots, x_n \rangle$."
+"If $P$ is a polynomial of degree $n$, what is the value of the divided difference $P[x_0, \dots, x_m]$ for any $m > n$?",$0$
+"For a polynomial $f(x) = c_0 + c_1 x + \dots + c_n x^n$, which divided difference equals the leading coefficient $c_n$?","$f[x_0, x_1, \dots, x_n]$"
+"What happens to the divided difference $f[x_0, x_1, \dots, x_n]$ as all mesh points $x_i$ approach a single point $x_0$?",It converges to $\frac{f^{(n)}(x_0)}{n!}$.
+"How is the second-order confluent divided difference $f[x_0, x_0, x_1]$ defined?","$f[x_0, x_0, x_1] = \frac{f[x_0, x_1] - f[x_0, x_0]}{x_1 - x_0}$"
+"What is the value of the confluent divided difference $f[x_0, x_0, x_0]$ in terms of derivatives?",$\frac{f''(x_0)}{2}$
+"Using the data points $(-1, -2), (1, 0), (2, -2), (3, 2)$, what is the first-order divided difference $f[-1, 1]$?",$1$
+"Given mesh points $(-1, 1, 2, 3)$ and function values $(-2, 0, -2, 2)$, what is the value of the Newton polynomial $L_3(0)$?",$2$
+"Given data $(-1, -3), (1, 1), (2, 3), (3, 29)$, find the third-order divided difference $f[-1, 1, 2, 3]$.",$3$
+"In Example 6.15, what is the Newton form of $L_3(x)$ for the data points starting at $(-1, -3)$ and ending at $(3, 29)$?",$L_3(x) = -3 + 2(x + 1) + 0(x + 1)(x - 1) + 3(x + 1)(x - 1)(x - 2)$
+How many arithmetic operations are generally required to evaluate a Newton polynomial using Horner's method compared to the standard Lagrange form?,"Significantly fewer, as it avoids repeated products and summations."
+"What property of divided differences ensures that $f[x_0, x_1] = f[x_1, x_0]$?",Symmetry (divided differences are independent of the order of the points).
+"In the process of proving the truncation error theorem, why is $x$ added to the set of mesh points?",To construct a higher-degree interpolating polynomial $L_{n+1}(t)$ that equals $f(x)$ at $t=x$.
+What is the primary utility of the divided difference form of the truncation error in theoretical analysis?,It provides a direct link between divided differences and derivatives through the Mean Value Theorem.
+"In Algorithm 6.13, why are only specific divided differences stored by the end of the execution?",To save memory by only keeping the coefficients necessary for the Newton polynomial.
+What is the zeroth-order divided difference $f[x_i]$ equivalent to?,$f(x_i)$
+How is the denominator determined for a $k$-th order divided difference in a manual table?,It is the difference between the last mesh point and the first mesh point involved in that specific difference ($x_k - x_0$).
+"If $L_3(x) = x^3 - 3x^2 + 2$, what is the coefficient $f[x_0, x_1, x_2, x_3]$ for any four distinct points?",$1$
+"Under what condition is the divided difference $f[x_0, x_1, \dots, x_n, x]$ practically calculable for error estimation?",Only when the exact function value $f(x)$ is already known.
+What does the expression $\prod_{k=0}^{i-1} (x - x_k)$ represent in the Newton form?,The basis polynomials of the Newton form.
+"In the context of divided differences, what does the notation $\langle x_0, x_1, \dots, x_n \rangle$ represent?","The smallest interval containing all the points $x_0, x_1, \dots, x_n$."
+How does Horner's method organize the computation of $L_n(x)$ in Newton form?,It nests the linear factors to minimize the number of multiplications.
+"Exercise 8: Show that the limit of $f[x_0, x_1, x_2]$ as $(x_1, x_2) \to (x_0, x_0)$ is equal to \_\_\_\_\_.","$f[x_0, x_0, x_0]$ (or $\frac{f''(x_0)}{2}$)"
+What is the role of the Fundamental Theorem of Algebra in deriving the Newton form?,It justifies the product form of the difference $L_i(x) - L_{i-1}(x)$ based on its known roots.
+"When computing a divided difference table by hand, what shape does the resulting data structure take?",A triangular table.
+Is the Newton form a different polynomial than the Lagrange form for the same set of data points?,"No, it is the same unique interpolating polynomial expressed in a different algebraic form."
+"In Example 6.15, what was the first-order divided difference $f[2, 3]$ for the data $(2, 3)$ and $(3, 29)$?",$26$
+"In Example 6.15, what was the second-order divided difference $f[1, 2, 3]$ derived from $f[1, 2]=2$ and $f[2, 3]=26$?",$12$
+"What is the relationship between $f[x_1, x_0, x_0]$ and $f[x_0, x_0, x_1]$?","They are equal ($f[x_1, x_0, x_0] = f[x_0, x_0, x_1]$)."
+"If a polynomial $P(x)$ has degree $n$, what can be said about its $(n+1)$-th derivative in the context of divided differences?","It is zero, which corresponds to the $(n+1)$-th divided difference being zero."
+"In the manual calculation $f[x_0, x_1, x_2] = \frac{f[x_1, x_2] - f[x_0, x_1]}{x_2 - x_0}$, which mesh points are used in the divisor?",$x_2$ and $x_0$
+"What is the value of $L_n(x_j)$ for $j \in \{0, 1, \dots, n\}$?",$f(x_j)$
+Why is the Newton form preferred in computer programming for interpolation tasks?,Due to its recursive nature and computational efficiency through Horner's method.
+"The formula $f[x_0, \dots, x_n] = \sum_{k=0}^n \frac{f(x_k)}{\prod_{j \ne k} (x_k - x_j)}$ provides which type of definition for divided differences?",The explicit (non-recursive) sum-based definition.
+"According to the video transcript, what happens to the terms in the expansion $L_0 + (L_1 - L_0) + (L_2 - L_1) + \dots$?","They telescope, simplifying to $L_n$."
+"In the video Example, how is the value '1' calculated for the first difference column between points $(-1, -2)$ and $(1, 0)$?",$\frac{0 - (-2)}{1 - (-1)} = \frac{2}{2} = 1$

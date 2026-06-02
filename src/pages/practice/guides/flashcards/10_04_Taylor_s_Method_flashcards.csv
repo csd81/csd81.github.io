@@ -1,0 +1,60 @@
+What is the general formula for a one-step method used to approximate the solution of an Initial Value Problem (IVP)?,"$z_{i+1} = z_i + hF(t_i, z_i; h)$"
+"In the general one-step method formula $z_{i+1} = z_i + hF(t_i, z_i; h)$, what does $h$ represent?",The step size or distance between equidistant mesh points.
+"For Euler's method, what is the specific definition of the function $F(t, z; h)$?","$F(t, z; h) = f(t, z)$"
+How is the $(i+1)$-th local truncation error $\tau_{i+1}$ defined for a general one-step method?,"$\tau_{i+1} := \frac{y(t_{i+1}) - y(t_i)}{h} - F(t_i, y(t_i); h)$"
+"In the definition of local truncation error, what does $y(t)$ represent?",The exact solution of the Initial Value Problem.
+"According to Theorem 10.7, what property must $F$ have regarding its second variable to ensure convergence?",It must be Lipschitz continuous in its second variable.
+What continuity requirement does Theorem 10.7 place on the function $F$ with respect to its variables?,It must be continuously differentiable with respect to its first two variables.
+"If the local truncation error of a method is of order $\alpha$, what is the inequality involving $h$ and a constant $K_2$?",$|\tau_{i+1}| \le K_2 h^\alpha$
+"If a one-step method has a local truncation error of order $\alpha$, what is the order of convergence for the global error $|y(t_i) - z_i|$?",Order $\alpha$
+What is the formal bound for global error $|y(t_i) - z_i|$ in a method of order $\alpha$?,$|y(t_i) - z_i| \le Kh^\alpha$
+Taylor's method is motivated by approximating the solution using a higher-order \_\_\_\_\_.,Taylor polynomial
+What is the Taylor expansion of the exact solution $y(t)$ at $t_{i+1}$ around the point $t_i$ up to order $\alpha$?,$y(t_{i+1}) = \sum_{k=0}^{\alpha} \frac{y^{(k)}(t_i)}{k!}h^k + \frac{y^{(\alpha+1)}(\xi_i)}{(\alpha+1)!}h^{\alpha+1}$
+"In the Taylor expansion remainder term, where is the point $\xi_i$ located?","In the interval between $t_i$ and $t_{i+1}$ (denoted $\langle t_i, t_{i+1} \rangle$)."
+"How is the second derivative $y''(t)$ expressed in terms of $f(t, y(t))$ using the chain rule?","$y''(t) = \frac{\partial f}{\partial t}(t, y(t)) + \frac{\partial f}{\partial y}(t, y(t))f(t, y(t))$"
+"What notation represents the $i$-th total derivative of the composite function $f(t, y(t))$ with respect to $t$?","$f^{(i)}(t, y(t))$"
+"Using the derivative notation, what is the relationship between $y^{(i)}(t)$ and $f$?","$y^{(i)}(t) = f^{(i-1)}(t, y(t))$ for $i \ge 1$."
+"Formula: Define the function $F(t, z; h)$ for a Taylor's method of order $\alpha$.","$F(t, z; h) := f(t, z) + \frac{1}{2}f^{(1)}(t, z)h + \dots + \frac{1}{\alpha!}f^{(\alpha-1)}(t, z)h^{\alpha-1}$"
+What is the local truncation error $\tau_{i+1}$ for a Taylor's method of order $\alpha$?,"$\tau_{i+1} = \frac{1}{(\alpha + 1)!}f^{(\alpha)}(\xi_i, y(\xi_i))h^\alpha$"
+"To use a Taylor's method of order $\alpha$, what differentiability class must $f$ belong to?",$f \in C^\alpha$
+"Example: For $y' = 2y - 10t^2 + 2t$, calculate $f^{(1)}(t, y(t))$.",$4y(t) - 20t^2 - 16t + 2$
+"For the ODE $y' = 2y - 10t^2 + 2t$, what is the second derivative $f^{(2)}(t, y(t))$?",$8y(t) - 40t^2 - 32t - 16$
+"In a second-order Taylor method, how does the error typically change if the step size $h$ is halved?",The error reduces to approximately one quarter of its previous value.
+The numerical method $z_{i+1} = z_i + h(2z_i - 10t_i^2 + 2t_i) + \frac{h^2}{2}(4z_i - 20t_i^2 - 16t_i + 2)$ is a \_\_\_\_\_ order Taylor method.,second
+"Why is the term $f^{(i)}(t, z)$ used instead of $f^{(i)}(t, y(t))$ in the final definition of the Taylor method formula?",To represent the formula evaluated at the approximate solution $z$ rather than the exact solution $y(t)$.
+"In the context of Taylor's method, what does $y^{(3)}(t)$ equal in terms of $f$?","$f^{(2)}(t, y(t))$"
+How does the accuracy of a third-order Taylor's method generally compare to Euler's method for the same step size?,The third-order Taylor's method produces a significantly smaller error.
+What is the initial condition value $z_0$ in the Taylor method examples provided in the text?,$z_0 = 1$
+Process: How is $y'''(t)$ computed for Taylor's method using $f$?,"By differentiating the expression for $y''(t)$ with respect to $t$ and substituting $y' = f(t, y)$."
+"The notation $f^{(i)}(t, y(t))$ denotes the $i$-th derivative of the \_\_\_\_\_ function $f(t, y(t))$ with respect to $t$.",composite
+"If $h=0.2$ and $h=0.1$ are compared in a 3rd order method, the error reduction factor should be roughly \_\_\_\_\_.",one eighth ($2^3$)
+True or False: Taylor's method can be generalized for non-uniform mesh points using $h_i$ instead of a constant $h$.,True
+What is the primary practical difficulty in implementing high-order Taylor's methods?,The need to analytically compute and evaluate multiple high-order partial derivatives of $f$.
+Which specific one-step method is equivalent to a first-order Taylor's method?,Euler's method
+"In Theorem 10.7, what is the relationship between the local truncation error order $\alpha$ and the convergence order?",They are the same; the method converges in order $\alpha$.
+What does the symbol $\xi_i$ represent in the Taylor expansion remainder?,"An unknown point in the interval $(t_i, t_{i+1})$ where the high-order derivative is evaluated for the error term."
+"For the ODE $y' = 2y - 10t^2 + 2t$, what is the value of $y'(0)$ given $y(0)=1$?",$2(1) - 10(0)^2 + 2(0) = 2$
+"If a method is order $\alpha=2$, and the error at $h=0.2$ is $1.1825e-02$, what is the approximate expected error at $h=0.1$?",Approximately $2.956e-03$ (one quarter of the original error).
+Concept: Equidistant mesh points,Definition: A set of points $t_i$ where the distance between consecutive points $t_{i+1} - t_i$ is a constant value $h$.
+"Cloze: The Taylor's method of order $\alpha$ requires $F(t, z; h)$ to include derivatives of $f$ up to order \_\_\_\_\_.",$\alpha - 1$
+"In the definition of $\tau_{i+1}$, what term represents the finite difference approximation of the derivative?",$\frac{y(t_{i+1}) - y(t_i)}{h}$
+Why is the Lipschitz property of $F$ in the second variable necessary for Theorem 10.7?,To ensure that the differences between the approximate steps and the exact solution do not grow uncontrollably (stability/convergence).
+What is the purpose of selecting $F$ such that $\tau_{i+1}$ is high-order?,To achieve a higher order of convergence and thus a more accurate numerical solution for a given step size $h$.
+What interval is $F$ defined on for the general one-step method?,"$[t_0, T] \times \mathbb{R} \times [0, H]$"
+"In the expansion for $y(t_{i+1})$, the first two terms $y(t_i) + hf(t_i, y(t_i))$ correspond to which basic method?",Euler's method
+"For $y' = 2y - 10t^2 + 2t$, what is the coefficient of $h^3/6$ in the third-order Taylor method step formula?",$8z_i - 40t_i^2 - 32t_i - 16$
+What is the global error notation used in Theorem 10.7?,$|y(t_i) - z_i|$
+"Formula: Write the total derivative operator $\frac{d}{dt}$ applied to $f(t, y(t))$.","$\frac{d}{dt}f(t, y(t)) = \frac{\partial f}{\partial t} + \frac{\partial f}{\partial y}y'$"
+"In the provided tables, as $t_i$ increases, what generally happens to the error $|y(t_i) - z_i|$?",The error generally increases as the solution progresses.
+Term: One-step method,Definition: A numerical procedure where the approximation at the next time level $z_{i+1}$ is calculated using only information from the current time level $z_i$.
+"What does the notation $\langle t, t_i \rangle$ typically denote in the context of Taylor's theorem?",The open interval between $t$ and $t_i$.
+"If $f(t, y)$ is a function of $y$ only (autonomous), how does the formula for $y''(t)$ simplify?",$y''(t) = \frac{\partial f}{\partial y}f$
+"In the second-order Taylor method example, what is the value of $f^{(1)}$ at $t=0, z=1$?",$4(1) - 20(0)^2 - 16(0) + 2 = 6$
+"Given $z_0 = 1, h = 0.2$, and $f(t_0, z_0) = 2$, and $f^{(1)}(t_0, z_0) = 6$, calculate $z_1$ for a 2nd order Taylor method.",$z_1 = 1 + 0.2(2) + \frac{0.2^2}{2}(6) = 1 + 0.4 + 0.12 = 1.52$
+Which theorem in the text provides the theoretical basis for the convergence of the Taylor method?,Theorem 10.7
+"The local truncation error $\tau_{i+1}$ is the difference between the exact solution's increment and the numerical method's increment, divided by \_\_\_\_\_.",the step size $h$
+"For the ODE $y' = 2y - 10t^2 + 2t$, what is the derivative $\frac{\partial f}{\partial y}$?",$2$
+"For the ODE $y' = 2y - 10t^2 + 2t$, what is the derivative $\frac{\partial f}{\partial t}$?",$-20t + 2$
+Formula: The general form of the remainder term in the Taylor expansion of degree $\alpha$.,$\frac{y^{(\alpha+1)}(\xi_i)}{(\alpha+1)!}h^{\alpha+1}$
+"Cloze: In the expression for $F(t, z; h)$, the coefficient of the $h^{k-1}$ term is \_\_\_\_\_.","$\frac{1}{k!}f^{(k-1)}(t, z)$"
+"In the provided tables, which method shows a smaller error at $t=1.0$ for $h=0.1$: Second-order or Third-order Taylor?",Third-order Taylor method ($4.1989e-03$ vs $8.4425e-02$).

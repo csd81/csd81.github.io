@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, Route, Routes, useParams } from 'react-router-dom';
 import { useLang } from '../shared/providers/LanguageProvider';
 import { MarkdownView } from '../shared/ui/MarkdownView';
@@ -7,7 +7,7 @@ import { TOPICS } from './practice/content';
 import { CHEATSHEETS } from './practice/cheatsheets';
 import {
   subsectionsFor, subsectionBySlug, GUIDE_CHAPTERS,
-  chapterBook, chapterSlides, hasBook, hasSlides,
+  chapterBook, chapterSlides, hasBook, hasSlides, type Flashcard,
 } from './practice/guides';
 import glossaryMd from './practice/glossary.md?raw';
 import './practice/practice.css';
@@ -129,6 +129,75 @@ function PracticeHome() {
           <MarkdownView markdown={glossaryMd} />
         </details>
       </section>
+    </div>
+  );
+}
+
+/** Flip-card self-test deck (front/back rendered with KaTeX). */
+function FlashcardDeck({ cards }: { cards: Flashcard[] }) {
+  const { lang } = useLang();
+  const [order, setOrder] = useState<number[]>(() => cards.map((_, i) => i));
+  const [pos, setPos] = useState(0);
+  const [revealed, setRevealed] = useState(false);
+
+  const go = (next: number) => {
+    setPos((p) => Math.min(Math.max(p + next, 0), cards.length - 1));
+    setRevealed(false);
+  };
+  const shuffle = () => {
+    const o = [...order];
+    for (let i = o.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [o[i], o[j]] = [o[j], o[i]];
+    }
+    setOrder(o); setPos(0); setRevealed(false);
+  };
+  const reset = () => { setOrder(cards.map((_, i) => i)); setPos(0); setRevealed(false); };
+
+  const card = cards[order[pos]];
+
+  return (
+    <div className="flashcards">
+      <div className="flashcards__bar">
+        <span className="flashcards__count">{pos + 1} / {cards.length}</span>
+        <span className="flashcards__spacer" />
+        <button type="button" className="flashcards__btn" onClick={shuffle}>
+          {lang === 'hu' ? '🔀 Keverés' : '🔀 Shuffle'}
+        </button>
+        <button type="button" className="flashcards__btn" onClick={reset}>
+          {lang === 'hu' ? 'Eredeti sorrend' : 'Reset'}
+        </button>
+      </div>
+
+      <button
+        type="button"
+        className={`flashcard${revealed ? ' flashcard--back' : ''}`}
+        onClick={() => setRevealed((r) => !r)}
+      >
+        <span className="flashcard__tag">
+          {revealed ? (lang === 'hu' ? 'Válasz' : 'Answer') : (lang === 'hu' ? 'Kérdés' : 'Question')}
+        </span>
+        <div className="flashcard__face">
+          <MarkdownView markdown={revealed ? card.back : card.front} />
+        </div>
+        <span className="flashcard__hint">
+          {revealed
+            ? (lang === 'hu' ? 'Kattints a kérdéshez' : 'Tap for question')
+            : (lang === 'hu' ? 'Kattints a válaszért' : 'Tap to reveal')}
+        </span>
+      </button>
+
+      <div className="flashcards__nav">
+        <button type="button" className="flashcards__btn" onClick={() => go(-1)} disabled={pos === 0}>
+          ‹ {lang === 'hu' ? 'Előző' : 'Prev'}
+        </button>
+        <button type="button" className="flashcards__btn" onClick={() => setRevealed((r) => !r)}>
+          {revealed ? (lang === 'hu' ? 'Kérdés' : 'Question') : (lang === 'hu' ? 'Válasz' : 'Answer')}
+        </button>
+        <button type="button" className="flashcards__btn" onClick={() => go(1)} disabled={pos === cards.length - 1}>
+          {lang === 'hu' ? 'Következő' : 'Next'} ›
+        </button>
+      </div>
     </div>
   );
 }
@@ -271,6 +340,15 @@ function SubsectionGuide() {
         )}
       </section>
 
+      {s.flashcards.length > 0 && (
+        <section className="practice__guide-block">
+          <div className="practice__guide-head">
+            <h2 className="practice__h2">{lang === 'hu' ? '🃏 Tanulókártyák' : '🃏 Flashcards'}</h2>
+          </div>
+          <FlashcardDeck cards={s.flashcards} />
+        </section>
+      )}
+
       <nav className="practice__chnav">
         {prev ? (
           <Link to={`/practice/guide/${chapter}/${prev.slug}`} className="practice__back">← {prev.number} {prev.title}</Link>
@@ -283,6 +361,51 @@ function SubsectionGuide() {
           <span />
         )}
       </nav>
+    </div>
+  );
+}
+
+/** Present a slide deck one slide at a time (split on `---` separators). */
+function SlideDeck({ markdown }: { markdown: string }) {
+  const { lang } = useLang();
+  const slides = useMemo(
+    () => markdown.split(/\n-{3,}[ \t]*\n/).map((s) => s.trim()).filter(Boolean),
+    [markdown],
+  );
+  const [i, setI] = useState(0);
+  const clamp = (n: number) => Math.min(Math.max(n, 0), slides.length - 1);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') setI((n) => clamp(n + 1));
+      else if (e.key === 'ArrowLeft' || e.key === 'PageUp') setI((n) => clamp(n - 1));
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slides.length]);
+
+  if (!slides.length) return null;
+
+  return (
+    <div className="slidedeck">
+      <div className="slidedeck__stage">
+        <MarkdownView className="slidedeck__slide" markdown={slides[i]} />
+      </div>
+      <div className="slidedeck__nav">
+        <button type="button" className="flashcards__btn" onClick={() => setI((n) => clamp(n - 1))} disabled={i === 0}>
+          ‹ {lang === 'hu' ? 'Előző' : 'Prev'}
+        </button>
+        <span className="flashcards__count">{i + 1} / {slides.length}</span>
+        <button
+          type="button"
+          className="flashcards__btn"
+          onClick={() => setI((n) => clamp(n + 1))}
+          disabled={i === slides.length - 1}
+        >
+          {lang === 'hu' ? 'Következő' : 'Next'} ›
+        </button>
+      </div>
     </div>
   );
 }
@@ -319,7 +442,7 @@ function ChapterReader({ kind }: { kind: 'book' | 'slides' }) {
         </p>
         <h1>{t(meta.title)}</h1>
       </header>
-      <MarkdownView markdown={md} />
+      {kind === 'slides' ? <SlideDeck markdown={md} /> : <MarkdownView markdown={md} />}
     </div>
   );
 }

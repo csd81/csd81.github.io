@@ -1,0 +1,55 @@
+What is the specific matrix product form of a Cholesky factorization?,$\mathbf{A} = \mathbf{LL}^T$
+"In the Cholesky factorization $\mathbf{A} = \mathbf{LL}^T$, what type of matrix must $\mathbf{L}$ be?",A lower triangular matrix.
+"According to the definition, the matrix $\mathbf{A}$ in a Cholesky factorization must satisfy which property regarding its shape/balance?",It must be a symmetric matrix.
+What is a sufficient condition for the existence of a real Cholesky factorization $\mathbf{A} = \mathbf{LL}^T$?,$\mathbf{A}$ is symmetric and positive definite.
+"If the Cholesky factorization exists for a matrix $\mathbf{A}$, is the result guaranteed to be unique?","No, it is not unique."
+"If $\mathbf{A}$ is positive definite, what choice can be made regarding the main diagonal elements of $\mathbf{L}$?",They can be chosen as positive elements.
+What method is used to prove the existence theorem for the Cholesky factorization of an $n \times n$ matrix?,Mathematical induction with respect to the dimension of the matrix.
+"In the induction proof, for which matrix size is the existence of the factorization considered obvious?",$1 \times 1$ matrices.
+"When partitioning an $n \times n$ matrix $\mathbf{A}$ for the induction proof, what is the dimension of the top-left submatrix $\mathbf{X}$?",$(n-1) \times (n-1)$
+"In the partitioning $\mathbf{A} = \begin{pmatrix} \mathbf{X} & \mathbf{y} \\ \mathbf{y}^T & a_{nn} \end{pmatrix}$, why must $\mathbf{X}$ be positive definite if $\mathbf{A}$ is positive definite?",Because all principal minors of a positive definite matrix are positive.
+"In the partitioned product form of the proof, what relation defines the top-left submatrix $\mathbf{X}$?",$\mathbf{X} = \tilde{\mathbf{L}}\tilde{\mathbf{L}}^T$
+"In the proof, what equation relates the lower triangular submatrix $\tilde{\mathbf{L}}$, the vector $\mathbf{c}$, and the vector $\mathbf{y}$?",$\tilde{\mathbf{L}}\mathbf{c} = \mathbf{y}$
+What scalar equation is used to solve for the bottom-right element $d$ in the proof?,$\mathbf{c}^T\mathbf{c} + d^2 = a_{nn}$
+Why does the equation $\tilde{\mathbf{L}}\mathbf{c} = \mathbf{y}$ have a unique solution for $\mathbf{c}$ in the induction step?,Because $\tilde{\mathbf{L}}$ is nonsingular (its diagonal elements are positive).
+What formula relates the determinant of $\mathbf{A}$ to the determinant of $\tilde{\mathbf{L}}$ and $d$ in the induction proof?,$\det(\mathbf{A}) = \det(\tilde{\mathbf{L}})^2 d^2$
+Under what condition is the scalar $d$ in the factorization proof guaranteed to be a positive real number?,When $d^2 = a_{nn} - \mathbf{c}^T\mathbf{c} > 0$.
+"In the algorithm, how is the first element $l_{11}$ calculated from the input matrix $\mathbf{A}$?",$l_{11} = \sqrt{a_{11}}$
+What is the formula for calculating the elements $l_{i1}$ in the first column below the diagonal?,$l_{i1} = a_{i1}/l_{11}$
+Formula: General calculation for the diagonal element $l_{jj}$ (for $j > 1$),$l_{jj} = \sqrt{a_{jj} - \sum_{k=1}^{j-1} l_{jk}^2}$
+Formula: General calculation for the off-diagonal element $l_{ij}$ (where $i > j$),$l_{ij} = (a_{ij} - \sum_{k=1}^{j-1} l_{ik}l_{jk})/l_{jj}$
+What is the formula for the final element $l_{nn}$ of the matrix $\mathbf{L}$?,$l_{nn} = \sqrt{a_{nn} - \sum_{k=1}^{n-1} l_{nk}^2}$
+What is the leading term of the operation count for multiplications and divisions in the Cholesky algorithm?,$n^3/6$
+What is the leading term of the operation count for additions and subtractions in the Cholesky algorithm?,$n^3/6$
+Exactly how many square root operations are performed in a Cholesky factorization of an $n \times n$ matrix?,$n$
+"In the Cholesky algorithm, which indices does the outer loop for the column variable $j$ span?","$j = 2, \ldots, n-1$"
+"In the example matrix where $a_{11} = 4$, $a_{21} = -8$, and $a_{31} = 4$, what is the first column of $\mathbf{L}$?","The column entries are $2$, $-4$, and $2$."
+"In the $3 \times 3$ example, if $l_{21} = -4$ and $a_{22} = 17$, what equation is used to find $l_{22}$?",$17 = (-4)^2 + l_{22}^2$
+"For the example matrix, given $l_{11}=2, l_{21}=-4, l_{31}=2$, and $a_{32}=-11$, what is the value of $l_{32}$?",$l_{32} = -3$
+"In the example matrix, how is $l_{33}$ determined if $a_{33}=22, l_{31}=2$, and $l_{32}=-3$?",$22 = 2^2 + (-3)^2 + l_{33}^2$
+What is the resulting $\mathbf{L}$ matrix for the example $\mathbf{A} = \begin{pmatrix} 4 & -8 & 4 \\ -8 & 17 & -11 \\ 4 & -11 & 22 \end{pmatrix}$?,$\begin{pmatrix} 2 & 0 & 0 \\ -4 & 1 & 0 \\ 2 & -3 & 3 \end{pmatrix}$
+Why does the matrix $\begin{pmatrix} 0 & 1 \\ 1 & 0 \end{pmatrix}$ have no Cholesky factorization?,"It is not positive definite (the first diagonal element is 0, implying $l_{11} = 0$, which prevents division)."
+"If the sum of squares of previous elements in a row exceeds the diagonal element $a_{jj}$, what happens to the diagonal element $l_{jj}$?",It would become an imaginary number.
+What property of $\mathbf{A}$ ensures that $d^2 = a_{nn} - \mathbf{c}^T\mathbf{c}$ will always be strictly positive in the real case?,Positive definiteness of $\mathbf{A}$.
+How does the complexity of Cholesky factorization compare to LU decomposition generally?,It is approximately half the work ($n^3/6$ vs $n^3/3$ for multiplications).
+The term 'lower triangular' in Hungarian is \_\_\_\_.,alsó háromszögmátrix (or alulról trianguláris)
+The term 'positive definite' in Hungarian is \_\_\_\_.,pozitív definit
+"In the algorithm, the inner loop for $i$ calculates elements from $j+1$ to $n$. What does this correspond to in the matrix $\mathbf{L}$?",The elements below the diagonal in column $j$.
+What is the specific multiplication count given in Algorithm 5.8 including lower-order terms?,$n^3/6 + n^2/2 - 2n/3$
+What is the specific addition count given in Algorithm 5.8 including lower-order terms?,$n^3/6 - n/6$
+Concept: Principal Minor,Definition: The determinant of a square submatrix obtained by deleting rows and columns with the same indices. All must be positive for positive definiteness.
+"In the inductive step, if $\tilde{\mathbf{L}}$ is the $(n-1) \times (n-1)$ Cholesky factor, what is $\det(\tilde{\mathbf{L}})$?",The product of its diagonal elements.
+What is the output of the Cholesky factorization algorithm?,"The elements $l_{ij}$ for $i = 1, \ldots, n$ and $j = 1, \ldots, i$."
+"If a matrix is symmetric but not positive definite, can a Cholesky-like factorization $LL^T$ exist?","It might exist, but the diagonal elements of $L$ may not be real or positive."
+"If $a_{11} = 16$ in a matrix, what is $l_{11}$ in its Cholesky factorization?",$4$
+"If $a_{11} = 1$ and $a_{21} = -1$, what are $l_{11}$ and $l_{21}$?",$l_{11} = 1$ and $l_{21} = -1$.
+True or False: The algorithm calculates $\mathbf{L}$ row by row or column by column.,True (the specific implementation provided proceeds column by column).
+"In the proof, $\mathbf{c}$ is an $(n-1)$-dimensional \_\_\_\_\_ vector.",column
+The induction hypothesis assumes the theorem holds for matrices of what size?,$(n-1) \times (n-1)$
+Which theorem is typically used to state that the leading submatrix $X$ of a positive definite matrix is also positive definite?,Theorem 3.10 (as cited in the source).
+What does the expression $l_{ik}l_{jk}$ inside the summation for $l_{ij}$ represent?,The dot product of the truncated rows $i$ and $j$ of $\mathbf{L}$.
+"If $\mathbf{A}$ is a $2 \times 2$ matrix, how many elements are in the 'output' list $(l_{ij})$?","3 elements ($l_{11}, l_{21}, l_{22}$)"
+Is the Cholesky factorization possible for a matrix with a negative diagonal element?,"No, because $l_{ii}^2 = a_{ii} - \sum l_{ik}^2$ would require a square root of a negative number for a real factorization."
+"In the Cholesky algorithm, which element is updated in the very first assignment?",$l_{11}$
+How is $l_{jj}$ defined in the algorithm when $j=1$?,It is simply $\sqrt{a_{11}}$ (handled as a separate step before the $j$ loop).
+"In the complexity analysis, what does $\mathcal{O}(n^2)$ represent?",Lower-order terms that become insignificant compared to $n^3$ as $n$ grows.

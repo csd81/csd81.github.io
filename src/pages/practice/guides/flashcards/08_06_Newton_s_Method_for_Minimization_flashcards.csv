@@ -1,0 +1,60 @@
+What is the primary purpose of Newton's method as described in the source material?,To find the minimum value of a function $f: \mathbb{R}^n \to \mathbb{R}$.
+What degree is the Taylor polynomial used to approximate the function $f$ in a neighborhood of $\mathbf{p}^{(0)}$?,Second-order (or quadratic).
+"In the Taylor approximation $g(\mathbf{x})$, what does the term $f'(\mathbf{p}^{(0)})$ represent?",The gradient vector of $f$ evaluated at $\mathbf{p}^{(0)}$.
+"In the Taylor approximation $g(\mathbf{x})$, what does the term $f''(\mathbf{p}^{(0)})$ represent?",The Hessian matrix of $f$ evaluated at $\mathbf{p}^{(0)}$.
+What is the mathematical definition of the quadratic Taylor approximation $g(\mathbf{x})$ of $f$ at $\mathbf{p}^{(0)}$?,$g(\mathbf{x}) := f(\mathbf{p}^{(0)}) + f'(\mathbf{p}^{(0)})^T(\mathbf{x} - \mathbf{p}^{(0)}) + \frac{1}{2}(\mathbf{x} - \mathbf{p}^{(0)})^T f''(\mathbf{p}^{(0)})(\mathbf{x} - \mathbf{p}^{(0)})$.
+Under what condition does the quadratic approximation $g(\mathbf{x})$ possess a unique global minimum?,When the Hessian matrix $f''(\mathbf{p}^{(0)})$ is positive definite.
+Provide the iteration formula for Newton's method for minimization.,$\mathbf{p}^{(k+1)} = \mathbf{p}^{(k)} - (f''(\mathbf{p}^{(k)}))^{-1} f'(\mathbf{p}^{(k)})$.
+Newton's method for minimization is equivalent to applying Newton's iteration to solve which equation system?,$f'(\mathbf{x}) = \mathbf{0}$.
+"According to Theorem 8.13, what must be the value of $f'(\mathbf{p})$ for a point $\mathbf{p}$ to be a local minimum candidate?",$\mathbf{0}$ (the zero vector).
+What differentiability class is required for $f$ to apply the local quadratic convergence theorem for Newton's method?,$f \in C^3$.
+"If $f'(\mathbf{p}) = \mathbf{0}$ and $f''(\mathbf{p})$ is positive definite, what can be concluded about the point $\mathbf{p}$?",The function $f$ has a local minimum at $\mathbf{p}$.
+What is the typical convergence rate of Newton's method near a local minimum where the Hessian is positive definite?,Locally quadratic convergence.
+"According to the proof of Theorem 8.13, which theorem establishes the local quadratic convergence of Newton's method for systems?",Theorem 2.56.
+Concept: Newton's Method for Minimization,Definition: An iterative algorithm that uses first and second derivatives to find local minima of a function.
+"In Example 8.14, Newton's method is applied to which function $f(x, y)$?","$f(x, y) = (x^2 - 2y)^2 + 2(x - 1)^2$."
+"What is the exact minimum point of the function $f(x, y) = (x^2 - 2y)^2 + 2(x - 1)^2$ used in Example 8.14?","$(1, 0.5)^T$."
+"In Example 8.14, the starting vector $\mathbf{p}^{(0)}$ for the first trial is \_\_\_\_\_.","$(-1, 4)^T$."
+"For the function in Example 8.14, what occurs if the Newton's iteration starts from $(1, 3)^T$?",The method returns the exact minimum point in a single step.
+How does the convergence speed of Newton's method in Example 8.14 (positive definite Hessian) compare to Example 8.15 (zero Hessian)?,"Example 8.14 is quadratic (fast), while Example 8.15 is linear (slower)."
+"In Example 8.15, what is the function $f(x, y)$ defined as?","$f(x, y) = 0.1(x^2 - 2y)^4 + (x - 1)^2$."
+"What is the value of the Hessian $f''(1, 0.5)$ for the function $f(x, y) = 0.1(x^2 - 2y)^4 + (x - 1)^2$?",The zero matrix $\mathbf{0}$.
+"Why is the Hessian $f''(1, 0.5) = \mathbf{0}$ significant in Example 8.15?","It means the Hessian is not positive definite, violating a condition for quadratic convergence."
+"Despite the non-positive definite Hessian at the minimum, how does Newton's method behave for the function in Example 8.15?","It still converges, but the rate of convergence is only linear."
+What type of function always results in the exact minimum in one step using Newton's method (assuming a positive definite Hessian)?,Quadratic functions.
+"Exercise 3 asks to prove that if Theorem 8.13 conditions hold and $\mathbf{p}^{(0)}$ is close to $\mathbf{p}$, then $f''(\mathbf{p}^{(k)})$ is \_\_\_\_\_ for all $k$.",Invertible.
+How is the next iteration point $\mathbf{p}^{(1)}$ calculated from the quadratic approximation $g$?,It is the point where $g$ attains its global minimum.
+The notation $(f''(\mathbf{p}^{(k)}))^{-1}$ in the iteration formula denotes the \_\_\_\_\_ of the Hessian matrix.,Inverse.
+The sequence $\mathbf{p}^{(k+1)} = \mathbf{p}^{(k)} - (f''(\mathbf{p}^{(k)}))^{-1} f'(\mathbf{p}^{(k)})$ is known as the \_\_\_\_\_ minimum-seeking method.,Newton-type (or Newton's).
+What happens to the gradient $f'$ at the minimum point in Example 8.14 and 8.15?,It becomes the zero vector $\mathbf{0}$.
+"In Example 8.15, Table 8.6 shows the ratio $\frac{\|\mathbf{p}^{(k)} - \mathbf{p}\|_2}{\|\mathbf{p}^{(k-1)} - \mathbf{p}\|_2}$ approaching a constant. What does this indicate?",Linear convergence.
+"In Example 8.14, Table 8.5 shows the ratio $\frac{\|\mathbf{p}^{(k)} - \mathbf{p}\|_2}{\|\mathbf{p}^{(k-1)} - \mathbf{p}\|_2^2}$ being tracked. What is this ratio used to identify?",Quadratic convergence.
+"What is the value of $f(\mathbf{p}^{(k)})$ at the exact minimum $(1, 0.5)^T$ for both examples in Section 8.6?",0.00000000.
+"If the Hessian matrix $f''(\mathbf{x})$ is positive definite everywhere, what kind of minimum does the quadratic approximation $g$ have?",A global minimum.
+Why is $f \in C^3$ a necessary condition for the quadratic convergence theorem of Newton's method?,To ensure the second derivative is Lipschitz continuous or that the Taylor remainder behaves correctly for quadratic convergence.
+True or False: Newton's method for minimization requires calculating the inverse of the Hessian matrix at every step.,"True (at least conceptually, as per the formula $\mathbf{p}^{(k+1)} = \mathbf{p}^{(k)} - (f''(\mathbf{p}^{(k)}))^{-1} f'(\mathbf{p}^{(k)})$)."
+"In the formula for Newton's method, what is subtracted from the current point $\mathbf{p}^{(k)}$?",The product of the inverse Hessian and the gradient vector: $(f''(\mathbf{p}^{(k)}))^{-1} f'(\mathbf{p}^{(k)})$.
+What vector norm is used in the examples to measure the distance to the minimum point?,"The $L_2$ norm (Euclidean norm), denoted as $\|\cdot\|_2$."
+"For the function $f(x, y) = (x^2 - 2y)^2 + 2(x - 1)^2$, how many iterations starting from $(-1, 4)^T$ were shown before reaching a distance of approximately $1.7 \times 10^{-5}$?",5 iterations.
+"In Example 8.15, at iteration $k=20$, the distance to the minimum is approximately \_\_\_\_\_.",$0.01238211$.
+"Based on the tables, which example converges to a much higher precision in fewer steps?",Example 8.14 (due to quadratic convergence).
+"In Example 8.15, the ratio $\frac{\|\mathbf{p}^{(k)} - \mathbf{p}\|_2}{\|\mathbf{p}^{(k-1)} - \mathbf{p}\|_2}$ eventually stabilizes around what value?",Approximately $0.66666667$ (or $2/3$).
+Under what circumstance does Newton's method for minimization fail to be defined for a specific iteration step?,If the Hessian matrix $f''(\mathbf{p}^{(k)})$ is singular (non-invertible).
+Theorem 8.13 asserts that Newton's method converges \_\_\_\_\_ if the starting point is close enough to the minimum.,Locally.
+What is the relationship between the Hessian matrix $f''(\mathbf{p})$ and the Jacobian matrix of the system $f'(\mathbf{x}) = \mathbf{0}$?,The Hessian of $f$ is the Jacobian of the gradient system $f'(\mathbf{x})$.
+"If $f$ is a quadratic function, $f(\mathbf{x}) = \frac{1}{2}\mathbf{x}^T A \mathbf{x} + \mathbf{b}^T \mathbf{x} + c$, what is its Hessian matrix $f''(\mathbf{x})$?",The matrix $A$.
+Newton's method effectively replaces the objective function at each step with its \_\_\_\_\_ approximation.,Quadratic (or second-order Taylor).
+What is the result of the first derivative of the Taylor approximation $g(\mathbf{x})$ at the point $\mathbf{x} = \mathbf{p}^{(1)}$?,The gradient $g'(\mathbf{p}^{(1)}) = \mathbf{0}$.
+"In Example 8.15, the starting function value $f(\mathbf{p}^{(0)})$ is \_\_\_\_\_.",$244.10000000$.
+"In Example 8.14, the value of the function at the starting point $(-1, 4)^T$ is \_\_\_\_\_.",$57.00000000$.
+The term $f'(\mathbf{p}^{(0)})^T(\mathbf{x} - \mathbf{p}^{(0)})$ in the Taylor polynomial represents a \_\_\_\_\_ product.,Scalar (or dot) product.
+Which specific property of the Hessian ensures that the search direction in Newton's method is a descent direction?,Positive definiteness.
+How is the Taylor polynomial $g(\mathbf{x})$ related to the next iterate $\mathbf{p}^{(1)}$ in terms of calculus?,"$\mathbf{p}^{(1)}$ is the stationary point of $g(\mathbf{x})$, found by setting $g'(\mathbf{x}) = \mathbf{0}$."
+What is the significance of the distance $\|\mathbf{p}^{(k)} - \mathbf{p}\|_2$ becoming zero in a table?,The iteration has reached the exact minimum within numerical precision.
+"If Newton's method is applied to a function where the Hessian is always positive definite, what can be said about the shape of the function?",The function is strictly convex.
+The proof of Theorem 8.13 uses which theorem to establish that $\mathbf{p}$ is a local minimum?,Theorem 8.1.
+"In Example 8.14, at $k=1$, the iterate $\mathbf{p}^{(1)}$ is \_\_\_\_\_.","$(-1.33333333, 0.83333333)^T$."
+"Exercise 2: For a quadratic function with a positive definite Hessian, why is the minimum found in one step?",Because the second-order Taylor polynomial $g(\mathbf{x})$ is identical to the function $f(\mathbf{x})$ itself.
+"What is the gradient vector of $f(x, y) = (x^2 - 2y)^2 + 2(x - 1)^2$ at its minimum $(1, 0.5)^T$?","$(0, 0)^T$."
+The Hessian matrix is defined as the matrix of \_\_\_\_\_ partial derivatives.,Second-order.
+Newton's method for minimization can be viewed as a \_\_\_\_\_ refinement of the current estimate of the minimum.,Local.

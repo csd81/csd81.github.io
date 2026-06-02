@@ -1,0 +1,25 @@
+"In polynomial curve fitting, what parameters are sought to minimize the least square error function $F$?","The coefficients $a_m, a_{m-1}, \ldots, a_0$."
+"What is the least square error function $F(a_m, \ldots, a_0)$ used in polynomial curve fitting?","$F(a_m, \ldots, a_0) := \sum_{i=0}^{n} (a_m x_i^m + a_{m-1} x_i^{m-1} + \cdots + a_0 - y_i)^2$"
+"When $n \le m$ for given data points $(x_i, y_i)$, how can the polynomial coefficients be determined?",By polynomial interpolation.
+What is the minimal value of the error function $F$ if $n \le m$?,$0$
+Why is the case $m < n$ primarily investigated in polynomial curve fitting?,Because the error function $F$ generally does not reach zero in this case.
+"According to the source, at what points can the function $F$ have an extremum?",Where all of its partial derivatives are equal to zero.
+What is the general expression for the partial derivative $\frac{\partial F}{\partial a_k}$ in polynomial fitting?,$2\sum_{i=0}^{n} (a_m x_i^m + a_{m-1} x_i^{m-1} + \cdots + a_0 - y_i)x_i^k$
+What system of linear equations is obtained by setting the partial derivatives of $F$ to zero?,The normal equations.
+"In the normal equations, what is the right-hand side of the equation corresponding to the partial derivative of $a_k$?",$\sum_{i=0}^{n} x_i^k y_i$
+The coefficient matrix $\mathbf{A}$ of the normal equations is invertable if it is shown to be \_\_\_\_\_.,positive definite
+What is the formula for the $jk$-th element of the coefficient matrix $\mathbf{A}$ in polynomial fitting?,"$\sum_{i=0}^{n} x_i^{2m+2-j-k}$ where $j, k = 1, 2, \ldots, m + 1$"
+"In the proof of the existence of a unique solution, what expression represents the quadratic form $\mathbf{z}^T \mathbf{A} \mathbf{z}$?",$\sum_{i=0}^{n} (\sum_{j=1}^{m+1} x_i^{m+1-j} z_j)^2$
+Under what condition on the points $x_i$ does the polynomial $p(x) := \sum_{j=1}^{m+1} z_j x^{m+1-j}$ being zero at all $x_i$ imply $z_j = 0$?,If there are at least $m + 1$ distinct mesh points.
+Which mathematical theorem implies $p(x) = 0$ for all $x$ if it has $m+1$ roots but degree at most $m$?,The Fundamental Theorem of Algebra.
+What is the relationship between the Hessian matrix $F''(\bar{\mathbf{a}})$ and the coefficient matrix $\mathbf{A}$?,$F''(\bar{\mathbf{a}}) = 2\mathbf{A}$
+Why is the local minimum of the error function $F$ also its global minimum?,Because $F$ is a quadratic function.
+Theorem 9.3 states that a unique solution exists for polynomial fitting if $m < n$ and there are at least \_\_\_\_\_ distinct mesh points.,$m + 1$
+What is the sum of the squared differences between the predicted and actual $y$-values called in this context?,The error of the fitting.
+"In the provided parabola fitting example ($m=2$), how many equations are in the resulting system?",Three equations.
+"In a parabola fitting problem ($y = ax^2 + bx + c$), what does the variable $c$ represent in the coefficient vector $(a, b, c)$?",The constant term ($a_0$).
+Formula: Error of the fitting,$\sum_{i=0}^{n} (P(x_i) - y_i)^2$ where $P(x)$ is the calculated polynomial.
+The matrix $\mathbf{A}$ is symmetric because its $jk$-th element depends on the \_\_\_\_\_ of indices $j$ and $k$.,sum
+What value of $n$ corresponds to the total number of data points being $7$?,$n = 6$
+"If the normal equations for a parabola are $249.1250a + 77.750b + 27.50c = -7.225$, what does $27.50$ represent in terms of $x_i$?",The sum of $x_i^2$.
+What determines the number of variables in the error function $F$ for a polynomial of degree $m$?,"The number of coefficients, which is $m + 1$."

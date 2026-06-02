@@ -1,0 +1,59 @@
+What is an $n$-dimensional upper triangular linear system?,A system where all coefficients $a_{ij} = 0$ for $i > j$.
+"In an upper triangular system $Ax = b$, what is the equation for the $n$-th variable?",$a_{nn}x_n = b_n$
+What is the specific name of the method used to solve upper triangular systems?,Backward substitution.
+The Hungarian term for the backward substitution method is \_\_\_\_\_.,Visszahelyettesítés módszere.
+Which variable is solved first in the backward substitution algorithm?,$x_n$
+Which variable is solved last in the backward substitution algorithm?,$x_1$
+Algorithm: What is the assignment for $x_n$ at the start of backward substitution?,$x_n \leftarrow b_n / a_{nn}$
+"In the backward substitution algorithm, what range of values does the index $i$ take after solving for $x_n$?","$n-1, \dots, 1$"
+What is the general formula for calculating $x_i$ in backward substitution?,$x_i \leftarrow (b_i - \sum_{j=i+1}^{n} a_{ij}x_j) / a_{ii}$
+"In the formula for $x_i$, what is the lower limit of the summation index $j$?",$i+1$
+"In the formula for $x_i$, what is the upper limit of the summation index $j$?",$n$
+Under what condition on the diagonal elements $a_{ii}$ can backward substitution be performed?,"$a_{ii} \ne 0$ for all $i = 1, \dots, n$."
+How is the determinant of a triangular matrix $A$ calculated?,It is the product of the diagonal elements: $\det(A) = a_{11}a_{22}\cdots a_{nn}$.
+"Backward substitution works if and only if the system has a unique solution, which implies $\det(A) \ne$ \_\_\_\_\_.",$0$
+How many multiplications and divisions are required in step 1 of the backward substitution algorithm?,$1$
+How many additions and subtractions are required in step 1 of the backward substitution algorithm?,$0$
+"In the $n$-th step of the algorithm, how many multiplications and divisions are performed?",$n$
+"In the $n$-th step of the algorithm, how many additions and subtractions are performed?",$n-1$
+What is the total number of multiplications and divisions required for backward substitution?,$n(n+1)/2$
+What is the total number of additions and subtractions required for backward substitution?,$n(n-1)/2$
+"In terms of Big O notation, what is the complexity of multiplications and divisions for backward substitution?",$n^2/2 + \mathcal{O}(n)$
+"In terms of Big O notation, what is the complexity of additions and subtractions for backward substitution?",$n^2/2 + \mathcal{O}(n)$
+How does the source material define the notation $\mathcal{O}(n^k)$?,A polynomial with degree at most $k$.
+"Why is the leading term of the time complexity (e.g., $n^2/2$) prioritized over lower-order terms?",It determines the magnitude of the formula as $n$ becomes large.
+"If $3x_4 = 12$ in a triangular system, what is the value of $x_4$?",$4$
+"If $2x_3 - x_4 = -2$ and $x_4 = 4$, what is the resulting value of $x_3$?",$1$
+"In a linear system $Ax=b$, what does the vector $b$ represent?",The right-hand side constant values.
+A triangular matrix where $a_{ij} = 0$ for $i > j$ is specifically called an \_\_\_\_\_ triangular matrix.,Upper
+Concept: Time Complexity,Definition: The number of arithmetic operations required to perform an algorithm as a function of the input size $n$.
+What arithmetic operation is performed at every step $i$ to isolate $x_i$?,Division by $a_{ii}$.
+Term: Leading Term,"Definition: The term in a polynomial with the highest power of $n$, determining the growth rate for large $n$."
+How many terms are in the summation $\sum_{j=i+1}^{n} a_{ij}x_j$ when $i = n-1$?,$1$
+"True or False: If any diagonal element of a triangular matrix is zero, the determinant is zero.",True
+Which specific field of mathematics is the source material '03_01_triangular-systems.md' discussing?,Numerical Analysis.
+The summation term in the backward substitution formula accounts for the \_\_\_\_\_ of previously solved variables.,Back-substitution (or back-replacement).
+"What is the closed-form sum of the first $n$ integers, $1 + 2 + \dots + n$?",$n(n+1)/2$
+"If $n = 1000$, what is the approximate magnitude of multiplications required for backward substitution?","Approximately $500,000$ (or $n^2/2$)."
+The notation $\mathcal{O}(n^k)$ effectively \_\_\_\_\_ lower-order terms that are less significant for large $n$.,Hides (or ignores).
+"In the example system, $x_2$ is found using the formula $(13 + x_3 - 2x_4)/3$. If $x_3=1$ and $x_4=4$, what is $x_2$?",$2$
+"In the example system, $x_1$ is found using $(3 + x_2 - 3x_3 - x_4)/2$. If $x_2=2, x_3=1, x_4=4$, what is $x_1$?",$-1$
+What type of systems (linear or nonlinear) is backward substitution designed for?,Linear systems.
+"If a matrix is upper triangular, its \_\_\_\_\_ consist only of elements where the row index is less than or equal to the column index.",Non-zero entries.
+Why is it often more efficient to define a specialized method for a specific problem type like triangular systems?,Specialized methods exploit the structure of the problem to reduce operation counts.
+What is the result of $1 + 2 + \dots + (n-1)$?,$(n-1)n/2$
+How does the complexity of multiplications/divisions compare to additions/subtractions in backward substitution?,They have the same leading order complexity ($n^2/2$).
+"In the Hungarian text, the word 'műveletigény' refers to \_\_\_\_\_.",Operation count (or computational complexity).
+Process: Solving $x_i$ requires knowing the values of all $x_j$ where $j$ is \_\_\_\_\_ than $i$.,Greater
+"If the determinant of a triangular matrix is non-zero, does the backward substitution algorithm always yield a solution?","Yes, it yields a unique solution."
+The algorithm $x_i \leftarrow (b_i - \sum_{j=i+1}^{n} a_{ij}x_j)/a_{ii}$ corresponds to solving the $i$-th \_\_\_\_\_ of the system.,Row (or equation).
+Is backward substitution a finite or iterative numerical method?,Finite (it requires finitely many steps).
+Formula: Number of divisions in the entire backward substitution algorithm for an $n \times n$ matrix.,$n$
+What determines if backward substitution can be performed for a specific $i$-th row?,Whether $a_{ii} \ne 0$.
+Hungarian term: 'egyértelmű megoldás' means \_\_\_\_\_.,Unique solution.
+"In the complexity analysis table, what is the count of multiplication/division for step 2?",2
+"In the complexity analysis table, what is the count of addition/subtraction for step 2?",1
+What does the $a_{1n}x_n$ term represent in the first equation of a triangular system?,The product of the coefficient $a_{1n}$ and the $n$-th unknown $x_n$.
+"If $n=2$, how many total multiplications/divisions are needed?",$3$ (calculated as $2(3)/2$).
+"If $n=2$, how many total additions/subtractions are needed?",$1$ (calculated as $1(2)/2$).
+"In the expression $n^2/2 + \mathcal{O}(n)$, the term $\mathcal{O}(n)$ is considered a \_\_\_\_\_ order term.",Lower

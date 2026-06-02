@@ -1,0 +1,52 @@
+"In mathematical notation, what set of functions does $C[a,b]$ denote?","The set of continuous real-valued functions defined on the interval $[a,b]$."
+"The set of continuous real-valued functions that are $m$-times continuously differentiable on $(a,b)$ is denoted as \_\_\_\_\_.","$C^m[a,b]$"
+"Under what condition is a real-valued function $f$ guaranteed to have both a maximum and a minimum on the interval $[a,b]$?","$f$ must be continuous on the closed interval $[a,b]$ (i.e., $f \in C[a,b]$)."
+How is the open interval spanned by two numbers $a$ and $b$ denoted in this text?,"$\langle a,b\rangle$"
+"Definition: $\langle a,b\rangle$","$(\min\{a,b\}, \max\{a,b\})$"
+"What is the definition of the open interval spanned by a set of numbers $\langle a_1, a_2, \dots, a_n\rangle$?","$(\min\{a_1, a_2, \dots, a_n\}, \max\{a_1, a_2, \dots, a_n\})$"
+Which theorem states that a continuous function takes every value between two of its function values?,The Intermediate Value Theorem (Theorem 2.2)
+"Intermediate Value Theorem: If $f \in C[a,b]$ and $d$ is a value between $f(a)$ and $f(b)$, where is the point $c$ such that $f(c) = d$ located?","In the open interval $(a,b)$."
+What is the primary requirement for $f(a)$ and $f(b)$ to apply the Intermediate Value Theorem to a value $d$ between them?,$f(a) \ne f(b)$
+What are the two hypotheses required for Rolle's Theorem (Theorem 2.3)?,"$f \in C^1[a,b]$ and $f(a) = f(b)$."
+"Rolle's Theorem: If $f \in C^1[a,b]$ and $f(a) = f(b)$, what must exist at some point $\xi \in (a,b)$?",A point where the derivative $f'(\xi) = 0$.
+Which theorem provides the conclusion $f(b) - f(a) = f'(\xi)(b - a)$?,Lagrange's Mean Value Theorem (Theorem 2.4)
+"What differentiability class must $f$ belong to for Lagrange's Mean Value Theorem to apply on $[a,b]$?","$C^1[a,b]$"
+"In Lagrange's Mean Value Theorem, where is the point $\xi$ located relative to $a$ and $b$?","In the open interval $(a,b)$."
+"To use Taylor's Theorem to expand a function $f$ with a remainder of order $n+1$, $f$ must belong to the set \_\_\_\_\_.","$C^{n+1}[a,b]$"
+"In Taylor's Theorem, where must the point $x_0$ be located?","In the open interval $(a,b)$."
+What is the general form of the $k$-th term (excluding the remainder) in a Taylor expansion of $f(x)$ around $x_0$?,$\frac{f^{(k)}(x_0)}{k!}(x - x_0)^k$
+"In Taylor's Theorem, what is the formula for the remainder term of order $n+1$?",$\frac{f^{(n+1)}(\xi)}{(n+1)!}(x - x_0)^{n+1}$
+Where is the value $\xi$ located in the Taylor expansion remainder term?,"In the open interval spanned by $x$ and $x_0$ (i.e., $\xi \in \langle x, x_0\rangle$)."
+"According to the Mean Value Theorem for integrals, what condition must the integrable function $g(x)$ satisfy on $[a,b]$?","$g(x)$ must not change sign on $[a,b]$ (it is always non-negative or always non-positive)."
+Conclusion: Mean Value Theorem for Integrals,"$\int_a^b f(x) g(x)\, dx = f(\xi) \int_a^b g(x)\, dx$"
+"In the Mean Value Theorem for integrals, what property must $f$ have?","$f$ must be continuous on $[a,b]$ ($f \in C[a,b]$)."
+"Cantor's Intersection Theorem involves a sequence of intervals $[a_n, b_n]$ that are closed, bounded, and \_\_\_\_\_.","Nested (i.e., $[a_{n+1}, b_{n+1}] \subset [a_n, b_n]$)."
+"In Cantor's Intersection Theorem, what must happen to the length $(b_n - a_n)$ as $n \to \infty$?",The length must tend to zero ($(b_n - a_n) \to 0$).
+"If the conditions of Cantor's Intersection Theorem are met, what is the conclusion regarding the sequences $a_n$ and $b_n$?","Both sequences converge to the same point $c \in [a_1, b_1]$."
+What two properties ensure that a real sequence has a finite limit?,Being monotone and bounded (Theorem 2.8).
+"The Fundamental Theorem of Algebra states that an $n$-th degree polynomial with complex coefficients has exactly $n$ complex roots, provided we use \_\_\_\_\_.",Counting multiplicities
+Formula: General form of an $n$-th degree polynomial $p(x)$,$p(x) = a_n x^n + \dots + a_1 x + a_0$
+"If a polynomial $p(x)$ of degree $n$ has $n+1$ distinct roots, what can be concluded about $p(x)$?",$p(x) = 0$ for all $x \in \mathbb{R}$ (it is the identically zero polynomial).
+"According to Theorem 2.9, what coefficient restriction is required for a polynomial to be considered $n$-th degree?",The leading coefficient $a_n$ must not be zero ($a_n \neq 0$).
+"How does $C^1[a,b]$ differ from $C[a,b]$?","$C^1[a,b]$ functions are continuously differentiable on $(a,b)$, while $C[a,b]$ functions are only required to be continuous."
+"If $f \in C[1,5]$, $f(1)=2$, and $f(5)=10$, which theorem guarantees a $c \in (1,5)$ such that $f(c)=6$?",Intermediate Value Theorem (Theorem 2.2)
+"In Rolle's Theorem, is the interval for the derivative $\xi$ open or closed?","Open ($(a,b)$)."
+"Taylor's Theorem: If $n=0$, the formula simplifies to which other theorem?",Lagrange's Mean Value Theorem
+The notation $f^{(n)}(x_0)$ in Taylor's Theorem refers to what?,The $n$-th derivative of $f$ evaluated at $x_0$.
+"In Theorem 2.6, if $g(x) = 1$ for all $x$, the formula becomes $\int_a^b f(x)\, dx = \dots$.",$f(\xi)(b - a)$
+Cantor's Intersection Theorem guarantees the existence of a point $c$ within which specific interval?,"$[a_1, b_1]$ (the first interval in the sequence)."
+"If a sequence is strictly increasing and bounded above, what does Theorem 2.8 guarantee?",The sequence has a finite limit.
+"Theorem 2.1 states that $f$ has its maximum and minimum on $[a,b]$. What specific symbols are used in the text to denote the points where these occur?",$c$ and $d$ (where $f(c) = \max f(x)$ and $f(d) = \min f(x)$).
+"What is the value of $\langle 10, 2\rangle$?","$(2, 10)$"
+"What is the value of $\langle 5, -1, 3\rangle$?","$(-1, 5)$"
+"In Rolle's Theorem, if $f(a) = f(b) = 0$, what does the theorem conclude about roots of the derivative?","There is at least one root of the derivative $f'$ in $(a,b)$."
+Lagrange's Mean Value Theorem states there is a point where the instantaneous rate of change equals the \_\_\_\_\_ rate of change.,Average
+"In Taylor's Theorem, the variable $\xi$ is described as a function of which other variable?",The variable $x$ (written as $\xi = \xi(x)$).
+"If $f \in C[a,b]$ and $g$ is integrable and non-negative, the integral MVT concludes there is a $\xi \in (a,b)$ such that $\int_a^b f g = \dots$.",$f(\xi) \int_a^b g$
+"Does Cantor's Intersection Theorem apply to open intervals $(a_n, b_n)$?","No, the theorem specifically requires closed and bounded intervals $[a_n, b_n]$."
+Theorem 2.8: A sequence that is bounded and \_\_\_\_\_ has a finite limit.,Monotone
+Fundamental Theorem of Algebra: The coefficients $a_j$ of the polynomial $p(x)$ are elements of which set?,The set of complex numbers $\mathbb{C}$.
+What occurs if a polynomial of degree $n$ has $n+1$ different roots?,$p(x) = 0$ for all $x$.
+"If $f \in C^2[a,b]$, how many times is $f$ continuously differentiable on $(a,b)$?",Two times
+"In Theorem 2.7, what is the relationship between $[a_n, b_n]$ and $[a_{n+1}, b_{n+1}]$?","$[a_{n+1}, b_{n+1}]$ is a subset of $[a_n, b_n]$ ($[a_{n+1}, b_{n+1}] \subset [a_n, b_n]$)."
+The Intermediate Value Theorem requires $d$ to be an element of which set defined by the function values at the endpoints?,"The open interval spanned by $f(a)$ and $f(b)$, denoted $\langle f(a), f(b)\rangle$."

@@ -1,0 +1,51 @@
+What is the mathematical definition of an $n$-dimensional simplex?,"The convex hull of $n + 1$ vectors in an $n$-dimensional space, where the differences between any $n$ vertices and the remaining vertex are linearly independent."
+"In the context of simplexes, what geometric shape represents a 1-dimensional simplex?",A line segment.
+What geometric shape corresponds to a 2-dimensional simplex?,A triangle.
+What geometric shape corresponds to a 3-dimensional simplex?,A tetrahedron.
+The simplex method is a numerical technique primarily used to approximate the \_\_\_\_\_ of a function of $n$ variables.,minimum point
+How are the vertices of a simplex usually indexed at the start of an iteration in the simplex method?,"They are ordered by their function values, such that $f(\mathbf{x}^{(0)}) \leq f(\mathbf{x}^{(1)}) \leq \dots \leq f(\mathbf{x}^{(n)})$."
+"In a simplex where $f(\mathbf{x}^{(0)}) \leq f(\mathbf{x}^{(1)}) \leq \dots \leq f(\mathbf{x}^{(n)})$, which vector is designated as the 'worst' vertex?",$\mathbf{x}^{(n)}$
+"In the simplex method, what is the formula for calculating the center $\mathbf{x}_c$ of the $n$ best vertices when $\mathbf{x}^{(j)}$ is the worst vertex?","$\mathbf{x}_c := \frac{1}{n} \sum_{i=0, i \neq j}^{n} \mathbf{x}^{(i)}$"
+What is the formula used to calculate the reflected point $\mathbf{x}_r$ in the simplex method?,$\mathbf{x}_r = 2\mathbf{x}_c - \mathbf{x}^{(j)}$
+Under what condition is a reflection discarded and replaced by a 'shrink' operation in the basic simplex method?,When the function value at the reflected point $f(\mathbf{x}_r)$ is not smaller than the function value of the worst vertex $f(\mathbf{x}^{(j)})$.
+What is the formula for recomputing a vertex $\mathbf{x}^{(i)}$ when shrinking a simplex towards the best vertex $\mathbf{x}^{(k)}$?,$\mathbf{x}^{(i)} \leftarrow \mathbf{x}^{(k)} + \frac{1}{2}(\mathbf{x}^{(i)} - \mathbf{x}^{(k)})$
+One stopping criterion for the simplex method is based on the simplex size. How is 'size' defined in this context?,"The length of the longest edge, calculated as $\max\{\|\mathbf{x}^{(i)} - \mathbf{x}^{(j)}\| : i, j = 0, \dots, n\}$."
+How does the stopping criterion based on function values at the simplex centers operate?,The iteration stops when the absolute difference between the function values at the centers of consecutive simplexes is less than a tolerance $\varepsilon$ ($|f_{k+1} - f_k| < \varepsilon$).
+What statistical measure of function values at the vertices can be used as a stopping criterion for the simplex method?,The standard deviation $\sigma$ of the function values at the vertices.
+Formula: Standard deviation $\sigma$ of vertex function values,"$\sigma := \sqrt{\frac{1}{n+1} \sum_{i=0}^{n} (f(\mathbf{x}^{(i)}) - \bar{f})^2}$, where $\bar{f}$ is the average function value."
+Which point is typically used as the final approximation of the minimum point after the simplex method terminates?,The center of the final simplex.
+"The \_\_\_\_\_ method is a popular variant of the simplex method that incorporates reflection, expansion, and contraction.",Nelder–Mead
+"In the Nelder–Mead method, how are the vertices indexed in each step?",In non-decreasing order of their function values: $f(\mathbf{x}^{(0)}) \leq f(\mathbf{x}^{(1)}) \leq \dots \leq f(\mathbf{x}^{(n)})$.
+"What occurs in Case (i) of the Nelder–Mead method, where $f(\mathbf{x}^{(0)}) < f(\mathbf{x}_r) < f(\mathbf{x}^{(n-1)})$?","The worst vertex $\mathbf{x}^{(n)}$ is replaced by the reflected point $\mathbf{x}_r$, and the iteration continues."
+"In Case (ii) of the Nelder–Mead method, if $f(\mathbf{x}_r) \leq f(\mathbf{x}^{(0)})$, what procedure is attempted next?",Expansion of the simplex in the direction of the reflected point $\mathbf{x}_r$.
+What is the formula for the expansion point $\mathbf{x}_e$ in the Nelder–Mead method?,"$\mathbf{x}_e := \mathbf{x}_c + \alpha(\mathbf{x}_r - \mathbf{x}_c)$, where $\alpha > 1$."
+"In Nelder–Mead Case (ii), when is the expansion point $\mathbf{x}_e$ accepted as the new vertex?","If $f(\mathbf{x}_e) < f(\mathbf{x}^{(0)})$; otherwise, the reflected point $\mathbf{x}_r$ is accepted."
+"In Case (iii) of the Nelder–Mead method, which operation is performed when $f(\mathbf{x}_r) \geq f(\mathbf{x}^{(n-1)})$?",Contraction of the simplex.
+What are the two possible formulas for the contraction point $\mathbf{x}_z$ based on the relationship between $f(\mathbf{x}^{(n)})$ and $f(\mathbf{x}_r)$?,"$\mathbf{x}_z = \mathbf{x}_c - \beta(\mathbf{x}_r - \mathbf{x}_c)$ if $f(\mathbf{x}^{(n)}) < f(\mathbf{x}_r)$, and $\mathbf{x}_z = \mathbf{x}_c + \beta(\mathbf{x}_r - \mathbf{x}_c)$ if $f(\mathbf{x}^{(n)}) \geq f(\mathbf{x}_r)$."
+Under what condition is the Nelder–Mead contraction point $\mathbf{x}_z$ accepted as the new vertex?,"If $f(\mathbf{x}_z) < \min\{f(\mathbf{x}^{(n)}), f(\mathbf{x}_r)\}$."
+"If the contraction operation in Nelder–Mead fails to find a better point, what fallback step is taken?",The simplex is shrunk to half its size from its best point $\mathbf{x}^{(0)}$.
+What is the constraint on the expansion parameter $\alpha$ in the Nelder–Mead method?,$\alpha > 1$.
+What is the constraint on the contraction parameter $\beta$ in the Nelder–Mead method?,$0 < \beta < 1$.
+"Comparing the Simplex method and Nelder–Mead for function $f(x, y) = (x^2 - 2y)^2 + 2(x - 1)^2$, which generally converges faster?",The Nelder–Mead method.
+"According to Example 8.6, what are the coordinates of the global minimum for $f(x, y) = (x^2 - 2y)^2 + 2(x - 1)^2$?","$(1, 0.5)$."
+"In the Nelder–Mead algorithm, Case (i) represents the scenario where the reflected point is better than the \_\_\_\_\_ vertex but worse than the \_\_\_\_\_ vertex.",second-to-worst ($x^{(n-1)}$); best ($x^{(0)}$)
+"If the Nelder–Mead expansion parameter is set to $\alpha = 1$ and contraction parameter $\beta = 1$, the method effectively reduces to the \_\_\_\_\_ method.",simplex
+True or False: The center point used in the standard simplex method reflection is the average of all vertices.,False; it is the center of all vertices except the worst one.
+Concept: Derivative-free optimization,"Definition: Optimization methods that do not require information about the function's gradient, such as the simplex and Nelder–Mead methods."
+Formula: Center of the simplex $\mathbf{x}_c$ (Nelder-Mead),"$\mathbf{x}_c = \frac{1}{n} \sum_{i=0}^{n-1} \mathbf{x}^{(i)}$, assuming vertices are ordered by function value."
+"In the Nelder–Mead shrink step, what is the formula for updating vertex $\mathbf{x}^{(i)}$ for $i = 1, \dots, n$?",$\mathbf{x}^{(i)} \leftarrow \mathbf{x}^{(0)} + \frac{1}{2}(\mathbf{x}^{(i)} - \mathbf{x}^{(0)})$
+"In the Hungarian source, the simplex method is described as using the \_\_\_\_\_ of the vertices as an approximation for the minimum.",súlypont (centroid/center of gravity)
+What specific objective function is used in Example 8.6 and 8.7 to demonstrate the simplex methods?,"$f(x, y) = (x^2 - 2y)^2 + 2(x - 1)^2$."
+"In the provided examples, what starting vertices are used for the simplex?","$(-2, 4)$, $(-1, 4)$, and $(-1.5, 5)$."
+What happens in Step 1 of the basic simplex method?,The center of the best $n$ vertices is computed and the worst vertex is reflected over it.
+"In Nelder-Mead, if $f(\mathbf{x}_r) \geq f(\mathbf{x}^{(n-1)})$, the algorithm identifies that the reflection was likely \_\_\_\_\_.",too far from the worst vertex.
+What is the primary role of the $\alpha$ parameter in Nelder-Mead?,It determines the scale of the expansion in the direction of the reflected point.
+What is the primary role of the $\beta$ parameter in Nelder-Mead?,It determines the scale of the contraction when the reflected point is poor.
+The standard deviation $\sigma$ stopping criterion interrupts the iteration when the values of the function at the vertices are \_\_\_\_\_.,"close enough to each other (i.e., $\sigma$ is below a tolerance)."
+Nelder-Mead Case (i) occurs when $f(\mathbf{x}_r)$ is strictly between \_\_\_\_\_ and \_\_\_\_\_.,$f(\mathbf{x}^{(0)})$ and $f(\mathbf{x}^{(n-1)})$.
+Why is the order of indexing vertices updated in every step of the Nelder–Mead method?,To ensure that $\mathbf{x}^{(0)}$ always represents the best vertex and $\mathbf{x}^{(n)}$ always represents the worst vertex for the logic of the next iteration.
+How does the Nelder-Mead expansion step hope to improve the search?,By moving further in a direction that produced an exceptionally good reflected point.
+"In the formula $x_r = 2x_c - x^{(j)}$, what does the constant $2$ represent geometrically?","The reflected point is an equal distance away from the center as the original worst point, but on the opposite side."
+"When applying the Nelder-Mead method to $f(x, y) = x^2 - y^2$, what behavior is expected based on the exercises?",Observation of how the method behaves on a function that is not bounded below (a saddle point).
+"If a simplex becomes smaller than a predefined tolerance, which stopping criterion is being satisfied?","The criterion based on the physical size (e.g., longest edge length) of the simplex."
+"In the exercise on one-variable functions, the simplex method essentially reduces the 'simplex' to what geometric object?",A line segment.

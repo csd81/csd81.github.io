@@ -1,0 +1,60 @@
+What is the primary purpose of the Jacobi iteration method?,To solve linear systems of equations of the form $Ax = b$ iteratively.
+What condition must be met by all diagonal elements $a_{ii}$ for the Jacobi iteration to be defined?,"$a_{ii} \ne 0$ for all $i = 1, \dots, n$."
+"If a diagonal element $a_{ii}$ is zero, what strategy can be used to apply Jacobi iteration?",Interchange the rows of the matrix to achieve non-zero diagonal elements.
+"In the scalar form of Jacobi iteration, what is the formula for $x_i^{(k+1)}$?",$x_i^{(k+1)} = -\sum_{j \ne i} \frac{a_{ij}}{a_{ii}} x_j^{(k)} + \frac{b_i}{a_{ii}}$.
+The Jacobi iteration is a specific type of multi-dimensional \_\_\_\_\_ equation.,linear fixed-point
+"In the matrix splitting $A = L + D + U$ for Jacobi iteration, what does the matrix $D$ represent?",The diagonal matrix containing the diagonal elements of $A$.
+"In the matrix splitting $A = L + D + U$, how is the matrix $L$ defined?",A strictly lower triangular matrix containing the elements of $A$ below the main diagonal.
+"In the matrix splitting $A = L + D + U$, how is the matrix $U$ defined?",A strictly upper triangular matrix containing the elements of $A$ above the main diagonal.
+What is the vector form equation for the Jacobi iteration step?,$x^{(k+1)} = Tx^{(k)} + c$
+"How is the Jacobi iteration matrix $T_J$ calculated using the $L, D, U$ splitting?",$T_J = -D^{-1}(L + U)$
+How is the constant vector $c$ calculated in the matrix form of Jacobi iteration?,$c = D^{-1}b$
+Which matrix contains the reciprocals of the diagonal elements of $A$?,$D^{-1}$
+What is the necessary and sufficient condition for the Jacobi iteration to converge for all initial values?,The spectral radius $\rho(T_J) < 1$.
+Term: Spectral Radius $\rho(T)$,Definition: The maximum absolute value of the eigenvalues of matrix $T$.
+"According to Corollary 4.10, the Jacobi iteration converges if any matrix norm $\|T_J\|$ is \_\_\_\_\_.",less than 1
+What property of matrix $A$ is a common sufficient condition for the convergence of Jacobi iteration?,Strict diagonal dominance.
+What is the mathematical definition of a row diagonally dominant matrix $A$?,$|a_{ii}| > \sum_{j \ne i} |a_{ij}|$ for all $i$.
+How are the diagonal entries of the Jacobi iteration matrix $T_J$ always valued?,They are all zero.
+Why does diagonal dominance of $A$ guarantee convergence in the infinity norm?,It ensures that $\|T_J\|_\infty < 1$.
+How is the infinity norm $\|T_J\|_\infty$ calculated in the context of the Jacobi method?,As the maximum absolute row sum: $\max_i \sum_{j \ne i} \frac{|a_{ij}|}{|a_{ii}|}$.
+"If the Jacobi iteration converges, what does the sequence limit represent?",The exact solution to the linear system $Ax = b$.
+"In the scalar formula for $x_i^{(k+1)}$, what values from the sequence are used on the right-hand side?",Only values from the previous iteration $k$.
+"If the spectral radius $\rho(T_J) \ge 1$, can Jacobi iteration be guaranteed to converge for any $x^{(0)}$?","No, the method may diverge for some initial values."
+"What is the relationship between the matrix $A$ and the split components $L$, $D$, and $U$?",$A = L + D + U$
+Under what condition is the convergence of the Jacobi iteration considered 'global'?,When it converges for any arbitrary initial value $x^{(0)}$.
+The elements of the iteration matrix $T_J$ are given by $t_{ij} = \dots$ for $i \ne j$.,$t_{ij} = -a_{ij}/a_{ii}$
+"According to the exercises, Jacobi iteration is also convergent if $A$ is \_\_\_\_\_ diagonally dominant.",column
+Formula: $\|T\|_\infty$,Definition: $\max_{1 \le i \le n} \sum_{j=1}^n |t_{ij}|$.
+"In the example $5x_1 + 3x_2 - x_3 = -4$, what is the expression for $x_1^{(k+1)}$?",$x_1^{(k+1)} = (-4 - 3x_2^{(k)} + x_3^{(k)})/5$.
+"If $\|T_J\|_\infty = 4/5$, what can be concluded about the convergence of the Jacobi iteration?",It is convergent because the norm is less than 1.
+What is the result of multiplying the equation $Dx = -(L+U)x + b$ by $D^{-1}$?,$x = -D^{-1}(L+U)x + D^{-1}b$
+"In a $3 \times 3$ system, how many equations are solved for their respective diagonal variables to form the Jacobi iteration?",Three.
+"Is the condition $\rho(T_J) < 1$ necessary, sufficient, or both for Jacobi convergence?",Both (necessary and sufficient).
+Is the diagonal dominance of $A$ a necessary condition for Jacobi convergence?,"No, it is only a sufficient condition."
+What does the index $k$ represent in the sequence $x^{(k)}$?,The iteration count or step number.
+"In the scalar Jacobi formula, why is the term where $j = i$ excluded from the summation?",Because $x_i$ is the variable being solved for on the left-hand side.
+Which matrix norm is typically easiest to evaluate to check for Jacobi convergence in practice?,The infinity norm (maximum absolute row sum).
+How does the Jacobi method treat the update of vector components during a single iteration?,Simultaneously (all new components depend only on the previous vector $x^{(k)}$).
+"In the matrix splitting $L+D+U$, what are the diagonal elements of $L$?",Zero.
+"In the matrix splitting $L+D+U$, what are the diagonal elements of $U$?",Zero.
+What transformation is applied to $Ax=b$ to isolate the $Dx$ term on the left?,$Dx = b - (L+U)x$
+"If the initial guess is $x^{(0)} = 0$, what is the value of $x^{(1)}$?",$x^{(1)} = c$ (the constant vector $D^{-1}b$).
+The notation $T_J$ is specifically used for the \_\_\_\_\_ matrix.,Jacobi iteration
+Does the Jacobi iteration always converge for any non-singular matrix $A$?,"No, convergence depends on the spectral radius of $T_J$."
+What is the relation between the diagonal dominance of $A$ and the infinity norm of $T_J$?,Diagonal dominance implies $\|T_J\|_\infty < 1$.
+"In $T_J = -D^{-1}(L+U)$, what does the negative sign originate from?",Moving the $(L+U)x$ terms to the right-hand side of the equation.
+"A matrix is \_\_\_\_\_ dominant if for every row, the magnitude of the diagonal entry is larger than the sum of the magnitudes of all other entries in that row.",diagonally
+"If $\|T_J\|_1 < 1$, is the Jacobi iteration guaranteed to converge?","Yes, any matrix norm being less than 1 is sufficient."
+"In the general system $Ax=b$, what coefficient is used to divide the $i$-th equation in the Jacobi method?",The diagonal coefficient $a_{ii}$.
+How is the constant vector $c_i$ for a specific row $i$ defined in scalar form?,$c_i = b_i / a_{ii}$
+True or False: Row interchanges used to fix $a_{ii} = 0$ change the solution to the system $Ax=b$.,False (they only rearrange the equations).
+Which component of $A = L+D+U$ is used to compute the inverse needed for the iteration matrix?,The diagonal matrix $D$.
+"The Jacobi method is a \_\_\_\_\_ method, meaning it generates a sequence of approximations.",stationary iterative
+"The values in Table 4.1 show that as $k$ increases, the vector $x^{(k)}$ \_\_\_\_\_ to the true solution.",converges
+"If the infinity norm of the iteration matrix is 0.75, does the system satisfy a sufficient condition for convergence?","Yes, because $0.75 < 1$."
+"In the splitting $A=L+D+U$, why is $L+U$ grouped together in the iteration matrix formula?",They represent all the non-diagonal coefficients of $A$.
+"If a matrix $A$ is diagonally dominant, what is the maximum possible value for a row sum in $T_J$?",A value strictly less than 1.
+"When expressing $x_2$ in the Jacobi method for a $3 \times 3$ system, which variables are on the right-hand side?",$x_1$ and $x_3$.
+Cloze: The Jacobi iteration is convergent for *all* initial values if and only if $\rho(T_J)$ is \_\_\_\_\_.,less than 1
+What matrix operation is performed on $L+U$ before multiplying by $-D^{-1}$ to get $T_J$?,Addition.

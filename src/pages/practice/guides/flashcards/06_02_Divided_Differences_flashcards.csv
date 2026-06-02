@@ -1,0 +1,50 @@
+"Given a function $f$, what is the definition of the zeroth divided difference $f[x_0]$?",$f[x_0] := f(x_0)$
+"What is the formula for the first divided difference $f[x_0, x_1]$ relative to mesh points $x_0$ and $x_1$?","$f[x_0, x_1] = \frac{f(x_1) - f(x_0)}{x_1 - x_0}$"
+"How is the $n$-th divided difference $f[x_0, x_1, \ldots, x_n]$ defined recursively?","$f[x_0, x_1, \ldots, x_n] := \frac{f[x_1, x_2, \ldots, x_n] - f[x_0, x_1, \ldots, x_{n-1}]}{x_n - x_0}$"
+"In the recursive definition of $f[x_0, x_1, \ldots, x_n]$, which mesh point is omitted in the first term of the numerator?",$x_0$
+"In the recursive definition of $f[x_0, x_1, \ldots, x_n]$, which mesh point is omitted in the second term of the numerator?",$x_n$
+What is the denominator in the recursive definition of an $n$-th order divided difference?,$x_n - x_0$
+What condition must mesh points $x_i$ satisfy for the standard divided difference definition to be valid?,They must be pairwise different.
+Does the definition of divided differences require that mesh points be ordered increasingly?,"No, mesh points do not have to be ordered increasingly."
+"According to Theorem 6.10, what is the explicit summation formula for $f[x_0, x_1, \ldots, x_n]$?",$\sum_{i=0}^{n} \frac{f(x_i)}{(x_i - x_0) \cdots (x_i - x_{i-1})(x_i - x_{i+1}) \cdots (x_i - x_n)}$
+"In the explicit formula for $f[x_0, x_1, \ldots, x_n]$, what is the value of the denominator's 'empty product' when $n = 0$?",1
+What proof technique is used to demonstrate the validity of the explicit formula for divided differences?,Mathematical induction with respect to $n$.
+How does changing the order of mesh points affect the value of a divided difference?,The value remains unchanged; divided differences are independent of the order of mesh points.
+Under what condition on function $f$ do divided differences depend continuously on the mesh points?,$f$ must be continuous.
+"What is the limit of the first divided difference $f[x_0, x_1]$ as $x_1$ approaches $x_0$?",$f'(x_0)$
+"How is the first divided difference relative to equal mesh points, $f[x_0, x_0]$, defined?","$f[x_0, x_0] := f'(x_0)$"
+"Why is the definition $f[x_0, x_0] = f'(x_0)$ used for differentiable functions?","To extend the function $x_1 \mapsto f[x_0, x_1]$ continuously to the case where $x_1 = x_0$."
+"What is the value of $f[x_0, x_1, x_2, x_3]$ for $f(x) = x^2$ and mesh points $x_i = i$?",0
+"For $f(x) = \sin x$ and $x_0 = 0$, what is the value of the divided difference $f[x_0, x_0]$?",1 (since $\sin'(0) = \cos(0) = 1$)
+"If $f \in C^1[a,b]$, what does the mean value property state regarding $f[x_0, x_1]$?","There exists $\xi$ in the interval between $x_0$ and $x_1$ such that $f[x_0, x_1] = f'(\xi)$."
+"In the Newton form polynomial $P(x) = a_0 + a_1(x - x_0) + a_2(x - x_0)(x - x_1) + \ldots$, what is the coefficient $a_0$?",$a_0 = P[x_0]$
+"In the Newton form polynomial, what is the coefficient $a_1$ representing?","$a_1 = P[x_0, x_1]$"
+"In the Newton form polynomial, what is the coefficient $a_k$ representing?","$a_k = P[x_0, x_1, \ldots, x_k]$"
+"From a numerical standpoint, is the recursive definition or the explicit summation formula more practical for computation?",The recursive definition is more practical.
+Why is the explicit formula for divided differences theoretically important if it is numerically impractical?,It proves that the value is independent of point order and depends continuously on the points.
+"The first divided difference $f[x_0, x_1]$ can be interpreted as the \_\_\_\_\_ quotient of $f$ at those points.",difference
+What is the result of a first-order divided difference if $f(x)$ is a constant function?,0
+Term: Mesh points,"Definition: The specific points $x_0, x_1, \ldots, x_n$ in the domain of $f$ used to compute divided differences."
+How many lower-order divided differences are subtracted in the numerator of the recursive step for an $n$-th order divided difference?,"Two ($f[x_1, \ldots, x_n]$ and $f[x_0, \ldots, x_{n-1}]$)"
+"In the context of divided differences, what does the notation $f[x_0, x_1, \ldots, x_n]$ represent?","The $n$-th order divided difference of function $f$ at the points $x_0, \ldots, x_n$."
+"If $f$ is a linear function, what is the value of the second divided difference $f[x_0, x_1, x_2]$?",0
+"In the induction proof for Theorem 6.10, the step from $n$ to $n+1$ involves substituting the \_\_\_\_\_ into the recursive definition.",inductive hypothesis
+"What is the relationship between $f[x_0, x_1]$ and $f[x_1, x_0]$?","They are equal ($f[x_0, x_1] = f[x_1, x_0]$)."
+How many mesh points are involved in a third-order divided difference calculation?,"Four ($x_0, x_1, x_2, x_3$)"
+"For a differentiable function, $f[x_0, x_1]$ is a continuous function of $x_1$ except possibly at \_\_\_\_\_.",$x_1 = x_0$
+"What is the first divided difference of $f(x) = x$ for any distinct $x_0, x_1$?",1
+"In the formula $f[x_0, x_1, \ldots, x_n] = \sum_{i=0}^{n} \frac{f(x_i)}{D_i}$, what is $D_i$?",$(x_i - x_0) \cdots (x_i - x_{i-1})(x_i - x_{i+1}) \cdots (x_i - x_n)$
+True or False: The recursive definition of divided differences is preferred in numerics because it uses fewer calculations than the explicit formula.,True
+"What is the denominator of the term involving $f(x_0)$ in the explicit summation formula for $f[x_0, x_1, x_2]$?",$(x_0 - x_1)(x_0 - x_2)$
+"The formula $f[x_0, x_1] = f'(\xi)$ is essentially a restatement of which calculus theorem?",The Mean Value Theorem
+"In the expression $a_3(x - x_0)(x - x_1)(x - x_2)$ from Exercise 3, what is $a_3$?","$P[x_0, x_1, x_2, x_3]$"
+"If mesh points are shifted by a constant, does the value of the divided difference of a polynomial change?","No, because it depends on the differences between points (and function values)."
+"What is the value of the first divided difference $f[x_0, x_1]$ if $f(x_1) = f(x_0)$?",0
+"The notation $f[x_1, x_2, \ldots, x_n]$ omits the point $x_0$ and represents a divided difference of order \_\_\_\_\_.",$n-1$
+"In the explicit formula, the denominator for a specific $f(x_i)$ is a product of how many linear factors $(x_i - x_j)$?",$n$
+The continuity of divided differences with respect to mesh points (Corollary 6.12) is a direct consequence of the \_\_\_\_\_ formula.,explicit (summation)
+"In Exercise 1b, $x_i = 0.2i$. What is the value of $x_2$?",0.4
+"If $x_0 = 1$ and $x_1 = 3$, and $f(x) = x^3$, what is $f[1, 3]$?",$\frac{3^3 - 1^3}{3 - 1} = \frac{27 - 1}{2} = 13$
+"How does the complexity of the explicit summation formula for $f[x_0, \ldots, x_n]$ grow relative to $n$?",It requires computing a product of $n$ terms for each of the $n+1$ summands.
+"Does Corollary 6.11 imply that $f[x_0, x_1, x_2] = f[x_2, x_0, x_1]$?","Yes, because the order of mesh points does not matter."
+"In the proof of Theorem 6.10, what algebraic step is performed on the sum $\sum_{i=1}^n$?",Factoring out terms to combine the two summations using a common denominator $(\frac{1}{x_i - x_{n+1}} - \frac{1}{x_i - x_0})$.

@@ -1,0 +1,52 @@
+"In the context of the linear system $Ax = b$, how is the residual vector $r$ defined for an approximate solution $\tilde{x}$?",$r = b - A\tilde{x}$
+What is the stopping criterion for iterative methods based on the absolute difference between consecutive iterations?,$\|x^{(k+1)} - x^{(k)}\| < \varepsilon$
+What is the stopping criterion for iterative methods based on the relative difference between consecutive iterations?,$\frac{\|x^{(k+1)} - x^{(k)}\|}{\|x^{(k+1)}\|} < \varepsilon$
+What is the stopping criterion for iterative methods based on the residual vector $r$?,$\|b - Ax^{(k)}\| < \varepsilon$
+Under what condition is the smallness of the residual vector $\|r\|$ a reliable indicator that the error $\|x - \tilde{x}\|$ is also small?,When the matrix $A$ is well-conditioned (the product $\|A\| \|A^{-1}\|$ is not too large).
+What is the absolute error bound for an approximate solution $\tilde{x}$ of the system $Ax = b$ given its residual $r$?,$\|x - \tilde{x}\| \leq \|A^{-1}\| \|r\|$
+What is the relative error bound for an approximate solution $\tilde{x}$ of the system $Ax = b$ involving the condition number?,$\frac{\|x - \tilde{x}\|}{\|x\|} \leq \text{cond}(A) \frac{\|r\|}{\|b\|}$
+How is the condition number of a square matrix $A$ defined relative to a matrix norm $\| \cdot \|$?,$\text{cond}(A) = \|A\| \|A^{-1}\|$
+What term describes a matrix with a very large condition number?,Ill-conditioned (or weakly determined).
+"In numerical practice, what range of condition number values typically indicates that a matrix is ill-conditioned?",Values greater than $100$ to $1000$.
+"If $A$ is nonsingular and $Ax = b$, what is the exact relationship between the error vector $e = x - \tilde{x}$ and the residual vector $r$?",$x - \tilde{x} = A^{-1}r$
+Which matrix norm inequality is used to prove the absolute error bound $\|x - \tilde{x}\| \leq \|A^{-1}\| \|r\|$?,$\|A^{-1}r\| \leq \|A^{-1}\| \|r\|$
+What inequality relates the norm of the constant vector $b$ to the norms of $A$ and the exact solution $x$?,$\|b\| \leq \|A\| \|x\|$
+Why is the residual-based stopping criterion unreliable for ill-conditioned matrices?,A small residual norm does not guarantee a small approximation error when the condition number is large.
+"How does the infinity norm condition number $\text{cond}_\infty(A)$ of $A = \begin{pmatrix} 4 & 1 \\ 4.03 & 1 \end{pmatrix}$ explain why $\tilde{x} = (2, -3)^T$ is a poor approximation despite a small residual?","The condition number is $1346$, which is large enough to allow a small residual to correspond to a large error."
+What is the approximate relationship between the residual norm $\|r\|$ and $t$-digit arithmetic rounding error?,$\|r\| \approx 10^{-t} \|A\| \|\tilde{x}\|$
+"In iterative refinement, what level of precision is recommended for calculating the residual vector $r = b - A\tilde{x}$?",Double precision ($2t$-digit arithmetic).
+"In the context of condition number estimation, what does the vector $\tilde{y}$ (the solution to $Ay = r$) approximate?",The error vector $x - \tilde{x}$.
+What formula can be used to estimate the condition number $\text{cond}(A)$ using the numerical solutions $\tilde{x}$ and $\tilde{y}$?,$\text{cond}(A) \approx 10^t \frac{\|\tilde{y}\|}{\|\tilde{x}\|}$
+What is the formula for the improved approximation $\bar{x}$ after one step of iterative refinement?,$\bar{x} = \tilde{x} + \tilde{y}$
+How is the new residual $\tilde{r}$ defined after calculating the correction $\tilde{y}$ in iterative refinement?,$\tilde{r} = r - A\tilde{y}$
+Why is solving $Ay = r$ during iterative refinement computationally efficient if Gaussian elimination was already performed for $Ax = b$?,"The $l_{ij}$ factors and row changes from the first elimination can be reused, requiring elimination only on the vector $r$."
+What is another name for the method of iterative refinement?,Residual correction.
+What was the exact solution to the linear system in Example 4.17?,"$x = (1, 1)^T$"
+"In Example 4.21, what was the estimated $\text{cond}_\infty(A)$ using iterative refinement components?",$1875$
+"According to Theorem 4.18, the relative error is bounded by the product of the condition number and what other ratio?",The ratio of the residual norm to the constant vector norm ($\frac{\|r\|}{\|b\|}$).
+"In Example 4.19, what are the infinity norms $\|A\|_\infty$ and $\|A^{-1}\|_\infty$ for the given $2 \times 2$ matrix?",$\|A\|_\infty = 5.03$ and $\|A^{-1}\|_\infty = 267.6$.
+True or False: The condition number of a matrix $A$ is the same regardless of which matrix norm is used.,False (it depends on the specific norm $\| \cdot \|_p$ used).
+"In iterative refinement, if $\tilde{x}$ is the approximate solution to $Ax = b$, what system is solved to find the correction vector $\tilde{y}$?",$Ay = r$ (where $r$ is the residual of $\tilde{x}$).
+What is the primary benefit of the iterative refinement method for ill-conditioned matrices?,It provides a good approximation of the solution in just a few steps.
+How does $\|\tilde{r}\|$ typically compare to $\|r\|$ in the iterative refinement process?,$\|\tilde{r}\|$ is much smaller than $\|r\|$ ($ \|\tilde{r}\| \ll \|r\| $).
+What is the Hungarian term for the residual vector?,Reziduális vektor.
+What is the Hungarian term for a well-conditioned matrix?,Jól kondicionált mátrix.
+Which stopping criterion is considered the natural analogue to the one used for nonlinear equations in Section 2.8?,Condition (iii): $\|b - Ax^{(k)}\| < \varepsilon$.
+"If $\bar{x} = \tilde{x} + \tilde{y}$, substitute this into the expression for the new residual $b - A\bar{x}$ using $r$.",$b - A(\tilde{x} + \tilde{y}) = r - A\tilde{y}$
+"In the proof of Theorem 4.18, how is the equation $A(x - \tilde{x}) = r$ derived?",By subtracting $A\tilde{x} = b - r$ from $Ax = b$.
+What happens to the relative error bound if $\text{cond}(A)$ is close to $1$?,The relative error becomes directly proportional to the relative residual ($\frac{\|r\|}{\|b\|}$).
+Identify the vector $x^{(2)}$ calculated in Example 4.21 after one refinement step.,"$(0.9961, 1.016)^T$"
+What variable represents the number of digits of arithmetic precision in the condition number estimation formula?,$t$
+Concept: Ill-conditioned matrix,Definition: A matrix where small changes in input (or small residuals) can lead to large changes in the solution (or large errors).
+Process: Iterative Refinement Step 2,Compute the residual vector $r = b - A\tilde{x}$ using double precision to preserve significance.
+Formula: Relative error $\frac{\|x - \tilde{x}\|}{\|x\|}$ upper bound,$\text{cond}(A) \frac{\|r\|}{\|b\|}$
+Formula: Absolute error $\|x - \tilde{x}\|$ upper bound,$\|A^{-1}\| \|r\|$
+"In the Hungarian text, what is the synonym provided for 'rosszul kondicionált'?",Gyengén meghatározott.
+What does the symbol $\varepsilon$ represent in the context of stopping criteria?,A small positive tolerance value used to terminate iterations.
+"According to the transcript, if the product $\|A\| \|A^{-1}\|$ is big, what happens to the error estimate?","The estimate will not guarantee that the error is small, even if the residual is small."
+"In Example 4.19, what is the specific value of $\text{cond}_\infty(A)$ calculated for the matrix?",$1346$
+Exercise 1a asks for the condition numbers of which $2 \times 2$ matrix?,$\begin{pmatrix} 1 & 2 \\ 4 & -1 \end{pmatrix}$
+What is the exact solution given for the system in Exercise 3?,"$(1, 10)$"
+"When solving $Ay = r$ in practice, what is done with the row changes from the initial Gaussian elimination?",They are stored and applied to the vector $r$ to maintain consistency with the factored matrix.
+"What is the infinity norm of the residual vector $\mathbf{r} = (0, 0.03)^T$ from Example 4.17?",$0.03$
+Which stopping criterion uses the norm of the difference between $x^{(k+1)}$ and $x^{(k)}$ divided by the norm of $x^{(k+1)}$?,The numerical relative error criterion (ii).

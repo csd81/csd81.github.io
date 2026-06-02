@@ -1,0 +1,55 @@
+"According to Theorem 2.37, what two conditions must a set $E \subset \mathbb{R}^n$ satisfy for a continuous function $f$ to be guaranteed a maximum and minimum?",The set $E$ must be closed and bounded.
+"If a function $f$ has all partial derivatives up to order $m$ existing and continuous, what class does it belong to?",The class $C^m$ (m-times continuously partially differentiable).
+How is the gradient vector $f'(\mathbf{x})$ of a function $f \in C^1$ defined in terms of its partial derivatives?,"$f'(\mathbf{x}) := (\frac{\partial f(\mathbf{x})}{\partial x_1}, \dots, \frac{\partial f(\mathbf{x})}{\partial x_n})^T$"
+"In multivariable calculus notation, the gradient vector $f'$ is typically represented as a \_\_\_\_\_ vector.",Column
+What is the name of the $n \times n$ matrix $f''(\mathbf{x})$ containing all second-order partial derivatives of a function $f \in C^2$?,The Hessian matrix (or Hessian).
+"In a Hessian matrix $f''(\mathbf{x})$, what is the entry located at row $i$ and column $j$?",$\frac{\partial^2 f}{\partial x_i \partial x_j}(\mathbf{x})$
+"To apply the multivariable Taylor's formula for an order $m$ approximation, what continuity class must the function $f$ belong to?",$f \in C^{m+1}$
+"According to Taylor's Theorem, where does the intermediate point $\xi$ lie in relation to the points $\mathbf{a}$ and $\mathbf{x}$?",On the line segment connecting $\mathbf{a}$ and $\mathbf{x}$.
+"What is the parametric formula for the intermediate point $\xi$ in Taylor's Theorem for some $t \in (0, 1)$?",$\xi = \mathbf{x} + t(\mathbf{a} - \mathbf{x})$
+Write the first-order term (the summation part) of the Taylor expansion of $f(\mathbf{x})$ around point $\mathbf{a}$.,$\sum_{i=1}^n \frac{\partial f(\mathbf{a})}{\partial x_i}(x_i - a_i)$
+Write the second-order term (including the factorial) of the Taylor expansion of $f(\mathbf{x})$ around point $\mathbf{a}$.,$\frac{1}{2} \sum_{i=1}^n \sum_{j=1}^n \frac{\partial^2 f(\mathbf{a})}{\partial x_i \partial x_j}(x_i - a_i)(x_j - a_j)$
+"Using gradient and Hessian notation, what is the second-order Taylor approximation of $f(\mathbf{x})$ around $\mathbf{a}$?",$f(\mathbf{x}) \approx f(\mathbf{a}) + f'(\mathbf{a})^T(\mathbf{x} - \mathbf{a}) + \frac{1}{2}(\mathbf{x} - \mathbf{a})^T f''(\mathbf{a})(\mathbf{x} - \mathbf{a})$
+"In the Taylor approximation $f(\mathbf{x}) \approx f(\mathbf{a}) + f'(\mathbf{a})^T(\mathbf{x} - \mathbf{a})$, the term $f'(\mathbf{a})^T(\mathbf{x} - \mathbf{a})$ represents the \_\_\_\_\_ product of the gradient and the displacement vector.",Scalar (or dot)
+"What advanced calculus concept identifies $f'$ and $f''$ as the first and second derivatives of $f$, respectively?",The Fréchet derivative.
+"For a vector-valued function $g: I \to \mathbb{R}^n$, how is the derivative $g'(t)$ defined?","$g'(t) := (g_1'(t), \dots, g_n'(t))^T$"
+"When is a vector-valued function $g(t)$ considered ""continuously differentiable""?",When every one of its component functions is continuously differentiable.
+State the formula for the multivariable Chain Rule for the composite function $f(g(t))$.,$\frac{d}{dt} f(g(t)) = f'(g(t))^T g'(t)$
+What geometric property must the open set $E$ possess to apply the multivariable Lagrange's Mean Value Theorem?,Convexity
+State the formula for the multivariable Lagrange's Mean Value Theorem for $f(\mathbf{x}) - f(\mathbf{y})$.,"$f(\mathbf{x}) - f(\mathbf{y}) = f'(\mathbf{y} + \xi(\mathbf{x} - \mathbf{y}))^T(\mathbf{x} - \mathbf{y})$ for some $\xi \in (0, 1)$."
+"In the proof of the multivariable Mean Value Theorem, what single-variable function $g(t)$ is defined on the interval $[0, 1]$?",$g(t) = f(\mathbf{y} + t(\mathbf{x} - \mathbf{y}))$
+"For a vector-valued function $\mathbf{f}: E \to \mathbb{R}^n$, what is the name of the matrix $\mathbf{f}'(\mathbf{x})$?",The Jacobian matrix (or derivative matrix).
+What are the dimensions of the Jacobian matrix for a function $\mathbf{f}: \mathbb{R}^n \to \mathbb{R}^n$?,$n \times n$
+"In the Jacobian matrix $\mathbf{f}'(\mathbf{x})$, what does the $i$-th row represent?","The transpose of the gradient vector of the $i$-th component function, $f_i'(\mathbf{x})^T$."
+What is the formula for the linear approximation of a vector-valued function $\mathbf{f}$ around a point $\mathbf{a}$?,$\mathbf{f}(\mathbf{x}) \approx \mathbf{f}(\mathbf{a}) + \mathbf{f}'(\mathbf{a})(\mathbf{x} - \mathbf{a})$
+"In the linear approximation $\mathbf{f}(\mathbf{a}) + \mathbf{f}'(\mathbf{a})(\mathbf{x} - \mathbf{a})$, the term $\mathbf{f}'(\mathbf{a})(\mathbf{x} - \mathbf{a})$ involves what type of algebraic operation?",Matrix-vector multiplication.
+"The partial derivative of $f(x_1, \dots, x_n)$ with respect to $x_i$ is denoted by the symbol \_\_\_\_\_.",$\frac{\partial f}{\partial x_i}$
+"If $\mathbf{f} \in C^1$, it implies that all first-order \_\_\_\_\_ derivatives of all component functions exist and are continuous.",Partial
+The Hessian matrix is defined for a function $f$ that is at least \_\_\_\_\_ times continuously partially differentiable.,Two ($C^2$)
+"In the context of Taylor's formula, the term $\frac{1}{m!}$ precedes the sum of the \_\_\_\_\_-th order partial derivatives.",$m$
+The notation $\mathbf{f} \in C^m$ for a vector-valued function means that \_\_\_\_\_ component function is $m$-times continuously partially differentiable.,Every (or each)
+What is the purpose of the vector $\mathbf{x} - \mathbf{a}$ in the Taylor approximation formulas?,It represents the displacement vector from the center of approximation $\mathbf{a}$ to the evaluation point $\mathbf{x}$.
+True or False: The multivariable Taylor's formula requires the set $E$ to be closed.,False (The theorem specifies $E$ must be an open set).
+"In the Hessian matrix, the diagonal elements represent the \_\_\_\_\_ partial derivatives with respect to the same variable twice.","Pure second-order (e.g., $\frac{\partial^2 f}{\partial x_i^2}$)"
+The multivariable Lagrange's Mean Value Theorem generalizes the single-variable theorem to higher dimensions using the \_\_\_\_\_ rule.,Chain
+"If $f: \mathbb{R}^n \to \mathbb{R}$ and $g: \mathbb{R} \to \mathbb{R}^n$, the composition $f \circ g$ is a function from $\mathbb{R}$ to \_\_\_\_\_.",$\mathbb{R}$ (a scalar-valued function of one variable).
+What is the dimension of the gradient vector for a function of $n$ variables?,$n \times 1$ (a column vector with $n$ components).
+"The Jacobian matrix entry at $(1, 1)$ is the partial derivative of the first component function $f_1$ with respect to \_\_\_\_\_.",$x_1$
+"In the second-order Taylor approximation $f(\mathbf{x}) \approx f(\mathbf{a}) + \dots$, the term $(\mathbf{x} - \mathbf{a})^T f''(\mathbf{a})(\mathbf{x} - \mathbf{a})$ is a \_\_\_\_\_ form.",Quadratic
+"According to Theorem 2.38, for every $\mathbf{x} \in E$, there exists a $\xi$ such that the remainder is expressed using the $(m+1)$-th order derivatives evaluated at \_\_\_\_\_.",$\xi$
+Is the Hessian matrix of a $C^2$ function always square?,"Yes, it is always an $n \times n$ matrix."
+The symbol $I$ in $g: I \to \mathbb{R}^n$ typically represents a(n) \_\_\_\_\_ of the real numbers.,Interval
+The Chain Rule result $\frac{d}{dt} f(g(t)) = f'(g(t))^T g'(t)$ produces a \_\_\_\_\_ value.,Scalar
+The Lagrange Mean Value Theorem states that the difference $f(\mathbf{x}) - f(\mathbf{y})$ is the product of the gradient at an intermediate point and the \_\_\_\_\_ vector.,Difference (or displacement) vector $\mathbf{x} - \mathbf{y}$.
+Why is the transpose symbol used in $f'(g(t))^T g'(t)$?,To ensure the dot product of the two column vectors $f'$ and $g'$ is calculated correctly as a scalar.
+Which matrix is used to linearly approximate a vector-valued function of several variables?,The Jacobian matrix.
+"In the expression $\mathbf{f}(\mathbf{a}) + \mathbf{f}'(\mathbf{a})(\mathbf{x} - \mathbf{a})$, what does $\mathbf{f}(\mathbf{a})$ represent?",The value of the function at the center point of the approximation.
+Does the Hessian matrix $f''(\mathbf{x})$ exist for a function in $C^1$?,"No, it requires the function to be in $C^2$."
+"A set $E$ is \_\_\_\_\_ if for any two points in $E$, the line segment connecting them is also contained within $E$.",Convex
+"In the multivariable Taylor formula, the remainder term is often called the \_\_\_\_\_ form of the remainder.",Lagrange
+The first-order Taylor polynomial of a scalar function $f$ describes the \_\_\_\_\_ plane at point $\mathbf{a}$.,Tangent
+"What is the relation between $m$ and the differentiability class $C^m$ if a function is said to be ""smooth""?","Smoothness usually implies $f \in C^\infty$ (infinitely differentiable), though the source material focuses on finite $m$."
+"If $n=1$, the Jacobian matrix $\mathbf{f}'$ reduces to a \_\_\_\_\_.",Scalar derivative.
+The sum $\sum_{i=1}^n \frac{\partial f(\mathbf{a})}{\partial x_i}(x_i - a_i)$ can be written in vector notation as \_\_\_\_\_.,$f'(\mathbf{a})^T(\mathbf{x} - \mathbf{a})$
+How many indices are used in the summation for the $m$-th order term of the general Taylor formula?,"$m$ indices ($i_1, i_2, \dots, i_m$)."
+"In the Taylor formula, what does the index $i_k$ range from?",$1$ to $n$ (the number of variables).

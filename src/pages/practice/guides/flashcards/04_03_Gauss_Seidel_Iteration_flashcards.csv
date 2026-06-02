@@ -1,0 +1,50 @@
+What is the primary difference between the Jacobi iteration and the Gauss–Seidel iteration regarding variable updates?,"Gauss–Seidel immediately uses newly computed values within the same iteration step, whereas Jacobi uses only values from the previous step."
+"In the Gauss–Seidel formula $x_i^{(k+1)}$, which iteration index is used for $x_j$ when $j < i$?",The current iteration index $k+1$.
+"In the Gauss–Seidel formula $x_i^{(k+1)}$, which iteration index is used for $x_j$ when $j > i$?",The previous iteration index $k$.
+Write the pointwise summation formula for the Gauss–Seidel iteration $x_i^{(k+1)}$.,$x_i^{(k+1)} = -\sum_{j=1}^{i-1} \frac{a_{ij}}{a_{ii}} x_j^{(k+1)} - \sum_{j=i+1}^{n} \frac{a_{ij}}{a_{ii}} x_j^{(k)} + \frac{b_i}{a_{ii}}$
+What necessary condition must hold for the diagonal elements $a_{ii}$ to perform Gauss–Seidel iteration?,"$a_{ii} \ne 0$ for all $i = 1, \dots, n$."
+"Represent the Gauss–Seidel iteration in matrix form using the matrices $\mathbf{D}$, $\mathbf{L}$, and $\mathbf{U}$.",$(\mathbf{D} + \mathbf{L})\mathbf{x}^{(k+1)} = -\mathbf{U}\mathbf{x}^{(k)} + \mathbf{b}$
+"In the matrix form of Gauss–Seidel, what does the matrix $\mathbf{D}$ represent?",A diagonal matrix containing the diagonal elements of the coefficient matrix $\mathbf{A}$.
+"In the matrix form of Gauss–Seidel, what does the matrix $\mathbf{L}$ represent?",A strictly lower triangular matrix containing the elements of $\mathbf{A}$ below the diagonal.
+"In the matrix form of Gauss–Seidel, what does the matrix $\mathbf{U}$ represent?",A strictly upper triangular matrix containing the elements of $\mathbf{A}$ above the diagonal.
+What is the specific iteration matrix $\mathbf{T}_G$ for the Gauss–Seidel method?,$\mathbf{T}_G = -(\mathbf{D} + \mathbf{L})^{-1}\mathbf{U}$
+What is the vector constant $\mathbf{c}$ in the fixed-point form $\mathbf{x}^{(k+1)} = \mathbf{T}_G\mathbf{x}^{(k)} + \mathbf{c}$ for Gauss–Seidel?,$\mathbf{c} = (\mathbf{D} + \mathbf{L})^{-1}\mathbf{b}$
+State the necessary and sufficient condition for the Gauss–Seidel iteration to converge for any initial value.,The spectral radius of the iteration matrix satisfies $\rho(\mathbf{T}_G) < 1$.
+"If there exists a matrix norm such that $\|\mathbf{T}_G\| < 1$, what can be concluded about the iteration's convergence?",The Gauss–Seidel iteration is convergent for all initial values $\mathbf{x}^{(0)}$.
+"Theorem: If the coefficient matrix $\mathbf{A}$ is \_\_\_\_\_, then the Gauss–Seidel iteration is convergent for all initial values.",diagonally dominant
+"In the convergence proof for diagonally dominant matrices, what is the definition of $\alpha_i$?",$\alpha_i = \sum_{j=1}^{i-1} |\frac{a_{ij}}{a_{ii}}|$
+"In the convergence proof for diagonally dominant matrices, what is the definition of $\beta_i$?",$\beta_i = \sum_{j=i+1}^{n} |\frac{a_{ij}}{a_{ii}}|$
+"According to the diagonal dominance proof, how does the error contraction factor $\frac{\beta_l}{1 - \alpha_l}$ compare to the Jacobi iteration matrix norm $\|\mathbf{T}_J\|_{\infty}$?",$\frac{\beta_l}{1 - \alpha_l} \le \alpha_l + \beta_l \le \|\mathbf{T}_J\|_{\infty}$
+Which iterative method generally provides a better error estimate when the matrix $\mathbf{A}$ is diagonally dominant?,The Gauss–Seidel iteration.
+"In general, the Gauss–Seidel iteration is faster than the Jacobi iteration if which condition involving spectral radii is met?",$\rho(\mathbf{T}_G) < \rho(\mathbf{T}_J)$
+What are the two requirements for the Stein–Rosenberg Theorem regarding matrix coefficients $a_{ij}$?,$a_{ij} \le 0$ for $i \ne j$ and $a_{ii} > 0$ for all $i$.
+"Under Stein–Rosenberg conditions, if $0 \le \rho(\mathbf{T}_J) < 1$, what is the relationship between $\rho(\mathbf{T}_G)$ and $\rho(\mathbf{T}_J)$?",$\rho(\mathbf{T}_G) < \rho(\mathbf{T}_J) < 1$
+"Under Stein–Rosenberg conditions, if $\rho(\mathbf{T}_J) > 1$, what is the relationship between $\rho(\mathbf{T}_G)$ and $\rho(\mathbf{T}_J)$?",$\rho(\mathbf{T}_G) > \rho(\mathbf{T}_J) > 1$
+Does the Stein–Rosenberg Theorem imply that Gauss–Seidel is always faster than Jacobi for any matrix $\mathbf{A}$?,"No, it only applies to matrices where $a_{ij} \le 0$ for $i \ne j$ and $a_{ii} > 0$."
+"True or False: If the Gauss–Seidel iteration converges, the Jacobi iteration must also converge for the same matrix $\mathbf{A}$.",False (except under specific conditions like the Stein-Rosenberg Theorem).
+"In Exercise 2, both Jacobi and Gauss–Seidel methods find the exact root in finite steps if $\mathbf{A}$ is \_\_\_\_\_.",upper triangular
+Why is Gauss–Seidel iteration often used for 'rare' (sparse) matrices instead of Gaussian elimination?,"Gaussian elimination can ruin the matrix structure (creating non-zero entries), while iteration preserves sparsity and reduces memory/computation requirements."
+What is a 'rare matrix' (sparse matrix) in the context of linear systems?,A matrix that contains only a few non-zero coefficients.
+How does using iterative methods like Gauss–Seidel minimize running time on sparse matrices?,By only performing arithmetic operations for non-zero coefficients and avoiding multiplications by zero.
+What stopping criterion is commonly used in numerical implementations of Gauss–Seidel?,Stopping when consecutive elements in the sequence are sufficiently close to each other.
+"Based on Table 4.2, starting with $(0, 0, 0)$, how many iterations were needed for the example to reach the target precision?",11 or 12 iterations.
+"In Example 4.12, what were the final limit values for the sequences $x_1$, $x_2$, and $x_3$?","$x_1 \to 1$, $x_2 \to -2$, and $x_3 \to 3$."
+"According to the video transcript, why is the 'new' value of a variable expected to be better for the next variable's computation?",Because the new value is hopefully a better approximation of the limit (the solution) than the old value.
+Process: Converting pointwise GS iteration to matrix form. What is the first step?,Multiply both sides of the pointwise equation by $a_{ii}$.
+"Process: Converting pointwise GS iteration to matrix form. After multiplying by $a_{ii}$, which terms are moved to the left side?","All terms involving $x_j^{(k+1)}$, which are those where $j \le i$."
+Concept: Global Convergence,Definition: Convergence to the solution from any arbitrary initial starting vector $\mathbf{x}^{(0)}$.
+"In the term $\sum_{j=1}^{i} a_{ij} x_j^{(k+1)}$, what type of matrix multiplication does this represent for a specific row $i$?",Multiplication by the sum of the diagonal matrix $\mathbf{D}$ and the strictly lower triangular matrix $\mathbf{L}$.
+"Under the Stein-Rosenberg Theorem, what happens if $\rho(\mathbf{T}_J) = 1$?",$\rho(\mathbf{T}_G)$ is also equal to 1.
+"Under the Stein-Rosenberg Theorem, what happens if $\rho(\mathbf{T}_J) = 0$?",$\rho(\mathbf{T}_G)$ is also equal to 0.
+"For a diagonally dominant matrix, the Gauss-Seidel iteration is guaranteed to be \_\_\_\_\_.",convergent
+"True or False: Gaussian elimination always results in an exact solution regardless of the matrix size, provided there are no rounding errors.","True, it is a direct method that terminates in finite steps."
+How does the 'speed' of convergence relate to the spectral radius $\rho(\mathbf{T})$?,A smaller spectral radius generally indicates faster convergence.
+The Gauss-Seidel method is a specific type of \_\_\_\_\_ iteration.,linear fixed-point
+"In the formula $x_i^{(k+1)} = (b_i - \sum_{j < i} a_{ij} x_j^{(k+1)} - \sum_{j > i} a_{ij} x_j^{(k)})/a_{ii}$, which part corresponds to the matrix $\mathbf{U}$ in the matrix form?",The sum $\sum_{j > i} a_{ij} x_j^{(k)}$.
+What notation is used for the spectral radius of the Gauss-Seidel iteration matrix?,$\rho(\mathbf{T}_G)$
+Why is the Gauss-Seidel iteration called 'sequential' in nature compared to the 'parallel' nature of Jacobi?,"Because the update for $x_i$ depends on the previously updated $x_1, \dots, x_{i-1}$ in the same step."
+Formula: What is the relation between $x_i^{(k+1)} - x_i$ and previous errors in the diagonally dominant convergence proof?,$|x_i^{(k+1)} - x_i| \le \sum_{j=1}^{i-1} |\frac{a_{ij}}{a_{ii}}| |x_j^{(k+1)} - x_j| + \sum_{j=i+1}^{n} |\frac{a_{ij}}{a_{ii}}| |x_j^{(k)} - x_j|$
+"If $\mathbf{A}$ is upper triangular, why do both methods reach the root in finite steps?","Because for an upper triangular matrix, $\mathbf{L} = 0$, meaning variables are solved through simple back-substitution or immediate propagation."
+How is $\|\mathbf{T}_J\|_{\infty}$ defined in terms of $\alpha_i$ and $\beta_i$?,"$\|\mathbf{T}_J\|_{\infty} = \max_{i=1, \dots, n} \{ \alpha_i + \beta_i \}$"
+The error estimate of Gauss-Seidel is generally \_\_\_\_\_ than that of Jacobi for diagonally dominant matrices.,better (or smaller)
+Which matrix in the GS decomposition contains elements $a_{ij}$ where $j > i$?,The strictly upper triangular matrix $\mathbf{U}$.

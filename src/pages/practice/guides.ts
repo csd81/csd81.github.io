@@ -14,6 +14,43 @@ const SHORT = import.meta.glob('./guides/short/*.md', { query: '?raw', import: '
 const STUDY = import.meta.glob('./guides/study/*.md', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 const BOOK = import.meta.glob('./guides/book/*.md', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 const SLIDES = import.meta.glob('./guides/slides/*.md', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+const FLASH = import.meta.glob('./guides/flashcards/*.csv', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+
+export interface Flashcard { front: string; back: string; }
+
+/** Parse CSV text into rows (RFC-4180-ish: "" escapes a quote; quoted fields
+ *  may contain commas/newlines). */
+function parseCSV(text: string): string[][] {
+  const rows: string[][] = [];
+  let field = '', row: string[] = [], inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQ) {
+      if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else inQ = false; }
+      else field += c;
+    } else if (c === '"') {
+      inQ = true;
+    } else if (c === ',') {
+      row.push(field); field = '';
+    } else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') i++;
+      if (field !== '' || row.length) { row.push(field); rows.push(row); row = []; field = ''; }
+    } else {
+      field += c;
+    }
+  }
+  if (field !== '' || row.length) { row.push(field); rows.push(row); }
+  return rows;
+}
+
+/** Flashcards (front/back) for a subsection base, from its CSV (or []). */
+function flashcardsFor(base: string): Flashcard[] {
+  const csv = FLASH[`./guides/flashcards/${base}_flashcards.csv`];
+  if (!csv) return [];
+  return parseCSV(csv)
+    .filter((r) => r.length >= 2 && r[0].trim())
+    .map((r) => ({ front: r[0].trim(), back: r[1].trim() }));
+}
 
 export interface Subsection {
   /** Chapter number 1–10. */
@@ -32,6 +69,8 @@ export interface Subsection {
   shortEn: string;
   /** English study-guide markdown (may be empty for a not-yet-written guide). */
   study: string;
+  /** Self-test flashcards (front/back), empty if none for this subsection. */
+  flashcards: Flashcard[];
 }
 
 /** Title-case-ish: capitalise each word's first letter, keep the rest as-is
@@ -65,6 +104,7 @@ for (const path of Object.keys(SHORT)) {
     short: SHORT[path] ?? '',
     shortEn: SHORT[`./guides/short/${base}_short_summary_en.md`] ?? '',
     study: STUDY[`./guides/study/${base}_study_guide.md`] ?? '',
+    flashcards: flashcardsFor(base),
   };
   const arr = byChapter.get(chapter) ?? [];
   arr.push(sub);

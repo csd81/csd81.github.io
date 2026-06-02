@@ -1,0 +1,35 @@
+What is the primary goal of the numerical methods discussed in this chapter?,To generate an infinite sequence $p_k$ that approximates the exact root $p$ of a function $f$.
+How is the exact root $p$ of a function $f$ mathematically defined?,$f(p) = 0$
+"In the context of iterative sequences, what does the term $p_k$ represent?",The $k$th term or the $k$th approximation of the limit $p$.
+What three predefined parameters are required to implement stopping criteria for iterations?,"Tolerances $\varepsilon_1$, $\varepsilon_2$, and $\varepsilon_3$ (all $> 0$)."
+Criterion (i) for stopping iterations is defined by which inequality?,$|p_k - p_{k-1}| < \varepsilon_1$
+What is Criterion (i) a numerical analogue of?,The absolute error $|p_k - p|$ of the approximation.
+What is the underlying assumption of stopping criterion (i)?,"If consecutive terms are close to each other, it is assumed they are both close to the limit $p$."
+Criterion (ii) for stopping iterations is defined by which inequality?,$\frac{|p_k - p_{k-1}|}{|p_k|} < \varepsilon_2$
+What is Criterion (ii) a numerical analogue of?,The relative error $|p_k - p|/|p|$ of the approximation.
+Why might Criterion (ii) be preferred over Criterion (i)?,It takes into account the order of magnitude of the sequence terms.
+"In the relative error analogue formula, what term is used in place of the unknown limit $p$ in the denominator?",The current term $|p_k|$.
+Criterion (iii) for stopping iterations is defined by which inequality?,$|f(p_k)| < \varepsilon_3$
+What is being tested by Criterion (iii)?,Whether the function value at the current approximation is close to zero.
+Why is Criterion (iii) specifically used for root-finding problems?,It directly tests how well $p_k$ satisfies the mathematical requirement $f(p) = 0$.
+What common programming practice is recommended to prevent infinite loops in iteration codes?,Setting a predefined maximal iteration number to stop the sequence.
+"Besides avoiding infinite loops, why else should a maximal iteration number be used?",To prevent calculations that have a convergence rate that is too slow.
+"Are the stopping criteria (i), (ii), and (iii) considered mathematically rigorous or heuristic?",Heuristic.
+Why are stopping criteria often used in combination in practice?,To avoid false terminations where a criterion is met but the term is not actually close to the root.
+"Which two criteria can be applied to any iteration method, regardless of the problem type?",Criteria (i) and (ii).
+What sequence is used as a standard counter-example to show that Criterion (i) can fail?,The harmonic series $p_k = \sum_{i=1}^k \frac{1}{i}$.
+"For the sequence $p_k = \sum_{i=1}^k \frac{1}{i}$, what is the value of $|p_k - p_{k-1}|$?",$\frac{1}{k}$
+Why does the sequence $p_k = \sum_{i=1}^k \frac{1}{i}$ satisfy Criterion (i) for large $k$ even though it does not converge?,The distance between consecutive terms $\frac{1}{k}$ eventually becomes smaller than any $\varepsilon_1 > 0$.
+"In Criterion (ii), the expression $\frac{|p_k - p_{k-1}|}{|p_k|}$ for $p_k = \sum_{i=1}^k \frac{1}{i}$ behaves in what way as $k \to \infty$?","It tends to zero, satisfying the criterion despite the sequence diverging to infinity."
+A function graph with a small 'valley' where $|f(p_k)|$ is small but $p_k$ is far from the root is an example of the failure of which criterion?,Criterion (iii).
+"If $f(x) = x^8$ and $p_k = 1/k$, what approximate root is found using Criterion (iii) with $\varepsilon_3 = 10^{-8}$?",$p_{11} \approx 0.0909$ (since $(1/11)^8 < 10^{-8}$).
+"If $f(x) = x^8$ and $p_k = 1/k$, what $k$ is required to satisfy Criterion (i) with $\varepsilon_1 = 10^{-8}$?","$k \approx 10,000$ (where $\frac{1}{k(k-1)} < 10^{-8}$)."
+"If $f(x) = x^8$ and $p_k = 1/k$, what $k$ is required to satisfy Criterion (ii) with $\varepsilon_2 = 10^{-8}$?",$k \approx 10^8$ (where $\frac{1}{k-1} < 10^{-8}$).
+What does a high number of iterations usually indicate in a numerical program?,A likely situation where the sequence is not convergent or convergence is extremely slow.
+"True or False: If Criterion (iii) is satisfied, the sequence term is guaranteed to be close to a root.","False, it is a heuristic assumption that may fail in cases like function 'valleys'."
+The formula $\frac{|p_k - p_{k-1}|}{|p_k|}$ is the numerical approximation of which error type?,Relative error.
+The formula $|p_k - p_{k-1}|$ is the numerical approximation of which error type?,Absolute error.
+"In Criterion (ii), what role does $p_{k-1}$ play?",It is used in the formula to approximate the limit $p$ within the numerator's error estimate.
+Which criterion specifically checks if the current guess $p_k$ 'solves' the equation $f(x) = 0$?,Criterion (iii).
+How do we mathematically represent the tolerance for function value proximity?,$\varepsilon_3$
+What does 'large enough' $k$ mean in the context of stopping criteria?,The number of iterations at which the chosen criterion (or combination of criteria) is finally satisfied.

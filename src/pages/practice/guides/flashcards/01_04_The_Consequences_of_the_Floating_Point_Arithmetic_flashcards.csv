@@ -1,0 +1,50 @@
+What numerical phenomenon occurs when two nearly equal numbers are subtracted in finite arithmetic?,The loss of significance (or catastrophic cancellation).
+"In Example 1.19, what is the relative error $\delta_1$ of the first root using 4-digit arithmetic?",$\delta_1 = 0.0002152$.
+"In Example 1.19, what is the relative error $\delta_2$ of the second root using 4-digit arithmetic?",$\delta_2 = 0.113096$.
+Why does the second root in Example 1.19 have a significantly higher relative error than the first?,It was calculated by subtracting two numbers that are very close in value.
+What is the standard quadratic formula for the root $x_2$?,$x_2 = \frac{-b - \sqrt{b^2 - 4ac}}{2a}$.
+Under what conditions for $b$ and $4ac$ does the standard quadratic formula for $x_2$ lose significance?,When $b$ is negative and $4ac$ is much smaller than $b^2$.
+"What is the algebraically equivalent, stable formula for $x_2$ to avoid subtraction of close numbers?",$x_2 = \frac{2c}{-b + \sqrt{b^2 - 4ac}}$.
+Why is the reformulated root formula $x_2 = \frac{2c}{-b + \sqrt{b^2 - 4ac}}$ more numerically stable?,It replaces the subtraction in the numerator with an addition in the denominator.
+"If $b$ is positive and $4ac$ is much smaller than $b^2$, which stable formula should be used for $x_1$?",$x_1 = \frac{2c}{-b - \sqrt{b^2 - 4ac}}$.
+"In Example 1.20, what is the relative error of the second root when using the stable formula?",$\delta_2 = 0.00044$.
+Evaluation of the expression $\cos^2 x - \sin^2 x$ loses significance when $x$ is near \_\_\_\_\_.,$\frac{\pi}{4}$
+What trigonometric identity avoids the loss of significance for $\cos^2 x - \sin^2 x$ near $\frac{\pi}{4}$?,$\cos 2x$
+Evaluation of the function $f(x) = e^x - 1$ loses significance when $x$ is near \_\_\_\_\_.,0
+How can the loss of significance in $e^x - 1$ be avoided when $x$ is near 0?,By using a finite approximation of its Taylor series expansion.
+What is the Taylor series expansion for $e^x - 1$ used to improve numerical stability?,$x + \frac{x^2}{2!} + \frac{x^3}{3!} + \dots + \frac{x^n}{n!} + \dots$
+What is the primary risk when calculating $15^{40}$ or $40!$ separately in single precision?,The calculation may overflow the range of representable numbers.
+How should the expression $\frac{a^n}{n!}$ be rearranged to stay within the representable range?,As a product of fractions: $\frac{a}{n} \cdot \frac{a}{n-1} \cdot \dots \cdot \frac{a}{1}$.
+What is the numerical result of $\frac{15^{40}}{40!}$ when calculated using a stable product method?,0.135521
+"In 4-digit arithmetic, what is the result of $1.000 + 0.0003$ after rounding?",1.000
+"In Example 1.24, what is the result of adding $1.000$ to one thousand $0.0003$ terms from left to right?",1.000
+"In Example 1.24, what is the result of summing one thousand $0.0003$ terms before adding $1.000$?",1.300
+Example 1.24 demonstrates that addition in floating-point arithmetic is not \_\_\_\_\_.,commutative
+"To minimize rounding errors in a sum of many terms, what is the recommended order of summation?",The terms should be added in increasing order of their magnitudes.
+Why is summing terms in increasing order advantageous?,It ensures the partial sums remain of a similar order of magnitude to the next term being added.
+"When evaluating $\ln x - 1$, loss of significance occurs when $x$ is close to \_\_\_\_\_.",$e$
+"When evaluating $\sqrt{x + 9} - 3$, loss of significance occurs when $x$ is close to \_\_\_\_\_.",0
+What is a stable alternative expression for $\sqrt{x + 9} - 3$ to avoid precision loss near $x=0$?,$\frac{x}{\sqrt{x + 9} + 3}$
+What technique avoids precision loss for $\sin x - x$ when $x$ is near 0?,"Taylor series expansion (e.g., $-\frac{x^3}{6} + \frac{x^5}{120} - \dots$)."
+"When evaluating $1 - \cos x$, loss of significance occurs when $x$ is close to \_\_\_\_\_.",0
+What trigonometric identity avoids the subtraction of close numbers in $1 - \cos x$?,$2 \sin^2(\frac{x}{2})$
+"For the expression $(\cos x - e^{-x})/x$, why is $x$ near 0 problematic?",The numerator involves the subtraction of two numbers nearly equal to 1.
+"In Example 1.23, what is the numerical result of $\frac{20^{50}}{50!}$ using stable calculation?",3.701902
+"In 4-digit arithmetic, why does $10.00 + 0.002 = 10.00$?",The exact result $10.002$ is rounded to four significant digits.
+"In Example 1.24 (Variation), what is the sum of ten $0.002$ terms followed by $10.00$?",10.02
+What is the exact solution $x_1$ for the equation $x^2 - 83.5x + 1.5 = 0$?,$x_1 = 83.482032$
+What is the exact solution $x_2$ for the equation $x^2 - 83.5x + 1.5 = 0$?,$x_2 = 0.0179679$
+"When solving $ax^2 + bx + c = 0$, what mathematical operation is avoided in the denominator of the stable formula?",Subtraction (it is replaced with addition of two positive values).
+The problem of $15^{40}$ being too large for computer storage is an example of \_\_\_\_\_.,overflow
+What is the limit of the sequence $\frac{a^n}{n!}$ as $n$ approaches infinity?,0
+Concept: Catastrophic Cancellation,Definition: The significant loss of precision that occurs when two nearly equal approximate values are subtracted.
+How can the expression $(1 - \cos x) / \sin x$ be stabilized near $x=0$ using an identity?,By using the identity $\tan(\frac{x}{2})$.
+"In 4-digit arithmetic, the result of $0.0003 + 0.0003$ is \_\_\_\_\_.",0.0006
+Why is addition not numerically commutative in computers?,Because the order of operations changes how rounding is applied to intermediate partial sums.
+What is the stable form of $\sqrt{x + 4} - 2$ near $x=0$?,$\frac{x}{\sqrt{x + 4} + 2}$
+"In Example 1.19, what values are subtracted to produce the second root $\tilde{x}_2$?",83.5 and 83.46.
+"In Example 1.22, why is an algebraic identity unavailable for $e^x - 1$?",It is a transcendental function without a simple polynomial subtraction identity.
+What programming structure is suggested for calculating rearranged products like $\prod \frac{15}{i}$?,A simple **for** cycle.
+Which root of $x^2 - 83.5x + 1.5 = 0$ is accurate to 4 digits in standard 4-digit arithmetic?,"The first root, $\tilde{x}_1$."
+"According to the exercises, which order should $2.274 + 12.04 + 0.4233 + 0.1202 + 0.2204$ be summed for best accuracy?",$0.1202 + 0.2204 + 0.4233 + 2.274 + 12.04$.
+The derivation $x_2 = \frac{b^2 - (b^2 - 4ac)}{2a(-b + \sqrt{b^2 - 4ac})}$ is based on rationalizing the \_\_\_\_\_.,numerator

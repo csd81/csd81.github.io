@@ -1,0 +1,45 @@
+What is the general iterative formula for Quasi-Newton methods?,$\mathbf{p}^{(k+1)} = \mathbf{p}^{(k)} - (\mathbf{A}^{(k)})^{-1} \mathbf{f}(\mathbf{p}^{(k)})$
+"In Quasi-Newton methods, what does the matrix $\mathbf{A}^{(k)}$ approximate?",The Jacobian matrix $\mathbf{f}'(\mathbf{p}^{(k)})$
+What is a major disadvantage of the standard Newton's method compared to Quasi-Newton methods regarding the Jacobian?,Evaluating the exact Jacobian matrix can be computationally expensive or difficult to formulate.
+Numerical Jacobian approximation: How is the component $a_{ij}^{(k)}$ calculated using a step size $h$?,$a_{ij}^{(k)} = \frac{f_i(\mathbf{p}^{(k)} + h\mathbf{e}^{(j)}) - f_i(\mathbf{p}^{(k)})}{h}$
+"In the numerical approximation of the Jacobian, what does $\mathbf{e}^{(j)}$ represent?",The $j$-th standard unit vector.
+What is a numerical risk of using a very small $h$ when approximating the Jacobian derivative?,Significant rounding errors and instability from subtracting nearly identical function values.
+Broyden's method is considered a multi-variable generalization of which scalar root-finding method?,The Secant method.
+What is the 'Secant Equation' that $\mathbf{A}^{(k+1)}$ must satisfy in Broyden's method?,$\mathbf{A}^{(k+1)}(\mathbf{p}^{(k+1)} - \mathbf{p}^{(k)}) = \mathbf{f}(\mathbf{p}^{(k+1)}) - \mathbf{f}(\mathbf{p}^{(k)})$
+"In the notation of Broyden's method, what does $\mathbf{s}^{(k)}$ represent?",$\mathbf{p}^{(k+1)} - \mathbf{p}^{(k)}$
+"In the notation of Broyden's method, what does $\mathbf{y}^{(k)}$ represent?",$\mathbf{f}(\mathbf{p}^{(k+1)}) - \mathbf{f}(\mathbf{p}^{(k)})$
+The Secant Equation in simplified notation: $\mathbf{A}^{(k+1)} \mathbf{s}^{(k)} = \dots$,$\mathbf{y}^{(k)}$
+Why does the Secant Equation $\mathbf{A}^{(k+1)} \mathbf{s}^{(k)} = \mathbf{y}^{(k)}$ not uniquely determine $\mathbf{A}^{(k+1)}$ in $n$-dimensional space?,It provides only $n$ scalar constraints for $n^2$ unknown matrix components.
+What is the 'minimal change' condition Broyden's method imposes on vectors $\mathbf{z}$ perpendicular to $\mathbf{s}^{(k)}$?,$\mathbf{A}^{(k+1)} \mathbf{z} = \mathbf{A}^{(k)} \mathbf{z}$
+The Broyden update for the matrix $\mathbf{A}^{(k+1)}$ is: $\mathbf{A}^{(k+1)} = \mathbf{A}^{(k)} + \dots$,$\frac{(\mathbf{y}^{(k)} - \mathbf{A}^{(k)} \mathbf{s}^{(k)}) (\mathbf{s}^{(k)})^T}{\|\mathbf{s}^{(k)}\|_2^2}$
+True or False: The Broyden update is a rank-1 update to the matrix.,True.
+"When calculating $\mathbf{A}^{(k+1)} \mathbf{s}^{(k)}$ using the Broyden formula, what term results from the product $(\mathbf{s}^{(k)})^T \mathbf{s}^{(k)}$ in the numerator?","The squared $L_2$ norm, $\|\mathbf{s}^{(k)}\|_2^2$."
+List one possible strategy for choosing the initial matrix $\mathbf{A}^{(0)}$ in Broyden's method.,Use the exact Jacobian $\mathbf{f}'(\mathbf{p}^{(0)})$.
+List a second possible strategy for choosing the initial matrix $\mathbf{A}^{(0)}$ in Broyden's method.,Approximate the Jacobian at $\mathbf{p}^{(0)}$ using finite differences.
+List a third (simple) strategy for choosing the initial matrix $\mathbf{A}^{(0)}$ in Broyden's method.,"Select any arbitrary invertible matrix (e.g., the Identity matrix $\mathbf{I}$)."
+Which theorem provides a formula to update the inverse of a matrix after a rank-1 modification?,The Sherman-Morrison-Woodbury Theorem.
+"According to the Sherman-Morrison-Woodbury theorem, $\mathbf{A} + \mathbf{u}\mathbf{v}^T$ is invertible if and only if which scalar condition is met?",$1 + \mathbf{v}^T \mathbf{A}^{-1} \mathbf{u} \neq 0$
+Formula: Write the Sherman-Morrison-Woodbury identity for $(\mathbf{A} + \mathbf{u}\mathbf{v}^T)^{-1}$.,$\mathbf{A}^{-1} - \frac{\mathbf{A}^{-1} \mathbf{u} \mathbf{v}^T \mathbf{A}^{-1}}{1 + \mathbf{v}^T \mathbf{A}^{-1} \mathbf{u}}$
+Broyden's Inverse Update Formula: $(\mathbf{A}^{(k+1)})^{-1} = (\mathbf{A}^{(k)})^{-1} - \dots$,$\frac{((\mathbf{A}^{(k)})^{-1} \mathbf{y}^{(k)} - \mathbf{s}^{(k)}) (\mathbf{s}^{(k)})^T (\mathbf{A}^{(k)})^{-1}}{(\mathbf{s}^{(k)})^T (\mathbf{A}^{(k)})^{-1} \mathbf{y}^{(k)}}$
+What is the order of magnitude of arithmetic operations required to update $(\mathbf{A}^{(k+1)})^{-1}$ in Broyden's method?,$n^2$
+What is the standard order of magnitude of arithmetic operations required for direct matrix inversion?,$n^3$
+Why is the Broyden inverse update considered computationally efficient?,It reduces the complexity from $O(n^3)$ for inversion to $O(n^2)$ for matrix-vector multiplications.
+What is the rate of convergence for Broyden's method?,Superlinear.
+Define superlinear convergence of a sequence $\mathbf{p}^{(k)}$ to a root $\mathbf{p}$ as a limit.,$\lim_{k \to \infty} \frac{\|\mathbf{p}^{(k+1)} - \mathbf{p}\|}{\|\mathbf{p}^{(k)} - \mathbf{p}\|} = 0$
+Under what condition is Broyden's method guaranteed to converge locally to a root $\mathbf{p}$?,"If $\mathbf{p}^{(0)}$ and $\mathbf{A}^{(0)}$ are sufficiently close to $\mathbf{p}$ and $\mathbf{f}'(\mathbf{p})$, respectively."
+How does the number of iterations in Broyden's method typically compare to Newton's method for the same problem?,Broyden's method usually requires more iterations than Newton's method because its convergence is superlinear rather than quadratic.
+"In the example provided ($TOL = 10^{-5}$), how many steps did the Broyden method take to reach the solution?",10 iterations.
+Concept: Direct Inverse Broyden Update,"Definition: A method to calculate $(\mathbf{A}^{(k+1)})^{-1}$ directly from $(\mathbf{A}^{(k)})^{-1}$ using only $O(n^2)$ operations, bypassing the need to solve a full linear system."
+True or False: The Broyden update matrix term $(\mathbf{y}^{(k)} - \mathbf{A}^{(k)}\mathbf{s}^{(k)})(\mathbf{s}^{(k)})^T$ results in a scalar.,False; it is an outer product resulting in an $n \times n$ matrix.
+What is the primary motivation for using Quasi-Newton methods over the fixed-point iteration technique?,Quasi-Newton methods converge faster (superlinear) than simple linear fixed-point iterations.
+"Process: If you already have $(\mathbf{A}^{(k)})^{-1}$, what is the first vector calculation needed for the Broyden inverse update numerator?",The product $(\mathbf{A}^{(k)})^{-1} \mathbf{y}^{(k)}$.
+"In the proof of the Sherman-Morrison-Woodbury theorem, what is the role of the scalar $\gamma$?",It is a scaling factor used to determine the exact form of the inverse update such that the product with the original matrix equals identity.
+The scalar product $(\mathbf{s}^{(k)})^T \mathbf{z} = 0$ implies that vectors $\mathbf{s}^{(k)}$ and $\mathbf{z}$ are \_\_\_\_\_.,Perpendicular (orthogonal).
+"In the iterative formula $\mathbf{A}^{(k)} \mathbf{s}^{(k)} = -\mathbf{f}(\mathbf{p}^{(k)})$, solving for $\mathbf{s}^{(k)}$ allows for the definition of which vector?","The next iterate, $\mathbf{p}^{(k+1)} = \mathbf{p}^{(k)} + \mathbf{s}^{(k)}$."
+Why is it important that $\mathbf{A}^{(0)}$ is invertible in Broyden's method?,Because the iteration requires the computation of $(\mathbf{A}^{(k)})^{-1}$ or solving a linear system with $\mathbf{A}^{(k)}$.
+"If the Broyden method is 'locally' convergent, what does this imply about the starting point $\mathbf{p}^{(0)}$?",It must be chosen sufficiently close to the actual root for the method to be guaranteed to find it.
+The Broyden update formula ensures that $\mathbf{A}^{(k+1)}$ satisfies the Secant Equation by modifying $\mathbf{A}^{(k)}$ along which direction?,The direction of $\mathbf{s}^{(k)}$ (via the outer product $(\cdot)(\mathbf{s}^{(k)})^T$).
+How is the norm $\|\mathbf{p}^{(k)} - \mathbf{p}\|_\infty$ typically used in numerical examples of Broyden's method?,To measure the error and demonstrate the convergence rate of the iterates toward the root.
+What property of matrix multiplication is used to simplify the verification of the Broyden formula $\mathbf{A}^{(k+1)}\mathbf{s}^{(k)} = \mathbf{y}^{(k)}$?,Associativity (grouping the scalar inner product $(\mathbf{s}^{(k)})^T\mathbf{s}^{(k)}$ separately).
+"In the scalar case ($n=1$), the Broyden update formula collapses to the formula for the \_\_\_\_\_.",Slope of the secant line ($a_{k+1} = \frac{f(p_{k+1}) - f(p_k)}{p_{k+1} - p_k}$).
+The phrase 'no new information' in the derivation of Broyden's method refers to the lack of updates in which directions?,Directions orthogonal to the step $\mathbf{s}^{(k)}$.

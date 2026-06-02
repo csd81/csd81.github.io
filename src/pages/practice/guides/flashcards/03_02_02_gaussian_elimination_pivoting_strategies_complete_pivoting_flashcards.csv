@@ -1,0 +1,58 @@
+"In Gaussian elimination, what is another name for 'complete pivoting'?",Maximal pivoting.
+"At the $k$-th step of complete pivoting, the indices $l$ and $m$ are chosen such that $|a_{lm}|$ is the maximum of the absolute values in which range?","The range where $i = k, \ldots, n$ and $j = k, \ldots, n$."
+What two types of interchanges are performed during a step of Gaussian elimination with complete pivoting?,The interchange of the $k$-th and $l$-th rows and the $k$-th and $m$-th columns.
+How does interchanging the $k$-th and $m$-th columns affect the linear system variables?,"It changes which column corresponds to which unknown variable ($x_1, \ldots, x_n$)."
+What is the primary disadvantage of complete pivoting compared to partial pivoting?,"It requires significantly more comparisons to find the maximum element, making the method slower."
+"When solving the system $\mathbf{A}\mathbf{x} = \mathbf{b}$ with complete pivoting, how is the final value of the variables determined?",By solving the resulting triangular system while accounting for all column (variable) swaps.
+"A square matrix $\mathbf{A} \in \mathbb{R}^{n \times n}$ is called row diagonally dominant if for every $i$, $|a_{ii}| >$ \_\_\_\_\_.","$\sum_{j=1, j \ne i}^{n} |a_{ij}|$."
+"According to the provided theorem, if a matrix $\mathbf{A}$ is diagonally dominant, what property does it necessarily have regarding its inverse?",The matrix $\mathbf{A}$ is invertible.
+"In the proof of invertibility for diagonally dominant matrices, what assumption is made about the linear system $\mathbf{A}\mathbf{x} = \mathbf{0}$?",It is assumed to have a nontrivial solution $\mathbf{x} \ne \mathbf{0}$ to reach a contradiction.
+"If a matrix is row diagonally dominant, can Gaussian elimination be performed without pivoting?","Yes, it can be performed without pivoting."
+What is the numerical stability status of Gaussian elimination when applied to a diagonally dominant matrix without pivoting?,The method is stable with respect to rounding errors.
+"Theorem 3.32 states that if $\mathbf{A}$ is diagonally dominant, every intermediate matrix $\mathbf{A}^{(k)}$ in Gaussian elimination is also \_\_\_\_\_.",Diagonally dominant.
+A square matrix is positive definite if it is \_\_\_\_\_ and $x^T A x > 0$ for all $x \ne 0$.,Symmetric.
+Define a 'positive semi-definite' matrix based on the quadratic form $x^T A x$.,A symmetric matrix where $x^T A x \ge 0$ for all $x$.
+What condition involving 'principal minors' determines if a symmetric matrix is positive definite?,All of its upper left minors (principal minors) must have a positive determinant.
+"If a symmetric matrix $\mathbf{A}$ is positive definite, what is guaranteed about the pivot elements during Gaussian elimination without pivoting?",The pivot elements are all positive.
+Gaussian elimination on a symmetric positive definite matrix without pivoting is stable with respect to \_\_\_\_\_.,Rounding errors.
+What is the purpose of 'row scaling' (sorkiegyenlítés) in numerical linear algebra?,To equalize the magnitudes of coefficients to reduce rounding errors.
+"In the context of row scaling, what does the matrix $\mathbf{D} = \text{diag}(d_1, \ldots, d_n)$ represent?",A diagonal matrix where each $d_i$ is a non-zero multiplier for the $i$-th equation.
+"According to the strategy for row scaling, what is a common choice for $s_i$ to normalize coefficients?",$s_i = \max_{1 \le j \le n} |a_{ij}|$.
+"To avoid introducing new rounding errors during row scaling, what specific values should the multipliers $d_i$ take?",They should be powers of the computer's number representation base $\beta$.
+What is 'implicit row scaling' in Gaussian elimination?,"A method where scale factors (weights) are used only to select pivots, without actually scaling the matrix elements."
+"According to Theorem 3.30, if row scaling does not change the pivot selections, how do the numerical solutions of $\mathbf{A}\mathbf{x} = \mathbf{b}$ and $\mathbf{D}\mathbf{A}\mathbf{x} = \mathbf{D}\mathbf{b}$ compare?",They will be exactly the same.
+"In Algorithm 3.31, how is the pivot row index $l$ chosen using implicit scaling?",By finding the index $l$ that maximizes the ratio $\frac{|a_{ik}|}{s_i}$ for $k \le i \le n$.
+Why might a programmer use a pointer vector $m[i]$ to handle row swaps instead of moving actual matrix rows?,"To reduce the number of operations, as swapping elements in a small vector is faster than swapping entire matrix rows."
+"If $m[i]$ is used as a row index pointer vector, how is the matrix element $a_{ij}$ accessed?","As $a[m[i], j]$."
+The proof for the invertibility of diagonally dominant matrices utilizes the \_\_\_\_\_ inequality.,Triangle.
+What is the requirement for a matrix to be 'negative definite'?,It must be symmetric and $x^T A x < 0$ for all $x \ne 0$.
+"In complete pivoting, if the maximum absolute value is located at $a_{lm}$, which column swap is performed at step $k$?",The $k$-th column is swapped with the $m$-th column.
+Is it possible for Gaussian elimination on a positive definite matrix to result in a non-positive pivot element?,"No, if the matrix is positive definite, the pivots will always be positive."
+"In Algorithm 3.31, what value does $s_i$ store after the weights calculation loop?",The maximum absolute value found in row $i$ of the coefficient matrix.
+What does the expression $l_{ik} \leftarrow a_{ik}/a_{kk}$ calculate in the Gaussian elimination algorithm?,The multiplier used to eliminate the element in the $i$-th row and $k$-th column.
+Concept: Principal Minor.,Definition: The determinant of a sub-matrix formed by the first $i$ rows and first $i$ columns. Example: $\det(a_{11})$ is the first principal minor.
+What is the effect of significant magnitude differences in matrix coefficients on numerical calculations?,The rounding error may increase during the calculation.
+"If a matrix is symmetric, what property allows checking for positive definiteness using only determinants?",Sylvester's criterion (the requirement that all principal minors be positive).
+"Why is the base $\beta$ used in scaling (e.g., $b_{ij} := a_{ij}/\beta^{r_i}$)?",Because division by the base in floating-point arithmetic does not introduce rounding errors.
+How does the 'visszahelyettesítés' (back-substitution) step in Algorithm 3.31 find the value of $x_i$?,By subtracting the sum of known variable products from the constant term and dividing by the diagonal coefficient $a_{ii}$.
+"In the complete pivoting example, why was the value $4$ chosen as the first pivot?",Because $|4|$ was the maximum absolute value among all coefficients in the $4 \times 4$ system.
+Under what condition is complete pivoting not strictly necessary for numerical stability?,When the matrix is row diagonally dominant or symmetric positive definite.
+What does $x^T A x$ represent in the context of defining matrix definiteness?,A quadratic form.
+True or False: Row diagonal dominance implies that $|a_{ii}| \ge \sum_{j \ne i} |a_{ij}|$.,False; the definition requires a strict inequality ($>$).
+What is the index range for calculating the sum in the row diagonal dominance definition?,"$j = 1, \ldots, n$ such that $j \ne i$."
+"If a matrix $\mathbf{A}$ is not row diagonally dominant, does it necessarily mean it is not invertible?","No, diagonal dominance is a sufficient but not necessary condition for invertibility."
+"At step $k$ of Gaussian elimination, row $l$ is the row that contains the \_\_\_\_\_ absolute value element among candidate pivot rows.",Maximum.
+How many total determinants must be positive to confirm a $5 \times 5$ matrix is positive definite?,"Five determinants (the $1\times1, 2\times2, 3\times3, 4\times4,$ and $5\times5$ upper-left minors)."
+"In the Hungarian text, what is the term used for 'complete pivoting'?",Teljes főelemkiválasztás.
+"In the Hungarian text, 'sorkiegyenlítés' translates to what English numerical concept?",Row equilibration or row scaling.
+What happens to the variable labels at the bottom of the matrix in the example when columns 1 and 4 are swapped?,"The label $x_1$ moves to column 4, and $x_4$ moves to column 1."
+What logic error is avoided by checking $|x_k| = \max\{|x_i|\}$ in the diagonal dominance invertibility proof?,"It ensures $x_k \ne 0$, allowing for the division necessary to reach the contradiction."
+Why is the multiplier in Gaussian elimination restricted to $k+1 \le i \le n$?,Because the purpose is to eliminate elements below the pivot position in the $k$-th column.
+"In Algorithm 3.31, what constitutes the 'INPUT'?",The augmented coefficient matrix $a_{ij}$ for $i=1 \ldots n$ and $j=1 \ldots n+1$.
+The phrase 'stable with respect to rounding errors' implies that \_\_\_\_\_.,Small errors introduced by computer precision do not grow large enough to invalidate the result.
+"According to the transcript, how many options were there in the example for the first pivot if the max value was $4$?",Three options (at different positions in the matrix).
+"When a matrix is positive definite, the value $x^T A x$ is always \_\_\_\_\_.",Positive.
+What is the summation formula used to calculate $x^T A x$?,$\sum_{i=1}^{n} \sum_{j=1}^{n} a_{ij} x_i x_j$.
+Formula: Pivot scaling ratio in implicit partial pivoting.,$\frac{|a_{lk}|}{s_l} = \max_{k \le i \le n} \frac{|a_{ik}|}{s_i}$.
+"If a matrix is symmetric and all its eigenvalues are positive, it is likely to be \_\_\_\_\_.",Positive definite.
+What is the primary motivation for using partial or complete pivoting during elimination?,"To prevent division by zero or by very small numbers, which increases rounding error."

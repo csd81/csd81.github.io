@@ -1,0 +1,51 @@
+What are the requirements for the matrices $L$ and $U$ in the factorization $A = LU$ (Doolittle's method)?,"$L$ is lower triangular with 1s on the main diagonal, and $U$ is upper triangular."
+What is the alternative name for $LU$ factorization mentioned in the text?,Doolittle's method
+Under what two conditions is the $LU$ factorization of a square matrix $A$ guaranteed to be unique?,$A$ must be nonsingular and the factorization must exist.
+"In the proof of uniqueness for $A = L_1 U_1 = L_2 U_2$, what is the result of the matrix product $L_2^{-1} L_1$?",The identity matrix $I$.
+"In Gaussian elimination, how is the multiplier $l_{i1}$ defined for the first column ($i = 2, 3, \dots, n$)?",$l_{i1} = \frac{a_{i1}}{a_{11}}$
+What matrix $A^{(1)}$ is produced by the operation $L_1 A$ in the context of Gaussian elimination?,The matrix obtained after performing the first elimination step.
+Describe the structure of the lower triangular matrix $L_1$ used to perform the first step of Gaussian elimination.,It has 1s on the diagonal and the values $-l_{i1}$ in the first column below the diagonal.
+"How is the matrix $L$ constructed from the sequence of elimination matrices $L_1, L_2, \dots, L_{n-1}$?",$L = (L_{n-1} L_{n-2} \dots L_1)^{-1}$
+"What values occupy the sub-diagonal positions $(i, j)$ in the final matrix $L$ of an $LU$ factorization?",The multipliers $l_{ij}$ used during the Gaussian elimination process.
+What characterizes the matrix $U$ in the $LU$ factorization relative to Gaussian elimination?,It is the upper triangular matrix $A^{(n-1)}$ resulting from the completion of Gaussian elimination.
+"According to Theorem 5.2, what is the prerequisite for the existence of an $LU$ factorization?",Gaussian elimination must be performable on the matrix $A$.
+"Theorem 5.4: If all \_\_\_\_\_ of $A$ are nonzero, then $LU$ factorization exists without row changes.",principal minors
+What type of matrix $P$ exists for any invertible matrix $A$ such that $PA = LU$ exists?,A permutation matrix
+"When solving $Ax = b$ via $LU$ factorization, what is the first triangular system to be solved?",$Ly = b$
+"In the $LU$ solution process for $Ax = b$, what is the second triangular system to be solved?",$Ux = y$
+What algorithm is used to solve the lower triangular system $Ly = b$?,Forward substitution
+What algorithm is used to solve the upper triangular system $Ux = y$?,Backward substitution
+Approximately how many multiplications/divisions are required to solve the two triangular systems $Ly = b$ and $Ux = y$?,$n^2 + \mathcal{O}(n)$
+What is the computational complexity (in multiplications/divisions) for computing the $LU$ factorization itself?,$\frac{n^3}{3} + \mathcal{O}(n^2)$
+Why is $LU$ factorization particularly efficient for solving multiple systems $Ax = b_i$ with different $b_i$?,"The factorization $A = LU$ is computed only once, and subsequent solutions only require $O(n^2)$ substitution steps."
+"In the shorthand method for $LU$ decomposition, where are the factors $l_{ij}$ written during calculation?",In the positions of the elements that are being eliminated (changed to 0).
+"If a matrix $A$ has a principal minor equal to zero, what might be necessary to find an $LU$-like factorization?",Row changes or the introduction of a permutation matrix $P$.
+Term: Doolittle's Method,Definition: An $LU$ factorization where the matrix $L$ is required to have unit diagonal entries.
+"In the provided example, if $l_{21}=2, l_{31}=-1, l_{41}=-2$, what does the first column of $L$ (excluding the diagonal) look like?","It contains the values $2, -1,$ and $-2$."
+How does the nonsingularity of $A$ affect the matrices $L$ and $U$ in the factorization $A=LU$?,"It ensures that $L$, $U$, and their components are also nonsingular."
+What is the result of multiplying a lower triangular matrix by another lower triangular matrix?,A lower triangular matrix.
+What is the result of multiplying an upper triangular matrix by another upper triangular matrix?,An upper triangular matrix.
+"If a matrix is both lower triangular with 1s on the diagonal and upper triangular, it must be the \_\_\_\_\_.",identity matrix $I$
+The formula $l_{i2} = \frac{a_{i2}^{(1)}}{a_{22}^{(1)}}$ defines multipliers for which column of $L$?,The second column.
+True or False: Gaussian elimination must be performable without row swaps for a basic $LU$ factorization to exist.,True.
+Concept: $A = LU$,Application: Efficiently solving linear systems by decomposing the problem into two simpler triangular problems.
+"In Example 5.3, the final entry $u_{44}$ of the matrix $U$ is calculated as \_\_\_\_\_.",$38$
+What is the defining characteristic of the main diagonal of $L$ in Doolittle's method?,Every entry is exactly 1.
+"If $\det(A) \ne 0$, then $\det(L)$ and $\det(U)$ must both be \_\_\_\_\_.",nonzero
+The matrix $L_2$ has multipliers $-l_{i2}$ located in which column?,The second column.
+"In the expression $L = L_1^{-1} L_2^{-1} \dots L_{n-1}^{-1}$, the multipliers $l_{ij}$ in $L$ appear with what sign relative to the elimination matrices $L_k$?",With the opposite sign (positive $l_{ij}$ instead of negative $-l_{ij}$).
+What is the value of $\det(L)$ in an $LU$ factorization?,$1$ (because it is triangular with 1s on the diagonal).
+"According to Theorem 5.5, what property of $A$ allows for a $PA=LU$ factorization?",$A$ must be an invertible square matrix.
+How many elimination matrices $L_k$ are defined for an $n \times n$ matrix?,$n-1$
+"If $L_2^{-1} L_1 = U_2 U_1^{-1}$, and the left side is lower triangular while the right side is upper triangular, what specific form must both sides take?",Diagonal matrix.
+"When a matrix has infinitely many $LU$ factorizations, what is typically true about its determinant?",The determinant is zero (the matrix is singular).
+"In $LU$ decomposition, the matrix $U$ is produced by applying a sequence of \_\_\_\_\_ transformations to $A$.",lower triangular (or Gaussian elimination)
+"To solve $Ly = b$ for $y_i$, you use the previously calculated values of $y_1, \dots, y_{i-1}$. What is this process called?",Forward substitution.
+"To solve $Ux = y$ for $x_i$, you start from $x_n$ and work towards $x_1$. What is this process called?",Backward substitution.
+"In the matrix equation $A^{(1)} = L_1 A$, what does $L_1$ represent in terms of elementary row operations?",Subtracting multiples of the first row from subsequent rows to create zeros in the first column.
+What is the relation between the principal minors of $A^{(k-1)}$ and $A^{(k)}$ during Gaussian elimination?,They are equal.
+"If the Gaussian elimination involves row changes, which theorem describes the resulting factorization?",Theorem 5.5 (existence of $PA=LU$).
+"Given $A = LU$, what is the formula for $\det(A)$ in terms of the entries of $U$?",The product of the diagonal entries of $U$.
+"In the product $L_1 L_2 \dots L_{n-1}$, why is it 'easy' to compute the result compared to arbitrary matrices?","Because each $L_k$ only modifies a specific column, and their products simply combine those columns."
+Is it possible for a singular matrix to have an $LU$ factorization?,"Yes, but it is not unique."
+"If $A$ is $4 \times 4$, how many multipliers $l_{ij}$ are stored in the matrix $L$ below the diagonal?","$6$ ($3$ in col 1, $2$ in col 2, $1$ in col 3)."

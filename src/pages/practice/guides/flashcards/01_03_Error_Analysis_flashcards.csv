@@ -1,0 +1,50 @@
+"In error analysis, if $\tilde{x}$ is an approximation of the real number $x$, what inequality defines the absolute error bound $\Delta_x$?",$|x - \tilde{x}| \leq \Delta_x$
+How is the relative error bound $\delta_x$ defined in terms of the absolute error bound $\Delta_x$ and the exact value $x$?,$\delta_x := \frac{\Delta_x}{x}$
+"According to Theorem 1.14, what is the absolute error bound $\Delta_{x+y}$ for the addition of two positive real numbers?",$\Delta_x + \Delta_y$
+What is the relative error bound $\delta_{x+y}$ for the addition of two positive real numbers?,"$\max\{\delta_x, \delta_y\}$"
+Which mathematical inequality is primarily used to prove the absolute error bound of addition?,The triangle inequality ($|a+b| \leq |a| + |b|$)
+"In the proof for $\delta_{x+y}$, the term $\frac{\Delta_x + \Delta_y}{x + y}$ is rewritten as a weighted sum of $\delta_x$ and $\delta_y$. What are those weights?",$\frac{x}{x + y}$ and $\frac{y}{x + y}$
+"When generalizing addition to several numbers, how is the total absolute error bound calculated?",By summing the individual absolute error bounds of all operands.
+How does the number of exact digits in a sum compare to the number of exact digits in its individual operands?,It is at least the smallest number of exact digits among the operands.
+"In practice, why might the actual error of a sum be smaller than the calculated bound $\Delta_x + \Delta_y$?",The errors of the individual terms can balance each other out (one being positive and one negative).
+"Theorem 1.15: For $x > y > 0$, what is the absolute error bound $\Delta_{x-y}$ for subtraction?",$\Delta_x + \Delta_y$
+"Theorem 1.15: For $x > y > 0$, what is the formula for the relative error bound $\delta_{x-y}$?",$\frac{x}{x - y}\delta_x + \frac{y}{x - y}\delta_y$
+Why is the absolute error bound for subtraction $\Delta_x + \Delta_y$ rather than $\Delta_x - \Delta_y$?,"Errors can accumulate in the worst case, and the triangle inequality requires adding the absolute values of differences."
+"What specific phenomenon occurs when subtracting two nearly equal numbers, leading to a significant loss of exact digits?",Loss of significance (or catastrophic cancellation).
+"In the context of subtraction, when is the relative error $\delta_{x-y}$ most likely to be significantly magnified?","When $x$ and $y$ are nearly equal, making the denominator $x - y$ very small."
+"In Example 1.16, two numbers exact to 6 digits are subtracted. How many digits of precision remain in the result?",2 digits
+Theorem 1.17: What is the exact formula for the absolute error bound of multiplication $\Delta_{x \cdot y}$?,$x\Delta_y + y\Delta_x + \Delta_x \Delta_y$
+Theorem 1.17: What is the exact formula for the relative error bound of multiplication $\delta_{x \cdot y}$?,$\delta_x + \delta_y + \delta_x \delta_y$
+"If $\Delta_x$ and $\Delta_y$ are very small compared to $x$ and $y$, what is a good approximation for the absolute error of multiplication?",$x\Delta_y + y\Delta_x$
+What is the simplified approximation for the relative error bound of multiplication $\delta_{x \cdot y}$ when $\delta_x$ and $\delta_y$ are small?,$\delta_x + \delta_y$
+Theorem 1.18: What condition must be met by $\delta_y$ to define the error bounds for division $\frac{x}{y}$?,$\delta_y < 1$
+Theorem 1.18: What is the exact formula for the absolute error bound of division $\Delta_{x/y}$?,$\frac{x\Delta_y + y\Delta_x}{y(y - \Delta_y)}$
+Theorem 1.18: What is the exact formula for the relative error bound of division $\delta_{x/y}$?,$\frac{\delta_x + \delta_y}{1 - \delta_y}$
+"When $\delta_y$ is small, what is the approximate relative error bound for division $\delta_{x/y}$?",$\delta_x + \delta_y$
+"When $\Delta_y$ is much smaller than $y$, what is the approximate absolute error bound for division $\Delta_{x/y}$?",$\frac{1}{y}\Delta_x + \frac{x}{y^2}\Delta_y$
+Under what condition regarding the divisor $y$ can the absolute error of a division operation be significantly magnified?,When $y$ is much smaller than $x$ or when $y$ is close to 0.
+Concept: Propagation of errors in multiplication.,Definition: Errors generally do not propagate rapidly because the relative error is approximately the sum of the relative errors of the operands.
+Concept: Lagrange's Mean Value Theorem in error analysis.,Purpose: To estimate the absolute error of an approximation when a differentiable function is applied to a value.
+"For a differentiable function $f$ with $|f'(x)| \leq M$, what is the estimated absolute error of $\tilde{y} = f(\tilde{x})$ given $|x - \tilde{x}| \leq \Delta_x$?",$M \cdot \Delta_x$
+The relative error of the result of \_\_\_\_\_ (operation) is always less than or equal to the maximum relative error of the operands.,Addition
+"In division, if $y = 0.003$ and $x = 42$, which operand's absolute error bound is magnified more in the result $\Delta_{x/y}$?",$\Delta_y$ (it is multiplied by approximately $\frac{x}{y^2}$)
+"In the multiplication proof, the identity $|xy - \tilde{x}\tilde{y}| = |xy - x\tilde{y} + x\tilde{y} - \tilde{x}\tilde{y}|$ is used. This is an example of adding and subtracting the term \_\_\_\_\_.",$x\tilde{y}$
+Term: Absolute error bound,Definition: An upper limit on the magnitude of the difference between a real number and its approximation.
+True or False: The relative error of multiplication is roughly the product of the relative errors of the factors.,False (it is roughly the sum).
+Formula: Relative error bound of $x^2$.,$2\delta_x + \delta_x^2$ (or approximately $2\delta_x$)
+"If $\delta_y = 0.1$, what is the denominator in the exact relative error bound formula for division?",$0.9$ (from $1 - \delta_y$)
+How does the 'worst case estimate' in Theorem 1.14 relate to actual computational errors?,"It provides a guaranteed upper limit, though actual errors may be lower due to sign cancellation."
+"In subtraction, the relative error bound $\delta_{x-y}$ is a weighted sum of $\delta_x$ and $\delta_y$. What happens to the weights as $x$ approaches $y$?",The weights $\frac{x}{x-y}$ and $\frac{y}{x-y}$ grow toward infinity.
+What is the primary danger of performing division by a number very close to zero in numerical calculations?,It can significantly magnify the absolute errors of the operands.
+Formula: Approximate relative error bound of $y^3$.,$3\delta_y$
+"According to the source, why is $\Delta_x \Delta_y$ usually omitted in multiplication error approximations?","Because $\Delta_x$ and $\Delta_y$ are generally much smaller than $x$ and $y$, making their product negligible."
+"In the proof of the division bound, the assumption $\delta_y < 1$ ensures that the denominator $y - \Delta_y$ is \_\_\_\_\_.",Greater than zero (positive).
+What is the relationship between $\delta_x$ and the 'number of exact digits' in $\tilde{x}$?,A smaller relative error bound generally corresponds to a higher number of exact digits.
+"Exercise 1: If $x = 3.50$ and $\tilde{x} = 3.47$, what is the absolute error $|x - \tilde{x}|$?",$0.03$
+"For the operation $f(x) = \frac{1}{y}$, using the differentiable function rule, what is the absolute error bound if $|f'(y)| = \frac{1}{y^2}$?",$\frac{1}{y^2} \Delta_y$
+What is the result of the absolute error bound $\Delta_{3x + 7y}$?,$3\Delta_x + 7\Delta_y$
+How does the relative error bound of division $\delta_{x/y}$ compare to that of multiplication $\delta_{xy}$ when $\delta_y$ is very small?,They are approximately the same (both $\approx \delta_x + \delta_y$).
+The phenomenon of 'loss of significance' most directly impacts the \_\_\_\_\_ error of a subtraction result.,Relative
+"If $\tilde{x} = 12.47534$ and $x = 12.47531$, what is $\Delta_x$ based on this specific error?",$0.00003$ (or $3 \cdot 10^{-5}$)
+Why is subtraction considered more 'dangerous' than addition in numerical analysis?,"Subtraction can lead to a catastrophic loss of significant digits, whereas addition preserves them."
+"In the proof of Theorem 1.18, the term $|	ilde{y}|$ is bounded from below by which expression?",$y - \Delta_y$

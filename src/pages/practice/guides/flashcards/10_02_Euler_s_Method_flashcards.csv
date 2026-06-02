@@ -1,0 +1,45 @@
+"What is the general formula for the Euler sequence $z_{i+1}$ in Euler's method for the IVP $y' = f(t, y)$?","$z_{i+1} = z_i + h_i f(t_i, z_i)$"
+"In the context of numerical methods for ODEs, how is the step size $h_i$ defined between two mesh points $t_i$ and $t_{i+1}$?",$h_i = t_{i+1} - t_i$
+"In Euler's method, what value is used as the starting point $z_0$ for the sequence?",$z_0 = y_0$
+Which specific Taylor polynomial approximation is the basis for Method (i) of deriving Euler's method?,The first-order Taylor polynomial around $t_i$.
+"Geometrically, Method (i) of Euler's method approximates the solution curve by following the \_\_\_\_\_ line at each mesh point.",tangent
+"In Method (ii) of deriving Euler's method, what numerical differentiation formula is used to approximate $y'(t_i)$?",The first-order forward difference formula $\frac{y(t_{i+1}) - y(t_i)}{h_i}$.
+"Method (iii) derives Euler's method by integrating $y'(t) = f(t, y(t))$ over what interval?","$[t_i, t_{i+1}]$"
+"When deriving Euler's method via integration, what simple quadrature rule is applied to approximate $\int_{t_i}^{t_{i+1}} f(s, y(s)) ds$?",The left-hand endpoint approximation $g(a)(b - a)$.
+"What is the exact analytical solution to the example IVP $y' = 2y - 10t^2 + 2t, y(0) = 1$?",$y(t) = 5t^2 + 4t + 2 - e^{2t}$
+"Based on numerical observations in the text, if the step size $h$ is halved in Euler's method, what happens to the approximation error?",The error is also approximately halved.
+What does it mean for the error of a numerical method to be 'linear in $h$'?,The error is directly proportional to the step size $h$.
+Define the local truncation error $\tau_{i+1}$ for Euler's method at the $(i+1)$-th step.,"$\tau_{i+1} := \frac{y(t_{i+1}) - y(t_i)}{h} - f(t_i, y(t_i))$"
+How is the exact solution value $y(t_{i+1})$ expressed in terms of the previous value $y(t_i)$ and the local truncation error $\tau_{i+1}$?,"$y(t_{i+1}) = y(t_i) + h f(t_i, y(t_i)) + \tau_{i+1}h$"
+What does the term $|\tau_{i+1}|h$ represent in the context of a single step of Euler's method?,The error at step $i+1$ assuming the value at step $i$ was exact.
+"Using the Taylor expansion of $y(t)$ around $t_i$, what is the specific expression for $\tau_{i+1}$ involving the second derivative?","$\tau_{i+1} = \frac{h}{2}y''(\xi)$ for some $\xi \in (t_i, t_{i+1})$"
+"If a sequence $x_i$ satisfies $x_{i+1} \le (1 + a)x_i + b$, what is the upper bound for $x_i$ involving an exponential function according to Theorem 10.3?",$x_i \le e^{ia}(\frac{b}{a} + x_0) - \frac{b}{a}$
+What elementary inequality is used to transition from $(1+a)^i$ to $e^{ia}$ in the proof of Theorem 10.3?,$1 + x \le e^x$
+"To prove the global error bound for Euler's method, what property must the function $f$ satisfy regarding its second variable?",Lipschitz continuity
+"What constant $L$ is used to bound $|f(t, y) - f(t, z)|$ in the proof of the global error theorem?",The Lipschitz constant $L$.
+Define $\tau$ as used in the global error bound formula $|y(t_i) - z_i| \le (e^{L(T - t_0)} - 1)\frac{\tau}{L}$.,"$\tau = \max\{|\tau_{i+1}| : i = 0, 1, \dots, n-1\}$"
+"In the global error bound for Euler's method, what value is assumed for the initial error $x_0 = |y(t_0) - z_0|$?",$x_0 = 0$
+"If $M_2$ is the maximum of $|y''(t)|$ on $[t_0, T]$, what is the upper bound for the magnitude of the local truncation error $|\tau_{i+1}|$?",$|\tau_{i+1}| \le \frac{M_2}{2}h$
+"How can $y''(t)$ be expressed using the partial derivatives of $f(t, y)$ and the function $f$ itself?","$y''(t) = \frac{\partial f}{\partial t}(t, y(t)) + \frac{\partial f}{\partial y}(t, y(t))f(t, y(t))$"
+"According to Theorem 10.5, what is the order of convergence for Euler's method?",First-order (linear) convergence.
+What are the three necessary conditions on $f$ listed in Theorem 10.5 to guarantee linear convergence of Euler's method?,"Continuity, Lipschitz continuity in the second variable, and continuous partial differentiability in both variables."
+"If $|y(t_i) - z_i| \le Kh$, what does the constant $K$ represent in terms of the method's behavior?",A positive constant that demonstrates the global error is proportional to the step size $h$.
+"How is Euler's method adapted for a system of differential equations $Y' = F(t, Y)$?","The scalar formula is applied component-wise: $Z_{i+1} = Z_i + h F(t_i, Z_i)$ where $Z$ and $F$ are vectors."
+"To solve a second-order ODE $y'' = g(t, y, y')$ using Euler's method, what must be done first?",Transform it into an equivalent system of two first-order differential equations.
+"In transforming $y'' - 3y' + 2y = 2$ into a system, if $y_1 = y$, what is the definition of $y_2$?",$y_2 = y'$
+"Given the system $y_1 = y$ and $y_2 = y'$, what is the expression for $y_1'$?",$y_1' = y_2$
+"If the local truncation error is $O(h)$, the global error of Euler's method is typically \_\_\_\_\_.",$O(h)$
+"What is the limit of the maximum global error $\sup_{t \in [t_0, T]} |y(t) - z(t; h)|$ as the step size $h$ approaches zero?",0
+Concept: Euler Sequence,Definition: A sequence of values $z_i$ generated by a recursive formula to approximate the solution of an ODE at discrete mesh points.
+What is the role of the term $\frac{(1 + a)^i - 1}{a}b$ in the proof of Theorem 10.3?,It is the sum of a geometric progression resulting from the repeated application of the recursive inequality.
+Why is the assumption that $f$ and its partial derivatives are bounded useful for error estimation?,It allows for an explicit estimate of $M_2$ (the maximum of the second derivative of the solution).
+"In the context of Euler's method, what is an 'equidistant mesh'?",A set of mesh points where the distance between any two consecutive points is a constant $h$.
+Which derivation of Euler's method relies on the approximation $\int_a^b g(s) ds \approx g(a)(b-a)$?,The derivation via integration (Method iii).
+What is the Lipschitz constant $L$ conceptually representing in the error analysis of Euler's method?,The maximum rate at which the function $f$ changes with respect to the dependent variable $y$.
+"In Exercise 5, what type of function is $z(t; h)$ used to interpolate the Euler sequence values?",A linear spline function.
+What is the first step in applying Euler's method to the IVP $y' = 2y - 10t^2 + 2t$ with $h=0.1$ at $t=0$?,Calculate $z_1 = z_0 + 0.1(2z_0 - 10(0)^2 + 2(0))$.
+True or False: Euler's method can be used with non-equidistant mesh points.,True
+Which error definition is given by $\tau_{i+1} = \frac{h}{2}y''(\xi)$?,The local truncation error.
+"In the derivation of Method (ii), what is the relationship between $\frac{y(t_{i+1}) - y(t_i)}{h_i}$ and $f(t_i, y(t_i))$?","They are approximately equal: $\frac{y(t_{i+1}) - y(t_i)}{h_i} \approx f(t_i, y(t_i))$."
+What does the term $e^{L(T - t_0)}$ in the global error bound suggest about the error over long intervals?,The error bound can grow exponentially as the interval length $T - t_0$ increases.
+"For the IVP $y' = f(t, y)$, what is the value of $y'(t_i)$ according to the differential equation?","$f(t_i, y(t_i))$"

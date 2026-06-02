@@ -1,0 +1,60 @@
+"In the context of interpolation, what are the given pairwise different points $x_0, x_1, \ldots, x_n$ called?",Mesh points (or node points).
+"The problem of finding a polynomial $L_n$ of degree at most $n$ such that $L_n(x_i) = y_i$ for $i = 0, \ldots, n$ is known as \_\_\_\_\_.",Lagrange interpolation
+What is the maximum degree of a Lagrange interpolating polynomial that fits $n+1$ data points?,$n$
+How many distinct solutions exist for a Lagrange interpolation problem with $n+1$ points and a polynomial of degree at most $n$?,Exactly one (the solution is unique).
+"What is the specific name given to the polynomials $l_0, \ldots, l_n$ used to construct the Lagrange polynomial?",Lagrange basis polynomials of degree $n$.
+What is the value of the Lagrange basis polynomial $l_k(x_i)$ when $k \ne i$?,0
+What is the value of the Lagrange basis polynomial $l_k(x_i)$ when $k = i$?,1
+"Using basis polynomials $l_k(x)$, what is the formula for the Lagrange interpolating polynomial $L_n(x)$?",$L_n(x) = \sum_{k=0}^{n} y_k l_k(x)$
+"In the uniqueness proof for Lagrange interpolation, if $P(x)$ is the difference of two $n$-th degree interpolating polynomials, how many roots must $P(x)$ have?",$n + 1$ roots.
+Which mathematical theorem is invoked to prove that the difference polynomial $P(x)$ in Lagrange interpolation must be identically zero?,The Fundamental Theorem of Algebra.
+What is the term for approximating a function value $f(x)$ using an interpolating polynomial when $x$ is outside the interval determined by the mesh points?,Extrapolation
+What is the term for approximating a function value $f(x)$ using an interpolating polynomial when $x$ is located between two mesh points?,Interpolation
+Concept: Rolle's Theorem,"Definition: If $f$ is continuous on $[a,b]$, differentiable on $(a,b)$, and $f(a) = f(b)$, there exists $\xi \in (a,b)$ such that $f'(\xi) = 0$."
+"According to the Generalized Rolle's Theorem, if $f \in C^n(a,b)$ has $n+1$ roots, what can be said about the $n$-th derivative $f^{(n)}$?",There exists at least one point $\xi$ in the interval spanned by the roots where $f^{(n)}(\xi) = 0$.
+"Let $f \in C^{n+1}(a,b)$. What is the error term formula for $f(x) - L_n(x)$?",$\frac{f^{(n+1)}(\xi)}{(n+1)!}(x - x_0)(x - x_1) \cdots (x - x_n)$
+"In the Lagrange interpolation error formula, what does the value $\xi$ depend on?",The value of $x$ (and the mesh points $x_i$).
+"What does the notation $\langle x, x_0, x_1, \ldots, x_n \rangle$ represent in the context of the error term $\xi$?","The smallest interval containing $x$ and all mesh points $x_0, \ldots, x_n$."
+"When the mesh points are equidistant, the formula for $x_i$ is $x_i = x_0 + i \cdot$ \_\_\_\_\_.",$h$ (where $h$ is the step size).
+What does $M_{n+1}$ represent in the truncation error bound formula?,"$M_{n+1} = \max\{|f^{(n+1)}(t)| : t \in [x_0, x_n]\}$"
+"For equidistant points on $[a,b]$, what is the upper bound for the error $|f(x) - L_n(x)|$ in terms of $M_{n+1}$ and the interval length?",$\frac{M_{n+1}}{4(n+1)} (\frac{b-a}{n})^{n+1}$
+"If $x$ is in the interval $(x_k, x_{k+1})$ and the points are equidistant with step $h$, what is the maximum value of $|(x - x_k)(x - x_{k+1})|$?",$\frac{h^2}{4}$
+Why do Lagrange polynomials typically fail to approximate $\cos x$ well outside the interval defined by the mesh points?,"The cosine function is bounded, whereas polynomials of degree $n \ge 1$ are unbounded as $|x| \to \infty$."
+"In bivariate Lagrange interpolation on a rectangular domain, the interpolating function $L_{n,m}(x, y)$ is a \_\_\_\_\_ summation.",double
+"Bivariate Lagrange Formula: $L_{n,m}(x, y) = \sum_{i=0}^{n} \sum_{j=0}^{m} z_{ij} \cdot$ \_\_\_\_\_.",$l_i(x) \tilde{l}_j(y)$
+"In bivariate Lagrange interpolation $L_{n,m}(x, y)$, if $y$ is fixed, the function becomes a polynomial in $x$ of degree at most \_\_\_\_\_.",$n$
+"In bivariate Lagrange interpolation $L_{n,m}(x, y)$, if $x$ is fixed, the function becomes a polynomial in $y$ of degree at most \_\_\_\_\_.",$m$
+"According to Theorem 6.8, what is the derivative of the function $x \mapsto f^{(n+1)}(\xi(x))$ with respect to $x$?",$\frac{1}{n+2} f^{(n+2)}(\eta(x))$
+Formula: Lagrange Basis Polynomial $l_k(x)$,"$l_k(x) = \prod_{i=0, i \ne k}^n \frac{x - x_i}{x_k - x_i}$"
+"If we use 3 mesh points to interpolate $\cos x$ on $[-\pi, \pi]$, what is the degree of the resulting Lagrange polynomial $L_2(x)$?",2 (Quadratic).
+"If we use 5 mesh points to interpolate $\cos x$ on $[-\pi, \pi]$, what is the degree of the resulting Lagrange polynomial $L_4(x)$?",4 (Quartic).
+"What is the error bound for $L_2(x)$ interpolating $\cos x$ on $[-\pi, \pi]$ using mesh points $-\pi, 0, \pi$?",$\approx 2.5839$ (Upper estimate).
+"What happens to the error bound of a Lagrange polynomial as the number of data points $n$ increases, provided $M_{n+1}$ is appropriately bounded?",The error bound typically decreases (tends toward zero).
+"The points $z_{ij}$ in bivariate interpolation correspond to $f(x_i, y_j)$. What is the condition $L_{n,m}(x_i, y_j)$ must satisfy?","$L_{n,m}(x_i, y_j) = z_{ij}$"
+"If an interpolation problem uses points $x_0 = 0, x_1 = 1, x_2 = 2$, what is the denominator of the basis polynomial $l_1(x)$?",$(1-0)(1-2) = -1$
+"If $L_3(x)$ interpolates four points and we know the fourth derivative of the original function $f$ is zero, what is the interpolation error?",Zero (the interpolation is exact).
+"In the expression $l_k(x) = \frac{\omega(x)}{(x-x_k)\omega'(x_k)}$, what is $\omega(x)$?",The nodal polynomial $\prod_{i=0}^n (x - x_i)$.
+Does the order of the mesh points ($x_0 < x_1 < \dots < x_n$) affect the existence of the Lagrange polynomial?,"No, as long as the points are pairwise distinct."
+"How does the degree of a bivariate Lagrange polynomial $L_{2,1}(x, y)$ compare in each variable?",It is degree 2 in $x$ and degree 1 in $y$.
+What is the term for the set of $l_i(x)$ because any polynomial of degree $n$ can be written as their linear combination?,Basis (specifically the Lagrange Basis).
+What is the sum of all Lagrange basis polynomials $\sum_{i=0}^n l_i(x)$ for any $x$?,1
+"In the construction of $l_k(x)$, why is the term $(x - x_k)$ omitted from the numerator?",To ensure the polynomial has degree $n$ rather than $n+1$ and to avoid a zero value at $x = x_k$.
+"In the construction of $l_k(x)$, why is the term $(x_k - x_k)$ omitted from the denominator?",To avoid division by zero.
+"If $f \in C^2[a,b]$ and $f(x_0)=f(x_1)=f(x_2)=0$, how many zeros does $f''$ have according to Rolle's theorem?",At least one.
+"When constructing $L_3(x)$ for points $(-1, -2), (1, 0), (2, -2), (3, 2)$, what is the contribution of the point $(1, 0)$ to the summation?",0 (because $y_k = 0$).
+What is the limit of the error $|f(x) - L_n(x)|$ at any mesh point $x_i$?,0
+"In bivariate interpolation, how many data points are required for an $L_{n,m}$ polynomial?",$(n+1)(m+1)$ points.
+The error estimate $|f(x) - L_n(x)| \le \frac{M_{n+1}}{4(n+1)}h^{n+1}$ assumes that mesh points are \_\_\_\_\_.,equidistant
+"How does the step size $h$ relate to the interval $[a,b]$ and number of points $n+1$ in an equidistant mesh?",$h = \frac{b-a}{n}$
+What is the requirement for $f$ to apply the Lagrange error formula with an $n$-th degree polynomial?,$f$ must be $n+1$ times continuously differentiable ($f \in C^{n+1}$).
+"In the proof of the error theorem, the auxiliary function $g(t)$ is designed to have how many roots?",$n + 2$ roots (the $n+1$ mesh points plus the point $x$).
+What is the $(n+1)$-th derivative of any polynomial $L_n$ of degree $n$?,0
+"If $L_3(x) = x^3 - 3x^2 + 2$, what is the value of $L_3(1)$?",0
+What is the name of the constant $h$ in equidistant interpolation?,Step size (or spacing).
+"For a function $f(x)$, if we increase the number of points $n$ but $M_{n+1}$ grows very rapidly, does the interpolation error necessarily decrease?","No (this can lead to Runge's phenomenon, though not explicitly named in the text)."
+What is the degree of the bivariate basis polynomial product $l_i(x)\tilde{l}_j(y)$ with respect to $x$?,$n$
+What is the degree of the bivariate basis polynomial product $l_i(x)\tilde{l}_j(y)$ with respect to $y$?,$m$
+Term: Lagrange-féle alappolinom,Definition: Hungarian term for Lagrange basis polynomial.
+Term: Ekvidisztáns osztópontok,Definition: Hungarian term for equidistant mesh points.
+"In Example 6.9, the resulting polynomial is $-\frac{1}{2}x^2y + \frac{5}{2}x^2 + \dots$. What is its degree in $y$?",1 (First order).
+The error bound for equidistant interpolation contains the term $n!$ in its derivation. Where does this $n!$ originate?,"From the product of distances between equidistant points, e.g., $(k+1)!(n-k)! \le n!$."
