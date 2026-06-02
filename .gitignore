@@ -20,3 +20,6 @@ rust_app/**/*.pdf
 # stray source scans / transcripts (not part of the site)
 peldatar_pages/
 linAlgPeldatar.md
+tamop_37_53.md
+tamop_pages/
+la-tamop-wf*.md
