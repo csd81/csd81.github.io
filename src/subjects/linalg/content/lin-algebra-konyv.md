@@ -1906,4 +1906,144 @@ x &{}+{}& y &{}={}& 3 \\
 x &{}+{}& 2y &{}={}& 4
 \end{alignedat} \quad \text{és az} \quad \begin{bmatrix} 1 \\ 1 \end{bmatrix}x + \begin{bmatrix} 1 \\ 2 \end{bmatrix}y = \begin{bmatrix} 3 \\ 4 \end{bmatrix}.$$
 
-<!-- OCR: through PDF p.77 -->
+egy egyenletrendszer (ld. 2.26. példa) és egy vele ekvivalens vektoregyenlet. Itt az a feladat, hogy megkeressük az $(1, 1)$ és $(1, 2)$ vektoroknak azt a lineáris kombinációját, amely egyenlő a $(3, 4)$ vektorral.
+
+> *Az oszlopmodell lépései jól nyomon követhetők a SagePlayer oszlopmodell című demonstrációján. Ott saját bővített mátrixokkal is lehet kísérletezni.*
+
+**2.28. példa (Oszlopmodell).** *Ábrázoljuk a 2.26. példában megadott*
+$$\begin{alignedat}{9}
+x &{}+{}& y &{}={}& 3 \\
+x &{}+{}& 2y &{}={}& 4
+\end{alignedat} \qquad \begin{alignedat}{9}
+x &{}+{}& 2y &{}={}& 3 \\
+2x &{}+{}& 4y &{}={}& 7
+\end{alignedat} \quad \text{és} \quad \begin{alignedat}{9}
+x &{}+{}& 2y &{}={}& 3 \\
+2x &{}+{}& 4y &{}={}& 6
+\end{alignedat}$$
+*egyenletrendszereket az oszlopmodellben!*
+
+*Megoldás.* Az első egyenletrendszer esetén két lineárisan független vektor lineáris kombinációjaként kell előállítani egy harmadik vektort. Ezt szemlélteti a 2.10 ábra. Érdekességként itt is megmutatjuk, hogy az egyenletrendszer megoldásának lépései hogy mutatnak e modellben. Az ekvivalens átalakítások lépései:
+$$\begin{alignedat}{9}
+x &{}+{}& y &{}={}& 3 \\
+x &{}+{}& 2y &{}={}& 4
+\end{alignedat} \Rightarrow \begin{alignedat}{9}
+x &{}+{}& y &{}={}& 3 \\
+&& y &{}={}& 1
+\end{alignedat} \Rightarrow \begin{alignedat}{9}
+x && &{}={}& 2 \\
+&& y &{}={}& 1
+\end{alignedat}$$
+Vektoros alakban:
+$$\begin{bmatrix} 1 \\ 1 \end{bmatrix}x + \begin{bmatrix} 1 \\ 2 \end{bmatrix}y = \begin{bmatrix} 3 \\ 4 \end{bmatrix} \Rightarrow \begin{bmatrix} 1 \\ 0 \end{bmatrix}x + \begin{bmatrix} 1 \\ 1 \end{bmatrix}y = \begin{bmatrix} 3 \\ 1 \end{bmatrix} \Rightarrow \begin{bmatrix} 1 \\ 0 \end{bmatrix}x + \begin{bmatrix} 0 \\ 1 \end{bmatrix}y = \begin{bmatrix} 2 \\ 1 \end{bmatrix}.$$
+A második és harmadik egyenletrendszer vektoros alakja
+$$\begin{bmatrix} 1 \\ 2 \end{bmatrix}x + \begin{bmatrix} 2 \\ 4 \end{bmatrix}y = \begin{bmatrix} 3 \\ 7 \end{bmatrix}, \quad \text{illetve} \quad \begin{bmatrix} 1 \\ 2 \end{bmatrix}x + \begin{bmatrix} 2 \\ 4 \end{bmatrix}y = \begin{bmatrix} 3 \\ 6 \end{bmatrix}.$$
+A 2.11 ábráról szemléletesen is látható, hogy az egyik vektoregyenletnek nincs megoldása, míg a másiknak végtelen sok is van. $\square$
+
+Általánosan kimondható a következő:
+
+**2.29. állítás (Oszlopmodell).** *A 2.20. definícióban megadott (2.18) egyenletrendszer a következő vektoregyenlettel ekvivalens:*
+$$\begin{bmatrix} a_{11} \\ a_{21} \\ \vdots \\ a_{m1} \end{bmatrix}x_1 + \begin{bmatrix} a_{12} \\ a_{22} \\ \vdots \\ a_{m2} \end{bmatrix}x_2 + \ldots + \begin{bmatrix} a_{1n} \\ a_{2n} \\ \vdots \\ a_{mn} \end{bmatrix}x_n = \begin{bmatrix} b_1 \\ b_2 \\ \vdots \\ b_m \end{bmatrix}.$$
+*Az egyenletrendszer megoldása ekvivalens egy vektoregyenlet megoldásával, ahol az egyenletrendszer konstans tagjaiból álló vektort kell az együtthatómátrix oszlopvektorainak lineáris kombinációjaként előállítani.*
+
+E modell szerint egy egyenletrendszer pontosan akkor oldható meg, ha az együtthatómátrix oszlopvektorainak összes lineáris kombinációjából álló halmazban a konstans tagokból álló vektor is szerepel (ld. 2.22. feladat).
+
+*2.10. ábra. A megoldás lépései az oszlopmodellben.*
+
+*2.11. ábra. Oszlopmodell lineárisan összefüggő vektorok esetén.*
+
+### Feladatok
+
+#### Lineáris egyenletek és egyenletrendszerek
+
+**2.13.•** Melyek lineáris egyenletek az $x$, $y$ és $z$ változókban az alábbiak közül?
+- a) $3x - (\ln 2)y + e^3 z = 0.4$  b) $a^2 x - b^2 y = 0$
+- c) $xy - yz - zx = 0$  d) $(\sin 1)x + y - \pi z = 0$
+- e) $\frac{x}{a} + \frac{y}{b} + \frac{z}{c} = 1$  f) $\frac{1}{x} + \frac{1}{y} + \frac{1}{z} = 1$
+
+Igazoljuk, hogy az alábbi egyenletrendszerek ekvivalensek!
+
+**2.14.** $\begin{cases} x + 3y = 5 \\ y = 1 \end{cases}$ $\quad$ $\begin{cases} x + y = 3 \\ x = 2 \end{cases}$
+
+**2.15.** $\begin{cases} 2x + 3y = 2 \\ 0x + 0y = 3 \end{cases}$ $\quad$ $\begin{cases} x + y = 2 \\ x + y = 7 \end{cases}$
+
+Oldjuk meg (fejben számolva) az alábbi lineáris egyenletrendszereket az $a = 1$, $b = 2$, $c = 3$ paraméterválasztás esetén!
+
+**2.16.** $\begin{cases} (2a - b)x + (3a - c)y = 0 \\ (3b - 2c)x + (b - 2a)y = 0 \end{cases}$
+
+**2.17.** $\begin{cases} (b - a)x + (3a - c)y = 1 \\ (3b - 2c)x + (b - 2a)y = 0 \end{cases}$
+
+**2.18.** $\begin{cases} (b - a)x + (3a - c)y = 1 \\ (3b - 2c)x + (b - 2a)y = 1 \end{cases}$
+
+**2.19.** $\begin{cases} (b - a)x + (3a - c)y = 1 \\ (3b - 2c)x + (c - b)y = 2 \end{cases}$
+
+**2.20.** *Egyenletrendszerek közös megoldása.* Tekintsük az azonos ismeretleneket tartalmazó $\mathcal{E}_1$ és $\mathcal{E}_2$ egyenletrendszereket. Legyen ezek megoldáshalmaza $\mathcal{M}_1$, illetve $\mathcal{M}_2$. Mutassuk meg, hogy ha $\mathcal{E}$ az $\mathcal{E}_1$ és $\mathcal{E}_2$ egyenletrendszerek egyesítése, azaz $\mathcal{E} = \mathcal{E}_1 \cup \mathcal{E}_2$, és $\mathcal{M}$ az $\mathcal{E}$ megoldáshalmaza, akkor $\mathcal{M}$ az $\mathcal{M}_1$ és $\mathcal{M}_2$ közös része, azaz $\mathcal{M} = \mathcal{M}_1 \cap \mathcal{M}_2$. Vizsgáljuk meg ezt az állítást az alábbi esetekben:
+- a) $\mathcal{E}_1 = \{x + y = 2\}$, $\mathcal{E}_2 = \{x - y = 0\}$;
+- b) $\mathcal{E}_1 = \{x + y = 2, x - y = 0\}$, $\mathcal{E}_2 = \{x - y = 0\}$;
+- c) $\mathcal{E}_1 = \{x + y = 2, x - y = 0\}$, $\mathcal{E}_2 = \{x - y = 1\}$;
+- d) $\mathcal{E}_1 = \{x + y = 2, x - y = 0\}$, $\mathcal{E}_2 = \{0x + 0y = 0\}$;
+- e) $\mathcal{E}_1$ tetszőleges egyenletrendszer, $\mathcal{E}_2 = \{0 = 0\}$.
+
+#### Sormodell, oszlopmodell
+
+**2.21.•** *Sor és oszlopmodell.* Rajzoljuk fel a következő két egyenletrendszerhez tartozó sormodell és oszlopmodell szerinti ábrát!
+- a) $\begin{cases} 2x + 3y = 7 \\ 3x - 2y = 4 \end{cases}$  b) $\begin{cases} 2x + 4y = 3 \\ 3x + 6y = 4 \end{cases}$
+
+**2.22.** *Sor- és az oszlopmodell 3D-ben.* Vizsgáljuk meg az alábbi két – azonos együtthatómátrixú – egyenletrendszer megoldhatóságát a sor- és az oszlopmodellben:
+$$\begin{alignedat}{9}
+x &{}+{}& y &{}+{}& 2z &{}={}& 3 \\
+x &{}+{}& 2y &{}+{}& 4z &{}={}& 3 \\
+3x &{}+{}& 4y &{}+{}& 8z &{}={}& 9
+\end{alignedat} \qquad \begin{alignedat}{9}
+x &{}+{}& y &{}+{}& 2z &{}={}& 3 \\
+x &{}+{}& 2y &{}+{}& 4z &{}={}& 3 \\
+3x &{}+{}& 4y &{}+{}& 8z &{}={}& 1
+\end{alignedat}$$
+
+**2.23.** *Sor és oszlopmodell $m \neq n$ esetén.* Vizsgáljuk meg az alábbi három egyenletrendszer megoldhatóságát a sor- és az oszlopmodellben:
+- a) $\begin{cases} x + y = 3 \\ x + y = 4 \\ x + 3y = 5 \end{cases}$  b) $\begin{cases} x + y = 3 \\ x + 2y = 4 \\ x + 3y = 5 \end{cases}$  c) $\begin{cases} x + y = 3 \\ x + 2y = 3 \\ x + 3y = 5 \end{cases}$
+
+**2.24.•** *Igaz – hamis.* Mely állítások igazak, melyek hamisak az alábbiak közül?
+- a) Ha egy $n$-ismeretlenes egyenletrendszer olyan hipersíkok egyenleteiből áll, melyek közt van két párhuzamos, akkor az egyenletrendszer nem oldható meg.
+- b) Ha egy $n$-ismeretlenes egyenletrendszer nem oldható meg, akkor az egyenletek olyan hipersíkok egyenletei, melyek közt van két párhuzamos, de nem azonos hipersík.
+- c) Ha egy $n$-ismeretlenes egyenletrendszer csak két egyenletből áll, akkor az oszlopmodell szerint pontosan akkor oldható meg tetszőleges jobb oldal esetén, ha a vektoregyenlet bal oldalán szereplő vektorok közt van kettő lineárisan független.
+
+**2.25.•** Egészítsük ki az alábbi állításokat úgy, hogy igazak legyenek!
+- a) Egy két egyenletből álló háromismeretlenes egyenletrendszer sormodellje szerinti ábra a(z) ..-dimenziós térben .. darab ......ból/ből áll, melyek ha .............., akkor az egyenletrendszernek nincs megoldása, egyébként megoldásainak száma .... Oszlopmodellje a(z) ..-dimenziós térben .. darab ......ból/ből áll.
+- b) Egy három egyenletből álló kétismeretlenes egyenletrendszer sormodellje szerinti ábra a(z) ..-dimenziós térben .. darab ..........ból/ből áll, míg az oszlopmodellje a ..-dimenziós térben .. darab ...........ból/ből áll.
+- c) Egy négy egyenletből álló ötismeretlenes egyenletrendszer sormodellje szerinti ábra a(z) ..-dimenziós térben .. darab ...........ból/ből áll. Oszlopmodellje a(z) ..-dimenziós térben .. darab ........ból/ből áll.
+
+## Megoldás kiküszöböléssel
+
+*E fejezetben alaposabban megismerjük a kisméretű egyenletrendszerek megoldásában hasznos, a kiküszöbölésre épülő klasszikus megoldási módszert.*
+
+### Elemi sorműveletek és a lépcsős alak
+
+A lineáris egyenletrendszerek egyik megoldási módszerének lényege, hogy ekvivalens átalakításokkal olyan alakra hozzuk az egyenletrendszert, melyből – visszahelyettesítések után, vagy azok nélkül – azonnal leolvasható az eredmény. Az átalakításokat praktikus okokból a bővített mátrixon hajtjuk végre.[^3]
+
+[^3]: *Lineáris egyenletrendszerek felírása és megoldása már időszámításunk előtt 300 körül babiloni iratokban szerepelt. Az első századra teszik a kínai Jiǔzhāng Suànshù (tradicionális jelekkel: 九章算術, egyszerűsített jelekkel: 九章算术) című mű megjelenését, mely az előző ezer évben összegyűlt matematikai tudást foglalja össze (címének magyar fordítása „A matematikai művészet kilenc fejezete" vagy „Kilenc fejezet a matematikai eljárásokról" lehet). E műben már a kiküszöbölés (azaz a Gauss-elimináció) néven ismert technikát alkalmazzák lineáris egyenletrendszer megoldására. A két fenti műben szereplő egyenletrendszerek, és további történeti részletek olvashatók a The MacTutor History of Mathematics archive című weboldalon.*
+
+A 2.23. tételben felsorolt első három ekvivalens átalakításnak megfelelő mátrixtranszformációk az elemi sorműveletek:
+
+**2.30. definíció (Elemi sorműveletek).** *Egy mátrix sorain végzett alábbi műveleteket elemi sorműveleteknek nevezzük:*
+1. *Sorcsere: két sor cseréje.*
+2. *Beszorzás: egy sor beszorzása egy nemnulla számmal.*
+3. *Hozzáadás: egy sorhoz egy másik sor konstansszorosának hozzáadása.*
+
+Természetesen egy sort el is oszthatunk egy nemnulla $c$ számmal, hisz az az $1/c$-vel való beszorzással egyenértékű. Hasonlóképp levonhatjuk egy sorból egy másik sor $c$-szeresét, hisz az a $-c$-szeresének hozzáadásával ekvivalens. Az elemi sorműveleteket más feladatok megoldásában is használjuk, ahol a mátrix mérete nem változhat, ezért a zérussor elhagyását nem szokás elemi sorműveletnek tekinteni. Az elemi sorműveletek mintájára elemi oszlopműveletek is definiálhatók. Az elemi átalakításokra a következő jelöléseket fogjuk használni:
+1. $S_i \leftrightarrow S_j$: az $i$-edik és a $j$-edik sorok cseréje (oszlopcserénél $O_i \leftrightarrow O_j$).
+2. $cS_i$: az $i$-edik sor beszorzása $c$-vel ($cO_i$).
+3. $S_i + cS_j$: a $j$-edik sor $c$-szeresének az $i$-edik sorhoz adása ($O_i + cO_j$).
+
+Az egyenletrendszer megoldásában az együtthatómátrix eddig látott átlós vagy háromszögszerű alakra való hozása lesz a kulcslépés.
+
+**2.31. definíció (Lépcsős alak).** *Egy mátrix lépcsős, vagy sorlépcsős alakú, ha kielégíti a következő két feltételt:*
+1. *a csupa 0-ból álló sorok (ha egyáltalán vannak) a mátrix utolsó sorai;*
+2. *bármely két egymás után következő nem-0 sorban az alsó sor elején (legalább eggyel) több 0 van, mint a fölötte lévő sor elején.*
+
+*A nemnulla sorok első zérustól különböző elemének* főelem *(vezérelem vagy pivotelem), az ilyen elem oszlopának* főoszlop *(bázisoszlop) a neve.*
+
+A következő mátrixok lépcsős alakúak:
+$$\begin{bmatrix} 3 & 2 \\ 0 & 4 \end{bmatrix}, \quad \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}, \quad \begin{bmatrix} 1 & -2 & 3 & -4 \\ 0 & 0 & -5 & 6 \\ 0 & 0 & 0 & 0 \end{bmatrix}, \quad \begin{bmatrix} 0 & 1 & 0 & 1 & 1 & 0 \\ 0 & 0 & 0 & 1 & 0 & 1 \\ 0 & 0 & 0 & 0 & 1 & 1 \\ 0 & 0 & 0 & 0 & 0 & 0 \end{bmatrix}.$$
+
+<!-- OCR: through PDF p.80 -->
