@@ -143,4 +143,80 @@ Ha egy vektort egy skalárral beszorzunk, az előző definíció szerint egy lin
 
 *1.14. ábra. Vektor skalárszorosai.*
 
-<!-- OCR: through PDF p.23 -->
+**1.7. tétel (Vektorral párhuzamos vektorok).** *Ha $\mathbf{a}$ nem zérusvektor, akkor bármely vele párhuzamos $\mathbf{v}$ vektor az $\mathbf{a}$ skalárszorosa, azaz van olyan $c$ valós szám, hogy $\mathbf{v} = c\mathbf{a}$, más szóval $\mathbf{v}$ előáll az $\mathbf{a}$ valamely lineáris kombinációjaként. Ez az előállítás egyértelmű.*
+
+*Bizonyítás.* Ha a két vektor egyirányú, az előállításban szereplő $c$ konstans egyszerűen a $\mathbf{v}$ és $\mathbf{a}$ vektorok abszolút értékének hányadosa, ha ellenkező irányúak, e hányados $(-1)$-szerese. $\square$
+
+E tétel következménye, hogy ha $\mathbf{a}$ nem zérusvektor, akkor az $\mathbf{a}$ összes lineáris kombinációjának halmaza és az $\mathbf{a}$-val párhuzamos vektorok halmaza megegyezik. Másként fogalmazva: egy nemzérus vektor összes lineáris kombinációjának végpontja egy *origón átmenő egyenest ad*.
+
+A háromszögmódszerből jól látszik, hogy tetszőleges két vektor bármely lineáris kombinációja velük komplanáris vektor lesz. Az állítás megfordítása is igaz:
+
+**1.8. tétel (Két vektorral egy síkba eső vektorok).** *Ha $\mathbf{a}_1$ és $\mathbf{a}_2$ nem párhuzamos vektorok, akkor bármely velük egy síkba eső $\mathbf{v}$ vektor előáll az $\mathbf{a}_1$ és $\mathbf{a}_2$ valamely lineáris kombinációjaként, azaz van olyan $v_1$ és $v_2$ konstans, hogy $\mathbf{v} = v_1\mathbf{a}_1 + v_2\mathbf{a}_2$. Ez az előállítás egyértelmű.*
+
+*Bizonyítás.* A bizonyításnak a felbontás létezését biztosító része könnyen leolvasható az 1.16. ábráról. A $\mathbf{v}$ végpontjából húzzunk az $\mathbf{a}_1$ és az $\mathbf{a}_2$ vektorokkal párhuzamos egyeneseket. Az így létrejött – esetleg elfajuló – paralelogramma két oldala az előző tétel szerint $\mathbf{a}_1$, illetve $\mathbf{a}_2$ konstansszorosa, melyek összege a paralelogramma szabály szerint épp $\mathbf{v}$. Előállítottuk tehát $\mathbf{v}$-t $\mathbf{a}_1$ és $\mathbf{a}_2$ lineáris kombinációjaként. Meg kell még mutatnunk, hogy ez az előállítás egyértelmű. Legyen
+$$\mathbf{v} = v_1\mathbf{a}_1 + v_2\mathbf{a}_2 = w_1\mathbf{a}_1 + w_2\mathbf{a}_2$$
+a $\mathbf{v}$ vektor két előállítása. Ekkor átrendezés után $(v_1 - w_1)\mathbf{a}_1 = (w_2 - v_2)\mathbf{a}_2$. Mivel az $\mathbf{a}_1$ és $\mathbf{a}_2$ vektorokkal párhuzamosak, konstansszorosaik csak akkor egyezhetnek meg, ha mindkettő a zérusvektor. Ugyanakkor $\mathbf{a}_1 \neq \mathbf{0}$ és $\mathbf{a}_2 \neq \mathbf{0}$, ezért az előző egyenlőség csak akkor áll fönn, ha $(v_1 - w_1) = (w_2 - v_2) = 0$, azaz ha $v_1 = w_1$ és $v_2 = w_2$. Tehát a felbontás egyértelmű. $\square$
+
+Látható tehát, hogy két nem párhuzamos vektor összes lineáris kombinációjának halmaza megegyezik a két vektorral komplanáris vektorok halmazával, egyszerűbben fogalmazva: két nem párhuzamos vektor összes lineáris kombinációjának végpontja *egy origón átmenő síkot ad*.
+
+*1.15. ábra. Egy nemzérus $\mathbf{a}$ vektor, és néhány lineáris kombinációja kétféle reprezentációban.*
+
+*1.16. ábra. A $\mathbf{v}$ egyértelműen előáll $\mathbf{v} = v_1\mathbf{a}_1 + v_2\mathbf{a}_2$ alakban, ha $\mathbf{a}_1$ és $\mathbf{a}_2$ nem párhuzamos.*
+
+Abban nincs semmi meglepő, hogy a tér három nem egy síkba eső vektorának bármely lineáris kombinációja térbeli vektor, az állítás megfordítása viszont igen fontos:
+
+**1.9. tétel (Térbeli vektorok).** *Ha $\mathbf{a}_1$, $\mathbf{a}_2$ és $\mathbf{a}_3$ nem egy síkba eső vektorok, akkor a tér bármely $\mathbf{v}$ vektora előáll az $\mathbf{a}_1$, $\mathbf{a}_2$ és $\mathbf{a}_3$ valamely lineáris kombinációjaként, azaz van olyan $v_1$, $v_2$ és $v_3$ konstans, hogy*
+$$\mathbf{v} = v_1\mathbf{a}_1 + v_2\mathbf{a}_2 + v_3\mathbf{a}_3. \tag{1.1}$$
+*Ez az előállítás egyértelmű.*
+
+*Bizonyítás.* A $\mathbf{v}$ vektor $V$ végpontján át párhuzamos egyenest húzunk az $\mathbf{a}_3$ vektorral, mely az $\mathbf{a}_1$ és $\mathbf{a}_2$ vektorok síkját egy $C$ pontban metszi (1.17. (a) ábra). Az $\overrightarrow{OC}$ vektor az előző tétel szerint egyértelműen előáll $\mathbf{a}_1$ és $\mathbf{a}_2$ lineáris kombinációjaként, azaz $\overrightarrow{OC} = v_1\mathbf{a}_1 + v_2\mathbf{a}_2$ (ld. 1.17. (b) ábra). Másrészt $\mathbf{v} = \overrightarrow{OV} = \overrightarrow{OC} + \overrightarrow{CV}$, ahol $\overrightarrow{CV} \parallel \mathbf{a}_3$, így $\overrightarrow{CV} = v_3\mathbf{a}_3$ valamely $v_3$ valósra. Tehát $\mathbf{v} = v_1\mathbf{a}_1 + v_2\mathbf{a}_2 + v_3\mathbf{a}_3$.
+
+Be kell még látnunk az előállítás egyértelműségét! Tegyük fel, hogy
+$$\mathbf{v} = v_1\mathbf{a}_1 + v_2\mathbf{a}_2 + v_3\mathbf{a}_3 = w_1\mathbf{a}_1 + w_2\mathbf{a}_2 + w_3\mathbf{a}_3$$
+a $\mathbf{v}$ két felbontása. Ekkor $(v_1 - w_1)\mathbf{a}_1 + (v_2 - w_2)\mathbf{a}_2 + (v_3 - w_3)\mathbf{a}_3 = \mathbf{0}$. Így ha $v_1 \neq w_1$, akkor $\mathbf{a}_1$ kifejezhető $\mathbf{a}_2$ és $\mathbf{a}_3$ lineáris kombinációjaként:
+$$\mathbf{a}_1 = -\frac{v_2 - w_2}{v_1 - w_1}\mathbf{a}_2 - \frac{v_3 - w_3}{v_1 - w_1}\mathbf{a}_3.$$
+Ez ellentmond annak, hogy $\mathbf{a}_1$, $\mathbf{a}_2$ és $\mathbf{a}_3$ nem esnek egy síkba. Így tehát $v_1 = w_1$. Hasonlóan kapjuk, hogy $v_2 = w_2$ és $v_3 = w_3$, azaz az (1.1) előállítás egyértelmű. $\square$
+
+### Lineáris függetlenség
+
+Az előző két tételből világos, hogy a tér három vektora vagy egy síkba esik, ekkor valamelyikük a másik kettő lineáris kombinációja, vagy nem esik egy síkba, és akkor egyikük sem áll elő a másik kettő lineáris kombinációjaként. Ekkor viszont a tér minden vektora előáll az ő lineáris kombinációjukként. Látjuk, alapvető, hogy egy vektor kifejezhető-e más vektorok lineáris kombinációjaként.
+
+**1.10. definíció (Vektorok függetlensége).** *Azt mondjuk, hogy egy $\mathbf{v}$ vektor lineárisan független az $\mathbf{a}_1, \mathbf{a}_2, \ldots, \mathbf{a}_n$ ($n \geq 1$) vektoroktól, ha $\mathbf{v}$ nem fejezhető ki e vektorok lineáris kombinációjaként. Azt mondjuk, hogy az $\mathbf{a}_1, \mathbf{a}_2, \ldots, \mathbf{a}_n$ ($n \geq 2$) vektorok lineárisan függetlenek, ha e vektorok egyike sem fejezhető ki a többi lineáris kombinációjaként. Ha legalább egyikük kifejezhető a többi lineáris kombinációjaként, azaz legalább egyikük lineárisan függ a többitől, akkor e vektorokat lineárisan összefüggőknek nevezzük. Az egyetlen vektorból álló vektorrendszert lineárisan függetlennek tekintjük, ha a vektor nem a zérusvektor.*
+
+*1.17. ábra. A térbeli $\mathbf{v}$ vektor előállítása három nem egy síkba eső vektor lineáris kombinációjaként.*
+
+Például egy térbeli vektor, mely nem esik egy adott síkba, független a síkba eső vektorok bármely rendszerétől (1.18. ábra).
+
+Egy kocka egy csúcsból kiinduló élvektorai lineárisan függetlenek (1.19. ábra).
+
+Általában: bármely két nem kollineáris vektor lineárisan független, hasonlóképp, a tér bármely három nem komplanáris, azaz nem egy síkba eső vektora lineárisan független.
+
+Az 1.8. tétel tehát a következőképp fogalmazható át:
+
+**1.11. tétel (Síkbeli vektor felbontása).** *Ha $\mathbf{a}_1$ és $\mathbf{a}_2$ egy sík két lineárisan független vektora, akkor a sík minden $\mathbf{v}$ vektora egyértelműen előáll e vektorok lineáris kombinációjaként, azaz egyértelműen léteznek olyan $v_1$ és $v_2$ valós számok, hogy*
+$$\mathbf{v} = v_1\mathbf{a}_1 + v_2\mathbf{a}_2.$$
+
+Hasonlóképp az 1.9. tétel így fogalmazható át:
+
+**1.12. tétel (Térbeli vektor felbontása).** *Ha $\mathbf{a}_1$, $\mathbf{a}_2$ és $\mathbf{a}_3$ három lineárisan független térbeli vektor, akkor a tér minden $\mathbf{v}$ vektora egyértelműen előáll e vektorok lineáris kombinációjaként, azaz egyértelműen léteznek olyan $v_1$, $v_2$ és $v_3$ valós számok, hogy*
+$$\mathbf{v} = v_1\mathbf{a}_1 + v_2\mathbf{a}_2 + v_3\mathbf{a}_3.$$
+
+A koordinátákról szóló szakaszban e két tétel lesz alapja a koordináta-rendszer bevezetésének.
+
+### Speciális lineáris kombinációk
+
+A sík és a tér bizonyos konfigurációi jól jellemezhetők lineáris kombinációkkal, ha a kombinációs együtthatókra bizonyos feltételeket kötünk ki.
+
+**1.13. állítás (Két ponton átmenő egyenes jellemzése).** *Legyen $O$, $A$ és $B$ a tér három pontja. Az $r\overrightarrow{OA} + s\overrightarrow{OB}$ alakú lineáris kombináció végpontja pontosan akkor mutat az $A$ és $B$ ponton átmenő egyenes egy pontjába, ha $r + s = 1$.*
+
+*Bizonyítás.* Legyen $\mathbf{a} = \overrightarrow{OA}$, $\mathbf{b} = \overrightarrow{OB}$, és $\mathbf{x}$ mutasson az $AB$ egyenes valamely $X$ pontjára, azaz legyen $\mathbf{x} = \overrightarrow{OB} + r\overrightarrow{BA}$ valamilyen $r$ valós számra, tehát
+$$\mathbf{x} = \mathbf{b} + r(\mathbf{a} - \mathbf{b}), \quad\text{azaz}\quad \mathbf{x} = r\mathbf{a} + (1-r)\mathbf{b}.$$
+A fenti gondolatmenet lépésein visszafelé haladva látható, hogy minden valós $r$ számra $r\mathbf{a} + (1-r)\mathbf{b}$ vektor végpontja az $AB$ egyenesen van. Fogalmazhatunk úgy is, hogy az $\mathbf{a}$ és $\mathbf{b}$ vektorok végpontján átmenő egyenes összes pontját pontosan azok az $r\mathbf{a} + s\mathbf{b}$ alakú lineáris kombinációk adják, amelyeknél $r + s = 1$ (ld. 1.20 ábra). $\square$
+
+*1.18. ábra. A síkba nem eső $\mathbf{v}$ vektor nem áll elő a síkbeli vektorok lineáris kombinációjaként.*
+
+*1.19. ábra. Egy kocka három, egy csúcsból induló élvektora lineárisan független.*
+
+*1.20. ábra. Az $X$ pont pontosan akkor van az $AB$ egyenesen, ha azon $r$ és $s$ valósokra, melyekre $\overrightarrow{OX} = r\overrightarrow{OA} + s\overrightarrow{OB}$, $r + s = 1$ teljesül. Ezen az ábrán $r = -0.5$, $s = 1.5$.*
+
+<!-- OCR: through PDF p.26 -->
