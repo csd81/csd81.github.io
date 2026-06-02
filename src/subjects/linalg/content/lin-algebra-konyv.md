@@ -3030,4 +3030,92 @@ azaz $c\mathbf{x} + d\mathbf{y}$ is megoldás. Ez bizonyítja állításunkat.
 
 E bizonyítás az oszlopmodellre épült, de hasonlóan egyszerű bizonyítás adható a sormodellben is (ld. 3.10. feladat). $\square$
 
-<!-- OCR: through PDF p.113 -->
+### Vektortér és altér
+
+Eddig vektortéren az összes rendezett szám-$n$-esek halmazát értettük, ahol $n$ egy rögzített pozitív egész. A következőkben kiterjesztjük a vektortér fogalmát.
+
+Egyelőre csak a valós vektorokkal foglalkozunk, azaz vektoron rendezett valós szám-$n$-est értünk, ahol $n$ tetszőleges pozitív egész.
+
+**3.9. definíció (Vektortér).** *Vektortéren vektorok olyan nem üres $\mathcal{V}$ halmazát értjük, melyre igaz, hogy $\mathcal{V}$ bármely két vektora összeadható, és összegük is $\mathcal{V}$-beli, valamint $\mathcal{V}$ bármely valós $c$ számmal vett szorzata is $\mathcal{V}$-beli. Másként fogalmazva $\mathcal{V}$ vektortér, ha zárt a vektorösszeadás és a skalárral szorzás műveletére.*
+
+**3.10. definíció (Altér).** *Ha $\mathcal{U}$ és $\mathcal{V}$ két vektortér és $\mathcal{U} \subseteq \mathcal{V}$, akkor azt mondjuk, hogy az $\mathcal{U}$ vektortér a $\mathcal{V}$ vektortér* altere. *Jelölése: $\mathcal{U} \leqslant \mathcal{V}$.*
+
+▶ Az $\mathcal{A}$ vektorhalmaz pontosan akkor vektortér, ha az $\mathcal{A}$-beli vektorok lineáris kombinációi is mind $\mathcal{A}$-ban vannak (ld. 3.6. feladat).
+▶ Minden pozitív $n$ egész esetén $\mathbb{R}^n$ vektortér.
+▶ A síkban ($\mathbb{R}^2$-ben) egy origón átmenő egyenes vektorai (az egyenes pontjaiba mutató helyvektorok) vektorteret alkotnak, mely $\mathbb{R}^2$ altere.
+▶ A térben ($\mathbb{R}^3$-ben) bármely origón átmenő sík vagy egyenes vektorai vektorteret alkotnak (ld. a 3.1. ábrát), mely az $\mathbb{R}^3$ altere.
+▶ Az $\mathbb{R}^3$ imént felsorolt alterei – az origón átmenő egyenes és sík – „olyanok", mint az $\mathbb{R}$ és az $\mathbb{R}^2$. E két fogalmat – a vektortér absztrakt definíciója és a vektorterek izomorfizmusának fogalma – tisztázza (ld. a 13 fejezetet). Látni fogjuk, hogy $\mathbb{R}^n$ alterei valóban mind „olyanok", mint $\mathbb{R}^k$, ahol $k \leqslant n$.
+
+A halmazok szemléltetésére használt Venn-diagramok mintájára a vektorterek altereinek *néhány tulajdonságát* levélszerű alakzatokon fogjuk szemléltetni. E *levéldiagram* leveleinek közös alsó „szárnál lévő" csúcsa jelzi a zérusvektort (ld. 3.2. ábra). A levelek felső csúcsába a tér nevét írhatjuk. Mint ahogy a Venn-diagram sem, úgy a levéldiagram sem alkalmas minden tulajdonság szemléltetésére!
+
+Felsoroljuk az alterek néhány egyszerűen belátható tulajdonságát, néhányukat e diagrammal szemléltetve:
+▶ Minden altérnek eleme a nullvektor, hisz bármely altérbeli vektorral együtt annak 0-szorosa is, vagyis a $\mathbf{0}$-vektor is eleme az altérnek.
+▶ Minden altérbeli $\mathbf{x}$ vektorral együtt annak ellentettje ($-1$-szerese), a $-\mathbf{x}$ vektor is eleme az altérnek.
+▶ Minden vektortér maga is altér (saját maga altere), hisz bármely két vektorának összes lineáris kombinációját tartalmazza.
+▶ A nullvektor önmagában alteret alkot, ez a *zérustér,* amit $\mathcal{Z}$ jelöl. A nulltér kifejezést másra használjuk, ne keverjük a kettőt össze.
+▶ Egy $\mathcal{V}$ vektortér zérusvektorát tartalmazó $\mathcal{Z}$ zérusteret és magát $\mathcal{V}$-t a $\mathcal{V}$ tér *triviális altereinek* nevezzük (ld. 3.3. ábra).
+
+*3.1. ábra. a) Egy origón átmenő egyenes bármely vektorának konstansszorosa és bármely két vektorának összege az egyenesbe esik, b) egy origón átmenő sík bármely vektorának konstansszorosa és bármely két vektorának összege a síkba esik.*
+
+*3.2. ábra. Egy $\mathcal{W}$ vektortér az $\mathcal{U}$ és $\mathcal{V}$ altereivel és a közös zérusvektorral.*
+
+*3.3. ábra. A $\mathcal{W}$ vektortér két triviális altere: maga $\mathcal{W}$, és a $\mathcal{Z}$ zérustér.*
+
+▶ Altér altere altér, azaz ha $\mathcal{U} \leqslant \mathcal{V}$, és $\mathcal{W} \leqslant \mathcal{U}$, akkor $\mathcal{W} \leqslant \mathcal{V}$ (ld. 3.4. ábra).
+▶ Két altér metszete altér. Ha $\mathcal{U}$ és $\mathcal{V}$ egy vektortér két altere, és $\mathcal{W}$ a közös részük, akkor $\mathcal{W}$ nem üres, hisz a nullvektor benne van. Másrészt bármely két $\mathbf{x}, \mathbf{y} \in \mathcal{W}$ vektor összes lineáris kombinációja benne van $\mathcal{U}$-ban és $\mathcal{V}$-ben is, így metszetükben is. Alterek metszetére a $\cap$ jelet használjuk, tehát az előbbi alterekre $\mathcal{U} \cap \mathcal{V} = \mathcal{W}$ (ld. 3.5. ábra).
+▶ Egy vektortér tetszőleges számú (akár végtelen sok) alterének közös része is altér.
+▶ Két altér egyesítése csak akkor altér, ha egyik altere a másiknak. Például a térben egy origón átmenő egyenes és egy origón átmenő sík vektorait egyesítve csak akkor kapunk alteret, ha az egyenes a síkba esik.
+
+**3.11. példa (Altér).** *Altér-e az alábbi vektorhalmaz $\mathbb{R}^3$-ben?*
+- a) $\{ (x, y, z) \mid x = y, \; z = xy \}$,
+- b) $\{ (s + 2t, s - 1, 2s + t) \mid s, t \in \mathbb{R} \}$,
+- c) $\{ (x, y, z) \mid 2x - y + z = 0 \}$,
+- d) $\{ (x, y, z) \mid x = 2t, \; y = -t, \; z = t, \; t \in \mathbb{R} \}$.
+
+*Megoldás.* a) nem altér. Például az $(1, 1, 1)$ vektor benne van e halmazban, azonban kétszerese nem.
+
+b) nem altér. A nullvektor nincs a vektorhalmazban, ugyanis az $s + 2t = 0$, $s - 1 = 0$, $2s + t = 0$ egyenletrendszernek nincs megoldása.
+
+c) altér, ami az $\mathbf{n} = (2, -1, 1)$ normálvektorú sík pontjaiba mutató helyvektorokból áll. A sík vektoregyenlete $\mathbf{n} \cdot \mathbf{r} = 0$. Ha $\mathbf{x}$ és $\mathbf{y}$ a sík két vektora, azaz $\mathbf{n} \cdot \mathbf{x} = 0$ és $\mathbf{n} \cdot \mathbf{y} = 0$, akkor $\mathbf{n} \cdot (\mathbf{x} + \mathbf{y}) = 0$ és $\mathbf{n} \cdot (c\mathbf{x}) = 0$ is fönnáll bármely $c \in \mathbb{R}$ valós számra, tehát valóban alteret kaptunk.
+
+d) altér, ami a $\mathbf{v} = (2, -1, 1)$ vektor skalárszorosaiból áll. Ezek közül bármely kettő összege és bármelyik skalárszorosa is e halmazba tartozik, tehát e vektorok valóban alteret alkotnak. E vektorok végpontjai egy origón áthaladó egyenes pontjait adják. $\square$
+
+▶ Könnyen belátható, hogy $\mathbb{R}^2$ alterei az alábbiak: a) a zérusvektorból álló egyelemű halmaz, azaz a zérustér, b) egy origón átmenő egyenes összes vektora, c) a sík összes vektora.
+▶ Hasonlóképp $\mathbb{R}^3$ alterei: a) a zérusvektorból álló egyelemű halmaz, b) egy origón átmenő egyenes összes vektora, c) egy origón átmenő sík összes vektora, d) a tér összes vektora.
+▶ Egy egyetlen $n$-ismeretlenes – azaz egy $\mathbf{n} \cdot \mathbf{x} = 0$ – egyenletből álló homogén egyenletrendszer megoldáshalmaza is a halmazba tartozó origót tartalmazó $\mathbb{R}^n$-beli hipersík. Ez altér, ami az előző példa c) pontjához hasonlóan bizonyítható. Alterek metszete altér, így a több egyenletből álló homogén lineáris egyenletrendszer megoldáshalmaza mindig altér, hisz hipersíkok metszete, és e metszet nem üres, mivel a $\mathbf{0}$ benne van. A következő paragrafus ugyanezt az oszlopmodellben vizsgálja meg.
+
+*3.4. ábra. Altér altere is altér.*
+
+*3.5. ábra. Alterek metszete is altér, de az megeshet, hogy ez a metszet csak az egyetlen nullvektorból álló zérustér.*
+
+*3.6. ábra. Két altér egyesítése csak akkor altér, ha egyik a másik altere.*
+
+### Kifeszített altér
+
+A homogén lineáris egyenletrendszer összes megoldását néhány vektor lineáris kombinációjaként állítottuk elő. A megoldások alterét tehát „generálja" vagy geometrikusabb szóhasználattal „kifeszíti" néhány megoldásvektor.
+
+**3.12. definíció (Kifeszített altér).** *Adva van egy $\mathcal{V}$ vektortér. A $\mathbf{v}_1, \mathbf{v}_2, \ldots, \mathbf{v}_k \in \mathcal{V}$ vektorok*
+$$c_1 \mathbf{v}_1 + c_2 \mathbf{v}_2 + \ldots + c_k \mathbf{v}_k$$
+*alakú lineáris kombinációinak halmazát a $\mathbf{v}_1, \mathbf{v}_2, \ldots, \mathbf{v}_k$ vektorok által* kifeszített altérnek *nevezzük. Jelölése: $\operatorname{span}(\mathbf{v}_1, \mathbf{v}_2, \ldots, \mathbf{v}_k)$ vagy $\langle \mathbf{v}_1, \mathbf{v}_2, \ldots, \mathbf{v}_k \rangle$.*
+
+Megmutatjuk, hogy e fogalomban az altér szó használata jogos:
+
+**3.13. állítás (A kifeszített altér altér).** *A $\mathbf{v}_1, \mathbf{v}_2, \ldots, \mathbf{v}_k \in \mathcal{V}$ vektorok által kifeszített $\operatorname{span}(\mathbf{v}_1, \mathbf{v}_2, \ldots, \mathbf{v}_k)$ vektorhalmaz $\mathcal{V}$ egy altere.*
+
+*Bizonyítás.* Be kell látni, hogy $\operatorname{span}(\mathbf{v}_1, \mathbf{v}_2, \ldots, \mathbf{v}_k)$ bármely vektorának skalárszorosa és bármely két vektorának összege is ide tartozik. Legyen
+$$\mathbf{u} = c_1 \mathbf{v}_1 + c_2 \mathbf{v}_2 + \ldots + c_k \mathbf{v}_k, \text{ és } \mathbf{v} = d_1 \mathbf{v}_1 + d_2 \mathbf{v}_2 + \ldots + d_k \mathbf{v}_k$$
+a $\operatorname{span}(\mathbf{v}_1, \mathbf{v}_2, \ldots, \mathbf{v}_k)$ két tetszőleges vektora, és legyen $x \in \mathbb{R}$ tetszőleges valós. Ekkor
+$$x\mathbf{u} = (xc_1)\mathbf{v}_1 + (xc_2)\mathbf{v}_2 + \ldots + (xc_k)\mathbf{v}_k \in \operatorname{span}(\mathbf{v}_1, \mathbf{v}_2, \ldots, \mathbf{v}_k),$$
+és
+$$\mathbf{u} + \mathbf{v} = (c_1 + d_1)\mathbf{v}_1 + \ldots + (c_k + d_k)\mathbf{v}_k \in \operatorname{span}(\mathbf{v}_1, \mathbf{v}_2, \ldots, \mathbf{v}_k). \qquad \square$$
+
+A 3.8. állítás az altér fogalmát és az előző tételt használva a következő alakot ölti:
+
+**3.14. állítás (Megoldások altere).** *Egy $n$-ismeretlenes homogén lineáris egyenletrendszer megoldáshalmaza alteret alkot $\mathbb{R}^n$-ben.*
+
+**3.15. definíció (Nulltér).** *Az $\mathbf{A}$ együtthatómátrixú homogén lineáris egyenletrendszer megoldásainak alterét az $\mathbf{A}$ mátrix* nullterének *nevezzük és $\mathcal{N}(\mathbf{A})$-val jelöljük.*
+
+A 2.35. példában megoldottunk egy homogén lineáris egyenletrendszert, így ezzel meghatároztuk együtthatómátrixának nullterét is, azaz
+$$\mathcal{N}\left(\begin{bmatrix} 1 & 2 & 1 & 2 & 1 \\ 1 & 2 & 3 & 3 & 1 \\ 3 & 6 & 7 & 8 & 3 \end{bmatrix}\right) = \left\{ s\begin{bmatrix} -2 \\ 1 \\ 0 \\ 0 \\ 0 \end{bmatrix} + t\begin{bmatrix} -\frac{3}{2} \\ 0 \\ -\frac{1}{2} \\ 1 \\ 0 \end{bmatrix} + u\begin{bmatrix} -1 \\ 0 \\ 0 \\ 0 \\ 1 \end{bmatrix} \;\middle|\; s, t, u \in \mathbb{R} \right\}.$$
+
+<!-- OCR: through PDF p.116 -->
