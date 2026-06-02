@@ -214,9 +214,9 @@ function SubsectionGuide() {
       <section className="practice__guide-block">
         <div className="practice__guide-head">
           <h2 className="practice__h2">{lang === 'hu' ? '⚡ Rövid összefoglaló' : '⚡ Short summary'}</h2>
-          <CopyButton source={s.short} />
+          <CopyButton source={lang === 'en' && s.shortEn ? s.shortEn : s.short} />
         </div>
-        <MarkdownView markdown={s.short} />
+        <MarkdownView markdown={lang === 'en' && s.shortEn ? s.shortEn : s.short} />
       </section>
 
       <section className="practice__guide-block">

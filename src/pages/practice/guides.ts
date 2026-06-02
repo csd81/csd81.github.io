@@ -2,8 +2,9 @@
  * Per-subsection study material for the 10 Numerical Methods chapters.
  *
  * Two parallel folders, one file per subsection:
- *   guides/short/<CC_SS[_SS]_Title>_short_summary.md  — Hungarian short summary
- *   guides/study/<CC_SS[_SS]_Title>_study_guide.md    — English study guide
+ *   guides/short/<CC_SS[_SS]_Title>_short_summary.md     — Hungarian short summary
+ *   guides/short/<CC_SS[_SS]_Title>_short_summary_en.md  — English short summary
+ *   guides/study/<CC_SS[_SS]_Title>_study_guide.md       — English study guide
  *
  * The numeric prefix (e.g. 03_02_01) gives the chapter, the display number
  * (3.2.1) and the in-chapter ordering; the remaining tokens give the title.
@@ -25,6 +26,8 @@ export interface Subsection {
   title: string;
   /** Hungarian short-summary markdown. */
   short: string;
+  /** English short-summary markdown (empty if untranslated). */
+  shortEn: string;
   /** English study-guide markdown (may be empty for a not-yet-written guide). */
   study: string;
 }
@@ -44,6 +47,7 @@ const byChapter = new Map<number, Subsection[]>();
 
 for (const path of Object.keys(SHORT)) {
   const fname = path.split('/').pop()!;
+  if (fname.endsWith('_short_summary_en.md')) continue; // English variant: looked up below
   const base = fname.replace(/_short_summary\.md$/, '');
   const m = base.match(/^(\d+(?:_\d+)*)_(.*)$/);
   if (!m) continue;
@@ -57,6 +61,7 @@ for (const path of Object.keys(SHORT)) {
     number: nums.map((n) => n).join('.'),
     title: cleanTitle(m[2]),
     short: SHORT[path] ?? '',
+    shortEn: SHORT[`./guides/short/${base}_short_summary_en.md`] ?? '',
     study: STUDY[`./guides/study/${base}_study_guide.md`] ?? '',
   };
   const arr = byChapter.get(chapter) ?? [];
