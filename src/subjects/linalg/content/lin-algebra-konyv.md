@@ -2955,4 +2955,79 @@ alakra hozható, tehát a rang 4, illetve 2. $\square$
 $$\left[\begin{array}{ccccccc|c} 1 & 3 & 2 & 6 & 0 & 4 & 1 & 2 \\ 0 & 0 & 3 & 1 & 2 & 3 & 0 & 1 \\ 0 & 0 & 0 & 0 & 0 & 0 & 4 & 5 \\ 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \end{array}\right]$$
 bővített mátrixhoz tartozó egyenletrendszerben 3 a kötött és 4 a szabad változók száma.
 
-<!-- OCR: through PDF p.110 -->
+### Egyenletrendszer megoldhatóságának feltétele
+
+Tudjuk, hogy egy lineáris egyenletrendszer pontosan akkor *nem* oldható meg, ha a bővített mátrix lépcsős alakjának van olyan sora, melyben csak a legutolsó elem nem nulla. Ez ugyanis egyenletté visszaírva $0 = c$ alakú, ahol $c \neq 0$, és ennek az egyenletnek nincs megoldása. Ez viszont azt jelenti, hogy ilyenkor a bővített mátrix rangja nagyobb az együtthatómátrix rangjánál. E megállapítás azonnali következménye a következő tétel.
+
+**3.5. tétel (A megoldhatóság mátrixrangos feltétele).** *Legyen egy $n$-ismeretlenes lineáris egyenletrendszer együtthatómátrixa $\mathbf{A}$, a konstans tagokból álló vektora $\mathbf{b}$.*
+1. *Ez az egyenletrendszer pontosan akkor oldható meg, ha együtthatómátrixának és bővített mátrixának rangja megegyezik, azaz*
+$$\operatorname{r}(\mathbf{A}) = \operatorname{r}(\mathbf{A}|\mathbf{b}).$$
+2. *Ez az egyenletrendszer pontosan akkor oldható meg egyértelműen, ha együtthatómátrixának és bővített mátrixának rangja megegyezik az ismeretlenek számával, azaz*
+$$\operatorname{r}(\mathbf{A}) = \operatorname{r}(\mathbf{A}|\mathbf{b}) = n.$$
+
+*Bizonyítás.* 1. Az egyenletrendszer pontosan akkor oldható meg, ha bővített mátrixának lépcsős alakjában nincs olyan sor, melynek csak az utolsó eleme nem 0. Ez épp azt jelenti, hogy $\operatorname{r}(\mathbf{A}) = \operatorname{r}(\mathbf{A}|\mathbf{b})$.
+2. Egy egyenletrendszer akkor oldható meg egyértelműen, ha megoldható, és nincs szabad változója, azaz az együtthatómátrix rangja megegyezik az ismeretlenek számával. $\square$
+
+Az előzőekből az is adódik, hogy egy lineáris egyenletrendszernek pontosan akkor van egynél több megoldása, ha
+$$\operatorname{r}(\mathbf{A}) = \operatorname{r}(\mathbf{A}|\mathbf{b}) < n.$$
+(Miért nem lehet $\operatorname{r}(\mathbf{A}) > n$?)
+
+Egy valós együtthatós egyenletrendszernek csak úgy lehet egynél több megoldása, ha van szabad változója. Viszont annak minden értékéhez egy-egy másik megoldás tartozik, vagyis ekkor az egyenletrendszernek valós együtthatós esetben végtelen sok megoldása van. Így, ha $\mathbf{A}$ valós mátrix, akkor a megoldások száma, a két rang és az ismeretlenek száma közt a következő a kapcsolat:
+
+| Feltétel | Megoldások száma |
+|---|---|
+| $\operatorname{r}(\mathbf{A}) < \operatorname{r}(\mathbf{A}\vert\mathbf{b})$ | 0 |
+| $\operatorname{r}(\mathbf{A}) = \operatorname{r}(\mathbf{A}\vert\mathbf{b}) = n$ | 1 |
+| $\operatorname{r}(\mathbf{A}) = \operatorname{r}(\mathbf{A}\vert\mathbf{b}) < n$ | $\infty$ |
+
+Ha az egyenletrendszer homogén lineáris, azaz mindegyik konstans tag 0, akkor az elemi sorműveletek közben a bővített mátrix utolsó oszlopában minden elem 0 marad, így ebben az oszlopban biztosan nem lesz főelem. Eszerint a homogén lineáris egyenletrendszerek mindig megoldhatók, hisz ekkor a $\operatorname{r}(\mathbf{A}) = \operatorname{r}(\mathbf{A}|\mathbf{b})$ összefüggés mindig fönnáll. A megoldhatóság persze e feltétel ellenőrzése nélkül is látszik, hisz az $x_1 = x_2 = \cdots = x_n = 0$ mindig megoldás! Mivel $\operatorname{r}(\mathbf{A})$ megegyezik a redukált lépcsős alak főelemeinek számával, ezért $\operatorname{r}(\mathbf{A}) \leq m$ és $\operatorname{r}(\mathbf{A}) \leq n$ is fönnáll, ahol $m$ az egyenletek, $n$ az ismeretlenek száma. Így viszont $m < n$ esetén $\operatorname{r}(\mathbf{A}) = n$ nem állhat fönn, tehát a homogén lineáris egyenletrendszernek van az $\mathbf{x} = \mathbf{0}$ vektoron kívül is megoldása. Ezzel bizonyítottuk a következő tételt:
+
+**3.6. tétel (Homogén lineáris egyenletrendszer megoldhatósága).** *Az $\mathbf{A}$ együtthatómátrixú homogén lineáris egyenletrendszer mindig megoldható, mert a nullvektor – az ún.* triviális megoldás *– mindig megoldás. Pontosan akkor van* nemtriviális, *vagyis a $\mathbf{0}$-vektortól különböző megoldása is, ha*
+$$\operatorname{r}(\mathbf{A}) < n,$$
+*ahol $n$ az ismeretlenek – azaz $\mathbf{A}$ oszlopainak – számát jelöli. Speciálisan, az $m$ egyenletből álló homogén lineáris egyenletrendszernek $m < n$ esetén mindig van nemtriviális megoldása.*
+
+Valós együtthatós homogén lineáris egyenletrendszerekre az előző táblázat a következő alakot ölti:
+
+| Feltétel | Megoldások száma |
+|---|---|
+| $\operatorname{r}(\mathbf{A}) = n$ | 1 |
+| $\operatorname{r}(\mathbf{A}) < n$ | $\infty$ |
+
+**3.7. példa (Egyenletrendszer megoldásainak száma).** *Az $a$ paraméter mely értékei mellett van az alábbi egyenletrendszernek 0, 1, illetve $\infty$ sok megoldása?*
+$$\begin{alignedat}{9}
+x_1 &{}+{}& x_2 &{}+{}& ax_3 &{}={}& 1 \\
+x_1 &{}+{}& ax_2 &{}+{}& x_3 &{}={}& a \\
+ax_1 &{}+{}& x_2 &{}+{}& x_3 &{}={}& a^2
+\end{alignedat}$$
+
+*Megoldás.* Hozzuk a bővített mátrixot lépcsős alakra:
+$$\left[\begin{array}{ccc|c} 1 & 1 & a & 1 \\ 1 & a & 1 & a \\ a & 1 & 1 & a^2 \end{array}\right] \xrightarrow{\substack{S_2 - S_1 \\ S_3 - aS_1}} \left[\begin{array}{ccc|c} 1 & 1 & a & 1 \\ 0 & a-1 & 1-a & a-1 \\ 0 & 1-a & 1-a^2 & a^2 - a \end{array}\right] \xrightarrow{S_3 + S_2}$$
+$$\left[\begin{array}{ccc|c} 1 & 1 & a & 1 \\ 0 & a-1 & 1-a & a-1 \\ 0 & 0 & -(a-1)(a+2) & (a+1)(a-1) \end{array}\right]$$
+Látható, hogy $a = 1$ esetén az utolsó két sorban minden elem 0, tehát az együtthatómátrix és a bővített mátrix rangja is 1, így az egyenletrendszer az $x_1 + x_2 + x_3 = 1$ egyenlettel ekvivalens. Ennek megoldása: $(x_1, x_2, x_3) = (1 - s - t, s, t)$, azaz oszlopvektor alakba írva:
+$$\begin{bmatrix} x_1 \\ x_2 \\ x_3 \end{bmatrix} = \begin{bmatrix} 1 \\ 0 \\ 0 \end{bmatrix} + s\begin{bmatrix} -1 \\ 1 \\ 0 \end{bmatrix} + t\begin{bmatrix} -1 \\ 0 \\ 1 \end{bmatrix}.$$
+Ha $a = -2$, akkor az együtthatómátrix rangja 2, a bővített mátrix rangja 3, tehát az egyenletrendszer nem oldható meg (az utolsó sor egyenletté visszaírva $0 = 3$ alakú). Minden egyéb esetben, azaz ha $a \neq 1$ és $a \neq -2$, akkor a két rang 3, ami megegyezik az ismeretlenek számával, tehát egyetlen megoldás van. Ez ki is fejezhető:
+$$x_1 = \frac{(a+1)^2}{a+2}, \quad x_2 = \frac{1}{a+2}, \quad x_3 = -\frac{a+1}{a+2}. \qquad \square$$
+
+### Homogén lineáris egyenletrendszer megoldásai
+
+Tekintsünk egy tetszőleges homogén lineáris egyenletrendszert. Mint a 3.6. tételben láttuk, ez biztosan megoldható, és a megoldások halmazában a nullvektor benne van. Mit mondhatunk a megoldások halmazáról, ha több megoldása is van a homogén egyenletrendszernek?
+
+**3.8. állítás (Megoldások lineáris kombinációja).** *Egy homogén lineáris egyenletrendszer megoldásainak bármely lineáris kombinációja is megoldás.*
+
+*Bizonyítás.* Elég az állítást két megoldásra bizonyítani. Jelölje $\mathbf{a}_1, \mathbf{a}_2, \ldots, \mathbf{a}_n$ az egyenletrendszer együtthatómátrixának oszlopvektorait. Legyen $\mathbf{x} = (x_1, x_2, \ldots, x_n)$ és $\mathbf{y} = (y_1, y_2, \ldots, y_n)$ két tetszőleges megoldás, azaz
+$$\begin{aligned}
+\mathbf{a}_1 x_1 + \mathbf{a}_2 x_2 + \ldots + \mathbf{a}_n x_n &= \mathbf{0} \\
+\mathbf{a}_1 y_1 + \mathbf{a}_2 y_2 + \ldots + \mathbf{a}_n y_n &= \mathbf{0},
+\end{aligned}$$
+és $c$, $d$ legyen két tetszőleges skalár. Megmutatjuk, hogy ekkor $c\mathbf{x} + d\mathbf{y}$ is megoldás, ugyanis
+$$\begin{aligned}
+\mathbf{a}_1(cx_1 + dy_1) + \mathbf{a}_2(cx_2 + dy_2) + \ldots + \mathbf{a}_n(cx_n + dy_n) &= \\
+(c\mathbf{a}_1 x_1 + d\mathbf{a}_1 y_1) + (c\mathbf{a}_2 x_2 + d\mathbf{a}_2 y_2) + \ldots + (c\mathbf{a}_n x_n + d\mathbf{a}_n y_n) &= \\
+c(\mathbf{a}_1 x_1 + \mathbf{a}_2 x_2 + \ldots + \mathbf{a}_n x_n) + d(\mathbf{a}_1 y_1 + \mathbf{a}_2 y_2 + \ldots + \mathbf{a}_n y_n) &= \\
+\mathbf{0} + \mathbf{0} = \mathbf{0}.
+\end{aligned}$$
+azaz $c\mathbf{x} + d\mathbf{y}$ is megoldás. Ez bizonyítja állításunkat.
+
+E bizonyítás az oszlopmodellre épült, de hasonlóan egyszerű bizonyítás adható a sormodellben is (ld. 3.10. feladat). $\square$
+
+<!-- OCR: through PDF p.113 -->
