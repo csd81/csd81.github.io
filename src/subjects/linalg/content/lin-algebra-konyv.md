@@ -827,4 +827,81 @@ $$H^3 = \{(0,0,0), (0,0,1), (0,1,0), (1,0,0), (0,1,1), (1,0,1), (1,1,0), (1,1,1)
 
 A fenti jelölésnek megfelelően $\mathbb{R}^n$ a valós számokból képzett rendezett szám-$n$-esek halmazát jelöli. Eszerint a sík pontjait és vektorait $\mathbb{R}^2$, a térét $\mathbb{R}^3$ elemeivel koordinátáztuk. $\mathbb{R}^n$ elemein vektorműveleteket fogunk bevezetni, és $\mathbb{R}^n$-ről, mint vektortérről fogunk beszélni. Hasonlóképp, $\mathbb{R}^n$-t geometriai vagy pontérnek fogjuk tekinteni, ha elemeire, mint pontokra gondolunk, és köztük geometriai műveleteket végzünk. E kétféleség nem fog zavart okozni: $\mathbb{R}^n$ szerepét mindig az fogja meghatározni, hogy mit teszünk elemeivel, vagyis a szám-$n$-esekkel.
 
-<!-- OCR: through PDF p.44 -->
+Az $\mathbb{R}^n$ megismerésében az *analógia* fonalán haladunk, a 2- és 3-dimenziós tér fogalmait fogjuk átvinni, általánosítani $n$ dimenzióra. Ez az analógia fog segíteni abban, hogy valamit „lássunk" $n$ dimenzióban is (ha nem is olyan jól, mint 3 dimenzióban). Példaként az analógiára egy 4-dimenziós kocka 2-dimenziós vetületét mutatjuk az 1.42. ábrán.
+
+### Vektorok összeadása és skalárral szorzás $\mathbb{R}^n$-ben
+
+A 2- és 3-dimenziós vektorok műveleteinek koordinátás alakja az összeadás, kivonás és skalárral szorzás esetén analóg módon átvihető az $n$-dimenziós vektorokra.
+
+**1.40. definíció (Vektorműveletek $\mathbb{R}^n$-ben).** *Legyen $c \in \mathbb{R}$ tetszőleges valós, $\mathbf{u} = (u_1, u_2, \ldots, u_n)$ és $\mathbf{v} = (v_1, v_2, \ldots, v_n)$ az $\mathbb{R}^n$ két tetszőleges vektora. Két vektor összegén és egy vektor $c$-szeresén az*
+$$\begin{aligned}
+\mathbf{u} + \mathbf{v} &= (u_1 + v_1, u_2 + v_2, \ldots, u_n + v_n) \\
+c\mathbf{u} &= (cu_1, cu_2, \ldots, cu_n)
+\end{aligned}$$
+*$\mathbb{R}^n$-beli vektorokat értjük.*
+
+Összefoglaljuk e műveletek legfontosabb tulajdonságait:
+
+**1.41. tétel (Az összeadás és skalárral szorzás tulajdonságai).** *Legyen $\mathbf{u}$, $\mathbf{v}$ és $\mathbf{w}$ az $\mathbb{R}^n$ három tetszőleges vektora, és legyen $c, d$ két tetszőleges valós, jelölje $\mathbf{0}$ a $(0, 0, \ldots, 0)$ vektort. Ekkor*
+- *a)* $\mathbf{u} + \mathbf{v} = \mathbf{v} + \mathbf{u}$ — *a művelet fölcserélhető (kommutatív)*
+- *b)* $\mathbf{u} + (\mathbf{v} + \mathbf{w}) = (\mathbf{u} + \mathbf{v}) + \mathbf{w}$ — *csoportosítható (asszociatív)*
+- *c)* $\mathbf{u} + \mathbf{0} = \mathbf{u}$ — *zérusvektor*
+- *d)* $c(d\mathbf{u}) = (cd)\mathbf{u}$ — *a két szorzás kompatibilis*
+- *e)* $0\mathbf{u} = \mathbf{0}$, $1\mathbf{u} = \mathbf{u}$ — *szorzás 0-val és 1-gyel*
+- *f)* $c(\mathbf{u} + \mathbf{v}) = c\mathbf{u} + c\mathbf{v}$ — *disztributív*
+- *g)* $(c + d)\mathbf{u} = c\mathbf{u} + d\mathbf{u}$ — *disztributív*
+
+Megegyezünk még abban, hogy egy $\mathbf{u}$ vektor $-\mathbf{u}$-val jelölt ellentettjén a $-1$-szeresét értjük, azaz $-\mathbf{u} = (-1)\mathbf{u} = (-u_1, -u_2, \ldots, -u_n)$. Így két vektor különbségére igaz, hogy $\mathbf{u} - \mathbf{v} = \mathbf{u} + (-\mathbf{v})$.
+
+▶ E tulajdonságok mindegyike könnyen visszavezethető a valós számok algebrai tulajdonságaira, ezért ezek ellenőrzését (bizonyítását) az Olvasóra hagyjuk. Mintaként megmutatjuk az a) tulajdonság bizonyítását:
+$$\begin{aligned}
+\mathbf{u} + \mathbf{v} &= (u_1 + v_1, u_2 + v_2, \ldots, u_n + v_n) \\
+&= (v_1 + u_1, v_2 + u_2, \ldots, v_n + u_n) \\
+&= \mathbf{v} + \mathbf{u}.
+\end{aligned}$$
+
+▶ Az a)–c) tulajdonságok az összeadás, az d)–e) a skalárral szorzás, az f)–g) a két művelet közös tulajdonságait írják le.
+
+*1.42. ábra. 4-dimenziós kocka ábrázolása 2-dimenzióban. A 0-dimenziós „kocka" egyetlen pontból áll, az 1-dimenziós kockát két 0-dimenziós határolja (egy szakasz). A 2-dimenziós „kockát" (a négyzetet) minden tengelyirányból két-két egybevágó 1-dimenziós „kocka" határolja (összesen négy), míg a 3-dimenziós kockát minden tengelyirányból két-két négyzet (összesen hat). A 3-dimenziós kocka 2-dimenziós ábrázolása csak a határoló négyzetek torzításával oldható meg. A 4-dimenziós kockát mind a négy tengelyirányból két-két 3-dimenziós kocka határolja, összesen nyolc; az ábrán három ilyen 3-dimenziós kockát kiszíneztünk.*
+
+### Lineáris kombináció, lineáris függetlenség, lineáris összefüggőség
+
+Hiába definiáltuk vektorok lineáris függetlenségének fogalmát tetszőleges számú vektorból álló vektorhalmazra, láttuk, hogy a 3-dimenziós térben legföljebb csak 3 vektor lehet lineárisan független. Viszont $\mathbb{R}^n$-ben $n$ lineárisan független vektort is találunk.
+
+**1.42. állítás ($\mathbb{R}^n$ standard bázisa).** *Az $\mathbb{R}^n$-beli $\mathbf{e}_1 = (1, 0, \ldots, 0)$, $\mathbf{e}_2 = (0, 1, \ldots, 0), \ldots, \mathbf{e}_n = (0, 0, \ldots, 1)$ vektorok lineárisan függetlenek, és $\mathbb{R}^n$ minden vektora egyértelműen előáll ezek lineáris kombinációjaként!*
+
+*Bizonyítás.* Az $\mathbf{e}_1$ nem áll elő a többi vektor lineáris kombinációjaként, hisz azok első koordinátája 0, így bármely lineáris kombinációjukban 0 az első koordináta, $\mathbf{e}_1$-ben pedig 1. Hasonlóan igazolható, hogy egyik $\mathbf{e}_i$ sem áll elő a többi vektor lineáris kombinációjaként ($i = 2, 3, \ldots, n$). A megadott vektorok tehát lineárisan függetlenek.
+
+Mivel az $i$-edik koordináta egyedül csak az $\mathbf{e}_i$ vektorban 1, a többiben 0, ezért ha egy tetszőleges $\mathbf{v} = (v_1, v_2, \ldots, v_n)$ vektor előáll az $\mathbf{e}_1, \mathbf{e}_2, \ldots, \mathbf{e}_n$ vektorok lineáris kombinációjaként, akkor abban az $\mathbf{e}_i$ együtthatója csak $v_i$ lehet. Másrészt az is világos, hogy
+$$(v_1, v_2, \ldots, v_n) = v_1\mathbf{e}_1 + v_2\mathbf{e}_2 + \ldots + v_n\mathbf{e}_n.$$
+Ezzel igazoltuk, hogy $\mathbb{R}^n$ minden vektora egyértelműen áll elő az $\mathbf{e}_1, \mathbf{e}_2, \ldots, \mathbf{e}_n$ vektorok lineáris kombinációjaként. $\square$
+
+**1.43. definíció (Standard bázis).** *Az $\mathbf{e}_1, \mathbf{e}_2, \ldots, \mathbf{e}_n$ vektorokból álló halmazt az $\mathbb{R}^n$ vektortér standard bázisának nevezzük.*
+
+A fenti bizonyításban úgy igazoltuk vektorok lineáris függetlenségét, hogy az 1.10. definíciónak megfelelően igazoltuk, hogy mindegyik vektor független a többitől. Ez az út nehézkes. Ugyanakkor a síkban és a térben azt láttuk, hogy a vektorok függetlenségével együtt jár a belőlük képzett lineáris kombinációk egyértelműsége. Ez igaz a nullvektorra is, mely nulla együtthatókkal vett lineáris kombinációként előáll – ezt nevezzük a nullvektor triviális előállításának. Ez az alapja a következő tételnek:
+
+**1.44. tétel (Lineáris függetlenség).** *Tetszőleges $\mathbb{R}^n$-beli $\mathcal{V} = \{\mathbf{v}_1, \mathbf{v}_2, \ldots, \mathbf{v}_k\}$ vektorrendszerre az alábbi két állítás ekvivalens:*
+1. *$\mathcal{V}$ lineárisan független, azaz $k > 1$ esetén egyik vektora sem fejezhető ki a többi lineáris kombinációjaként, $k = 1$ esetén pedig a vektor nem zérusvektor.*
+2. *A zérusvektor csak egyféleképp – a triviális módon – áll elő $\mathcal{V}$ lineáris kombinációjaként. Másként fogalmazva, a $c_1, c_2, \ldots, c_k$ skalárokkal vett lineáris kombináció csak akkor lehet a nullvektor, azaz*
+$$c_1\mathbf{v}_1 + c_2\mathbf{v}_2 + \ldots + c_k\mathbf{v}_k = \mathbf{0}$$
+*csak akkor állhat fenn, ha $c_1 = c_2 = \ldots = c_k = 0$.*
+
+*Bizonyítás.* Először tegyük fel, hogy a vektorrendszer csak egyetlen $\mathbf{v}$ vektorból áll. Ekkor a tétel azt állítja, hogy e vektor pontosan akkor lineárisan független, azaz pontosan akkor nem a nullvektor, ha a $c\mathbf{v} = \mathbf{0}$ csak $c = 0$ esetén állhat fenn. Ez nyilvánvaló, hisz ha $\mathbf{v} \neq \mathbf{0}$ és $c \neq 0$, akkor $c\mathbf{v} = \mathbf{0}$ sem állhat fenn. A továbbiakban tegyük fel, hogy a vektorrendszer legalább két vektorból áll. A következőkben kontrapozícióval bizonyítunk, azaz az $A \Rightarrow B$ állítást a vele ekvivalens $\neg B \Rightarrow \neg A$ állítással igazoljuk.
+
+($\Leftarrow$) Megmutatjuk, hogy ha $c_1\mathbf{v}_1 + c_2\mathbf{v}_2 + \ldots + c_k\mathbf{v}_k = \mathbf{0}$ csak $c_1 = c_2 = \ldots = c_k = 0$ esetén állhat fenn, akkor semelyik $\mathbf{v}_i$ vektor sem fejezhető ki a többi lineáris kombinációjaként ($i = 1, 2, \ldots, k$). Tegyük fel, hogy valamelyik vektor – például a $\mathbf{v}_1$ – kifejezhető a többi lineáris kombinációjaként, azaz
+$$\mathbf{v}_1 = d_2\mathbf{v}_2 + \ldots + d_k\mathbf{v}_k,$$
+vagyis átrendezés után
+$$(-1)\mathbf{v}_1 + d_2\mathbf{v}_2 + \ldots + d_k\mathbf{v}_k = \mathbf{0}.$$
+Mivel $\mathbf{v}_1$ együtthatója nem 0, így elő tudtuk állítani a nullvektort olyan lineáris kombinációként, melyben nem minden együttható 0.
+
+($\Rightarrow$) Megmutatjuk, hogy ha a vektorrendszer egyik vektora sem áll elő a többi kombinációjaként, akkor egyedül csak a csupa zérus együtthatójú lineáris kombinációja lehet zérusvektor. Ismét kontrapozícióval bizonyítunk: ha van olyan – nem csupa 0 együtthatójú – lineáris kombináció, mely a nullvektorral egyenlő, azaz
+$$c_1\mathbf{v}_1 + c_2\mathbf{v}_2 + \ldots + c_k\mathbf{v}_k = \mathbf{0},$$
+de valamelyik együttható – például a $c_1$ – nem 0, akkor $\mathbf{v}_1$ kifejezhető a többi vektor lineáris kombinációjaként:
+$$\mathbf{v}_1 = -\frac{c_2}{c_1}\mathbf{v}_2 - \ldots - \frac{c_k}{c_1}\mathbf{v}_k,$$
+ami bizonyítja az állítást. $\square$
+
+Egy vektorrendszert *lineárisan összefüggőnek* nevezünk, ha nem független, azaz egyelemű vektorrendszer esetén ha az a vektor a zérusvektor, többelemű vektorrendszer esetén pedig ha van olyan vektora, mely kifejezhető a többi lineáris kombinációjaként. Az előző tétel szerint ez azzal ekvivalens, hogy a vektorrendszernek van olyan zérusvektort adó lineáris kombinációja, melyben nem mindegyik együttható zérus. A lineáris összefüggőség definíciója kicsit élesíthető:
+
+**1.45. tétel (Lineáris összefüggőség).** *Egy nullvektortól különböző elemekből álló, legalább kételemű $\mathbb{R}^n$-beli $V = \{\mathbf{v}_1, \mathbf{v}_2, \ldots, \mathbf{v}_k\}$ vektorrendszer pontosan akkor lineárisan összefüggő, ha van olyan $t \geq 2$ index, hogy $\mathbf{v}_t$ a $\mathbf{v}_1, \mathbf{v}_2, \ldots, \mathbf{v}_{t-1}$ vektorok lineáris kombinációja.*
+
+<!-- OCR: through PDF p.47 -->
