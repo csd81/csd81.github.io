@@ -3302,4 +3302,70 @@ Az elemi sorműveleteket alkalmazva, egy mátrix sorterében és oszlopterében 
 
 Legyen $\mathcal{B}$ minimális méretű generátor. Ha nem volna független, akkor elhagyva egy olyan vektort, mely a többi lineáris kombinációja, ugyanazt a teret generálnák, de így egy még kisebb méretű generátort
 
-<!-- OCR: through PDF p.122 -->
+kapnánk.
+
+Legyen most $\mathcal{B}$ egy maximális független rendszer. Ha nem volna generátor, akkor hozzávehetnénk tőle független vektort, vagyis volna nála nagyobb méretű független halmaz. $\square$
+
+### Bázis és vektor rá vonatkozó koordinátás alakjának meghatározása
+
+A következőkben megvizsgáljuk, hogy hogyan írható fel egy (al)tér bázisa, és egy vektor erre vonatkozó koordinátás alakja.
+
+**3.26. példa (Altér bázisának meghatározása).** *Határozzuk meg az $(1, 1, 0, -2)$, $(2, 3, 3, -2)$, $(1, 2, 3, 0)$ és $(1, 3, 6, 2)$ vektorok által kifeszített altér egy bázisát!*
+
+*Megoldás. Első megoldás:* A megadott vektorokból, mint sorvektorokból képzett mátrix valamely sorlépcsős alakjának nemnulla sorai az altér egy bázisát adják:
+$$\begin{bmatrix} 1 & 1 & 0 & -2 \\ 2 & 3 & 3 & -2 \\ 1 & 2 & 3 & 0 \\ 1 & 3 & 6 & 2 \end{bmatrix} \Rightarrow \begin{bmatrix} 1 & 1 & 0 & -2 \\ 0 & 1 & 3 & 2 \\ 0 & 1 & 3 & 2 \\ 0 & 2 & 6 & 4 \end{bmatrix} \Rightarrow \begin{bmatrix} 1 & 1 & 0 & -2 \\ 0 & 1 & 3 & 2 \\ 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 \end{bmatrix}.$$
+A bázis vektorai $(1, 1, 0, -2)$, $(0, 1, 3, 2)$.
+
+*Második megoldás:* Ha a bázist az adott vektorokból akarjuk kiválasztani, akkor képezzünk egy mátrixot e vektorokból, mint oszlopvektorokból. Lépcsős alakjában a főelemek oszlopai lineárisan független vektorok. A nekik megfelelő oszlopvektorok az eredeti mátrixban az oszloptér bázisát alkotják (ld. a 3.22. tételt és a 3.23. következmény 4. pontjának állítását).
+$$\begin{bmatrix} 1 & 2 & 1 & 1 \\ 1 & 3 & 2 & 3 \\ 0 & 3 & 3 & 6 \\ -2 & -2 & 0 & 2 \end{bmatrix} \Rightarrow \begin{bmatrix} 1 & 2 & 1 & 1 \\ 0 & 1 & 1 & 2 \\ 0 & 3 & 3 & 6 \\ 0 & 2 & 2 & 4 \end{bmatrix} \Rightarrow \begin{bmatrix} 1 & 2 & 1 & 1 \\ 0 & 1 & 1 & 2 \\ 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 \end{bmatrix}.$$
+Tehát az adott négy vektor közül az első kettő, azaz az $(1, 1, 0, -2)$ és $(2, 3, 3, -2)$ vektorok bázist alkotnak. Ha a megadott vektorokat más sorrendben írjuk a mátrixba, másik bázist kaphatunk. $\square$
+
+**3.27. példa (Vektor felírása a bázisvektorok lineáris kombinációjaként).** *Az előző feladatban megadott négy vektor mindegyikét fejezzük ki az általuk kifeszített altér bázisvektorainak lineáris kombinációjaként!*
+
+*Megoldás.* Az előző feladat második megoldásában találtunk egy bázist a megadott vektorok közül. Mivel az oszlopvektorokkal dolgoztunk, a vektorok közti lineáris kapcsolat leolvasható bármelyik lépcsős alakból: legkényelmesebben a *redukált* lépcsős alakból. Folytatjuk tehát az előző példabeli eliminációs lépéseket:
+$$\begin{bmatrix} 1 & 2 & 1 & 1 \\ 1 & 3 & 2 & 3 \\ 0 & 3 & 3 & 6 \\ -2 & -2 & 0 & 2 \end{bmatrix} \Rightarrow \begin{bmatrix} 1 & 2 & 1 & 1 \\ 0 & 1 & 1 & 2 \\ 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 \end{bmatrix} \Rightarrow \begin{bmatrix} 1 & 0 & -1 & -3 \\ 0 & 1 & 1 & 2 \\ 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 \end{bmatrix}. \tag{3.1}$$
+A redukált lépcsős alakból látjuk, hogy például a harmadik oszlop a második és az első különbsége. Ezek alapján az eredeti vektoroknak a bázisvektorok lineáris kombinációiként való felírása:
+$$\begin{bmatrix} 1 \\ 2 \\ 3 \\ 0 \end{bmatrix} = -\begin{bmatrix} 1 \\ 1 \\ 0 \\ -2 \end{bmatrix} + \begin{bmatrix} 2 \\ 3 \\ 3 \\ -2 \end{bmatrix}, \quad \begin{bmatrix} 1 \\ 3 \\ 6 \\ 2 \end{bmatrix} = -3\begin{bmatrix} 1 \\ 1 \\ 0 \\ -2 \end{bmatrix} + 2\begin{bmatrix} 2 \\ 3 \\ 3 \\ -2 \end{bmatrix}.$$
+Másik bázis választására lásd a 3.15. feladatot. $\square$
+
+A koordináta-rendszer bevezetésénél ugyanazt tettük, mint itt az előző példában: minden vektor előállítható egy bázis elemeinek lineáris kombinációjaként, és e vektor koordinátás alakja erre a bázisra vonatkozóan a lineáris kombináció konstansaiból áll.
+
+Egy vektortérben több bázist is vizsgálhatunk, és a vektorok koordinátás alakjai különbözhetnek a különböző bázisokban. Félreértések elkerülésére a bázis jelét a koordinátás alak indexében jelöljük. Például ha egy $\mathbf{v}$ vektor standard bázisbeli és $\mathcal{B}$ bázisbeli koordinátás alakjai $(4, 3)$, illetve $(0, 5)$, akkor azt írjuk, hogy
+$$\mathbf{v} = (4, 3) = (0, 5)_{\mathcal{B}}, \quad \text{vagy mátrixjelöléssel} \quad \mathbf{v} = \begin{bmatrix} 4 \\ 3 \end{bmatrix} = \begin{bmatrix} 0 \\ 5 \end{bmatrix}_{\mathcal{B}}.$$
+Ha általában akarunk utalni – a konkrét koordináták nélkül – egy $\mathbf{v}$ vektor $\mathcal{B}$ bázisbeli koordinátás alakjára, akkor a $[\mathbf{v}]_{\mathcal{B}}$ vagy a $(\mathbf{v})_{\mathcal{B}}$ alakot használjuk. Így írhatjuk azt is, hogy
+$$[\mathbf{v}]_{\mathcal{B}} = \begin{bmatrix} 0 \\ 5 \end{bmatrix}_{\mathcal{B}}, \quad \text{vagy egyszerűbben, hogy} \quad [\mathbf{v}]_{\mathcal{B}} = \begin{bmatrix} 0 \\ 5 \end{bmatrix}.$$
+
+**3.28. példa (Vektor koordinátás alakja a $\mathcal{B}$ bázisban).** *Írjuk fel a 3.26. és a 3.27. példákban is szereplő $\mathbf{v}_1 = (1, 1, 0, -2)$, $\mathbf{v}_2 = (2, 3, 3, -2)$, $\mathbf{v}_3 = (1, 2, 3, 0)$ és $\mathbf{v}_4 = (1, 3, 6, 2)$ vektorok által kifeszített altérben e négy vektor $\mathcal{B} = \{ \mathbf{v}_1, \mathbf{v}_2 \}$ bázisra vonatkozó koordinátás alakját!*
+
+*Megoldás.* Az előző példában a (3.1) képletbeli redukált lépcsős alak nemzérus soraiból álló
+$$\begin{bmatrix} 1 & 0 & -1 & -3 \\ 0 & 1 & 1 & 2 \end{bmatrix}$$
+mátrix azt mutatja, hogy az $\mathcal{B}$ bázisban e négy vektor koordinátái rendre
+$$\mathbf{v}_1 = \begin{bmatrix} 1 \\ 0 \end{bmatrix}_{\mathcal{B}}, \quad \mathbf{v}_2 = \begin{bmatrix} 0 \\ 1 \end{bmatrix}_{\mathcal{B}}, \quad \mathbf{v}_3 = \begin{bmatrix} -1 \\ 1 \end{bmatrix}_{\mathcal{B}}, \quad \mathbf{v}_4 = \begin{bmatrix} -3 \\ 2 \end{bmatrix}_{\mathcal{B}}.$$
+Ez a 3.23. állítás 2. pontjából következik, mely szerint a redukált lépcsős alak oszlopai közti lineáris kapcsolatok megegyeznek az eredeti mátrix oszlopai közti lineáris kapcsolatokkal. $\square$
+
+### Dimenzió és rang
+
+Az előzőekben bázist kerestünk egy vektortérhez. Azt tapasztaltuk, hogy a bázis mindig ugyanannyi vektorból állt.
+
+**3.29. tétel (Bázis-tétel).** *Ha a $\mathcal{V}$ vektortérnek van véges sok vektorból álló bázisa, akkor bármely két bázisa azonos számú vektorból áll.*
+
+*Bizonyítás.* Tegyük fel, hogy a $\mathcal{V}$ vektortérnek
+$$\mathcal{B} = \{ \mathbf{v}_1, \mathbf{v}_2, \ldots, \mathbf{v}_k \}, \text{ és } \mathcal{C} = \{ \mathbf{w}_1, \mathbf{w}_2, \ldots, \mathbf{w}_r \},$$
+két bázisa, melyek nem ugyanannyi vektorból állnak, azaz például $k < r$. Mivel $\mathcal{B}$ bázis $\mathcal{V}$-ben, ezért a $\mathcal{C}$ bázis vektorai is kifejezhetők lineáris kombinációikként, azaz léteznek olyan $a_{ij}$ skalárok, hogy
+$$\mathbf{w}_i = a_{i1}\mathbf{v}_1 + a_{i2}\mathbf{v}_2 + \ldots + a_{ik}\mathbf{v}_k, \quad (i = 1, \ldots, r). \tag{3.2}$$
+Mivel a $\mathcal{C}$ bázis vektorai lineárisan függetlenek, ezért a
+$$c_1\mathbf{w}_1 + c_2\mathbf{w}_2 + \ldots + c_r\mathbf{w}_r = \mathbf{0} \tag{3.3}$$
+egyenlőség csak a $c_1 = c_2 = \ldots = c_k = 0$ konstansokra áll fenn. A (3.2) egyenlőségeit a (3.3) egyenletbe helyettesítve
+$$c_1(a_{11}\mathbf{v}_1 + a_{12}\mathbf{v}_2 + \ldots + a_{1k}\mathbf{v}_k) + c_2(a_{21}\mathbf{v}_1 + a_{22}\mathbf{v}_2 + \ldots + a_{2k}\mathbf{v}_k) + \ldots + c_r(a_{r1}\mathbf{v}_1 + a_{r2}\mathbf{v}_2 + \ldots + a_{rk}\mathbf{v}_k) = \mathbf{0},$$
+aminek $\mathcal{B}$ vektorai szerinti rendezése után kapjuk, hogy
+$$(a_{11}c_1 + a_{21}c_2 + \ldots + a_{r1}c_r)\mathbf{v}_1 + (a_{12}c_1 + a_{22}c_2 + \ldots + a_{r2}c_r)\mathbf{v}_2 + \ldots + (a_{1k}c_1 + a_{2k}c_2 + \ldots + a_{rk}c_r)\mathbf{v}_k = \mathbf{0}.$$
+Ez azt jelenti, hogy a homogén lineáris
+$$\begin{alignedat}{9}
+a_{11}c_1 &{}+{}& a_{21}c_2 &{}+{}& \ldots &{}+{}& a_{r1}c_r &{}={}& 0 \\
+a_{12}c_1 &{}+{}& a_{22}c_2 &{}+{}& \ldots &{}+{}& a_{r2}c_r &{}={}& 0 \\
+\vdots && \vdots && && \vdots && \;\,\vdots \\
+a_{1k}c_1 &{}+{}& a_{2k}c_2 &{}+{}& \ldots &{}+{}& a_{rk}c_r &{}={}& 0
+\end{alignedat}$$
+egyenletrendszernek a $c_1 = c_2 = \ldots = c_k = 0$ az egyetlen megoldása. Ez viszont a 3.6. tétel szerint nem teljesülhet, mivel a fenti homogén
+
+<!-- OCR: through PDF p.125 -->
