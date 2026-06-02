@@ -4138,4 +4138,113 @@ $$[a_{i_1 i_2 \ldots i_d}] + [b_{i_1 i_2 \ldots i_d}] := [a_{i_1 i_2 \ldots i_d}
 $$\mathbf{A}^\pi = [a_{i_{\pi(1)} i_{\pi(2)} \ldots i_{\pi(d)}}] \in S^{n_{\pi(1)} \times n_{\pi(2)} \times \ldots \times n_{\pi(d)}}$$
 *hipermátrixot értjük. Egy $\mathbf{A} \in S^{n \times n \times \ldots \times n}$ hiper-kockamátrix* szimmetrikus, *ha minden $\pi$ permutációra $\mathbf{A}^\pi = \mathbf{A}$, és* ferdén szimmetrikus, *ha $\mathbf{A}^\pi = \operatorname{sgn}(\pi)\mathbf{A}$, ahol $\operatorname{sgn}(\pi) = -1$, ha a $\pi$ páratlan permutáció, és 1, ha páros.*
 
-<!-- OCR: through PDF p.149 -->
+Eszerint a $2 \times 2 \times 2$-es hipermátrixok és szimmetrikus hipermátrixok általános alakja
+$$\left[\begin{array}{cc|cc} a_{111} & a_{121} & a_{112} & a_{122} \\ a_{211} & a_{221} & a_{212} & a_{222} \end{array}\right], \quad \left[\begin{array}{cc|cc} a & b & b & c \\ b & c & c & d \end{array}\right].$$
+A $3 \times 3 \times 3$-as hipermátrixok, szimmetrikus és ferdén szimmetrikus hipermátrixok általános alakja
+$$\left[\begin{array}{ccc|ccc|ccc} a_{111} & a_{121} & a_{131} & a_{112} & a_{122} & a_{132} & a_{113} & a_{123} & a_{133} \\ a_{211} & a_{221} & a_{231} & a_{212} & a_{222} & a_{232} & a_{213} & a_{223} & a_{233} \\ a_{311} & a_{321} & a_{331} & a_{312} & a_{322} & a_{332} & a_{313} & a_{323} & a_{333} \end{array}\right],$$
+$$\left[\begin{array}{ccc|ccc|ccc} a & b & c & b & d & e & c & e & f \\ b & d & e & d & g & h & e & h & i \\ c & e & f & e & h & i & f & i & j \end{array}\right], \quad \left[\begin{array}{ccc|ccc|ccc} 0 & 0 & 0 & 0 & 0 & -a & 0 & a & 0 \\ 0 & 0 & a & 0 & 0 & 0 & -a & 0 & 0 \\ 0 & -a & 0 & a & 0 & 0 & 0 & 0 & 0 \end{array}\right],$$
+ahol $a, b, c, d, e, f, g, h, i, j \in S$ nem feltétlenül különböző elemek.
+
+### Feladatok
+
+#### Táblázatok
+
+**4.1.** Anti, Bori, Cili almát, banánt és citromot vesz a piacon, a hipermarketben vagy a csarnokban. Ha csak az ár számít, melyikük hol vásároljon?
+
+| | alma (kg) | banán (kg) | citrom (kg) |
+|---|---|---|---|
+| Anti | 2 | 2 | 1 |
+| Bori | 3 | 2 | 0.5 |
+| Cili | 2 | 1 | 1 |
+
+| | csarnok (Ft/kg) | hipermarket (Ft/kg) | piac (Ft/kg) |
+|---|---|---|---|
+| alma | 180 | 100 | 130 |
+| banán | 390 | 420 | 360 |
+| citrom | 210 | 210 | 230 |
+
+**4.2.** Egy $f(x, y)$ kifejezésben elvégezzük az
+$$\begin{aligned} x &= 2a + b \\ y &= 3a + b \end{aligned}$$
+helyettesítést, majd az így kapott $f(2a + b, 3a + b)$ kifejezésben az
+$$\begin{aligned} a &= -3s + t \\ b &= 4s - t \end{aligned}$$
+helyettesítést. Számítsuk ki a két helyettesítés kompozícióját a helyettesítések végrehajtásával, és a nekik megfelelő táblázatok szorzásával is, azaz írjuk fel azt a helyettesítést, mely e két helyettesítés kompozíciójával ekvivalens!
+
+**4.3.** Tegyük fel, hogy egy kifejezésben elvégezzük a következő két helyettesítést:
+$$\begin{aligned} x &= 2a + b + 6c \\ y &= 4a + b + 7c \\ z &= 3a + b + 6c \end{aligned} \qquad \begin{aligned} a &= -s + u \\ b &= -3s - 6t + 10u \\ c &= s + t - 2u \end{aligned}$$
+Hogyan számíthatjuk ki a két helyettesítés kompozícióját? Írjuk fel azt a helyettesítést, mely a két helyettesítés kompozíciójával ekvivalens!
+
+**4.4.•** Két versengő kereskedelmi TV-csatorna valóságshow-műsora kezdetben fele-fele arányban vonzza a nézőket. Az első hét végére a tv1 nézőinek fele, míg a tv2 nézőinek negyede átpártol a másik csatornára.
+1. Készítsük el az átpártolás $2 \times 2$-es táblázatát, és a nézők megoszlásának $2 \times 1$-es vagy $1 \times 1$-es táblázatát!
+2. nézők megoszlásának $2 \times 1$-es táblázatát!
+3. Táblázatok szorzásának segítségével határozzuk meg, hogy mi a nézők megoszlása az első és a második hét végén, ha az átpártolók aránya az idővel nem változik.
+4. Írjuk fel az átpártolók kéthetenkénti táblázatát, azaz azt, amelyből kiolvasható, hogy két hét elteltével az egyes csatornák nézőinek hányadrésze pártol át, és mennyi marad!
+
+#### Elemenkénti mátrixműveletek
+
+**4.5.•** Adva vannak az alábbi mátrixok!
+$$\mathbf{A} = \begin{bmatrix} 1 & 2 & 3 \\ 2 & 1 & 0 \end{bmatrix} \quad \mathbf{B} = \begin{bmatrix} 1 & 1 & 0 \\ 2 & 1 & 1 \end{bmatrix} \quad \mathbf{C} = \begin{bmatrix} 1 & 1 \\ 2 & 2 \\ 1 & 0 \end{bmatrix}$$
+Számítsuk ki a következő kifejezések közül azok értékét, amelyek értelmezve vannak! a) $4\mathbf{A} - 3\mathbf{B}$, b) $2\mathbf{B} - \mathbf{C}$, c) $2\mathbf{B} - \mathbf{C}^\mathsf{T}$.
+
+**4.6.•** *Elemenkénti mátrixművelet a digitális képfeldolgozásban.* Egy leegyszerűsített képformátummal dolgozunk: az egészelemű $\mathbf{A}_{m \times n}$ mátrix reprezentáljon egy $m \times n$ képpontból álló szürkeárnyalatos képet. Minden mátrixelem egy képpont árnyalatát adja meg a $\{0, 1, \ldots k\}$ tartományból, ahol 0 a fekete, $k - 1$ a fehér színnek felel meg és $k$ az átlátszó pixeleket jelöli. Legyen egy képen a háttér átlátszó, és legyen $\mathbf{B}_{m \times n}$ egy tetszőleges másik kép azonos módon reprezentáló mátrixa. Konstruáljuk meg azt a $\odot$ jellel jelölt műveletet, amellyel az elemenkénti
+$$\mathbf{A} \odot \mathbf{B} := [a_{ij} \odot b_{ij}]$$
+mátrixműveletet az $\mathbf{A}$ kép hátterébe másolja a $\mathbf{B}$ képet. Képletben:
+$$a_{ij} \odot b_{ij} = \begin{cases} b_{ij}, & \text{ha } a_{ij} = k, \\ a_{ij}, & \text{egyébként.} \end{cases}$$
+A megoldásban használhatjuk a $x \mapsto \lfloor x \rfloor$ függvényt, mely egy $x$ számhoz annak alsó egész részét rendeli.
+
+**4.7.** $\mathbb{R}^{m \times n}$ *bázisa.* Adjuk meg az $\mathbb{R}^{m \times n}$ tér egy bázisát.
+
+**4.8.** *Mátrixok által kifeszített altér.* Jellemezzük az $\mathbb{R}^{2 \times 2}$ térnek azt az alterét, melyet az alábbi megadott $\mathbf{A}$, $\mathbf{B}$ és $\mathbf{C}$ mátrixok feszítenek ki! Másként fogalmazva: milyen összefüggések állnak fönn azon $2 \times 2$-es valós mátrixok elemei között, melyek az alábbi mátrixok lineáris kombinációiként állnak elő?
+$$\mathbf{A} = \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix}, \quad \mathbf{B} = \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}, \quad \mathbf{C} = \begin{bmatrix} 1 & 1 \\ 0 & 1 \end{bmatrix}.$$
+
+#### Mátrixszorzás
+
+**4.14. példa (Mátrixok szorzása).** *Legyen*
+$$\mathbf{A} = \begin{bmatrix} 1 & 1 \\ 2 & 1 \\ 0 & 3 \end{bmatrix}, \quad \mathbf{B} = \begin{bmatrix} 1 & 1 & 2 \\ 2 & 1 & 0 \end{bmatrix}$$
+*Számítsuk ki az $(\mathbf{AB})_{21}$ elemet, majd az $\mathbf{AB}$ mátrixot.*
+
+*Megoldás.* A szorzat második sorának elemei az $\mathbf{A}$ második sorának $\mathbf{B}$ oszlopaival való szorzatából kaphatók meg:
+$$\begin{bmatrix} 1 & 1 \\ 2 & 1 \\ 0 & 3 \end{bmatrix}\begin{bmatrix} 1 & 1 & 2 \\ 2 & 1 & 0 \end{bmatrix} = \begin{bmatrix} * & * & * \\ 4 & 3 & 4 \\ * & * & * \end{bmatrix} \qquad \square$$
+
+**4.9.•** Adva vannak az alábbi mátrixok!
+$$\mathbf{A} = \begin{bmatrix} 1 & 2 & 3 \\ 2 & 1 & 0 \end{bmatrix} \quad \mathbf{B} = \begin{bmatrix} 1 & 1 & 0 \\ 2 & 1 & 1 \end{bmatrix} \quad \mathbf{C} = \begin{bmatrix} 1 & 1 \\ 2 & 2 \\ 1 & 0 \end{bmatrix} \quad \mathbf{D} = \begin{bmatrix} 3 & 2 \\ 1 & 0 \end{bmatrix}$$
+Számítsuk ki a következő kifejezések közül azok értékét, amelyek értelmezve vannak! a) $\mathbf{AB}$, b) $\mathbf{AB}^\mathsf{T} - \mathbf{D}$, c) $\mathbf{BC}$, d) $\mathbf{CB}$, e) $(\mathbf{DA})\mathbf{C}$.
+
+**4.10.•** *A szorzás nem felcserélhető.* Legyen
+$$\mathbf{A} = \begin{bmatrix} 0 & 1 \\ 2 & 3 \\ 2 & 1 \end{bmatrix}, \quad \mathbf{B} = \begin{bmatrix} 0 & 1 & 2 \\ 3 & 2 & 1 \end{bmatrix}, \quad \mathbf{C} = \begin{bmatrix} 0 & 1 \\ 2 & 1 \end{bmatrix},$$
+$$\mathbf{D} = \begin{bmatrix} 6 & 6 \\ -2 & -1 \end{bmatrix}, \quad \mathbf{E} = \begin{bmatrix} -2 & -6 \\ 2 & 5 \end{bmatrix}.$$
+Döntsük el, hogy fönnállnak-e az $\mathbf{AB} = \mathbf{BA}$, $\mathbf{BC} = \mathbf{CB}$, $\mathbf{CD} = \mathbf{DC}$ és $\mathbf{DE} = \mathbf{ED}$ egyenlőségek.
+
+#### Blokkmátrix
+
+**4.11.** *$2 \times 2$-es blokkmátrixok szorzása.* Legyen $\mathbf{A}$ és $\mathbf{B}$ két $2 \times 2$-es blokkmátrix, azaz legyen
+$$\mathbf{A} = \begin{bmatrix} \mathbf{A}_{11} & \mathbf{A}_{12} \\ \mathbf{A}_{21} & \mathbf{A}_{22} \end{bmatrix}, \quad \mathbf{B} = \begin{bmatrix} \mathbf{B}_{11} & \mathbf{B}_{12} \\ \mathbf{B}_{21} & \mathbf{B}_{22} \end{bmatrix}.$$
+Írjuk fel szorzatukat a blokkok szorzatai segítségével.
+
+**4.12.•** Végezzük el az $\mathbf{A} + 3\mathbf{C}$ és az $\mathbf{AB}$ műveleteket közönséges mátrixműveletekkel és blokkmátrixként is számolva, ha
+$$\mathbf{A} = \left[\begin{array}{cc|cc} 1 & 0 & 1 & 0 \\ 0 & 1 & 1 & 2 \\ \hline 0 & 0 & 3 & 0 \end{array}\right], \quad \mathbf{B} = \left[\begin{array}{cc} 2 & 4 \\ 1 & 5 \\ \hline 2 & 2 \\ 0 & 1 \end{array}\right], \quad \mathbf{C} = \left[\begin{array}{cc|cc} 0 & 2 & 0 & 0 \\ 2 & 0 & 0 & 0 \\ \hline 1 & 1 & 1 & 1 \end{array}\right].$$
+
+#### Mátrixműveletek $\mathbb{Z}_m$-ben
+
+A mátrixműveletek minden további nélkül értelmezhetők $\mathbb{Z}_m$ fölötti mátrixokra is (általában bármely gyűrű fölötti mátrixokra, ld. az A. fejezetet a függelékben).
+
+**4.13.•** Egy lineáris kód $\mathbf{G}$ generátormátrixa és $\mathbf{H}$ ellenőrző mátrixa eleget tesz a $\mathbf{GH}^\mathsf{T} = \mathbf{O}$ összefüggésnek. Ellenőrizzük ezt a $[4, 2, 3]_3$ Hamming kód esetén a következő mátrixokkal az $\mathbb{F}_3$ testben számolva:
+$$\mathbf{G} = \begin{bmatrix} 1 & 0 & 1 & 2 \\ 0 & 1 & 1 & 1 \end{bmatrix} \quad \mathbf{H} = \begin{bmatrix} 2 & 2 & 1 & 0 \\ 1 & 2 & 0 & 1 \end{bmatrix}$$
+
+#### Hipermátrixok
+
+**4.14.** *Hipermátrixok külső szorzata.* A vektorok diadikus szorzatát általánosítja a következő definíció: Legyen $\mathbf{A} \in S^{n_1 \times \cdots \times n_d}$ egy $d$-edrendű és $\mathbf{B} \in S^{m_1 \times \cdots \times m_e}$ egy $e$-edrendű hipermátrix. Külső szorzatukon azt a $(d + e)$-edrendű
+$$\mathbf{C} = [c_{i_1 \ldots i_d j_1 \ldots j_e}]_{i_1, \ldots, i_d, j_1, \ldots, j_e = 1}^{n_1, \ldots, n_d, m_1, \ldots, m_e} = \mathbf{A} \otimes \mathbf{B} \in S^{n_1 \times \cdots \times n_d \times m_1 \times \cdots \times m_e}$$
+hipermátrixot értjük, melyre $c_{i_1 \ldots i_d j_1 \ldots j_e} = a_{i_1 \ldots i_d} b_{j_1 \ldots j_e}$. Számítsuk ki az
+$$\begin{bmatrix} 0 \\ 1 \\ 2 \end{bmatrix} \otimes \begin{bmatrix} 0 & 1 \\ 2 & 3 \\ 4 & 0 \end{bmatrix}$$
+hipermátrixot!
+
+**4.15.** *Multilineáris mátrixszorzás.* Definiáljunk egy hipermátrixműveletet a következőképp. Legyen $\mathbf{X}_1 = [x_{ij}^{(1)}] \in S^{m_1 \times n_1}, \ldots, \mathbf{X}_d = [x_{ij}^{(d)}] \in S^{m_d \times n_d}$ tetszőleges $d$ mátrix, és legyen $\mathbf{A} \in S^{n_1 \times \cdots \times n_d}$ egy hipermátrix. Ekkor a $\mathbf{B} = (\mathbf{X}_1, \ldots, \mathbf{X}_d) \cdot \mathbf{A}$ *multilineáris mátrixszorzatot* a
+$$b_{i_1 \ldots i_d} = \sum_{j_1, \ldots, j_d = 1}^{n_1, \ldots, n_d} x_{i_1 j_1}^{(1)} \ldots x_{i_d j_d}^{(d)} a_{j_1 \ldots j_d},$$
+képlet definiálja, ahol $\mathbf{B} = [b_{i_1 \ldots i_d}]_{i_1, \ldots, i_d = 1}^{m_1, \ldots, m_d}$. Igazoljuk, hogy a) ha $d = 1$, $n_1 = n$ és $m_1 = 1$, akkor e szorzás megegyezik a skaláris szorzással; b) ha $d = 2$, $m_1 = m_2 = 1$ és $\mathbf{X}_1 = \mathbf{X}_2$, akkor e szorzás kvadratikus alakot ad.
+
+**4.16.** *Vektorok Segre-féle külső szorzata.* Legyen $n_1, n_2, \ldots, n_d \in \mathbb{N}^+$ és legyen $\mathbf{a}_i = (a_{i1}, a_{i2}, \ldots, a_{in_i}) \in S^{n_i}$ ($i = 1, 2, \ldots, d$). E vektorok *Segre-féle külső szorzatán* az
+$$\mathbf{a}_1 \otimes \mathbf{a}_2 \otimes \cdots \otimes \mathbf{a}_d = [a_{1i_1} a_{2i_2} \ldots a_{di_d}]_{i_1, i_2, \ldots, i_d = 1}^{n_1, n_2, \ldots, n_d}$$
+hipermátrixot értjük. Számítsuk ki a következő Segre-féle külső szorzatot:
+$$\begin{bmatrix} 0 \\ 1 \\ 2 \end{bmatrix} \otimes \begin{bmatrix} 1 \\ 0 \\ 2 \end{bmatrix} \otimes \begin{bmatrix} 1 \\ 2 \\ 0 \end{bmatrix}.$$
+
+<!-- OCR: through PDF p.152 -->
