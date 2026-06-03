@@ -551,7 +551,13 @@ export const BUILTINS: Record<string, Builtin> = {
   quadl: async (a, n, env) => BUILTINS.integral(a, n, env),
   quadgk: async (a, n, env) => BUILTINS.integral(a, n, env),
   ode23tb: async (a, n, env) => odeSolve(a, n, env),
-  odeset: async () => ret(zeros(0, 0)),
+  odeset: async (a) => {
+    const fields = new Map<string, Value[]>();
+    if (a.length && isStruct(a[0])) for (const [k, v] of a[0].fields) fields.set(k, v.slice());
+    const start = a.length && isStruct(a[0]) ? 1 : 0;
+    for (let i = start; i + 1 < a.length; i += 2) fields.set(asString(a[i]), [a[i + 1]]);
+    return ret({ kind: 'struct', rows: 1, cols: 1, fields } as StructV);
+  },
   odeget: async () => ret(zeros(0, 0)),
   // ── special functions ──
   erfcx: async (a) => ret(map(m(a[0]), (x) => Math.exp(x * x) * (1 - erfFn(x)))),
@@ -1214,8 +1220,9 @@ const HELP: Record<string, HelpEntry> = {
   interp1: { summary: '1-D interpolation', syntax: ["yq = interp1(x,v,xq)", "yq = interp1(x,v,xq,'nearest')"], seealso: ['spline', 'polyfit'] },
   spline: { summary: 'Cubic spline interpolation', syntax: ['yq = spline(x,v,xq)'], seealso: ['interp1', 'polyfit'] },
   roots: { summary: 'Polynomial roots (real or complex)', syntax: ['r = roots(p)'], seealso: ['polyval', 'polyfit', 'fzero'] },
-  ode45: { summary: 'Solve nonstiff ODEs (RK4)', syntax: ['[t,y] = ode45(@f,tspan,y0)'], seealso: ['ode15s'] },
-  ode15s: { summary: 'Solve ODEs (aliased to ode45 here)', syntax: ['[t,y] = ode15s(@f,tspan,y0)'], seealso: ['ode45'] },
+  ode45: { summary: 'Solve nonstiff ODEs (adaptive Dormand-Prince RK45)', syntax: ['[t,y] = ode45(@f,tspan,y0)', '[t,y] = ode45(@f,tspan,y0,opts)'], seealso: ['ode15s', 'odeset'] },
+  ode15s: { summary: 'Solve ODEs (aliased to the RK45 solver here; nonstiff only)', syntax: ['[t,y] = ode15s(@f,tspan,y0)'], seealso: ['ode45', 'odeset'] },
+  odeset: { summary: 'Create/modify an ODE options struct (RelTol, AbsTol, InitialStep, MaxStep)', syntax: ["opts = odeset('RelTol',1e-6,'AbsTol',1e-8)"], seealso: ['ode45', 'ode15s'] },
   logspace: { summary: 'Logarithmically spaced vector', syntax: ['y = logspace(a,b)', 'y = logspace(a,b,n)'], seealso: ['linspace'] },
   meshgrid: { summary: '2-D grid coordinates', syntax: ['[X,Y] = meshgrid(x,y)'], seealso: ['linspace'] },
   sortrows: { summary: 'Sort rows in ascending order', syntax: ['B = sortrows(A)', '[B,i] = sortrows(A)'], seealso: ['sort', 'unique'] },
@@ -1253,7 +1260,7 @@ const BASE_REF = new Set<string>((
   'sinh cosh tanh asinh acosh atanh sec csc cot exp expm1 log log10 log2 log1p pow2 reallog realpow realsqrt ' +
   'inv pinv linsolve lscov det norm rank rref null orth trace cond condest rcond subspace eig eigs svd svds lu qr chol ldl schur hess ' +
   'expm logm sqrtm fzero fminbnd fminsearch lsqnonneg roots polyfit polyval conv deconv polyder polyint interp1 interp2 spline pchip makima interpft ' +
-  'integral integral2 integral3 trapz cumtrapz gradient del2 ode45 ode23 ode113 ode15s ode23s ode23t ' +
+  'integral integral2 integral3 trapz cumtrapz gradient del2 ode45 ode23 ode113 ode15s ode23s ode23t odeset ' +
   'mean median mode std var min max bounds mink maxk corrcoef cov factor factorial gcd lcm nchoosek perms primes isprime rat ' +
   'eps flintmax realmax realmin intmax intmin real imag conj angle unwrap fft ifft fft2 ifft2 fftn ifftn fftshift ifftshift ' +
   'isnan isinf isfinite isreal isfloat plus minus times rdivide ldivide mtimes mrdivide mldivide power mpower uminus uplus transpose ctranspose ' +
@@ -1633,26 +1640,117 @@ function realRoots(coef: number[]): number[] {
   return out;
 }
 
-/** RK4 ODE integrator backing ode45/ode15s. Returns [t, y] (or just y). */
+// Dormand–Prince 5(4) Butcher tableau (the method behind MATLAB's ode45).
+const DP_C = [0, 1 / 5, 3 / 10, 4 / 5, 8 / 9, 1, 1];
+const DP_A: number[][] = [
+  [],
+  [1 / 5],
+  [3 / 40, 9 / 40],
+  [44 / 45, -56 / 15, 32 / 9],
+  [19372 / 6561, -25360 / 2187, 64448 / 6561, -212 / 729],
+  [9017 / 3168, -355 / 33, 46732 / 5247, 49 / 176, -5103 / 18656],
+  [35 / 384, 0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84],
+];
+// 5th-order solution weights (== DP_A[6] by FSAL) and 4th-order error-estimate weights.
+const DP_B5 = [35 / 384, 0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84, 0];
+const DP_B4 = [5179 / 57600, 0, 7571 / 16695, 393 / 640, -92097 / 339200, 187 / 2100, 1 / 40];
+// Dense-output coefficients (MATLAB's ntrp45 4th-order interpolant): 7 stages × powers s..s⁴.
+const DP_BI: number[][] = [
+  [1, -183 / 64, 37 / 12, -145 / 128],
+  [0, 0, 0, 0],
+  [0, 1500 / 371, -1000 / 159, 1000 / 371],
+  [0, -125 / 32, 125 / 12, -375 / 64],
+  [0, 9477 / 3392, -729 / 106, 25515 / 6784],
+  [0, -11 / 7, 11 / 3, -55 / 28],
+  [0, 3 / 2, -4, 5 / 2],
+];
+
+/** Read RelTol/AbsTol/InitialStep/MaxStep from an odeset struct argument (if any). */
+function odeOpts(opt: Value | undefined): { relTol: number; absTol: number; h0: number; hMax: number } {
+  let relTol = 1e-3, absTol = 1e-6, h0 = 0, hMax = Infinity;
+  if (opt && isStruct(opt)) {
+    const get = (k: string) => { const v = opt.fields.get(k); return v && v.length && isMat(v[0]) ? asScalar(v[0]) : undefined; };
+    relTol = get('RelTol') ?? relTol; absTol = get('AbsTol') ?? absTol;
+    h0 = get('InitialStep') ?? h0; hMax = get('MaxStep') ?? hMax;
+  }
+  return { relTol, absTol, h0, hMax };
+}
+
+/**
+ * Adaptive Dormand–Prince RK45 ODE integrator backing ode45 (and aliases).
+ * Embedded 5(4) error estimate drives PI-free step-size control; cubic-Hermite
+ * dense output evaluates the solution at user-requested tspan points.
+ * Returns [t, y] (or just y) — y is one row per output time.
+ */
 async function odeSolve(a: Value[], nargout: number, env: Env): Promise<Value[]> {
   const f = handle(a[0], 'ode45'); const tspan = toArray(m(a[1])); const y0 = toArray(m(a[2])); const neq = y0.length;
-  const evalF = async (t: number, y: number[]): Promise<number[]> => { const r = await env.callHandle(f, [scalar(t), colVec(y)], 1); return isMat(r[0]) ? toArray(r[0] as Mat) : []; };
-  const addv = (y: number[], k: number[], s: number) => y.map((v, j) => v + s * k[j]);
-  const T: number[] = []; const Y: number[][] = [];
-  let y = y0.slice();
-  const step = async (t: number, h: number) => {
-    const k1 = await evalF(t, y); const k2 = await evalF(t + h / 2, addv(y, k1, h / 2));
-    const k3 = await evalF(t + h / 2, addv(y, k2, h / 2)); const k4 = await evalF(t + h, addv(y, k3, h));
-    y = y.map((v, j) => v + h * (k1[j] + 2 * k2[j] + 2 * k3[j] + k4[j]) / 6);
-  };
-  if (tspan.length > 2) {
-    T.push(tspan[0]); Y.push(y.slice());
-    for (let i = 0; i < tspan.length - 1; i++) { const sub = 20; const hh = (tspan[i + 1] - tspan[i]) / sub; for (let sN = 0; sN < sub; sN++) await step(tspan[i] + sN * hh, hh); T.push(tspan[i + 1]); Y.push(y.slice()); }
-  } else {
-    const t0 = tspan[0], tf = tspan[tspan.length - 1]; const Nstep = 200; const h = (tf - t0) / Nstep;
-    T.push(t0); Y.push(y.slice());
-    for (let i = 0; i < Nstep; i++) { await step(t0 + i * h, h); T.push(t0 + (i + 1) * h); Y.push(y.slice()); }
+  const { relTol, absTol, h0, hMax } = odeOpts(a[3]);
+  const evalF = async (t: number, y: number[]): Promise<number[]> => { const r = await env.callHandle(f, [scalar(t), colVec(y)], 1); return isMat(r[0]) ? toArray(r[0] as Mat) : new Array(neq).fill(0); };
+  const axpy = (y: number[], terms: Array<[number, number[]]>) => y.map((v, j) => v + terms.reduce((s, [c, k]) => s + c * k[j], 0));
+
+  const t0 = tspan[0], tEnd = tspan[tspan.length - 1];
+  const dir = tEnd >= t0 ? 1 : -1;
+  // Output points: explicit tspan list (>2 points) → those; otherwise the solver's own steps.
+  const wantPoints = tspan.length > 2 ? tspan.slice() : null;
+  const T: number[] = [t0]; const Y: number[][] = [y0.slice()];
+  let nextWant = 1; // index into wantPoints for the next point to emit
+
+  let t = t0; let y = y0.slice();
+  let f0 = await evalF(t, y);
+  // Initial step guess (Hairer): based on scaled norms of y and f.
+  let h: number;
+  if (h0 > 0) h = h0 * dir;
+  else {
+    const sc = y.map((yi) => absTol + relTol * Math.abs(yi));
+    const d0 = Math.hypot(...y.map((yi, j) => yi / sc[j])) / Math.sqrt(neq || 1);
+    const d1 = Math.hypot(...f0.map((fi, j) => fi / sc[j])) / Math.sqrt(neq || 1);
+    h = (d0 < 1e-5 || d1 < 1e-5 ? 1e-6 : 0.01 * (d0 / d1)) * dir;
   }
+  const span = Math.abs(tEnd - t0);
+  h = dir * Math.min(Math.abs(h), hMax, span);
+
+  const SAFETY = 0.9, MINFAC = 0.2, MAXFAC = 5, EXP = 1 / 5;
+  let steps = 0; const MAXSTEPS = 1e6;
+  while (dir * (tEnd - t) > 1e-14 * Math.max(1, Math.abs(tEnd))) {
+    if (++steps > MAXSTEPS) throw new MatError('ode45: too many steps (RelTol too small or integration failed)');
+    if (dir * (t + h - tEnd) > 0) h = tEnd - t; // don't overshoot the endpoint
+    // Seven RK stages (FSAL: stage 1 reuses the previous accepted derivative).
+    const k: number[][] = new Array(7);
+    k[0] = f0;
+    for (let s = 1; s < 7; s++) {
+      const terms: Array<[number, number[]]> = DP_A[s].map((c, j) => [h * c, k[j]] as [number, number[]]);
+      k[s] = await evalF(t + DP_C[s] * h, axpy(y, terms));
+    }
+    const y5 = axpy(y, DP_B5.map((b, s) => [h * b, k[s]] as [number, number[]]));
+    // Error = (b5 - b4)·k, scaled by atol + rtol·max(|y|,|y5|).
+    let errNorm = 0;
+    for (let j = 0; j < neq; j++) {
+      let e = 0; for (let s = 0; s < 7; s++) e += (DP_B5[s] - DP_B4[s]) * k[s][j];
+      const sc = absTol + relTol * Math.max(Math.abs(y[j]), Math.abs(y5[j]));
+      const r = (h * e) / sc; errNorm += r * r;
+    }
+    errNorm = Math.sqrt(errNorm / (neq || 1));
+
+    if (errNorm <= 1) {
+      // Accept. Record dense-output endpoints for cubic-Hermite interpolation.
+      const tNew = t + h; const fNew = k[6]; // FSAL: derivative at t+h
+      if (wantPoints) {
+        while (nextWant < wantPoints.length && dir * (wantPoints[nextWant] - tNew) <= 1e-14) {
+          const tq = wantPoints[nextWant]; const s = (tq - t) / h;
+          const sp = [s, s * s, s * s * s, s * s * s * s];
+          const coeff = DP_BI.map((bi) => bi[0] * sp[0] + bi[1] * sp[1] + bi[2] * sp[2] + bi[3] * sp[3]);
+          Y.push(y.map((yi, j) => yi + h * coeff.reduce((acc, c, st) => acc + c * k[st][j], 0)));
+          T.push(tq); nextWant++;
+        }
+      } else { T.push(tNew); Y.push(y5.slice()); }
+      t = tNew; y = y5; f0 = fNew; // advance (FSAL reuse)
+    }
+    // Step-size update (used after both accept and reject).
+    const fac = errNorm === 0 ? MAXFAC : Math.min(MAXFAC, Math.max(MINFAC, SAFETY * errNorm ** -EXP));
+    h = dir * Math.min(Math.abs(h * fac), hMax, span);
+    if (Math.abs(h) < 1e-14 * Math.max(1, Math.abs(t))) throw new MatError('ode45: step size underflow (problem may be stiff — try ode15s)');
+  }
+
   const Ymat = zeros(T.length, neq); for (let r = 0; r < T.length; r++) for (let c = 0; c < neq; c++) Ymat.data[r + c * T.length] = Y[r][c];
   return nargout >= 2 ? [colVec(T), Ymat] : [Ymat];
 }
