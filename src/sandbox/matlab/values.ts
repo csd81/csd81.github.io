@@ -80,6 +80,8 @@ export interface Quantum {
   targets?: number[];       // target qubits, 1-based (gate)
   controls?: number[];      // control qubits, 1-based (gate)
   angles?: number[];        // rotation angles (gate)
+  umat?: number[];          // explicit 2^k×2^k unitary (flat, row-major [re,im] pairs) for unitaryGate
+  subgates?: Quantum[];     // compositeGate sub-gates
   numQubits?: number;       // circuit/state qubit count
   gates?: Quantum[];        // circuit's gate list
   re?: Float64Array;        // state amplitudes (real part), length 2^n

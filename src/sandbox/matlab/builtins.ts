@@ -1717,11 +1717,41 @@ export const BUILTINS: Record<string, Builtin> = {
   swapGate: async (a) => ret(mkGate('swap', [qList(a[0])[0], qList(a[1])[0]])),
   ccxGate: async (a) => ret(mkGate('x', qList(a[2]), [qList(a[0])[0], qList(a[1])[0]])),
   mcxGate: async (a) => ret(mkGate('x', qList(a[1]), qList(a[0]))),
+  r1Gate: async (a) => ret(mkGate('r1', qList(a[0]), [], [asScalar(a[1])])),
+  rxxGate: async (a) => ret(mkGate('rxx', [qList(a[0])[0], qList(a[1])[0]], [], [asScalar(a[2])])),
+  ryyGate: async (a) => ret(mkGate('ryy', [qList(a[0])[0], qList(a[1])[0]], [], [asScalar(a[2])])),
+  rzzGate: async (a) => ret(mkGate('rzz', [qList(a[0])[0], qList(a[1])[0]], [], [asScalar(a[2])])),
+  qftGate: async (a) => ret(mkGate('qft', qList(a[0]))),
+  ucrxGate: async (a) => ret(mkGate('rx', qList(a[1]), qList(a[0]), [toArray(m(a[2]))[0]])),
+  ucryGate: async (a) => ret(mkGate('ry', qList(a[1]), qList(a[0]), [toArray(m(a[2]))[0]])),
+  ucrzGate: async (a) => ret(mkGate('rz', qList(a[1]), qList(a[0]), [toArray(m(a[2]))[0]])),
+  unitaryGate: async (a) => { const q = qList(a[0]); const U = m(a[1]); const flat: number[] = []; for (let r = 0; r < U.rows; r++) for (let c = 0; c < U.cols; c++) flat.push(U.data[r + c * U.rows], U.idata ? U.idata[r + c * U.rows] : 0); const g = mkGate('unitary', q); g.umat = flat; return ret(g); },
+  compositeGate: async (a) => { const subs: Quantum[] = []; const collect = (v: Value) => { if (isQuantum(v) && v.qkind === 'gate') subs.push(v); else if (isCell(v)) v.items.forEach(collect); }; collect(a[0]); const g = mkGate('composite', a.length >= 2 ? qList(a[1]) : []); g.subgates = subs; return ret(g); },
+  observable: async (a) => ret(mkGate('observable', a.length >= 2 ? qList(a[1]) : [])),
+  // ── QUBO / QAOA optimization ──
+  qubo: async (a) => { const Q = m(a[0]); const c = a.length >= 2 && isMat(a[1]) ? colVec(toArray(m(a[1]))) : zeros(Q.rows, 1); const d = a.length >= 3 ? asScalar(a[2]) : 0; return ret(makeQubo(Q, c, d)); },
+  evaluateObjective: async (a) => { const q = a[0] as StructV; const x = toArray(m(a[1])); return ret(scalar(quboEnergy(m(q.fields.get('Q')![0]), toArray(m(q.fields.get('c')![0])), asScalar(q.fields.get('d')![0]), x))); },
+  solve: async (a) => ret(quboSolveResult(a[0] as StructV)),
+  tabuSearch: async (a) => ret(quboSolveResult(a[0] as StructV)),
+  qaoa: async (a) => { const qi = a.find((x) => isStruct(x) && (x as StructV).fields.has('Q')) as StructV; return ret(quboSolveResult(qi, 'qaoa')); },
+  qubo2ising: async (a, n) => {
+    const q = a[0] as StructV; const Q = m(q.fields.get('Q')![0]); const cc = toArray(m(q.fields.get('c')![0])); const d = asScalar(q.fields.get('d')![0]); const nv = Q.rows;
+    // x = (1 - s)/2 (s = ±1). Build h, J, offset.
+    const J = zeros(nv, nv); const h = new Array(nv).fill(0); let off = d;
+    for (let i = 0; i < nv; i++) { off += 0.5 * cc[i]; h[i] -= 0.5 * cc[i]; for (let j = 0; j < nv; j++) { const qij = Q.data[i + j * nv]; if (i === j) { off += 0.5 * qij; h[i] -= 0.5 * qij; } else { J.data[i + j * nv] += 0.25 * qij; h[i] -= 0.25 * qij; h[j] -= 0.25 * qij; off += 0.25 * qij; } } }
+    return n >= 3 ? [colVec(h), J, scalar(off)] : n >= 2 ? [colVec(h), J] : [colVec(h)];
+  },
+  maxcut2qubo: async (a) => { const W = isGraph(a[0]) ? adjacencyMat(a[0]) : m(a[0]); const nv = W.rows; const Q = zeros(nv, nv); for (let i = 0; i < nv; i++) { let deg = 0; for (let j = 0; j < nv; j++) { deg += W.data[i + j * nv]; if (i !== j) Q.data[i + j * nv] = W.data[i + j * nv]; } Q.data[i + i * nv] = -deg; } return ret(makeQubo(Q, zeros(nv, 1), 0)); },
+  knapsack2qubo: async (a) => { const w = toArray(m(a[0])), v = toArray(m(a[1])), cap = asScalar(a[2]); const nv = w.length; const P = (v.reduce((s, x) => s + Math.abs(x), 0)) + 1; const Q = zeros(nv, nv); const c = new Array(nv).fill(0); for (let i = 0; i < nv; i++) { c[i] = -v[i] + P * (w[i] * w[i] - 2 * cap * w[i]); for (let j = 0; j < nv; j++) if (i !== j) Q.data[i + j * nv] = P * w[i] * w[j]; } return ret(makeQubo(Q, colVec(c), P * cap * cap)); },
+  tsp2qubo: async (a) => { const D = m(a[0]); const ncity = D.rows; const nv = ncity * ncity; const Q = zeros(nv, nv); const idx = (i: number, p: number) => i * ncity + p; const P = (toArray(D).reduce((s, x) => s + x, 0)) + 1; for (let i = 0; i < ncity; i++) for (let p = 0; p < ncity; p++) { Q.data[idx(i, p) + idx(i, p) * nv] -= 2 * P; for (let q = 0; q < ncity; q++) if (q !== p) Q.data[idx(i, p) + idx(i, q) * nv] += P; for (let j = 0; j < ncity; j++) if (j !== i) Q.data[idx(i, p) + idx(j, p) * nv] += P; } for (let i = 0; i < ncity; i++) for (let j = 0; j < ncity; j++) if (i !== j) for (let p = 0; p < ncity; p++) { const pn = (p + 1) % ncity; Q.data[idx(i, p) + idx(j, pn) * nv] += D.data[i + j * ncity] / 2; Q.data[idx(j, pn) + idx(i, p) * nv] += D.data[i + j * ncity] / 2; } return ret(makeQubo(Q, zeros(nv, 1), 2 * P * ncity)); },
+  quboResult2knapsack: async (a) => { const res = a[0] as StructV; return ret(res.fields.get('BestX')![0]); },
+  quboResult2tsp: async (a) => { const res = a[0] as StructV; return ret(res.fields.get('BestX')![0]); },
   quantumCircuit: async (a) => {
     let nq = 0; const gates: Quantum[] = [];
     const collect = (v: Value) => { if (isQuantum(v) && v.qkind === 'gate') gates.push(v); else if (isCell(v)) v.items.forEach(collect); else if (isMat(v) && numel(v) === 1) nq = Math.max(nq, Math.round(asScalar(v))); };
     for (const arg of a) collect(arg);
-    for (const g of gates) nq = Math.max(nq, ...(g.targets ?? []), ...(g.controls ?? []));
+    const maxQ = (g: Quantum): number => Math.max(0, ...(g.targets ?? []), ...(g.controls ?? []), ...(g.subgates ?? []).map(maxQ));
+    for (const g of gates) nq = Math.max(nq, maxQ(g));
     return ret({ kind: 'quantum', qkind: 'circuit', numQubits: nq, gates } as Quantum);
   },
   simulate: async (a) => { const c = qArg(a[0]); if (c.qkind !== 'circuit') throw new MatError('simulate: expected a quantumCircuit'); return ret(simulateCircuit(c)); },
@@ -2528,6 +2558,23 @@ const HELP: Record<string, HelpEntry> = {
   probability: { summary: 'Measurement probabilities of a quantum state', syntax: ['p = probability(state)'], seealso: ['simulate', 'querystates'] },
   querystates: { summary: 'Basis-state labels of a quantum state', syntax: ['s = querystates(state)'], seealso: ['probability', 'formula'] },
   formula: { summary: 'Symbolic ket formula of a quantum state', syntax: ['f = formula(state)'], seealso: ['simulate', 'querystates'] },
+  r1Gate: { summary: 'Phase gate diag(1, e^{iθ})', syntax: ['g = r1Gate(qubit,theta)'], seealso: ['rzGate'] },
+  rxxGate: { summary: 'XX two-qubit rotation gate', syntax: ['g = rxxGate(q1,q2,theta)'], seealso: ['ryyGate', 'rzzGate'] },
+  ryyGate: { summary: 'YY two-qubit rotation gate', syntax: ['g = ryyGate(q1,q2,theta)'], seealso: ['rxxGate', 'rzzGate'] },
+  rzzGate: { summary: 'ZZ two-qubit rotation gate', syntax: ['g = rzzGate(q1,q2,theta)'], seealso: ['rxxGate', 'ryyGate'] },
+  qftGate: { summary: 'Quantum Fourier transform gate', syntax: ['g = qftGate(qubits)'], seealso: ['quantumCircuit', 'fft'] },
+  unitaryGate: { summary: 'Apply an arbitrary unitary to qubits', syntax: ['g = unitaryGate(qubits,U)'], seealso: ['quantumCircuit'] },
+  compositeGate: { summary: 'Bundle several gates into one', syntax: ['g = compositeGate(gates)'], seealso: ['quantumCircuit'] },
+  observable: { summary: 'Pauli observable for measurement', syntax: ['o = observable(paulis)'], seealso: ['simulate'] },
+  qubo: { summary: 'Create a QUBO problem (minimize x′Qx + c′x + d)', syntax: ['p = qubo(Q)', 'p = qubo(Q,c,d)'], seealso: ['solve', 'tabuSearch', 'qubo2ising'] },
+  solve: { summary: 'Solve a QUBO problem', syntax: ['result = solve(qprob)'], seealso: ['qubo', 'tabuSearch'] },
+  tabuSearch: { summary: 'Solve a QUBO via local (tabu) search', syntax: ['result = tabuSearch(qprob)'], seealso: ['qubo', 'solve'] },
+  qaoa: { summary: 'QAOA solver for a QUBO problem', syntax: ['result = qaoa(protocol,qprob)'], seealso: ['qubo', 'solve'] },
+  evaluateObjective: { summary: 'Evaluate a QUBO objective at x', syntax: ['v = evaluateObjective(qprob,x)'], seealso: ['qubo'] },
+  qubo2ising: { summary: 'Convert a QUBO to Ising (h, J, offset)', syntax: ['[h,J,c] = qubo2ising(qprob)'], seealso: ['qubo'] },
+  maxcut2qubo: { summary: 'Build a max-cut QUBO from a graph/adjacency', syntax: ['p = maxcut2qubo(G)'], seealso: ['qubo', 'solve'] },
+  knapsack2qubo: { summary: 'Build a knapsack QUBO', syntax: ['p = knapsack2qubo(w,v,capacity)'], seealso: ['qubo'] },
+  tsp2qubo: { summary: 'Build a travelling-salesman QUBO', syntax: ['p = tsp2qubo(D)'], seealso: ['qubo'] },
   contour3: { summary: '3-D contour plot of a surface', syntax: ['contour3(X,Y,Z)'], seealso: ['contour', 'surf', 'mesh'] },
   quiver: { summary: '2-D vector field (arrows)', syntax: ['quiver(X,Y,U,V)', 'quiver(U,V)'], seealso: ['plot', 'streamline'] },
   bar: { summary: 'Bar graph', syntax: ['bar(y)', 'bar(x,y)'], seealso: ['barh', 'histogram', 'stem'] },
@@ -2969,6 +3016,8 @@ const BASE_REF = new Set<string>((
   'table timetable array2table cell2table struct2table table2array table2cell table2struct istable istimetable istabular height width head tail summary ' +
   'hGate xGate yGate zGate sGate siGate tGate tiGate idGate rxGate ryGate rzGate cxGate cnotGate cyGate czGate chGate crxGate cryGate crzGate swapGate ccxGate mcxGate ' +
   'quantumCircuit simulate probability querystates formula ' +
+  'r1Gate rxxGate ryyGate rzzGate qftGate ucrxGate ucryGate ucrzGate unitaryGate compositeGate observable ' +
+  'qubo solve tabuSearch qaoa evaluateObjective qubo2ising maxcut2qubo knapsack2qubo tsp2qubo quboResult2knapsack quboResult2tsp ' +
   'sphere cylinder ellipsoid fsurf fmesh fcontour quiver ' +
   'bar barh area stem stairs scatter scatter3 plot3 stem3 errorbar pie histogram loglog semilogx semilogy subtitle sgtitle zlim xticks yticks zticks text box ' +
   'jet parula turbo hot cool gray bone copper pink spring summer autumn winter hsv lines colorcube cellstr dsearchn brighten ' +
@@ -4765,6 +4814,7 @@ function gateMatrix(name: string, theta = 0): [number, number][] {
     case 'rx': { const c = Math.cos(theta / 2), s = Math.sin(theta / 2); return [[c, 0], [0, -s], [0, -s], [c, 0]]; }
     case 'ry': { const c = Math.cos(theta / 2), s = Math.sin(theta / 2); return [[c, 0], [-s, 0], [s, 0], [c, 0]]; }
     case 'rz': { const c = Math.cos(theta / 2), s = Math.sin(theta / 2); return [[c, -s], [0, 0], [0, 0], [c, s]]; }
+    case 'r1': return [[1, 0], [0, 0], [0, 0], [Math.cos(theta), Math.sin(theta)]];
     default: return [[1, 0], [0, 0], [0, 0], [1, 0]];
   }
 }
@@ -4773,8 +4823,24 @@ function simulateCircuit(c: Quantum): Quantum {
   const n = c.numQubits ?? 1; const dim = 1 << n;
   const re = new Float64Array(dim), im = new Float64Array(dim); re[0] = 1;
   const bitOf = (q: number) => n - q;   // qubit q (1-based) → bit position (MSB=qubit 1)
-  for (const g of c.gates ?? []) {
-    if (g.gate === 'swap') { const [q1, q2] = g.targets!; const b1 = bitOf(q1), b2 = bitOf(q2); for (let i = 0; i < dim; i++) { const x1 = (i >> b1) & 1, x2 = (i >> b2) & 1; if (x1 < x2) { const j = i ^ (1 << b1) ^ (1 << b2); [re[i], re[j]] = [re[j], re[i]]; [im[i], im[j]] = [im[j], im[i]]; } } continue; }
+  const apply = (gates: Quantum[]) => { for (const g of gates) applyGate(g); };
+  const applyKUnitary = (Ure: Float64Array, Uim: Float64Array, qubits: number[]) => {
+    const k = qubits.length; const dimK = 1 << k; const bits = qubits.map(bitOf);
+    const others: number[] = []; for (let b = 0; b < n; b++) if (!bits.includes(b)) others.push(b);
+    for (let oc = 0; oc < (1 << others.length); oc++) {
+      let base = 0; for (let b = 0; b < others.length; b++) if ((oc >> b) & 1) base |= 1 << others[b];
+      const idx = new Array(dimK); for (let m2 = 0; m2 < dimK; m2++) { let bi = base; for (let b = 0; b < k; b++) if ((m2 >> (k - 1 - b)) & 1) bi |= 1 << bits[b]; idx[m2] = bi; }
+      const ar = idx.map((ix) => re[ix]), ai = idx.map((ix) => im[ix]);
+      for (let row = 0; row < dimK; row++) { let sr = 0, si = 0; for (let col = 0; col < dimK; col++) { const ur = Ure[row * dimK + col], ui = Uim[row * dimK + col]; sr += ur * ar[col] - ui * ai[col]; si += ur * ai[col] + ui * ar[col]; } re[idx[row]] = sr; im[idx[row]] = si; }
+    }
+  };
+  const applyGate = (g: Quantum) => {
+    if (g.gate === 'composite') { apply(g.subgates ?? []); return; }
+    if (g.gate === 'observable') return;
+    if (g.gate === 'unitary' && g.umat) { const k = g.targets!.length; const d = 1 << k; const Ure = new Float64Array(d * d), Uim = new Float64Array(d * d); for (let i = 0; i < d * d; i++) { Ure[i] = g.umat[2 * i]; Uim[i] = g.umat[2 * i + 1]; } applyKUnitary(Ure, Uim, g.targets!); return; }
+    if (g.gate === 'qft') { const k = g.targets!.length; const d = 1 << k; const Ure = new Float64Array(d * d), Uim = new Float64Array(d * d); const norm = 1 / Math.sqrt(d); for (let r = 0; r < d; r++) for (let cc = 0; cc < d; cc++) { const ph = 2 * Math.PI * r * cc / d; Ure[r * d + cc] = norm * Math.cos(ph); Uim[r * d + cc] = norm * Math.sin(ph); } applyKUnitary(Ure, Uim, g.targets!); return; }
+    if (g.gate === 'rxx' || g.gate === 'ryy' || g.gate === 'rzz') { const { Ure, Uim } = twoQubitRot(g.gate, g.angles?.[0] ?? 0); applyKUnitary(Ure, Uim, g.targets!); return; }
+    if (g.gate === 'swap') { const [q1, q2] = g.targets!; const b1 = bitOf(q1), b2 = bitOf(q2); for (let i = 0; i < dim; i++) { const x1 = (i >> b1) & 1, x2 = (i >> b2) & 1; if (x1 < x2) { const j = i ^ (1 << b1) ^ (1 << b2); [re[i], re[j]] = [re[j], re[i]]; [im[i], im[j]] = [im[j], im[i]]; } } return; }
     const U = gateMatrix(g.gate!, g.angles?.[0] ?? 0); const ctrlMask = (g.controls ?? []).reduce((mk, q) => mk | (1 << bitOf(q)), 0);
     for (const tq of g.targets!) {
       const tb = bitOf(tq);
@@ -4789,8 +4855,45 @@ function simulateCircuit(c: Quantum): Quantum {
         im[j] = U[2][0] * a0i + U[2][1] * a0r + U[3][0] * a1i + U[3][1] * a1r;
       }
     }
-  }
+  };
+  apply(c.gates ?? []);
   return { kind: 'quantum', qkind: 'state', numQubits: n, re, im };
+}
+function makeQubo(Q: Mat, c: Mat, d: number): StructV { return { kind: 'struct', rows: 1, cols: 1, fields: new Map<string, Value[]>([['Type', [str('qubo')]], ['Q', [Q]], ['c', [c]], ['d', [scalar(d)]], ['NumVariables', [scalar(Q.rows)]]]) }; }
+function quboEnergy(Q: Mat, c: number[], d: number, x: number[]): number {
+  const n = Q.rows; let e = d; for (let i = 0; i < n; i++) { e += c[i] * x[i]; for (let j = 0; j < n; j++) e += Q.data[i + j * n] * x[i] * x[j]; } return e;
+}
+/** Minimize x'Qx + c'x + d over x∈{0,1}ⁿ: brute force for small n, else greedy local search. */
+function quboMinimize(Q: Mat, c: number[], d: number): { x: number[]; val: number } {
+  const n = Q.rows;
+  if (n <= 18) { let best: number[] = new Array(n).fill(0), bv = Infinity; for (let m2 = 0; m2 < (1 << n); m2++) { const x = Array.from({ length: n }, (_, i) => (m2 >> i) & 1); const e = quboEnergy(Q, c, d, x); if (e < bv) { bv = e; best = x; } } return { x: best, val: bv }; }
+  let best: number[] = [], bv = Infinity;
+  for (let restart = 0; restart < 30; restart++) {
+    const x = Array.from({ length: n }, () => (Math.random() < 0.5 ? 0 : 1)); let cur = quboEnergy(Q, c, d, x);
+    let improved = true; while (improved) { improved = false; for (let i = 0; i < n; i++) { x[i] ^= 1; const e = quboEnergy(Q, c, d, x); if (e < cur - 1e-12) { cur = e; improved = true; } else x[i] ^= 1; } }
+    if (cur < bv) { bv = cur; best = x.slice(); }
+  }
+  return { x: best, val: bv };
+}
+function quboSolveResult(q: StructV, algo = 'tabuSearch'): StructV {
+  const Q = m(q.fields.get('Q')![0]); const c = toArray(m(q.fields.get('c')![0])); const d = asScalar(q.fields.get('d')![0]);
+  const { x, val } = quboMinimize(Q, c, d);
+  return { kind: 'struct', rows: 1, cols: 1, fields: new Map<string, Value[]>([['BestX', [colVec(x)]], ['BestFunctionValue', [scalar(val)]], ['Algorithm', [str(algo)]]]) };
+}
+/** 4×4 unitary for the rxx/ryy/rzz two-qubit rotation gates (flat row-major [re,im]). */
+function twoQubitRot(name: string, theta: number): { Ure: Float64Array; Uim: Float64Array } {
+  const c = Math.cos(theta / 2), s = Math.sin(theta / 2); const Ure = new Float64Array(16), Uim = new Float64Array(16);
+  const set = (r: number, cc: number, re: number, im: number) => { Ure[r * 4 + cc] = re; Uim[r * 4 + cc] = im; };
+  if (name === 'rzz') { // diag(e^{-iθ/2}, e^{iθ/2}, e^{iθ/2}, e^{-iθ/2})
+    const ph = [-theta / 2, theta / 2, theta / 2, -theta / 2]; for (let i = 0; i < 4; i++) set(i, i, Math.cos(ph[i]), Math.sin(ph[i]));
+  } else if (name === 'rxx') { // cos I − i sin XX (XX is anti-diagonal)
+    for (let i = 0; i < 4; i++) set(i, i, c, 0); for (const [i, j] of [[0, 3], [1, 2], [2, 1], [3, 0]]) set(i, j, 0, -s);
+  } else { // ryy: cos I − i sin YY ; YY anti-diagonal with signs (+,−,−,+)
+    for (let i = 0; i < 4; i++) set(i, i, c, 0); const sg = [1, -1, -1, 1]; const pairs = [[0, 3], [1, 2], [2, 1], [3, 0]]; pairs.forEach(([i, j], k) => set(i, j, 0, sg[k] * s)); // -i*(±1)*s → imag = ∓s? use YY signs
+    // YY = [[0,0,0,-1],[0,0,1,0],[0,1,0,0],[-1,0,0,0]]; exp(-iθ/2 YY) off-diag = -i sin * YY entry
+    set(0, 3, 0, s); set(1, 2, 0, -s); set(2, 1, 0, -s); set(3, 0, 0, s);
+  }
+  return { Ure, Uim };
 }
 function stateFormula(st: Quantum): string {
   const n = st.numQubits!; const parts: string[] = [];
