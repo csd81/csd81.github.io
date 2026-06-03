@@ -34,6 +34,8 @@
 .mlab__tool--on { background: var(--brand-100, rgba(47,111,237,0.14)); color: var(--brand-700, var(--text)); }
 .mlab__tool--run { background: var(--brand-600, #2f6fed); color: #fff; }
 .mlab__tool--run:hover { background: var(--brand-700, #2459c8); border-color: transparent; }
+.mlab__tool--stop:not(:disabled) { background: #d23b3b; color: #fff; }
+.mlab__tool--stop:not(:disabled):hover { background: #b62f2f; border-color: transparent; }
 .mlab__tool:disabled { opacity: 0.5; cursor: default; }
 
 /* Workbench grid with draggable gutter tracks. */

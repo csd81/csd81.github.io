@@ -28,6 +28,12 @@ export interface InterpOptions {
   onOutput: (text: string) => void;
   requestInput?: (prompt: string) => Promise<string>;
   onClearConsole?: () => void;
+  /**
+   * Cooperative-yield hook, called periodically from inside loops. When the
+   * interpreter runs in a Web Worker this returns to the event loop (so the
+   * worker can process an incoming "abort" message) and throws to abort the run.
+   */
+  onTick?: () => void | Promise<void>;
 }
 
 export class Interpreter implements Env {
@@ -38,12 +44,20 @@ export class Interpreter implements Env {
   private onOutputCb: (text: string) => void;
   private requestInputCb: (prompt: string) => Promise<string>;
   private clearConsoleCb: () => void;
+  private onTickCb: () => void | Promise<void>;
+  private ticks = 0;
   base = new Scope();
 
   constructor(opts: InterpOptions) {
     this.onOutputCb = opts.onOutput;
     this.requestInputCb = opts.requestInput ?? (async () => '');
     this.clearConsoleCb = opts.onClearConsole ?? (() => {});
+    this.onTickCb = opts.onTick ?? (() => {});
+  }
+
+  /** Periodic cooperative yield from loop bodies (no-op unless an onTick hook is set). */
+  private maybeTick(): void | Promise<void> {
+    if ((++this.ticks & 0x7ff) === 0) return this.onTickCb();
   }
 
   output(text: string) { this.onOutputCb(text); }
@@ -189,6 +203,7 @@ export class Interpreter implements Env {
           if (r.rows === 1 || r.cols === 1) v = scalar(r.data[c]);
           else { const col = zeros(r.rows, 1); for (let rr = 0; rr < r.rows; rr++) col.data[rr] = r.data[rr + c * r.rows]; v = col; }
           scope.vars.set(stmt.varName, v);
+          const t = this.maybeTick(); if (t) await t;
           try { await this.runStmts(stmt.body, scope); }
           catch (e) { if (e instanceof BreakSignal) break; if (e instanceof ContinueSignal) continue; throw e; }
         }
@@ -197,7 +212,8 @@ export class Interpreter implements Env {
       case 'while': {
         let guard = 0;
         while (truthy(await this.evalExpr(stmt.cond, scope))) {
-          if (++guard > 1e7) throw new MatError('while loop exceeded 10,000,000 iterations (aborted)');
+          if (++guard > 1e8) throw new MatError('while loop exceeded 100,000,000 iterations (aborted)');
+          const t = this.maybeTick(); if (t) await t;
           try { await this.runStmts(stmt.body, scope); }
           catch (e) { if (e instanceof BreakSignal) break; if (e instanceof ContinueSignal) continue; throw e; }
         }

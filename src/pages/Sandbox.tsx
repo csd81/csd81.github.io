@@ -35,7 +35,7 @@ export default function Sandbox() {
   const centerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLElement>(null);
 
-  const { lines, workspace, fig, busy, prompt, runSource, submit, clearConsole, resetSession } = useSandbox(folderId);
+  const { lines, workspace, fig, busy, prompt, runSource, submit, clearConsole, resetSession, abort } = useSandbox(folderId);
 
   useEffect(() => { setEditor(lf(fileById(openId)?.source)); setCursor({ line: 1, col: 1 }); }, [openId]);
   // Opening a file reveals the editor.
@@ -119,6 +119,7 @@ export default function Sandbox() {
         <span className="mlab__brand">🧮 {t('MATLAB Sandbox', 'MATLAB homokozó')}</span>
         <div className="mlab__tgroup">
           <button className="mlab__tool mlab__tool--run" disabled={busy} onClick={() => runSource(editor)} title={t('Run the editor (Ctrl+Enter)', 'Futtatás (Ctrl+Enter)')}>▶ {t('Run', 'Futtatás')}</button>
+          <button className="mlab__tool mlab__tool--stop" disabled={!busy} onClick={abort} title={t('Stop the running computation', 'Futó számítás leállítása')}>■ {t('Stop', 'Állj')}</button>
           <button className="mlab__tool" onClick={resetSession} title={t('Clear workspace & restart', 'Munkaterület törlése, újraindítás')}>↻ {t('Reset', 'Újra')}</button>
           <button className="mlab__tool" onClick={clearConsole} title={t('Clear command window', 'Parancsablak törlése')}>⌫ {t('Clear', 'Törlés')}</button>
         </div>
