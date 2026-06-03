@@ -468,6 +468,32 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(finishComplex(idx.length, 1, Float64Array.from(idx.map((i) => re[i])), Float64Array.from(idx.map((i) => im[i]))));
   },
   svds: async (a) => { const A = m(a[0]); const k = a.length >= 2 ? Math.round(asScalar(a[1])) : Math.min(A.rows, A.cols, 6); const { s } = svdReal(A); return ret(colVec(s.slice(0, k))); },
+  // ── digital filtering & signal math ──
+  filter: async (a) => {
+    const b = toArray(m(a[0])), aa = toArray(m(a[1])), x = m(a[2]); const xs = toArray(x); const a0 = aa[0]; const y = new Array(xs.length).fill(0);
+    for (let n = 0; n < xs.length; n++) { let acc = 0; for (let k = 0; k < b.length; k++) if (n - k >= 0) acc += b[k] * xs[n - k]; for (let k = 1; k < aa.length; k++) if (n - k >= 0) acc -= aa[k] * y[n - k]; y[n] = acc / a0; }
+    return ret(x.cols === 1 ? colVec(y) : rowVec(y));
+  },
+  conv2: async (a) => { const shape = a.length >= 3 && isMat(a[2]) && (a[2] as Mat).isChar ? asString(a[2]) : 'full'; return ret(conv2Shape(m(a[0]), m(a[1]), shape)); },
+  filter2: async (a) => { const shape = a.length >= 3 && isMat(a[2]) && (a[2] as Mat).isChar ? asString(a[2]) : 'same'; return ret(conv2Shape(m(a[1]), rot90n(m(a[0]), 2), shape)); },
+  xcorr: async (a) => { const x = toArray(m(a[0])); const y = a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar ? toArray(m(a[1])) : x; return ret(rowVec(xcorrFn(x, y))); },
+  xcov: async (a) => { const x = toArray(m(a[0])); const y = a.length >= 2 ? toArray(m(a[1])) : x; const mx = x.reduce((s, v) => s + v, 0) / x.length, my = y.reduce((s, v) => s + v, 0) / y.length; return ret(rowVec(xcorrFn(x.map((v) => v - mx), y.map((v) => v - my)))); },
+  detrend: async (a) => { const type = a.length >= 2 && isMat(a[1]) && (a[1] as Mat).isChar ? asString(a[1]) : 'linear'; return ret(colMap(m(a[0]), (c) => detrendVec(c, type))); },
+  fftn: async (a) => { const A = m(a[0]); return ret(A.rows === 1 || A.cols === 1 ? fftApply(A, -1) : transpose(fftApply(transpose(fftApply(A, -1)), -1))); },
+  ifftn: async (a) => { const A = m(a[0]); return ret(A.rows === 1 || A.cols === 1 ? fftApply(A, 1) : transpose(fftApply(transpose(fftApply(A, 1)), 1))); },
+  // ── data preprocessing & smoothing ──
+  smoothdata: async (a) => { const A = m(a[0]); const win = a.find((v, i) => i > 0 && isMat(v) && !(v as Mat).isChar); const k = win ? Math.round(asScalar(win)) : Math.max(3, Math.round((A.rows === 1 || A.cols === 1 ? numel(A) : A.rows) * 0.1)); const method = a.find((v) => isMat(v) && (v as Mat).isChar); const med = !!(method && asString(method as Mat) === 'movmedian'); return ret(colMap(A, (c) => movVec(c, k, med))); },
+  smoothdata2: async (a) => { const A = m(a[0]); const k = a.length >= 2 ? Math.round(asScalar(a[1])) : 3; return ret(smooth2(A, k)); },
+  normalize: async (a) => { const method = a.length >= 2 && isMat(a[1]) && (a[1] as Mat).isChar ? asString(a[1]) : 'zscore'; return ret(colMap(m(a[0]), (c) => normalizeVec(c, method))); },
+  rescale: async (a) => { const A = m(a[0]); const lo = a.length >= 2 ? asScalar(a[1]) : 0, hi = a.length >= 3 ? asScalar(a[2]) : 1; const mn = Math.min(...toArray(A)), mx = Math.max(...toArray(A)); const d = mx - mn || 1; return ret(map(A, (x) => lo + (hi - lo) * (x - mn) / d)); },
+  clip: async (a) => { const lo = asScalar(a[1]), hi = asScalar(a[2]); return ret(map(m(a[0]), (x) => Math.min(hi, Math.max(lo, x)))); },
+  isoutlier: async (a) => { const A = m(a[0]); const r = colMap(A, (c) => outlierMask(c)); r.isBool = true; return [r]; },
+  filloutliers: async (a) => { const A = m(a[0]); const fillNum = a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar ? asScalar(a[1]) : null; return ret(colMap(A, (c) => fillOutliersVec(c, fillNum))); },
+  rmoutliers: async (a) => { const c = toArray(m(a[0])); const mask = outlierMask(c); const kept = c.filter((_, i) => mask[i] === 0); return ret(m(a[0]).cols === 1 ? colVec(kept) : rowVec(kept)); },
+  islocalmax: async (a) => { const A = m(a[0]); const v = toArray(A); const o = v.map((_, i) => (i > 0 && i < v.length - 1 && v[i] > v[i - 1] && v[i] > v[i + 1] ? 1 : 0)); const out = A.cols === 1 ? colVec(o) : rowVec(o); out.isBool = true; return [out]; },
+  islocalmin: async (a) => { const A = m(a[0]); const v = toArray(A); const o = v.map((_, i) => (i > 0 && i < v.length - 1 && v[i] < v[i - 1] && v[i] < v[i + 1] ? 1 : 0)); const out = A.cols === 1 ? colVec(o) : rowVec(o); out.isBool = true; return [out]; },
+  isapprox: async (a) => { const tol = a.length >= 3 ? asScalar(a[2]) : 1e-6; const r = elementwise(m(a[0]), m(a[1]), (x, y) => (Math.abs(x - y) <= tol + tol * Math.max(Math.abs(x), Math.abs(y)) ? 1 : 0)); return ret({ ...r, isBool: true }); },
+  erfinv: async (a) => ret(map(m(a[0]), erfinvFn)),
 
   // ── Numerical methods (real-valued) ──
   trapz: async (a) => {
@@ -1110,6 +1136,72 @@ function fftShift(A: Mat, inverse: boolean): Mat {
   const scol = A.rows === 1 ? shift(A.cols) : sc;
   for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) { const nr = (r + sr) % A.rows, nc = (c + scol) % A.cols; o.data[nr + nc * A.rows] = A.data[r + c * A.rows]; if (im) im[nr + nc * A.rows] = A.idata![r + c * A.rows]; }
   if (im) o.idata = im; return o;
+}
+
+// ── Signal / preprocessing helpers ────────────────────────────────────────
+function conv2Full(A: Mat, B: Mat): Mat {
+  const r = A.rows + B.rows - 1, c = A.cols + B.cols - 1; const o = zeros(r, c);
+  for (let ac = 0; ac < A.cols; ac++) for (let ar = 0; ar < A.rows; ar++) { const av = A.data[ar + ac * A.rows]; if (av === 0) continue; for (let bc = 0; bc < B.cols; bc++) for (let br = 0; br < B.rows; br++) o.data[(ar + br) + (ac + bc) * r] += av * B.data[br + bc * B.rows]; }
+  return o;
+}
+function conv2Shape(A: Mat, B: Mat, shape: string): Mat {
+  const full = conv2Full(A, B);
+  if (shape === 'full') return full;
+  if (shape === 'valid') { const r = Math.max(0, A.rows - B.rows + 1), c = Math.max(0, A.cols - B.cols + 1); const o = zeros(r, c); const sr = B.rows - 1, sc = B.cols - 1; for (let cc = 0; cc < c; cc++) for (let rr = 0; rr < r; rr++) o.data[rr + cc * r] = full.data[(rr + sr) + (cc + sc) * full.rows]; return o; }
+  // 'same' — centred A-sized window
+  const sr = Math.floor(B.rows / 2), sc = Math.floor(B.cols / 2); const o = zeros(A.rows, A.cols);
+  for (let cc = 0; cc < A.cols; cc++) for (let rr = 0; rr < A.rows; rr++) o.data[rr + cc * A.rows] = full.data[(rr + sr) + (cc + sc) * full.rows];
+  return o;
+}
+function xcorrFn(x: number[], y: number[]): number[] {
+  const N = Math.max(x.length, y.length); const xp = [...x, ...new Array(N - x.length).fill(0)]; const yp = [...y, ...new Array(N - y.length).fill(0)];
+  const out: number[] = []; for (let lag = -(N - 1); lag <= N - 1; lag++) { let s = 0; for (let n = 0; n < N; n++) { const mm = n - lag; if (mm >= 0 && mm < N) s += xp[n] * yp[mm]; } out.push(s); } return out;
+}
+function detrendVec(c: number[], type: string): number[] {
+  const n = c.length; if (type === 'constant' || type === '0') { const mu = c.reduce((s, x) => s + x, 0) / n; return c.map((x) => x - mu); }
+  let sx = 0, sy = 0, sxx = 0, sxy = 0; for (let i = 0; i < n; i++) { sx += i; sy += c[i]; sxx += i * i; sxy += i * c[i]; }
+  const slope = (n * sxy - sx * sy) / (n * sxx - sx * sx || 1); const intercept = (sy - slope * sx) / n;
+  return c.map((x, i) => x - (slope * i + intercept));
+}
+/** Apply a vector→vector transform to a vector, or per column of a matrix. */
+function colMap(A: Mat, f: (col: number[]) => number[]): Mat {
+  if (A.rows === 1 || A.cols === 1) { const r = f(toArray(A)); return A.cols === 1 ? colVec(r) : rowVec(r); }
+  const o = zeros(A.rows, A.cols); for (let c = 0; c < A.cols; c++) { const col: number[] = []; for (let r = 0; r < A.rows; r++) col.push(A.data[r + c * A.rows]); const rr = f(col); for (let r = 0; r < A.rows; r++) o.data[r + c * A.rows] = rr[r]; } return o;
+}
+function movVec(v: number[], k: number, median: boolean): number[] {
+  const n = v.length; const before = Math.floor((k - 1) / 2); const out: number[] = [];
+  for (let i = 0; i < n; i++) { const w = v.slice(Math.max(0, i - before), Math.min(n, i - before + k)); if (median) { const s = [...w].sort((a, b) => a - b); out.push(s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2); } else out.push(w.reduce((a, b) => a + b, 0) / w.length); }
+  return out;
+}
+function smooth2(A: Mat, k: number): Mat {
+  const b = Math.floor((k - 1) / 2); const o = zeros(A.rows, A.cols);
+  for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) { let s = 0, cnt = 0; for (let dr = -b; dr <= k - 1 - b; dr++) for (let dc = -b; dc <= k - 1 - b; dc++) { const rr = r + dr, cc = c + dc; if (rr >= 0 && rr < A.rows && cc >= 0 && cc < A.cols) { s += A.data[rr + cc * A.rows]; cnt++; } } o.data[r + c * A.rows] = s / cnt; }
+  return o;
+}
+function normalizeVec(c: number[], method: string): number[] {
+  const n = c.length; const mu = c.reduce((s, x) => s + x, 0) / n;
+  if (method === 'center') return c.map((x) => x - mu);
+  if (method === 'range') { const mn = Math.min(...c), mx = Math.max(...c); const d = mx - mn || 1; return c.map((x) => (x - mn) / d); }
+  if (method === 'norm') { const nr = Math.hypot(...c) || 1; return c.map((x) => x / nr); }
+  if (method === 'scale') { const sd = Math.sqrt(c.reduce((s, x) => s + (x - mu) ** 2, 0) / (n - 1 || 1)) || 1; return c.map((x) => x / sd); }
+  const sd = Math.sqrt(c.reduce((s, x) => s + (x - mu) ** 2, 0) / (n - 1 || 1)) || 1; return c.map((x) => (x - mu) / sd); // zscore
+}
+function outlierMask(c: number[]): number[] {
+  const s = [...c].sort((a, b) => a - b); const n = s.length; const med = n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2;
+  const dev = c.map((x) => Math.abs(x - med)).sort((a, b) => a - b); const mad = dev.length % 2 ? dev[(dev.length - 1) / 2] : (dev[dev.length / 2 - 1] + dev[dev.length / 2]) / 2;
+  const thr = 3 * 1.4826 * mad; return c.map((x) => (Math.abs(x - med) > thr && thr > 0 ? 1 : 0));
+}
+function fillOutliersVec(c: number[], fillNum: number | null): number[] {
+  const mask = outlierMask(c); const s = [...c].sort((a, b) => a - b); const n = s.length; const med = n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2;
+  return c.map((x, i) => (mask[i] ? (fillNum ?? med) : x));
+}
+/** Inverse error function (Winitzki approximation + one Newton step). */
+function erfinvFn(y: number): number {
+  if (y <= -1) return -Infinity; if (y >= 1) return Infinity; if (y === 0) return 0;
+  const a = 0.147; const ln = Math.log(1 - y * y); const t1 = 2 / (Math.PI * a) + ln / 2;
+  let x = Math.sign(y) * Math.sqrt(Math.sqrt(t1 * t1 - ln / a) - t1);
+  x -= (erfFn(x) - y) / (2 / Math.sqrt(Math.PI) * Math.exp(-x * x)); // Newton refine
+  return x;
 }
 
 // ── Statistics helpers ────────────────────────────────────────────────────
