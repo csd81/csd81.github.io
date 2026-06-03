@@ -411,6 +411,106 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(bool(true));
   },
 
+  // ── Numerical methods (real-valued) ──
+  trapz: async (a) => {
+    let x: number[], y: number[];
+    if (a.length >= 2) { x = toArray(m(a[0])); y = toArray(m(a[1])); } else { y = toArray(m(a[0])); x = y.map((_, i) => i + 1); }
+    let s = 0; for (let i = 1; i < y.length; i++) s += (x[i] - x[i - 1]) * (y[i] + y[i - 1]) / 2;
+    return ret(scalar(s));
+  },
+  gradient: async (a) => {
+    const y = toArray(m(a[0])); const h = a.length >= 2 ? asScalar(a[1]) : 1; const n = y.length; const g: number[] = [];
+    for (let i = 0; i < n; i++) { if (i === 0) g.push((y[1] - y[0]) / h); else if (i === n - 1) g.push((y[n - 1] - y[n - 2]) / h); else g.push((y[i + 1] - y[i - 1]) / (2 * h)); }
+    return ret(m(a[0]).cols === 1 ? colVec(g) : rowVec(g));
+  },
+  integral: async (a, _n, env) => {
+    const f = handle(a[0], 'integral'); const lo = asScalar(a[1]), hi = asScalar(a[2]);
+    const F = async (x: number) => callScalar(env, f, x);
+    const simpson = async (x0: number, x2: number, f0: number, f1: number, f2: number, whole: number, depth: number): Promise<number> => {
+      const x1 = (x0 + x2) / 2; const xa = (x0 + x1) / 2, xb = (x1 + x2) / 2;
+      const fa = await F(xa), fb = await F(xb);
+      const left = (x1 - x0) / 6 * (f0 + 4 * fa + f1), right = (x2 - x1) / 6 * (f1 + 4 * fb + f2);
+      if (depth <= 0 || Math.abs(left + right - whole) < 1e-10) return left + right + (left + right - whole) / 15;
+      return (await simpson(x0, x1, f0, fa, f1, left, depth - 1)) + (await simpson(x1, x2, f1, fb, f2, right, depth - 1));
+    };
+    const f0 = await F(lo), f2 = await F(hi), fm = await F((lo + hi) / 2);
+    const whole = (hi - lo) / 6 * (f0 + 4 * fm + f2);
+    return ret(scalar(await simpson(lo, hi, f0, fm, f2, whole, 50)));
+  },
+  fzero: async (a, _n, env) => {
+    const f = handle(a[0], 'fzero'); const F = (x: number) => callScalar(env, f, x);
+    let alo: number, ahi: number;
+    const x0 = m(a[1]);
+    if (numel(x0) >= 2) { alo = x0.data[0]; ahi = x0.data[1]; }
+    else { const x = x0.data[0]; const f0 = await F(x); if (f0 === 0) return ret(scalar(x)); let dx = Math.abs(x) * 0.02 || 0.02; alo = x; ahi = x; let found = false; for (let i = 0; i < 60; i++) { dx *= 1.6; if (await F(x - dx) * f0 < 0) { alo = x - dx; ahi = x; found = true; break; } if (await F(x + dx) * f0 < 0) { alo = x; ahi = x + dx; found = true; break; } } if (!found) throw new MatError('fzero: could not bracket a sign change'); }
+    let flo = await F(alo), fhi = await F(ahi);
+    if (flo * fhi > 0) throw new MatError('fzero: function values at interval endpoints must differ in sign');
+    for (let i = 0; i < 200; i++) { const mid = (alo + ahi) / 2; const fm = await F(mid); if (Math.abs(fm) < 1e-14 || (ahi - alo) / 2 < 1e-14) return ret(scalar(mid)); if (flo * fm < 0) { ahi = mid; fhi = fm; } else { alo = mid; flo = fm; } }
+    return ret(scalar((alo + ahi) / 2));
+  },
+  fminbnd: async (a, _n, env) => {
+    const f = handle(a[0], 'fminbnd'); const F = (x: number) => callScalar(env, f, x);
+    let lo = asScalar(a[1]), hi = asScalar(a[2]); const gr = (Math.sqrt(5) - 1) / 2;
+    let x1 = hi - gr * (hi - lo), x2 = lo + gr * (hi - lo); let f1 = await F(x1), f2 = await F(x2);
+    for (let i = 0; i < 200 && hi - lo > 1e-10; i++) { if (f1 < f2) { hi = x2; x2 = x1; f2 = f1; x1 = hi - gr * (hi - lo); f1 = await F(x1); } else { lo = x1; x1 = x2; f1 = f2; x2 = lo + gr * (hi - lo); f2 = await F(x2); } }
+    return ret(scalar((lo + hi) / 2));
+  },
+  fminsearch: async (a, _n, env) => {
+    const f = handle(a[0], 'fminsearch'); const x0 = toArray(m(a[1])); const n = x0.length;
+    const F = async (v: number[]) => { const r = await env.callHandle(f, [colVec(v)], 1); return r.length && isMat(r[0]) ? asScalar(r[0]) : NaN; };
+    const simplex: number[][] = [x0.slice()]; for (let i = 0; i < n; i++) { const p = x0.slice(); p[i] += (p[i] !== 0 ? 0.05 * p[i] : 0.00025); simplex.push(p); }
+    let fv = await Promise.all(simplex.map(F));
+    const add = (p: number[], q: number[], s: number) => p.map((v, i) => v + s * q[i]);
+    const sub = (p: number[], q: number[]) => p.map((v, i) => v - q[i]);
+    for (let iter = 0; iter < 200 * n; iter++) {
+      const ord = fv.map((_, i) => i).sort((i, j) => fv[i] - fv[j]);
+      const s2 = ord.map((i) => simplex[i]); const fv2 = ord.map((i) => fv[i]);
+      for (let i = 0; i <= n; i++) { simplex[i] = s2[i]; fv[i] = fv2[i]; }
+      if (Math.abs(fv[n] - fv[0]) < 1e-10) break;
+      const cen = new Array(n).fill(0); for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) cen[j] += simplex[i][j] / n;
+      const xr = add(cen, sub(cen, simplex[n]), 1); const fr = await F(xr);
+      if (fr < fv[0]) { const xe = add(cen, sub(cen, simplex[n]), 2); const fe = await F(xe); if (fe < fr) { simplex[n] = xe; fv[n] = fe; } else { simplex[n] = xr; fv[n] = fr; } }
+      else if (fr < fv[n - 1]) { simplex[n] = xr; fv[n] = fr; }
+      else { const xc = add(cen, sub(simplex[n], cen), 0.5); const fc = await F(xc); if (fc < fv[n]) { simplex[n] = xc; fv[n] = fc; } else { for (let i = 1; i <= n; i++) { simplex[i] = add(simplex[0], sub(simplex[i], simplex[0]), 0.5); fv[i] = await F(simplex[i]); } } }
+    }
+    let bi = 0; for (let i = 1; i <= n; i++) if (fv[i] < fv[bi]) bi = i;
+    return ret(m(a[1]).rows === 1 ? rowVec(simplex[bi]) : colVec(simplex[bi]));
+  },
+  interp1: async (a) => {
+    const x = toArray(m(a[0])), v = toArray(m(a[1])), xq = m(a[2]); const method = a.length >= 4 ? asString(a[3]) : 'linear';
+    const interp = (q: number) => {
+      if (q <= x[0]) return method === 'nearest' ? v[0] : v[0] + (v[1] - v[0]) * (q - x[0]) / (x[1] - x[0]);
+      let i = 0; while (i < x.length - 2 && q > x[i + 1]) i++;
+      if (method === 'nearest') return Math.abs(q - x[i]) <= Math.abs(q - x[i + 1]) ? v[i] : v[i + 1];
+      return v[i] + (v[i + 1] - v[i]) * (q - x[i]) / (x[i + 1] - x[i]);
+    };
+    return ret(map(xq, interp));
+  },
+  spline: async (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])), xq = m(a[2]); return ret(map(xq, (q) => splineEval(x, y, q))); },
+  roots: async (a) => ret(colVec(realRoots(toArray(m(a[0]))))),
+  ode45: async (a, n, env) => odeSolve(a, n, env),
+  ode15s: async (a, n, env) => odeSolve(a, n, env),
+
+  // ── supporting array constructors ──
+  logspace: async (a) => { const lo = asScalar(a[0]), hi = asScalar(a[1]); const k = a.length >= 3 ? Math.round(asScalar(a[2])) : 50; const out: number[] = []; for (let i = 0; i < k; i++) out.push(Math.pow(10, lo + (hi - lo) * i / (k - 1))); return ret(rowVec(out)); },
+  meshgrid: async (a, n) => {
+    const x = toArray(m(a[0])); const y = a.length >= 2 ? toArray(m(a[1])) : x;
+    const X = zeros(y.length, x.length), Y = zeros(y.length, x.length);
+    for (let r = 0; r < y.length; r++) for (let c = 0; c < x.length; c++) { X.data[r + c * y.length] = x[c]; Y.data[r + c * y.length] = y[r]; }
+    return n >= 2 ? [X, Y] : [X];
+  },
+  randn: async (a) => { const [r, c] = dims2(a); const o = zeros(r, c); for (let i = 0; i < o.data.length; i++) { const u = Math.random() || 1e-12, w = Math.random(); o.data[i] = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * w); } return ret(o); },
+  randi: async (a) => { const hi = Math.round(asScalar(a[0])); const r = a.length >= 2 ? Math.round(asScalar(a[1])) : 1; const c = a.length >= 3 ? Math.round(asScalar(a[2])) : r; const o = zeros(r, c); for (let i = 0; i < o.data.length; i++) o.data[i] = 1 + Math.floor(Math.random() * hi); return ret(o); },
+  nnz: async (a) => ret(scalar(toArray(m(a[0])).filter((x) => x !== 0).length)),
+  squeeze: async (a) => ret(m(a[0])),
+  sortrows: async (a, n) => {
+    const A = m(a[0]); const rows: number[][] = [];
+    for (let r = 0; r < A.rows; r++) { const row: number[] = []; for (let c = 0; c < A.cols; c++) row.push(A.data[r + c * A.rows]); rows.push(row); }
+    const idx = rows.map((_, i) => i).sort((i, j) => { for (let c = 0; c < A.cols; c++) { if (rows[i][c] !== rows[j][c]) return rows[i][c] - rows[j][c]; } return 0; });
+    const o = zeros(A.rows, A.cols); idx.forEach((src, dst) => { for (let c = 0; c < A.cols; c++) o.data[dst + c * A.rows] = rows[src][c]; });
+    return n >= 2 ? [o, colVec(idx.map((i) => i + 1))] : [o];
+  },
+
   // strings / conversion
   num2str: async (a) => ret(str(isScalar(m(a[0])) ? trimNum(asScalar(a[0])) : matToStr(m(a[0])))),
   int2str: async (a) => ret(str(String(Math.round(asScalar(a[0]))))),
@@ -632,6 +732,21 @@ const HELP: Record<string, HelpEntry> = {
   issymmetric: { summary: 'Determine if a matrix is symmetric', syntax: ['tf = issymmetric(A)'], seealso: ['istriu', 'istril', 'isdiag'] },
   isdiag: { summary: 'Determine if a matrix is diagonal', syntax: ['tf = isdiag(A)'], seealso: ['diag', 'istriu', 'istril'] },
   bandwidth: { summary: 'Lower and upper matrix bandwidth', syntax: ['[lo,up] = bandwidth(A)'], seealso: ['isbanded', 'tril', 'triu'] },
+  fzero: { summary: 'Root of a nonlinear function', syntax: ['x = fzero(@f,x0)', 'x = fzero(@f,[a b])'], seealso: ['roots', 'fminbnd', 'fminsearch'] },
+  fminbnd: { summary: 'Minimum of a function on an interval', syntax: ['x = fminbnd(@f,a,b)'], seealso: ['fminsearch', 'fzero'] },
+  fminsearch: { summary: 'Unconstrained minimum (Nelder-Mead)', syntax: ['x = fminsearch(@f,x0)'], seealso: ['fminbnd', 'fzero'] },
+  integral: { summary: 'Numerical integration (adaptive Simpson)', syntax: ['q = integral(@f,a,b)'], seealso: ['trapz', 'diff'] },
+  trapz: { summary: 'Trapezoidal numerical integration', syntax: ['q = trapz(y)', 'q = trapz(x,y)'], seealso: ['integral', 'cumsum'] },
+  gradient: { summary: 'Numerical gradient', syntax: ['g = gradient(y)', 'g = gradient(y,h)'], seealso: ['diff'] },
+  interp1: { summary: '1-D interpolation', syntax: ["yq = interp1(x,v,xq)", "yq = interp1(x,v,xq,'nearest')"], seealso: ['spline', 'polyfit'] },
+  spline: { summary: 'Cubic spline interpolation', syntax: ['yq = spline(x,v,xq)'], seealso: ['interp1', 'polyfit'] },
+  roots: { summary: 'Polynomial roots (real roots only)', syntax: ['r = roots(p)'], seealso: ['polyval', 'polyfit', 'fzero'] },
+  ode45: { summary: 'Solve nonstiff ODEs (RK4)', syntax: ['[t,y] = ode45(@f,tspan,y0)'], seealso: ['ode15s'] },
+  ode15s: { summary: 'Solve ODEs (aliased to ode45 here)', syntax: ['[t,y] = ode15s(@f,tspan,y0)'], seealso: ['ode45'] },
+  logspace: { summary: 'Logarithmically spaced vector', syntax: ['y = logspace(a,b)', 'y = logspace(a,b,n)'], seealso: ['linspace'] },
+  meshgrid: { summary: '2-D grid coordinates', syntax: ['[X,Y] = meshgrid(x,y)'], seealso: ['linspace'] },
+  sortrows: { summary: 'Sort rows in ascending order', syntax: ['B = sortrows(A)', '[B,i] = sortrows(A)'], seealso: ['sort', 'unique'] },
+  nnz: { summary: 'Number of nonzero elements', syntax: ['n = nnz(A)'], seealso: ['find', 'any'] },
 };
 
 export function docUrl(name: string): string {
@@ -705,6 +820,76 @@ function magicFn(n: number): Mat {
     }
   }
   return M;
+}
+
+// ── Numerical-methods helpers ─────────────────────────────────────────────
+function handle(v: Value, name: string): Handle { if (!isHandle(v)) throw new MatError(`${name}: first argument must be a function handle`); return v; }
+async function callScalar(env: Env, f: Handle, x: number): Promise<number> { const r = await env.callHandle(f, [scalar(x)], 1); return r.length && isMat(r[0]) ? asScalar(r[0] as Mat) : NaN; }
+
+/** Natural cubic spline value at q (recomputes second derivatives per call). */
+function splineEval(x: number[], y: number[], q: number): number {
+  const n = x.length; if (n < 2) return y[0] ?? NaN;
+  const h: number[] = []; for (let i = 0; i < n - 1; i++) h.push(x[i + 1] - x[i]);
+  const M = new Array(n).fill(0);
+  if (n > 2) {
+    const lo: number[] = [], di: number[] = [], up: number[] = [], rhs: number[] = [];
+    for (let i = 1; i < n - 1; i++) { lo.push(h[i - 1]); di.push(2 * (h[i - 1] + h[i])); up.push(h[i]); rhs.push(6 * ((y[i + 1] - y[i]) / h[i] - (y[i] - y[i - 1]) / h[i - 1])); }
+    // Thomas algorithm
+    const k = di.length; const cp = [...up], dp = [...rhs];
+    cp[0] /= di[0]; dp[0] /= di[0];
+    for (let i = 1; i < k; i++) { const den = di[i] - lo[i] * cp[i - 1]; cp[i] = up[i] / den; dp[i] = (rhs[i] - lo[i] * dp[i - 1]) / den; }
+    const mm = new Array(k); mm[k - 1] = dp[k - 1]; for (let i = k - 2; i >= 0; i--) mm[i] = dp[i] - cp[i] * mm[i + 1];
+    for (let i = 1; i < n - 1; i++) M[i] = mm[i - 1];
+  }
+  let i = 0; while (i < n - 2 && q > x[i + 1]) i++;
+  const dx = q - x[i], hi = h[i];
+  const aa = y[i], bb = (y[i + 1] - y[i]) / hi - hi * (2 * M[i] + M[i + 1]) / 6, cc = M[i] / 2, dd = (M[i + 1] - M[i]) / (6 * hi);
+  return aa + bb * dx + cc * dx * dx + dd * dx * dx * dx;
+}
+
+/** Real roots of a polynomial (coeffs high→low). Complex roots are omitted. */
+function realRoots(coef: number[]): number[] {
+  const p = coef.slice(); while (p.length > 1 && Math.abs(p[0]) < 1e-14) p.shift();
+  const n = p.length - 1;
+  if (n <= 0) return [];
+  if (n === 1) return [-p[1] / p[0]];
+  if (n === 2) { const [a, b, c] = p; const d = b * b - 4 * a * c; if (d < 0) return []; const sq = Math.sqrt(d); return [(-b + sq) / (2 * a), (-b - sq) / (2 * a)].sort((x, y) => y - x); }
+  const pv = (x: number) => { let s = 0; for (const c of p) s = s * x + c; return s; };
+  const R = 1 + Math.max(...p.slice(1).map((c) => Math.abs(c / p[0])));
+  const steps = 4000; let prev = pv(-R), prevx = -R; const roots: number[] = [];
+  for (let i = 1; i <= steps; i++) {
+    const x = -R + 2 * R * i / steps; const f = pv(x);
+    if (prev === 0) roots.push(prevx);
+    else if (prev * f < 0) { let lo = prevx, hi = x, flo = prev; for (let k = 0; k < 80; k++) { const mid = (lo + hi) / 2, fm = pv(mid); if (Math.abs(fm) < 1e-13) { lo = hi = mid; break; } if (flo * fm < 0) hi = mid; else { lo = mid; flo = fm; } } roots.push((lo + hi) / 2); }
+    prev = f; prevx = x;
+  }
+  roots.sort((a, b) => b - a); const out: number[] = [];
+  for (const r of roots) if (!out.some((o) => Math.abs(o - r) < 1e-6)) out.push(r);
+  return out;
+}
+
+/** RK4 ODE integrator backing ode45/ode15s. Returns [t, y] (or just y). */
+async function odeSolve(a: Value[], nargout: number, env: Env): Promise<Value[]> {
+  const f = handle(a[0], 'ode45'); const tspan = toArray(m(a[1])); const y0 = toArray(m(a[2])); const neq = y0.length;
+  const evalF = async (t: number, y: number[]): Promise<number[]> => { const r = await env.callHandle(f, [scalar(t), colVec(y)], 1); return isMat(r[0]) ? toArray(r[0] as Mat) : []; };
+  const addv = (y: number[], k: number[], s: number) => y.map((v, j) => v + s * k[j]);
+  const T: number[] = []; const Y: number[][] = [];
+  let y = y0.slice();
+  const step = async (t: number, h: number) => {
+    const k1 = await evalF(t, y); const k2 = await evalF(t + h / 2, addv(y, k1, h / 2));
+    const k3 = await evalF(t + h / 2, addv(y, k2, h / 2)); const k4 = await evalF(t + h, addv(y, k3, h));
+    y = y.map((v, j) => v + h * (k1[j] + 2 * k2[j] + 2 * k3[j] + k4[j]) / 6);
+  };
+  if (tspan.length > 2) {
+    T.push(tspan[0]); Y.push(y.slice());
+    for (let i = 0; i < tspan.length - 1; i++) { const sub = 20; const hh = (tspan[i + 1] - tspan[i]) / sub; for (let sN = 0; sN < sub; sN++) await step(tspan[i] + sN * hh, hh); T.push(tspan[i + 1]); Y.push(y.slice()); }
+  } else {
+    const t0 = tspan[0], tf = tspan[tspan.length - 1]; const Nstep = 200; const h = (tf - t0) / Nstep;
+    T.push(t0); Y.push(y.slice());
+    for (let i = 0; i < Nstep; i++) { await step(t0 + i * h, h); T.push(t0 + (i + 1) * h); Y.push(y.slice()); }
+  }
+  const Ymat = zeros(T.length, neq); for (let r = 0; r < T.length; r++) for (let c = 0; c < neq; c++) Ymat.data[r + c * T.length] = Y[r][c];
+  return nargout >= 2 ? [colVec(T), Ymat] : [Ymat];
 }
 
 /** Numeric constants exposed as bare identifiers. */
