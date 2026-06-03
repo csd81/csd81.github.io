@@ -12,6 +12,7 @@ import {
   qr as qrDecomp, chol as cholFn, luOutputs, jacobiEigSym, svd as svdReal,
   rankOf, cond as condFn, pinv as pinvFn, orth as orthFn, nullspace, rref as rrefFn, vecnorm as vecnormFn, isSymmetric, cDet,
   generalEig, durandKerner, hess as hessFn, schur as schurFn, expm as expmFn, logm as logmFn, sqrtm as sqrtmFn, ldl as ldlFn, lsqnonneg as lsqnonnegFn,
+  balance as balanceFn, rsf2csf as rsf2csfFn, qz as qzFn, ordschur as ordschurFn,
 } from './linalg';
 import { dispValue, sprintf } from './format';
 import type { Graphics } from './graphics';
@@ -428,7 +429,9 @@ export const BUILTINS: Record<string, Builtin> = {
     return [colVec(s)];
   },
   eig: async (a, n) => {
-    const A = m(a[0]);
+    let A = m(a[0]);
+    // Generalized problem eig(A,B): eigenvalues of B⁻¹A (B given as a non-char matrix).
+    if (a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar && numel(a[1]) > 1) A = mldivide(m(a[1]), A);
     // Symmetric real → Jacobi (accurate, ascending). Otherwise charpoly + Durand-Kerner.
     if (isSymmetric(A) && !isComplex(A)) {
       const { values, V } = jacobiEigSym(A);
@@ -472,8 +475,21 @@ export const BUILTINS: Record<string, Builtin> = {
   hess: async (a, n) => { const { P, H } = hessFn(m(a[0])); return n >= 2 ? [P, H] : [H]; },
   schur: async (a, n) => {
     const A = m(a[0]);
-    if (isSymmetric(A) && !isComplex(A)) { const { values, V } = jacobiEigSym(A); const D = zeros(A.rows, A.rows); values.forEach((v, i) => { D.data[i + i * A.rows] = v; }); return n >= 2 ? [V, D] : [D]; }
-    const { U, T } = schurFn(A); return n >= 2 ? [U, T] : [T];
+    const wantComplex = a.length >= 2 && isMat(a[1]) && (a[1] as Mat).isChar && asString(a[1]).toLowerCase().startsWith('c');
+    if (!wantComplex && isSymmetric(A) && !isComplex(A)) { const { values, V } = jacobiEigSym(A); const D = zeros(A.rows, A.rows); values.forEach((v, i) => { D.data[i + i * A.rows] = v; }); return n >= 2 ? [V, D] : [D]; }
+    let { U, T } = schurFn(A);
+    if (wantComplex) { const r = rsf2csfFn(U, T); U = r.U; T = r.T; }
+    return n >= 2 ? [U, T] : [T];
+  },
+  rsf2csf: async (a, n) => { const { U, T } = rsf2csfFn(m(a[0]), m(a[1])); return n >= 2 ? [U, T] : [T]; },
+  balance: async (a, n) => {
+    const { D, B } = balanceFn(m(a[0])); const nn = D.length; const Tm = zeros(nn, nn); for (let i = 0; i < nn; i++) Tm.data[i + i * nn] = D[i];
+    return n >= 2 ? [Tm, B] : [B];
+  },
+  qz: async (a, n) => { const { AA, BB, Q, Z } = qzFn(m(a[0]), m(a[1])); return n >= 4 ? [AA, BB, Q, Z] : n >= 2 ? [AA, BB] : [AA]; },
+  ordschur: async (a, n) => {
+    const U = m(a[0]), T = m(a[1]); const sel = toArray(m(a[2])).map((x) => x !== 0);
+    const { U: U2, T: T2 } = ordschurFn(U, T, sel); return n >= 2 ? [U2, T2] : [U2];
   },
   ldl: async (a, n) => { const { L, D } = ldlFn(m(a[0])); return n >= 2 ? [L, D] : [L]; },
   lsqnonneg: async (a) => ret(lsqnonnegFn(m(a[0]), m(a[1]))),
@@ -1385,6 +1401,11 @@ const HELP: Record<string, HelpEntry> = {
   griddata: { summary: 'Interpolate scattered 2-D data onto query points (linear or nearest)', syntax: ['vq = griddata(x,y,v,xq,yq)', "vq = griddata(x,y,v,xq,yq,'nearest')"], seealso: ['delaunay', 'interp2', 'scatteredInterpolant'] },
   interp3: { summary: '3-D interpolation (not supported: needs N-D arrays)', syntax: ['vq = interp3(...)'], seealso: ['interp2', 'interp1', 'griddata'] },
   interpn: { summary: 'N-D interpolation (not supported: needs N-D arrays)', syntax: ['vq = interpn(...)'], seealso: ['interp2', 'interp1', 'griddata'] },
+  schur: { summary: 'Schur decomposition (real quasi-triangular, or complex with second arg)', syntax: ['T = schur(A)', '[U,T] = schur(A)', "[U,T] = schur(A,'complex')"], seealso: ['eig', 'rsf2csf', 'qz', 'hess'] },
+  rsf2csf: { summary: 'Convert real Schur form to complex Schur form', syntax: ['[U,T] = rsf2csf(U,T)'], seealso: ['schur'] },
+  balance: { summary: 'Diagonal scaling to improve eigenvalue conditioning', syntax: ['B = balance(A)', '[T,B] = balance(A)'], seealso: ['eig', 'schur'] },
+  qz: { summary: 'Generalized (QZ) Schur decomposition of the pair (A,B); nonsingular B', syntax: ['[AA,BB,Q,Z] = qz(A,B)'], seealso: ['eig', 'schur'] },
+  ordschur: { summary: 'Reorder eigenvalues in a Schur factorization', syntax: ['[US,TS] = ordschur(U,T,select)'], seealso: ['schur'] },
 };
 
 /** Base-MATLAB functions whose reference page is at /help/matlab/ref/<name>.html.
@@ -1411,7 +1432,8 @@ const BASE_REF = new Set<string>((
   'horzcat vertcat isequaln corr qmr condest wilkinson spones nonzeros bartlett blackman hamming hann typecast swapbytes ' +
   'mkpp unmkpp ppval ' +
   'psi expint sinint cosint legendre besselj bessely besseli besselk besselh airy ellipke ellipj ' +
-  'delaunay griddata interp3 interpn'
+  'delaunay griddata interp3 interpn ' +
+  'rsf2csf balance qz ordschur'
 ).split(/\s+/));
 
 export function docUrl(name: string): string {

@@ -203,15 +203,206 @@ export function hess(A: Mat): { P: Mat; H: Mat } {
   return { P, H };
 }
 
-/** Real Schur form via shifted QR iteration: U' A U = T (quasi-upper-triangular). */
+/** Similarity rotation in the (i,i+1) plane: T ← Gᵀ T G, U ← U G, with G=[[cs,-sn],[sn,cs]]. */
+function planeRot(T: Mat, U: Mat, n: number, i: number, cs: number, sn: number): void {
+  for (let j = 0; j < n; j++) { const a = T.data[i + j * n], b = T.data[(i + 1) + j * n]; T.data[i + j * n] = cs * a + sn * b; T.data[(i + 1) + j * n] = -sn * a + cs * b; }
+  for (let r = 0; r < n; r++) { const a = T.data[r + i * n], b = T.data[r + (i + 1) * n]; T.data[r + i * n] = cs * a + sn * b; T.data[r + (i + 1) * n] = -sn * a + cs * b; }
+  for (let r = 0; r < n; r++) { const a = U.data[r + i * n], b = U.data[r + (i + 1) * n]; U.data[r + i * n] = cs * a + sn * b; U.data[r + (i + 1) * n] = -sn * a + cs * b; }
+}
+
+/** Real Schur form via Francis double-shift QR with deflation: U' A U = T (quasi-upper-triangular). */
 export function schur(A: Mat): { U: Mat; T: Mat } {
-  const n = A.rows; const { P, H } = hess(A);
-  let T = mat(n, n, Float64Array.from(H.data)); let U = mat(n, n, Float64Array.from(P.data));
-  for (let iter = 0; iter < 2000; iter++) {
-    const mu = T.data[(n - 1) + (n - 1) * n];
-    const Ts = mat(n, n, Float64Array.from(T.data)); for (let i = 0; i < n; i++) Ts.data[i + i * n] -= mu;
-    const { Q, R } = qr(Ts); T = matmul(R, Q); for (let i = 0; i < n; i++) T.data[i + i * n] += mu; U = matmul(U, Q);
-    let off = 0; for (let i = 1; i < n; i++) off += Math.abs(T.data[i + (i - 1) * n]); if (off < 1e-13) break;
+  const n = A.rows;
+  const { P, H } = hess(A);
+  const T = mat(n, n, Float64Array.from(H.data));
+  let U = mat(n, n, Float64Array.from(P.data));
+  if (n <= 1) return { U, T };
+  const g = (i: number, j: number) => T.data[i + j * n];
+  let hi = n - 1, guard = 0;
+  while (hi > 0) {
+    if (guard++ > 120 * n) break;
+    // Find top `l` of the trailing unreduced block, zeroing negligible subdiagonals.
+    let l = hi;
+    while (l > 0) { const s = Math.abs(g(l - 1, l - 1)) + Math.abs(g(l, l)); if (Math.abs(g(l, l - 1)) <= 1e-14 * (s || 1)) { T.data[l + (l - 1) * n] = 0; break; } l--; }
+    if (l === hi) { hi -= 1; continue; }          // 1×1 block converged
+    if (l === hi - 1) { hi -= 2; continue; }       // 2×2 block converged (kept for now)
+    // Explicit double shift from the trailing 2×2 of the active window [0..hi].
+    const a = g(hi - 1, hi - 1), b = g(hi - 1, hi), c = g(hi, hi - 1), d = g(hi, hi);
+    const s = a + d, det = a * d - b * c;          // trace & determinant → shifts
+    const mwin = hi + 1;
+    const Tw = mat(mwin, mwin, new Float64Array(mwin * mwin));
+    for (let j = 0; j < mwin; j++) for (let i = 0; i < mwin; i++) Tw.data[i + j * mwin] = g(i, j);
+    const Tw2 = matmul(Tw, Tw);
+    const M = mat(mwin, mwin, new Float64Array(mwin * mwin));
+    for (let j = 0; j < mwin; j++) for (let i = 0; i < mwin; i++) M.data[i + j * mwin] = Tw2.data[i + j * mwin] - s * Tw.data[i + j * mwin] + (i === j ? det : 0);
+    const { Q } = qr(M);
+    const Qf = eye(n);
+    for (let j = 0; j < mwin; j++) for (let i = 0; i < mwin; i++) Qf.data[i + j * n] = Q.data[i + j * mwin];
+    const Tn = matmul(matmul(transpose(Qf), T), Qf);
+    T.data.set(Tn.data);
+    U = matmul(U, Qf);
+  }
+  // Standardize: triangularize any 2×2 block that actually has real eigenvalues.
+  for (let i = 0; i < n - 1; i++) {
+    if (Math.abs(g(i + 1, i)) < 1e-300) continue;
+    const a = g(i, i), b = g(i, i + 1), c = g(i + 1, i), d = g(i + 1, i + 1);
+    const disc = (a + d) * (a + d) - 4 * (a * d - b * c);
+    if (disc < 0) continue;                        // genuine complex pair → leave as 2×2
+    const lam = ((a + d) + Math.sign((a + d) || 1) * Math.sqrt(disc)) / 2;
+    let v1 = b, v2 = lam - a; if (Math.abs(v1) + Math.abs(v2) < 1e-300) { v1 = lam - d; v2 = c; }
+    const nrm = Math.hypot(v1, v2) || 1;
+    planeRot(T, U, n, i, v1 / nrm, v2 / nrm);
+    T.data[(i + 1) + i * n] = 0;
+  }
+  return { U, T };
+}
+
+/** Eigenvalues read off a real Schur form T (1×1 and 2×2 diagonal blocks). */
+export function schurEig(T: Mat): { re: number[]; im: number[] } {
+  const n = T.rows; const re: number[] = [], im: number[] = [];
+  for (let i = 0; i < n; ) {
+    if (i < n - 1 && Math.abs(T.data[(i + 1) + i * n]) > 1e-300) {
+      const a = T.data[i + i * n], b = T.data[i + (i + 1) * n], c = T.data[(i + 1) + i * n], d = T.data[(i + 1) + (i + 1) * n];
+      const tr = a + d, disc = tr * tr - 4 * (a * d - b * c), s = Math.sqrt(-disc) / 2;
+      re.push(tr / 2, tr / 2); im.push(s, -s); i += 2;
+    } else { re.push(T.data[i + i * n]); im.push(0); i += 1; }
+  }
+  return { re, im };
+}
+
+/** Parlett–Reinsch balancing: D⁻¹AD has comparable row/column norms (D diagonal, powers of 2). */
+export function balance(A: Mat): { D: number[]; B: Mat } {
+  const n = A.rows; const B = mat(n, n, Float64Array.from(A.data)); const D = new Array(n).fill(1);
+  const RAD = 2, RAD2 = 4; let done = false, guard = 0;
+  while (!done && guard++ < 1000) {
+    done = true;
+    for (let i = 0; i < n; i++) {
+      let c = 0, r = 0;
+      for (let j = 0; j < n; j++) if (j !== i) { c += Math.abs(B.data[j + i * n]); r += Math.abs(B.data[i + j * n]); }
+      if (c === 0 || r === 0) continue;
+      let f = 1, cc = c; const sBefore = c + r;
+      let gg = r / RAD; while (cc < gg) { f *= RAD; cc *= RAD2; }
+      gg = r * RAD; while (cc >= gg) { f /= RAD; cc /= RAD2; }
+      if ((cc + r) < 0.95 * sBefore * f) {
+        done = false; D[i] *= f; const gi = 1 / f;
+        for (let j = 0; j < n; j++) B.data[i + j * n] *= gi;
+        for (let j = 0; j < n; j++) B.data[j + i * n] *= f;
+      }
+    }
+  }
+  return { D, B };
+}
+
+/** Convert a real Schur pair (U,T) to complex Schur form (upper-triangular T). */
+export function rsf2csf(U0: Mat, T0: Mat): { U: Mat; T: Mat } {
+  const n = T0.rows;
+  const Tr = Float64Array.from(T0.data), Ti = new Float64Array(n * n);
+  const Ur = Float64Array.from(U0.data), Ui = new Float64Array(n * n);
+  const gT = (a: Float64Array, i: number, j: number) => a[i + j * n];
+  for (let mm = n - 1; mm >= 1; mm--) {
+    if (Math.abs(Tr[mm + (mm - 1) * n]) < 1e-300) continue;
+    // Eigenvalue μ of the trailing 2×2 block, minus T(mm,mm).
+    const a = gT(Tr, mm - 1, mm - 1), b = gT(Tr, mm - 1, mm), c = gT(Tr, mm, mm - 1), d = gT(Tr, mm, mm);
+    const tr = a + d, disc = tr * tr - 4 * (a * d - b * c);
+    const [sr, si] = csqrt(disc, 0);
+    let mur = (tr + sr) / 2 - d, mui = si / 2; // μ = λ₁ − T(mm,mm)
+    const rr = Math.hypot(Math.hypot(mur, mui), Tr[mm + (mm - 1) * n]) || 1;
+    // rotation: cR = μ/r (conj used on the (1,1)/(1,2) side), sR = T(mm,mm-1)/r
+    let cr = mur / rr, ci = mui / rr; const sn = Tr[mm + (mm - 1) * n] / rr;
+    // Apply G = [[conj(c), s], [-s, c]] to rows (mm-1,mm), cols (mm-1..n-1):
+    for (let j = mm - 1; j < n; j++) {
+      const x0r = Tr[(mm - 1) + j * n], x0i = Ti[(mm - 1) + j * n], x1r = Tr[mm + j * n], x1i = Ti[mm + j * n];
+      // row mm-1 = conj(c)*x0 + s*x1 ; row mm = -s*x0 + c*x1
+      Tr[(mm - 1) + j * n] = cr * x0r + ci * x0i + sn * x1r; Ti[(mm - 1) + j * n] = cr * x0i - ci * x0r + sn * x1i;
+      Tr[mm + j * n] = -sn * x0r + cr * x1r - ci * x1i; Ti[mm + j * n] = -sn * x0i + cr * x1i + ci * x1r;
+    }
+    // Apply Gᴴ to cols (mm-1,mm): col(mm-1) = c·y0 + s·y1 ; col(mm) = −s·y0 + conj(c)·y1.
+    for (let r = 0; r <= mm; r++) {
+      const y0r = Tr[r + (mm - 1) * n], y0i = Ti[r + (mm - 1) * n], y1r = Tr[r + mm * n], y1i = Ti[r + mm * n];
+      Tr[r + (mm - 1) * n] = cr * y0r - ci * y0i + sn * y1r; Ti[r + (mm - 1) * n] = cr * y0i + ci * y0r + sn * y1i;
+      Tr[r + mm * n] = -sn * y0r + cr * y1r + ci * y1i; Ti[r + mm * n] = -sn * y0i + cr * y1i - ci * y1r;
+    }
+    for (let r = 0; r < n; r++) {
+      const y0r = Ur[r + (mm - 1) * n], y0i = Ui[r + (mm - 1) * n], y1r = Ur[r + mm * n], y1i = Ui[r + mm * n];
+      Ur[r + (mm - 1) * n] = cr * y0r - ci * y0i + sn * y1r; Ui[r + (mm - 1) * n] = cr * y0i + ci * y0r + sn * y1i;
+      Ur[r + mm * n] = -sn * y0r + cr * y1r + ci * y1i; Ui[r + mm * n] = -sn * y0i + cr * y1i - ci * y1r;
+    }
+    Tr[mm + (mm - 1) * n] = 0; Ti[mm + (mm - 1) * n] = 0;
+    void cr; void ci;
+  }
+  return { U: finishComplex(n, n, Ur, Ui), T: finishComplex(n, n, Tr, Ti) };
+}
+
+/** Generalized (QZ) Schur for a regular pair with nonsingular B: Q A Z = AA, Q B Z = BB. */
+export function qz(A: Mat, B: Mat): { AA: Mat; BB: Mat; Q: Mat; Z: Mat } {
+  const M = mldivide(B, A);              // B⁻¹A (B must be nonsingular)
+  const { U: Z, T: S } = schur(M);       // Z' M Z = S, Z orthogonal
+  const BZ = matmul(B, Z);
+  const { Q: Qb, R } = qr(BZ);           // BZ = Qb R  →  Qbᵀ B Z = R (upper triangular)
+  const Qm = transpose(Qb);              // MATLAB's Q (so Q A Z = AA)
+  const AA = matmul(Qm, matmul(A, Z));   // = R S  (quasi-triangular)
+  const BB = matmul(Qm, matmul(B, Z));   // = R    (upper triangular)
+  void R;
+  return { AA, BB, Q: Qm, Z };
+}
+
+/** Solve the small Sylvester equation B1 X − X B2 = C (block sizes ≤ 2). */
+function sylvSmall(B1: Mat, B2: Mat, C: Mat): Mat {
+  const p = B1.rows, q = B2.rows, pq = p * q;
+  const K = zeros(pq, pq); const rhs = zeros(pq, 1);
+  // vec(X) column-major; equation row index = i + k*p for X(i,k).
+  for (let k = 0; k < q; k++) for (let i = 0; i < p; i++) {
+    const row = i + k * p; rhs.data[row] = C.data[i + k * p];
+    for (let ii = 0; ii < p; ii++) K.data[row + (ii + k * p) * pq] += B1.data[i + ii * p];
+    for (let kk = 0; kk < q; kk++) K.data[row + (i + kk * p) * pq] -= B2.data[kk + k * q];
+  }
+  const x = mldivide(K, rhs);
+  const X = zeros(p, q); for (let k = 0; k < q; k++) for (let i = 0; i < p; i++) X.data[i + k * p] = x.data[i + k * p];
+  return X;
+}
+
+/** Swap the adjacent diagonal blocks at [j..j+p-1] (size p) and [j+p..] (size q) of a Schur form. */
+function swapAdjacent(T: Mat, U: Mat, n: number, j: number, p: number, q: number): void {
+  const s = p + q;
+  const B1 = zeros(p, p), B2 = zeros(q, q), C = zeros(p, q);
+  for (let b = 0; b < p; b++) for (let a = 0; a < p; a++) B1.data[a + b * p] = T.data[(j + a) + (j + b) * n];
+  for (let b = 0; b < q; b++) for (let a = 0; a < q; a++) B2.data[a + b * q] = T.data[(j + p + a) + (j + p + b) * n];
+  for (let b = 0; b < q; b++) for (let a = 0; a < p; a++) C.data[a + b * p] = T.data[(j + a) + (j + p + b) * n];
+  const X = sylvSmall(B1, B2, C);
+  // Columns spanning B2's invariant subspace inside the combined block: [ -X ; I_q ].
+  const Mblk = zeros(s, q);
+  for (let b = 0; b < q; b++) { for (let a = 0; a < p; a++) Mblk.data[a + b * s] = -X.data[a + b * p]; Mblk.data[(p + b) + b * s] = 1; }
+  const { Q } = qr(Mblk);                // s×s orthogonal; first q cols span the subspace
+  const Qf = eye(n);
+  for (let b = 0; b < s; b++) for (let a = 0; a < s; a++) Qf.data[(j + a) + (j + b) * n] = Q.data[a + b * s];
+  const Tn = matmul(matmul(transpose(Qf), T), Qf); T.data.set(Tn.data);
+  const Un = matmul(U, Qf); U.data.set(Un.data);
+}
+
+/** Reorder a real Schur form so that selected eigenvalues move to the top-left. */
+export function ordschur(U0: Mat, T0: Mat, sel: boolean[]): { U: Mat; T: Mat } {
+  const n = T0.rows; const T = mat(n, n, Float64Array.from(T0.data)); const U = mat(n, n, Float64Array.from(U0.data));
+  // Block layout: positions with their sizes (1 or 2) and whether selected (any constituent selected).
+  const blockAt = (start: number) => (start < n - 1 && Math.abs(T.data[(start + 1) + start * n]) > 1e-300 ? 2 : 1);
+  for (let pass = 0; pass < n * n; pass++) {
+    let swapped = false;
+    let pos = 0;
+    while (pos < n) {
+      const sz = blockAt(pos); const next = pos + sz;
+      if (next >= n) break;
+      const szN = blockAt(next);
+      const selHere = sel[pos] || (sz === 2 && sel[pos + 1]);
+      const selNext = sel[next] || (szN === 2 && sel[next + 1]);
+      if (!selHere && selNext) {
+        swapAdjacent(T, U, n, pos, sz, szN);
+        // selection follows the moved blocks: next block (now on top) becomes selected-at pos
+        const a = sel[pos], b = sz === 2 ? sel[pos + 1] : undefined;
+        for (let k = 0; k < szN; k++) sel[pos + k] = sel[next + k];
+        sel[pos + szN] = a; if (sz === 2) sel[pos + szN + 1] = b!;
+        swapped = true; pos += szN;
+      } else pos += sz;
+    }
+    if (!swapped) break;
   }
   return { U, T };
 }
