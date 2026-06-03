@@ -1304,6 +1304,24 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   bvpset: async (a) => { const f = new Map<string, Value[]>(); for (let i = 0; i + 1 < a.length; i += 2) f.set(asString(a[i]), [a[i + 1]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields: f } as StructV); },
   bvpget: async (a) => { const s = a[0] as StructV; const v = isStruct(s) ? s.fields.get(asString(a[1])) : undefined; return ret(v && v.length ? v[0] : zeros(0, 0)); },
+  ode15i: async (a, n, env) => ode15iSolve(a, n, env),
+  decic: async (a, n, env) => {
+    const odefun = handle(a[0], 'decic'); const t0 = asScalar(a[1]); const y0 = toArray(m(a[2])); const yp0 = a.length >= 5 ? toArray(m(a[4])) : new Array(y0.length).fill(0);
+    const neq = y0.length; const yp = yp0.slice();
+    const F = async (p: number[]) => toArray(m((await env.callHandle(odefun, [scalar(t0), colVec(y0), colVec(p)], 1))[0]));
+    for (let it = 0; it < 20; it++) { const G = await F(yp); let nrm = 0; for (const v of G) nrm += v * v; if (Math.sqrt(nrm) < 1e-12) break; const J = zeros(neq, neq); for (let j = 0; j < neq; j++) { const pp = yp.slice(); const dd = 1e-7 * Math.max(1, Math.abs(yp[j])); pp[j] += dd; const Gp = await F(pp); for (let i = 0; i < neq; i++) J.data[i + j * neq] = (Gp[i] - G[i]) / dd; } const dq = mldivide(J, colVec(G)); for (let i = 0; i < neq; i++) yp[i] -= dq.data[i]; }
+    return n >= 2 ? [colVec(y0), colVec(yp)] : [colVec(y0)];
+  },
+  odextend: async (a) => ret(a[0]),
+  bvpxtend: async (a) => { const sol = a[0] as StructV; const xnew = asScalar(a[1]); const xs = toArray(m(sol.fields.get('x')![0])); const Y = m(sol.fields.get('y')![0]); const neq = Y.rows; const ynew = a.length >= 3 ? toArray(m(a[2])) : Array.from({ length: neq }, (_, k) => Y.data[k + (Y.cols - 1) * neq]); const nx = [...xs, xnew]; const Y2 = zeros(neq, nx.length); for (let c = 0; c < Y.cols; c++) for (let r = 0; r < neq; r++) Y2.data[r + c * neq] = Y.data[r + c * neq]; for (let r = 0; r < neq; r++) Y2.data[r + (nx.length - 1) * neq] = ynew[r]; return ret(mkStruct([['x', rowVec(nx)], ['y', Y2]])); },
+  equilibrate: async (a, n) => {
+    const A = isSparse(a[0]) ? sparseToDense(a[0]) : m(a[0]); const nn = A.rows; const R = zeros(nn, nn), C = zeros(nn, nn), P = zeros(nn, nn);
+    for (let i = 0; i < nn; i++) { let rn = 0; for (let j = 0; j < nn; j++) rn = Math.max(rn, Math.abs(A.data[i + j * nn])); R.data[i + i * nn] = rn ? 1 / Math.sqrt(rn) : 1; P.data[i + i * nn] = 1; }
+    for (let j = 0; j < nn; j++) { let cn = 0; for (let i = 0; i < nn; i++) cn = Math.max(cn, Math.abs(A.data[i + j * nn]) * R.data[i + i * nn]); C.data[j + j * nn] = cn ? 1 / Math.sqrt(cn) : 1; }
+    return n >= 3 ? [denseToSparse(P), denseToSparse(R), denseToSparse(C)] : n >= 2 ? [denseToSparse(P), denseToSparse(R)] : [denseToSparse(R)];
+  },
+  dissect: async (a) => ret(rowVec(minDegreeOrder(symAdjacency(asSparse(a[0]))))),
+  symbfact: async (a) => ret(colVec(symbolicCholCounts(asSparse(a[0])))),
   dde23: async (a, _n, env) => dde23Solve(a, env),
   ddesd: async (a, _n, env) => dde23Solve(a, env),
   ddensd: async (a, _n, env) => dde23Solve(a, env),
@@ -2784,6 +2802,13 @@ const HELP: Record<string, HelpEntry> = {
   ddeset: { summary: 'Create/modify a DDE options structure', syntax: ["opts = ddeset('RelTol',1e-4)"], seealso: ['ddeget', 'dde23'] },
   ddeget: { summary: 'Read a DDE option', syntax: ['v = ddeget(opts,name)'], seealso: ['ddeset'] },
   deval: { summary: 'Evaluate an ODE/BVP/DDE solution structure', syntax: ['y = deval(sol,xq)'], seealso: ['bvp4c', 'dde23', 'ode45'] },
+  ode15i: { summary: 'Solve fully-implicit ODEs F(t,y,y′)=0', syntax: ['[t,y] = ode15i(@F,tspan,y0,yp0)'], seealso: ['ode15s', 'decic'] },
+  decic: { summary: 'Consistent initial conditions for ode15i', syntax: ['[y0,yp0] = decic(@F,t0,y0,fy0,yp0,fyp0)'], seealso: ['ode15i'] },
+  odextend: { summary: 'Extend an ODE solution structure', syntax: ['sol = odextend(sol,@f,tend)'], seealso: ['deval', 'ode45'] },
+  bvpxtend: { summary: 'Extend a BVP solution/guess to a new mesh point', syntax: ['solinit = bvpxtend(sol,xnew)'], seealso: ['bvpinit', 'bvp4c'] },
+  equilibrate: { summary: 'Row/column scaling to improve conditioning', syntax: ['[P,R,C] = equilibrate(A)'], seealso: ['balance', 'cond'] },
+  dissect: { summary: 'Nested-dissection-style sparse ordering', syntax: ['p = dissect(A)'], seealso: ['symamd', 'symrcm'] },
+  symbfact: { summary: 'Symbolic Cholesky factorization (column counts)', syntax: ['count = symbfact(A)'], seealso: ['chol', 'etree'] },
   datenum: { summary: 'Convert date to a serial date number', syntax: ['n = datenum(Y,M,D)', 'n = datenum(Y,M,D,H,MI,S)'], seealso: ['datevec', 'datestr', 'now'] },
   datevec: { summary: 'Convert a serial date number to [Y M D H MI S]', syntax: ['v = datevec(n)'], seealso: ['datenum', 'datestr'] },
   datestr: { summary: 'Convert a serial date number to text', syntax: ['s = datestr(n)', "s = datestr(n,'yyyy-mm-dd')"], seealso: ['datenum', 'datevec'] },
@@ -3047,6 +3072,7 @@ const BASE_REF = new Set<string>((
   'scatteredInterpolant griddedInterpolant edgeAttachments vertexAttachments vertexNormal featureEdges overlaps holes ' +
   'pdepe pdeval symvar vectorize quadv ldexp scalbn cholupdate stream2 stream3 ' +
   'bvp4c bvp5c bvpinit bvpset bvpget dde23 ddesd ddensd ddeset ddeget deval ' +
+  'ode15i decic odextend bvpxtend equilibrate dissect symbfact ' +
   'datenum datevec datestr now today clock date weekday eomday etime addtodate ' +
   'datetime duration NaT years days hours minutes seconds milliseconds year month day hour minute second ymd isdatetime isduration isnat ' +
   'table timetable array2table cell2table struct2table table2array table2cell table2struct istable istimetable istabular height width head tail summary ' +
@@ -4342,6 +4368,19 @@ function symAdjacency(S: Sparse): Set<number>[] {
   for (let j = 0; j < S.cols; j++) for (let p = S.colptr[j]; p < S.colptr[j + 1]; p++) { const i = S.rowind[p]; if (i !== j) { adj[i].add(j); adj[j].add(i); } }
   return adj;
 }
+/** Symbolic Cholesky column counts: nonzeros per column of the L factor (symbfact). */
+function symbolicCholCounts(S: Sparse): number[] {
+  const n = S.rows; const adj: Set<number>[] = Array.from({ length: n }, () => new Set<number>());
+  for (let j = 0; j < S.cols; j++) for (let p = S.colptr[j]; p < S.colptr[j + 1]; p++) { const i = S.rowind[p]; if (i >= j) { adj[j].add(i); adj[i].add(j); } }
+  const counts = new Array(n).fill(0);
+  for (let k = 0; k < n; k++) {
+    const reach = [...adj[k]].filter((i) => i >= k); counts[k] = reach.length;   // diagonal + sub-diagonal fill
+    // fill-in: neighbors > k become mutually adjacent (elimination)
+    const hi = reach.filter((i) => i > k);
+    for (let a = 0; a < hi.length; a++) for (let b = a + 1; b < hi.length; b++) { adj[hi[a]].add(hi[b]); adj[hi[b]].add(hi[a]); }
+  }
+  return counts;
+}
 /** Maximum bipartite matching (columns→rows) on a sparse pattern, via augmenting paths.
  *  Returns match[col] = matched row index, or -1 (basis of dmperm / structural rank). */
 function bipartiteMatch(S: Sparse): number[] {
@@ -5559,6 +5598,24 @@ async function pdepeSolve(a: Value[], env: Env): Promise<Value[]> {
 }
 function mkStruct(fields: [string, Value][]): StructV { return { kind: 'struct', rows: 1, cols: 1, fields: new Map(fields.map(([k, v]) => [k, [v]])) }; }
 /** bvp4c(odefun, bcfun, solinit): two-point BVP via trapezoidal collocation + Newton. */
+/** ode15i(odefun, tspan, y0, yp0): fully-implicit ODE F(t,y,y')=0 via implicit Euler + Newton. */
+async function ode15iSolve(a: Value[], nargout: number, env: Env): Promise<Value[]> {
+  const odefun = handle(a[0], 'ode15i'); const tspan = toArray(m(a[1])); const y0 = toArray(m(a[2])); const yp0 = toArray(m(a[3])); void yp0;
+  const neq = y0.length; const t0 = tspan[0], tf = tspan[tspan.length - 1]; const N = 300; const h = (tf - t0) / N;
+  const F = async (t: number, y: number[], yp: number[]) => toArray(m((await env.callHandle(odefun, [scalar(t), colVec(y), colVec(yp)], 1))[0]));
+  const T: number[] = [t0]; const Y: number[][] = [y0.slice()]; let y = y0.slice(); let t = t0;
+  for (let step = 0; step < N; step++) {
+    const t1 = t + h; const y1 = y.slice();
+    for (let it = 0; it < 12; it++) {
+      const G = await F(t1, y1, y1.map((v, i) => (v - y[i]) / h)); let nrm = 0; for (const v of G) nrm += v * v; if (Math.sqrt(nrm) < 1e-11) break;
+      const J = zeros(neq, neq);
+      for (let j = 0; j < neq; j++) { const yp = y1.slice(); const dd = 1e-7 * Math.max(1, Math.abs(y1[j])); yp[j] += dd; const Gp = await F(t1, yp, yp.map((v, i) => (v - y[i]) / h)); for (let i = 0; i < neq; i++) J.data[i + j * neq] = (Gp[i] - G[i]) / dd; }
+      const dy = mldivide(J, colVec(G)); for (let i = 0; i < neq; i++) y1[i] -= dy.data[i];
+    }
+    y = y1; t = t1; T.push(t); Y.push(y.slice());
+  }
+  return odeOut(T, Y, neq, nargout);
+}
 async function bvp4cSolve(a: Value[], env: Env): Promise<Value[]> {
   const ode = handle(a[0], 'bvp4c'), bc = handle(a[1], 'bvp4c'); const init = a[2] as StructV;
   const x = toArray(m(init.fields.get('x')![0])); const Y0 = m(init.fields.get('y')![0]);
