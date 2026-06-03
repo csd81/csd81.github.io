@@ -918,6 +918,36 @@ export const BUILTINS: Record<string, Builtin> = {
     };
     const out = zeros(xq.rows, xq.cols); for (let k = 0; k < out.data.length; k++) out.data[k] = bilerp(xq.data[k], yq.data[k]); return ret(out);
   },
+  delaunay: async (a) => {
+    const xs = toArray(m(a[0])), ys = toArray(m(a[1]));
+    const tris = delaunayTri(xs, ys);
+    const T = zeros(tris.length, 3);
+    for (let i = 0; i < tris.length; i++) for (let j = 0; j < 3; j++) T.data[i + j * tris.length] = tris[i][j] + 1;
+    return ret(T);
+  },
+  griddata: async (a) => {
+    // griddata(x,y,v,xq,yq[,method]) — scattered linear (default) or nearest interpolation.
+    const xs = toArray(m(a[0])), ys = toArray(m(a[1])), vs = toArray(m(a[2]));
+    const XQ = m(a[3]), YQ = m(a[4]);
+    const method = a.length >= 6 && isMat(a[5]) && (a[5] as Mat).isChar ? asString(a[5]).toLowerCase() : 'linear';
+    const out = zeros(XQ.rows, XQ.cols);
+    if (method === 'nearest') {
+      for (let k = 0; k < out.data.length; k++) { const qx = XQ.data[k], qy = YQ.data[k]; let best = 0, bd = Infinity; for (let i = 0; i < xs.length; i++) { const d = (xs[i] - qx) ** 2 + (ys[i] - qy) ** 2; if (d < bd) { bd = d; best = i; } } out.data[k] = vs[best]; }
+      return ret(out);
+    }
+    const tris = delaunayTri(xs, ys);
+    for (let k = 0; k < out.data.length; k++) {
+      const qx = XQ.data[k], qy = YQ.data[k]; let val = NaN;
+      for (const t of tris) {
+        const [l1, l2, l3] = bary(xs[t[0]], ys[t[0]], xs[t[1]], ys[t[1]], xs[t[2]], ys[t[2]], qx, qy);
+        if (l1 >= -1e-9 && l2 >= -1e-9 && l3 >= -1e-9) { val = l1 * vs[t[0]] + l2 * vs[t[1]] + l3 * vs[t[2]]; break; }
+      }
+      out.data[k] = val;
+    }
+    return ret(out);
+  },
+  interp3: async () => { throw new MatError('interp3 requires 3-D arrays, which this 2-D engine does not support. Use interp1/interp2, or griddata for scattered data.'); },
+  interpn: async () => { throw new MatError('interpn requires N-D arrays, which this 2-D engine does not support. Use interp1/interp2, or griddata for scattered data.'); },
   pchip: async (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])); const d = pchipSlopes(x, y); if (a.length < 3) return ret(makePP(x, hermiteCoefs(x, y, d))); return ret(map(m(a[2]), (q) => hermiteEval(x, y, d, q))); },
   makima: async (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])); const d = akimaSlopes(x, y); if (a.length < 3) return ret(makePP(x, hermiteCoefs(x, y, d))); return ret(map(m(a[2]), (q) => hermiteEval(x, y, d, q))); },
   mkpp: async (a) => { const breaks = toArray(m(a[0])); const coefs = m(a[1]); return ret(makePP(breaks, coefs)); },
@@ -1351,6 +1381,10 @@ const HELP: Record<string, HelpEntry> = {
   airy: { summary: 'Airy functions (0=Ai,1=Ai′,2=Bi,3=Bi′)', syntax: ['y = airy(X)', 'y = airy(k,X)'], seealso: ['besselk', 'besselj'] },
   ellipke: { summary: 'Complete elliptic integrals K(m) and E(m)', syntax: ['[K,E] = ellipke(m)'], seealso: ['ellipj'] },
   ellipj: { summary: 'Jacobi elliptic functions sn, cn, dn', syntax: ['[sn,cn,dn] = ellipj(u,m)'], seealso: ['ellipke'] },
+  delaunay: { summary: '2-D Delaunay triangulation (vertex-index triples)', syntax: ['T = delaunay(x,y)'], seealso: ['griddata', 'convhull'] },
+  griddata: { summary: 'Interpolate scattered 2-D data onto query points (linear or nearest)', syntax: ['vq = griddata(x,y,v,xq,yq)', "vq = griddata(x,y,v,xq,yq,'nearest')"], seealso: ['delaunay', 'interp2', 'scatteredInterpolant'] },
+  interp3: { summary: '3-D interpolation (not supported: needs N-D arrays)', syntax: ['vq = interp3(...)'], seealso: ['interp2', 'interp1', 'griddata'] },
+  interpn: { summary: 'N-D interpolation (not supported: needs N-D arrays)', syntax: ['vq = interpn(...)'], seealso: ['interp2', 'interp1', 'griddata'] },
 };
 
 /** Base-MATLAB functions whose reference page is at /help/matlab/ref/<name>.html.
@@ -1376,7 +1410,8 @@ const BASE_REF = new Set<string>((
   'struct isstruct isfield fieldnames numfields rmfield setfield getfield orderfields struct2cell cell2struct structfun ' +
   'horzcat vertcat isequaln corr qmr condest wilkinson spones nonzeros bartlett blackman hamming hann typecast swapbytes ' +
   'mkpp unmkpp ppval ' +
-  'psi expint sinint cosint legendre besselj bessely besseli besselk besselh airy ellipke ellipj'
+  'psi expint sinint cosint legendre besselj bessely besseli besselk besselh airy ellipke ellipj ' +
+  'delaunay griddata interp3 interpn'
 ).split(/\s+/));
 
 export function docUrl(name: string): string {
@@ -1850,6 +1885,49 @@ function splineEval(x: number[], y: number[], q: number): number {
   const dx = q - x[i], hi = h[i];
   const aa = y[i], bb = (y[i + 1] - y[i]) / hi - hi * (2 * M[i] + M[i + 1]) / 6, cc = M[i] / 2, dd = (M[i + 1] - M[i]) / (6 * hi);
   return aa + bb * dx + cc * dx * dx + dd * dx * dx * dx;
+}
+
+// ── 2-D Delaunay triangulation (Bowyer–Watson) + scattered interpolation ──
+function orient2(ax: number, ay: number, bx: number, by: number, cx: number, cy: number): number {
+  return (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+}
+/** True if (px,py) lies strictly inside the circumcircle of triangle a,b,c. */
+function inCircle(ax: number, ay: number, bx: number, by: number, cx: number, cy: number, px: number, py: number): boolean {
+  if (orient2(ax, ay, bx, by, cx, cy) < 0) { const tx = bx, ty = by; bx = cx; by = cy; cx = tx; cy = ty; }
+  const adx = ax - px, ady = ay - py, bdx = bx - px, bdy = by - py, cdx = cx - px, cdy = cy - py;
+  const a2 = adx * adx + ady * ady, b2 = bdx * bdx + bdy * bdy, c2 = cdx * cdx + cdy * cdy;
+  const det = adx * (bdy * c2 - b2 * cdy) - ady * (bdx * c2 - b2 * cdx) + a2 * (bdx * cdy - bdy * cdx);
+  return det > 1e-12;
+}
+/** Delaunay triangulation of 2-D points; returns 0-based vertex-index triples. */
+function delaunayTri(xs: number[], ys: number[]): number[][] {
+  const n = xs.length; if (n < 3) return [];
+  let minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
+  for (let i = 0; i < n; i++) { minx = Math.min(minx, xs[i]); miny = Math.min(miny, ys[i]); maxx = Math.max(maxx, xs[i]); maxy = Math.max(maxy, ys[i]); }
+  const dmax = Math.max(maxx - minx, maxy - miny) || 1, midx = (minx + maxx) / 2, midy = (miny + maxy) / 2;
+  const px = [...xs, midx - 20 * dmax, midx, midx + 20 * dmax];
+  const py = [...ys, midy - dmax, midy + 20 * dmax, midy - dmax];
+  let tris: number[][] = [[n, n + 1, n + 2]];
+  for (let i = 0; i < n; i++) {
+    const bad: number[][] = [], good: number[][] = [];
+    for (const t of tris) (inCircle(px[t[0]], py[t[0]], px[t[1]], py[t[1]], px[t[2]], py[t[2]], px[i], py[i]) ? bad : good).push(t);
+    const edges: number[][] = [];
+    for (const t of bad) edges.push([t[0], t[1]], [t[1], t[2]], [t[2], t[0]]);
+    tris = good;
+    for (let a = 0; a < edges.length; a++) {
+      let shared = false;
+      for (let b = 0; b < edges.length; b++) if (a !== b && ((edges[a][0] === edges[b][0] && edges[a][1] === edges[b][1]) || (edges[a][0] === edges[b][1] && edges[a][1] === edges[b][0]))) { shared = true; break; }
+      if (!shared) tris.push([edges[a][0], edges[a][1], i]);
+    }
+  }
+  return tris.filter((t) => t.every((v) => v < n));
+}
+/** Barycentric coordinates of (px,py) in triangle a,b,c. */
+function bary(ax: number, ay: number, bx: number, by: number, cx: number, cy: number, px: number, py: number): [number, number, number] {
+  const d = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy);
+  const l1 = ((by - cy) * (px - cx) + (cx - bx) * (py - cy)) / d;
+  const l2 = ((cy - ay) * (px - cx) + (ax - cx) * (py - cy)) / d;
+  return [l1, l2, 1 - l1 - l2];
 }
 
 // ── Piecewise-polynomial (pp) form ───────────────────────────────────────
