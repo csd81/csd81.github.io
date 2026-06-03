@@ -1,5 +1,6 @@
 /** Display formatting (`format short`) and the `fprintf`/`sprintf` printf engine. */
 import { type Mat, type Value, isMat, isHandle, isComplex, numel, isScalar, asString } from './values';
+import { exprToStr } from './sym';
 
 /** Format a complex scalar as `a + bi` / `a - bi`. */
 function fmtC(re: number, im: number): string {
@@ -61,6 +62,7 @@ function brief(v: Value): string {
   if (v.kind === 'quantum') return `[quantum ${v.qkind}]`;
   if (v.kind === 'temporal') return v.rows * v.cols === 1 ? fmtTemporal(v.tkind, v.data[0]) : `[${v.rows}×${v.cols} ${v.tkind}]`;
   if (v.kind === 'table') return `[${v.nrows}×${v.vars.length} ${v.isTimetable ? 'timetable' : 'table'}]`;
+  if (v.kind === 'sym') return v.rows * v.cols === 1 ? exprToStr(v.exprs[0]) : `[${v.rows}×${v.cols} sym]`;
   if (v.isChar) return `'${asString(v)}'`;
   if (numel(v) === 0) return '[]';
   if (isScalar(v)) return `[${isComplex(v) ? fmtC(v.data[0], v.idata![0]) : formatScalar(v.data[0])}]`;
@@ -94,6 +96,7 @@ export function dispValue(v: Value): string {
   if (v.kind === 'quantum') return quantumLines(v).join('\n');
   if (v.kind === 'temporal') return temporalLines(v).join('\n');
   if (v.kind === 'table') return tableLines(v).join('\n');
+  if (v.kind === 'sym') return symLines(v).join('\n');
   if (v.kind === 'gobj') return `<${v.gtype} handle>`;
   if (isHandle(v)) return `@${v.name ?? 'anonymous'}`;
   if (v.kind === 'num' && v.nd) return ndLines(v).join('\n');
@@ -115,6 +118,7 @@ export function displayValue(name: string, v: Value): string {
   if (v.kind === 'quantum') return `${name} =\n\n  quantum.${v.qkind} with properties:\n${quantumLines(v).join('\n')}\n`;
   if (v.kind === 'temporal') return `${name} =\n\n${temporalLines(v).join('\n')}\n`;
   if (v.kind === 'table') return `${name} =\n\n  ${v.nrows}×${v.vars.length} ${v.isTimetable ? 'timetable' : 'table'}\n\n${tableLines(v).join('\n')}\n`;
+  if (v.kind === 'sym') return `${name} =\n\n${symLines(v).join('\n')}\n`;
   if (v.kind === 'num' && v.nd) return `${name} =\n\n${ndLines(v).join('\n')}\n`;
   if (v.kind === 'gobj') return `${name} =\n\n  <${v.gtype} handle>\n`;
   if (isHandle(v)) return `${name} =\n\n    @${v.name ?? 'anonymous function'}\n`;
@@ -198,6 +202,13 @@ function temporalLines(v: { tkind: string; rows: number; cols: number; data: Flo
   return lines;
 }
 
+/** Display of a symbolic array: scalar inline, otherwise a bracketed grid of expressions. */
+function symLines(v: { rows: number; cols: number; exprs: import('./sym').SymExpr[] }): string[] {
+  if (v.rows * v.cols === 1) return ['    ' + exprToStr(v.exprs[0])];
+  const cells: string[][] = []; for (let r = 0; r < v.rows; r++) { const row: string[] = []; for (let c = 0; c < v.cols; c++) row.push(exprToStr(v.exprs[r + c * v.rows])); cells.push(row); }
+  return cells.map((row) => '    [ ' + row.join(', ') + ' ]');
+}
+
 /** Summary display of a quantum object. */
 function quantumLines(v: { qkind: string; gate?: string; targets?: number[]; controls?: number[]; numQubits?: number; gates?: unknown[]; re?: Float64Array }): string[] {
   if (v.qkind === 'gate') return [`    Type: "${v.gate}"`, `    TargetQubits: [${(v.targets ?? []).join(' ')}]`, ...(v.controls?.length ? [`    ControlQubits: [${v.controls.join(' ')}]`] : [])];
@@ -228,6 +239,7 @@ function buildStream(args: Value[]): Array<{ s: string } | { n: number }> {
     if (isHandle(a)) { stream.push({ s: a.name ?? '@fn' }); continue; }
     if (a.kind === 'gobj') { stream.push({ s: `<${a.gtype}>` }); continue; }
     if (a.kind === 'temporal') { for (const x of a.data) stream.push({ s: fmtTemporal(a.tkind, x) }); continue; }
+    if (a.kind === 'sym') { for (const e of a.exprs) stream.push({ s: exprToStr(e) }); continue; }
     if (a.kind === 'cell' || a.kind === 'struct' || a.kind === 'graph' || a.kind === 'geom' || a.kind === 'quantum' || a.kind === 'table') { stream.push({ s: brief(a) }); continue; }
     if (a.kind === 'str') { for (const s of a.items) stream.push({ s }); continue; }
     if (a.kind === 'sparse') { for (const v of a.values) stream.push({ n: v }); continue; }

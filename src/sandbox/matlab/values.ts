@@ -107,7 +107,14 @@ export interface Table {
   rowTimes?: Temporal;     // timetable row-time vector
   rowDimName?: string;     // 'Time' for timetables, 'Row' otherwise
 }
-export type Value = Mat | Handle | GObj | Cell | StructV | Sparse | Str | Graph | Geom | Quantum | Temporal | Table;
+/** Symbolic array (Symbolic Math Toolbox): per-element expression trees (column-major). */
+export interface Sym {
+  kind: 'sym';
+  rows: number;
+  cols: number;
+  exprs: import('./sym').SymExpr[];
+}
+export type Value = Mat | Handle | GObj | Cell | StructV | Sparse | Str | Graph | Geom | Quantum | Temporal | Table | Sym;
 
 export class MatError extends Error {}
 
@@ -161,6 +168,8 @@ export function isGeom(v: Value): v is Geom { return v.kind === 'geom'; }
 export function isQuantum(v: Value): v is Quantum { return v.kind === 'quantum'; }
 export function isTemporal(v: Value): v is Temporal { return v.kind === 'temporal'; }
 export function isTable(v: Value): v is Table { return v.kind === 'table'; }
+export function isSym(v: Value): v is Sym { return v.kind === 'sym'; }
+export function makeSym(rows: number, cols: number, exprs: import('./sym').SymExpr[]): Sym { return { kind: 'sym', rows, cols, exprs }; }
 export function makeTemporal(tkind: 'datetime' | 'duration', rows: number, cols: number, data: Float64Array, fmt?: string): Temporal { return { kind: 'temporal', tkind, rows, cols, data, fmt }; }
 export function makeStrArr(rows: number, cols: number, items: string[]): Str { return { kind: 'str', rows, cols, items }; }
 export function makeStr(s: string): Str { return { kind: 'str', rows: 1, cols: 1, items: [s] }; }
@@ -169,6 +178,7 @@ export function makeCell(rows: number, cols: number, items: Value[]): Cell { ret
 export function dimsOf(v: Value): [number, number] {
   if (v.kind === 'num' || v.kind === 'cell' || v.kind === 'struct' || v.kind === 'sparse' || v.kind === 'str' || v.kind === 'temporal') return [v.rows, v.cols];
   if (v.kind === 'table') return [v.nrows, v.vars.length];
+  if (v.kind === 'sym') return [v.rows, v.cols];
   return [1, 1];   // graph/handle/gobj are scalar objects
 
 }

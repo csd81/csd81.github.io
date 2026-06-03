@@ -14,7 +14,9 @@ import {
   type Quantum, isQuantum,
   type Temporal, isTemporal, makeTemporal,
   type Table, isTable,
+  type Sym, isSym, makeSym,
 } from './values';
+import { type SymExpr, sN, sV, sAdd, sMul, sPow, sFn, sNeg, simplifyExpr, diffExpr, subsExpr, evalExpr as symEval, exprToStr, symVars } from './sym';
 import {
   det, inv, mldivide, diag, norm, eye,
   qr as qrDecomp, chol as cholFn, luOutputs, jacobiEigSym, svd as svdReal,
@@ -372,6 +374,7 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(makeND(dims, Float64Array.from(A.data), { idata: A.idata ? Float64Array.from(A.idata) : null, isChar: A.isChar }));
   },
   diff: async (a) => {
+    if (isSym(a[0])) { const s = a[0]; const vr = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar)) ? asString(a[1]) : (symVarsOf(s)[0] ?? 'x'); const order = a.length >= 3 ? Math.round(asScalar(a[2])) : (a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar ? Math.round(asScalar(a[1])) : 1); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => { let d = e; for (let k = 0; k < order; k++) d = simplifyExpr(diffExpr(d, vr)); return d; }))); }
     const A = m(a[0]);
     if (A.rows === 1 || A.cols === 1) { const v = toArray(A); const out: number[] = []; for (let i = 1; i < v.length; i++) out.push(v[i] - v[i - 1]); return ret(A.cols === 1 ? colVec(out) : rowVec(out)); }
     const out = zeros(A.rows - 1, A.cols);
@@ -645,7 +648,7 @@ export const BUILTINS: Record<string, Builtin> = {
   isnumeric: async (a) => ret(bool(isMat(a[0]) && !(a[0] as Mat).isChar)),
   ischar: async (a) => ret(bool(isMat(a[0]) && !!(a[0] as Mat).isChar)),
   isfloat: async (a) => ret(bool(isMat(a[0]) && !(a[0] as Mat).isChar)),
-  double: async (a) => { const A = m(a[0]); return ret({ kind: 'num', rows: A.rows, cols: A.cols, data: Float64Array.from(A.data), idata: A.idata ? Float64Array.from(A.idata) : undefined }); },
+  double: async (a) => { if (isSym(a[0])) { const s = a[0]; const M = zeros(s.rows, s.cols); s.exprs.forEach((e, i) => { M.data[i] = symEval(e, new Map()); }); return ret(M); } const A = m(a[0]); return ret({ kind: 'num', rows: A.rows, cols: A.cols, data: Float64Array.from(A.data), idata: A.idata ? Float64Array.from(A.idata) : undefined }); },
   single: async (a) => { const A = m(a[0]); return ret(mat(A.rows, A.cols, Float64Array.from(A.data))); },
   char: async (a) => { const A = m(a[0]); if (A.isChar) return ret(A); return ret(str(toArray(A).map((x) => String.fromCharCode(Math.round(x))).join(''))); },
   int8: async (a) => ret(intCast(m(a[0]), 'int8')), uint8: async (a) => ret(intCast(m(a[0]), 'uint8')),
@@ -1232,6 +1235,7 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(scalar(s));
   },
   gradient: async (a) => {
+    if (isSym(a[0])) { const s = a[0]; const vars = a.length >= 2 ? symNames(a[1]) : symVarsOf(s); return ret(makeSym(vars.length, 1, vars.map((vn) => simplifyExpr(diffExpr(s.exprs[0], vn))))); }
     const y = toArray(m(a[0])); const h = a.length >= 2 ? asScalar(a[1]) : 1; const n = y.length; const g: number[] = [];
     for (let i = 0; i < n; i++) { if (i === 0) g.push((y[1] - y[0]) / h); else if (i === n - 1) g.push((y[n - 1] - y[n - 2]) / h); else g.push((y[i + 1] - y[i - 1]) / (2 * h)); }
     return ret(m(a[0]).cols === 1 ? colVec(g) : rowVec(g));
@@ -1362,6 +1366,35 @@ export const BUILTINS: Record<string, Builtin> = {
   eomday: async (a) => ret(elementwise(m(a[0]), m(a[1]), (y, mo) => [31, (y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][mo - 1] ?? NaN)),
   etime: async (a) => { const t2 = toArray(m(a[0])), t1 = toArray(m(a[1])); return ret(scalar((dnum(t2[0], t2[1], t2[2], t2[3], t2[4], t2[5]) - dnum(t1[0], t1[1], t1[2], t1[3], t1[4], t1[5])) * 86400)); },
   addtodate: async (a) => { const n = asScalar(m(a[0])), q = asScalar(m(a[1])), unit = asString(a[2]); const v = dvec(n); const idx = { year: 0, month: 1, day: 2, hour: 3, minute: 4, second: 5 }[unit] ?? 2; v[idx] += q; return ret(scalar(dnum(v[0], v[1], v[2], v[3], v[4], v[5]))); },
+  // ── Symbolic Math ──
+  sym: async (a) => {
+    if (isSym(a[0])) return ret(a[0]);
+    if (isStr(a[0]) || (isMat(a[0]) && (a[0] as Mat).isChar)) { const t = asString(a[0]).trim(); const num = Number(t); return ret(makeSym(1, 1, [Number.isFinite(num) && /^[-\d.]+$/.test(t) ? sN(num) : sV(t)])); }
+    const M = m(a[0]); return ret(makeSym(M.rows, M.cols, Array.from(M.data, (x) => sN(x))));
+  },
+  syms: async () => [],   // handled specially in interp (assigns symbolic variables)
+  int: async (a) => {
+    const s = symArg(a[0]); const varGiven = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar) || (isSym(a[1]) && symVars(a[1].exprs[0]).length));
+    const v = varGiven ? (isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1])) : (symVarsOf(s)[0] ?? 'x');
+    const F = s.exprs.map((e) => integrate(e, v));
+    // limits: int(f,x,a,b) (4-arg) or int(f,a,b) (3-arg, default var)
+    let lim: [Value, Value] | null = null;
+    if (a.length >= 4 && varGiven) lim = [a[2], a[3]]; else if (a.length >= 3 && !varGiven) lim = [a[1], a[2]];
+    if (lim) { const lo = symToExpr(lim[0]), hi = symToExpr(lim[1]); return ret(makeSym(s.rows, s.cols, F.map((Fe) => { const d = simplifyExpr(sAdd(subsExpr(Fe, v, hi), sNeg(subsExpr(Fe, v, lo)))); const num = symEval(d, new Map()); return Number.isFinite(num) ? sN(num) : d; }))); }
+    return ret(makeSym(s.rows, s.cols, F.map(simplifyExpr)));
+  },
+  limit: async (a) => { const s = symArg(a[0]); const v = a.length >= 3 ? asString(a[1]) : (symVarsOf(s)[0] ?? 'x'); const pt = symToExpr(a[a.length - 1]); const exprs = s.exprs.map((e) => limitAt(e, v, pt)); return ret(makeSym(s.rows, s.cols, exprs)); },
+  solve: async (a) => { if (a.length && isStruct(a[0]) && (a[0] as StructV).fields.has('Q')) return ret(quboSolveResult(a[0] as StructV)); const s = symArg(a[0]); const v = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar)) ? asString(a[1]) : (symVarsOf(s)[0] ?? 'x'); const roots = solveExpr(s.exprs[0], v); return ret(makeSym(roots.length, 1, roots)); },
+  jacobian: async (a) => { const s = symArg(a[0]); const vars = a.length >= 2 ? symNames(a[1]) : symVarsOf(s); const J: SymExpr[] = []; const nf = s.exprs.length; for (let c = 0; c < vars.length; c++) for (let r = 0; r < nf; r++) J[r + c * nf] = simplifyExpr(diffExpr(s.exprs[r], vars[c])); return ret(makeSym(nf, vars.length, J)); },
+  hessian: async (a) => { const s = symArg(a[0]); const vars = a.length >= 2 ? symNames(a[1]) : symVarsOf(s); const nv = vars.length; const H: SymExpr[] = []; for (let i = 0; i < nv; i++) for (let j = 0; j < nv; j++) H[i + j * nv] = simplifyExpr(diffExpr(diffExpr(s.exprs[0], vars[i]), vars[j])); return ret(makeSym(nv, nv, H)); },
+  taylor: async (a) => { const s = symArg(a[0]); const v = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar)) ? asString(a[1]) : (symVarsOf(s)[0] ?? 'x'); const ord = 6; let term = s.exprs[0]; let acc: SymExpr = sN(0); let fact = 1; for (let k = 0; k < ord; k++) { const c = symEval(term, new Map([[v, 0]])); if (Number.isFinite(c)) acc = sAdd(acc, sMul(sN(c / fact), sPow(sV(v), sN(k)))); term = diffExpr(term, v); fact *= (k + 1); } return ret(makeSym(1, 1, [simplifyExpr(acc)])); },
+  simplify: async (a) => { if (isGraph(a[0])) { const g = a[0]; const seen = new Set<string>(); const edges: typeof g.edges = []; for (const e of g.edges) { if (e.s === e.t) continue; const k = g.directed ? `${e.s}_${e.t}` : `${Math.min(e.s, e.t)}_${Math.max(e.s, e.t)}`; if (seen.has(k)) continue; seen.add(k); edges.push(e); } return ret(makeGraph(g.directed, g.n, edges, g.names)); } const s = symArg(a[0]); return ret(makeSym(s.rows, s.cols, s.exprs.map(simplifyExpr))); },
+  expand: async (a) => { const s = symArg(a[0]); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => simplifyExpr(expandExpr(e))))); },
+  subs: async (a) => { const s = symArg(a[0]); const vn = a.length >= 3 ? (isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1])) : (symVarsOf(s)[0] ?? 'x'); const repl = symToExpr(a[a.length - 1]); const exprs = s.exprs.map((e) => simplifyExpr(subsExpr(e, vn, repl))); const out = makeSym(s.rows, s.cols, exprs); if (out.exprs.every((e) => symVars(e).length === 0)) { const M = zeros(s.rows, s.cols); out.exprs.forEach((e, i) => { M.data[i] = symEval(e, new Map()); }); return ret(M); } return ret(out); },
+  vpa: async (a) => { const s = symArg(a[0]); const M = zeros(s.rows, s.cols); let allNum = true; s.exprs.forEach((e, i) => { const v = symEval(e, new Map()); M.data[i] = v; if (!Number.isFinite(v)) allNum = false; }); return ret(allNum ? M : a[0]); },
+  latex: async (a) => ret(str(symArg(a[0]).exprs.map(exprToStr).join(', '))),
+  pretty: async (a, _n, env) => { env.output(symArg(a[0]).exprs.map(exprToStr).join('\n') + '\n'); return []; },
+  isAlways: async (a) => { const s = symArg(a[0]); const o = zeros(s.rows, s.cols); o.isBool = true; s.exprs.forEach((e, i) => { o.data[i] = Math.abs(symEval(e, new Map())) < 1e-12 ? 1 : 0; }); return ret(o); },
   // ── datetime / duration objects ──
   datetime: async (a) => {
     if (a.length >= 1 && (isStr(a[0]) || (isMat(a[0]) && (a[0] as Mat).isChar))) { const w = asString(a[0]).toLowerCase(); const n = w === 'today' ? Math.floor(Date.now() / 86400000) + 719529 : Date.now() / 86400000 + 719529; return ret(makeTemporal('datetime', 1, 1, Float64Array.of(n))); }
@@ -1649,7 +1682,6 @@ export const BUILTINS: Record<string, Builtin> = {
   inedges: async (a) => { const g = gArg(a[0]); const i = nodeIds(g, a[1])[0]; const idx: number[] = []; g.edges.forEach((e, k) => { if (e.t === i || (!g.directed && e.s === i)) idx.push(k + 1); }); return ret(colVec(idx)); },
   nearest: async (a, n) => { const g = gArg(a[0]); const src = nodeIds(g, a[1])[0]; const d = asScalar(a[2]); const { dist } = dijkstra(g, src); const nodes: number[] = [], ds: number[] = []; for (let i = 0; i < g.n; i++) if (i !== src && dist[i] <= d + 1e-12) { nodes.push(i + 1); ds.push(dist[i]); } return n >= 2 ? [colVec(nodes), colVec(ds)] : [colVec(nodes)]; },
   hascycles: async (a) => { const g = gArg(a[0]); if (g.directed) return ret(bool(topoSort(g) === null)); const comps = new Set(connComp(g)).size; return ret(bool(g.edges.length >= g.n - comps + 1)); },
-  simplify: async (a) => { const g = gArg(a[0]); const seen = new Set<string>(); const edges: typeof g.edges = []; for (const e of g.edges) { if (e.s === e.t) continue; const k = g.directed ? `${e.s}_${e.t}` : `${Math.min(e.s, e.t)}_${Math.max(e.s, e.t)}`; if (seen.has(k)) continue; seen.add(k); edges.push(e); } return ret(makeGraph(g.directed, g.n, edges, g.names)); },
   shortestpathtree: async (a) => { const g = gArg(a[0]); const src = nodeIds(g, a[1])[0]; const { prev } = dijkstra(g, src); const edges: { s: number; t: number; w: number }[] = []; for (let i = 0; i < g.n; i++) if (prev[i] >= 0) edges.push({ s: prev[i], t: i, w: 1 }); return ret(makeGraph(true, g.n, edges, g.names)); },
   condensation: async (a) => { const g = gArg(a[0]); const { comp, count } = sccKosaraju(g); const seen = new Set<string>(); const edges: { s: number; t: number; w: number }[] = []; for (const e of g.edges) if (comp[e.s] !== comp[e.t]) { const k = `${comp[e.s]}_${comp[e.t]}`; if (!seen.has(k)) { seen.add(k); edges.push({ s: comp[e.s], t: comp[e.t], w: 1 }); } } return ret(makeGraph(true, count, edges)); },
   transclosure: async (a) => { const g = gArg(a[0]); const R = reachMatrix(g); const edges: { s: number; t: number; w: number }[] = []; for (let i = 0; i < g.n; i++) for (let j = 0; j < g.n; j++) if (i !== j && R[i][j] && (g.directed || i < j)) edges.push({ s: i, t: j, w: 1 }); return ret(makeGraph(g.directed, g.n, edges, g.names)); },
@@ -1808,7 +1840,6 @@ export const BUILTINS: Record<string, Builtin> = {
   // ── QUBO / QAOA optimization ──
   qubo: async (a) => { const Q = m(a[0]); const c = a.length >= 2 && isMat(a[1]) ? colVec(toArray(m(a[1]))) : zeros(Q.rows, 1); const d = a.length >= 3 ? asScalar(a[2]) : 0; return ret(makeQubo(Q, c, d)); },
   evaluateObjective: async (a) => { const q = a[0] as StructV; const x = toArray(m(a[1])); return ret(scalar(quboEnergy(m(q.fields.get('Q')![0]), toArray(m(q.fields.get('c')![0])), asScalar(q.fields.get('d')![0]), x))); },
-  solve: async (a) => ret(quboSolveResult(a[0] as StructV)),
   tabuSearch: async (a) => ret(quboSolveResult(a[0] as StructV)),
   qaoa: async (a) => { const qi = a.find((x) => isStruct(x) && (x as StructV).fields.has('Q')) as StructV; return ret(quboSolveResult(qi, 'qaoa')); },
   qubo2ising: async (a, n) => {
@@ -2668,7 +2699,6 @@ const HELP: Record<string, HelpEntry> = {
   compositeGate: { summary: 'Bundle several gates into one', syntax: ['g = compositeGate(gates)'], seealso: ['quantumCircuit'] },
   observable: { summary: 'Pauli observable for measurement', syntax: ['o = observable(paulis)'], seealso: ['simulate'] },
   qubo: { summary: 'Create a QUBO problem (minimize x′Qx + c′x + d)', syntax: ['p = qubo(Q)', 'p = qubo(Q,c,d)'], seealso: ['solve', 'tabuSearch', 'qubo2ising'] },
-  solve: { summary: 'Solve a QUBO problem', syntax: ['result = solve(qprob)'], seealso: ['qubo', 'tabuSearch'] },
   tabuSearch: { summary: 'Solve a QUBO via local (tabu) search', syntax: ['result = tabuSearch(qprob)'], seealso: ['qubo', 'solve'] },
   qaoa: { summary: 'QAOA solver for a QUBO problem', syntax: ['result = qaoa(protocol,qprob)'], seealso: ['qubo', 'solve'] },
   evaluateObjective: { summary: 'Evaluate a QUBO objective at x', syntax: ['v = evaluateObjective(qprob,x)'], seealso: ['qubo'] },
@@ -2868,6 +2898,20 @@ const HELP: Record<string, HelpEntry> = {
   eomday: { summary: 'Last day of a month', syntax: ['d = eomday(Y,M)'], seealso: ['datenum', 'calendar'] },
   etime: { summary: 'Elapsed time between two clock vectors (seconds)', syntax: ['s = etime(t2,t1)'], seealso: ['clock', 'tic'] },
   addtodate: { summary: 'Add a quantity to a date field', syntax: ["n2 = addtodate(n,q,'day')"], seealso: ['datenum'] },
+  sym: { summary: 'Create symbolic numbers, variables, or expressions', syntax: ["x = sym('x')", 'A = sym(M)'], seealso: ['syms', 'double', 'diff'] },
+  syms: { summary: 'Create symbolic variables', syntax: ['syms x y z'], seealso: ['sym'] },
+  int: { summary: 'Indefinite or definite symbolic integral', syntax: ['int(f,x)', 'int(f,x,a,b)', 'int(f,a,b)'], seealso: ['diff', 'integral', 'vpaintegral'] },
+  limit: { summary: 'Limit of a symbolic expression', syntax: ['limit(f,x,a)'], seealso: ['diff', 'taylor'] },
+  solve: { summary: 'Solve symbolic equations (or a QUBO problem)', syntax: ['solve(eqn,x)'], seealso: ['vpasolve', 'dsolve', 'roots'] },
+  jacobian: { summary: 'Jacobian matrix of a symbolic function', syntax: ['J = jacobian(f,vars)'], seealso: ['gradient', 'hessian', 'diff'] },
+  hessian: { summary: 'Hessian matrix of a symbolic scalar field', syntax: ['H = hessian(f,vars)'], seealso: ['jacobian', 'gradient'] },
+  taylor: { summary: 'Taylor series expansion', syntax: ['taylor(f,x)'], seealso: ['diff', 'limit'] },
+  expand: { summary: 'Expand a symbolic expression', syntax: ['expand(f)'], seealso: ['simplify', 'factor', 'collect'] },
+  subs: { summary: 'Substitute in a symbolic expression', syntax: ['subs(f,old,new)'], seealso: ['sym', 'double'] },
+  vpa: { summary: 'Variable-precision (numeric) evaluation of a symbolic value', syntax: ['vpa(x)'], seealso: ['double', 'sym'] },
+  latex: { summary: 'LaTeX/text form of a symbolic expression', syntax: ['latex(f)'], seealso: ['pretty', 'sym'] },
+  pretty: { summary: 'Pretty-print a symbolic expression', syntax: ['pretty(f)'], seealso: ['latex', 'disp'] },
+  isAlways: { summary: 'Test whether a symbolic condition always holds', syntax: ['tf = isAlways(cond)'], seealso: ['logical', 'simplify'] },
   datetime: { summary: 'Create a datetime array', syntax: ['d = datetime(Y,M,D)', 'd = datetime(Y,M,D,H,MI,S)', "d = datetime('now')"], seealso: ['duration', 'datenum', 'year'] },
   duration: { summary: 'Create a duration array (from [H M S])', syntax: ['d = duration([h m s])'], seealso: ['hours', 'minutes', 'seconds', 'datetime'] },
   NaT: { summary: 'Not-a-Time (missing datetime)', syntax: ['d = NaT'], seealso: ['isnat', 'datetime', 'NaN'] },
@@ -3139,6 +3183,7 @@ const BASE_REF = new Set<string>((
   'bvp4c bvp5c bvpinit bvpset bvpget dde23 ddesd ddensd ddeset ddeget deval ' +
   'ode15i decic odextend bvpxtend equilibrate dissect symbfact ' +
   'datenum datevec datestr now today clock date weekday eomday etime addtodate ' +
+  'sym syms int limit solve jacobian hessian taylor expand subs vpa latex pretty isAlways simplify ' +
   'datetime duration NaT years days hours minutes seconds milliseconds year month day hour minute second ymd isdatetime isduration isnat ' +
   'table timetable array2table cell2table struct2table table2array table2cell table2struct istable istimetable istabular height width head tail summary ' +
   'hGate xGate yGate zGate sGate siGate tGate tiGate idGate rxGate ryGate rzGate cxGate cnotGate cyGate czGate chGate crxGate cryGate crzGate swapGate ccxGate mcxGate ' +
@@ -4944,6 +4989,56 @@ function tensorProd(A: Mat, B: Mat, opts: Value[]): Mat {
   const out = new Float64Array(A.data.length * B.data.length);
   for (let j = 0; j < B.data.length; j++) for (let i = 0; i < A.data.length; i++) out[i + j * A.data.length] = A.data[i] * B.data[j];
   return mat(A.data.length, B.data.length, out);
+}
+
+// ── Symbolic Math helpers ───────────────────────────────────────────────
+function symArg(v: Value): Sym { if (isSym(v)) return v; const M = m(v); return makeSym(M.rows, M.cols, Array.from(M.data, (x) => sN(x))); }
+function symToExpr(v: Value): SymExpr { if (isSym(v)) return v.exprs[0]; if (isStr(v) || (isMat(v) && (v as Mat).isChar)) { const t = asString(v).trim(); const num = Number(t); return Number.isFinite(num) && /^[-\d.]+$/.test(t) ? sN(num) : sV(t); } return sN(asScalar(v)); }
+function symVarsOf(s: Sym): string[] { const set = new Set<string>(); for (const e of s.exprs) symVars(e).forEach((x) => set.add(x)); return [...set].sort(); }
+function symNames(v: Value): string[] { if (isSym(v)) return v.exprs.map((e) => (e.t === 'v' ? e.name : symVars(e)[0] ?? 'x')); if (isCell(v)) return v.items.map((x) => asString(x)); if (isStr(v)) return v.items.slice(); return [asString(v)]; }
+/** Basic symbolic integration: linearity + xⁿ, 1/x, sin/cos/exp of the variable. */
+function integrate(e: SymExpr, x: string): SymExpr {
+  e = simplifyExpr(e);
+  if (e.t === 'add') return sAdd(...e.args.map((a) => integrate(a, x)));
+  if (e.t === 'mul') { const consts = e.args.filter((a) => symVars(a).indexOf(x) < 0); const rest = e.args.filter((a) => symVars(a).indexOf(x) >= 0); if (consts.length && rest.length) return sMul(sMul(...consts), integrate(rest.length === 1 ? rest[0] : sMul(...rest), x)); }
+  if (symVars(e).indexOf(x) < 0) return sMul(e, sV(x));                                  // constant → c·x
+  if (e.t === 'v' && e.name === x) return sMul(sN(0.5), sPow(sV(x), sN(2)));
+  if (e.t === 'pow' && e.base.t === 'v' && e.base.name === x && e.exp.t === 'n') { const n = e.exp.v; return n === -1 ? sFn('log', sV(x)) : sMul(sN(1 / (n + 1)), sPow(sV(x), sN(n + 1))); }
+  if (e.t === 'fn' && e.args[0].t === 'v' && e.args[0].name === x) {
+    if (e.name === 'sin') return sNeg(sFn('cos', sV(x)));
+    if (e.name === 'cos') return sFn('sin', sV(x));
+    if (e.name === 'exp') return sFn('exp', sV(x));
+  }
+  return sFn('int', e);   // unevaluated
+}
+/** Limit by substitution; one round of L'Hôpital for 0/0. */
+function limitAt(e: SymExpr, x: string, pt: SymExpr): SymExpr {
+  const p = symEval(pt, new Map()); const env = new Map([[x, p]]);
+  const v = symEval(e, env); if (Number.isFinite(v)) return sN(v);
+  // L'Hôpital for f/g → f'/g' if both → 0
+  if (e.t === 'mul') { const inv = e.args.find((a) => a.t === 'pow' && a.exp.t === 'n' && a.exp.v < 0); const num = e.args.filter((a) => a !== inv); if (inv) { const g = (inv as { base: SymExpr }).base; const f = num.length === 1 ? num[0] : sMul(...num); const fp = symEval(f, env), gp = symEval(g, env); if (Math.abs(fp) < 1e-9 && Math.abs(gp) < 1e-9) { const lv = symEval(sMul(diffExpr(f, x), sPow(diffExpr(g, x), sN(-1))), env); if (Number.isFinite(lv)) return sN(lv); } } }
+  return sFn('limit', e);
+}
+/** Solve p(x)=0 for polynomials up to degree 4 (numeric roots → symbolic numbers). */
+function solveExpr(e: SymExpr, x: string): SymExpr[] {
+  // extract polynomial coefficients via Taylor at 0: c_k = p^(k)(0)/k!
+  const coeffs: number[] = []; let term = e; let fact = 1; let deg = -1;
+  for (let k = 0; k <= 8; k++) { const c = symEval(term, new Map([[x, 0]])); if (!Number.isFinite(c)) return [sFn('solve', e)]; coeffs[k] = c / fact; if (Math.abs(coeffs[k]) > 1e-12) deg = k; term = simplifyExpr(diffExpr(term, x)); fact *= (k + 1); }
+  if (deg < 0) return [];
+  const p = coeffs.slice(0, deg + 1).reverse();   // highest power first
+  const { re, im } = durandKerner(p);
+  return re.map((r, i) => (Math.abs(im[i]) < 1e-9 ? sN(Math.abs(r - Math.round(r)) < 1e-9 ? Math.round(r) : r) : sFn('complex', sN(r), sN(im[i]))));
+}
+/** Distribute products over sums (expand). */
+function expandExpr(e: SymExpr): SymExpr {
+  if (e.t === 'n' || e.t === 'v') return e;
+  if (e.t === 'fn') return sFn(e.name, ...e.args.map(expandExpr));
+  if (e.t === 'add') return sAdd(...e.args.map(expandExpr));
+  if (e.t === 'pow') { const base = expandExpr(e.base); if (e.exp.t === 'n' && Number.isInteger(e.exp.v) && e.exp.v > 1 && e.exp.v <= 8) { let acc: SymExpr = base; for (let k = 1; k < e.exp.v; k++) acc = expandExpr(sMul(acc, base)); return acc; } return sPow(base, e.exp); }
+  // mul: distribute
+  const factors = e.args.map(expandExpr); let terms: SymExpr[] = [sN(1)];
+  for (const f of factors) { const fterms = f.t === 'add' ? f.args : [f]; const next: SymExpr[] = []; for (const t of terms) for (const ft of fterms) next.push(sMul(t, ft)); terms = next; }
+  return sAdd(...terms);
 }
 
 // ── Quantum computing ──────────────────────────────────────────────────

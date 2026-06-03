@@ -11,7 +11,12 @@ import {
   type Str, isStr, makeStr, makeStrArr,
   type Graph, type Geom, type Quantum,
   type Temporal, isTemporal, makeTemporal, numelOf,
+  isSym, makeSym,
 } from './values';
+import { type SymExpr, sN, sV, sAdd, sSub, sMul, sDiv, sPow, sFn, simplifyExpr, evalExpr } from './sym';
+
+/** Elementary functions that overload to symbolic when given a sym argument. */
+const SYM_ELEMENTARY = new Set(['sin', 'cos', 'tan', 'cot', 'sec', 'csc', 'asin', 'acos', 'atan', 'sinh', 'cosh', 'tanh', 'exp', 'log', 'log10', 'log2', 'sqrt', 'abs', 'sign', 'cbrt']);
 import { det, inv, mldivide } from './linalg';
 import { BUILTINS, CONSTANTS, builtinHelp, docUrl, type Env } from './builtins';
 import { displayValue, dispValue } from './format';
@@ -158,6 +163,7 @@ export class Interpreter implements Env {
       if (v.kind === 'quantum') { out.push({ name, size: '1x1', klass: `quantum.${v.qkind}`, preview: v.qkind === 'gate' ? `${v.gate}Gate` : v.qkind === 'circuit' ? `${v.numQubits} qubits, ${v.gates?.length ?? 0} gates` : `${v.numQubits} qubits` }); continue; }
       if (v.kind === 'temporal') { out.push({ name, size: `${v.rows}x${v.cols}`, klass: v.tkind, preview: dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) }); continue; }
       if (v.kind === 'table') { out.push({ name, size: `${v.nrows}x${v.vars.length}`, klass: v.isTimetable ? 'timetable' : 'table', preview: v.vars.join(', ').slice(0, 40) }); continue; }
+      if (v.kind === 'sym') { out.push({ name, size: `${v.rows}x${v.cols}`, klass: 'sym', preview: dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) }); continue; }
       const klass = v.isChar ? 'char' : 'double';
       const preview = numel(v) <= 12 ? dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) : '…';
       out.push({ name, size: `${v.rows}x${v.cols}`, klass, preview });
@@ -501,6 +507,10 @@ export class Interpreter implements Env {
   private async resolveCall(name: string, args: Value[], nargout: number): Promise<Value[]> {
     const def = this.funcs.get(name);
     if (def) return this.callUserFunc(def, args, nargout);
+    // syms a b c → create symbolic variables in the base workspace
+    if (name === 'syms') { for (const arg of args) { let nm = ''; try { nm = asString(arg); } catch { nm = ''; } if (/^[A-Za-z]\w*$/.test(nm)) this.base.vars.set(nm, makeSym(1, 1, [sV(nm)])); } return []; }
+    // symbolic overload of elementary functions: f(sym) → sFn(f, …)
+    if (args.length === 1 && isSym(args[0]) && SYM_ELEMENTARY.has(name)) { const s = args[0]; return [makeSym(s.rows, s.cols, s.exprs.map((e) => simplifyExpr(sFn(name, e))))]; }
     if (name in BUILTINS) return BUILTINS[name](args, nargout, this);
     if (args.length === 0 && name in CONSTANTS) return [CONSTANTS[name]()];
     throw new MatError(`undefined function or variable '${name}'`);
@@ -560,6 +570,12 @@ export class Interpreter implements Env {
     // A matrix-literal of quantum gates → a gate list (cell) for quantumCircuit.
     const flat = grid.flat();
     if (flat.length && flat.some((v) => v.kind === 'quantum')) return { kind: 'cell', rows: 1, cols: flat.length, items: flat };
+    // A matrix-literal containing symbolic entries → a Sym array.
+    if (flat.some(isSym)) {
+      const nr = grid.length, nc = grid[0].length; const exprs: SymExpr[] = new Array(nr * nc);
+      for (let r = 0; r < nr; r++) for (let c = 0; c < nc; c++) { const v = grid[r][c]; exprs[r + c * nr] = isSym(v) ? v.exprs[0] : sN(asMat(v).data[0]); }
+      return makeSym(nr, nc, exprs);
+    }
     if (anyStr) return buildStrMatrix(grid);
     const rowMats: Mat[] = [];
     for (const vals of grid) { const parts = vals.map(asMat); rowMats.push(parts.length === 0 ? empty() : parts.length === 1 ? parts[0] : horzcat(parts)); }
@@ -570,6 +586,8 @@ export class Interpreter implements Env {
     if (op === '&&') return bool(truthy(await this.evalExpr(ae, scope)) && truthy(await this.evalExpr(be, scope)));
     if (op === '||') return bool(truthy(await this.evalExpr(ae, scope)) || truthy(await this.evalExpr(be, scope)));
     const av = await this.evalExpr(ae, scope), bv = await this.evalExpr(be, scope);
+    // symbolic arithmetic (build expression trees element-wise).
+    if (isSym(av) || isSym(bv)) return symBinary(op, av, bv);
     // datetime/duration arithmetic and comparison.
     if (isTemporal(av) || isTemporal(bv)) return temporalBinary(op, av, bv);
     // String-class operators: `+` concatenates, `==`/`~=` compare element-wise.
@@ -668,7 +686,42 @@ function asMat(v: Value): Mat {
   if (v.kind === 'quantum') throw new MatError(`expected a numeric value, got a quantum ${v.qkind}`);
   if (v.kind === 'temporal') return { kind: 'num', rows: v.rows, cols: v.cols, data: new Float64Array(v.data) };  // datetime→datenum, duration→days
   if (v.kind === 'table') throw new MatError('expected a numeric value, got a table (use table2array)');
+  if (v.kind === 'sym') { const out = new Float64Array(v.exprs.length); for (let i = 0; i < v.exprs.length; i++) out[i] = symEvalNum(v.exprs[i]); return { kind: 'num', rows: v.rows, cols: v.cols, data: out }; }
   throw new MatError('expected a numeric value, got a function handle');
+}
+/** Coerce a value to a per-element array of symbolic expressions + its shape. */
+function toSymArr(v: Value): { rows: number; cols: number; exprs: SymExpr[] } {
+  if (isSym(v)) return { rows: v.rows, cols: v.cols, exprs: v.exprs };
+  const M = asMatLoose(v); return { rows: M.rows, cols: M.cols, exprs: Array.from(M.data, (x) => sN(x)) };
+}
+function asMatLoose(v: Value): Mat { if (isMat(v)) return v; if (v.kind === 'sparse') return sparseToDense(v); throw new MatError('expected a numeric or symbolic value'); }
+function symEvalNum(e: SymExpr): number { return evalExpr(e, new Map()); }
+/** Element-wise symbolic arithmetic / comparison → a Sym (== builds lhs−rhs for solve). */
+function symBinary(op: string, a: Value, b: Value): Value {
+  const A = toSymArr(a), B = toSymArr(b);
+  const scalarA = A.exprs.length === 1, scalarB = B.exprs.length === 1;
+  const rows = scalarA ? B.rows : A.rows, cols = scalarA ? B.cols : A.cols; const nm = Math.max(A.exprs.length, B.exprs.length);
+  const combine = (x: SymExpr, y: SymExpr): SymExpr => {
+    switch (op) {
+      case '+': return sAdd(x, y);
+      case '-': return sSub(x, y);
+      case '*': case '.*': return sMul(x, y);
+      case '/': case './': return sDiv(x, y);
+      case '^': case '.^': return sPow(x, y);
+      case '==': return sSub(x, y); case '~=': return sSub(x, y);
+      default: throw new MatError(`operator '${op}' is not supported for symbolic operands`);
+    }
+  };
+  // matrix multiply (non-element-wise *) of symbolic matrices
+  if (op === '*' && !scalarA && !scalarB) {
+    if (A.cols !== B.rows) throw new MatError('symbolic matrix dimensions must agree');
+    const out: SymExpr[] = new Array(A.rows * B.cols);
+    for (let i = 0; i < A.rows; i++) for (let j = 0; j < B.cols; j++) { let acc: SymExpr = sN(0); for (let k = 0; k < A.cols; k++) acc = sAdd(acc, sMul(A.exprs[i + k * A.rows], B.exprs[k + j * B.rows])); out[i + j * A.rows] = simplifyExpr(acc); }
+    return makeSym(A.rows, B.cols, out);
+  }
+  const exprs: SymExpr[] = new Array(nm);
+  for (let i = 0; i < nm; i++) exprs[i] = simplifyExpr(combine(A.exprs[scalarA ? 0 : i], B.exprs[scalarB ? 0 : i]));
+  return makeSym(rows, cols, exprs);
 }
 /** datetime / duration arithmetic and comparison. */
 function temporalBinary(op: string, a: Value, b: Value): Value {
