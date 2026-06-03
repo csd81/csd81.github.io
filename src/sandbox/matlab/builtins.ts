@@ -1272,6 +1272,30 @@ export const BUILTINS: Record<string, Builtin> = {
   ode23t: async (a, n, env) => odeSolveNDF(a, n, env),
   ode23tb: async (a, n, env) => odeSolveRos23(a, n, env),
   pdepe: async (a, _n, env) => pdepeSolve(a, env),
+  bvp4c: async (a, _n, env) => bvp4cSolve(a, env),
+  bvp5c: async (a, _n, env) => bvp4cSolve(a, env),
+  bvpinit: async (a, _n, env) => {
+    const x = toArray(m(a[0]));
+    let Y: Mat;
+    if (isHandle(a[1])) { const rows: number[][] = []; for (const xi of x) rows.push(toArray(m((await env.callHandle(a[1] as Handle, [scalar(xi)], 1))[0]))); const neq = rows[0].length; Y = zeros(neq, x.length); for (let i = 0; i < x.length; i++) for (let k = 0; k < neq; k++) Y.data[k + i * neq] = rows[i][k]; }
+    else { const yc = toArray(m(a[1])); const neq = yc.length; Y = zeros(neq, x.length); for (let i = 0; i < x.length; i++) for (let k = 0; k < neq; k++) Y.data[k + i * neq] = yc[k]; }
+    return ret(mkStruct([['x', rowVec(x)], ['y', Y]]));
+  },
+  bvpset: async (a) => { const f = new Map<string, Value[]>(); for (let i = 0; i + 1 < a.length; i += 2) f.set(asString(a[i]), [a[i + 1]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields: f } as StructV); },
+  bvpget: async (a) => { const s = a[0] as StructV; const v = isStruct(s) ? s.fields.get(asString(a[1])) : undefined; return ret(v && v.length ? v[0] : zeros(0, 0)); },
+  dde23: async (a, _n, env) => dde23Solve(a, env),
+  ddesd: async (a, _n, env) => dde23Solve(a, env),
+  ddensd: async (a, _n, env) => dde23Solve(a, env),
+  ddeset: async (a) => { const f = new Map<string, Value[]>(); for (let i = 0; i + 1 < a.length; i += 2) f.set(asString(a[i]), [a[i + 1]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields: f } as StructV); },
+  ddeget: async (a) => { const s = a[0] as StructV; const v = isStruct(s) ? s.fields.get(asString(a[1])) : undefined; return ret(v && v.length ? v[0] : zeros(0, 0)); },
+  deval: async (a) => {
+    // deval(sol, xq) | deval(xq, sol) → interpolate the solution
+    const sol = (isStruct(a[0]) ? a[0] : a[1]) as StructV; const xq = toArray(m(isStruct(a[0]) ? a[1] : a[0]));
+    const xs = toArray(m(sol.fields.get('x')![0])); const Y = m(sol.fields.get('y')![0]); const neq = Y.rows;
+    const out = zeros(neq, xq.length);
+    for (let q = 0; q < xq.length; q++) { const t = xq[q]; let i = 0; while (i < xs.length - 2 && t > xs[i + 1]) i++; const h = xs[i + 1] - xs[i] || 1; const r = (t - xs[i]) / h; for (let k = 0; k < neq; k++) out.data[k + q * neq] = Y.data[k + i * neq] + r * (Y.data[k + (i + 1) * neq] - Y.data[k + i * neq]); }
+    return ret(out);
+  },
   pdeval: async (a) => {
     // [uout,duoutdx] = pdeval(m, xmesh, ui, xout) — piecewise-linear value + slope of one PDE component.
     const xmesh = toArray(m(a[1])), ui = toArray(m(a[2])), xout = toArray(m(a[3]));
@@ -2559,6 +2583,16 @@ const HELP: Record<string, HelpEntry> = {
   ode15s: { summary: 'Solve stiff ODEs (variable-order 1–5 NDF/BDF)', syntax: ['[t,y] = ode15s(@f,tspan,y0)', "opts=odeset('MaxOrder',2)"], seealso: ['ode23s', 'ode45', 'odeset'] },
   pdepe: { summary: 'Solve 1-D parabolic/elliptic PDEs (method of lines + implicit time stepping)', syntax: ['sol = pdepe(m,@pdefun,@icfun,@bcfun,xmesh,tspan)'], seealso: ['pdeval', 'ode15s'] },
   pdeval: { summary: 'Evaluate a pdepe solution component (value + flux)', syntax: ['[u,dudx] = pdeval(m,xmesh,ui,xq)'], seealso: ['pdepe'] },
+  bvp4c: { summary: 'Solve a boundary value problem (collocation)', syntax: ['sol = bvp4c(@odefun,@bcfun,solinit)'], seealso: ['bvpinit', 'deval', 'bvp5c'] },
+  bvp5c: { summary: 'Solve a boundary value problem (collocation)', syntax: ['sol = bvp5c(@odefun,@bcfun,solinit)'], seealso: ['bvp4c', 'bvpinit'] },
+  bvpinit: { summary: 'Form an initial guess for bvp4c/bvp5c', syntax: ['solinit = bvpinit(xmesh,yinit)'], seealso: ['bvp4c'] },
+  bvpset: { summary: 'Create/modify a BVP options structure', syntax: ["opts = bvpset('RelTol',1e-4)"], seealso: ['bvpget', 'bvp4c'] },
+  bvpget: { summary: 'Read a BVP option', syntax: ['v = bvpget(opts,name)'], seealso: ['bvpset'] },
+  dde23: { summary: 'Solve delay differential equations (constant delays)', syntax: ['sol = dde23(@ddefun,lags,history,tspan)'], seealso: ['ddesd', 'deval'] },
+  ddesd: { summary: 'Solve DDEs with state-dependent delays', syntax: ['sol = ddesd(@ddefun,@delays,history,tspan)'], seealso: ['dde23'] },
+  ddeset: { summary: 'Create/modify a DDE options structure', syntax: ["opts = ddeset('RelTol',1e-4)"], seealso: ['ddeget', 'dde23'] },
+  ddeget: { summary: 'Read a DDE option', syntax: ['v = ddeget(opts,name)'], seealso: ['ddeset'] },
+  deval: { summary: 'Evaluate an ODE/BVP/DDE solution structure', syntax: ['y = deval(sol,xq)'], seealso: ['bvp4c', 'dde23', 'ode45'] },
   symvar: { summary: 'Free variables of an expression (alphabetical)', syntax: ["v = symvar('a*x+b')"], seealso: ['inline', 'str2func'] },
   vectorize: { summary: 'Vectorize an expression string (* / ^ → .* ./ .^)', syntax: ["s = vectorize('x^2')"], seealso: ['inline'] },
   quadv: { summary: 'Vectorized adaptive quadrature (→ quad)', syntax: ['q = quadv(f,a,b)'], seealso: ['quad', 'integral'] },
@@ -2743,6 +2777,7 @@ const BASE_REF = new Set<string>((
   'convexHull voronoiDiagram barycentricToCartesian cartesianToBarycentric perimeter centroid isinterior numsides numboundaries translate scale rotate ' +
   'volume surfaceArea inShape boundaryFacets criticalAlpha alphaSpectrum numRegions isConnected triplot rgbplot ' +
   'pdepe pdeval symvar vectorize quadv ldexp scalbn cholupdate stream2 stream3 ' +
+  'bvp4c bvp5c bvpinit bvpset bvpget dde23 ddesd ddensd ddeset ddeget deval ' +
   'hGate xGate yGate zGate sGate siGate tGate tiGate idGate rxGate ryGate rzGate cxGate cnotGate cyGate czGate chGate crxGate cryGate crzGate swapGate ccxGate mcxGate ' +
   'quantumCircuit simulate probability querystates formula ' +
   'sphere cylinder ellipsoid fsurf fmesh fcontour quiver ' +
@@ -4497,6 +4532,57 @@ async function pdepeSolve(a: Value[], env: Env): Promise<Value[]> {
   if (neq === 1) { const out = zeros(nt, N); for (let t = 0; t < nt; t++) for (let i = 0; i < N; i++) out.data[t + i * nt] = sol[t][i]; return [out]; }
   const data = new Float64Array(nt * N * neq); for (let t = 0; t < nt; t++) for (let i = 0; i < N; i++) for (let k = 0; k < neq; k++) data[t + i * nt + k * nt * N] = sol[t][i * neq + k];
   return [makeND([nt, N, neq], data)];
+}
+function mkStruct(fields: [string, Value][]): StructV { return { kind: 'struct', rows: 1, cols: 1, fields: new Map(fields.map(([k, v]) => [k, [v]])) }; }
+/** bvp4c(odefun, bcfun, solinit): two-point BVP via trapezoidal collocation + Newton. */
+async function bvp4cSolve(a: Value[], env: Env): Promise<Value[]> {
+  const ode = handle(a[0], 'bvp4c'), bc = handle(a[1], 'bvp4c'); const init = a[2] as StructV;
+  const x = toArray(m(init.fields.get('x')![0])); const Y0 = m(init.fields.get('y')![0]);
+  const M = x.length; const neq = Y0.rows; const sz = M * neq;
+  const U = new Float64Array(sz); for (let i = 0; i < M; i++) for (let k = 0; k < neq; k++) U[i * neq + k] = Y0.data[k + i * neq];
+  const fAt = async (xi: number, y: number[]) => toArray(m((await env.callHandle(ode, [scalar(xi), colVec(y)], 1))[0]));
+  const residual = async (V: Float64Array) => {
+    const F = new Float64Array(sz); const yv = (i: number) => Array.from({ length: neq }, (_, k) => V[i * neq + k]);
+    const fs: number[][] = []; for (let i = 0; i < M; i++) fs.push(await fAt(x[i], yv(i)));
+    for (let i = 0; i < M - 1; i++) { const h = x[i + 1] - x[i]; for (let k = 0; k < neq; k++) F[i * neq + k] = V[(i + 1) * neq + k] - V[i * neq + k] - h / 2 * (fs[i][k] + fs[i + 1][k]); }
+    const res = toArray(m((await env.callHandle(bc, [colVec(yv(0)), colVec(yv(M - 1))], 1))[0]));
+    for (let k = 0; k < neq; k++) F[(M - 1) * neq + k] = res[k];
+    return F;
+  };
+  for (let it = 0; it < 60; it++) {
+    const F = await residual(U); let nrm = 0; for (const v of F) nrm += v * v; if (Math.sqrt(nrm) < 1e-10) break;
+    const J = zeros(sz, sz);
+    for (let j = 0; j < sz; j++) { const Up = U.slice(); const h = 1e-7 * Math.max(1, Math.abs(U[j])); Up[j] += h; const Fp = await residual(Up); for (let i = 0; i < sz; i++) J.data[i + j * sz] = (Fp[i] - F[i]) / h; }
+    const d = mldivide(J, colVec(Array.from(F))); let damp = 1; for (let i = 0; i < sz; i++) U[i] -= damp * d.data[i]; void damp;
+  }
+  const Yout = zeros(neq, M); for (let i = 0; i < M; i++) for (let k = 0; k < neq; k++) Yout.data[k + i * neq] = U[i * neq + k];
+  return [mkStruct([['solver', str('bvp4c')], ['x', rowVec(x)], ['y', Yout]])];
+}
+/** dde23(ddefun, lags, history, tspan): delay ODEs via fixed-step RK4 with dense interpolation. */
+async function dde23Solve(a: Value[], env: Env): Promise<Value[]> {
+  const ddefun = handle(a[0], 'dde23'); const lags = toArray(m(a[1])); const histArg = a[2]; const tspan = toArray(m(a[3]));
+  const t0 = tspan[0], tf = tspan[tspan.length - 1];
+  const histAt = async (t: number) => isHandle(histArg) ? toArray(m((await env.callHandle(histArg as Handle, [scalar(t)], 1))[0])) : toArray(m(histArg));
+  const neq = (await histAt(t0)).length;
+  const ts: number[] = [t0]; const ys: number[][] = [await histAt(t0)];
+  const yAt = async (t: number): Promise<number[]> => {
+    if (t <= t0) return histAt(t);
+    if (t >= ts[ts.length - 1]) return ys[ys.length - 1];
+    let i = 0; while (i < ts.length - 1 && ts[i + 1] < t) i++; const h = ts[i + 1] - ts[i] || 1; const r = (t - ts[i]) / h;
+    return ys[i].map((v, k) => v + r * (ys[i + 1][k] - v));
+  };
+  const f = async (t: number, y: number[]): Promise<number[]> => {
+    const Z = zeros(neq, lags.length); for (let j = 0; j < lags.length; j++) { const zc = await yAt(t - lags[j]); for (let k = 0; k < neq; k++) Z.data[k + j * neq] = zc[k]; }
+    return toArray(m((await env.callHandle(ddefun, [scalar(t), colVec(y), Z], 1))[0]));
+  };
+  const N = 500; const dt = (tf - t0) / N; let y = ys[0].slice(); let t = t0;
+  for (let step = 0; step < N; step++) {
+    const k1 = await f(t, y); const k2 = await f(t + dt / 2, y.map((v, i) => v + dt / 2 * k1[i]));
+    const k3 = await f(t + dt / 2, y.map((v, i) => v + dt / 2 * k2[i])); const k4 = await f(t + dt, y.map((v, i) => v + dt * k3[i]));
+    y = y.map((v, i) => v + dt / 6 * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i])); t += dt; ts.push(t); ys.push(y.slice());
+  }
+  const Yout = zeros(neq, ts.length); for (let i = 0; i < ts.length; i++) for (let k = 0; k < neq; k++) Yout.data[k + i * neq] = ys[i][k];
+  return [mkStruct([['solver', str('dde23')], ['x', rowVec(ts)], ['y', Yout]])];
 }
 function odeOut(T: number[], Y: number[][], neq: number, nargout: number): Value[] {
   const Ymat = zeros(T.length, neq); for (let r = 0; r < T.length; r++) for (let c = 0; c < neq; c++) Ymat.data[r + c * T.length] = Y[r][c];
