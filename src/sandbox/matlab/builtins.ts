@@ -356,10 +356,9 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   repmat: async (a) => {
     const A = m(a[0]); const mr = asScalar(a[1]); const nc = a.length >= 3 ? asScalar(a[2]) : mr;
-    const out = zeros(A.rows * mr, A.cols * nc);
+    const out = zeros(A.rows * mr, A.cols * nc); if (A.idata) out.idata = new Float64Array(out.data.length); out.isChar = A.isChar;
     for (let br = 0; br < mr; br++) for (let bc = 0; bc < nc; bc++)
-      for (let c = 0; c < A.cols; c++) for (let r = 0; r < A.rows; r++)
-        out.data[(br * A.rows + r) + (bc * A.cols + c) * out.rows] = A.data[r + c * A.rows];
+      for (let c = 0; c < A.cols; c++) for (let r = 0; r < A.rows; r++) { const dst = (br * A.rows + r) + (bc * A.cols + c) * out.rows, src = r + c * A.rows; out.data[dst] = A.data[src]; if (A.idata) out.idata![dst] = A.idata[src]; }
     return ret(out);
   },
   reshape: async (a) => {
@@ -426,21 +425,21 @@ export const BUILTINS: Record<string, Builtin> = {
     return n >= 2 ? [tf, loc] : [tf];
   },
   fliplr: async (a) => {
-    const A = m(a[0]); const o = zeros(A.rows, A.cols);
-    for (let c = 0; c < A.cols; c++) for (let r = 0; r < A.rows; r++) o.data[r + (A.cols - 1 - c) * A.rows] = A.data[r + c * A.rows];
+    const A = m(a[0]); const o = zeros(A.rows, A.cols); if (A.idata) o.idata = new Float64Array(o.data.length);
+    for (let c = 0; c < A.cols; c++) for (let r = 0; r < A.rows; r++) { const dst = r + (A.cols - 1 - c) * A.rows, src = r + c * A.rows; o.data[dst] = A.data[src]; if (A.idata) o.idata![dst] = A.idata[src]; }
     o.isChar = A.isChar; return ret(o);
   },
   flipud: async (a) => {
-    const A = m(a[0]); const o = zeros(A.rows, A.cols);
-    for (let c = 0; c < A.cols; c++) for (let r = 0; r < A.rows; r++) o.data[(A.rows - 1 - r) + c * A.rows] = A.data[r + c * A.rows];
+    const A = m(a[0]); const o = zeros(A.rows, A.cols); if (A.idata) o.idata = new Float64Array(o.data.length);
+    for (let c = 0; c < A.cols; c++) for (let r = 0; r < A.rows; r++) { const dst = (A.rows - 1 - r) + c * A.rows, src = r + c * A.rows; o.data[dst] = A.data[src]; if (A.idata) o.idata![dst] = A.idata[src]; }
     o.isChar = A.isChar; return ret(o);
   },
   flip: async (a) => {
     const A = m(a[0]); const dim = a.length >= 2 ? Math.round(asScalar(a[1])) : (A.rows > 1 ? 1 : 2);
-    const o = zeros(A.rows, A.cols);
+    const o = zeros(A.rows, A.cols); if (A.idata) o.idata = new Float64Array(o.data.length);
     for (let c = 0; c < A.cols; c++) for (let r = 0; r < A.rows; r++) {
       const rr = dim === 1 ? A.rows - 1 - r : r; const cc = dim === 2 ? A.cols - 1 - c : c;
-      o.data[rr + cc * A.rows] = A.data[r + c * A.rows];
+      o.data[rr + cc * A.rows] = A.data[r + c * A.rows]; if (A.idata) o.idata![rr + cc * A.rows] = A.idata[r + c * A.rows];
     }
     o.isChar = A.isChar; return ret(o);
   },
@@ -472,7 +471,11 @@ export const BUILTINS: Record<string, Builtin> = {
   diag: async (a) => ret(diag(m(a[0]))),
   trace: async (a) => { const A = m(a[0]); let s = 0; const n = Math.min(A.rows, A.cols); for (let i = 0; i < n; i++) s += A.data[i + i * A.rows]; return ret(scalar(s)); },
   transpose: async (a) => ret(transpose(m(a[0]))),
-  dot: async (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])); let s = 0; for (let i = 0; i < x.length; i++) s += x[i] * y[i]; return ret(scalar(s)); },
+  dot: async (a) => {
+    const X = m(a[0]), Y = m(a[1]);
+    if (isComplex(X) || isComplex(Y)) { const xr = toArray(X), xi = X.idata ? Array.from(X.idata) : xr.map(() => 0), yr = toArray(Y), yi = Y.idata ? Array.from(Y.idata) : yr.map(() => 0); let sr = 0, si = 0; for (let i = 0; i < xr.length; i++) { sr += xr[i] * yr[i] + xi[i] * yi[i]; si += xr[i] * yi[i] - xi[i] * yr[i]; } return ret(cscalar(sr, si)); }   // conj(x)·y
+    const x = toArray(X), y = toArray(Y); let s = 0; for (let i = 0; i < x.length; i++) s += x[i] * y[i]; return ret(scalar(s));
+  },
   cross: async (a) => {
     const x = toArray(m(a[0])), y = toArray(m(a[1]));
     if (x.length !== 3 || y.length !== 3) throw new MatError('cross: inputs must be 3-element vectors');
@@ -480,12 +483,13 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(m(a[0]).cols === 1 ? colVec(out) : rowVec(out));
   },
   kron: async (a) => {
-    const A = m(a[0]), B = m(a[1]); const o = zeros(A.rows * B.rows, A.cols * B.cols);
-    for (let ar = 0; ar < A.rows; ar++) for (let ac = 0; ac < A.cols; ac++) { const av = A.data[ar + ac * A.rows]; for (let br = 0; br < B.rows; br++) for (let bc = 0; bc < B.cols; bc++) o.data[(ar * B.rows + br) + (ac * B.cols + bc) * o.rows] = av * B.data[br + bc * B.rows]; }
+    const A = m(a[0]), B = m(a[1]); const o = zeros(A.rows * B.rows, A.cols * B.cols); const cplx = isComplex(A) || isComplex(B); if (cplx) o.idata = new Float64Array(o.data.length);
+    const ai = A.idata, bi = B.idata;
+    for (let ar = 0; ar < A.rows; ar++) for (let ac = 0; ac < A.cols; ac++) { const avr = A.data[ar + ac * A.rows], avi = ai ? ai[ar + ac * A.rows] : 0; for (let br = 0; br < B.rows; br++) for (let bc = 0; bc < B.cols; bc++) { const bvr = B.data[br + bc * B.rows], bvi = bi ? bi[br + bc * B.rows] : 0; const dst = (ar * B.rows + br) + (ac * B.cols + bc) * o.rows; o.data[dst] = avr * bvr - avi * bvi; if (cplx) o.idata![dst] = avr * bvi + avi * bvr; } }
     return ret(o);
   },
-  tril: async (a) => { const A = m(a[0]); const k = a.length >= 2 ? Math.round(asScalar(a[1])) : 0; const o = zeros(A.rows, A.cols); for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) if (c - r <= k) o.data[r + c * A.rows] = A.data[r + c * A.rows]; o.isChar = A.isChar; return ret(o); },
-  triu: async (a) => { const A = m(a[0]); const k = a.length >= 2 ? Math.round(asScalar(a[1])) : 0; const o = zeros(A.rows, A.cols); for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) if (c - r >= k) o.data[r + c * A.rows] = A.data[r + c * A.rows]; o.isChar = A.isChar; return ret(o); },
+  tril: async (a) => { const A = m(a[0]); const k = a.length >= 2 ? Math.round(asScalar(a[1])) : 0; const o = zeros(A.rows, A.cols); if (A.idata) o.idata = new Float64Array(o.data.length); for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) if (c - r <= k) { o.data[r + c * A.rows] = A.data[r + c * A.rows]; if (A.idata) o.idata![r + c * A.rows] = A.idata[r + c * A.rows]; } o.isChar = A.isChar; return ret(o); },
+  triu: async (a) => { const A = m(a[0]); const k = a.length >= 2 ? Math.round(asScalar(a[1])) : 0; const o = zeros(A.rows, A.cols); if (A.idata) o.idata = new Float64Array(o.data.length); for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) if (c - r >= k) { o.data[r + c * A.rows] = A.data[r + c * A.rows]; if (A.idata) o.idata![r + c * A.rows] = A.idata[r + c * A.rows]; } o.isChar = A.isChar; return ret(o); },
   linsolve: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
   mrdivide: async (a) => ret(transpose(mldivide(transpose(m(a[1])), transpose(m(a[0]))))),
   pinv: async (a) => ret(pinvFn(m(a[0]))),
@@ -2023,7 +2027,12 @@ export const BUILTINS: Record<string, Builtin> = {
   mtimes: async (a) => ret(cmatmul(m(a[0]), m(a[1]))),
   rdivide: async (a) => ret(ewRDiv(m(a[0]), m(a[1]))),
   ldivide: async (a) => ret(ewLDiv(m(a[0]), m(a[1]))),
-  mpower: async (a) => { const A = m(a[0]), B = m(a[1]); if (isScalar(A) && isScalar(B)) return ret(ewPow(A, B)); throw new MatError('mpower: matrix power only via the ^ operator'); },
+  mpower: async (a) => {
+    const A = m(a[0]), B = m(a[1]);
+    if (isScalar(A) && isScalar(B)) return ret(ewPow(A, B));
+    if (isScalar(B)) { const p = asScalar(B); if (!Number.isInteger(p)) throw new MatError('mpower: non-integer matrix powers are not supported'); if (A.rows !== A.cols) throw new MatError('mpower: matrix must be square'); let base = p < 0 ? inv(A) : A; let acc = eye(A.rows); for (let k = 0; k < Math.abs(p); k++) acc = matmul(acc, base); void base; return ret(acc); }
+    throw new MatError('mpower: at least one operand must be a scalar');
+  },
   ctranspose: async (a) => ret(ctransposeFn(m(a[0]))),
   eq: async (a) => ret(ewEq(m(a[0]), m(a[1]), true)),
   ne: async (a) => ret(ewEq(m(a[0]), m(a[1]), false)),
