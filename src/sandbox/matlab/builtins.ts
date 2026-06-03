@@ -1627,11 +1627,17 @@ const BASE_REF = new Set<string>((
   'gallery'
 ).split(/\s+/));
 
+/** Functions documented under the numeric-class method page ref/double.<name>.html
+ *  (the plain ref/<name>.html 404s for these). */
+const DOUBLE_REF = new Set<string>('min max mink maxk'.split(/\s+/));
+
 export function docUrl(name: string): string {
+  const low = name.toLowerCase();
   // Direct reference page for base functions; doc-search for toolbox/aliases
   // (prctile/quantile/iqr → Statistics; xcorr/xcov → Signal; etc. would 404 under ref/).
+  if (DOUBLE_REF.has(low)) return `https://www.mathworks.com/help/matlab/ref/double.${low}.html`;
   return BASE_REF.has(name)
-    ? `https://www.mathworks.com/help/matlab/ref/${name.toLowerCase()}.html`
+    ? `https://www.mathworks.com/help/matlab/ref/${low}.html`
     : `https://www.mathworks.com/help/search.html?qdoc=${encodeURIComponent(name)}`;
 }
 
