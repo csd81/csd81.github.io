@@ -722,6 +722,32 @@ export const BUILTINS: Record<string, Builtin> = {
   colamd: async (a) => ret(rowVec(minDegreeOrder(colAdjacency(asSparse(a[0]))))),
   ichol: async (a) => ret(ichol0(asSparse(a[0]))),
   ilu: async (a, n) => { const { L, U } = ilu0(asSparse(a[0])); return n >= 2 ? [L, U] : [U]; },
+  // deprecated orderings/factorizations → modern equivalents (Gilbert–Moler–Schreiber compatibility)
+  colmmd: async (a) => ret(rowVec(minDegreeOrder(colAdjacency(asSparse(a[0]))))),
+  symmmd: async (a) => ret(rowVec(minDegreeOrder(symAdjacency(asSparse(a[0]))))),
+  luinc: async (a, n) => { const { L, U } = ilu0(asSparse(a[0])); return n >= 2 ? [L, U] : [U]; },
+  cholinc: async (a) => ret(ichol0(asSparse(a[0]))),
+  // sparse utilities
+  spconvert: async (a) => { const D = m(a[0]); const r = D.rows, c = D.cols; const ii: number[] = [], jj: number[] = [], vv: number[] = []; for (let k = 0; k < r; k++) { ii.push(D.data[k]); jj.push(D.data[k + r]); vv.push(c >= 3 ? D.data[k + 2 * r] : 1); } const mm = ii.length ? Math.max(...ii) : 0, nn = jj.length ? Math.max(...jj) : 0; return ret(sparseFromTriplets(mm, nn, ii, jj, vv)); },
+  spaugment: async (a) => { const A = isSparse(a[0]) ? sparseToDense(a[0]) : m(a[0]); const mm = A.rows, nn = A.cols; const c = a.length >= 2 ? asScalar(a[1]) : Math.max(...toArray(A).map(Math.abs)) || 1; const S = zeros(mm + nn, mm + nn); for (let i = 0; i < mm; i++) S.data[i + i * (mm + nn)] = c; for (let i = 0; i < mm; i++) for (let j = 0; j < nn; j++) { const v = A.data[i + j * mm]; S.data[i + (mm + j) * (mm + nn)] = v; S.data[(mm + j) + i * (mm + nn)] = v; } return ret(denseToSparse(S)); },
+  spparms: async () => [],   // sparse algorithm tuning params: accept and ignore (use defaults)
+  dmperm: async (a, n) => {
+    const S = asSparse(a[0]); const match = bipartiteMatch(S);   // match[col] = matched row, or -1
+    // single output: the maximum matching p(j)=row matched to column j (0 if unmatched) → zero-free diagonal
+    if (n < 2) return ret(rowVec(match.map((r) => r + 1)));
+    // [p,q]: row & column permutations placing the matched structure in the leading block
+    const matchedRow = new Array(S.rows).fill(false); const p: number[] = [], q: number[] = [];
+    for (let j = 0; j < S.cols; j++) if (match[j] >= 0) { p.push(match[j] + 1); matchedRow[match[j]] = true; q.push(j + 1); }
+    for (let i = 0; i < S.rows; i++) if (!matchedRow[i]) p.push(i + 1);
+    for (let j = 0; j < S.cols; j++) if (match[j] < 0) q.push(j + 1);
+    return [rowVec(p), rowVec(q)];
+  },
+  gplot: async (a, _n, env) => {
+    const A = isSparse(a[0]) ? sparseToDense(a[0]) : m(a[0]); const XY = m(a[1]); const nn = A.rows;
+    const xs: number[] = [], ys: number[] = [];
+    for (let i = 0; i < nn; i++) for (let j = 0; j < nn; j++) if (A.data[i + j * nn] !== 0) { xs.push(XY.data[i], XY.data[j], NaN); ys.push(XY.data[i + nn], XY.data[j + nn], NaN); }
+    env.graphics.addSeries(xs, ys); return [];
+  },
   // ── more scalar math / reductions ──
   cbrt: ew(Math.cbrt),
   sinc: ew((x) => (x === 0 ? 1 : Math.sin(Math.PI * x) / (Math.PI * x))),
@@ -2312,6 +2338,15 @@ const HELP: Record<string, HelpEntry> = {
   colamd: { summary: 'Column minimum-degree ordering (AᵀA pattern)', syntax: ['p = colamd(S)'], seealso: ['amd', 'symamd'] },
   ichol: { summary: 'Incomplete Cholesky IC(0) on the pattern of A', syntax: ['L = ichol(A)'], seealso: ['chol', 'ilu', 'pcg'] },
   ilu: { summary: 'Incomplete LU ILU(0) on the pattern of A', syntax: ['[L,U] = ilu(A)'], seealso: ['lu', 'ichol', 'gmres'] },
+  spconvert: { summary: 'Build a sparse matrix from a triplet ([i j v]) matrix', syntax: ['S = spconvert(D)'], seealso: ['sparse', 'find'] },
+  spaugment: { summary: 'Augmented system [cI A; Aᵀ 0]', syntax: ['S = spaugment(A,c)'], seealso: ['sparse', 'mldivide'] },
+  spparms: { summary: 'Sparse solver tuning parameters (accepted, defaults used)', syntax: ["spparms('default')"], seealso: ['sparse'] },
+  dmperm: { summary: 'Dulmage–Mendelsohn permutation / maximum matching', syntax: ['p = dmperm(A)', '[p,q] = dmperm(A)'], seealso: ['sprank', 'symrcm'] },
+  gplot: { summary: 'Plot a graph from an adjacency matrix and node coordinates', syntax: ['gplot(A,xy)'], seealso: ['graph', 'spy'] },
+  colmmd: { summary: 'Column min-degree ordering (deprecated → colamd)', syntax: ['p = colmmd(S)'], seealso: ['colamd', 'symamd'] },
+  symmmd: { summary: 'Symmetric min-degree ordering (deprecated → symamd)', syntax: ['p = symmmd(S)'], seealso: ['symamd', 'amd'] },
+  luinc: { summary: 'Incomplete LU (deprecated → ilu)', syntax: ['[L,U] = luinc(A)'], seealso: ['ilu', 'lu'] },
+  cholinc: { summary: 'Incomplete Cholesky (deprecated → ichol)', syntax: ['L = cholinc(A)'], seealso: ['ichol', 'chol'] },
 };
 
 /** Base-MATLAB functions whose reference page is at /help/matlab/ref/<name>.html.
@@ -2364,6 +2399,7 @@ const BASE_REF = new Set<string>((
   'deal func2str str2func assert narginchk nargoutchk nargchk validateattributes inputname isvarname genvarname colon flipdim condeig polyeig ' +
   'MException rethrow throw lasterr lasterror ' +
   'sparse full issparse spones nonzeros nzmax spdiags speye spalloc sprand sprandn sprandsym spy etree symrcm amd symamd colamd ichol ilu ' +
+  'spconvert spaugment spparms dmperm gplot colmmd symmmd luinc cholinc ' +
   'gallery'
 ).split(/\s+/));
 
@@ -3091,6 +3127,19 @@ function symAdjacency(S: Sparse): Set<number>[] {
   const n = S.rows; const adj: Set<number>[] = Array.from({ length: n }, () => new Set<number>());
   for (let j = 0; j < S.cols; j++) for (let p = S.colptr[j]; p < S.colptr[j + 1]; p++) { const i = S.rowind[p]; if (i !== j) { adj[i].add(j); adj[j].add(i); } }
   return adj;
+}
+/** Maximum bipartite matching (columns→rows) on a sparse pattern, via augmenting paths.
+ *  Returns match[col] = matched row index, or -1 (basis of dmperm / structural rank). */
+function bipartiteMatch(S: Sparse): number[] {
+  const matchCol = new Array(S.cols).fill(-1);   // col → row
+  const matchRow = new Array(S.rows).fill(-1);   // row → col
+  const colRows: number[][] = Array.from({ length: S.cols }, (_, j) => { const rs: number[] = []; for (let p = S.colptr[j]; p < S.colptr[j + 1]; p++) rs.push(S.rowind[p]); return rs; });
+  const tryAug = (j: number, seen: boolean[]): boolean => {
+    for (const i of colRows[j]) if (!seen[i]) { seen[i] = true; if (matchRow[i] < 0 || tryAug(matchRow[i], seen)) { matchRow[i] = j; matchCol[j] = i; return true; } }
+    return false;
+  };
+  for (let j = 0; j < S.cols; j++) tryAug(j, new Array(S.rows).fill(false));
+  return matchCol;
 }
 /** Column-intersection adjacency (pattern of AᵀA) for colamd. */
 function colAdjacency(S: Sparse): Set<number>[] {
