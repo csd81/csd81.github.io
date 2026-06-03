@@ -3,12 +3,13 @@ import {
   type Value, type Mat, type Handle, MatError, isMat, isHandle,
   mat, zeros, scalar, cscalar, bool, str, rowVec, colVec, fromRows, numel, isScalar, isEmpty,
   asScalar, asString, map, elementwise, matmul, transpose, horzcat, vertcat, toArray,
-  isComplex, cmap, cmapReal, conj as conjFn, realPart, imagPart, csqrt, cexp, clog, ewPow,
+  isComplex, cmap, cmapReal, conj as conjFn, realPart, imagPart, csqrt, cexp, clog, ewPow, finishComplex,
 } from './values';
 import {
   det, inv, mldivide, diag, norm, eye,
   qr as qrDecomp, chol as cholFn, luOutputs, jacobiEigSym, svd as svdReal,
   rankOf, cond as condFn, pinv as pinvFn, orth as orthFn, nullspace, rref as rrefFn, vecnorm as vecnormFn, isSymmetric, cDet,
+  generalEig, durandKerner,
 } from './linalg';
 import { dispValue, sprintf } from './format';
 import type { Graphics } from './graphics';
@@ -403,16 +404,25 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   eig: async (a, n) => {
     const A = m(a[0]);
-    if (!isSymmetric(A)) throw new MatError('eig: only symmetric real matrices are supported (complex eigenvalues are deferred)');
-    const { values, V } = jacobiEigSym(A);
-    const order = values.map((_, i) => i).sort((i, j) => values[i] - values[j]); // ascending
-    const ev = order.map((i) => values[i]);
-    if (n >= 2) {
-      const Vs = zeros(A.rows, A.rows); order.forEach((src, dst) => { for (let r = 0; r < A.rows; r++) Vs.data[r + dst * A.rows] = V.data[r + src * A.rows]; });
-      const D = zeros(A.rows, A.rows); ev.forEach((v, i) => { D.data[i + i * A.rows] = v; });
-      return [Vs, D];
+    // Symmetric real → Jacobi (accurate, ascending). Otherwise charpoly + Durand-Kerner.
+    if (isSymmetric(A) && !isComplex(A)) {
+      const { values, V } = jacobiEigSym(A);
+      const order = values.map((_, i) => i).sort((i, j) => values[i] - values[j]);
+      const ev = order.map((i) => values[i]);
+      if (n >= 2) {
+        const Vs = zeros(A.rows, A.rows); order.forEach((src, dst) => { for (let r = 0; r < A.rows; r++) Vs.data[r + dst * A.rows] = V.data[r + src * A.rows]; });
+        const D = zeros(A.rows, A.rows); ev.forEach((v, i) => { D.data[i + i * A.rows] = v; });
+        return [Vs, D];
+      }
+      return [colVec(ev)];
     }
-    return [colVec(ev)];
+    const N = A.rows; const { D, V } = generalEig(A, n >= 2);
+    if (n >= 2) {
+      const Dre = new Float64Array(N * N), Dim = new Float64Array(N * N);
+      for (let i = 0; i < N; i++) { Dre[i + i * N] = D.re[i]; Dim[i + i * N] = D.im[i]; }
+      return [V!, finishComplex(N, N, Dre, Dim)];
+    }
+    return [finishComplex(N, 1, Float64Array.from(D.re), Float64Array.from(D.im))];
   },
   // structure predicates
   issymmetric: async (a) => ret(bool(isSymmetric(m(a[0])))),
@@ -507,7 +517,7 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(map(xq, interp));
   },
   spline: async (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])), xq = m(a[2]); return ret(map(xq, (q) => splineEval(x, y, q))); },
-  roots: async (a) => ret(colVec(realRoots(toArray(m(a[0]))))),
+  roots: async (a) => { const { re, im } = durandKerner(toArray(m(a[0]))); return ret(finishComplex(re.length, 1, Float64Array.from(re), Float64Array.from(im))); },
   ode45: async (a, n, env) => odeSolve(a, n, env),
   ode15s: async (a, n, env) => odeSolve(a, n, env),
 
@@ -748,7 +758,7 @@ const HELP: Record<string, HelpEntry> = {
   qr: { summary: 'QR decomposition', syntax: ['[Q,R] = qr(A)', 'R = qr(A)'], seealso: ['lu', 'chol', 'svd'] },
   lu: { summary: 'LU factorization with pivoting', syntax: ['[L,U] = lu(A)', '[L,U,P] = lu(A)'], seealso: ['qr', 'chol', 'inv'] },
   svd: { summary: 'Singular value decomposition', syntax: ['s = svd(A)', '[U,S,V] = svd(A)'], seealso: ['eig', 'pinv', 'rank'] },
-  eig: { summary: 'Eigenvalues and eigenvectors (symmetric matrices)', syntax: ['e = eig(A)', '[V,D] = eig(A)'], seealso: ['svd', 'det', 'trace'] },
+  eig: { summary: 'Eigenvalues and eigenvectors', syntax: ['e = eig(A)', '[V,D] = eig(A)'], seealso: ['svd', 'det', 'trace', 'roots'] },
   issymmetric: { summary: 'Determine if a matrix is symmetric', syntax: ['tf = issymmetric(A)'], seealso: ['istriu', 'istril', 'isdiag'] },
   isdiag: { summary: 'Determine if a matrix is diagonal', syntax: ['tf = isdiag(A)'], seealso: ['diag', 'istriu', 'istril'] },
   bandwidth: { summary: 'Lower and upper matrix bandwidth', syntax: ['[lo,up] = bandwidth(A)'], seealso: ['isbanded', 'tril', 'triu'] },
@@ -760,7 +770,7 @@ const HELP: Record<string, HelpEntry> = {
   gradient: { summary: 'Numerical gradient', syntax: ['g = gradient(y)', 'g = gradient(y,h)'], seealso: ['diff'] },
   interp1: { summary: '1-D interpolation', syntax: ["yq = interp1(x,v,xq)", "yq = interp1(x,v,xq,'nearest')"], seealso: ['spline', 'polyfit'] },
   spline: { summary: 'Cubic spline interpolation', syntax: ['yq = spline(x,v,xq)'], seealso: ['interp1', 'polyfit'] },
-  roots: { summary: 'Polynomial roots (real roots only)', syntax: ['r = roots(p)'], seealso: ['polyval', 'polyfit', 'fzero'] },
+  roots: { summary: 'Polynomial roots (real or complex)', syntax: ['r = roots(p)'], seealso: ['polyval', 'polyfit', 'fzero'] },
   ode45: { summary: 'Solve nonstiff ODEs (RK4)', syntax: ['[t,y] = ode45(@f,tspan,y0)'], seealso: ['ode15s'] },
   ode15s: { summary: 'Solve ODEs (aliased to ode45 here)', syntax: ['[t,y] = ode15s(@f,tspan,y0)'], seealso: ['ode45'] },
   logspace: { summary: 'Logarithmically spaced vector', syntax: ['y = logspace(a,b)', 'y = logspace(a,b,n)'], seealso: ['linspace'] },

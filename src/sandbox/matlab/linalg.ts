@@ -134,6 +134,70 @@ export function cDet(a: Mat): [number, number] {
   return [dr, di];
 }
 
+// ── Polynomial roots (Durand–Kerner) and general eigenvalues ───────────
+/** All roots of a real-coefficient polynomial (high→low), complex-valued. */
+export function durandKerner(coefIn: number[]): { re: number[]; im: number[] } {
+  let c = coefIn.slice(); while (c.length > 1 && c[0] === 0) c.shift();
+  const n = c.length - 1; if (n <= 0) return { re: [], im: [] };
+  const mc = c.map((v) => v / c[0]); // monic, high→low
+  const zr = new Array<number>(n), zi = new Array<number>(n);
+  for (let k = 0; k < n; k++) { let pr = 1, pi = 0; for (let t = 0; t < k; t++) { const [a, b] = cmul(pr, pi, 0.4, 0.9); pr = a; pi = b; } zr[k] = pr; zi[k] = pi; }
+  const pev = (x: number, y: number): [number, number] => { let sr = mc[0], si = 0; for (let k = 1; k < mc.length; k++) { const [tr, ti] = cmul(sr, si, x, y); sr = tr + mc[k]; si = ti; } return [sr, si]; };
+  for (let iter = 0; iter < 500; iter++) {
+    let maxd = 0;
+    for (let k = 0; k < n; k++) {
+      const [pr, pi] = pev(zr[k], zi[k]);
+      let dr = 1, di = 0;
+      for (let j = 0; j < n; j++) { if (j === k) continue; const [qr, qi] = cmul(dr, di, zr[k] - zr[j], zi[k] - zi[j]); dr = qr; di = qi; }
+      if (dr === 0 && di === 0) continue;
+      const [er, ei] = cdiv(pr, pi, dr, di);
+      zr[k] -= er; zi[k] -= ei; maxd = Math.max(maxd, Math.hypot(er, ei));
+    }
+    if (maxd < 1e-14) break;
+  }
+  for (let k = 0; k < n; k++) if (Math.abs(zi[k]) < 1e-9 * (1 + Math.abs(zr[k]))) zi[k] = 0;
+  return { re: zr, im: zi };
+}
+
+/** Characteristic polynomial (monic, high→low) via Faddeev–LeVerrier (real A). */
+export function charpoly(A: Mat): number[] {
+  const n = A.rows; const c = [1]; let M = eye(n);
+  for (let k = 1; k <= n; k++) {
+    const AM = matmul(A, M);
+    let tr = 0; for (let i = 0; i < n; i++) tr += AM.data[i + i * n];
+    const ck = -tr / k; c.push(ck);
+    M = mat(n, n, Float64Array.from(AM.data)); for (let i = 0; i < n; i++) M.data[i + i * n] += ck;
+  }
+  return c;
+}
+
+/** Eigenvector for eigenvalue (lr,li) by complex inverse iteration. */
+function eigVec(A: Mat, lr: number, li: number): { re: number[]; im: number[] } {
+  const n = A.rows;
+  const Mre = Float64Array.from(A.data); const Mim = A.idata ? Float64Array.from(A.idata) : new Float64Array(n * n);
+  const pr = lr + 1e-8 * (Math.abs(lr) + 1), pi = li + 1e-8 * (Math.abs(li) + 1); // perturb off the exact eigenvalue
+  for (let i = 0; i < n; i++) { Mre[i + i * n] -= pr; Mim[i + i * n] -= pi; }
+  const M: Mat = { kind: 'num', rows: n, cols: n, data: Mre, idata: Mim };
+  let vr = new Array<number>(n).fill(1), vi = new Array<number>(n).fill(0);
+  for (let it = 0; it < 50; it++) {
+    const x = cLuSolve(M, { kind: 'num', rows: n, cols: 1, data: Float64Array.from(vr), idata: Float64Array.from(vi) });
+    let nrm = 0; for (let i = 0; i < n; i++) nrm += x.data[i] ** 2 + (x.idata ? x.idata[i] ** 2 : 0); nrm = Math.sqrt(nrm) || 1;
+    for (let i = 0; i < n; i++) { vr[i] = x.data[i] / nrm; vi[i] = (x.idata ? x.idata[i] : 0) / nrm; }
+  }
+  return { re: vr, im: vi };
+}
+
+/** General eigenvalues (+ optional eigenvectors) via charpoly + Durand–Kerner. */
+export function generalEig(A: Mat, wantVec: boolean): { D: { re: number[]; im: number[] }; V?: Mat } {
+  const { re, im } = durandKerner(charpoly(A));
+  const order = re.map((_, i) => i).sort((i, j) => re[i] - re[j] || im[i] - im[j]);
+  const er = order.map((i) => re[i]), ei = order.map((i) => im[i]);
+  if (!wantVec) return { D: { re: er, im: ei } };
+  const n = A.rows; const Vre = new Float64Array(n * n), Vim = new Float64Array(n * n);
+  for (let c = 0; c < n; c++) { const v = eigVec(A, er[c], ei[c]); for (let r = 0; r < n; r++) { Vre[r + c * n] = v.re[r]; Vim[r + c * n] = v.im[r]; } }
+  return { D: { re: er, im: ei }, V: finishComplex(n, n, Vre, Vim) };
+}
+
 export function diag(a: Mat): Mat {
   if (a.rows === 1 || a.cols === 1) {
     // vector → diagonal matrix
