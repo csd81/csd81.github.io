@@ -582,6 +582,25 @@ export const BUILTINS: Record<string, Builtin> = {
   or: async (a) => ret({ ...elementwise(m(a[0]), m(a[1]), (x, y) => (x !== 0 || y !== 0 ? 1 : 0)), isBool: true }),
   not: async (a) => ret({ ...map(m(a[0]), (x) => (x === 0 ? 1 : 0)), isBool: true }),
   xor: async (a) => ret({ ...elementwise(m(a[0]), m(a[1]), (x, y) => ((x !== 0) !== (y !== 0) ? 1 : 0)), isBool: true }),
+  // ── descriptive statistics ──
+  median: async (a) => ret(colReduce(m(a[0]), (c) => { const s = [...c].sort((x, y) => x - y); const n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; })),
+  std: async (a) => ret(colReduce(m(a[0]), (c) => Math.sqrt(variance(c)))),
+  var: async (a) => ret(colReduce(m(a[0]), variance)),
+  mode: async (a) => ret(colReduce(m(a[0]), modeOf)),
+  iqr: async (a) => ret(colReduce(m(a[0]), (c) => { const s = [...c].sort((x, y) => x - y); return pctile(s, 75) - pctile(s, 25); })),
+  bounds: async (a, n) => { const A = m(a[0]); const lo = colReduce(A, (c) => Math.min(...c)); const hi = colReduce(A, (c) => Math.max(...c)); return n >= 2 ? [lo, hi] : [lo]; },
+  mink: async (a) => { const A = m(a[0]); const k = Math.round(asScalar(a[1])); const s = toArray(A).sort((x, y) => x - y).slice(0, k); return ret(A.rows === 1 ? rowVec(s) : colVec(s)); },
+  maxk: async (a) => { const A = m(a[0]); const k = Math.round(asScalar(a[1])); const s = toArray(A).sort((x, y) => y - x).slice(0, k); return ret(A.rows === 1 ? rowVec(s) : colVec(s)); },
+  prctile: async (a) => { const A = m(a[0]); const s = toArray(A).sort((x, y) => x - y); const P = m(a[1]); const out = map(P, (p) => pctile(s, p)); return ret(out); },
+  quantile: async (a) => { const A = m(a[0]); const s = toArray(A).sort((x, y) => x - y); const Q = m(a[1]); const out = map(Q, (q) => pctile(s, q * 100)); return ret(out); },
+  cov: async (a) => { let X = m(a[0]); if (a.length >= 2) X = horzcat([colvecOf(X), colvecOf(m(a[1]))]); else if (X.rows === 1 || X.cols === 1) return ret(scalar(variance(toArray(X)))); return ret(covMatrix(X)); },
+  corrcoef: async (a) => { let X = m(a[0]); if (a.length >= 2) X = horzcat([colvecOf(X), colvecOf(m(a[1]))]); const C = covMatrix(X); const p = C.rows; const R = zeros(p, p); for (let i = 0; i < p; i++) for (let j = 0; j < p; j++) R.data[i + j * p] = C.data[i + j * p] / Math.sqrt(C.data[i + i * p] * C.data[j + j * p]); return ret(R); },
+  movsum: async (a) => ret(movWindow(m(a[0]), Math.round(asScalar(a[1])), (w) => w.reduce((s, x) => s + x, 0))),
+  movmean: async (a) => ret(movWindow(m(a[0]), Math.round(asScalar(a[1])), (w) => w.reduce((s, x) => s + x, 0) / w.length)),
+  movmedian: async (a) => ret(movWindow(m(a[0]), Math.round(asScalar(a[1])), (w) => { const s = [...w].sort((x, y) => x - y); const n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; })),
+  movmax: async (a) => ret(movWindow(m(a[0]), Math.round(asScalar(a[1])), (w) => Math.max(...w))),
+  movmin: async (a) => ret(movWindow(m(a[0]), Math.round(asScalar(a[1])), (w) => Math.min(...w))),
+  accumarray: async (a) => { const subs = toArray(m(a[0])).map((x) => Math.round(x)); const vals = m(a[1]); const n = subs.length ? Math.max(...subs) : 0; const o = zeros(n, 1); for (let i = 0; i < subs.length; i++) o.data[subs[i] - 1] += vals.data.length === 1 ? vals.data[0] : vals.data[i]; return ret(o); },
   squeeze: async (a) => ret(m(a[0])),
   sortrows: async (a, n) => {
     const A = m(a[0]); const rows: number[][] = [];
@@ -900,6 +919,34 @@ function magicFn(n: number): Mat {
     }
   }
   return M;
+}
+
+// ── Statistics helpers ────────────────────────────────────────────────────
+/** Apply f to a vector, or per-column (→ row vector) for a matrix. */
+function colReduce(A: Mat, f: (col: number[]) => number): Mat {
+  if (A.rows === 1 || A.cols === 1) return scalar(f(toArray(A)));
+  const out = zeros(1, A.cols);
+  for (let c = 0; c < A.cols; c++) { const col: number[] = []; for (let r = 0; r < A.rows; r++) col.push(A.data[r + c * A.rows]); out.data[c] = f(col); }
+  return out;
+}
+function variance(c: number[]): number { const n = c.length; if (n < 2) return 0; const mu = c.reduce((s, x) => s + x, 0) / n; return c.reduce((s, x) => s + (x - mu) ** 2, 0) / (n - 1); }
+function modeOf(c: number[]): number { const m = new Map<number, number>(); for (const x of c) m.set(x, (m.get(x) ?? 0) + 1); let best = NaN, bc = -1; for (const [v, k] of [...m].sort((a, b) => a[0] - b[0])) if (k > bc) { bc = k; best = v; } return best; }
+/** MATLAB-style percentile (positions at (k-0.5)/n, linear interpolation). */
+function pctile(sorted: number[], p: number): number { const n = sorted.length; if (n === 0) return NaN; if (n === 1) return sorted[0]; const pos = (p / 100) * n - 0.5; if (pos <= 0) return sorted[0]; if (pos >= n - 1) return sorted[n - 1]; const lo = Math.floor(pos), fr = pos - lo; return sorted[lo] * (1 - fr) + sorted[lo + 1] * fr; }
+const colvecOf = (A: Mat): Mat => (A.cols === 1 ? A : (A.rows === 1 ? transpose(A) : A));
+/** Covariance matrix with columns as variables (normalised by n-1). */
+function covMatrix(X: Mat): Mat {
+  const n = X.rows, p = X.cols; const mu = new Float64Array(p);
+  for (let c = 0; c < p; c++) { let s = 0; for (let r = 0; r < n; r++) s += X.data[r + c * n]; mu[c] = s / n; }
+  const C = zeros(p, p);
+  for (let i = 0; i < p; i++) for (let j = 0; j < p; j++) { let s = 0; for (let r = 0; r < n; r++) s += (X.data[r + i * n] - mu[i]) * (X.data[r + j * n] - mu[j]); C.data[i + j * p] = s / (n - 1); }
+  return C;
+}
+/** Centred truncated moving window of length k over a vector. */
+function movWindow(A: Mat, k: number, f: (w: number[]) => number): Mat {
+  const v = toArray(A); const n = v.length; const before = Math.floor((k - 1) / 2); const out: number[] = [];
+  for (let i = 0; i < n; i++) { const lo = Math.max(0, i - before), hi = Math.min(n - 1, i - before + k - 1); out.push(f(v.slice(lo, hi + 1))); }
+  return A.cols === 1 ? colVec(out) : rowVec(out);
 }
 
 /** Rotate a matrix 90° counter-clockwise k times. */
