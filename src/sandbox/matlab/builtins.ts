@@ -114,6 +114,97 @@ export const BUILTINS: Record<string, Builtin> = {
   nthroot: async (a) => ret(elementwise(m(a[0]), m(a[1]), nthroot)),
   hypot: async (a) => ret(elementwise(m(a[0]), m(a[1]), Math.hypot)),
 
+  // trig / hyperbolic completion (radians)
+  sec: ew((x) => 1 / Math.cos(x)), csc: ew((x) => 1 / Math.sin(x)),
+  coth: ew((x) => 1 / Math.tanh(x)), sech: ew((x) => 1 / Math.cosh(x)), csch: ew((x) => 1 / Math.sinh(x)),
+  acot: ew((x) => Math.atan(1 / x)), asec: ew((x) => Math.acos(1 / x)), acsc: ew((x) => Math.asin(1 / x)),
+  asinh: ew(Math.asinh), acosh: ew(Math.acosh), atanh: ew(Math.atanh),
+  acoth: ew((x) => Math.atanh(1 / x)), asech: ew((x) => Math.acosh(1 / x)), acsch: ew((x) => Math.asinh(1 / x)),
+  // degree-valued trig
+  sind: ew((x) => Math.sin(x * DEG)), cosd: ew((x) => Math.cos(x * DEG)), tand: ew((x) => Math.tan(x * DEG)),
+  cotd: ew((x) => 1 / Math.tan(x * DEG)), secd: ew((x) => 1 / Math.cos(x * DEG)), cscd: ew((x) => 1 / Math.sin(x * DEG)),
+  asind: ew((x) => Math.asin(x) / DEG), acosd: ew((x) => Math.acos(x) / DEG), atand: ew((x) => Math.atan(x) / DEG),
+  acotd: ew((x) => Math.atan(1 / x) / DEG),
+  atan2d: async (a) => ret(elementwise(m(a[0]), m(a[1]), (y, x) => Math.atan2(y, x) / DEG)),
+  deg2rad: ew((x) => x * DEG), rad2deg: ew((x) => x / DEG),
+  // elementary extras
+  cumprod: async (a) => {
+    const A = m(a[0]); const o = zeros(A.rows, A.cols);
+    if (A.rows === 1 || A.cols === 1) { let p = 1; for (let i = 0; i < A.data.length; i++) { p *= A.data[i]; o.data[i] = p; } }
+    else for (let c = 0; c < A.cols; c++) { let p = 1; for (let r = 0; r < A.rows; r++) { p *= A.data[r + c * A.rows]; o.data[r + c * A.rows] = p; } }
+    return ret(o);
+  },
+  expm1: ew(Math.expm1), log1p: ew(Math.log1p),
+  sinpi: ew((x) => Math.sin(Math.PI * x)), cospi: ew((x) => Math.cos(Math.PI * x)),
+  pow2: ew((x) => Math.pow(2, x)),
+  nextpow2: ew((x) => { const a = Math.abs(x); return a === 0 ? 0 : Math.ceil(Math.log2(a)); }),
+  realsqrt: ew((x) => { if (x < 0) throw new MatError('realsqrt: argument must be nonnegative'); return Math.sqrt(x); }),
+  reallog: ew((x) => { if (x < 0) throw new MatError('reallog: argument must be nonnegative'); return Math.log(x); }),
+  realpow: async (a) => ret(elementwise(m(a[0]), m(a[1]), Math.pow)),
+  // value queries
+  isreal: async () => ret(bool(true)),
+  allfinite: async (a) => ret(bool(toArray(m(a[0])).every(Number.isFinite))),
+  anynan: async (a) => ret(bool(toArray(m(a[0])).some(Number.isNaN))),
+  // number theory
+  gcd: async (a) => ret(elementwise(m(a[0]), m(a[1]), gcd2)),
+  lcm: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, y) => (x === 0 || y === 0 ? 0 : Math.abs(x * y) / gcd2(x, y)))),
+  factorial: ew((x) => factorialN(Math.round(x))),
+  nchoosek: async (a) => {
+    const n = Math.round(asScalar(a[0])); const k = Math.round(asScalar(a[1]));
+    if (k < 0 || k > n) return ret(scalar(0));
+    let r = 1; for (let i = 1; i <= k; i++) r = (r * (n - k + i)) / i;
+    return ret(scalar(Math.round(r)));
+  },
+  primes: async (a) => {
+    const n = Math.floor(asScalar(a[0])); if (n < 2) return ret(zeros(1, 0));
+    const sieve = new Array(n + 1).fill(true); sieve[0] = sieve[1] = false;
+    for (let i = 2; i * i <= n; i++) if (sieve[i]) for (let j = i * i; j <= n; j += i) sieve[j] = false;
+    const out: number[] = []; for (let i = 2; i <= n; i++) if (sieve[i]) out.push(i);
+    return ret(rowVec(out));
+  },
+  isprime: async (a) => {
+    const r = map(m(a[0]), (x) => { const v = Math.round(x); if (v < 2) return 0; for (let i = 2; i * i <= v; i++) if (v % i === 0) return 0; return 1; });
+    r.isBool = true; return [r];
+  },
+  factor: async (a) => {
+    let n = Math.round(asScalar(a[0])); const orig = n; const out: number[] = [];
+    for (let d = 2; d * d <= n; d++) while (n % d === 0) { out.push(d); n /= d; }
+    if (n > 1) out.push(n);
+    return ret(rowVec(out.length ? out : [orig]));
+  },
+  // special functions
+  gamma: ew(gammaFn), gammaln: ew(logGamma),
+  erf: ew(erfFn), erfc: ew((x) => 1 - erfFn(x)),
+  beta: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, y) => gammaFn(x) * gammaFn(y) / gammaFn(x + y))),
+  betaln: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, y) => logGamma(x) + logGamma(y) - logGamma(x + y))),
+  // special matrices
+  magic: async (a) => ret(magicFn(Math.round(asScalar(a[0])))),
+  hilb: async (a) => { const n = Math.round(asScalar(a[0])); const o = zeros(n, n); for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) o.data[r + c * n] = 1 / (r + c + 1); return ret(o); },
+  vander: async (a) => { const v = toArray(m(a[0])); const n = v.length; const o = zeros(n, n); for (let r = 0; r < n; r++) for (let j = 0; j < n; j++) o.data[r + j * n] = Math.pow(v[r], n - 1 - j); return ret(o); },
+  pascal: async (a) => {
+    const n = Math.round(asScalar(a[0])); const o = zeros(n, n);
+    for (let i = 0; i < n; i++) { o.data[i] = 1; o.data[i * n] = 1; }
+    for (let i = 1; i < n; i++) for (let j = 1; j < n; j++) o.data[i + j * n] = o.data[(i - 1) + j * n] + o.data[i + (j - 1) * n];
+    return ret(o);
+  },
+  toeplitz: async (a) => {
+    const c = toArray(m(a[0])); const r = a.length >= 2 ? toArray(m(a[1])) : c;
+    const o = zeros(c.length, r.length);
+    for (let i = 0; i < c.length; i++) for (let j = 0; j < r.length; j++) o.data[i + j * c.length] = i >= j ? c[i - j] : r[j - i];
+    return ret(o);
+  },
+  // polynomials
+  polyval: async (a) => { const p = toArray(m(a[0])); return ret(map(m(a[1]), (x) => { let s = 0; for (const cf of p) s = s * x + cf; return s; })); },
+  polyfit: async (a) => {
+    const x = toArray(m(a[0])); const yv = toArray(m(a[1])); const deg = Math.round(asScalar(a[2]));
+    const M = x.length; const A = zeros(M, deg + 1);
+    for (let i = 0; i < M; i++) for (let j = 0; j <= deg; j++) A.data[i + j * M] = Math.pow(x[i], deg - j);
+    return ret(transpose(mldivide(A, colVec(yv))));
+  },
+  conv: async (a) => { const u = toArray(m(a[0])); const v = toArray(m(a[1])); const w = new Array(Math.max(0, u.length + v.length - 1)).fill(0); for (let i = 0; i < u.length; i++) for (let j = 0; j < v.length; j++) w[i + j] += u[i] * v[j]; return ret(rowVec(w)); },
+  polyder: async (a) => { const p = toArray(m(a[0])); const n = p.length - 1; if (n <= 0) return ret(scalar(0)); const d: number[] = []; for (let i = 0; i < n; i++) d.push(p[i] * (n - i)); return ret(rowVec(d)); },
+  polyint: async (a) => { const p = toArray(m(a[0])); const k = a.length >= 2 ? asScalar(a[1]) : 0; const n = p.length; const out: number[] = []; for (let i = 0; i < n; i++) out.push(p[i] / (n - i)); out.push(k); return ret(rowVec(out)); },
+
   // reductions
   sum: async (a) => ret(reduce(m(a[0]), dimArg(a, 1), 0, (s, x) => s + x)),
   prod: async (a) => ret(reduce(m(a[0]), dimArg(a, 1), 1, (s, x) => s * x)),
@@ -473,6 +564,55 @@ function matToStr(A: Mat): string {
   const rows: string[] = [];
   for (let r = 0; r < A.rows; r++) { const row: string[] = []; for (let c = 0; c < A.cols; c++) row.push(trimNum(A.data[r + c * A.rows])); rows.push(row.join(' ')); }
   return rows.join('; ');
+}
+
+// ── Math helpers for the elementary-math builtins ─────────────────────────
+const DEG = Math.PI / 180;
+function gcd2(a: number, b: number): number { a = Math.abs(Math.round(a)); b = Math.abs(Math.round(b)); while (b) { [a, b] = [b, a % b]; } return a; }
+function factorialN(n: number): number { if (n < 0) return NaN; if (n > 170) return Infinity; let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; }
+
+/** Lanczos approximation of the gamma function. */
+function gammaFn(x: number): number {
+  const g = 7;
+  const c = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313,
+    -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+  if (x < 0.5) return Math.PI / (Math.sin(Math.PI * x) * gammaFn(1 - x));
+  x -= 1; let a = c[0]; const t = x + g + 0.5;
+  for (let i = 1; i < g + 2; i++) a += c[i] / (x + i);
+  return Math.sqrt(2 * Math.PI) * Math.pow(t, x + 0.5) * Math.exp(-t) * a;
+}
+function logGamma(x: number): number { return Math.log(Math.abs(gammaFn(x))); }
+
+/** Error function (Abramowitz & Stegun 7.1.26). */
+function erfFn(x: number): number {
+  const s = x < 0 ? -1 : 1; x = Math.abs(x);
+  const t = 1 / (1 + 0.3275911 * x);
+  const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
+  return s * y;
+}
+
+/** Magic square (Siamese for odd, doubly-even rule, Strachey for singly-even). */
+function magicFn(n: number): Mat {
+  const M = zeros(n, n); const at = (r: number, c: number) => M.data[r + c * n]; const set = (r: number, c: number, v: number) => { M.data[r + c * n] = v; };
+  if (n < 1) return M;
+  if (n % 2 === 1) {
+    let i = 0, j = (n - 1) / 2;
+    for (let k = 1; k <= n * n; k++) { set(i, j, k); const ni = (i - 1 + n) % n, nj = (j + 1) % n; if (at(ni, nj) !== 0) i = (i + 1) % n; else { i = ni; j = nj; } }
+  } else if (n % 4 === 0) {
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) { const v = r * n + c + 1; set(r, c, (r % 4 === c % 4) || ((r % 4 + c % 4) === 3) ? n * n + 1 - v : v); }
+  } else {
+    const h = n / 2; const sub = magicFn(h); const f = h * h;
+    for (let r = 0; r < h; r++) for (let c = 0; c < h; c++) {
+      const a = sub.data[r + c * h];
+      set(r, c, a); set(r + h, c + h, a + f); set(r, c + h, a + 2 * f); set(r + h, c, a + 3 * f);
+    }
+    const k = (n - 2) / 4; const center = (h - 1) / 2;
+    for (let r = 0; r < h; r++) {
+      for (let c = 0; c < k; c++) { const col = r === center ? c + 1 : c; const t = at(r, col); set(r, col, at(r + h, col)); set(r + h, col, t); }
+      for (let c = 0; c < k - 1; c++) { const col = n - 1 - c; const t = at(r, col); set(r, col, at(r + h, col)); set(r + h, col, t); }
+    }
+  }
+  return M;
 }
 
 /** Numeric constants exposed as bare identifiers. */
