@@ -33,6 +33,7 @@ export function useSandbox(folderId: string) {
       setPrompt(p);
       if (p) setLines((prev) => [...prev, { kind: 'prompt', text: p }]);
     }),
+    onClearConsole: () => setLines([]),
     preload: folderSources(folderId),
   }), [folderId, pushOut]);
 

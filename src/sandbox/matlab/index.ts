@@ -6,6 +6,8 @@ import type { FigureSpec } from './graphics';
 export interface SessionOptions {
   onOutput: (text: string) => void;
   requestInput?: (prompt: string) => Promise<string>;
+  /** Clear the command window (invoked by `clc`). */
+  onClearConsole?: () => void;
   /** Function-file sources to pre-register (callable from the command window). */
   preload?: string[];
 }
@@ -19,7 +21,7 @@ export interface Session {
 }
 
 export function createSession(opts: SessionOptions): Session {
-  let interp = new Interpreter({ onOutput: opts.onOutput, requestInput: opts.requestInput });
+  let interp = new Interpreter({ onOutput: opts.onOutput, requestInput: opts.requestInput, onClearConsole: opts.onClearConsole });
   const preload = () => { for (const src of opts.preload ?? []) { try { interp.loadFunctions(src); } catch { /* skip unparseable */ } } };
   preload();
 
@@ -39,7 +41,7 @@ export function createSession(opts: SessionOptions): Session {
     getFigure() { return interp.graphics.fig; },
     workspace() { return interp.workspaceSnapshot(); },
     reset() {
-      interp = new Interpreter({ onOutput: opts.onOutput, requestInput: opts.requestInput });
+      interp = new Interpreter({ onOutput: opts.onOutput, requestInput: opts.requestInput, onClearConsole: opts.onClearConsole });
       preload();
     },
   };

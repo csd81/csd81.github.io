@@ -18,6 +18,7 @@ export interface Env {
   help(name: string): string;
   clearWorkspace(names: string[]): void;
   workspaceVars(): { name: string; size: string; klass: string }[];
+  clearConsole(): void;
 }
 
 export type Builtin = (args: Value[], nargout: number, env: Env) => Promise<Value[]>;
@@ -281,7 +282,7 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   drawnow: async () => [],
   pause: async () => [],
-  clc: async () => [],
+  clc: async (_a, _n, env) => { env.clearConsole(); return []; },
   tic: async () => [],
   toc: async () => ret(scalar(0)),
 

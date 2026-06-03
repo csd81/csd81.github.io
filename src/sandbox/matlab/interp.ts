@@ -25,6 +25,7 @@ class Scope {
 export interface InterpOptions {
   onOutput: (text: string) => void;
   requestInput?: (prompt: string) => Promise<string>;
+  onClearConsole?: () => void;
 }
 
 export class Interpreter implements Env {
@@ -34,15 +35,18 @@ export class Interpreter implements Env {
   private endStack: number[] = [];
   private onOutputCb: (text: string) => void;
   private requestInputCb: (prompt: string) => Promise<string>;
+  private clearConsoleCb: () => void;
   base = new Scope();
 
   constructor(opts: InterpOptions) {
     this.onOutputCb = opts.onOutput;
     this.requestInputCb = opts.requestInput ?? (async () => '');
+    this.clearConsoleCb = opts.onClearConsole ?? (() => {});
   }
 
   output(text: string) { this.onOutputCb(text); }
   requestInput(prompt: string) { return this.requestInputCb(prompt); }
+  clearConsole() { this.clearConsoleCb(); }
   callHandle(h: Handle, args: Value[], nargout: number) { return h.call(args, nargout); }
   help(name: string): string {
     const def = this.funcs.get(name);
