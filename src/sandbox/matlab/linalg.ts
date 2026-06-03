@@ -1,5 +1,5 @@
 /** Dense linear algebra: det, inv, `\` (square solve + least squares), norm, diag, eye. */
-import { type Mat, MatError, mat, zeros, scalar, isScalar, numel, transpose, matmul } from './values';
+import { type Mat, MatError, mat, zeros, scalar, isScalar, numel, transpose, matmul, isComplex, cmul, cdiv, finishComplex, ctranspose, cmatmul, ewRDiv } from './values';
 
 export function eye(n: number, m = n): Mat {
   const out = zeros(n, m);
@@ -69,6 +69,7 @@ function luSolve(a: Mat, b: Mat): Mat {
 }
 
 export function inv(a: Mat): Mat {
+  if (isComplex(a)) { if (a.rows !== a.cols) throw new MatError('inverse requires a square matrix'); return cLuSolve(a, eye(a.rows)); }
   if (isScalar(a)) return scalar(1 / a.data[0]);
   if (a.rows !== a.cols) throw new MatError('inverse requires a square matrix');
   return luSolve(a, eye(a.rows));
@@ -76,12 +77,61 @@ export function inv(a: Mat): Mat {
 
 /** A \ B (mldivide): square → LU solve; non-square → least squares (normal equations). */
 export function mldivide(a: Mat, b: Mat): Mat {
+  if (isComplex(a) || isComplex(b)) {
+    if (isScalar(a)) return ewRDiv(b, a);
+    if (a.rows !== b.rows) throw new MatError(`\\: row dimensions must agree (${a.rows} vs ${b.rows})`);
+    if (a.rows === a.cols) return cLuSolve(a, b);
+    const At = ctranspose(a);
+    return cLuSolve(cmatmul(At, a), cmatmul(At, b));
+  }
   if (isScalar(a)) return mat(b.rows, b.cols, b.data.map((v) => v / a.data[0]) as Float64Array);
   if (a.rows !== b.rows) throw new MatError(`\\: row dimensions must agree (${a.rows} vs ${b.rows})`);
   if (a.rows === a.cols) return luSolve(a, b);
   // Overdetermined / underdetermined → normal equations (AᵀA) x = Aᵀ b.
   const At = transpose(a);
   return luSolve(matmul(At, a), matmul(At, b));
+}
+
+// ── Complex LU (partial pivoting), solve, determinant ──────────────────
+function cFactor(a: Mat): { re: Float64Array; im: Float64Array; piv: number[]; sign: number; n: number } {
+  const n = a.rows; if (a.cols !== n) throw new MatError('matrix must be square');
+  const re = Float64Array.from(a.data); const im = a.idata ? Float64Array.from(a.idata) : new Float64Array(n * n);
+  const piv = Array.from({ length: n }, (_, i) => i); let sign = 1;
+  const mag = (r: number, c: number) => Math.hypot(re[r + c * n], im[r + c * n]);
+  for (let k = 0; k < n; k++) {
+    let p = k, mx = mag(k, k); for (let r = k + 1; r < n; r++) { const v = mag(r, k); if (v > mx) { mx = v; p = r; } }
+    if (p !== k) { for (let c = 0; c < n; c++) { let t = re[k + c * n]; re[k + c * n] = re[p + c * n]; re[p + c * n] = t; t = im[k + c * n]; im[k + c * n] = im[p + c * n]; im[p + c * n] = t; } const tp = piv[k]; piv[k] = piv[p]; piv[p] = tp; sign = -sign; }
+    const dr = re[k + k * n], di = im[k + k * n];
+    if (dr === 0 && di === 0) continue;
+    for (let r = k + 1; r < n; r++) {
+      const [fr, fi] = cdiv(re[r + k * n], im[r + k * n], dr, di);
+      re[r + k * n] = fr; im[r + k * n] = fi;
+      for (let c = k + 1; c < n; c++) { const [pr, pi] = cmul(fr, fi, re[k + c * n], im[k + c * n]); re[r + c * n] -= pr; im[r + c * n] -= pi; }
+    }
+  }
+  return { re, im, piv, sign, n };
+}
+
+export function cLuSolve(a: Mat, b: Mat): Mat {
+  const { re, im, piv, n } = cFactor(a);
+  const m = b.cols; const Xre = new Float64Array(n * m), Xim = new Float64Array(n * m);
+  const bim = (r: number, c: number) => (b.idata ? b.idata[r + c * b.rows] : 0);
+  for (let col = 0; col < m; col++) {
+    const yr = new Float64Array(n), yi = new Float64Array(n);
+    for (let r = 0; r < n; r++) { yr[r] = b.data[piv[r] + col * b.rows]; yi[r] = bim(piv[r], col); }
+    for (let r = 0; r < n; r++) { let sr = yr[r], si = yi[r]; for (let c = 0; c < r; c++) { const [pr, pi] = cmul(re[r + c * n], im[r + c * n], yr[c], yi[c]); sr -= pr; si -= pi; } yr[r] = sr; yi[r] = si; }
+    for (let r = n - 1; r >= 0; r--) { let sr = yr[r], si = yi[r]; for (let c = r + 1; c < n; c++) { const [pr, pi] = cmul(re[r + c * n], im[r + c * n], yr[c], yi[c]); sr -= pr; si -= pi; } const [zr, zi] = cdiv(sr, si, re[r + r * n], im[r + r * n]); yr[r] = zr; yi[r] = zi; }
+    for (let r = 0; r < n; r++) { Xre[r + col * n] = yr[r]; Xim[r + col * n] = yi[r]; }
+  }
+  return finishComplex(n, m, Xre, Xim);
+}
+
+/** Determinant of a complex matrix → [re, im]. */
+export function cDet(a: Mat): [number, number] {
+  const { re, im, sign, n } = cFactor(a);
+  let dr = sign, di = 0;
+  for (let k = 0; k < n; k++) { const [zr, zi] = cmul(dr, di, re[k + k * n], im[k + k * n]); dr = zr; di = zi; }
+  return [dr, di];
 }
 
 export function diag(a: Mat): Mat {

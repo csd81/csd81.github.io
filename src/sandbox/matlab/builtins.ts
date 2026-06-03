@@ -8,7 +8,7 @@ import {
 import {
   det, inv, mldivide, diag, norm, eye,
   qr as qrDecomp, chol as cholFn, luOutputs, jacobiEigSym, svd as svdReal,
-  rankOf, cond as condFn, pinv as pinvFn, orth as orthFn, nullspace, rref as rrefFn, vecnorm as vecnormFn, isSymmetric,
+  rankOf, cond as condFn, pinv as pinvFn, orth as orthFn, nullspace, rref as rrefFn, vecnorm as vecnormFn, isSymmetric, cDet,
 } from './linalg';
 import { dispValue, sprintf } from './format';
 import type { Graphics } from './graphics';
@@ -356,7 +356,7 @@ export const BUILTINS: Record<string, Builtin> = {
   ismatrix: async () => ret(bool(true)),
 
   // linear algebra
-  det: async (a) => ret(scalar(det(m(a[0])))),
+  det: async (a) => { const A = m(a[0]); if (isComplex(A)) { const [re, im] = cDet(A); return ret(cscalar(re, im)); } return ret(scalar(det(A))); },
   inv: async (a) => ret(inv(m(a[0]))),
   mldivide: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
   diag: async (a) => ret(diag(m(a[0]))),
