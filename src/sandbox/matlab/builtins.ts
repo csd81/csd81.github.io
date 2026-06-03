@@ -899,6 +899,6 @@ export const CONSTANTS: Record<string, () => Value> = {
   eps: () => scalar(Number.EPSILON),
   Inf: () => scalar(Infinity), inf: () => scalar(Infinity),
   NaN: () => scalar(NaN), nan: () => scalar(NaN),
-  true: () => scalar(1), false: () => scalar(0),
+  true: () => bool(true), false: () => bool(false),
   realmax: () => scalar(Number.MAX_VALUE), realmin: () => scalar(Number.MIN_VALUE),
 };

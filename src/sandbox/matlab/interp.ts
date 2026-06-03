@@ -258,7 +258,15 @@ export class Interpreter implements Env {
       this.endStack.push(endVal);
       let v: Value;
       try { v = await this.evalExpr(a, scope); } finally { this.endStack.pop(); }
-      subs.push(toArray(asMat(v)).map((x) => Math.round(x)));
+      const mv = asMat(v);
+      if (mv.isBool) {
+        // logical indexing: select the positions where the mask is nonzero
+        const idx: number[] = [];
+        for (let k = 0; k < mv.data.length; k++) if (mv.data[k] !== 0) idx.push(k + 1);
+        subs.push(idx);
+      } else {
+        subs.push(toArray(mv).map((x) => Math.round(x)));
+      }
     }
     return subs;
   }

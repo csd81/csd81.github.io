@@ -143,9 +143,10 @@ export function horzcat(parts: Mat[]): Mat {
   for (const p of nonEmpty) { if (p.rows !== rows) throw new MatError('horizontal dimensions mismatch'); cols += p.cols; }
   const out = zeros(rows, cols);
   let co = 0;
-  let allChar = true;
-  for (const p of nonEmpty) { out.data.set(p.data.subarray(0, rows * p.cols), co * rows); co += p.cols; if (!p.isChar) allChar = false; }
+  let allChar = true, allBool = true;
+  for (const p of nonEmpty) { out.data.set(p.data.subarray(0, rows * p.cols), co * rows); co += p.cols; if (!p.isChar) allChar = false; if (!p.isBool) allBool = false; }
   if (allChar) out.isChar = true;
+  if (allBool && !allChar) out.isBool = true;
   return out;
 }
 export function vertcat(parts: Mat[]): Mat {
@@ -156,10 +157,13 @@ export function vertcat(parts: Mat[]): Mat {
   for (const p of nonEmpty) { if (p.cols !== cols) throw new MatError('vertical dimensions mismatch'); rows += p.rows; }
   const out = zeros(rows, cols);
   let ro = 0;
+  let allBool = true;
   for (const p of nonEmpty) {
     for (let c = 0; c < cols; c++) for (let r = 0; r < p.rows; r++) out.data[(ro + r) + c * rows] = p.data[r + c * p.rows];
     ro += p.rows;
+    if (!p.isBool) allBool = false;
   }
+  if (allBool) out.isBool = true;
   return out;
 }
 
