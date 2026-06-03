@@ -13,6 +13,7 @@ import {
   type Geom, isGeom,
   type Quantum, isQuantum,
   type Temporal, isTemporal, makeTemporal,
+  type Table, isTable,
 } from './values';
 import {
   det, inv, mldivide, diag, norm, eye,
@@ -1026,7 +1027,6 @@ export const BUILTINS: Record<string, Builtin> = {
   isobject: async () => ret(bool(false)),
   isjava: async () => ret(bool(false)),
   isenum: async () => ret(bool(false)),
-  istabular: async () => ret(bool(false)),
   isgraphics: async (a) => ret(bool(!isMat(a[0]) && (a[0] as { kind?: string }).kind === 'gobj')),
   underlyingType: async (a, n, env) => BUILTINS.class(a, n, env),
   isUnderlyingType: async (a, _n, env) => { const c = await BUILTINS.class([a[0]], 1, env); return ret(bool(asString(c[0]) === asString(a[1]))); },
@@ -1332,6 +1332,31 @@ export const BUILTINS: Record<string, Builtin> = {
   isdatetime: async (a) => ret(bool(isTemporal(a[0]) && a[0].tkind === 'datetime')),
   isduration: async (a) => ret(bool(isTemporal(a[0]) && a[0].tkind === 'duration')),
   isnat: async (a) => { const t = a[0] as Temporal; const o = zeros(t.rows, t.cols); o.isBool = true; for (let i = 0; i < t.data.length; i++) o.data[i] = Number.isNaN(t.data[i]) ? 1 : 0; return ret(o); },
+  // ── table / timetable ──
+  table: async (a) => {
+    const { cols, names } = parseTableArgs(a, 0);
+    const nrows = cols.length ? tblRows(cols[0]) : 0;
+    return ret({ kind: 'table', vars: names, cols, nrows } as Table);
+  },
+  timetable: async (a) => {
+    const rt = a[0] as Temporal; if (!isTemporal(rt)) throw new MatError('timetable: first argument must be a datetime/duration row-time vector');
+    const { cols, names } = parseTableArgs(a, 1);
+    return ret({ kind: 'table', vars: names, cols, nrows: rt.rows * rt.cols, isTimetable: true, rowTimes: rt, rowDimName: 'Time' } as Table);
+  },
+  array2table: async (a) => { const A = m(a[0]); const names = parseNameOpt(a) ?? Array.from({ length: A.cols }, (_, i) => `Var${i + 1}`); const cols = Array.from({ length: A.cols }, (_, j) => colOf(A, j)); return ret({ kind: 'table', vars: names, cols, nrows: A.rows } as Table); },
+  cell2table: async (a) => { const C = a[0] as Cell; const names = parseNameOpt(a) ?? Array.from({ length: C.cols }, (_, i) => `Var${i + 1}`); const cols: Value[] = []; for (let j = 0; j < C.cols; j++) { const colItems: Value[] = []; for (let r = 0; r < C.rows; r++) colItems.push(C.items[r + j * C.rows]); cols.push(stackColumn(colItems)); } return ret({ kind: 'table', vars: names, cols, nrows: C.rows } as Table); },
+  struct2table: async (a) => { const s = a[0] as StructV; const names = [...s.fields.keys()]; const cols = names.map((k) => { const vals = s.fields.get(k)!; return vals.length === 1 ? vals[0] : stackColumn(vals); }); return ret({ kind: 'table', vars: names, cols, nrows: cols.length ? tblRows(cols[0]) : 0 } as Table); },
+  table2array: async (a) => { const t = gTbl(a[0]); return ret(horzcat(t.cols.map((c) => m(c)))); },
+  table2cell: async (a) => { const t = gTbl(a[0]); const items: Value[] = []; for (let j = 0; j < t.vars.length; j++) for (let r = 0; r < t.nrows; r++) items[r + j * t.nrows] = tblCellValue(t.cols[j], r); return ret(makeCell(t.nrows, t.vars.length, items)); },
+  table2struct: async (a) => { const t = gTbl(a[0]); const f = new Map<string, Value[]>(); for (let j = 0; j < t.vars.length; j++) { const arr: Value[] = []; for (let r = 0; r < t.nrows; r++) arr.push(tblCellValue(t.cols[j], r)); f.set(t.vars[j], arr); } return ret({ kind: 'struct', rows: t.nrows, cols: 1, fields: f } as StructV); },
+  istable: async (a) => ret(bool(isTable(a[0]) && !a[0].isTimetable)),
+  istimetable: async (a) => ret(bool(isTable(a[0]) && !!a[0].isTimetable)),
+  istabular: async (a) => ret(bool(isTable(a[0]))),
+  height: async (a) => ret(scalar(isTable(a[0]) ? a[0].nrows : m(a[0]).rows)),
+  width: async (a) => ret(scalar(isTable(a[0]) ? a[0].vars.length : m(a[0]).cols)),
+  head: async (a) => { const t = gTbl(a[0]); const k = Math.min(t.nrows, a.length >= 2 ? Math.round(asScalar(a[1])) : 8); return ret(tblSlice(t, Array.from({ length: k }, (_, i) => i))); },
+  tail: async (a) => { const t = gTbl(a[0]); const k = Math.min(t.nrows, a.length >= 2 ? Math.round(asScalar(a[1])) : 8); return ret(tblSlice(t, Array.from({ length: k }, (_, i) => t.nrows - k + i))); },
+  summary: async (a, _n, env) => { const t = gTbl(a[0]); let s = `Table with ${t.nrows} rows and ${t.vars.length} variables:\n`; for (let j = 0; j < t.vars.length; j++) { const c = t.cols[j]; if (isMat(c) && !c.isChar) { const v = toArray(c); s += `  ${t.vars[j]}: min ${trimNum(Math.min(...v))}, median ${trimNum(median1(v))}, max ${trimNum(Math.max(...v))}, mean ${trimNum(v.reduce((x, y) => x + y, 0) / v.length)}\n`; } else s += `  ${t.vars[j]}: ${c.kind}\n`; } env.output(s); return []; },
   deval: async (a) => {
     // deval(sol, xq) | deval(xq, sol) → interpolate the solution
     const sol = (isStruct(a[0]) ? a[0] : a[1]) as StructV; const xq = toArray(m(isStruct(a[0]) ? a[1] : a[0]));
@@ -1865,6 +1890,7 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   squeeze: async (a) => { const A = m(a[0]); if (!A.nd) return ret(A); const d = A.nd.filter((x) => x !== 1); while (d.length < 2) d.push(1); return ret(makeND(d, Float64Array.from(A.data), { idata: A.idata ? Float64Array.from(A.idata) : null, isChar: A.isChar })); },
   sortrows: async (a, n) => {
+    if (isTable(a[0])) { const t = a[0]; let vi = 0; if (a.length >= 2) { vi = (isMat(a[1]) && (a[1] as Mat).isChar) || isStr(a[1]) ? t.vars.indexOf(asString(a[1])) : Math.round(asScalar(a[1])) - 1; } const key = m(t.cols[vi]); const idx = Array.from({ length: t.nrows }, (_, i) => i).sort((p, q) => key.data[p] - key.data[q]); return ret(tblSlice(t, idx)); }
     const A = m(a[0]); const rows: number[][] = [];
     for (let r = 0; r < A.rows; r++) { const row: number[] = []; for (let c = 0; c < A.cols; c++) row.push(A.data[r + c * A.rows]); rows.push(row); }
     const idx = rows.map((_, i) => i).sort((i, j) => { for (let c = 0; c < A.cols; c++) { if (rows[i][c] !== rows[j][c]) return rows[i][c] - rows[j][c]; } return 0; });
@@ -2666,6 +2692,22 @@ const HELP: Record<string, HelpEntry> = {
   isdatetime: { summary: 'True for datetime arrays', syntax: ['tf = isdatetime(d)'], seealso: ['isduration', 'datetime'] },
   isduration: { summary: 'True for duration arrays', syntax: ['tf = isduration(d)'], seealso: ['isdatetime', 'duration'] },
   isnat: { summary: 'True for NaT (missing) datetimes', syntax: ['tf = isnat(d)'], seealso: ['NaT', 'isnan'] },
+  table: { summary: 'Create a table from column variables', syntax: ["T = table(v1,v2,'VariableNames',{'a','b'})"], seealso: ['array2table', 'height', 'summary', 'timetable'] },
+  timetable: { summary: 'Create a timetable with row times', syntax: ['tt = timetable(rowTimes,v1,...)'], seealso: ['table', 'datetime'] },
+  array2table: { summary: 'Convert a matrix to a table (one variable per column)', syntax: ['T = array2table(A)'], seealso: ['table', 'table2array'] },
+  cell2table: { summary: 'Convert a cell array to a table', syntax: ['T = cell2table(C)'], seealso: ['table', 'table2cell'] },
+  struct2table: { summary: 'Convert a structure to a table', syntax: ['T = struct2table(S)'], seealso: ['table', 'table2struct'] },
+  table2array: { summary: 'Convert a table to a homogeneous array', syntax: ['A = table2array(T)'], seealso: ['array2table'] },
+  table2cell: { summary: 'Convert a table to a cell array', syntax: ['C = table2cell(T)'], seealso: ['cell2table'] },
+  table2struct: { summary: 'Convert a table to a structure array', syntax: ['S = table2struct(T)'], seealso: ['struct2table'] },
+  istable: { summary: 'True for tables', syntax: ['tf = istable(T)'], seealso: ['istimetable', 'istabular'] },
+  istimetable: { summary: 'True for timetables', syntax: ['tf = istimetable(tt)'], seealso: ['istable'] },
+  istabular: { summary: 'True for tables or timetables', syntax: ['tf = istabular(T)'], seealso: ['istable', 'istimetable'] },
+  height: { summary: 'Number of table rows', syntax: ['h = height(T)'], seealso: ['width', 'size'] },
+  width: { summary: 'Number of table variables', syntax: ['w = width(T)'], seealso: ['height', 'size'] },
+  head: { summary: 'First rows of a table', syntax: ['H = head(T)', 'H = head(T,k)'], seealso: ['tail'] },
+  tail: { summary: 'Last rows of a table', syntax: ['H = tail(T)', 'H = tail(T,k)'], seealso: ['head'] },
+  summary: { summary: 'Summary statistics of a table', syntax: ['summary(T)'], seealso: ['table', 'mean'] },
   symvar: { summary: 'Free variables of an expression (alphabetical)', syntax: ["v = symvar('a*x+b')"], seealso: ['inline', 'str2func'] },
   vectorize: { summary: 'Vectorize an expression string (* / ^ → .* ./ .^)', syntax: ["s = vectorize('x^2')"], seealso: ['inline'] },
   quadv: { summary: 'Vectorized adaptive quadrature (→ quad)', syntax: ['q = quadv(f,a,b)'], seealso: ['quad', 'integral'] },
@@ -2853,6 +2895,7 @@ const BASE_REF = new Set<string>((
   'bvp4c bvp5c bvpinit bvpset bvpget dde23 ddesd ddensd ddeset ddeget deval ' +
   'datenum datevec datestr now today clock date weekday eomday etime addtodate ' +
   'datetime duration NaT years days hours minutes seconds milliseconds year month day hour minute second ymd isdatetime isduration isnat ' +
+  'table timetable array2table cell2table struct2table table2array table2cell table2struct istable istimetable istabular height width head tail summary ' +
   'hGate xGate yGate zGate sGate siGate tGate tiGate idGate rxGate ryGate rzGate cxGate cnotGate cyGate czGate chGate crxGate cryGate crzGate swapGate ccxGate mcxGate ' +
   'quantumCircuit simulate probability querystates formula ' +
   'sphere cylinder ellipsoid fsurf fmesh fcontour quiver ' +
@@ -2963,6 +3006,43 @@ function jsonDecode(j: unknown): Value {
   const o = j as Record<string, unknown>; const fields = new Map<string, Value[]>();
   for (const k of Object.keys(o)) fields.set(k, [jsonDecode(o[k])]);
   return { kind: 'struct', rows: 1, cols: 1, fields };
+}
+
+// ── table / timetable helpers ──────────────────────────────────────────
+function gTbl(v: Value, name = 'argument'): Table { if (!isTable(v)) throw new MatError(`${name}: expected a table`); return v; }
+function tblRows(c: Value): number { return isTemporal(c) ? c.rows * c.cols : isStr(c) ? c.rows : isMat(c) ? c.rows : numelOf(c); }
+function median1(v: number[]): number { const s = [...v].sort((a, b) => a - b); const n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; }
+/** Read the 'VariableNames' option from a table arg list, if present. */
+function parseNameOpt(a: Value[]): string[] | null {
+  for (let i = 0; i < a.length - 1; i++) if ((isMat(a[i]) && (a[i] as Mat).isChar && asString(a[i]).toLowerCase() === 'variablenames') || (isStr(a[i]) && asString(a[i]).toLowerCase() === 'variablenames')) { const nv = a[i + 1]; return isCell(nv) ? nv.items.map((x) => asString(x)) : isStr(nv) ? nv.items.slice() : [asString(nv)]; }
+  return null;
+}
+/** Split a table(...) / timetable(...) arg list (after `start`) into columns + variable names. */
+function parseTableArgs(a: Value[], start: number): { cols: Value[]; names: string[] } {
+  const cols: Value[] = []; for (let i = start; i < a.length; i++) { if ((isMat(a[i]) && (a[i] as Mat).isChar && /^(variablenames|rownames|rowtimes)$/i.test(asString(a[i]))) || (isStr(a[i]) && /^(variablenames|rownames|rowtimes)$/i.test(asString(a[i])))) break; cols.push(a[i]); }
+  const names = parseNameOpt(a) ?? cols.map((_, i) => `Var${i + 1}`);
+  return { cols, names };
+}
+/** Stack a list of per-row values into a single column (Mat, Str, or temporal). */
+function stackColumn(items: Value[]): Value {
+  if (items.every((x) => isMat(x) && (x as Mat).isChar)) return makeStrArr(items.length, 1, items.map((x) => asString(x)));
+  if (items.every((x) => isStr(x))) return makeStrArr(items.length, 1, items.map((x) => asString(x)));
+  return colVec(items.map((x) => asScalar(x)));
+}
+/** One table cell as a standalone value. */
+function tblCellValue(col: Value, r: number): Value {
+  if (isStr(col)) return makeStr(col.items[r] ?? '');
+  if (isTemporal(col)) return makeTemporal(col.tkind, 1, 1, Float64Array.of(col.data[r]));
+  const M = m(col); return M.cols <= 1 ? scalar(M.data[r]) : rowVec(Array.from({ length: M.cols }, (_, c) => M.data[r + c * M.rows]));
+}
+/** Select rows (0-based indices) of every column → a new table. */
+function tblSlice(t: Table, idx: number[]): Table {
+  const pick = (col: Value): Value => {
+    if (isStr(col)) return makeStrArr(idx.length, 1, idx.map((i) => col.items[i]));
+    if (isTemporal(col)) return makeTemporal(col.tkind, idx.length, 1, Float64Array.from(idx, (i) => col.data[i]), col.fmt);
+    const M = m(col); const o = zeros(idx.length, M.cols); idx.forEach((src, dst) => { for (let c = 0; c < M.cols; c++) o.data[dst + c * idx.length] = M.data[src + c * M.rows]; }); return o;
+  };
+  return { kind: 'table', vars: t.vars.slice(), cols: t.cols.map(pick), nrows: idx.length, isTimetable: t.isTimetable, rowTimes: t.rowTimes ? makeTemporal(t.rowTimes.tkind, idx.length, 1, Float64Array.from(idx, (i) => t.rowTimes!.data[i])) : undefined, rowDimName: t.rowDimName };
 }
 
 // ── Serial date-number helpers (MATLAB epoch: datenum=719529 at 1970-01-01) ──

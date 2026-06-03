@@ -157,6 +157,7 @@ export class Interpreter implements Env {
       if (v.kind === 'geom') { out.push({ name, size: '1x1', klass: v.gkind, preview: `${v.points.length} pts${v.conn ? `, ${v.conn.length} simplices` : ''}` }); continue; }
       if (v.kind === 'quantum') { out.push({ name, size: '1x1', klass: `quantum.${v.qkind}`, preview: v.qkind === 'gate' ? `${v.gate}Gate` : v.qkind === 'circuit' ? `${v.numQubits} qubits, ${v.gates?.length ?? 0} gates` : `${v.numQubits} qubits` }); continue; }
       if (v.kind === 'temporal') { out.push({ name, size: `${v.rows}x${v.cols}`, klass: v.tkind, preview: dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) }); continue; }
+      if (v.kind === 'table') { out.push({ name, size: `${v.nrows}x${v.vars.length}`, klass: v.isTimetable ? 'timetable' : 'table', preview: v.vars.join(', ').slice(0, 40) }); continue; }
       const klass = v.isChar ? 'char' : 'double';
       const preview = numel(v) <= 12 ? dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) : '…';
       out.push({ name, size: `${v.rows}x${v.cols}`, klass, preview });
@@ -435,6 +436,7 @@ export class Interpreter implements Env {
         if (t.kind === 'graph') return [graphProperty(t, e.name)];
         if (t.kind === 'geom') return [geomProperty(t, e.name)];
         if (t.kind === 'quantum') return [quantumProperty(t, e.name)];
+        if (t.kind === 'table') { const i = t.vars.indexOf(e.name); if (i >= 0) return [t.cols[i]]; if (e.name === 'Properties') return [scalar(0)]; if (t.isTimetable && (e.name === 'Time' || e.name === t.rowDimName) && t.rowTimes) return [t.rowTimes]; throw new MatError(`unrecognized table variable '${e.name}'`); }
         throw new MatError(`cannot read field '.${e.name}'`);
       }
       case 'cell': return this.evalCellContent(e.target, e.args, scope);
@@ -665,6 +667,7 @@ function asMat(v: Value): Mat {
   if (v.kind === 'geom') throw new MatError(`expected a numeric value, got a ${v.gkind}`);
   if (v.kind === 'quantum') throw new MatError(`expected a numeric value, got a quantum ${v.qkind}`);
   if (v.kind === 'temporal') return { kind: 'num', rows: v.rows, cols: v.cols, data: new Float64Array(v.data) };  // datetime→datenum, duration→days
+  if (v.kind === 'table') throw new MatError('expected a numeric value, got a table (use table2array)');
   throw new MatError('expected a numeric value, got a function handle');
 }
 /** datetime / duration arithmetic and comparison. */

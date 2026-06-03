@@ -60,6 +60,7 @@ function brief(v: Value): string {
   if (v.kind === 'geom') return `[${v.gkind}]`;
   if (v.kind === 'quantum') return `[quantum ${v.qkind}]`;
   if (v.kind === 'temporal') return v.rows * v.cols === 1 ? fmtTemporal(v.tkind, v.data[0]) : `[${v.rows}×${v.cols} ${v.tkind}]`;
+  if (v.kind === 'table') return `[${v.nrows}×${v.vars.length} ${v.isTimetable ? 'timetable' : 'table'}]`;
   if (v.isChar) return `'${asString(v)}'`;
   if (numel(v) === 0) return '[]';
   if (isScalar(v)) return `[${isComplex(v) ? fmtC(v.data[0], v.idata![0]) : formatScalar(v.data[0])}]`;
@@ -92,6 +93,7 @@ export function dispValue(v: Value): string {
   if (v.kind === 'geom') return geomLines(v).join('\n');
   if (v.kind === 'quantum') return quantumLines(v).join('\n');
   if (v.kind === 'temporal') return temporalLines(v).join('\n');
+  if (v.kind === 'table') return tableLines(v).join('\n');
   if (v.kind === 'gobj') return `<${v.gtype} handle>`;
   if (isHandle(v)) return `@${v.name ?? 'anonymous'}`;
   if (v.kind === 'num' && v.nd) return ndLines(v).join('\n');
@@ -112,6 +114,7 @@ export function displayValue(name: string, v: Value): string {
   if (v.kind === 'geom') return `${name} =\n\n  ${v.gkind} with properties:\n${geomLines(v).join('\n')}\n`;
   if (v.kind === 'quantum') return `${name} =\n\n  quantum.${v.qkind} with properties:\n${quantumLines(v).join('\n')}\n`;
   if (v.kind === 'temporal') return `${name} =\n\n${temporalLines(v).join('\n')}\n`;
+  if (v.kind === 'table') return `${name} =\n\n  ${v.nrows}×${v.vars.length} ${v.isTimetable ? 'timetable' : 'table'}\n\n${tableLines(v).join('\n')}\n`;
   if (v.kind === 'num' && v.nd) return `${name} =\n\n${ndLines(v).join('\n')}\n`;
   if (v.kind === 'gobj') return `${name} =\n\n  <${v.gtype} handle>\n`;
   if (isHandle(v)) return `${name} =\n\n    @${v.name ?? 'anonymous function'}\n`;
@@ -147,6 +150,28 @@ function geomLines(v: { gkind: string; points: number[][]; conn?: number[][]; al
   if (v.gkind === 'polyshape') return [`    Vertices: [${np}×2 double]`, `    NumRegions: ${v.points.length ? 1 : 0}`];
   if (v.gkind === 'alphaShape') return [`    Points: [${np}×${d} double]`, `    Alpha: ${v.alpha ?? 0}`];
   return [`    Points: [${np}×${d} double]`, `    ConnectivityList: [${(v.conn ?? []).length}×${d + 1} double]`];
+}
+
+/** One cell of a table column, formatted as text. */
+function tableCell(col: Value, row: number): string {
+  if (col.kind === 'str') return `"${col.items[row] ?? ''}"`;
+  if (col.kind === 'temporal') return fmtTemporal(col.tkind, col.data[row]);
+  if (col.kind === 'num') { const k = col.cols; if (k <= 1) return col.isChar ? String.fromCharCode(col.data[row]) : formatScalar(col.data[row]); const parts: string[] = []; for (let c = 0; c < k; c++) parts.push(formatScalar(col.data[row + c * col.rows])); return parts.join(' '); }
+  if (col.kind === 'cell') return brief(col.items[row]);
+  return brief(col);
+}
+/** Grid display of a table: variable-name header, underline, then rows. */
+function tableLines(v: { vars: string[]; cols: Value[]; nrows: number; isTimetable?: boolean; rowTimes?: { tkind: string; data: Float64Array } }): string[] {
+  const headers = v.vars.slice(); const colVals = v.cols.slice();
+  if (v.isTimetable && v.rowTimes) { headers.unshift('Time'); colVals.unshift({ kind: 'temporal', tkind: v.rowTimes.tkind, rows: v.nrows, cols: 1, data: v.rowTimes.data } as Value); }
+  const show = Math.min(v.nrows, 100);
+  const cells: string[][] = []; for (let r = 0; r < show; r++) cells.push(colVals.map((c) => tableCell(c, r)));
+  const widths = headers.map((h, j) => Math.max(h.length, ...cells.map((row) => row[j].length), 4));
+  const pad = (s: string, w: number) => s.padStart(w);
+  const lines = ['    ' + headers.map((h, j) => pad(h, widths[j])).join('    '), '    ' + widths.map((w) => '_'.repeat(w)).join('    '), ''];
+  for (const row of cells) lines.push('    ' + row.map((s, j) => pad(s, widths[j])).join('    '));
+  if (v.nrows > show) lines.push(`    … ${v.nrows - show} more rows`);
+  return lines;
 }
 
 /** Format one datetime (serial datenum) or duration (days) value. */
@@ -203,7 +228,7 @@ function buildStream(args: Value[]): Array<{ s: string } | { n: number }> {
     if (isHandle(a)) { stream.push({ s: a.name ?? '@fn' }); continue; }
     if (a.kind === 'gobj') { stream.push({ s: `<${a.gtype}>` }); continue; }
     if (a.kind === 'temporal') { for (const x of a.data) stream.push({ s: fmtTemporal(a.tkind, x) }); continue; }
-    if (a.kind === 'cell' || a.kind === 'struct' || a.kind === 'graph' || a.kind === 'geom' || a.kind === 'quantum') { stream.push({ s: brief(a) }); continue; }
+    if (a.kind === 'cell' || a.kind === 'struct' || a.kind === 'graph' || a.kind === 'geom' || a.kind === 'quantum' || a.kind === 'table') { stream.push({ s: brief(a) }); continue; }
     if (a.kind === 'str') { for (const s of a.items) stream.push({ s }); continue; }
     if (a.kind === 'sparse') { for (const v of a.values) stream.push({ n: v }); continue; }
     if (a.isChar) { stream.push({ s: asString(a) }); continue; }
