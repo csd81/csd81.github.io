@@ -2,7 +2,7 @@
 import {
   type Value, type Mat, type Handle, MatError, isMat, isHandle,
   mat, zeros, scalar, cscalar, bool, str, rowVec, colVec, fromRows, numel, isScalar, isEmpty,
-  asScalar, asString, map, elementwise, matmul, transpose, horzcat, vertcat, toArray,
+  asScalar, asString, map, elementwise, matmul, transpose, horzcat, vertcat, toArray, truthy,
   isComplex, cmap, cmapReal, conj as conjFn, realPart, imagPart, csqrt, cexp, clog, ewPow, finishComplex,
   ewAdd, ewSub, ewMul, ewRDiv, ewLDiv, ewEq, cmatmul, ctranspose as ctransposeFn, cmul, cdiv,
   type Cell, type StructV, isCell, isStruct, makeCell, dimsOf, numelOf,
@@ -25,6 +25,7 @@ export interface Env {
   evalInput(text: string): Promise<Value>;
   graphics: Graphics;
   callHandle(h: Handle, args: Value[], nargout: number): Promise<Value[]>;
+  makeHandle(name: string): Handle;
   help(name: string): string;
   clearWorkspace(names: string[]): void;
   workspaceVars(): { name: string; size: string; klass: string }[];
@@ -865,6 +866,43 @@ export const BUILTINS: Record<string, Builtin> = {
   histc: async (a) => { const x = toArray(m(a[0])); const e = toArray(m(a[1])); const counts = new Array(e.length).fill(0); for (const v of x) { for (let i = 0; i < e.length - 1; i++) if (v >= e[i] && v < e[i + 1]) { counts[i]++; break; } if (v === e[e.length - 1]) counts[e.length - 1]++; } return ret(rowVec(counts)); },
   exist: async (a, _n, env) => { const nm = asString(a[0]); if (env.workspaceVars().some((v) => v.name === nm)) return ret(scalar(1)); if (nm in BUILTINS || nm in CONSTANTS) return ret(scalar(5)); return ret(scalar(0)); },
 
+  // ── Batch I: language utilities (MATLAB v7 reference) ──
+  deal: async (a, n) => { const k = Math.max(1, n); if (a.length === 1) return new Array(k).fill(a[0]); return a.slice(0, k); },
+  func2str: async (a) => { const h = handle(a[0], 'func2str'); return ret(str(h.name && h.name !== 'anonymous' ? h.name : '@anonymous')); },
+  str2func: async (a, _n, env) => ret(env.makeHandle(asString(a[0]).replace(/^@/, ''))),
+  assert: async (a) => { if (!truthy(a[0])) throw new MatError(a.length >= 2 && isMat(a[1]) && (a[1] as Mat).isChar ? asString(a[1]) : 'assert: condition failed'); return []; },
+  narginchk: async () => [], nargoutchk: async () => [], nargchk: async () => ret(str('')),
+  validateattributes: async () => [],
+  inputname: async () => ret(str('')),
+  isvarname: async (a) => { const s = isMat(a[0]) && (a[0] as Mat).isChar ? asString(a[0]) : ''; const KW = new Set(['for', 'while', 'if', 'else', 'elseif', 'end', 'switch', 'case', 'otherwise', 'function', 'return', 'break', 'continue', 'global', 'persistent', 'try', 'catch']); return ret(bool(/^[A-Za-z][A-Za-z0-9_]*$/.test(s) && s.length <= 63 && !KW.has(s))); },
+  genvarname: async (a) => { let s = asString(a[0]).replace(/[^A-Za-z0-9_]/g, '_'); if (!/^[A-Za-z]/.test(s)) s = 'x' + s; return ret(str(s || 'x')); },
+  colon: async (a) => { const from = asScalar(a[0]); const step = a.length >= 3 ? asScalar(a[1]) : 1; const to = a.length >= 3 ? asScalar(a[2]) : asScalar(a[1]); const out: number[] = []; if (step > 0) for (let v = from; v <= to + 1e-12; v += step) out.push(v); else if (step < 0) for (let v = from; v >= to - 1e-12; v += step) out.push(v); return ret(rowVec(out)); },
+  flipdim: async (a) => { const A = m(a[0]); const dim = a.length >= 2 ? Math.round(asScalar(a[1])) : 1; const o = zeros(A.rows, A.cols); for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) o.data[r + c * A.rows] = dim === 1 ? A.data[(A.rows - 1 - r) + c * A.rows] : A.data[r + (A.cols - 1 - c) * A.rows]; if (A.isChar) o.isChar = true; return ret(o); },
+  condeig: async (a) => {
+    const A = m(a[0]); const N = A.rows; const { D, V } = generalEig(A, true); const Vm = V!;
+    // normalize eigenvector columns, then c_i = ||row i of inv(V)||
+    const Vn = mat(N, N, Float64Array.from(Vm.data)); if (Vm.idata) Vn.idata = Float64Array.from(Vm.idata);
+    for (let c = 0; c < N; c++) { let nr = 0; for (let r = 0; r < N; r++) nr += Vn.data[r + c * N] ** 2 + (Vn.idata ? Vn.idata[r + c * N] ** 2 : 0); nr = Math.sqrt(nr) || 1; for (let r = 0; r < N; r++) { Vn.data[r + c * N] /= nr; if (Vn.idata) Vn.idata[r + c * N] /= nr; } }
+    const W = inv(Vn); const s = zeros(N, 1);
+    for (let i = 0; i < N; i++) { let nr = 0; for (let j = 0; j < N; j++) nr += W.data[i + j * N] ** 2 + (W.idata ? W.idata[i + j * N] ** 2 : 0); s.data[i] = Math.sqrt(nr); }
+    void D; return ret(s);
+  },
+  polyeig: async (a, n) => {
+    // (A0 + λ A1 + ... + λ^p Ap) x = 0 via block-companion linearization → generalized eig.
+    const mats = a.map((v) => m(v)); const p = mats.length - 1; const N = mats[0].rows;
+    if (p === 0) throw new MatError('polyeig: need at least two coefficient matrices');
+    const Ap = mats[p]; const np = N * p;
+    const Acomp = zeros(np, np), Bcomp = zeros(np, np);
+    // First block row: [-A0 -A1 ... -A_{p-1}]; identity sub-diagonal blocks.
+    for (let j = 0; j < p; j++) for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) Acomp.data[r + (j * N + c) * np] = -mats[p - 1 - j].data[r + c * N];
+    for (let b = 1; b < p; b++) for (let r = 0; r < N; r++) Acomp.data[(b * N + r) + ((b - 1) * N + r) * np] = 1;
+    // B: top-left block = Ap; identity on the lower diagonal blocks.
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) Bcomp.data[r + c * np] = Ap.data[r + c * N];
+    for (let b = 1; b < p; b++) for (let r = 0; r < N; r++) Bcomp.data[(b * N + r) + (b * N + r) * np] = 1;
+    const C = mldivide(Bcomp, Acomp); const { D } = generalEig(C, false);
+    void n; return ret(finishComplex(np, 1, Float64Array.from(D.re), Float64Array.from(D.im)));
+  },
+
   // ── Batch G: stats / preprocessing / misc numeric ──
   rms: async (a) => ret(colReduce(m(a[0]), (c) => Math.sqrt(c.reduce((s, x) => s + x * x, 0) / c.length))),
   geomean: async (a) => ret(colReduce(m(a[0]), (c) => Math.exp(c.reduce((s, x) => s + Math.log(x), 0) / c.length))),
@@ -1541,6 +1579,16 @@ const HELP: Record<string, HelpEntry> = {
   hist: { summary: 'Histogram counts/plot (legacy; use histogram/histcounts)', syntax: ['[n,c] = hist(x)', 'hist(x,nbins)'], seealso: ['histogram', 'histcounts', 'histc'] },
   histc: { summary: 'Histogram bin counts at specified edges (legacy)', syntax: ['n = histc(x,edges)'], seealso: ['histcounts', 'discretize'] },
   exist: { summary: 'Check if a name is a variable (1) or built-in (5)', syntax: ["e = exist('name')"], seealso: ['isvarname', 'who'] },
+  deal: { summary: 'Distribute inputs to outputs', syntax: ['[a,b,...] = deal(x)', '[a,b] = deal(x,y)'], seealso: ['nargin', 'nargout'] },
+  func2str: { summary: 'Convert a function handle to a string', syntax: ['s = func2str(@f)'], seealso: ['str2func'] },
+  str2func: { summary: 'Construct a function handle from a name', syntax: ["h = str2func('sin')"], seealso: ['func2str', 'feval'] },
+  assert: { summary: 'Throw an error if a condition is false', syntax: ['assert(cond)', "assert(cond,msg)"], seealso: ['error'] },
+  isvarname: { summary: 'Determine whether a string is a valid variable name', syntax: ["tf = isvarname('x')"], seealso: ['genvarname'] },
+  genvarname: { summary: 'Construct a valid variable name from a string', syntax: ["s = genvarname('a b')"], seealso: ['isvarname'] },
+  colon: { summary: 'Create a vector (a:d:b) via function form', syntax: ['v = colon(a,b)', 'v = colon(a,d,b)'], seealso: ['linspace'] },
+  flipdim: { summary: 'Flip array along a dimension (legacy; use flip)', syntax: ['B = flipdim(A,dim)'], seealso: ['flip', 'fliplr', 'flipud'] },
+  condeig: { summary: 'Condition numbers of the eigenvalues', syntax: ['c = condeig(A)'], seealso: ['eig', 'cond'] },
+  polyeig: { summary: 'Polynomial eigenvalue problem (A0+λA1+…+λ^p Ap)x=0', syntax: ['e = polyeig(A0,A1,...,Ap)'], seealso: ['eig', 'roots'] },
   rms: { summary: 'Root-mean-square value', syntax: ['y = rms(X)'], seealso: ['mean', 'std', 'rmse'] },
   geomean: { summary: 'Geometric mean', syntax: ['m = geomean(X)'], seealso: ['mean', 'harmmean'] },
   harmmean: { summary: 'Harmonic mean', syntax: ['m = harmmean(X)'], seealso: ['mean', 'geomean'] },
@@ -1735,6 +1783,7 @@ const BASE_REF = new Set<string>((
   'ismissing anymissing standardizeMissing rmmissing fillmissing isbetween isuniform allunique numunique uniquetol ismembertol issortedrows paddata trimdata resize discretize ' +
   'lsqr minres tfqmr bicgstabl symmlq spfun sprank colperm ' +
   'bitand bitor bitxor bitshift bitget bitset bitcmp blanks findstr strjust strvcat hist histc exist ' +
+  'deal func2str str2func assert narginchk nargoutchk nargchk validateattributes inputname isvarname genvarname colon flipdim condeig polyeig ' +
   'sparse full issparse spones nonzeros nzmax spdiags speye spalloc sprand sprandn sprandsym spy etree symrcm amd symamd colamd ichol ilu ' +
   'gallery'
 ).split(/\s+/));

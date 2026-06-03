@@ -470,7 +470,7 @@ export class Interpreter implements Env {
     return results;
   }
 
-  private makeHandle(name: string): Handle {
+  makeHandle(name: string): Handle {
     return { kind: 'handle', name, call: (args, nargout) => this.resolveCall(name, args, nargout) };
   }
   private makeAnon(params: string[], body: Expr, scope: Scope): Handle {
