@@ -198,6 +198,29 @@ export const BUILTINS: Record<string, Builtin> = {
   erf: ew(erfFn), erfc: ew((x) => 1 - erfFn(x)),
   beta: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, y) => gammaFn(x) * gammaFn(y) / gammaFn(x + y))),
   betaln: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, y) => logGamma(x) + logGamma(y) - logGamma(x + y))),
+  psi: ew(digamma),
+  expint: ew(expintE1),
+  sinint: ew((x) => cisi(x)[0]),
+  cosint: ew((x) => cisi(x)[1]),
+  legendre: async (a) => {
+    const n = Math.round(asScalar(a[0])); const X = toArray(m(a[1]));
+    const out = zeros(n + 1, X.length);
+    for (let j = 0; j < X.length; j++) for (let mm = 0; mm <= n; mm++) out.data[mm + j * (n + 1)] = plgndr(n, mm, X[j]);
+    return ret(out);
+  },
+  besselj: async (a) => ret(bzip(a, besseljFn)),
+  bessely: async (a) => ret(bzip(a, besselyFn)),
+  besseli: async (a) => ret(bzip(a, besseliFn)),
+  besselk: async (a) => ret(bzip(a, besselkFn)),
+  besselh: async (a) => {
+    const nu = asScalar(a[0]); const k = a.length >= 3 ? Math.round(asScalar(a[1])) : 1; const X = m(a[a.length >= 3 ? 2 : 1]);
+    const re = new Float64Array(X.data.length), im = new Float64Array(X.data.length);
+    for (let i = 0; i < X.data.length; i++) { re[i] = besseljFn(nu, X.data[i]); im[i] = (k === 2 ? -1 : 1) * besselyFn(nu, X.data[i]); }
+    return ret(finishComplex(X.rows, X.cols, re, im));
+  },
+  airy: async (a) => { const hasK = a.length >= 2; const kind = hasK ? Math.round(asScalar(a[0])) : 0; const X = m(a[hasK ? 1 : 0]); return ret(map(X, (x) => airyFn(kind, x))); },
+  ellipke: async (a, n) => { const M = m(a[0]); const K = zeros(M.rows, M.cols), E = zeros(M.rows, M.cols); for (let i = 0; i < M.data.length; i++) { const [k, e] = ellipkeFn(M.data[i]); K.data[i] = k; E.data[i] = e; } return n >= 2 ? [K, E] : [K]; },
+  ellipj: async (a, n) => { const U = m(a[0]); const mm = asScalar(a[1]); const SN = zeros(U.rows, U.cols), CN = zeros(U.rows, U.cols), DN = zeros(U.rows, U.cols); for (let i = 0; i < U.data.length; i++) { const [sn, cn, dn] = sncndn(U.data[i], 1 - mm); SN.data[i] = sn; CN.data[i] = cn; DN.data[i] = dn; } return n >= 2 ? [SN, CN, DN] : [SN]; },
   // special matrices
   magic: async (a) => ret(magicFn(Math.round(asScalar(a[0])))),
   hilb: async (a) => { const n = Math.round(asScalar(a[0])); const o = zeros(n, n); for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) o.data[r + c * n] = 1 / (r + c + 1); return ret(o); },
@@ -1315,6 +1338,19 @@ const HELP: Record<string, HelpEntry> = {
   mkpp: { summary: 'Make a piecewise-polynomial (pp) structure', syntax: ['pp = mkpp(breaks,coefs)'], seealso: ['ppval', 'unmkpp', 'spline', 'pchip'] },
   unmkpp: { summary: 'Extract the pieces of a pp structure', syntax: ['[breaks,coefs,L,k,d] = unmkpp(pp)'], seealso: ['mkpp', 'ppval'] },
   ppval: { summary: 'Evaluate a piecewise polynomial', syntax: ['v = ppval(pp,xq)'], seealso: ['mkpp', 'unmkpp', 'spline', 'pchip'] },
+  psi: { summary: 'Digamma function ψ(x) = Γ′(x)/Γ(x)', syntax: ['y = psi(x)'], seealso: ['gamma', 'gammaln'] },
+  expint: { summary: 'Exponential integral E₁(x) for x>0', syntax: ['y = expint(x)'], seealso: ['sinint', 'cosint', 'gammainc'] },
+  sinint: { summary: 'Sine integral Si(x)', syntax: ['y = sinint(x)'], seealso: ['cosint', 'expint'] },
+  cosint: { summary: 'Cosine integral Ci(x)', syntax: ['y = cosint(x)'], seealso: ['sinint', 'expint'] },
+  legendre: { summary: 'Associated Legendre functions P_n^m(x), m=0..n', syntax: ['P = legendre(n,X)'], seealso: ['gamma'] },
+  besselj: { summary: 'Bessel function of the first kind J_ν(x)', syntax: ['J = besselj(nu,X)'], seealso: ['bessely', 'besseli', 'besselk', 'besselh'] },
+  bessely: { summary: 'Bessel function of the second kind Y_ν(x)', syntax: ['Y = bessely(nu,X)'], seealso: ['besselj', 'besselk'] },
+  besseli: { summary: 'Modified Bessel function of the first kind I_ν(x)', syntax: ['I = besseli(nu,X)'], seealso: ['besselk', 'besselj'] },
+  besselk: { summary: 'Modified Bessel function of the second kind K_ν(x)', syntax: ['K = besselk(nu,X)'], seealso: ['besseli', 'bessely'] },
+  besselh: { summary: 'Bessel function of the third kind (Hankel) H_ν^(k)(x) = J ± iY', syntax: ['H = besselh(nu,X)', 'H = besselh(nu,k,X)'], seealso: ['besselj', 'bessely'] },
+  airy: { summary: 'Airy functions (0=Ai,1=Ai′,2=Bi,3=Bi′)', syntax: ['y = airy(X)', 'y = airy(k,X)'], seealso: ['besselk', 'besselj'] },
+  ellipke: { summary: 'Complete elliptic integrals K(m) and E(m)', syntax: ['[K,E] = ellipke(m)'], seealso: ['ellipj'] },
+  ellipj: { summary: 'Jacobi elliptic functions sn, cn, dn', syntax: ['[sn,cn,dn] = ellipj(u,m)'], seealso: ['ellipke'] },
 };
 
 /** Base-MATLAB functions whose reference page is at /help/matlab/ref/<name>.html.
@@ -1339,7 +1375,8 @@ const BASE_REF = new Set<string>((
   'cell iscell iscellstr num2cell cell2mat celldisp cellfun strsplit strjoin ' +
   'struct isstruct isfield fieldnames numfields rmfield setfield getfield orderfields struct2cell cell2struct structfun ' +
   'horzcat vertcat isequaln corr qmr condest wilkinson spones nonzeros bartlett blackman hamming hann typecast swapbytes ' +
-  'mkpp unmkpp ppval'
+  'mkpp unmkpp ppval ' +
+  'psi expint sinint cosint legendre besselj bessely besseli besselk besselh airy ellipke ellipj'
 ).split(/\s+/));
 
 export function docUrl(name: string): string {
@@ -1410,6 +1447,158 @@ function erfFn(x: number): number {
   const t = 1 / (1 + 0.3275911 * x);
   const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
   return s * y;
+}
+
+const EULER_GAMMA = 0.5772156649015328606;
+
+/** Digamma ψ(x) = Γ'(x)/Γ(x): recurrence up to x≥6 then asymptotic series. */
+function digamma(x: number): number {
+  if (x <= 0 && x === Math.floor(x)) return NaN; // poles at non-positive integers
+  if (x < 0) return digamma(1 - x) - Math.PI / Math.tan(Math.PI * x); // reflection
+  let r = 0;
+  while (x < 6) { r -= 1 / x; x += 1; }
+  const f = 1 / (x * x);
+  r += Math.log(x) - 1 / (2 * x) - f * (1 / 12 - f * (1 / 120 - f * (1 / 252 - f / 240)));
+  return r;
+}
+
+/** Exponential integral E₁(x) for x>0 (series for x≤1, continued fraction for x>1). */
+function expintE1(x: number): number {
+  if (x <= 0) return x === 0 ? Infinity : NaN;
+  if (x > 1) {
+    let b = x + 1, c = 1e300, d = 1 / b, h = d;
+    for (let i = 1; i <= 200; i++) { const a = -i * i; b += 2; d = 1 / (a * d + b); c = b + a / c; const del = c * d; h *= del; if (Math.abs(del - 1) < 1e-14) break; }
+    return h * Math.exp(-x);
+  }
+  let sum = -EULER_GAMMA - Math.log(x), xk = 1, kfact = 1;
+  for (let k = 1; k <= 200; k++) { xk *= x; kfact *= k; const term = (k % 2 ? 1 : -1) * xk / (k * kfact); sum += term; if (Math.abs(term) < 1e-16 * Math.abs(sum)) break; }
+  return sum;
+}
+
+/** Sine and cosine integrals [Si(x), Ci(x)] (Numerical Recipes cisi). */
+function cisi(x: number): [number, number] {
+  const t = Math.abs(x);
+  if (t === 0) return [0, -Infinity];
+  let si: number, ci: number;
+  if (t > 2) {
+    // Complex continued fraction (Lentz) for the auxiliary integral.
+    let br = 1, bi = t, cr = 1e300, cii = 0, dr = 0, di = 0, hr = 0, hi = 0;
+    { const den = br * br + bi * bi; dr = br / den; di = -bi / den; } hr = dr; hi = di;
+    for (let i = 2; i <= 200; i++) {
+      const a = -(i - 1) * (i - 1); br += 2;
+      // d = 1/(a*d + b)
+      let tr = a * dr + br, ti = a * di + bi; let den = tr * tr + ti * ti; dr = tr / den; di = -ti / den;
+      // c = b + a/c
+      den = cr * cr + cii * cii; cr = br + a * cr / den; cii = bi - a * cii / den;
+      // del = c*d ; h *= del
+      const delr = cr * dr - cii * di, deli = cr * di + cii * dr;
+      const nhr = hr * delr - hi * deli, nhi = hr * deli + hi * delr; hr = nhr; hi = nhi;
+      if (Math.abs(delr - 1) + Math.abs(deli) < 1e-14) break;
+    }
+    // h *= (cos t - i sin t)
+    const ct = Math.cos(t), st = Math.sin(t);
+    const fr = hr * ct + hi * st, fi = -hr * st + hi * ct;
+    ci = -fr; si = Math.PI / 2 + fi;
+  } else {
+    let sum = 0, sums = 0, sumc = 0, sign = 1, fact = 1, odd = true;
+    for (let k = 1; k <= 200; k++) {
+      fact *= t / k; const term = fact / k; sum += sign * term;
+      if (odd) { sign = -sign; sums = sum; sum = sumc; } else { sumc = sum; sum = sums; }
+      if (term < 1e-16 * Math.abs(sum || 1) && k > 1) break; odd = !odd;
+    }
+    si = sums; ci = sumc + Math.log(t) + EULER_GAMMA;
+  }
+  if (x < 0) si = -si;
+  return [si, ci];
+}
+
+/** Associated Legendre function P_l^m(x), 0≤m≤l, |x|≤1 (with Condon–Shortley phase). */
+function plgndr(l: number, mm: number, x: number): number {
+  let pmm = 1;
+  if (mm > 0) { const somx2 = Math.sqrt((1 - x) * (1 + x)); let fact = 1; for (let i = 1; i <= mm; i++) { pmm *= -fact * somx2; fact += 2; } }
+  if (l === mm) return pmm;
+  let pmmp1 = x * (2 * mm + 1) * pmm;
+  if (l === mm + 1) return pmmp1;
+  let pll = 0;
+  for (let ll = mm + 2; ll <= l; ll++) { pll = (x * (2 * ll - 1) * pmmp1 - (ll + mm - 1) * pmm) / (ll - mm); pmm = pmmp1; pmmp1 = pll; }
+  return pll;
+}
+
+/** J_ν / I_ν power series (good for moderate x≥0): Σ (∓1)^k/(k! Γ(ν+k+1)) (x/2)^{2k+ν}. */
+function besselSeries(nu: number, x: number, alt: boolean): number {
+  if (x === 0) return nu === 0 ? 1 : 0;
+  const hx = x / 2; let term = Math.pow(hx, nu) / gammaFn(nu + 1); let sum = term;
+  for (let k = 1; k <= 400; k++) { term *= (alt ? -1 : 1) * (hx * hx) / (k * (nu + k)); sum += term; if (Math.abs(term) < 1e-17 * Math.abs(sum)) break; }
+  return sum;
+}
+const besseljFn = (nu: number, x: number) => besselSeries(nu, x, true);
+const besseliFn = (nu: number, x: number) => besselSeries(nu, x, false);
+/** Bessel arg broadcasting: bessel(nu, X) — scalar nu over array X, or elementwise same-size. */
+function bzip(a: Value[], fn: (nu: number, x: number) => number): Mat {
+  const NU = m(a[0]), X = m(a[1]);
+  if (numel(NU) === 1) return map(X, (x) => fn(NU.data[0], x));
+  if (numel(X) === 1) return map(NU, (nu) => fn(nu, X.data[0]));
+  return elementwise(NU, X, (nu, x) => fn(nu, x));
+}
+/** Y_ν via reflection; integer order uses a tiny offset (limit). */
+function besselyFn(nu: number, x: number): number {
+  if (nu === Math.floor(nu)) nu += 1e-8;
+  return (besseljFn(nu, x) * Math.cos(nu * Math.PI) - besseljFn(-nu, x)) / Math.sin(nu * Math.PI);
+}
+/** K_ν via reflection; integer order uses a tiny offset (limit). */
+function besselkFn(nu: number, x: number): number {
+  if (nu === Math.floor(nu)) nu += 1e-8;
+  return (Math.PI / 2) * (besseliFn(-nu, x) - besseliFn(nu, x)) / Math.sin(nu * Math.PI);
+}
+/** Airy functions via Bessel relations. kind: 0=Ai,1=Ai',2=Bi,3=Bi'. */
+function airyFn(kind: number, x: number): number {
+  const r3 = Math.sqrt(3);
+  if (x === 0) {
+    const g13 = gammaFn(1 / 3), g23 = gammaFn(2 / 3);
+    if (kind === 0) return 1 / (Math.pow(3, 2 / 3) * g23);
+    if (kind === 1) return -1 / (Math.pow(3, 1 / 3) * g13);
+    if (kind === 2) return 1 / (Math.pow(3, 1 / 6) * g23);
+    return Math.pow(3, 1 / 6) / g13;
+  }
+  if (x > 0) {
+    const z = (2 / 3) * Math.pow(x, 1.5);
+    if (kind === 0) return (1 / Math.PI) * Math.sqrt(x / 3) * besselkFn(1 / 3, z);
+    if (kind === 1) return -(x / (Math.PI * r3)) * besselkFn(2 / 3, z);
+    if (kind === 2) return Math.sqrt(x / 3) * (besseliFn(-1 / 3, z) + besseliFn(1 / 3, z));
+    return (x / r3) * (besseliFn(-2 / 3, z) + besseliFn(2 / 3, z));
+  }
+  const ax = -x, z = (2 / 3) * Math.pow(ax, 1.5);
+  if (kind === 0) return (Math.sqrt(ax) / 3) * (besseljFn(1 / 3, z) + besseljFn(-1 / 3, z));
+  if (kind === 1) return (ax / 3) * (besseljFn(2 / 3, z) - besseljFn(-2 / 3, z));
+  if (kind === 2) return Math.sqrt(ax / 3) * (besseljFn(-1 / 3, z) - besseljFn(1 / 3, z));
+  return (ax / r3) * (besseljFn(-2 / 3, z) + besseljFn(2 / 3, z));
+}
+/** Complete elliptic integrals [K(m), E(m)] via the AGM. */
+function ellipkeFn(mm: number): [number, number] {
+  if (mm === 1) return [Infinity, 1];
+  let a = 1, b = Math.sqrt(1 - mm), c = Math.sqrt(mm);
+  let sum = 0.5 * c * c, pw = 1;
+  for (let i = 0; i < 60 && Math.abs(c) > 1e-15; i++) { const an = (a + b) / 2, bn = Math.sqrt(a * b); c = (a - b) / 2; a = an; b = bn; sum += pw * c * c; pw *= 2; }
+  const K = Math.PI / (2 * a);
+  return [K, K * (1 - sum)];
+}
+/** Jacobi elliptic functions [sn, cn, dn] (Numerical Recipes sncndn); emmc = 1−m. */
+function sncndn(uu: number, emmc: number): [number, number, number] {
+  const CA = 1e-12; let emc = emmc, u = uu, sn: number, cn = 0, dn = 1;
+  if (emc !== 0) {
+    let bo = emc < 0, d = 1;
+    if (bo) { d = 1 - emc; emc = -emc / d; d = Math.sqrt(d); u = d * u; }
+    let a = 1, c = 0, l = 0; const em: number[] = [], en: number[] = [];
+    for (let i = 0; i < 14; i++) { l = i; em[i] = a; emc = Math.sqrt(emc); en[i] = emc; c = (a + emc) / 2; if (Math.abs(a - emc) <= CA * a) break; emc = a * emc; a = c; }
+    u = c * u; sn = Math.sin(u); cn = Math.cos(u);
+    if (sn !== 0) {
+      a = cn / sn; c = a * c;
+      for (let ii = l; ii >= 0; ii--) { const b = em[ii]; a = c * a; c = dn * c; dn = (en[ii] + a) / (b + a); a = c / b; }
+      a = 1 / Math.sqrt(c * c + 1); sn = sn >= 0 ? a : -a; cn = c * sn;
+    }
+    if (bo) { a = dn; dn = cn; cn = a; sn = sn / d; }
+  } else { cn = 1 / Math.cosh(u); dn = cn; sn = Math.tanh(u); }
+  return [sn, cn, dn];
 }
 
 /** Magic square (Siamese for odd, doubly-even rule, Strachey for singly-even). */
