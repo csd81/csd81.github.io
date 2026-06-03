@@ -13,18 +13,30 @@ export interface Series {
   color?: string;
   name?: string;
 }
+/** A 3-D gridded surface (surf/mesh/contour). z[r][c] sits at (x[c], y[r]). */
+export interface Surface {
+  x: number[];
+  y: number[];
+  z: number[][];
+  kind: 'surf' | 'mesh' | 'contour';
+  shading: 'faceted' | 'flat' | 'interp';
+}
 export interface FigureSpec {
   version: number;
   series: Series[];
+  surfaces?: Surface[];
   title?: string;
   xlabel?: string;
   ylabel?: string;
+  zlabel?: string;
   xRange?: [number, number];
   yRange?: [number, number];
   xOrigin?: boolean;
   yOrigin?: boolean;
   grid?: boolean;
   legend?: string[];
+  colorbar?: boolean;
+  colormap?: string;
 }
 
 const COLOR_MAP: Record<string, string> = {
@@ -105,6 +117,29 @@ export class Graphics {
     this.touch();
   }
 
+  /** surf/mesh/contour(X,Y,Z) — also surf(Z). X/Y may be meshgrid matrices or vectors. */
+  surface(args: Value[], kind: 'surf' | 'mesh' | 'contour') {
+    if (!this.holding) { this.fig.series = []; this.fig.surfaces = []; this.colorIdx = 0; }
+    const mats = args.filter((a): a is Mat => isMat(a) && !(a as Mat).isChar);
+    let X: Mat | null, Y: Mat | null, Z: Mat;
+    if (mats.length >= 3) { X = mats[0]; Y = mats[1]; Z = mats[2]; }
+    else { Z = mats[0]; X = null; Y = null; }
+    const nr = Z.rows, nc = Z.cols;
+    const vecFrom = (M: Mat | null, len: number, dim: 'row' | 'col'): number[] => {
+      if (!M) return Array.from({ length: len }, (_, i) => i + 1);
+      if (M.rows > 1 && M.cols > 1) return dim === 'row'
+        ? Array.from({ length: M.cols }, (_, c) => M.data[0 + c * M.rows])   // meshgrid X: first row
+        : Array.from({ length: M.rows }, (_, r) => M.data[r]);              // meshgrid Y: first col
+      return toArray(M);
+    };
+    const xv = vecFrom(X, nc, 'row'), yv = vecFrom(Y, nr, 'col');
+    const z: number[][] = [];
+    for (let r = 0; r < nr; r++) { const row: number[] = []; for (let c = 0; c < nc; c++) row.push(Z.data[r + c * nr]); z.push(row); }
+    this.fig.surfaces = this.fig.surfaces ?? [];
+    this.fig.surfaces.push({ x: xv, y: yv, z, kind, shading: kind === 'surf' ? 'faceted' : 'faceted' });
+    this.touch();
+  }
+
   /** fplot adds a sampled series; the caller supplies already-sampled points. */
   addSeries(x: number[], y: number[], spec?: string) {
     if (!this.holding) { this.fig.series = []; this.colorIdx = 0; }
@@ -163,6 +198,11 @@ export class Graphics {
         } else if (arg0.toLowerCase() === 'auto') { this.fig.xRange = undefined; this.fig.yRange = undefined; this.touch(); }
         break;
       }
+      case 'zlabel': if (arg0) { this.fig.zlabel = arg0; this.touch(); } break;
+      case 'shading': if (arg0 && this.fig.surfaces) { for (const s of this.fig.surfaces) s.shading = (arg0 as Surface['shading']); this.touch(); } break;
+      case 'colorbar': this.fig.colorbar = arg0 !== 'off'; this.touch(); break;
+      case 'colormap': if (arg0) { this.fig.colormap = arg0; this.touch(); } break;
+      case 'view': /* camera angle — Plotly default; ignored */ break;
       case 'clf': case 'cla': case 'close': this.reset(); break;
       case 'figure': this.reset(); break;
       default: break;

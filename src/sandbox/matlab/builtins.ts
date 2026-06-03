@@ -1226,6 +1226,34 @@ export const BUILTINS: Record<string, Builtin> = {
     if (isMat(a[0]) && (a[0] as Mat).isChar) { if (asString(a[0]).toLowerCase() === 'auto') env.graphics.setYLim(undefined); return []; }
     const v = toArray(m(a[0])); env.graphics.setYLim([v[0], v[1]]); return [];
   },
+  zlabel: async (a, _n, env) => { env.graphics.command('zlabel', a); return []; },
+  peaks: async (a, nargout, env) => {
+    // peaks(n) → the classic n×n sample surface; with no output, plots it.
+    const n = a.length && isMat(a[0]) && numel(a[0]) === 1 ? Math.round(asScalar(a[0])) : 49;
+    const lin = (k: number) => Array.from({ length: k }, (_, i) => -3 + (6 * i) / (k - 1));
+    const xs = lin(n); const Z = zeros(n, n), X = zeros(n, n), Y = zeros(n, n);
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+      const x = xs[c], y = xs[r];
+      const z = 3 * (1 - x) ** 2 * Math.exp(-(x ** 2) - (y + 1) ** 2)
+        - 10 * (x / 5 - x ** 3 - y ** 5) * Math.exp(-(x ** 2) - y ** 2)
+        - (1 / 3) * Math.exp(-((x + 1) ** 2) - y ** 2);
+      Z.data[r + c * n] = z; X.data[r + c * n] = x; Y.data[r + c * n] = y;
+    }
+    if (nargout >= 1) return nargout >= 3 ? [X, Y, Z] : nargout >= 2 ? [X, Z] : [Z];
+    env.graphics.surface([X, Y, Z], 'surf'); return [];
+  },
+  surf: async (a, _n, env) => { env.graphics.surface(a, 'surf'); return []; },
+  surfc: async (a, _n, env) => { env.graphics.surface(a, 'surf'); return []; },
+  mesh: async (a, _n, env) => { env.graphics.surface(a, 'mesh'); return []; },
+  meshc: async (a, _n, env) => { env.graphics.surface(a, 'mesh'); return []; },
+  surface: async (a, _n, env) => { env.graphics.surface(a, 'surf'); return []; },
+  contour: async (a, _n, env) => { env.graphics.surface(a, 'contour'); return []; },
+  contourf: async (a, _n, env) => { env.graphics.surface(a, 'contour'); return []; },
+  pcolor: async (a, _n, env) => { env.graphics.surface(a, 'contour'); return []; },
+  shading: async (a, _n, env) => { env.graphics.command('shading', a); return []; },
+  colorbar: async (a, _n, env) => { env.graphics.command('colorbar', a); return []; },
+  colormap: async (a, _n, env) => { env.graphics.command('colormap', a); return []; },
+  view: async (a, _n, env) => { env.graphics.command('view', a); return []; },
   clf: async (_a, _n, env) => { env.graphics.command('clf', []); return []; },
   cla: async (_a, _n, env) => { env.graphics.command('cla', []); return []; },
   close: async (_a, _n, env) => { env.graphics.command('close', []); return []; },
@@ -1327,6 +1355,14 @@ const HELP: Record<string, HelpEntry> = {
   ylim: { summary: 'Set or query y-axis limits', syntax: ['ylim([ymin ymax])', "ylim('auto')", 'l = ylim'], seealso: ['xlim', 'axis', 'set'] },
   axis: { summary: 'Set axis limits/mode: axis([xmin xmax ymin ymax]), axis auto/equal/tight', syntax: ['axis([xmin xmax ymin ymax])', 'axis auto'], seealso: ['xlim', 'ylim', 'set'] },
   set: { summary: "Set graphics object properties, e.g. set(gca,'XAxisLocation','origin','XLim',[a b])", syntax: ["set(gca,'Prop',val,...)"], seealso: ['gca', 'gcf', 'xlim', 'ylim'] },
+  surf: { summary: '3-D shaded surface plot', syntax: ['surf(Z)', 'surf(X,Y,Z)'], seealso: ['mesh', 'contour', 'shading', 'colorbar', 'meshgrid'] },
+  mesh: { summary: '3-D wireframe mesh plot', syntax: ['mesh(Z)', 'mesh(X,Y,Z)'], seealso: ['surf', 'contour', 'meshgrid'] },
+  contour: { summary: '2-D contour plot of a surface', syntax: ['contour(Z)', 'contour(X,Y,Z)'], seealso: ['surf', 'mesh', 'colorbar'] },
+  shading: { summary: 'Surface shading mode (faceted/flat/interp)', syntax: ['shading interp', 'shading flat'], seealso: ['surf', 'colormap'] },
+  colorbar: { summary: 'Show a colour scale next to the plot', syntax: ['colorbar', 'colorbar off'], seealso: ['surf', 'colormap'] },
+  colormap: { summary: 'Set the colour map (parula/jet/hot/cool/gray/…)', syntax: ['colormap jet', "colormap('parula')"], seealso: ['surf', 'colorbar', 'shading'] },
+  zlabel: { summary: 'Label the z-axis', syntax: ["zlabel('text')"], seealso: ['xlabel', 'ylabel', 'surf'] },
+  peaks: { summary: 'Sample function of two variables (classic test surface)', syntax: ['Z = peaks(n)', 'peaks(n)'], seealso: ['surf', 'mesh', 'meshgrid'] },
   disp: { summary: 'Display value without its variable name', syntax: ['disp(X)'], seealso: ['fprintf', 'sprintf'] },
   fprintf: { summary: 'Write formatted data to the command window', syntax: ['fprintf(FORMAT,A,...)'], seealso: ['sprintf', 'disp'] },
   sprintf: { summary: 'Format data into a string', syntax: ['str = sprintf(FORMAT,A,...)'], seealso: ['fprintf', 'num2str'] },
@@ -1486,7 +1522,8 @@ const BASE_REF = new Set<string>((
   'disp fprintf sprintf num2str str2num str2double mat2str int2str error warning input feval arrayfun bsxfun kron cross vecnorm ' +
   'isdiag issymmetric ishermitian istriu istril isbanded bandwidth gamma gammaln erf erfc erfinv beta filter filter2 conv2 detrend ' +
   'normalize rescale clip smoothdata isoutlier filloutliers rmoutliers islocalmax islocalmin sinpi cospi pi ' +
-  'plot fplot hold title xlabel ylabel legend grid axis xlim ylim set gca gcf figure clf cla close clc format who whos clear help doc ans dot repmat ' +
+  'plot fplot hold title xlabel ylabel zlabel legend grid axis xlim ylim set gca gcf figure clf cla close clc format who whos clear help doc ans dot repmat ' +
+  'surf surfc mesh meshc surface contour contourf pcolor shading colorbar colormap view peaks ' +
   'cell iscell iscellstr num2cell cell2mat celldisp cellfun strsplit strjoin ' +
   'struct isstruct isfield fieldnames numfields rmfield setfield getfield orderfields struct2cell cell2struct structfun ' +
   'horzcat vertcat isequaln corr qmr condest wilkinson spones nonzeros bartlett blackman hamming hann typecast swapbytes ' +
