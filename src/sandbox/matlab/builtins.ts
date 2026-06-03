@@ -2692,6 +2692,7 @@ const HELP: Record<string, HelpEntry> = {
   isdatetime: { summary: 'True for datetime arrays', syntax: ['tf = isdatetime(d)'], seealso: ['isduration', 'datetime'] },
   isduration: { summary: 'True for duration arrays', syntax: ['tf = isduration(d)'], seealso: ['isdatetime', 'duration'] },
   isnat: { summary: 'True for NaT (missing) datetimes', syntax: ['tf = isnat(d)'], seealso: ['NaT', 'isnan'] },
+  ymd: { summary: 'Year, month, and day of a datetime', syntax: ['[y,m,d] = ymd(t)'], seealso: ['year', 'month', 'day'] },
   table: { summary: 'Create a table from column variables', syntax: ["T = table(v1,v2,'VariableNames',{'a','b'})"], seealso: ['array2table', 'height', 'summary', 'timetable'] },
   timetable: { summary: 'Create a timetable with row times', syntax: ['tt = timetable(rowTimes,v1,...)'], seealso: ['table', 'datetime'] },
   array2table: { summary: 'Convert a matrix to a table (one variable per column)', syntax: ['T = array2table(A)'], seealso: ['table', 'table2array'] },
