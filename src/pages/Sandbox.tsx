@@ -27,8 +27,11 @@ export default function Sandbox() {
   const [rightOpen, setRightOpen] = useState(true);
   const [leftW, setLeftW] = useState(220);
   const [rightW, setRightW] = useState(380);
+  const [topH, setTopH] = useState<number | null>(null); // editor row height (px); null = default ratio
   const [cursor, setCursor] = useState({ line: 1, col: 1 });
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<HTMLElement>(null);
 
   const { lines, workspace, fig, busy, prompt, runSource, submit, clearConsole, resetSession } = useSandbox(folderId);
 
@@ -66,11 +69,29 @@ export default function Sandbox() {
     document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none';
   };
 
+  // Vertical splitter between the editor (top) and command window (bottom).
+  const startVDrag = (e: React.PointerEvent) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const start = editorRef.current?.getBoundingClientRect().height ?? 320;
+    const gridH = gridRef.current?.getBoundingClientRect().height ?? 600;
+    const onMove = (ev: PointerEvent) => setTopH(clamp(start + (ev.clientY - startY), 120, gridH - 150));
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      document.body.style.cursor = ''; document.body.style.userSelect = '';
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    document.body.style.cursor = 'row-resize'; document.body.style.userSelect = 'none';
+  };
+
   const gridStyle = {
     '--left-w': (leftOpen ? leftW : 0) + 'px',
     '--right-w': (rightOpen ? rightW : 0) + 'px',
     '--gl': leftOpen ? '6px' : '0px',
     '--gr': rightOpen ? '6px' : '0px',
+    '--top-h': topH == null ? '1.4fr' : topH + 'px',
   } as React.CSSProperties;
 
   return (
@@ -91,7 +112,7 @@ export default function Sandbox() {
       </header>
 
       {/* Workbench */}
-      <div className="mlab__grid" style={gridStyle}>
+      <div className="mlab__grid" style={gridStyle} ref={gridRef}>
         {/* File tree */}
         <aside className={'mlab__files' + (leftOpen ? '' : ' mlab__pane--hidden')}>
           <div className="mlab__pane-head"><span>{t('Current Folder', 'Aktuális mappa')}</span></div>
@@ -101,10 +122,10 @@ export default function Sandbox() {
           </div>
         </aside>
 
-        {leftOpen && <div className="mlab__gutter" style={{ gridArea: 'gl' }} onPointerDown={startDrag('left')} title={t('Drag to resize', 'Húzd az átméretezéshez')} />}
+        {leftOpen && <div className="mlab__gutter mlab__gutter--v mlab__gut-l" onPointerDown={startDrag('left')} title={t('Drag to resize', 'Húzd az átméretezéshez')} />}
 
         {/* Editor */}
-        <section className="mlab__editor">
+        <section className="mlab__editor" ref={editorRef}>
           <div className="mlab__pane-head">
             <span className="mlab__filetab">{open?.file ?? t('Editor', 'Szerkesztő')}</span>
             <span className="mlab__spacer" />
@@ -128,7 +149,10 @@ export default function Sandbox() {
           />
         </section>
 
-        {rightOpen && <div className="mlab__gutter" style={{ gridArea: 'gr' }} onPointerDown={startDrag('right')} title={t('Drag to resize', 'Húzd az átméretezéshez')} />}
+        {/* Horizontal splitter between editor and command window */}
+        <div className="mlab__gutter mlab__gutter--h mlab__gut-h" onPointerDown={startVDrag} title={t('Drag to resize', 'Húzd az átméretezéshez')} />
+
+        {rightOpen && <div className="mlab__gutter mlab__gutter--v mlab__gut-r" onPointerDown={startDrag('right')} title={t('Drag to resize', 'Húzd az átméretezéshez')} />}
 
         {/* Figure */}
         <section className={'mlab__figure' + (rightOpen ? '' : ' mlab__pane--hidden')}>

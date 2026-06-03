@@ -42,27 +42,32 @@
   min-height: 0;
   display: grid;
   grid-template-columns: var(--left-w, 220px) var(--gl, 6px) minmax(0, 1fr) var(--gr, 6px) var(--right-w, 380px);
-  grid-template-rows: minmax(0, 1.35fr) minmax(0, 1fr);
-  grid-template-areas:
-    "files gl editor gr figure"
-    "files gl term   gr work";
+  grid-template-rows: var(--top-h, 1.4fr) var(--gh, 6px) minmax(0, 1fr);
   gap: 6px;
   padding: 6px;
 }
 .mlab__pane--hidden { display: none !important; }
 
-.mlab__files { grid-area: files; }
-.mlab__editor { grid-area: editor; }
-.mlab__figure { grid-area: figure; }
-.mlab__term { grid-area: term; }
-.mlab__workspace { grid-area: work; }
+/* Explicit placement (so a horizontal gutter can live in the centre column). */
+.mlab__files     { grid-column: 1 / 2; grid-row: 1 / 4; }
+.mlab__gut-l     { grid-column: 2 / 3; grid-row: 1 / 4; }
+.mlab__editor    { grid-column: 3 / 4; grid-row: 1 / 2; }
+.mlab__gut-h     { grid-column: 3 / 4; grid-row: 2 / 3; }
+.mlab__term      { grid-column: 3 / 4; grid-row: 3 / 4; }
+.mlab__gut-r     { grid-column: 4 / 5; grid-row: 1 / 4; }
+.mlab__figure    { grid-column: 5 / 6; grid-row: 1 / 2; }
+.mlab__workspace { grid-column: 5 / 6; grid-row: 3 / 4; }
 
-.mlab__gutter { background: transparent; cursor: col-resize; border-radius: 3px; position: relative; }
+.mlab__gutter { background: transparent; border-radius: 3px; position: relative; }
 .mlab__gutter::after {
-  content: ''; position: absolute; inset: 0 2px; border-radius: 3px; background: var(--border);
+  content: ''; position: absolute; border-radius: 3px; background: var(--border);
   opacity: 0; transition: opacity 0.12s;
 }
 .mlab__gutter:hover::after { opacity: 1; }
+.mlab__gutter--v { cursor: col-resize; }
+.mlab__gutter--v::after { inset: 0 2px; }
+.mlab__gutter--h { cursor: row-resize; }
+.mlab__gutter--h::after { inset: 2px 0; }
 
 .mlab__files, .mlab__editor, .mlab__figure, .mlab__term, .mlab__workspace {
   display: flex;
@@ -195,18 +200,9 @@
 @media (max-width: 900px) {
   /* Stack vertically and allow the whole IDE to scroll on small screens. */
   .mlab { height: auto; min-height: calc(100dvh - var(--nav-h, 56px)); overflow: visible; }
-  .mlab__grid {
-    grid-template-columns: 1fr !important;
-    grid-template-rows: auto;
-    grid-template-areas:
-      "files"
-      "editor"
-      "figure"
-      "term"
-      "work";
-    overflow: visible;
-  }
+  .mlab__grid { display: flex; flex-direction: column; overflow: visible; }
   .mlab__gutter { display: none; }
+  .mlab__files, .mlab__editor, .mlab__figure, .mlab__term, .mlab__workspace { grid-column: auto; grid-row: auto; }
   .mlab__files { max-height: 220px; }
   .mlab__editor { min-height: 280px; }
   .mlab__figure { min-height: 300px; }
