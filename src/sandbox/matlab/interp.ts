@@ -9,7 +9,7 @@ import {
   isComplex, cmap, ewAdd, ewSub, ewMul, ewRDiv, ewLDiv, ewPow, ewEq, cmatmul,
   type Cell, type StructV, isCell, isStruct, makeCell, sparseToDense,
   type Str, isStr, makeStr, makeStrArr,
-  type Graph,
+  type Graph, type Geom,
 } from './values';
 import { det, inv, mldivide } from './linalg';
 import { BUILTINS, CONSTANTS, builtinHelp, docUrl, type Env } from './builtins';
@@ -153,6 +153,7 @@ export class Interpreter implements Env {
       if (v.kind === 'sparse') { out.push({ name, size: `${v.rows}x${v.cols}`, klass: 'sparse double', preview: `${v.values.length} nonzeros` }); continue; }
       if (v.kind === 'str') { out.push({ name, size: `${v.rows}x${v.cols}`, klass: 'string', preview: dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) }); continue; }
       if (v.kind === 'graph') { out.push({ name, size: '1x1', klass: v.directed ? 'digraph' : 'graph', preview: `${v.n} nodes, ${v.edges.length} edges` }); continue; }
+      if (v.kind === 'geom') { out.push({ name, size: '1x1', klass: v.gkind, preview: `${v.points.length} pts${v.conn ? `, ${v.conn.length} simplices` : ''}` }); continue; }
       const klass = v.isChar ? 'char' : 'double';
       const preview = numel(v) <= 12 ? dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) : '…';
       out.push({ name, size: `${v.rows}x${v.cols}`, klass, preview });
@@ -429,6 +430,7 @@ export class Interpreter implements Env {
         if (t.kind === 'gobj') return [scalar(0)];
         if (isStruct(t)) { const vals = t.fields.get(e.name); if (!vals) throw new MatError(`reference to non-existent field '${e.name}'`); return vals.length ? vals : []; }
         if (t.kind === 'graph') return [graphProperty(t, e.name)];
+        if (t.kind === 'geom') return [geomProperty(t, e.name)];
         throw new MatError(`cannot read field '.${e.name}'`);
       }
       case 'cell': return this.evalCellContent(e.target, e.args, scope);
@@ -652,7 +654,23 @@ function asMat(v: Value): Mat {
   if (v.kind === 'sparse') return sparseToDense(v);   // sparse densifies on arithmetic/indexing
   if (v.kind === 'gobj') throw new MatError('expected a numeric value, got a graphics handle');
   if (v.kind === 'graph') throw new MatError('expected a numeric value, got a graph (use adjacency(G) etc.)');
+  if (v.kind === 'geom') throw new MatError(`expected a numeric value, got a ${v.gkind}`);
   throw new MatError('expected a numeric value, got a function handle');
+}
+/** Read a geometry-object property via dot syntax (TR.Points, pgon.Vertices, shp.Alpha, …). */
+function geomProperty(g: Geom, name: string): Value {
+  const low = name.toLowerCase();
+  const rows = (m: number[][]) => fromRows2(m);
+  if (low === 'points') return rows(g.points);
+  if (low === 'vertices') return rows(g.points);
+  if (low === 'connectivitylist') return rows((g.conn ?? []).map((r) => r.map((v) => v + 1)));
+  if (low === 'alpha') return scalar(g.alpha ?? 0);
+  throw new MatError(`${g.gkind} has no property '${name}'`);
+}
+function fromRows2(m: number[][]): Mat {
+  const r = m.length, c = r ? m[0].length : 0; const out = zeros(r, c);
+  for (let i = 0; i < r; i++) for (let j = 0; j < c; j++) out.data[i + j * r] = m[i][j];
+  return out;
 }
 /** Read a graph "property" via dot syntax (G.Edges, G.Nodes, G.numnodes, …). */
 function graphProperty(g: Graph, name: string): Value {

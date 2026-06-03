@@ -10,6 +10,7 @@ import {
   makeND, ndSize, ndimsOf,
   type Str, isStr, makeStr, makeStrArr,
   type Graph, isGraph, makeGraph,
+  type Geom, isGeom,
 } from './values';
 import {
   det, inv, mldivide, diag, norm, eye,
@@ -329,7 +330,10 @@ export const BUILTINS: Record<string, Builtin> = {
   },
 
   // shape / construction
-  size: async (a, n) => sizeOf(a, n),
+  size: async (a, n) => {
+    if (a.length && isGeom(a[0])) { const g = a[0]; const c = g.conn ?? []; const dims = [c.length, c[0]?.length ?? g.dim + 1]; if (a.length >= 2) return ret(scalar(dims[Math.round(asScalar(a[1])) - 1] ?? 1)); return n >= 2 ? [scalar(dims[0]), scalar(dims[1])] : [rowVec(dims)]; }
+    return sizeOf(a, n);
+  },
   numel: async (a) => ret(scalar(numelOf(a[0]))),
   length: async (a) => { const [r, c] = dimsOf(a[0]); return ret(scalar(r === 0 || c === 0 ? 0 : Math.max(r, c))); },
   ndims: async (a) => ret(scalar(isMat(a[0]) ? ndimsOf(a[0]) : 2)),
@@ -1407,7 +1411,10 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   addedge: async (a) => { const g = gArg(a[0]); const s = nodeIds(g, a[1]), t = nodeIds(g, a[2]); const wv = a.length >= 4 ? toArray(m(a[3])) : null; const ne = s.map((si, i) => ({ s: si, t: t[i], w: wv ? (wv.length === 1 ? wv[0] : wv[i]) : 1 })); const n = Math.max(g.n, ...s, ...t) + (s.length ? 0 : 0); return ret(makeGraph(g.directed, Math.max(g.n, ...s.map((x) => x + 1), ...t.map((x) => x + 1)), [...g.edges, ...ne], g.names)); void n; },
   rmedge: async (a) => { const g = gArg(a[0]); const s = nodeIds(g, a[1]), t = nodeIds(g, a[2]); const drop = new Set(s.map((si, i) => `${Math.min(si, t[i])}_${Math.max(si, t[i])}`)); const edges = g.edges.filter((e) => !drop.has(`${Math.min(e.s, e.t)}_${Math.max(e.s, e.t)}`)); return ret(makeGraph(g.directed, g.n, edges, g.names)); },
-  neighbors: async (a) => { const g = gArg(a[0]); const i = nodeIds(g, a[1])[0]; const ns = [...new Set(adjList(g, 'out')[i].map((x) => x.to))].sort((x, y) => x - y); return ret(colVec(ns.map((x) => x + 1))); },
+  neighbors: async (a) => {
+    if (isGeom(a[0])) { const g = a[0]; const ti = Math.round(asScalar(a[1])) - 1; const T = g.conn ?? []; const k = T[0]?.length ?? 3; const shares = (x: number[], y: number[]) => x.filter((v) => y.includes(v)).length >= k - 1; const ns: number[] = []; T.forEach((t, j) => { if (j !== ti && shares(t, T[ti])) ns.push(j + 1); }); return ret(rowVec(ns)); }
+    const g = gArg(a[0]); const i = nodeIds(g, a[1])[0]; const ns = [...new Set(adjList(g, 'out')[i].map((x) => x.to))].sort((x, y) => x - y); return ret(colVec(ns.map((x) => x + 1)));
+  },
   successors: async (a) => { const g = gArg(a[0]); const i = nodeIds(g, a[1])[0]; const ns = [...new Set(adjList(g, 'out')[i].map((x) => x.to))].sort((x, y) => x - y); return ret(colVec(ns.map((x) => x + 1))); },
   predecessors: async (a) => { const g = gArg(a[0]); const i = nodeIds(g, a[1])[0]; const ns = [...new Set(adjList(g, 'in')[i].map((x) => x.to))].sort((x, y) => x - y); return ret(colVec(ns.map((x) => x + 1))); },
   degree: async (a) => { const g = gArg(a[0]); const adj = adjList(g, 'all'); const sel = a.length >= 2 ? nodeIds(g, a[1]) : Array.from({ length: g.n }, (_, i) => i); return ret(colVec(sel.map((i) => adj[i].length))); },
@@ -1460,6 +1467,72 @@ export const BUILTINS: Record<string, Builtin> = {
     if (type === 'pagerank') return ret(colVec(pagerank(g)));
     throw new MatError(`centrality: unsupported type '${type}'`);
   },
+
+  // ── Geometry objects: triangulation / delaunayTriangulation / polyshape / alphaShape ──
+  triangulation: async (a) => { const T = matRows(m(a[0])).map((r) => r.map((v) => Math.round(v) - 1)); const P = matRows(m(a[1])); return ret({ kind: 'geom', gkind: 'triangulation', points: P, conn: T, dim: P[0]?.length ?? 2 } as Geom); },
+  delaunayTriangulation: async (a) => {
+    const P = a.length >= 2 && isMat(a[0]) && isMat(a[1]) && numel(a[0]) === numel(a[1]) ? toArray(m(a[0])).map((x, i) => [x, toArray(m(a[1]))[i]]) : matRows(m(a[0]));
+    const conn = P[0].length === 2 ? delaunayTri(P.map((p) => p[0]), P.map((p) => p[1])) : delaunaynd(P);
+    return ret({ kind: 'geom', gkind: 'delaunayTriangulation', points: P, conn, dim: P[0]?.length ?? 2 } as Geom);
+  },
+  polyshape: async (a) => {
+    let verts: number[][];
+    if (a.length >= 2 && isMat(a[0]) && isMat(a[1])) { const x = toArray(m(a[0])), y = toArray(m(a[1])); verts = x.map((xi, i) => [xi, y[i]]); }
+    else { verts = matRows(m(a[0])); }
+    return ret({ kind: 'geom', gkind: 'polyshape', points: verts, dim: 2 } as Geom);
+  },
+  nsidedpoly: async (a) => { const n = Math.round(asScalar(a[0])); const cx = 0, cy = 0, rad = 1; const verts: number[][] = []; for (let i = 0; i < n; i++) { const th = Math.PI / 2 + 2 * Math.PI * i / n; verts.push([cx + rad * Math.cos(th), cy + rad * Math.sin(th)]); } return ret({ kind: 'geom', gkind: 'polyshape', points: verts, dim: 2 } as Geom); },
+  alphaShape: async (a) => {
+    const ms = a.filter((x): x is Mat => isMat(x) && !(x as Mat).isChar);
+    let pts: number[][], alpha: number | undefined;
+    if (ms.length >= 3 && numel(ms[0]) === numel(ms[1]) && numel(ms[1]) === numel(ms[2]) && (ms.length < 4 ? true : numel(ms[2]) > 1)) { const x = toArray(ms[0]), y = toArray(ms[1]), z = toArray(ms[2]); pts = x.map((xi, i) => [xi, y[i], z[i]]); alpha = ms.length >= 4 ? asScalar(ms[3]) : undefined; }
+    else if (ms.length >= 2 && numel(ms[0]) === numel(ms[1])) { const x = toArray(ms[0]), y = toArray(ms[1]); pts = x.map((xi, i) => [xi, y[i]]); alpha = ms.length >= 3 ? asScalar(ms[2]) : undefined; }
+    else { pts = matRows(ms[0]); alpha = ms.length >= 2 ? asScalar(ms[1]) : undefined; }
+    const dim = pts[0]?.length ?? 2;
+    return ret({ kind: 'geom', gkind: 'alphaShape', points: pts, alpha: alpha ?? alphaCritical(pts, dim) * 1.5, dim } as Geom);
+  },
+
+  // triangulation methods
+  freeBoundary: async (a) => { const g = gGeom(a[0]); const fb = freeBoundaryOf(g); const out = zeros(fb.length, g.dim); fb.forEach((e, i) => e.forEach((v, j) => { out.data[i + j * fb.length] = v + 1; })); return ret(out); },
+  edges: async (a) => { const g = gGeom(a[0]); const set = new Map<string, [number, number]>(); for (const t of g.conn ?? []) for (let i = 0; i < t.length; i++) for (let j = i + 1; j < t.length; j++) { const u = Math.min(t[i], t[j]), v = Math.max(t[i], t[j]); set.set(`${u}_${v}`, [u, v]); } const E = [...set.values()]; const out = zeros(E.length, 2); E.forEach((e, i) => { out.data[i] = e[0] + 1; out.data[i + E.length] = e[1] + 1; }); return ret(out); },
+  incenter: async (a) => ret(perSimplex(gGeom(a[0]), (pts) => pts[0].map((_, j) => pts.reduce((s, p) => s + p[j], 0) / pts.length))),
+  circumcenter: async (a) => { if (isGeom(a[0])) return ret(perSimplex(a[0], (pts) => pts.length === 3 && pts[0].length === 2 ? circumcenter(pts[0][0], pts[0][1], pts[1][0], pts[1][1], pts[2][0], pts[2][1]) : circumcenterND(pts))); const [ax, ay, bx, by, cx, cy] = [0, 1, 2, 3, 4, 5].map((i) => asScalar(a[i])); const cc = circumcenter(ax, ay, bx, by, cx, cy); return ret(rowVec(cc)); },
+  faceNormal: async (a) => { const g = gGeom(a[0]); return ret(perSimplex(g, (pts) => { const u = pts[1].map((v, j) => v - pts[0][j]), v2 = pts[2].map((v, j) => v - pts[0][j]); const n = [u[1] * v2[2] - u[2] * v2[1], u[2] * v2[0] - u[0] * v2[2], u[0] * v2[1] - u[1] * v2[0]]; const L = Math.hypot(...n) || 1; return n.map((x) => x / L); })); },
+  nearestNeighbor: async (a) => { const g = gGeom(a[0]); const Q = matRows(m(a[1])); const out = Q.map((q) => { let best = 0, bd = Infinity; g.points.forEach((p, i) => { const d = p.reduce((s, x, j) => s + (x - q[j]) ** 2, 0); if (d < bd) { bd = d; best = i; } }); return best + 1; }); return ret(colVec(out)); },
+  pointLocation: async (a) => { const g = gGeom(a[0]); const Q = matRows(m(a[1])); const T = g.conn ?? []; const out = Q.map((q) => { for (let ti = 0; ti < T.length; ti++) { const w = barycentricND(T[ti].map((v) => g.points[v]), q); if (w.every((x) => x >= -1e-9)) return ti + 1; } return NaN; }); return ret(colVec(out)); },
+  barycentricToCartesian: async (a) => { const g = gGeom(a[0]); const ti = Math.round(asScalar(a[1])) - 1; const B = matRows(m(a[2])); const simplex = (g.conn ?? [])[ti].map((v) => g.points[v]); const out = B.map((w) => simplex[0].map((_, j) => w.reduce((s, wi, k) => s + wi * simplex[k][j], 0))); return ret(fromRows(out)); },
+  cartesianToBarycentric: async (a) => { const g = gGeom(a[0]); const ti = Math.round(asScalar(a[1])) - 1; const Q = matRows(m(a[2])); const simplex = (g.conn ?? [])[ti].map((v) => g.points[v]); return ret(fromRows(Q.map((q) => barycentricND(simplex, q)))); },
+  isConnected: async (a) => { const g = gGeom(a[0]); return ret(bool((g.conn ?? []).length > 0)); },
+  convexHull: async (a, n) => { const g = gGeom(a[0]); const P = g.points; if (g.dim === 2) { const k = convHull2D(P.map((p) => p[0]), P.map((p) => p[1])); return n >= 2 ? [colVec(k), scalar(polyAreaOf(k.map((i) => P[i - 1])))] : [colVec(k)]; } const f = convhullnd(P); const K = zeros(f.length, 3); f.forEach((fc, i) => fc.verts.forEach((v, j) => { K.data[i + j * f.length] = v + 1; })); return ret(K); },
+  voronoiDiagram: async (a, n) => { const g = gGeom(a[0]); const simplices = g.conn ?? []; const cc = simplices.map((s) => circumcenterND(s.map((v) => g.points[v]))); const V = zeros(cc.length + 1, g.dim); for (let j = 0; j < g.dim; j++) V.data[0 + j * (cc.length + 1)] = Infinity; cc.forEach((c, i) => c.forEach((x, j) => { V.data[(i + 1) + j * (cc.length + 1)] = x; })); const cells: Value[] = g.points.map((_, i) => rowVec(simplices.map((s, si) => (s.includes(i) ? si + 2 : 0)).filter((x) => x))); return n >= 2 ? [V, makeCell(g.points.length, 1, cells)] : [V]; },
+
+  // polyshape methods
+  perimeter: async (a) => ret(scalar(polyPerim(gGeom(a[0]).points))),
+  centroid: async (a) => { const c = polyCentroid(gGeom(a[0]).points); return ret(rowVec(c)); },
+  isinterior: async (a) => { const g = gGeom(a[0]); const Q = a.length >= 3 ? toArray(m(a[1])).map((x, i) => [x, toArray(m(a[2]))[i]]) : matRows(m(a[1])); const o = colVec(Q.map((q) => (pointInPolyV(g.points, q[0], q[1]) ? 1 : 0))); o.isBool = true; return ret(o); },
+  numsides: async (a) => ret(scalar(gGeom(a[0]).points.filter((p) => !Number.isNaN(p[0])).length)),
+  numboundaries: async (a) => { const pts = gGeom(a[0]).points; let n = pts.length ? 1 : 0; for (const p of pts) if (Number.isNaN(p[0])) n++; return ret(scalar(n)); },
+  translate: async (a) => { const g = gGeom(a[0]); const d = a.length >= 3 ? [asScalar(a[1]), asScalar(a[2])] : toArray(m(a[1])); return ret({ ...g, points: g.points.map((p) => p.map((x, j) => x + (d[j] ?? 0))) } as Geom); },
+  scale: async (a) => { const g = gGeom(a[0]); const s = asScalar(a[1]); const c = a.length >= 3 ? toArray(m(a[2])) : [0, 0]; return ret({ ...g, points: g.points.map((p) => p.map((x, j) => c[j] + (x - c[j]) * s)) } as Geom); },
+  rotate: async (a) => { const g = gGeom(a[0]); const th = asScalar(a[1]) * Math.PI / 180; const c = a.length >= 3 ? toArray(m(a[2])) : [0, 0]; const ct = Math.cos(th), st = Math.sin(th); return ret({ ...g, points: g.points.map((p) => Number.isNaN(p[0]) ? p : [c[0] + (p[0] - c[0]) * ct - (p[1] - c[1]) * st, c[1] + (p[0] - c[0]) * st + (p[1] - c[1]) * ct]) } as Geom); },
+
+  // alphaShape methods
+  volume: async (a) => ret(scalar(geomArea(gGeom(a[0])))),
+  surfaceArea: async (a) => ret(scalar(alphaBoundaryMeasure(gGeom(a[0])))),
+  inShape: async (a) => { const g = gGeom(a[0]); const Q = a.length >= (g.dim + 1) + 1 ? toArray(m(a[1])).map((x, i) => g.dim === 3 ? [x, toArray(m(a[2]))[i], toArray(m(a[3]))[i]] : [x, toArray(m(a[2]))[i]]) : matRows(m(a[1])); const tets = alphaSimplices(g); return ret(colVec(Q.map((q) => { for (const s of tets) { const w = barycentricND(s.map((v) => g.points[v]), q); if (w.every((x) => x >= -1e-9)) return 1; } return 0; }))); },
+  boundaryFacets: async (a) => { const g = gGeom(a[0]); const fb = alphaBoundary(g); const out = zeros(fb.length, g.dim); fb.forEach((e, i) => e.forEach((v, j) => { out.data[i + j * fb.length] = v + 1; })); return ret(out); },
+  criticalAlpha: async (a) => ret(scalar(alphaCritical(gGeom(a[0]).points, gGeom(a[0]).dim))),
+  alphaSpectrum: async (a) => { const g = gGeom(a[0]); const radii = alphaSimplicesAll(g).map((s) => circumRadius(s.map((v) => g.points[v]))).sort((x, y) => x - y); return ret(colVec([...new Set(radii)])); },
+  numRegions: async (a) => ret(scalar(gGeom(a[0]).points.length ? 1 : 0)),
+  triplot: async (a, _n, env) => {
+    let T: number[][], x: number[], y: number[];
+    if (isGeom(a[0])) { const g = a[0]; T = g.conn ?? []; x = g.points.map((p) => p[0]); y = g.points.map((p) => p[1]); }
+    else { T = matRows(m(a[0])).map((r) => r.map((v) => Math.round(v) - 1)); x = toArray(m(a[1])); y = toArray(m(a[2])); }
+    const px: number[] = [], py: number[] = [];
+    for (const t of T) { for (let i = 0; i <= t.length; i++) { const v = t[i % t.length]; px.push(x[v]); py.push(y[v]); } px.push(NaN); py.push(NaN); }
+    env.graphics.addSeries(px, py); return [];
+  },
+  rgbplot: async (a, _n, env) => { const C = m(a[0]); const idx = Array.from({ length: C.rows }, (_, i) => i + 1); env.graphics.hold(false); for (let col = 0; col < 3; col++) { if (col === 1) env.graphics.hold(true); env.graphics.addSeries(idx, Array.from({ length: C.rows }, (_, i) => C.data[i + col * C.rows]), ['r', 'g', 'b'][col]); } env.graphics.hold(false); return []; },
   interp3: async (a) => {
     // interp3(V,Xq,Yq,Zq) or interp3(X,Y,Z,V,Xq,Yq,Zq) — trilinear on a regular grid.
     let V: Mat, Xq: Mat, Yq: Mat, Zq: Mat, xv: number[], yv: number[], zv: number[];
@@ -1727,7 +1800,7 @@ export const BUILTINS: Record<string, Builtin> = {
   },
 
   // graphics
-  plot: async (a, _n, env) => { if (a.length && isGraph(a[0])) { plotGraph(env, a[0]); return []; } env.graphics.plot(a); return []; },
+  plot: async (a, _n, env) => { if (a.length && isGraph(a[0])) { plotGraph(env, a[0]); return []; } if (a.length && isGeom(a[0])) { plotGeom(env, a[0]); return []; } env.graphics.plot(a); return []; },
   fplot: async (a, _n, env) => {
     const f = a[0];
     if (!isHandle(f)) throw new MatError('fplot: expected a function handle');
@@ -1772,7 +1845,7 @@ export const BUILTINS: Record<string, Builtin> = {
   nexttile: async (a, _n, env) => { env.graphics.nexttile(a.length && isMat(a[0]) ? Math.round(asScalar(a[0])) : undefined); return [{ kind: 'gobj', gtype: 'axes' }]; },
   bar: async (a, _n, env) => { env.graphics.chart2d(a, 'bar'); return []; },
   barh: async (a, _n, env) => { env.graphics.chart2d(a, 'barh'); return []; },
-  area: async (a, _n, env) => { env.graphics.chart2d(a, 'area'); return []; },
+  area: async (a, _n, env) => { if (a.length && isGeom(a[0])) return ret(scalar(geomArea(a[0]))); env.graphics.chart2d(a, 'area'); return []; },
   stem: async (a, _n, env) => { env.graphics.chart2d(a, 'stem'); return []; },
   stairs: async (a, _n, env) => { env.graphics.chart2d(a, 'stairs'); return []; },
   scatter: async (a, _n, env) => { env.graphics.scatter(a); return []; },
@@ -2216,6 +2289,38 @@ const HELP: Record<string, HelpEntry> = {
   numgrid: { summary: 'Number grid points in a region (S/L/D)', syntax: ["G = numgrid('L',n)"], seealso: ['delsq', 'sparse'] },
   delsq: { summary: 'Discrete Laplacian on a numbered grid (sparse)', syntax: ['D = delsq(G)'], seealso: ['numgrid', 'sparse'] },
   dblquad: { summary: 'Double integral over a rectangle (→ integral2)', syntax: ['q = dblquad(f,a,b,c,d)'], seealso: ['integral2', 'triplequad'] },
+  triangulation: { summary: 'Triangulation object from connectivity and points', syntax: ['TR = triangulation(T,P)'], seealso: ['delaunayTriangulation', 'freeBoundary', 'incenter'] },
+  delaunayTriangulation: { summary: 'Delaunay triangulation object', syntax: ['DT = delaunayTriangulation(P)', 'DT = delaunayTriangulation(x,y)'], seealso: ['delaunay', 'convexHull', 'voronoiDiagram'] },
+  polyshape: { summary: '2-D polygon object', syntax: ['pg = polyshape(x,y)'], seealso: ['area', 'isinterior', 'nsidedpoly'] },
+  alphaShape: { summary: 'Alpha shape (bounding region) object', syntax: ['shp = alphaShape(x,y)', 'shp = alphaShape(x,y,z,alpha)'], seealso: ['boundaryFacets', 'inShape', 'criticalAlpha'] },
+  nsidedpoly: { summary: 'Regular polygon polyshape', syntax: ['pg = nsidedpoly(n)'], seealso: ['polyshape'] },
+  freeBoundary: { summary: 'Free boundary facets of a triangulation', syntax: ['F = freeBoundary(TR)'], seealso: ['triangulation', 'edges'] },
+  edges: { summary: 'Triangulation edges', syntax: ['E = edges(TR)'], seealso: ['triangulation', 'neighbors'] },
+  incenter: { summary: 'Incenters of triangulation simplices', syntax: ['C = incenter(TR)'], seealso: ['circumcenter', 'triangulation'] },
+  faceNormal: { summary: 'Face normals of a 3-D triangulation', syntax: ['N = faceNormal(TR)'], seealso: ['vertexNormal', 'triangulation'] },
+  nearestNeighbor: { summary: 'Nearest triangulation vertex to query points', syntax: ['vi = nearestNeighbor(TR,P)'], seealso: ['pointLocation', 'dsearchn'] },
+  pointLocation: { summary: 'Enclosing simplex of query points', syntax: ['ti = pointLocation(TR,P)'], seealso: ['nearestNeighbor', 'tsearchn'] },
+  convexHull: { summary: 'Convex hull of a delaunayTriangulation', syntax: ['k = convexHull(DT)', '[k,a] = convexHull(DT)'], seealso: ['convhull', 'convhulln'] },
+  voronoiDiagram: { summary: 'Voronoi diagram of a delaunayTriangulation', syntax: ['[V,C] = voronoiDiagram(DT)'], seealso: ['voronoi', 'voronoin'] },
+  barycentricToCartesian: { summary: 'Convert barycentric to Cartesian coordinates', syntax: ['C = barycentricToCartesian(TR,ti,B)'], seealso: ['cartesianToBarycentric'] },
+  cartesianToBarycentric: { summary: 'Convert Cartesian to barycentric coordinates', syntax: ['B = cartesianToBarycentric(TR,ti,P)'], seealso: ['barycentricToCartesian'] },
+  area: { summary: 'Filled area 2-D plot, or area of a polyshape/alphaShape', syntax: ['area(y)', 'area(pgon)'], seealso: ['plot', 'perimeter'] },
+  perimeter: { summary: 'Perimeter of a polyshape', syntax: ['p = perimeter(pgon)'], seealso: ['area', 'centroid'] },
+  centroid: { summary: 'Centroid of a polyshape', syntax: ['[x,y] = centroid(pgon)'], seealso: ['area', 'polyshape'] },
+  isinterior: { summary: 'Test whether points are inside a polyshape', syntax: ['tf = isinterior(pgon,x,y)'], seealso: ['inpolygon', 'polyshape'] },
+  numsides: { summary: 'Number of polyshape sides', syntax: ['n = numsides(pgon)'], seealso: ['numboundaries', 'polyshape'] },
+  numboundaries: { summary: 'Number of polyshape boundaries', syntax: ['n = numboundaries(pgon)'], seealso: ['numsides', 'polyshape'] },
+  translate: { summary: 'Translate a polyshape', syntax: ['pg2 = translate(pgon,[dx dy])'], seealso: ['scale', 'rotate'] },
+  scale: { summary: 'Scale a polyshape', syntax: ['pg2 = scale(pgon,s)'], seealso: ['translate', 'rotate'] },
+  rotate: { summary: 'Rotate a polyshape (degrees)', syntax: ['pg2 = rotate(pgon,theta)'], seealso: ['translate', 'scale'] },
+  volume: { summary: 'Volume of a 3-D alphaShape', syntax: ['v = volume(shp)'], seealso: ['area', 'surfaceArea'] },
+  surfaceArea: { summary: 'Surface area of a 3-D alphaShape', syntax: ['s = surfaceArea(shp)'], seealso: ['volume', 'boundaryFacets'] },
+  inShape: { summary: 'Test whether points are inside an alphaShape', syntax: ['tf = inShape(shp,x,y)'], seealso: ['isinterior', 'alphaShape'] },
+  boundaryFacets: { summary: 'Boundary facets of an alphaShape', syntax: ['bf = boundaryFacets(shp)'], seealso: ['alphaShape', 'freeBoundary'] },
+  criticalAlpha: { summary: 'Critical alpha radius of a point set', syntax: ['a = criticalAlpha(shp)'], seealso: ['alphaSpectrum', 'alphaShape'] },
+  alphaSpectrum: { summary: 'Sorted alpha values of an alphaShape', syntax: ['s = alphaSpectrum(shp)'], seealso: ['criticalAlpha'] },
+  triplot: { summary: '2-D triangulation plot', syntax: ['triplot(TR)', 'triplot(T,x,y)'], seealso: ['trisurf', 'trimesh'] },
+  rgbplot: { summary: 'Plot the RGB components of a colormap', syntax: ['rgbplot(map)'], seealso: ['colormap', 'colorbar'] },
   contour3: { summary: '3-D contour plot of a surface', syntax: ['contour3(X,Y,Z)'], seealso: ['contour', 'surf', 'mesh'] },
   quiver: { summary: '2-D vector field (arrows)', syntax: ['quiver(X,Y,U,V)', 'quiver(U,V)'], seealso: ['plot', 'streamline'] },
   bar: { summary: 'Bar graph', syntax: ['bar(y)', 'bar(x,y)'], seealso: ['barh', 'histogram', 'stem'] },
@@ -2551,6 +2656,9 @@ const BASE_REF = new Set<string>((
   'polarplot polarscatter polarhistogram polaraxes compass rlim thetalim rticks thetaticks rticklabels thetaticklabels rtickangle ' +
   'bar3 bar3h quiver3 histogram2 plotmatrix contourc trisurf trimesh tetramesh streamline isosurface slice coneplot ' +
   'ezplot ezsurf ezsurfc ezmesh ezmeshc ezcontour ezcontourf ezplot3 ezpolar eval evalc inline divergence curl numgrid delsq dblquad triplequad delaunay3 dsearch ' +
+  'triangulation delaunayTriangulation polyshape alphaShape nsidedpoly freeBoundary edges incenter circumcenter faceNormal nearestNeighbor pointLocation ' +
+  'convexHull voronoiDiagram barycentricToCartesian cartesianToBarycentric perimeter centroid isinterior numsides numboundaries translate scale rotate ' +
+  'volume surfaceArea inShape boundaryFacets criticalAlpha alphaSpectrum numRegions isConnected triplot rgbplot ' +
   'sphere cylinder ellipsoid fsurf fmesh fcontour quiver ' +
   'bar barh area stem stairs scatter scatter3 plot3 stem3 errorbar pie histogram loglog semilogx semilogy subtitle sgtitle zlim xticks yticks zticks text box ' +
   'jet parula turbo hot cool gray bone copper pink spring summer autumn winter hsv lines colorcube cellstr dsearchn brighten ' +
@@ -3881,6 +3989,64 @@ function plotGraph(env: Env, g: Graph): void {
   env.graphics.hold(true);
   env.graphics.scatter([rowVec(pos.map((p) => p[0])), rowVec(pos.map((p) => p[1]))]);
   env.graphics.hold(false);
+}
+
+// ── Geometry-object helpers (triangulation / polyshape / alphaShape) ──────
+function gGeom(v: Value, name = 'argument'): Geom { if (!isGeom(v)) throw new MatError(`${name}: expected a geometry object`); return v; }
+/** Map a per-simplex computation over a triangulation's connectivity → rows. */
+function perSimplex(g: Geom, fn: (pts: number[][]) => number[]): Mat {
+  const T = g.conn ?? []; const rows = T.map((t) => fn(t.map((v) => g.points[v]))); return fromRows(rows.length ? rows : [[]]);
+}
+/** Free boundary: facets (edges in 2-D, triangles in 3-D) belonging to exactly one simplex. */
+function freeBoundaryOf(g: Geom): number[][] {
+  const count = new Map<string, { f: number[]; n: number }>(); const d = g.dim;
+  for (const t of g.conn ?? []) for (let omit = 0; omit < t.length; omit++) { const facet = t.filter((_, k) => k !== omit); const key = facet.slice().sort((a, b) => a - b).join(','); const e = count.get(key); if (e) e.n++; else count.set(key, { f: facet, n: 1 }); }
+  void d; return [...count.values()].filter((e) => e.n === 1).map((e) => e.f);
+}
+function geomArea(g: Geom): number {
+  if (g.gkind === 'polyshape') return Math.abs(polySignedArea(g.points));
+  // triangulation/alphaShape: sum of simplex measures
+  const simplices = g.gkind === 'alphaShape' ? alphaSimplices(g) : (g.conn ?? []);
+  const fac = factorialN(g.dim); let total = 0;
+  for (const s of simplices) { const pts = s.map((v) => g.points[v]); const rows = pts.slice(1).map((p) => p.map((x, j) => x - pts[0][j])); total += Math.abs(detRows(rows)) / fac; }
+  return total;
+}
+function polySignedArea(verts: number[][]): number { let s = 0; const v = verts.filter((p) => !Number.isNaN(p[0])); for (let i = 0; i < v.length; i++) { const j = (i + 1) % v.length; s += v[i][0] * v[j][1] - v[j][0] * v[i][1]; } return s / 2; }
+function polyAreaOf(pts: number[][]): number { return Math.abs(polySignedArea(pts)); }
+function polyPerim(verts: number[][]): number { let s = 0; const v = verts.filter((p) => !Number.isNaN(p[0])); for (let i = 0; i < v.length; i++) { const j = (i + 1) % v.length; s += Math.hypot(v[j][0] - v[i][0], v[j][1] - v[i][1]); } return s; }
+function polyCentroid(verts: number[][]): number[] {
+  const v = verts.filter((p) => !Number.isNaN(p[0])); let cx = 0, cy = 0, A = 0;
+  for (let i = 0; i < v.length; i++) { const j = (i + 1) % v.length; const cr = v[i][0] * v[j][1] - v[j][0] * v[i][1]; A += cr; cx += (v[i][0] + v[j][0]) * cr; cy += (v[i][1] + v[j][1]) * cr; }
+  A /= 2; return Math.abs(A) < 1e-30 ? [v.reduce((s, p) => s + p[0], 0) / v.length, v.reduce((s, p) => s + p[1], 0) / v.length] : [cx / (6 * A), cy / (6 * A)];
+}
+function pointInPolyV(verts: number[][], px: number, py: number): boolean {
+  const v = verts.filter((p) => !Number.isNaN(p[0])); let inside = false;
+  for (let i = 0, j = v.length - 1; i < v.length; j = i++) { if ((v[i][1] > py) !== (v[j][1] > py) && px < (v[j][0] - v[i][0]) * (py - v[i][1]) / (v[j][1] - v[i][1]) + v[i][0]) inside = !inside; }
+  return inside;
+}
+/** Circumradius of a d-simplex (d+1 points). */
+function circumRadius(pts: number[][]): number { const c = pts.length === 3 && pts[0].length === 2 ? circumcenter(pts[0][0], pts[0][1], pts[1][0], pts[1][1], pts[2][0], pts[2][1]) : circumcenterND(pts); return Math.hypot(...pts[0].map((x, j) => x - c[j])); }
+/** The full Delaunay triangulation underlying an alphaShape. */
+function alphaSimplicesAll(g: Geom): number[][] { return g.dim === 2 ? delaunayTri(g.points.map((p) => p[0]), g.points.map((p) => p[1])) : delaunaynd(g.points); }
+/** Delaunay simplices kept in the alpha complex (circumradius ≤ alpha). */
+function alphaSimplices(g: Geom): number[][] { const al = g.alpha ?? Infinity; return alphaSimplicesAll(g).filter((s) => circumRadius(s.map((v) => g.points[v])) <= al); }
+/** Boundary facets of the alpha complex (facets on exactly one kept simplex). */
+function alphaBoundary(g: Geom): number[][] {
+  const count = new Map<string, { f: number[]; n: number }>();
+  for (const t of alphaSimplices(g)) for (let omit = 0; omit < t.length; omit++) { const facet = t.filter((_, k) => k !== omit); const key = facet.slice().sort((a, b) => a - b).join(','); const e = count.get(key); if (e) e.n++; else count.set(key, { f: facet, n: 1 }); }
+  return [...count.values()].filter((e) => e.n === 1).map((e) => e.f);
+}
+function alphaBoundaryMeasure(g: Geom): number { let s = 0; for (const f of alphaBoundary(g)) { if (g.dim === 2) s += Math.hypot(g.points[f[0]][0] - g.points[f[1]][0], g.points[f[0]][1] - g.points[f[1]][1]); else { const p = f.map((v) => g.points[v]); const u = p[1].map((x, j) => x - p[0][j]), w = p[2].map((x, j) => x - p[0][j]); s += 0.5 * Math.hypot(u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]); } } return s; }
+/** A reasonable default alpha: largest Delaunay circumradius (so the full shape is connected). */
+function alphaCritical(pts: number[][], dim: number): number { const conn = dim === 2 ? delaunayTri(pts.map((p) => p[0]), pts.map((p) => p[1])) : delaunaynd(pts); let r = 0; for (const s of conn) r = Math.max(r, circumRadius(s.map((v) => pts[v]))); return r || 1; }
+/** Draw a geometry object: polyshape filled, triangulation/alphaShape as edges. */
+function plotGeom(env: Env, g: Geom): void {
+  if (g.gkind === 'polyshape') { const v = g.points.filter((p) => !Number.isNaN(p[0])); const px = v.map((p) => p[0]), py = v.map((p) => p[1]); if (v.length) { px.push(v[0][0]); py.push(v[0][1]); } env.graphics.chart2d([rowVec(px), rowVec(py)], 'area'); return; }
+  const facets = g.gkind === 'alphaShape' ? alphaBoundary(g) : (g.conn ?? []);
+  if (g.dim === 3) { env.graphics.trimesh(g.gkind === 'alphaShape' ? facets : facets, g.points.map((p) => p[0]), g.points.map((p) => p[1]), g.points.map((p) => p[2]), true); return; }
+  const px: number[] = [], py: number[] = [];
+  for (const f of facets) { for (let i = 0; i <= f.length; i++) { const v = f[i % f.length]; px.push(g.points[v][0]); py.push(g.points[v][1]); } px.push(NaN); py.push(NaN); }
+  env.graphics.addSeries(px, py);
 }
 
 // ── Piecewise-polynomial (pp) form ───────────────────────────────────────

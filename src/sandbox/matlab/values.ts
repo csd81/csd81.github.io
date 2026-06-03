@@ -63,7 +63,16 @@ export interface Graph {
   names?: string[];                            // optional node names (length n)
   edges: { s: number; t: number; w: number }[]; // 0-based endpoints, weight (default 1)
 }
-export type Value = Mat | Handle | GObj | Cell | StructV | Sparse | Str | Graph;
+/** Geometry object: triangulation / delaunayTriangulation / polyshape / alphaShape. */
+export interface Geom {
+  kind: 'geom';
+  gkind: 'triangulation' | 'delaunayTriangulation' | 'polyshape' | 'alphaShape';
+  points: number[][];   // n×d node/vertex coordinates (polyshape: vertices, NaN-row separated per boundary)
+  conn?: number[][];    // 0-based connectivity (triangulation simplices)
+  alpha?: number;       // alphaShape radius parameter
+  dim: number;          // 2 or 3
+}
+export type Value = Mat | Handle | GObj | Cell | StructV | Sparse | Str | Graph | Geom;
 
 export class MatError extends Error {}
 
@@ -113,6 +122,7 @@ export function isGraph(v: Value): v is Graph { return v.kind === 'graph'; }
 export function makeGraph(directed: boolean, n: number, edges: { s: number; t: number; w: number }[], names?: string[]): Graph {
   return { kind: 'graph', directed, n, edges, names };
 }
+export function isGeom(v: Value): v is Geom { return v.kind === 'geom'; }
 export function makeStrArr(rows: number, cols: number, items: string[]): Str { return { kind: 'str', rows, cols, items }; }
 export function makeStr(s: string): Str { return { kind: 'str', rows: 1, cols: 1, items: [s] }; }
 export function makeCell(rows: number, cols: number, items: Value[]): Cell { return { kind: 'cell', rows, cols, items }; }
