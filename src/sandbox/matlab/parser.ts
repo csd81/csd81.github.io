@@ -8,7 +8,7 @@
 import { tokenize, type Token } from './lexer';
 import type { Expr, LValue, Stmt, FuncDef, Program } from './ast';
 
-const COMMAND_FNS = new Set(['hold', 'format', 'grid', 'axis', 'clc', 'close', 'clear', 'warning', 'shg', 'drawnow', 'colormap']);
+const COMMAND_FNS = new Set(['hold', 'format', 'grid', 'axis', 'clc', 'close', 'clear', 'warning', 'shg', 'drawnow', 'colormap', 'help', 'doc', 'who', 'whos', 'lookfor']);
 const BLOCK_END = new Set(['end', 'endfunction', 'endif', 'endfor', 'endwhile', 'endswitch']);
 
 export function parse(src: string): Program {

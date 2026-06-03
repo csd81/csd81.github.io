@@ -15,6 +15,9 @@ export interface Env {
   evalInput(text: string): Promise<Value>;
   graphics: Graphics;
   callHandle(h: Handle, args: Value[], nargout: number): Promise<Value[]>;
+  help(name: string): string;
+  clearWorkspace(names: string[]): void;
+  workspaceVars(): { name: string; size: string; klass: string }[];
 }
 
 export type Builtin = (args: Value[], nargout: number, env: Env) => Promise<Value[]>;
@@ -281,6 +284,77 @@ export const BUILTINS: Record<string, Builtin> = {
   clc: async () => [],
   tic: async () => [],
   toc: async () => ret(scalar(0)),
+
+  // help / workspace
+  help: async (a, _n, env) => { env.output((a.length ? env.help(asString(a[0])) : GENERAL_HELP) + '\n'); return []; },
+  doc: async (a, _n, env) => { env.output((a.length ? env.help(asString(a[0])) : GENERAL_HELP) + '\n'); return []; },
+  lookfor: async (a, _n, env) => { env.output(a.length ? env.help(asString(a[0])) + '\n' : GENERAL_HELP + '\n'); return []; },
+  clear: async (a, _n, env) => { env.clearWorkspace(a.map((v) => asString(v))); return []; },
+  who: async (_a, _n, env) => {
+    const names = env.workspaceVars().map((v) => v.name);
+    env.output(names.length ? 'Your variables are:\n\n' + names.join('   ') + '\n' : '');
+    return [];
+  },
+  whos: async (_a, _n, env) => {
+    const vars = env.workspaceVars();
+    if (!vars.length) return [];
+    const rows = vars.map((v) => `  ${v.name.padEnd(14)}${v.size.padEnd(12)}${v.klass}`);
+    env.output('  Name          Size        Class\n' + rows.join('\n') + '\n');
+    return [];
+  },
+};
+
+const GENERAL_HELP =
+  'MATLAB sandbox — a browser MATLAB/Octave runner.\n' +
+  '  help <name>   description of a function (e.g. help plot)\n' +
+  '  who / whos    list workspace variables\n' +
+  '  clear [name]  clear all or named variables\n' +
+  'Pick a file on the left and press Run, or type commands here.';
+
+/** Short descriptions for common built-ins (shown by `help`). */
+export const BUILTIN_HELP: Record<string, string> = {
+  sin: 'sin(X)  Sine of X (radians), element-wise.',
+  cos: 'cos(X)  Cosine of X (radians), element-wise.',
+  tan: 'tan(X)  Tangent of X (radians), element-wise.',
+  atan: 'atan(X)  Inverse tangent, element-wise.',
+  exp: 'exp(X)  Exponential e.^X, element-wise.',
+  log: 'log(X)  Natural logarithm, element-wise.',
+  log10: 'log10(X)  Base-10 logarithm, element-wise.',
+  sqrt: 'sqrt(X)  Square root, element-wise.',
+  abs: 'abs(X)  Absolute value, element-wise.',
+  nthroot: 'nthroot(X,N)  Real N-th root of X (handles negative X for odd N).',
+  mod: 'mod(A,B)  Modulus after division (sign of divisor).',
+  rem: 'rem(A,B)  Remainder after division (sign of dividend).',
+  round: 'round(X)  Round to nearest integer.',
+  floor: 'floor(X)  Round towards minus infinity.',
+  ceil: 'ceil(X)  Round towards plus infinity.',
+  sum: 'sum(X)  Sum of elements (columns for a matrix). sum(X,DIM) along DIM.',
+  prod: 'prod(X)  Product of elements.',
+  mean: 'mean(X)  Average of elements.',
+  max: '[M,I]=max(X)  Largest element and its index (per column for a matrix).',
+  min: '[M,I]=min(X)  Smallest element and its index.',
+  zeros: 'zeros(N) / zeros(R,C)  Matrix of zeros.',
+  ones: 'ones(N) / ones(R,C)  Matrix of ones.',
+  eye: 'eye(N)  Identity matrix.',
+  linspace: 'linspace(A,B,N)  N points evenly spaced from A to B.',
+  size: '[R,C]=size(X)  Dimensions of X. size(X,DIM) one dimension.',
+  length: 'length(X)  Largest dimension of X.',
+  numel: 'numel(X)  Number of elements.',
+  diff: 'diff(X)  Differences between consecutive elements.',
+  diag: 'diag(X)  Diagonal of a matrix, or a diagonal matrix from a vector.',
+  inv: 'inv(A)  Inverse of a square matrix.',
+  det: 'det(A)  Determinant of a square matrix.',
+  norm: 'norm(X)  Vector/matrix norm. norm(X,P) for P = 1, 2, inf.',
+  transpose: "transpose(X) or X'  Transpose.",
+  plot: "plot(X,Y,...)  Line plot; pass a linespec like '*' or '--r'. plot(X,Y,X2,Y2) for several.",
+  fplot: 'fplot(@f)  Plot a function handle over the current x-range.',
+  hold: "hold on / hold off  Keep or replace existing plots.",
+  gca: 'gca  Handle to the current axes (set .XLim, .YLim, .XAxisLocation, …).',
+  disp: 'disp(X)  Display the value of X without its name.',
+  fprintf: "fprintf(FMT,...)  Formatted output, e.g. fprintf('x = %.4f\\n', x).",
+  sprintf: 'sprintf(FMT,...)  Like fprintf but returns the string.',
+  input: "input(PROMPT)  Read a value typed into the command window. input(PROMPT,'s') for text.",
+  arrayfun: 'arrayfun(@f,X)  Apply f to each element of X.',
 };
 
 function trimNum(x: number): string {

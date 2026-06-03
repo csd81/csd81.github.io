@@ -8,7 +8,7 @@ import {
   horzcat, vertcat, range as makeRange, indexGet, indexSet, toArray, type Sub,
 } from './values';
 import { det, inv, mldivide } from './linalg';
-import { BUILTINS, CONSTANTS, type Env } from './builtins';
+import { BUILTINS, CONSTANTS, BUILTIN_HELP, type Env } from './builtins';
 import { displayValue, dispValue } from './format';
 import { Graphics } from './graphics';
 
@@ -29,6 +29,7 @@ export interface InterpOptions {
 
 export class Interpreter implements Env {
   private funcs = new Map<string, FuncDef>();
+  private helpDocs = new Map<string, string>();
   graphics = new Graphics();
   private endStack: number[] = [];
   private onOutputCb: (text: string) => void;
@@ -43,6 +44,24 @@ export class Interpreter implements Env {
   output(text: string) { this.onOutputCb(text); }
   requestInput(prompt: string) { return this.requestInputCb(prompt); }
   callHandle(h: Handle, args: Value[], nargout: number) { return h.call(args, nargout); }
+  help(name: string): string {
+    const doc = this.helpDocs.get(name);
+    if (doc) return doc;
+    const def = this.funcs.get(name);
+    if (def) {
+      const outs = def.outputs.length ? (def.outputs.length === 1 ? def.outputs[0] : `[${def.outputs.join(', ')}]`) + ' = ' : '';
+      return `${outs}${name}(${def.params.join(', ')})\n  (user function — no help comment)`;
+    }
+    if (name in BUILTIN_HELP) return BUILTIN_HELP[name];
+    if (name in BUILTINS) return `${name} is a built-in function.`;
+    if (name in CONSTANTS) return `${name} is a built-in constant.`;
+    return `'${name}' not found. Type 'help' for an overview.`;
+  }
+  clearWorkspace(names: string[]) {
+    if (!names.length || names.includes('all')) { this.base.vars.clear(); return; }
+    for (const n of names) this.base.vars.delete(n);
+  }
+  workspaceVars() { return this.workspaceSnapshot().map(({ name, size, klass }) => ({ name, size, klass })); }
   async evalInput(text: string): Promise<Value> {
     const prog = parse(text);
     const stmt = prog.stmts[0];
@@ -54,6 +73,28 @@ export class Interpreter implements Env {
   loadFunctions(src: string) {
     const prog = parse(src);
     for (const f of prog.functions) this.funcs.set(f.name, f);
+    this.extractHelp(src);
+  }
+
+  /** Capture the help comment block immediately following each `function` line. */
+  private extractHelp(src: string) {
+    const lines = src.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      if (!/^\s*function\b/.test(lines[i])) continue;
+      const line = lines[i];
+      const name =
+        /=\s*([A-Za-z_]\w*)\s*\(/.exec(line)?.[1] ??
+        /function\s+([A-Za-z_]\w*)\s*\(/.exec(line)?.[1] ??
+        /=\s*([A-Za-z_]\w*)\s*$/.exec(line)?.[1] ??
+        /function\s+([A-Za-z_]\w*)/.exec(line)?.[1];
+      if (!name) continue;
+      const doc: string[] = [];
+      for (let j = i + 1; j < lines.length; j++) {
+        if (/^\s*%/.test(lines[j])) doc.push(lines[j].replace(/^\s*%+ ?/, ''));
+        else break;
+      }
+      if (doc.length) this.helpDocs.set(name, `${name}:\n  ` + doc.join('\n  '));
+    }
   }
   defineFunction(def: FuncDef) { this.funcs.set(def.name, def); }
   hasCallable(name: string): boolean { return this.funcs.has(name) || name in BUILTINS || name in CONSTANTS; }
@@ -63,6 +104,7 @@ export class Interpreter implements Env {
   async run(src: string): Promise<void> {
     const prog = parse(src);
     for (const f of prog.functions) this.funcs.set(f.name, f);
+    this.extractHelp(src);
     try {
       await this.runStmts(prog.stmts, this.base);
     } catch (e) {
