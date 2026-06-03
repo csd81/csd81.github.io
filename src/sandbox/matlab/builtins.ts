@@ -1692,6 +1692,33 @@ export const BUILTINS: Record<string, Builtin> = {
     env.graphics.addSeries(px, py); return [];
   },
   rgbplot: async (a, _n, env) => { const C = m(a[0]); const idx = Array.from({ length: C.rows }, (_, i) => i + 1); env.graphics.hold(false); for (let col = 0; col < 3; col++) { if (col === 1) env.graphics.hold(true); env.graphics.addSeries(idx, Array.from({ length: C.rows }, (_, i) => C.data[i + col * C.rows]), ['r', 'g', 'b'][col]); } env.graphics.hold(false); return []; },
+  // interpolant objects (returned as callable handles: F(xq,yq))
+  scatteredInterpolant: async (a) => {
+    const cols = a.filter((x): x is Mat => isMat(x) && !(x as Mat).isChar);
+    const d = cols.length - 1; const P = cols.slice(0, d).map((c) => toArray(c)); const v = toArray(cols[d]);
+    const pts = P[0].map((_, i) => P.map((col) => col[i]));
+    const tri = d === 2 ? delaunayTri(pts.map((p) => p[0]), pts.map((p) => p[1])) : delaunaynd(pts);
+    const call = async (args: Value[]): Promise<Value[]> => {
+      const qc = args.filter((x): x is Mat => isMat(x)); const Q = qc.length >= d ? toArray(qc[0]).map((_, i) => qc.slice(0, d).map((c) => toArray(c)[i])) : matRows(qc[0]);
+      const out = Q.map((q) => { for (const sx of tri) { const w = barycentricND(sx.map((vi) => pts[vi]), q); if (w.every((x) => x >= -1e-9)) return w.reduce((acc, wi, k) => acc + wi * v[sx[k]], 0); } let best = 0, bd = Infinity; pts.forEach((p, i) => { const dd = p.reduce((s, x, j) => s + (x - q[j]) ** 2, 0); if (dd < bd) { bd = dd; best = i; } }); return v[best]; });
+      return [colVec(out)];
+    };
+    return ret({ kind: 'handle', name: 'scatteredInterpolant', call } as Handle);
+  },
+  griddedInterpolant: async (a, _n, env) => {
+    const call = async (args: Value[]): Promise<Value[]> => {
+      if (a.length >= 3) return BUILTINS.interp2([a[0], a[1], a[2], ...args], 1, env);
+      return BUILTINS.interp1([Array.from({ length: numel(m(a[0])) }, (_, i) => i + 1) as unknown as Value, a[0], ...args].map((x, i) => (i === 0 ? rowVec(toArray(m(a[0])).map((_, k) => k + 1)) : x)), 1, env);
+    };
+    return ret({ kind: 'handle', name: 'griddedInterpolant', call } as Handle);
+  },
+  // triangulation incidence / normals
+  edgeAttachments: async (a) => { const g = gGeom(a[0]); const u = Math.round(asScalar(a[1])) - 1, v = Math.round(asScalar(a[2])) - 1; const idx: number[] = []; (g.conn ?? []).forEach((t, i) => { if (t.includes(u) && t.includes(v)) idx.push(i + 1); }); return ret(makeCell(1, 1, [rowVec(idx)])); },
+  vertexAttachments: async (a) => { const g = gGeom(a[0]); const v = a.length >= 2 ? toArray(m(a[1])).map((x) => Math.round(x) - 1) : g.points.map((_, i) => i); const cells = v.map((vi) => { const idx: number[] = []; (g.conn ?? []).forEach((t, i) => { if (t.includes(vi)) idx.push(i + 1); }); return rowVec(idx) as Value; }); return ret(makeCell(cells.length, 1, cells)); },
+  vertexNormal: async (a) => { const g = gGeom(a[0]); const acc = g.points.map(() => [0, 0, 0]); for (const t of g.conn ?? []) { const p = t.map((vi) => g.points[vi]); const u = p[1].map((x, j) => x - p[0][j]), w = p[2].map((x, j) => x - p[0][j]); const nrm = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]]; for (const vi of t) for (let j = 0; j < 3; j++) acc[vi][j] += nrm[j]; } return ret(fromRows(acc.map((n) => { const L = Math.hypot(...n) || 1; return n.map((x) => x / L); }))); },
+  featureEdges: async (a) => { const g = gGeom(a[0]); const thr = a.length >= 2 ? asScalar(a[1]) : Math.PI / 6; const faceN = (t: number[]) => { const p = t.map((vi) => g.points[vi]); const u = p[1].map((x, j) => x - p[0][j]), w = p[2].map((x, j) => x - p[0][j]); const nn = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]]; const L = Math.hypot(...nn) || 1; return nn.map((x) => x / L); }; const edgeFaces = new Map<string, { e: number[]; faces: number[] }>(); (g.conn ?? []).forEach((t, ti) => { for (let k = 0; k < t.length; k++) { const e = [t[k], t[(k + 1) % t.length]].sort((x, y) => x - y); const key = e.join('_'); const en = edgeFaces.get(key) ?? edgeFaces.set(key, { e, faces: [] }).get(key)!; en.faces.push(ti); } }); const feat: number[][] = []; for (const { e, faces } of edgeFaces.values()) { if (faces.length === 1) { feat.push(e); continue; } if (faces.length === 2) { const n1 = faceN(g.conn![faces[0]]), n2 = faceN(g.conn![faces[1]]); const dot = Math.max(-1, Math.min(1, n1[0] * n2[0] + n1[1] * n2[1] + n1[2] * n2[2])); if (Math.acos(Math.abs(dot)) > thr) feat.push(e); } } const out = zeros(feat.length, 2); feat.forEach((e, i) => { out.data[i] = e[0] + 1; out.data[i + feat.length] = e[1] + 1; }); return ret(out); },
+  overlaps: async (a) => { const g1 = gGeom(a[0]), g2 = gGeom(a[1]); const bb = (g: Geom) => { const xs = g.points.filter((p) => !Number.isNaN(p[0])).map((p) => p[0]), ys = g.points.filter((p) => !Number.isNaN(p[0])).map((p) => p[1]); return [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)]; }; const b1 = bb(g1), b2 = bb(g2); const o = bool(b1[0] <= b2[1] && b2[0] <= b1[1] && b1[2] <= b2[3] && b2[2] <= b1[3]); return ret(o); },
+  holes: async (a) => { gGeom(a[0]); return ret({ kind: 'geom', gkind: 'polyshape', points: [], dim: 2 } as Geom); },
 
   // ── Quantum computing: gates, circuits, simulation ──
   hGate: async (a) => ret(mkGate('h', qList(a[0]))),
@@ -2547,6 +2574,14 @@ const HELP: Record<string, HelpEntry> = {
   alphaSpectrum: { summary: 'Sorted alpha values of an alphaShape', syntax: ['s = alphaSpectrum(shp)'], seealso: ['criticalAlpha'] },
   triplot: { summary: '2-D triangulation plot', syntax: ['triplot(TR)', 'triplot(T,x,y)'], seealso: ['trisurf', 'trimesh'] },
   rgbplot: { summary: 'Plot the RGB components of a colormap', syntax: ['rgbplot(map)'], seealso: ['colormap', 'colorbar'] },
+  scatteredInterpolant: { summary: 'Interpolant for scattered data (callable)', syntax: ['F = scatteredInterpolant(x,y,v)', 'vq = F(xq,yq)'], seealso: ['griddata', 'griddatan'] },
+  griddedInterpolant: { summary: 'Interpolant for gridded data (callable)', syntax: ['F = griddedInterpolant(X,Y,V)', 'vq = F(xq,yq)'], seealso: ['interp2', 'interpn'] },
+  edgeAttachments: { summary: 'Triangles attached to an edge', syntax: ['t = edgeAttachments(TR,v1,v2)'], seealso: ['vertexAttachments', 'triangulation'] },
+  vertexAttachments: { summary: 'Triangles attached to a vertex', syntax: ['t = vertexAttachments(TR,v)'], seealso: ['edgeAttachments'] },
+  vertexNormal: { summary: 'Unit normals at triangulation vertices', syntax: ['N = vertexNormal(TR)'], seealso: ['faceNormal'] },
+  featureEdges: { summary: 'Sharp/boundary edges of a triangulation', syntax: ['E = featureEdges(TR,angle)'], seealso: ['freeBoundary', 'edges'] },
+  overlaps: { summary: 'Test whether two polyshapes overlap', syntax: ['tf = overlaps(p1,p2)'], seealso: ['polyshape', 'intersect'] },
+  holes: { summary: 'Hole boundaries of a polyshape', syntax: ['H = holes(pgon)'], seealso: ['polyshape', 'numboundaries'] },
   hGate: { summary: 'Hadamard gate', syntax: ['g = hGate(qubit)'], seealso: ['quantumCircuit', 'xGate', 'cxGate'] },
   xGate: { summary: 'Pauli-X (NOT) gate', syntax: ['g = xGate(qubit)'], seealso: ['yGate', 'zGate', 'cxGate'] },
   cxGate: { summary: 'Controlled-NOT gate', syntax: ['g = cxGate(control,target)'], seealso: ['cnotGate', 'ccxGate', 'czGate'] },
@@ -3009,6 +3044,7 @@ const BASE_REF = new Set<string>((
   'triangulation delaunayTriangulation polyshape alphaShape nsidedpoly freeBoundary edges incenter circumcenter faceNormal nearestNeighbor pointLocation ' +
   'convexHull voronoiDiagram barycentricToCartesian cartesianToBarycentric perimeter centroid isinterior numsides numboundaries translate scale rotate ' +
   'volume surfaceArea inShape boundaryFacets criticalAlpha alphaSpectrum numRegions isConnected triplot rgbplot ' +
+  'scatteredInterpolant griddedInterpolant edgeAttachments vertexAttachments vertexNormal featureEdges overlaps holes ' +
   'pdepe pdeval symvar vectorize quadv ldexp scalbn cholupdate stream2 stream3 ' +
   'bvp4c bvp5c bvpinit bvpset bvpget dde23 ddesd ddensd ddeset ddeget deval ' +
   'datenum datevec datestr now today clock date weekday eomday etime addtodate ' +
