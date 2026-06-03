@@ -1064,6 +1064,24 @@ export const BUILTINS: Record<string, Builtin> = {
   eval: async (a, _n, env) => { const v = await env.evalInput(asString(a[0])); return v === undefined ? [] : ret(v); },
   evalc: async (a, _n, env) => { let buf = ''; const orig = env.output; (env as { output: (t: string) => void }).output = (t) => { buf += t; }; try { await env.evalInput(asString(a[0])); } finally { (env as { output: (t: string) => void }).output = orig; } return ret(str(buf)); },
   inline: async (a, _n, env) => { const expr = asString(a[0]); const vars = a.length >= 2 ? a.slice(1).map((v) => asString(v)) : guessVars(expr); return ret(await env.evalInput(`@(${vars.join(',')}) ${expr}`)); },
+  symvar: async (a) => { const vars = isHandle(a[0]) ? [] : guessVars(asString(a[0])); return ret(makeStrArr(vars.length, 1, vars)); },
+  vectorize: async (a) => ret(str(asString(a[0]).replace(/(?<![.\\])([*/^])/g, '.$1'))),
+  quadv: async (a, n, env) => BUILTINS.quad(a, n, env),
+  ldexp: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, e) => x * 2 ** e)),
+  scalbn: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, e) => x * 2 ** e)),
+  cholupdate: async (a) => {
+    const R = m(a[0]); const n = R.rows; const Rd = new Float64Array(R.data); const x = toArray(m(a[1])).slice();
+    const sign = a.length >= 3 && asString(a[2]) === '-' ? -1 : 1;
+    const at = (i: number, j: number) => Rd[i + j * n]; const set = (i: number, j: number, v: number) => { Rd[i + j * n] = v; };
+    for (let k = 0; k < n; k++) {
+      const rkk = at(k, k); const r2 = rkk * rkk + sign * x[k] * x[k]; if (r2 < 0) throw new MatError('cholupdate: downdate would make the matrix not positive definite');
+      const r = Math.sqrt(r2); const c = r / rkk, s = x[k] / rkk; set(k, k, r);
+      for (let j = k + 1; j < n; j++) { const nv = (at(k, j) + sign * s * x[j]) / c; set(k, j, nv); x[j] = c * x[j] - s * nv; }
+    }
+    return ret(mat(n, n, Rd));
+  },
+  stream2: async (a) => { const ms = a.filter((x): x is Mat => isMat(x) && !(x as Mat).isChar); const seg = streamlines2(ms[0], ms[1], ms[2], ms[3], toArray(ms[4]), toArray(ms[5])); return ret(splitStreamCell(seg.x, seg.y)); },
+  stream3: async (a) => { const ms = a.filter((x): x is Mat => isMat(x) && !(x as Mat).isChar); const seg = streamlines3(ms[0], ms[1], ms[2], ms[3], ms[4], ms[5], toArray(ms[6]), toArray(ms[7]), toArray(ms[8])); return ret(splitStreamCell(seg.x, seg.y, seg.z)); },
   assert: async (a) => { if (!truthy(a[0])) throw new MatError(a.length >= 2 && isMat(a[1]) && (a[1] as Mat).isChar ? asString(a[1]) : 'assert: condition failed'); return []; },
   narginchk: async () => [], nargoutchk: async () => [], nargchk: async () => ret(str('')),
   validateattributes: async () => [],
@@ -2493,6 +2511,14 @@ const HELP: Record<string, HelpEntry> = {
   ode15s: { summary: 'Solve stiff ODEs (variable-order 1–5 NDF/BDF)', syntax: ['[t,y] = ode15s(@f,tspan,y0)', "opts=odeset('MaxOrder',2)"], seealso: ['ode23s', 'ode45', 'odeset'] },
   pdepe: { summary: 'Solve 1-D parabolic/elliptic PDEs (method of lines + implicit time stepping)', syntax: ['sol = pdepe(m,@pdefun,@icfun,@bcfun,xmesh,tspan)'], seealso: ['pdeval', 'ode15s'] },
   pdeval: { summary: 'Evaluate a pdepe solution component (value + flux)', syntax: ['[u,dudx] = pdeval(m,xmesh,ui,xq)'], seealso: ['pdepe'] },
+  symvar: { summary: 'Free variables of an expression (alphabetical)', syntax: ["v = symvar('a*x+b')"], seealso: ['inline', 'str2func'] },
+  vectorize: { summary: 'Vectorize an expression string (* / ^ → .* ./ .^)', syntax: ["s = vectorize('x^2')"], seealso: ['inline'] },
+  quadv: { summary: 'Vectorized adaptive quadrature (→ quad)', syntax: ['q = quadv(f,a,b)'], seealso: ['quad', 'integral'] },
+  ldexp: { summary: 'Multiply by a power of two (x·2ⁿ)', syntax: ['y = ldexp(x,n)'], seealso: ['pow2', 'scalbn'] },
+  scalbn: { summary: 'Scale by a power of two (x·2ⁿ)', syntax: ['y = scalbn(x,n)'], seealso: ['pow2', 'ldexp'] },
+  cholupdate: { summary: 'Rank-1 update/downdate of a Cholesky factor', syntax: ['R1 = cholupdate(R,x)', "R1 = cholupdate(R,x,'-')"], seealso: ['chol', 'qrupdate'] },
+  stream2: { summary: '2-D streamline vertices (no plot)', syntax: ['verts = stream2(X,Y,U,V,sx,sy)'], seealso: ['streamline', 'stream3'] },
+  stream3: { summary: '3-D streamline vertices (no plot)', syntax: ['verts = stream3(X,Y,Z,U,V,W,sx,sy,sz)'], seealso: ['streamline', 'stream2'] },
   ode23s: { summary: 'Solve stiff ODEs (modified Rosenbrock 2,3; L-stable, numeric Jacobian)', syntax: ['[t,y] = ode23s(@f,tspan,y0)'], seealso: ['ode15s', 'ode45', 'odeset'] },
   odeset: { summary: 'Create/modify an ODE options struct (RelTol, AbsTol, InitialStep, MaxStep)', syntax: ["opts = odeset('RelTol',1e-6,'AbsTol',1e-8)"], seealso: ['ode45', 'ode15s'] },
   logspace: { summary: 'Logarithmically spaced vector', syntax: ['y = logspace(a,b)', 'y = logspace(a,b,n)'], seealso: ['linspace'] },
@@ -2668,7 +2694,7 @@ const BASE_REF = new Set<string>((
   'triangulation delaunayTriangulation polyshape alphaShape nsidedpoly freeBoundary edges incenter circumcenter faceNormal nearestNeighbor pointLocation ' +
   'convexHull voronoiDiagram barycentricToCartesian cartesianToBarycentric perimeter centroid isinterior numsides numboundaries translate scale rotate ' +
   'volume surfaceArea inShape boundaryFacets criticalAlpha alphaSpectrum numRegions isConnected triplot rgbplot ' +
-  'pdepe pdeval ' +
+  'pdepe pdeval symvar vectorize quadv ldexp scalbn cholupdate stream2 stream3 ' +
   'sphere cylinder ellipsoid fsurf fmesh fcontour quiver ' +
   'bar barh area stem stairs scatter scatter3 plot3 stem3 errorbar pie histogram loglog semilogx semilogy subtitle sgtitle zlim xticks yticks zticks text box ' +
   'jet parula turbo hot cool gray bone copper pink spring summer autumn winter hsv lines colorcube cellstr dsearchn brighten ' +
@@ -3670,6 +3696,14 @@ function streamlines2(X: Mat, Y: Mat, U: Mat, V: Mat, sx: number[], sy: number[]
     X2.push(NaN); Y2.push(NaN);
   }
   return { x: X2, y: Y2 };
+}
+/** Split NaN-separated streamline coordinates into a cell array of per-seed vertex matrices. */
+function splitStreamCell(xs: number[], ys: number[], zs?: number[]): Cell {
+  const items: Value[] = []; let run: number[][] = [];
+  const flush = () => { if (run.length) items.push(fromRows(run)); run = []; };
+  for (let i = 0; i < xs.length; i++) { if (Number.isNaN(xs[i])) { flush(); continue; } run.push(zs ? [xs[i], ys[i], zs[i]] : [xs[i], ys[i]]); }
+  flush();
+  return makeCell(1, items.length, items);
 }
 function streamlines3(X: Mat, Y: Mat, Z: Mat, U: Mat, V: Mat, W: Mat, sx: number[], sy: number[], sz: number[]): { x: number[]; y: number[]; z: number[] } {
   const d = ndSize(U); const xv = gridAxis(X, 2, d), yv = gridAxis(Y, 1, d), zv = gridAxis(Z, 3, d);
