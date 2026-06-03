@@ -55,6 +55,7 @@ function brief(v: Value): string {
   if (v.kind === 'cell') return `{${v.rows}×${v.cols} cell}`;
   if (v.kind === 'struct') return `[${v.rows}×${v.cols} struct]`;
   if (v.kind === 'sparse') return `[${v.rows}×${v.cols} sparse]`;
+  if (v.kind === 'str') return v.rows * v.cols === 1 ? `"${v.items[0]}"` : `[${v.rows}×${v.cols} string]`;
   if (v.isChar) return `'${asString(v)}'`;
   if (numel(v) === 0) return '[]';
   if (isScalar(v)) return `[${isComplex(v) ? fmtC(v.data[0], v.idata![0]) : formatScalar(v.data[0])}]`;
@@ -82,6 +83,7 @@ export function dispValue(v: Value): string {
   if (v.kind === 'cell') return cellLines(v).join('\n');
   if (v.kind === 'struct') return structLines(v).join('\n');
   if (v.kind === 'sparse') return sparseLines(v).join('\n');
+  if (v.kind === 'str') return strLines(v).join('\n');
   if (v.kind === 'gobj') return `<${v.gtype} handle>`;
   if (isHandle(v)) return `@${v.name ?? 'anonymous'}`;
   if (v.kind === 'num' && v.nd) return ndLines(v).join('\n');
@@ -97,6 +99,7 @@ export function displayValue(name: string, v: Value): string {
   if (v.kind === 'cell') return `${name} =\n\n  ${v.rows}×${v.cols} cell array\n${cellLines(v).join('\n')}\n`;
   if (v.kind === 'struct') return `${name} =\n\n  struct with fields:\n${structLines(v).join('\n')}\n`;
   if (v.kind === 'sparse') return `${name} =\n\n${sparseLines(v).join('\n')}\n`;
+  if (v.kind === 'str') return `${name} =\n\n${strLines(v).join('\n')}\n`;
   if (v.kind === 'num' && v.nd) return `${name} =\n\n${ndLines(v).join('\n')}\n`;
   if (v.kind === 'gobj') return `${name} =\n\n  <${v.gtype} handle>\n`;
   if (isHandle(v)) return `${name} =\n\n    @${v.name ?? 'anonymous function'}\n`;
@@ -105,6 +108,16 @@ export function displayValue(name: string, v: Value): string {
   if (isComplex(v)) return isScalar(v) ? `${name} =\n\n   ${fmtC(v.data[0], v.idata![0])}\n` : `${name} =\n\n${complexMatrixLines(v).join('\n')}\n`;
   if (isScalar(v)) return `${name} =\n\n   ${formatScalar(v.data[0])}\n`;
   return `${name} =\n\n${matrixLines(v).join('\n')}\n`;
+}
+
+/** Display of a string array: scalar as `"text"`, otherwise quoted entries in a grid. */
+function strLines(v: { rows: number; cols: number; items: string[] }): string[] {
+  if (v.rows * v.cols === 1) return [`    "${v.items[0]}"`];
+  if (v.rows * v.cols === 0) return ['    0×0 string array'];
+  const q = v.items.map((s) => `"${s}"`); let w = 0; for (const s of q) w = Math.max(w, s.length);
+  const lines: string[] = [];
+  for (let r = 0; r < v.rows; r++) { const row: string[] = []; for (let c = 0; c < v.cols; c++) row.push(q[r + c * v.rows].padEnd(w)); lines.push('    ' + row.join('    ')); }
+  return lines;
 }
 
 /** Slice-wise display of an N-D array: each page as `(:,:,k) = <2-D slice>`. */
@@ -130,6 +143,7 @@ function buildStream(args: Value[]): Array<{ s: string } | { n: number }> {
     if (isHandle(a)) { stream.push({ s: a.name ?? '@fn' }); continue; }
     if (a.kind === 'gobj') { stream.push({ s: `<${a.gtype}>` }); continue; }
     if (a.kind === 'cell' || a.kind === 'struct') { stream.push({ s: brief(a) }); continue; }
+    if (a.kind === 'str') { for (const s of a.items) stream.push({ s }); continue; }
     if (a.kind === 'sparse') { for (const v of a.values) stream.push({ n: v }); continue; }
     if (a.isChar) { stream.push({ s: asString(a) }); continue; }
     for (let i = 0; i < a.data.length; i++) stream.push({ n: a.data[i] });

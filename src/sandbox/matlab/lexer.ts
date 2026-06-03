@@ -18,6 +18,7 @@ export interface Token {
   value: string;
   num?: number;
   imag?: boolean;   // numeric literal with an `i`/`j` suffix (e.g. 2i)
+  dq?: boolean;     // string token came from double quotes ("…") ⇒ string class, not char
   spaceBefore: boolean;
   pos: number;
   line: number;
@@ -47,8 +48,8 @@ export function tokenize(src: string): Token[] {
   const isTranspose = (): boolean => {
     const p = prevSignificant();
     if (!p) return false;
+    if (p.kind === 'str') return !spaceBefore; // `'a' 'b'` (space) ⇒ second is a new string, not transpose
     if (p.kind === 'num' || p.kind === 'ident') return true;
-    if (p.kind === 'str') return true;
     if (p.kind === 'punct' && (p.value === ')' || p.value === ']' || p.value === '}')) return true;
     if (p.kind === 'op' && (p.value === "'" || p.value === ".'")) return true;
     return false;
@@ -135,7 +136,7 @@ export function tokenize(src: string): Token[] {
         if (src[j] === '\\' && src[j + 1] === '"') { out += '"'; j += 2; continue; }
         out += src[j]; j++;
       }
-      toks.push({ kind: 'str', value: out, spaceBefore, pos: i, line });
+      toks.push({ kind: 'str', value: out, dq: true, spaceBefore, pos: i, line });
       i = j + 1; spaceBefore = false; continue;
     }
 

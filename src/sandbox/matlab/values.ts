@@ -48,7 +48,14 @@ export interface Sparse {
   rowind: Int32Array;   // row index of each stored entry (sorted within a column)
   values: Float64Array; // the stored (structurally nonzero) values
 }
-export type Value = Mat | Handle | GObj | Cell | StructV | Sparse;
+/** String array (the `"…"` string class), column-major; scalar = 1×1. */
+export interface Str {
+  kind: 'str';
+  rows: number;
+  cols: number;
+  items: string[];   // column-major: element (r,c) at items[r + c*rows]
+}
+export type Value = Mat | Handle | GObj | Cell | StructV | Sparse | Str;
 
 export class MatError extends Error {}
 
@@ -93,10 +100,13 @@ export function isHandle(v: Value): v is Handle { return v.kind === 'handle'; }
 export function isCell(v: Value): v is Cell { return v.kind === 'cell'; }
 export function isStruct(v: Value): v is StructV { return v.kind === 'struct'; }
 export function isSparse(v: Value): v is Sparse { return v.kind === 'sparse'; }
+export function isStr(v: Value): v is Str { return v.kind === 'str'; }
+export function makeStrArr(rows: number, cols: number, items: string[]): Str { return { kind: 'str', rows, cols, items }; }
+export function makeStr(s: string): Str { return { kind: 'str', rows: 1, cols: 1, items: [s] }; }
 export function makeCell(rows: number, cols: number, items: Value[]): Cell { return { kind: 'cell', rows, cols, items }; }
 /** Dimensions of any value. */
 export function dimsOf(v: Value): [number, number] {
-  if (v.kind === 'num' || v.kind === 'cell' || v.kind === 'struct' || v.kind === 'sparse') return [v.rows, v.cols];
+  if (v.kind === 'num' || v.kind === 'cell' || v.kind === 'struct' || v.kind === 'sparse' || v.kind === 'str') return [v.rows, v.cols];
   return [1, 1];
 }
 
@@ -146,6 +156,7 @@ export function asScalar(v: Value, ctx = 'value'): number {
   return v.data[0];
 }
 export function asString(v: Value): string {
+  if (isStr(v)) return v.items.length ? v.items[0] : '';   // string scalar → its text
   if (!isMat(v) || !v.isChar) {
     if (isMat(v) && numel(v) === 0) return '';
     throw new MatError('expected a string');
@@ -156,6 +167,7 @@ export function asString(v: Value): string {
 }
 /** Truthiness: nonempty and all elements nonzero (MATLAB `if` semantics). */
 export function truthy(v: Value): boolean {
+  if (v.kind === 'str') return v.items.length === 1 ? v.items[0].length > 0 : v.items.length > 0;
   if (v.kind === 'cell' || v.kind === 'struct') return numelOf(v) > 0;
   if (v.kind === 'sparse') { for (const x of v.values) if (x === 0) return false; return v.values.length === v.rows * v.cols && v.rows > 0; }
   if (!isMat(v)) return true;

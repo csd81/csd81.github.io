@@ -3,6 +3,7 @@
 export type Expr =
   | { t: 'num'; v: number; imag?: boolean }
   | { t: 'str'; v: string }
+  | { t: 'string'; v: string }                    // double-quoted "…" → string scalar
   | { t: 'ident'; name: string }
   | { t: 'end' }                                  // `end` used as an index bound
   | { t: 'colon' }                                // bare `:` as an index (whole dim)

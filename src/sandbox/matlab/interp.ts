@@ -8,6 +8,7 @@ import {
   horzcat, vertcat, range as makeRange, indexGet, indexSet, indexDelete, isEmpty, toArray, type Sub,
   isComplex, cmap, ewAdd, ewSub, ewMul, ewRDiv, ewLDiv, ewPow, ewEq, cmatmul,
   type Cell, type StructV, isCell, isStruct, makeCell, sparseToDense,
+  type Str, isStr, makeStr, makeStrArr,
 } from './values';
 import { det, inv, mldivide } from './linalg';
 import { BUILTINS, CONSTANTS, builtinHelp, docUrl, type Env } from './builtins';
@@ -149,6 +150,7 @@ export class Interpreter implements Env {
       if (v.kind === 'cell') { out.push({ name, size: `${v.rows}x${v.cols}`, klass: 'cell', preview: dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) }); continue; }
       if (v.kind === 'struct') { out.push({ name, size: `${v.rows}x${v.cols}`, klass: 'struct', preview: dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) }); continue; }
       if (v.kind === 'sparse') { out.push({ name, size: `${v.rows}x${v.cols}`, klass: 'sparse double', preview: `${v.values.length} nonzeros` }); continue; }
+      if (v.kind === 'str') { out.push({ name, size: `${v.rows}x${v.cols}`, klass: 'string', preview: dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) }); continue; }
       const klass = v.isChar ? 'char' : 'double';
       const preview = numel(v) <= 12 ? dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) : '…';
       out.push({ name, size: `${v.rows}x${v.cols}`, klass, preview });
@@ -389,6 +391,7 @@ export class Interpreter implements Env {
     switch (e.t) {
       case 'num': return [e.imag ? cscalar(0, e.v) : scalar(e.v)];
       case 'str': return [str(e.v)];
+      case 'string': return [makeStr(e.v)];
       case 'end': {
         if (!this.endStack.length) throw new MatError("'end' used outside an index");
         return [scalar(this.endStack[this.endStack.length - 1])];
@@ -451,6 +454,14 @@ export class Interpreter implements Env {
       const r = subs.length === 2 && subs[0] !== 'colon' ? (subs[0] as number[]).length : (base.cols === 1 ? items.length : 1);
       const c = items.length / (r || 1);
       return [makeCell(r, c, items)];
+    }
+    if (isStr(base)) {
+      // s(...) → a sub-string-array (same column-major linear-index logic as cells)
+      const subs = await this.evalSubsN(e.args, base.rows, base.cols, base.items.length, scope);
+      const lin = this.cellLinear(subs, base.rows, base.cols, base.items.length);
+      const items = lin.map((i) => base.items[i - 1]);
+      const r = subs.length === 2 && subs[0] !== 'colon' ? (subs[0] as number[]).length : (base.cols === 1 ? items.length : 1);
+      return [makeStrArr(r, items.length / (r || 1), items)];
     }
     const mbase = asMat(base);
     const subs = await this.evalSubs(e.args, mbase, scope);
@@ -522,26 +533,32 @@ export class Interpreter implements Env {
     };
   }
 
-  private async evalMatrix(rows: Expr[][], scope: Scope): Promise<Mat> {
+  private async evalMatrix(rows: Expr[][], scope: Scope): Promise<Value> {
     if (rows.length === 0) return empty();
-    const rowMats: Mat[] = [];
+    const grid: Value[][] = []; let anyStr = false;
     for (const row of rows) {
-      const parts: Mat[] = [];
+      const vals: Value[] = [];
       for (const el of row) {
-        if (el.t === 'cell') {
-          for (const v of await this.evalCellContent(el.target, el.args, scope)) parts.push(asMat(v));
-          continue;
-        }
-        parts.push(asMat(await this.evalExpr(el, scope)));
+        if (el.t === 'cell') { for (const v of await this.evalCellContent(el.target, el.args, scope)) vals.push(v); continue; }
+        vals.push(await this.evalExpr(el, scope));
       }
-      rowMats.push(parts.length === 0 ? empty() : parts.length === 1 ? parts[0] : horzcat(parts));
+      for (const v of vals) if (isStr(v)) anyStr = true;
+      grid.push(vals);
     }
+    if (anyStr) return buildStrMatrix(grid);
+    const rowMats: Mat[] = [];
+    for (const vals of grid) { const parts = vals.map(asMat); rowMats.push(parts.length === 0 ? empty() : parts.length === 1 ? parts[0] : horzcat(parts)); }
     return rowMats.length === 1 ? rowMats[0] : vertcat(rowMats);
   }
 
   private async evalBinary(op: string, ae: Expr, be: Expr, scope: Scope): Promise<Value> {
     if (op === '&&') return bool(truthy(await this.evalExpr(ae, scope)) && truthy(await this.evalExpr(be, scope)));
     if (op === '||') return bool(truthy(await this.evalExpr(ae, scope)) || truthy(await this.evalExpr(be, scope)));
+    // String-class operators: `+` concatenates, `==`/`~=` compare element-wise.
+    if (op === '+' || op === '==' || op === '~=') {
+      const av = await this.evalExpr(ae, scope), bv = await this.evalExpr(be, scope);
+      if (isStr(av) || isStr(bv)) return strBinary(op, av, bv);
+    }
     const a = asMat(await this.evalExpr(ae, scope));
     const b = asMat(await this.evalExpr(be, scope));
     switch (op) {
@@ -592,6 +609,41 @@ function mpower(a: Mat, b: Mat): Mat {
 function identity(n: number): Mat {
   const o = zeros(n, n); for (let i = 0; i < n; i++) o.data[i + i * n] = 1; return o;
 }
+/** Build a string array from a literal `["a","b"; ...]` (horzcat rows, then vertcat). */
+function buildStrMatrix(grid: Value[][]): Str {
+  const blocks = grid.map((vals) => {
+    const parts = vals.map(toStrArr);
+    if (parts.length === 0) return makeStrArr(0, 0, []);
+    let items: string[] = [], cols = 0; const r = parts[0].rows;
+    for (const p of parts) { items = items.concat(p.items); cols += p.cols; }
+    return makeStrArr(r, cols, items);
+  });
+  if (blocks.length === 1) return blocks[0];
+  const cols = blocks[0].cols; let R = 0; for (const b of blocks) R += b.rows;
+  const out = new Array<string>(R * cols); let off = 0;
+  for (const b of blocks) { for (let c = 0; c < cols; c++) for (let r = 0; r < b.rows; r++) out[(off + r) + c * R] = b.items[r + c * b.rows]; off += b.rows; }
+  return makeStrArr(R, cols, out);
+}
+/** Coerce a value to a string array (char→1×1 text, numeric→element-wise num2str). */
+function toStrArr(v: Value): Str {
+  if (isStr(v)) return v;
+  if (isMat(v) && v.isChar) return makeStr(asString(v));
+  if (isMat(v)) { const fmt = (x: number) => (Number.isInteger(x) ? String(x) : String(+x.toPrecision(5))); return makeStrArr(v.rows, v.cols, Array.from(v.data, fmt)); }
+  return makeStr(String(v));
+}
+/** `+` (concat), `==`/`~=` (element-wise compare) for the string class. */
+function strBinary(op: string, av: Value, bv: Value): Value {
+  const a = toStrArr(av), b = toStrArr(bv);
+  const scalarA = a.rows * a.cols === 1, scalarB = b.rows * b.cols === 1;
+  const rows = scalarA ? b.rows : a.rows, cols = scalarA ? b.cols : a.cols;
+  if (!scalarA && !scalarB && (a.rows !== b.rows || a.cols !== b.cols)) throw new MatError('string operands must match in size');
+  const n = rows * cols; const get = (s: Str, i: number) => (s.rows * s.cols === 1 ? s.items[0] : s.items[i]);
+  if (op === '+') { const items = new Array<string>(n); for (let i = 0; i < n; i++) items[i] = get(a, i) + get(b, i); return makeStrArr(rows, cols, items); }
+  const out: Mat = { kind: 'num', rows, cols, data: new Float64Array(n), isBool: true };
+  for (let i = 0; i < n; i++) out.data[i] = (get(a, i) === get(b, i)) === (op === '==') ? 1 : 0;
+  return out;
+}
+
 function asMat(v: Value): Mat {
   if (isMat(v)) return v;
   if (v.kind === 'sparse') return sparseToDense(v);   // sparse densifies on arithmetic/indexing

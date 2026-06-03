@@ -8,6 +8,7 @@ import {
   type Cell, type StructV, isCell, isStruct, makeCell, dimsOf, numelOf,
   type Sparse, isSparse, sparseToDense, denseToSparse, sparseFromTriplets, sparseFromMap,
   makeND, ndSize, ndimsOf,
+  type Str, isStr, makeStr, makeStrArr,
 } from './values';
 import {
   det, inv, mldivide, diag, norm, eye,
@@ -105,6 +106,15 @@ function dimsN(args: Value[]): number[] {
   if (args.length === 1) { const a = m(args[0]); if (numel(a) >= 2) return toArray(a).map((x) => Math.round(x)); const n = Math.round(asScalar(a)); return [n, n]; }
   return args.map((x) => Math.round(asScalar(x)));
 }
+/** Coerce char/string/cellstr/numeric to a string-array view (dims + items). */
+function asStrArr(v: Value): { rows: number; cols: number; items: string[] } {
+  if (isStr(v)) return { rows: v.rows, cols: v.cols, items: v.items };
+  if (isCell(v)) return { rows: v.rows, cols: v.cols, items: v.items.map((x) => asString(x)) };
+  if (isMat(v) && v.isChar) return { rows: 1, cols: 1, items: [asString(v)] };
+  if (isMat(v)) return { rows: v.rows, cols: v.cols, items: Array.from(v.data, (x) => String(x)) };
+  return { rows: 1, cols: 1, items: [asString(v)] };
+}
+const mapStrArr = (v: Value, f: (s: string) => string): Str => { const s = asStrArr(v); return makeStrArr(s.rows, s.cols, s.items.map(f)); };
 const prodA = (a: number[]): number => a.reduce((p, x) => p * x, 1);
 /** Concatenate N-D arrays along `dim` (1-based). */
 function catND(dim: number, parts: Mat[]): Mat {
@@ -764,7 +774,7 @@ export const BUILTINS: Record<string, Builtin> = {
   dec2base: async (a) => { const d = Math.round(asScalar(a[0])); const b = Math.round(asScalar(a[1])); let s2 = d.toString(b).toUpperCase(); if (a.length >= 3) s2 = s2.padStart(Math.round(asScalar(a[2])), '0'); return ret(str(s2)); },
   base2dec: async (a) => ret(scalar(parseInt(asString(a[0]).replace(/\s/g, ''), Math.round(asScalar(a[1]))))),
   // ── class / regexp / sscanf ──
-  class: async (a) => { const v = a[0]; if (isHandle(v)) return ret(str('function_handle')); if (v.kind === 'gobj') return ret(str(v.gtype)); if ((v as Mat).isChar) return ret(str('char')); if ((v as Mat).isBool) return ret(str('logical')); return ret(str('double')); },
+  class: async (a) => { const v = a[0]; if (isHandle(v)) return ret(str('function_handle')); if (v.kind === 'gobj') return ret(str(v.gtype)); if (isStr(v)) return ret(str('string')); if (isCell(v)) return ret(str('cell')); if (isStruct(v)) return ret(str('struct')); if ((v as Mat).isChar) return ret(str('char')); if ((v as Mat).isBool) return ret(str('logical')); return ret(str('double')); },
   isa: async (a) => { const v = a[0]; const ty = asString(a[1]); const cls = isHandle(v) ? 'function_handle' : (v as Mat).isChar ? 'char' : (v as Mat).isBool ? 'logical' : 'double'; if (ty === cls) return ret(bool(true)); if ((ty === 'numeric' || ty === 'float') && cls === 'double') return ret(bool(true)); return ret(bool(false)); },
   regexp: async (a, n) => { const s = asString(a[0]); const opt = a.length >= 3 ? asString(a[2]) : ''; const re = new RegExp(asString(a[1]), opt === 'once' ? '' : 'g'); const idx: number[] = []; let mt: RegExpExecArray | null; if (opt === 'once') { const mm = re.exec(s); return ret(mm ? scalar(mm.index + 1) : zeros(1, 0)); } while ((mt = re.exec(s)) !== null) { idx.push(mt.index + 1); if (mt.index === re.lastIndex) re.lastIndex++; } void n; return ret(rowVec(idx)); },
   regexpi: async (a) => { const s = asString(a[0]); const re = new RegExp(asString(a[1]), 'gi'); const idx: number[] = []; let mt: RegExpExecArray | null; while ((mt = re.exec(s)) !== null) { idx.push(mt.index + 1); if (mt.index === re.lastIndex) re.lastIndex++; } return ret(rowVec(idx)); },
@@ -890,6 +900,30 @@ export const BUILTINS: Record<string, Builtin> = {
   // Bit-reinterpretation: source storage is IEEE double (the only class this engine tracks).
   typecast: async (a) => { const A = m(a[0]); const buf = new Float64Array(A.data).buffer; return ret(rowVec(readAs(buf, asString(a[1])))); },
   swapbytes: async (a) => { const A = m(a[0]); const u = new Uint8Array(new Float64Array(A.data).buffer); for (let i = 0; i < u.length; i += 8) u.subarray(i, i + 8).reverse(); return ret(mat(A.rows, A.cols, new Float64Array(u.buffer))); },
+
+  // ── String class ("…") ──
+  string: async (a) => { const v = a[0]; if (isStr(v)) return ret(v); if (isCell(v)) return ret(makeStrArr(v.rows, v.cols, v.items.map((x) => asString(x)))); if (isMat(v) && v.isChar) return ret(makeStr(asString(v))); if (isMat(v)) { const f = (x: number) => (Number.isInteger(x) ? String(x) : String(+x.toPrecision(5))); return ret(makeStrArr(v.rows, v.cols, Array.from(v.data, f))); } return ret(makeStr(String(v))); },
+  strings: async (a) => { const [r, c] = dims2(a); return ret(makeStrArr(r, c, new Array(r * c).fill(''))); },
+  isstring: async (a) => ret(bool(isStr(a[0]))),
+  isStringScalar: async (a) => ret(bool(isStr(a[0]) && a[0].rows * a[0].cols === 1)),
+  strlength: async (a) => { const s = asStrArr(a[0]); const o = zeros(s.rows, s.cols); s.items.forEach((x, i) => { o.data[i] = x.length; }); return ret(o); },
+  contains: async (a) => { const s = asStrArr(a[0]); const p = asString(a[1]); const o = zeros(s.rows, s.cols); o.isBool = true; s.items.forEach((x, i) => { o.data[i] = x.includes(p) ? 1 : 0; }); return [o]; },
+  startsWith: async (a) => { const s = asStrArr(a[0]); const p = asString(a[1]); const o = zeros(s.rows, s.cols); o.isBool = true; s.items.forEach((x, i) => { o.data[i] = x.startsWith(p) ? 1 : 0; }); return [o]; },
+  endsWith: async (a) => { const s = asStrArr(a[0]); const p = asString(a[1]); const o = zeros(s.rows, s.cols); o.isBool = true; s.items.forEach((x, i) => { o.data[i] = x.endsWith(p) ? 1 : 0; }); return [o]; },
+  count: async (a) => { const s = asStrArr(a[0]); const p = asString(a[1]); const o = zeros(s.rows, s.cols); s.items.forEach((x, i) => { o.data[i] = p ? x.split(p).length - 1 : 0; }); return ret(o); },
+  erase: async (a) => ret(mapStrArr(a[0], (x) => x.split(asString(a[1])).join(''))),
+  replace: async (a) => ret(mapStrArr(a[0], (x) => x.split(asString(a[1])).join(asString(a[2])))),
+  strip: async (a) => { const side = a.length >= 2 ? asString(a[1]).toLowerCase() : 'both'; return ret(mapStrArr(a[0], (x) => (side === 'left' ? x.replace(/^\s+/, '') : side === 'right' ? x.replace(/\s+$/, '') : x.trim()))); },
+  reverse: async (a) => ret(mapStrArr(a[0], (x) => [...x].reverse().join(''))),
+  pad: async (a) => { const n = Math.round(asScalar(a[1])); const side = a.length >= 3 ? asString(a[2]).toLowerCase() : 'right'; return ret(mapStrArr(a[0], (x) => (side === 'left' ? x.padStart(n) : side === 'both' ? x.padStart(Math.floor((n + x.length) / 2)).padEnd(n) : x.padEnd(n)))); },
+  split: async (a) => { const str = asString(a[0]); const delim = a.length >= 2 ? asString(a[1]) : ' '; const parts = a.length >= 2 ? str.split(delim) : str.split(/\s+/).filter((x) => x.length); return ret(makeStrArr(parts.length, 1, parts)); },
+  splitlines: async (a) => { const parts = asString(a[0]).split(/\r\n|\r|\n/); return ret(makeStrArr(parts.length, 1, parts)); },
+  join: async (a) => { const s = asStrArr(a[0]); const delim = a.length >= 2 ? asString(a[1]) : ' '; return ret(makeStr(s.items.join(delim))); },
+  append: async (a) => ret(makeStr(a.map((v) => asString(v)).join(''))),
+  extractBefore: async (a) => ret(mapStrArr(a[0], (x) => { const i = x.indexOf(asString(a[1])); return i < 0 ? '' : x.slice(0, i); })),
+  extractAfter: async (a) => ret(mapStrArr(a[0], (x) => { const p = asString(a[1]); const i = x.indexOf(p); return i < 0 ? '' : x.slice(i + p.length); })),
+  extractBetween: async (a) => { const str = asString(a[0]); const l = asString(a[1]), r = asString(a[2]); const i = str.indexOf(l); if (i < 0) return ret(makeStr('')); const j = str.indexOf(r, i + l.length); return ret(makeStr(j < 0 ? '' : str.slice(i + l.length, j))); },
+  matches: async (a) => { const s = asStrArr(a[0]); const p = asString(a[1]); const o = zeros(s.rows, s.cols); o.isBool = true; s.items.forEach((x, i) => { o.data[i] = x === p ? 1 : 0; }); return [o]; },
 
   // ── Batch H: bitwise + legacy string/data (MATLAB v6 reference) ──
   bitand: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, y) => Number(BigInt(Math.round(x)) & BigInt(Math.round(y))))),
@@ -1715,6 +1749,27 @@ const HELP: Record<string, HelpEntry> = {
   semilogx: { summary: 'Semilog plot (log x-axis)', syntax: ['semilogx(x,y)'], seealso: ['loglog', 'semilogy'] },
   semilogy: { summary: 'Semilog plot (log y-axis)', syntax: ['semilogy(x,y)'], seealso: ['loglog', 'semilogx'] },
   subtitle: { summary: 'Add a subtitle below the title', syntax: ["subtitle('text')"], seealso: ['title', 'sgtitle'] },
+  string: { summary: 'Create a string array (the "…" string class)', syntax: ['s = string(x)'], seealso: ['char', 'isstring', 'strings'] },
+  strings: { summary: 'Create an array of empty strings', syntax: ['s = strings(n)', 's = strings(r,c)'], seealso: ['string', 'blanks'] },
+  isstring: { summary: 'Determine whether input is a string array', syntax: ['tf = isstring(s)'], seealso: ['ischar', 'iscellstr', 'isStringScalar'] },
+  isStringScalar: { summary: 'Determine whether input is a 1×1 string', syntax: ['tf = isStringScalar(s)'], seealso: ['isstring'] },
+  strlength: { summary: 'Length of each string', syntax: ['n = strlength(s)'], seealso: ['length', 'numel'] },
+  contains: { summary: 'Determine if a pattern occurs in strings', syntax: ['tf = contains(s,pat)'], seealso: ['startsWith', 'endsWith', 'strfind'] },
+  startsWith: { summary: 'Determine if strings start with a pattern', syntax: ['tf = startsWith(s,pat)'], seealso: ['endsWith', 'contains'] },
+  endsWith: { summary: 'Determine if strings end with a pattern', syntax: ['tf = endsWith(s,pat)'], seealso: ['startsWith', 'contains'] },
+  count: { summary: 'Count occurrences of a pattern', syntax: ['n = count(s,pat)'], seealso: ['contains', 'strfind'] },
+  erase: { summary: 'Delete a substring from strings', syntax: ['s = erase(s,pat)'], seealso: ['replace', 'strrep'] },
+  replace: { summary: 'Find and replace substrings', syntax: ['s = replace(s,old,new)'], seealso: ['strrep', 'erase'] },
+  split: { summary: 'Split strings at a delimiter into a string array', syntax: ['c = split(s,delim)'], seealso: ['join', 'strsplit', 'splitlines'] },
+  splitlines: { summary: 'Split a string at newline characters', syntax: ['c = splitlines(s)'], seealso: ['split'] },
+  join: { summary: 'Join a string array into one string', syntax: ['s = join(c,delim)'], seealso: ['split', 'strjoin'] },
+  strip: { summary: 'Remove leading/trailing whitespace', syntax: ["s = strip(s)", "s = strip(s,'left')"], seealso: ['strtrim', 'pad'] },
+  pad: { summary: 'Pad strings to a length', syntax: ['s = pad(s,n)', "s = pad(s,n,'left')"], seealso: ['blanks', 'strip'] },
+  reverse: { summary: 'Reverse the characters of strings', syntax: ['s = reverse(s)'], seealso: ['fliplr'] },
+  append: { summary: 'Concatenate strings', syntax: ['s = append(s1,s2,...)'], seealso: ['strcat', 'join'] },
+  extractBefore: { summary: 'Substring before a position/pattern', syntax: ['s = extractBefore(str,pat)'], seealso: ['extractAfter', 'extractBetween'] },
+  extractAfter: { summary: 'Substring after a position/pattern', syntax: ['s = extractAfter(str,pat)'], seealso: ['extractBefore'] },
+  extractBetween: { summary: 'Substring between two delimiters', syntax: ['s = extractBetween(str,a,b)'], seealso: ['extractBefore', 'extractAfter'] },
   bitand: { summary: 'Bit-wise AND', syntax: ['c = bitand(a,b)'], seealso: ['bitor', 'bitxor', 'bitshift'] },
   bitor: { summary: 'Bit-wise OR', syntax: ['c = bitor(a,b)'], seealso: ['bitand', 'bitxor'] },
   bitxor: { summary: 'Bit-wise XOR', syntax: ['c = bitxor(a,b)'], seealso: ['bitand', 'bitor'] },
@@ -1943,6 +1998,7 @@ const BASE_REF = new Set<string>((
   'ismissing anymissing standardizeMissing rmmissing fillmissing isbetween isuniform allunique numunique uniquetol ismembertol issortedrows paddata trimdata resize discretize ' +
   'lsqr minres tfqmr bicgstabl symmlq spfun sprank colperm ' +
   'bitand bitor bitxor bitshift bitget bitset bitcmp blanks findstr strjust strvcat hist histc exist ' +
+  'string strings isstring isStringScalar strlength contains startsWith endsWith count erase replace split splitlines join strip pad reverse append extractBefore extractAfter extractBetween matches ' +
   'deal func2str str2func assert narginchk nargoutchk nargchk validateattributes inputname isvarname genvarname colon flipdim condeig polyeig ' +
   'MException rethrow throw lasterr lasterror ' +
   'sparse full issparse spones nonzeros nzmax spdiags speye spalloc sprand sprandn sprandsym spy etree symrcm amd symamd colamd ichol ilu ' +
