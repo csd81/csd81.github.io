@@ -17,6 +17,8 @@ export default function Sandbox() {
   const folderId = open?.folderId ?? FOLDERS[0]?.id ?? '';
 
   const [editor, setEditor] = useState<string>(open?.source ?? '');
+  const [leftOpen, setLeftOpen] = useState(true);
+  const [rightOpen, setRightOpen] = useState(true);
   const { lines, workspace, fig, busy, prompt, runSource, submit, clearConsole, resetSession } = useSandbox(folderId);
 
   // Load file contents into the editor when the open file changes.
@@ -42,10 +44,14 @@ export default function Sandbox() {
         </p>
       </header>
 
-      <div className="mlab__grid">
+      <div className={'mlab__grid' + (leftOpen ? '' : ' mlab__grid--no-left') + (rightOpen ? '' : ' mlab__grid--no-right')}>
         {/* File tree */}
-        <aside className="mlab__files">
-          <div className="mlab__pane-head"><span>{t('Files', 'Fájlok')}</span></div>
+        <aside className={'mlab__files' + (leftOpen ? '' : ' mlab__pane--hidden')}>
+          <div className="mlab__pane-head">
+            <span>{t('Files', 'Fájlok')}</span>
+            <span className="mlab__spacer" />
+            <button className="mlab__mini" onClick={() => setLeftOpen(false)} title={t('Collapse', 'Összecsukás')} aria-label={t('Collapse file tree', 'Fájlfa összecsukása')}>⟨</button>
+          </div>
           <div className="mlab__tree">
             <FileGroup title={t('Course examples', 'Kurzus példák')} folders={courseFolders} openId={openId} setOpenId={setOpenId} collapsed={collapsed} toggle={toggleFolder} />
             <FileGroup title={t('Chapter algorithms', 'Fejezet-algoritmusok')} folders={chapterFolders} openId={openId} setOpenId={setOpenId} collapsed={collapsed} toggle={toggleFolder} />
@@ -55,9 +61,15 @@ export default function Sandbox() {
         {/* Editor */}
         <section className="mlab__editor">
           <div className="mlab__pane-head">
+            {!leftOpen && (
+              <button className="mlab__mini" onClick={() => setLeftOpen(true)} title={t('Show files', 'Fájlok megjelenítése')}>⟨ {t('Files', 'Fájlok')}</button>
+            )}
             <span className="mlab__filename">{open?.file ?? t('Editor', 'Szerkesztő')}</span>
             <span className="mlab__wd" title={t('Working directory', 'Munkakönyvtár')}>📁 {wdLabel}</span>
             <span className="mlab__spacer" />
+            {!rightOpen && (
+              <button className="mlab__mini" onClick={() => setRightOpen(true)} title={t('Show figure & workspace', 'Ábra és munkaterület')}>{t('Figure', 'Ábra')} ⟩</button>
+            )}
             <button className="mlab__run" disabled={busy} onClick={() => runSource(editor)}>▶ {t('Run', 'Futtatás')}</button>
             <button className="mlab__mini" onClick={resetSession} title={t('Clear workspace & restart', 'Munkaterület törlése')}>{t('Reset', 'Újra')}</button>
           </div>
@@ -80,8 +92,12 @@ export default function Sandbox() {
         </section>
 
         {/* Figure */}
-        <section className="mlab__figure">
-          <div className="mlab__pane-head"><span>{t('Figure', 'Ábra')}</span></div>
+        <section className={'mlab__figure' + (rightOpen ? '' : ' mlab__pane--hidden')}>
+          <div className="mlab__pane-head">
+            <span>{t('Figure', 'Ábra')}</span>
+            <span className="mlab__spacer" />
+            <button className="mlab__mini" onClick={() => setRightOpen(false)} title={t('Collapse', 'Összecsukás')} aria-label={t('Collapse figure & workspace', 'Ábra és munkaterület összecsukása')}>⟩</button>
+          </div>
           <div className="mlab__fig-body"><FigurePane fig={fig} /></div>
         </section>
 
@@ -89,7 +105,7 @@ export default function Sandbox() {
         <CommandWindow lines={lines} busy={busy} prompt={prompt} onSubmit={submit} onClear={clearConsole} />
 
         {/* Workspace */}
-        <section className="mlab__workspace">
+        <section className={'mlab__workspace' + (rightOpen ? '' : ' mlab__pane--hidden')}>
           <div className="mlab__pane-head"><span>{t('Workspace', 'Munkaterület')}</span></div>
           <div className="mlab__ws-body">
             {workspace.length === 0 ? (

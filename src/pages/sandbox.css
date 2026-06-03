@@ -18,6 +18,12 @@
   gap: 10px;
   min-height: 540px;
 }
+/* Collapse the side panels to give the editor + command window more room. */
+.mlab__grid--no-left { grid-template-columns: 0 minmax(0, 1.1fr) minmax(0, 1fr); }
+.mlab__grid--no-right { grid-template-columns: 220px minmax(0, 1.1fr) 0; }
+.mlab__grid--no-left.mlab__grid--no-right { grid-template-columns: 0 1fr 0; }
+.mlab__pane--hidden { display: none !important; }
+
 .mlab__files { grid-area: files; }
 .mlab__editor { grid-area: editor; }
 .mlab__figure { grid-area: figure; }
