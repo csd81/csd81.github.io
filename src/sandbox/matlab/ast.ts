@@ -11,6 +11,7 @@ export type Expr =
   | { t: 'postfix'; op: "'" | ".'"; e: Expr }     // transpose
   | { t: 'binary'; op: string; a: Expr; b: Expr }
   | { t: 'matrix'; rows: Expr[][] }               // [a b; c d]
+  | { t: 'celllit'; rows: Expr[][] }              // {a b; c d}
   | { t: 'index'; target: Expr; args: Expr[] }    // f(...) — call OR subscript
   | { t: 'cell'; target: Expr; args: Expr[] }     // c{...}
   | { t: 'field'; target: Expr; name: string }    // s.name

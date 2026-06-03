@@ -24,7 +24,21 @@ export interface GObj {
   kind: 'gobj';
   gtype: 'axes' | 'figure';
 }
-export type Value = Mat | Handle | GObj;
+/** Cell array — a rectangular container of arbitrary values (column-major). */
+export interface Cell {
+  kind: 'cell';
+  rows: number;
+  cols: number;
+  items: Value[];   // column-major: element (r,c) at items[r + c*rows]
+}
+/** Struct (scalar or array) — named fields, each a per-element value list (column-major). */
+export interface StructV {
+  kind: 'struct';
+  rows: number;
+  cols: number;
+  fields: Map<string, Value[]>;  // field name → value per element (length rows*cols)
+}
+export type Value = Mat | Handle | GObj | Cell | StructV;
 
 export class MatError extends Error {}
 
@@ -66,6 +80,15 @@ export function str(s: string): Mat {
 // ── Inspectors ─────────────────────────────────────────────────────────
 export function isMat(v: Value): v is Mat { return v.kind === 'num'; }
 export function isHandle(v: Value): v is Handle { return v.kind === 'handle'; }
+export function isCell(v: Value): v is Cell { return v.kind === 'cell'; }
+export function isStruct(v: Value): v is StructV { return v.kind === 'struct'; }
+export function makeCell(rows: number, cols: number, items: Value[]): Cell { return { kind: 'cell', rows, cols, items }; }
+/** Dimensions of any value. */
+export function dimsOf(v: Value): [number, number] {
+  if (v.kind === 'num' || v.kind === 'cell' || v.kind === 'struct') return [v.rows, v.cols];
+  return [1, 1];
+}
+export function numelOf(v: Value): number { const [r, c] = dimsOf(v); return r * c; }
 export function numel(m: Mat): number { return m.rows * m.cols; }
 export function isScalar(m: Mat): boolean { return m.rows === 1 && m.cols === 1; }
 export function isEmpty(m: Mat): boolean { return m.rows === 0 || m.cols === 0; }
@@ -86,6 +109,7 @@ export function asString(v: Value): string {
 }
 /** Truthiness: nonempty and all elements nonzero (MATLAB `if` semantics). */
 export function truthy(v: Value): boolean {
+  if (v.kind === 'cell' || v.kind === 'struct') return numelOf(v) > 0;
   if (!isMat(v)) return true;
   if (numel(v) === 0) return false;
   for (let i = 0; i < v.data.length; i++) if (v.data[i] === 0 && (!v.idata || v.idata[i] === 0)) return false;

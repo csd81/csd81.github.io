@@ -5,6 +5,7 @@ import {
   asScalar, asString, map, elementwise, matmul, transpose, horzcat, vertcat, toArray,
   isComplex, cmap, cmapReal, conj as conjFn, realPart, imagPart, csqrt, cexp, clog, ewPow, finishComplex,
   ewAdd, ewSub, ewMul, ewRDiv, ewLDiv, ewEq, cmatmul, ctranspose as ctransposeFn, cmul, cdiv,
+  type Cell, type StructV, isCell, isStruct, makeCell, dimsOf, numelOf,
 } from './values';
 import {
   det, inv, mldivide, diag, norm, eye,
@@ -82,10 +83,10 @@ function dimArg(args: Value[], i: number): number | undefined {
 }
 
 function sizeOf(args: Value[], nargout: number): Value[] {
-  const A = m(args[0]);
-  if (args.length >= 2) { const d = asScalar(args[1]); return [scalar(d === 1 ? A.rows : d === 2 ? A.cols : 1)]; }
-  if (nargout >= 2) return [scalar(A.rows), scalar(A.cols)];
-  return [rowVec([A.rows, A.cols])];
+  const [rows, cols] = dimsOf(args[0]);
+  if (args.length >= 2) { const d = asScalar(args[1]); return [scalar(d === 1 ? rows : d === 2 ? cols : 1)]; }
+  if (nargout >= 2) return [scalar(rows), scalar(cols)];
+  return [rowVec([rows, cols])];
 }
 
 function dims2(args: Value[], def = 0): [number, number] {
@@ -251,11 +252,11 @@ export const BUILTINS: Record<string, Builtin> = {
 
   // shape / construction
   size: async (a, n) => sizeOf(a, n),
-  numel: async (a) => ret(scalar(numel(m(a[0])))),
-  length: async (a) => { const A = m(a[0]); return ret(scalar(isEmpty(A) ? 0 : Math.max(A.rows, A.cols))); },
+  numel: async (a) => ret(scalar(numelOf(a[0]))),
+  length: async (a) => { const [r, c] = dimsOf(a[0]); return ret(scalar(r === 0 || c === 0 ? 0 : Math.max(r, c))); },
   ndims: async () => ret(scalar(2)),
-  isempty: async (a) => ret(scalar(isEmpty(m(a[0])) ? 1 : 0)),
-  isscalar: async (a) => ret(scalar(isScalar(m(a[0])) ? 1 : 0)),
+  isempty: async (a) => ret(bool(numelOf(a[0]) === 0)),
+  isscalar: async (a) => ret(bool(numelOf(a[0]) === 1)),
   zeros: async (a) => { const [r, c] = dims2(a); return ret(zeros(r, c)); },
   ones: async (a) => { const [r, c] = dims2(a); const o = zeros(r, c); o.data.fill(1); return ret(o); },
   eye: async (a) => { const [r, c] = dims2(a); return ret(eye(r, c)); },
@@ -352,9 +353,9 @@ export const BUILTINS: Record<string, Builtin> = {
     o.isChar = A.isChar; return ret(o);
   },
   cat: async (a) => { const dim = Math.round(asScalar(a[0])); const parts = a.slice(1).map((v) => m(v)); return ret(dim === 1 ? vertcat(parts) : horzcat(parts)); },
-  isvector: async (a) => { const A = m(a[0]); return ret(bool(A.rows === 1 || A.cols === 1)); },
-  isrow: async (a) => ret(bool(m(a[0]).rows === 1)),
-  iscolumn: async (a) => ret(bool(m(a[0]).cols === 1)),
+  isvector: async (a) => { const [r, c] = dimsOf(a[0]); return ret(bool(r === 1 || c === 1)); },
+  isrow: async (a) => ret(bool(dimsOf(a[0])[0] === 1)),
+  iscolumn: async (a) => ret(bool(dimsOf(a[0])[1] === 1)),
   ismatrix: async () => ret(bool(true)),
 
   // linear algebra
@@ -650,6 +651,32 @@ export const BUILTINS: Record<string, Builtin> = {
   regexp: async (a, n) => { const s = asString(a[0]); const opt = a.length >= 3 ? asString(a[2]) : ''; const re = new RegExp(asString(a[1]), opt === 'once' ? '' : 'g'); const idx: number[] = []; let mt: RegExpExecArray | null; if (opt === 'once') { const mm = re.exec(s); return ret(mm ? scalar(mm.index + 1) : zeros(1, 0)); } while ((mt = re.exec(s)) !== null) { idx.push(mt.index + 1); if (mt.index === re.lastIndex) re.lastIndex++; } void n; return ret(rowVec(idx)); },
   regexpi: async (a) => { const s = asString(a[0]); const re = new RegExp(asString(a[1]), 'gi'); const idx: number[] = []; let mt: RegExpExecArray | null; while ((mt = re.exec(s)) !== null) { idx.push(mt.index + 1); if (mt.index === re.lastIndex) re.lastIndex++; } return ret(rowVec(idx)); },
   sscanf: async (a) => { const s = asString(a[0]); const nums = (s.match(/-?\d+\.?\d*(e[+-]?\d+)?/gi) ?? []).map(Number); return ret(colVec(nums)); },
+  // ── cell arrays ──
+  cell: async (a) => { const [r, c] = dims2(a); const items: Value[] = []; for (let i = 0; i < r * c; i++) items.push(zeros(0, 0)); return ret(makeCell(r, c, items)); },
+  iscell: async (a) => ret(bool(isCell(a[0]))),
+  iscellstr: async (a) => ret(bool(isCell(a[0]) && (a[0] as Cell).items.every((it) => isMat(it) && !!(it as Mat).isChar))),
+  num2cell: async (a) => { const A = m(a[0]); const items: Value[] = []; for (let i = 0; i < A.data.length; i++) items.push(A.idata ? finishComplex(1, 1, Float64Array.of(A.data[i]), Float64Array.of(A.idata[i])) : scalar(A.data[i])); return ret(makeCell(A.rows, A.cols, items)); },
+  cell2mat: async (a) => {
+    const C = a[0]; if (!isCell(C)) return ret(m(a[0]));
+    const rowMats: Mat[] = [];
+    for (let r = 0; r < C.rows; r++) { const parts: Mat[] = []; for (let c = 0; c < C.cols; c++) parts.push(m(C.items[r + c * C.rows])); rowMats.push(parts.length === 1 ? parts[0] : horzcat(parts)); }
+    return ret(rowMats.length === 1 ? rowMats[0] : vertcat(rowMats));
+  },
+  celldisp: async (a, _n, env) => { const C = a[0]; if (!isCell(C)) return []; for (let i = 0; i < C.items.length; i++) env.output(`{${i + 1}} = ${dispValue(C.items[i])}\n`); return []; },
+  cellfun: async (a, _n, env) => {
+    const f = handle(a[0], 'cellfun'); const C = a[1]; if (!isCell(C)) throw new MatError('cellfun: second argument must be a cell array');
+    let uniform = true; for (let i = 2; i + 1 < a.length; i += 2) if (isMat(a[i]) && (a[i] as Mat).isChar && asString(a[i]).toLowerCase() === 'uniformoutput') uniform = truthyArg(a[i + 1]);
+    const results: Value[] = [];
+    for (let i = 0; i < C.items.length; i++) { const r = await env.callHandle(f, [C.items[i]], 1); results.push(r[0] ?? zeros(0, 0)); }
+    if (uniform) { const o = zeros(C.rows, C.cols); for (let i = 0; i < results.length; i++) o.data[i] = asScalar(results[i]); return ret(o); }
+    return ret(makeCell(C.rows, C.cols, results));
+  },
+  strsplit: async (a) => {
+    const s = asString(a[0]); const delim = a.length >= 2 ? asString(a[1]) : ' ';
+    const parts = a.length >= 2 ? s.split(delim) : s.split(/\s+/).filter((x) => x.length);
+    return ret(makeCell(1, parts.length, parts.map((p) => str(p))));
+  },
+  strjoin: async (a) => { const C = a[0]; if (!isCell(C)) throw new MatError('strjoin: first argument must be a cell array of strings'); const delim = a.length >= 2 ? asString(a[1]) : ' '; return ret(str(C.items.map((it) => asString(it)).join(delim))); },
 
   // ── Numerical methods (real-valued) ──
   trapz: async (a) => {
@@ -1334,6 +1361,7 @@ function betainc(x: number, a: number, b: number): number {
 
 // ── String helper ─────────────────────────────────────────────────────────
 function getStr(v: Value): string | null { if (isMat(v) && v.isChar) return asString(v); if (isMat(v) && numel(v) === 0) return ''; return null; }
+function truthyArg(v: Value): boolean { if (isMat(v) && v.isChar) { const s = asString(v).toLowerCase(); return s !== 'false' && s !== '0' && s !== ''; } return isMat(v) ? v.data[0] !== 0 : true; }
 
 // ── Set / conversion helpers ──────────────────────────────────────────────
 function setUniq(arr: number[]): number[] { const s = new Set<number>(); const o: number[] = []; for (const x of arr) if (!s.has(x)) { s.add(x); o.push(x); } return o.sort((a, b) => a - b); }

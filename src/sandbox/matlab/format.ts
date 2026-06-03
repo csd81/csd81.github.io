@@ -48,7 +48,31 @@ export function matrixLines(m: Mat): string[] {
 }
 
 /** `disp(x)` output. */
+/** Brief one-token form of a value, for cell/struct display. */
+function brief(v: Value): string {
+  if (v.kind === 'gobj') return `<${v.gtype}>`;
+  if (isHandle(v)) return `@${v.name ?? 'fn'}`;
+  if (v.kind === 'cell') return `{${v.rows}×${v.cols} cell}`;
+  if (v.kind === 'struct') return `[${v.rows}×${v.cols} struct]`;
+  if (v.isChar) return `'${asString(v)}'`;
+  if (numel(v) === 0) return '[]';
+  if (isScalar(v)) return `[${isComplex(v) ? fmtC(v.data[0], v.idata![0]) : formatScalar(v.data[0])}]`;
+  return `[${v.rows}×${v.cols} ${isComplex(v) ? 'complex' : 'double'}]`;
+}
+function cellLines(v: { rows: number; cols: number; items: Value[] }): string[] {
+  if (v.rows * v.cols === 0) return ['  {}'];
+  const cells: string[][] = []; let w = 0;
+  for (let r = 0; r < v.rows; r++) { const row: string[] = []; for (let c = 0; c < v.cols; c++) { const s = `{${brief(v.items[r + c * v.rows])}}`; row.push(s); w = Math.max(w, s.length); } cells.push(row); }
+  return cells.map((row) => '    ' + row.map((s) => s.padEnd(w)).join('    '));
+}
+function structLines(v: { rows: number; cols: number; fields: Map<string, Value[]> }): string[] {
+  if (v.rows === 1 && v.cols === 1) return [...v.fields.entries()].map(([k, vals]) => `    ${k}: ${brief(vals[0])}`);
+  return [`  ${v.rows}×${v.cols} struct array with fields:`, ...[...v.fields.keys()].map((k) => `    ${k}`)];
+}
+
 export function dispValue(v: Value): string {
+  if (v.kind === 'cell') return cellLines(v).join('\n');
+  if (v.kind === 'struct') return structLines(v).join('\n');
   if (v.kind === 'gobj') return `<${v.gtype} handle>`;
   if (isHandle(v)) return `@${v.name ?? 'anonymous'}`;
   if (v.isChar) return asString(v);
@@ -60,6 +84,8 @@ export function dispValue(v: Value): string {
 
 /** Auto-display of `name = value` (unsuppressed statements). */
 export function displayValue(name: string, v: Value): string {
+  if (v.kind === 'cell') return `${name} =\n\n  ${v.rows}×${v.cols} cell array\n${cellLines(v).join('\n')}\n`;
+  if (v.kind === 'struct') return `${name} =\n\n  struct with fields:\n${structLines(v).join('\n')}\n`;
   if (v.kind === 'gobj') return `${name} =\n\n  <${v.gtype} handle>\n`;
   if (isHandle(v)) return `${name} =\n\n    @${v.name ?? 'anonymous function'}\n`;
   if (v.isChar) return `${name} =\n\n    ${asString(v)}\n`;
@@ -76,6 +102,7 @@ function buildStream(args: Value[]): Array<{ s: string } | { n: number }> {
   for (const a of args) {
     if (isHandle(a)) { stream.push({ s: a.name ?? '@fn' }); continue; }
     if (a.kind === 'gobj') { stream.push({ s: `<${a.gtype}>` }); continue; }
+    if (a.kind === 'cell' || a.kind === 'struct') { stream.push({ s: brief(a) }); continue; }
     if (a.isChar) { stream.push({ s: asString(a) }); continue; }
     for (let i = 0; i < a.data.length; i++) stream.push({ n: a.data[i] });
   }

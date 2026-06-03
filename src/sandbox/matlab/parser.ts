@@ -447,7 +447,7 @@ class Parser {
   }
 
   private parseCellLiteral(): Expr {
-    // Minimal cell literal support: {a, b; c} — represented as a matrix of values.
+    // {a, b; c} cell literal.
     this.next(); // {
     const wasMatrix = this.inMatrix;
     this.inMatrix = true;
@@ -463,6 +463,6 @@ class Parser {
     if (row.length) rows.push(row);
     this.expectPunct('}');
     this.inMatrix = wasMatrix;
-    return { t: 'matrix', rows };
+    return { t: 'celllit', rows };
   }
 }

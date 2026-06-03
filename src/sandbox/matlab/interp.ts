@@ -7,6 +7,7 @@ import {
   numel, asScalar, asString, truthy, map, elementwise, matmul, transpose, ctranspose,
   horzcat, vertcat, range as makeRange, indexGet, indexSet, indexDelete, isEmpty, toArray, type Sub,
   isComplex, cmap, ewAdd, ewSub, ewMul, ewRDiv, ewLDiv, ewPow, ewEq, cmatmul,
+  type Cell, type StructV, isCell, isStruct, makeCell,
 } from './values';
 import { det, inv, mldivide } from './linalg';
 import { BUILTINS, CONSTANTS, builtinHelp, docUrl, type Env } from './builtins';
@@ -131,6 +132,8 @@ export class Interpreter implements Env {
       if (name === 'ans' && this.base.vars.size > 1) { /* still include ans */ }
       if (isHandle(v)) { out.push({ name, size: '1x1', klass: 'function_handle', preview: '@' + (v.name ?? 'fn') }); continue; }
       if (v.kind === 'gobj') { out.push({ name, size: '1x1', klass: v.gtype, preview: `<${v.gtype}>` }); continue; }
+      if (v.kind === 'cell') { out.push({ name, size: `${v.rows}x${v.cols}`, klass: 'cell', preview: dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) }); continue; }
+      if (v.kind === 'struct') { out.push({ name, size: `${v.rows}x${v.cols}`, klass: 'struct', preview: dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) }); continue; }
       const klass = v.isChar ? 'char' : 'double';
       const preview = numel(v) <= 12 ? dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) : '…';
       out.push({ name, size: `${v.rows}x${v.cols}`, klass, preview });
@@ -220,12 +223,41 @@ export class Interpreter implements Env {
     switch (lv.t) {
       case 'ident': scope.vars.set(lv.name, val); return;
       case 'field': {
-        const target = lv.target.t === 'ident' ? scope.vars.get(lv.target.name) : undefined;
-        if (target && target.kind === 'gobj') { this.graphics.setAxesProp(lv.name, val); return; }
-        throw new MatError(`cannot assign field '.${lv.name}' on a non-handle value`);
+        if (lv.target.t === 'ident') {
+          const cur = scope.vars.get(lv.target.name);
+          if (cur && cur.kind === 'gobj') { this.graphics.setAxesProp(lv.name, val); return; }
+          const fields = isStruct(cur as Value) ? new Map((cur as StructV).fields) : new Map<string, Value[]>();
+          fields.set(lv.name, [val]);
+          scope.vars.set(lv.target.name, { kind: 'struct', rows: 1, cols: 1, fields });
+          return;
+        }
+        const t = await this.evalExpr(lv.target, scope);
+        if (t.kind === 'gobj') { this.graphics.setAxesProp(lv.name, val); return; }
+        throw new MatError(`cannot assign field '.${lv.name}'`);
       }
-      case 'index':
       case 'cell': {
+        // c{subs} = val : content assignment (grows the cell as needed)
+        const curC = lv.target.t === 'ident' ? scope.vars.get(lv.target.name) : undefined;
+        let cell: Cell = curC && isCell(curC) ? makeCell(curC.rows, curC.cols, curC.items.slice()) : makeCell(0, 0, []);
+        const subs = await this.evalSubsN(lv.args, cell.rows, cell.cols, cell.items.length, scope);
+        const lin = this.cellLinear(subs, cell.rows, cell.cols, cell.items.length);
+        const need = lin.length ? Math.max(...lin) : 0;
+        if (need > cell.items.length) { const items = cell.items.slice(); while (items.length < need) items.push(empty()); cell = cell.rows > 1 ? makeCell(need, 1, items) : makeCell(1, need, items); }
+        for (const idx of lin) cell.items[idx - 1] = val;
+        await this.assignLValue(lv.target, cell, scope);
+        return;
+      }
+      case 'index': {
+        const cur = lv.target.t === 'ident' ? scope.vars.get(lv.target.name) : undefined;
+        if (cur && isCell(cur)) {
+          // c(subs) = rhsCell : sub-cell assignment
+          const subs = await this.evalSubsN(lv.args, cur.rows, cur.cols, cur.items.length, scope);
+          const lin = this.cellLinear(subs, cur.rows, cur.cols, cur.items.length);
+          const items = cur.items.slice(); const rhsItems = isCell(val) ? val.items : [val];
+          lin.forEach((idx, k) => { items[idx - 1] = rhsItems.length === 1 ? rhsItems[0] : rhsItems[k]; });
+          scope.vars.set((lv.target as { name: string }).name, makeCell(cur.rows, cur.cols, items));
+          return;
+        }
         const container = asMat(await this.readContainer(lv.target, scope));
         const rhs = asMat(val);
         const subs = await this.evalSubs(lv.args, container, scope);
@@ -249,19 +281,21 @@ export class Interpreter implements Env {
   }
 
   // ── Subscripts ─────────────────────────────────────────────────────
-  private async evalSubs(args: Expr[], container: Mat, scope: Scope): Promise<Sub[]> {
+  private evalSubs(args: Expr[], container: Mat, scope: Scope): Promise<Sub[]> {
+    return this.evalSubsN(args, container.rows, container.cols, numel(container), scope);
+  }
+  private async evalSubsN(args: Expr[], rows: number, cols: number, total: number, scope: Scope): Promise<Sub[]> {
     const n = args.length;
     const subs: Sub[] = [];
     for (let i = 0; i < args.length; i++) {
       const a = args[i];
       if (a.t === 'colon') { subs.push('colon'); continue; }
-      const endVal = n === 1 ? numel(container) : (i === 0 ? container.rows : container.cols);
+      const endVal = n === 1 ? total : (i === 0 ? rows : cols);
       this.endStack.push(endVal);
       let v: Value;
       try { v = await this.evalExpr(a, scope); } finally { this.endStack.pop(); }
       const mv = asMat(v);
       if (mv.isBool) {
-        // logical indexing: select the positions where the mask is nonzero
         const idx: number[] = [];
         for (let k = 0; k < mv.data.length; k++) if (mv.data[k] !== 0) idx.push(k + 1);
         subs.push(idx);
@@ -270,6 +304,26 @@ export class Interpreter implements Env {
       }
     }
     return subs;
+  }
+
+  /** Linear 1-based indices selected from a cell/struct by subscripts. */
+  private cellLinear(subs: Sub[], rows: number, cols: number, total: number): number[] {
+    if (subs.length === 1) { const s = subs[0]; return s === 'colon' ? Array.from({ length: total }, (_, i) => i + 1) : s; }
+    const rs = subs[0] === 'colon' ? Array.from({ length: rows }, (_, i) => i + 1) : subs[0];
+    const cs = subs[1] === 'colon' ? Array.from({ length: cols }, (_, i) => i + 1) : subs[1];
+    const out: number[] = []; for (const c of cs) for (const r of rs) out.push((c - 1) * rows + r);
+    return out;
+  }
+
+  /** Content extraction `c{...}` → the selected values (a comma-separated list). */
+  private async evalCellContent(target: Expr, args: Expr[], scope: Scope): Promise<Value[]> {
+    const base = target.t === 'ident' && scope.vars.has(target.name) ? scope.vars.get(target.name)! : await this.evalExpr(target, scope);
+    if (!isCell(base)) throw new MatError("'{}' indexing requires a cell array");
+    const subs = await this.evalSubsN(args, base.rows, base.cols, base.items.length, scope);
+    return this.cellLinear(subs, base.rows, base.cols, base.items.length).map((i) => {
+      if (i < 1 || i > base.items.length) throw new MatError(`cell index ${i} out of bounds`);
+      return base.items[i - 1];
+    });
   }
 
   // ── Expressions ────────────────────────────────────────────────────
@@ -310,19 +364,21 @@ export class Interpreter implements Env {
       }
       case 'binary': return [await this.evalBinary(e.op, e.a, e.b, scope)];
       case 'matrix': return [await this.evalMatrix(e.rows, scope)];
+      case 'celllit': return [await this.evalCellLit(e.rows, scope)];
       case 'anon': return [this.makeAnon(e.params, e.body, scope)];
       case 'handle': return [this.makeHandle(e.name)];
       case 'field': {
         const t = await this.evalExpr(e.target, scope);
         if (t.kind === 'gobj') return [scalar(0)];
+        if (isStruct(t)) { const vals = t.fields.get(e.name); if (!vals) throw new MatError(`reference to non-existent field '${e.name}'`); return vals.length ? vals : []; }
         throw new MatError(`cannot read field '.${e.name}'`);
       }
-      case 'index':
-      case 'cell': return this.evalIndexOrCall(e, scope, nargout);
+      case 'cell': return this.evalCellContent(e.target, e.args, scope);
+      case 'index': return this.evalIndexOrCall(e, scope, nargout);
     }
   }
 
-  private async evalIndexOrCall(e: Expr & { t: 'index' | 'cell' }, scope: Scope, nargout: number): Promise<Value[]> {
+  private async evalIndexOrCall(e: Expr & { t: 'index' }, scope: Scope, nargout: number): Promise<Value[]> {
     const target = e.target;
     if (target.t === 'ident' && !scope.vars.has(target.name)) {
       // function / builtin / constant call
@@ -335,15 +391,34 @@ export class Interpreter implements Env {
       const args = await this.evalArgs(e.args, scope);
       return this.callHandle(base, args, nargout);
     }
+    if (isCell(base)) {
+      // c(...) → a sub-cell
+      const subs = await this.evalSubsN(e.args, base.rows, base.cols, base.items.length, scope);
+      const lin = this.cellLinear(subs, base.rows, base.cols, base.items.length);
+      const items = lin.map((i) => base.items[i - 1]);
+      const r = subs.length === 2 && subs[0] !== 'colon' ? (subs[0] as number[]).length : (base.cols === 1 ? items.length : 1);
+      const c = items.length / (r || 1);
+      return [makeCell(r, c, items)];
+    }
     const mbase = asMat(base);
     const subs = await this.evalSubs(e.args, mbase, scope);
     return [indexGet(mbase, subs)];
+  }
+
+  private async evalCellLit(rows: Expr[][], scope: Scope): Promise<Cell> {
+    if (rows.length === 0) return makeCell(0, 0, []);
+    const nr = rows.length, nc = rows[0].length;
+    const items: Value[] = new Array(nr * nc);
+    for (let r = 0; r < nr; r++) for (let c = 0; c < nc; c++) items[r + c * nr] = await this.evalExpr(rows[r][c], scope);
+    return makeCell(nr, nc, items);
   }
 
   private async evalArgs(args: Expr[], scope: Scope): Promise<Value[]> {
     const out: Value[] = [];
     for (const a of args) {
       if (a.t === 'colon') throw new MatError("':' is not a valid function argument here");
+      // `c{...}` expands to a comma-separated list of arguments.
+      if (a.t === 'cell') { out.push(...(await this.evalCellContent(a.target, a.args, scope))); continue; }
       out.push(await this.evalExpr(a, scope));
     }
     return out;
@@ -400,8 +475,14 @@ export class Interpreter implements Env {
     const rowMats: Mat[] = [];
     for (const row of rows) {
       const parts: Mat[] = [];
-      for (const el of row) parts.push(asMat(await this.evalExpr(el, scope)));
-      rowMats.push(parts.length === 1 ? parts[0] : horzcat(parts));
+      for (const el of row) {
+        if (el.t === 'cell') {
+          for (const v of await this.evalCellContent(el.target, el.args, scope)) parts.push(asMat(v));
+          continue;
+        }
+        parts.push(asMat(await this.evalExpr(el, scope)));
+      }
+      rowMats.push(parts.length === 0 ? empty() : parts.length === 1 ? parts[0] : horzcat(parts));
     }
     return rowMats.length === 1 ? rowMats[0] : vertcat(rowMats);
   }
