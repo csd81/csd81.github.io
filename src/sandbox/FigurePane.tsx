@@ -7,7 +7,7 @@ const PlotlyFigure = lazy(() => import('./PlotlyFigure'));
 
 export default function FigurePane({ fig }: { fig: FigureSpec }) {
   const { theme } = useTheme();
-  const hasContent = (fig.panels ?? []).some((p) => p && (p.series?.length || p.surfaces?.length || p.reflines?.length));
+  const hasContent = (fig.panels ?? []).some((p) => p && (p.series?.length || p.surfaces?.length || p.reflines?.length || p.meshes?.length));
   if (!hasContent) {
     return <div className="mlab__fig-empty">No figure yet — call <code>plot</code>, <code>surf</code>, <code>fplot</code>…</div>;
   }

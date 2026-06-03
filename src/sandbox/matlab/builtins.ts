@@ -1816,7 +1816,19 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   surf: async (a, _n, env) => { env.graphics.surface(a, 'surf'); return []; },
   surfc: async (a, _n, env) => { env.graphics.surface(a, 'surf'); return []; },
+  surfl: async (a, _n, env) => { env.graphics.surface(a, 'surf'); return []; },
   mesh: async (a, _n, env) => { env.graphics.surface(a, 'mesh'); return []; },
+  // polar plots
+  polarplot: async (a, _n, env) => { env.graphics.polar(a, 'lines'); return []; },
+  polarscatter: async (a, _n, env) => { env.graphics.polar(a, 'markers'); return []; },
+  polarhistogram: async (a, _n, env) => { env.graphics.polar(a, 'bar'); return []; },
+  polaraxes: async (_a, _n, env) => { env.graphics.setPolarProp('rticks', []); return []; },
+  compass: async (a, _n, env) => { let us: number[], vs: number[]; if (a.length >= 2) { us = toArray(m(a[0])); vs = toArray(m(a[1])); } else { const z = m(a[0]); us = z.idata ? toArray(z) : toArray(z); vs = z.idata ? Array.from(z.idata) : us.map(() => 0); } env.graphics.compass(us, vs); return []; },
+  rlim: async (a, _n, env) => { if (a.length && isMat(a[0]) && !(a[0] as Mat).isChar) env.graphics.setPolarProp('rlim', toArray(m(a[0]))); return []; },
+  thetalim: async (a, _n, env) => { if (a.length && isMat(a[0]) && !(a[0] as Mat).isChar) env.graphics.setPolarProp('thetalim', toArray(m(a[0])).map((d) => d * Math.PI / 180)); return []; },
+  rticks: async (a, _n, env) => { if (a.length && isMat(a[0]) && !(a[0] as Mat).isChar) env.graphics.setPolarProp('rticks', toArray(m(a[0]))); return []; },
+  thetaticks: async (a, _n, env) => { if (a.length && isMat(a[0]) && !(a[0] as Mat).isChar) env.graphics.setPolarProp('thetaticks', toArray(m(a[0])).map((d) => d * Math.PI / 180)); return []; },
+  rticklabels: async () => [], thetaticklabels: async () => [], rtickangle: async () => [],
   meshc: async (a, _n, env) => { env.graphics.surface(a, 'mesh'); return []; },
   surface: async (a, _n, env) => { env.graphics.surface(a, 'surf'); return []; },
   contour: async (a, _n, env) => { env.graphics.surface(a, 'contour'); return []; },
@@ -2068,6 +2080,15 @@ const HELP: Record<string, HelpEntry> = {
   stairs: { summary: 'Stairstep graph', syntax: ['stairs(y)', 'stairs(x,y)'], seealso: ['plot', 'stem'] },
   scatter: { summary: '2-D scatter plot (optional marker sizes)', syntax: ['scatter(x,y)', 'scatter(x,y,sz)'], seealso: ['plot', 'scatter3', 'bubblechart'] },
   scatter3: { summary: '3-D scatter plot', syntax: ['scatter3(x,y,z)'], seealso: ['scatter', 'plot3'] },
+  polarplot: { summary: 'Plot lines in polar coordinates', syntax: ['polarplot(theta,r)'], seealso: ['polarscatter', 'polarhistogram', 'compass'] },
+  polarscatter: { summary: 'Scatter plot in polar coordinates', syntax: ['polarscatter(theta,r)'], seealso: ['polarplot', 'scatter'] },
+  polarhistogram: { summary: 'Histogram in polar coordinates', syntax: ['polarhistogram(theta)', 'polarhistogram(theta,nbins)'], seealso: ['polarplot', 'histogram'] },
+  compass: { summary: 'Arrows emanating from the origin (polar)', syntax: ['compass(u,v)', 'compass(z)'], seealso: ['polarplot', 'quiver'] },
+  rlim: { summary: 'Set polar radial-axis limits', syntax: ['rlim([rmin rmax])'], seealso: ['thetalim', 'polarplot'] },
+  thetalim: { summary: 'Set polar angular-axis limits (degrees)', syntax: ['thetalim([tmin tmax])'], seealso: ['rlim', 'polarplot'] },
+  rticks: { summary: 'Set polar radial tick values', syntax: ['rticks(v)'], seealso: ['thetaticks', 'rlim'] },
+  thetaticks: { summary: 'Set polar angular tick values (degrees)', syntax: ['thetaticks(v)'], seealso: ['rticks', 'thetalim'] },
+  surfl: { summary: '3-D surface with lighting (rendered as surf)', syntax: ['surfl(X,Y,Z)'], seealso: ['surf', 'mesh'] },
   plot3: { summary: '3-D line plot', syntax: ['plot3(x,y,z)', "plot3(x,y,z,'-r')"], seealso: ['plot', 'scatter3'] },
   errorbar: { summary: 'Line plot with error bars', syntax: ['errorbar(x,y,e)', 'errorbar(y,e)'], seealso: ['plot'] },
   pie: { summary: 'Pie chart', syntax: ['pie(x)'], seealso: ['bar', 'histogram'] },
@@ -2368,7 +2389,8 @@ const BASE_REF = new Set<string>((
   'isdiag issymmetric ishermitian istriu istril isbanded bandwidth gamma gammaln erf erfc erfinv beta filter filter2 conv2 detrend ' +
   'normalize rescale clip smoothdata isoutlier filloutliers rmoutliers islocalmax islocalmin sinpi cospi pi ' +
   'plot fplot hold title xlabel ylabel zlabel legend grid axis xlim ylim set gca gcf figure clf cla close clc format who whos clear help doc ans dot repmat ' +
-  'surf surfc mesh meshc surface contour contourf contour3 pcolor shading colorbar colormap view peaks xline yline ' +
+  'surf surfc surfl mesh meshc surface contour contourf contour3 pcolor shading colorbar colormap view peaks xline yline ' +
+  'polarplot polarscatter polarhistogram polaraxes compass rlim thetalim rticks thetaticks rticklabels thetaticklabels rtickangle ' +
   'sphere cylinder ellipsoid fsurf fmesh fcontour quiver ' +
   'bar barh area stem stairs scatter scatter3 plot3 stem3 errorbar pie histogram loglog semilogx semilogy subtitle sgtitle zlim xticks yticks zticks text box ' +
   'jet parula turbo hot cool gray bone copper pink spring summer autumn winter hsv lines colorcube cellstr dsearchn brighten ' +

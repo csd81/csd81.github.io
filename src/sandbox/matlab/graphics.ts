@@ -16,6 +16,19 @@ export interface Series {
   z?: number[];        // present → 3-D line/scatter
   error?: number[];    // symmetric y error-bar half-widths
   sizes?: number[];    // per-point marker areas (scatter)
+  theta?: number[];    // polar angle (radians) — present → polar series
+  r?: number[];        // polar radius
+  polarType?: 'line' | 'markers' | 'bar';
+}
+/** A 3-D triangulated mesh (trisurf/trimesh/tetramesh): node coords + 0-based triangle indices. */
+export interface Mesh3D {
+  x: number[];
+  y: number[];
+  z: number[];
+  i: number[];
+  j: number[];
+  k: number[];
+  wire?: boolean;      // trimesh → wireframe (edges only)
 }
 /** A 3-D gridded surface (surf/mesh/contour). z[r][c] sits at (x[c], y[r]). */
 export interface Surface {
@@ -37,7 +50,13 @@ export interface RefLine {
 export interface Panel {
   series: Series[];
   surfaces?: Surface[];
+  meshes?: Mesh3D[];
   reflines?: RefLine[];
+  polar?: boolean;
+  rRange?: [number, number];
+  thetaRange?: [number, number];
+  rticks?: number[];
+  thetaticks?: number[];
   title?: string;
   xlabel?: string;
   ylabel?: string;
@@ -225,6 +244,45 @@ export class Graphics {
     const X: number[] = [], Y: number[] = [];
     for (let i = 0; i < xs.length; i++) { X.push(xs[i], xs[i] + scale * us[i], NaN); Y.push(ys[i], ys[i] + scale * vs[i], NaN); }
     this.cur().series.push({ x: X, y: Y, mode: 'lines', color: this.nextColor() });
+    this.touch();
+  }
+
+  /** polarplot/polarscatter(theta,r) and polarhistogram/compass — a polar-axes series. */
+  polar(args: Value[], mode: 'lines' | 'markers' | 'bar') {
+    if (!this.holding) { this.cur().series = []; this.colorIdx = 0; }
+    const c = this.cur(); c.polar = true;
+    const mats = args.filter((a): a is Mat => isMat(a) && !(a as Mat).isChar);
+    let theta: number[], r: number[];
+    if (mode === 'bar') {                                  // polarhistogram(theta[, nbins])
+      const data = toArray(mats[0]); const nb = mats.length >= 2 && numel(mats[1]) === 1 ? toArray(mats[1])[0] : 20;
+      const counts = new Array(nb).fill(0); for (const t of data) { let a = t % (2 * Math.PI); if (a < 0) a += 2 * Math.PI; counts[Math.min(nb - 1, Math.floor(a / (2 * Math.PI) * nb))]++; }
+      theta = counts.map((_, i) => (i + 0.5) * 2 * Math.PI / nb); r = counts;
+    } else if (mats.length >= 2) { theta = toArray(mats[0]); r = toArray(mats[1]); }
+    else { r = toArray(mats[0]); theta = r.map((_, i) => 2 * Math.PI * i / r.length); }
+    c.series.push({ x: [], y: [], theta, r, polarType: mode === 'bar' ? 'bar' : undefined, mode: mode === 'bar' ? 'lines' : mode, symbol: mode === 'markers' ? 'circle' : undefined, color: this.nextColor() });
+    this.touch();
+  }
+  /** compass(u,v): arrows from the origin in polar axes. */
+  compass(us: number[], vs: number[]) {
+    if (!this.holding) { this.cur().series = []; this.colorIdx = 0; }
+    const c = this.cur(); c.polar = true; const theta: number[] = [], r: number[] = [];
+    for (let i = 0; i < us.length; i++) { theta.push(Math.atan2(vs[i], us[i]), Math.atan2(vs[i], us[i]), NaN); r.push(0, Math.hypot(us[i], vs[i]), NaN); }
+    c.series.push({ x: [], y: [], theta, r, mode: 'lines', color: this.nextColor() });
+    this.touch();
+  }
+  /** trisurf/trimesh(T,x,y,z): a triangulated 3-D surface. */
+  trimesh(tri: number[][], x: number[], y: number[], z: number[], wire: boolean) {
+    if (!this.holding) { this.cur().series = []; this.cur().surfaces = []; this.cur().meshes = []; this.colorIdx = 0; }
+    const cp = this.cur(); cp.meshes = cp.meshes ?? [];
+    cp.meshes.push({ x, y, z, i: tri.map((t) => t[0]), j: tri.map((t) => t[1]), k: tri.map((t) => t[2]), wire });
+    this.touch();
+  }
+  setPolarProp(name: 'rlim' | 'thetalim' | 'rticks' | 'thetaticks', v: number[]) {
+    const c = this.cur(); c.polar = true;
+    if (name === 'rlim') c.rRange = [v[0], v[1]];
+    else if (name === 'thetalim') c.thetaRange = [v[0], v[1]];
+    else if (name === 'rticks') c.rticks = v;
+    else c.thetaticks = v;
     this.touch();
   }
 
