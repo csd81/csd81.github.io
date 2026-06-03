@@ -678,6 +678,54 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   strjoin: async (a) => { const C = a[0]; if (!isCell(C)) throw new MatError('strjoin: first argument must be a cell array of strings'); const delim = a.length >= 2 ? asString(a[1]) : ' '; return ret(str(C.items.map((it) => asString(it)).join(delim))); },
 
+  // ── Structs ──
+  struct: async (a) => {
+    const fields = new Map<string, Value[]>();
+    for (let i = 0; i + 1 < a.length; i += 2) {
+      const name = asString(a[i]); const v = a[i + 1];
+      // struct('f', {…}) would build a struct array; we support scalar structs (cell value → first element)
+      fields.set(name, [isCell(v) ? (v.items[0] ?? zeros(0, 0)) : v]);
+    }
+    return ret({ kind: 'struct', rows: 1, cols: 1, fields } as StructV);
+  },
+  isstruct: async (a) => ret(bool(isStruct(a[0]))),
+  isfield: async (a) => {
+    const S = a[0]; if (!isStruct(S)) return ret(bool(false));
+    if (isCell(a[1])) return ret(makeCell(a[1].rows, a[1].cols, a[1].items.map((it) => bool(S.fields.has(asString(it))))));
+    return ret(bool(S.fields.has(asString(a[1]))));
+  },
+  fieldnames: async (a) => { const S = a[0]; if (!isStruct(S)) throw new MatError('fieldnames: argument must be a struct'); const names = [...S.fields.keys()]; return ret(makeCell(names.length, 1, names.map((nm) => str(nm)))); },
+  numfields: async (a) => { const S = a[0]; if (!isStruct(S)) throw new MatError('numfields: argument must be a struct'); return ret(scalar(S.fields.size)); },
+  rmfield: async (a) => {
+    const S = a[0]; if (!isStruct(S)) throw new MatError('rmfield: first argument must be a struct');
+    const fields = new Map(S.fields); const names = isCell(a[1]) ? a[1].items.map((it) => asString(it)) : [asString(a[1])];
+    for (const nm of names) { if (!fields.has(nm)) throw new MatError(`rmfield: field '${nm}' not found`); fields.delete(nm); }
+    return ret({ kind: 'struct', rows: S.rows, cols: S.cols, fields } as StructV);
+  },
+  setfield: async (a) => {
+    const S = isStruct(a[0]) ? a[0] : ({ kind: 'struct', rows: 1, cols: 1, fields: new Map<string, Value[]>() } as StructV);
+    const fields = new Map(S.fields); fields.set(asString(a[1]), [a[2]]);
+    return ret({ kind: 'struct', rows: S.rows, cols: S.cols, fields } as StructV);
+  },
+  getfield: async (a) => { const S = a[0]; if (!isStruct(S)) throw new MatError('getfield: first argument must be a struct'); const nm = asString(a[1]); const v = S.fields.get(nm); if (!v) throw new MatError(`getfield: field '${nm}' not found`); return ret(v[0] ?? zeros(0, 0)); },
+  orderfields: async (a) => { const S = a[0]; if (!isStruct(S)) throw new MatError('orderfields: argument must be a struct'); const fields = new Map<string, Value[]>(); for (const k of [...S.fields.keys()].sort()) fields.set(k, S.fields.get(k)!); return ret({ kind: 'struct', rows: S.rows, cols: S.cols, fields } as StructV); },
+  struct2cell: async (a) => { const S = a[0]; if (!isStruct(S)) throw new MatError('struct2cell: argument must be a struct'); const vals = [...S.fields.values()].map((v) => v[0] ?? zeros(0, 0)); return ret(makeCell(vals.length, 1, vals)); },
+  cell2struct: async (a) => {
+    const C = a[0]; const F = a[1]; if (!isCell(C) || !isCell(F)) throw new MatError('cell2struct: arguments must be cell arrays');
+    const names = F.items.map((it) => asString(it)); const fields = new Map<string, Value[]>();
+    for (let i = 0; i < names.length; i++) fields.set(names[i], [C.items[i] ?? zeros(0, 0)]);
+    return ret({ kind: 'struct', rows: 1, cols: 1, fields } as StructV);
+  },
+  structfun: async (a, n, env) => {
+    const f = handle(a[0], 'structfun'); const S = a[1]; if (!isStruct(S)) throw new MatError('structfun: second argument must be a struct');
+    let uniform = true; for (let i = 2; i + 1 < a.length; i += 2) if (isMat(a[i]) && (a[i] as Mat).isChar && asString(a[i]).toLowerCase() === 'uniformoutput') uniform = truthyArg(a[i + 1]);
+    const keys = [...S.fields.keys()]; const results: Value[] = [];
+    for (const k of keys) { const r = await env.callHandle(f, [S.fields.get(k)![0] ?? zeros(0, 0)], 1); results.push(r[0] ?? zeros(0, 0)); }
+    if (uniform) { const o = zeros(keys.length, 1); for (let i = 0; i < results.length; i++) o.data[i] = asScalar(results[i]); return ret(o); }
+    const fields = new Map<string, Value[]>(); keys.forEach((k, i) => fields.set(k, [results[i]])); void n;
+    return ret({ kind: 'struct', rows: 1, cols: 1, fields } as StructV);
+  },
+
   // ── Numerical methods (real-valued) ──
   trapz: async (a) => {
     let x: number[], y: number[];
@@ -1172,6 +1220,27 @@ const HELP: Record<string, HelpEntry> = {
   meshgrid: { summary: '2-D grid coordinates', syntax: ['[X,Y] = meshgrid(x,y)'], seealso: ['linspace'] },
   sortrows: { summary: 'Sort rows in ascending order', syntax: ['B = sortrows(A)', '[B,i] = sortrows(A)'], seealso: ['sort', 'unique'] },
   nnz: { summary: 'Number of nonzero elements', syntax: ['n = nnz(A)'], seealso: ['find', 'any'] },
+  cell: { summary: 'Create a cell array of empty matrices', syntax: ['C = cell(n)', 'C = cell(r,c)'], seealso: ['iscell', 'num2cell', 'cell2mat', 'struct'] },
+  iscell: { summary: 'Determine whether input is a cell array', syntax: ['tf = iscell(C)'], seealso: ['cell', 'iscellstr', 'isstruct'] },
+  iscellstr: { summary: 'Determine if input is a cell array of character vectors', syntax: ['tf = iscellstr(C)'], seealso: ['iscell', 'ischar'] },
+  num2cell: { summary: 'Convert array to a cell array (one element per cell)', syntax: ['C = num2cell(A)'], seealso: ['cell2mat', 'cell', 'mat2cell'] },
+  cell2mat: { summary: 'Convert a cell array of matrices into a single matrix', syntax: ['A = cell2mat(C)'], seealso: ['num2cell', 'cell'] },
+  celldisp: { summary: 'Display the contents of a cell array', syntax: ['celldisp(C)'], seealso: ['disp', 'cell'] },
+  cellfun: { summary: 'Apply a function to each cell of a cell array', syntax: ['A = cellfun(@f,C)', "A = cellfun(@f,C,'UniformOutput',false)"], seealso: ['arrayfun', 'structfun'] },
+  strsplit: { summary: 'Split string at delimiters into a cell array', syntax: ['C = strsplit(str)', 'C = strsplit(str,delim)'], seealso: ['strjoin', 'strtok', 'regexp'] },
+  strjoin: { summary: 'Join a cell array of strings into one string', syntax: ['s = strjoin(C)', 's = strjoin(C,delim)'], seealso: ['strsplit', 'strcat'] },
+  struct: { summary: 'Create a structure with the given fields', syntax: ["s = struct('f1',v1,'f2',v2,...)"], seealso: ['fieldnames', 'isfield', 'setfield', 'cell2struct'] },
+  isstruct: { summary: 'Determine whether input is a structure', syntax: ['tf = isstruct(s)'], seealso: ['struct', 'isfield', 'iscell'] },
+  isfield: { summary: 'Determine whether a field exists in a structure', syntax: ['tf = isfield(s,field)'], seealso: ['fieldnames', 'rmfield', 'struct'] },
+  fieldnames: { summary: 'Field names of a structure', syntax: ['c = fieldnames(s)'], seealso: ['isfield', 'numfields', 'orderfields'] },
+  numfields: { summary: 'Number of fields in a structure', syntax: ['n = numfields(s)'], seealso: ['fieldnames', 'isfield'] },
+  rmfield: { summary: 'Remove one or more fields from a structure', syntax: ['s = rmfield(s,field)'], seealso: ['setfield', 'fieldnames', 'isfield'] },
+  setfield: { summary: 'Set the value of a structure field', syntax: ['s = setfield(s,field,value)'], seealso: ['getfield', 'rmfield', 'struct'] },
+  getfield: { summary: 'Get the value of a structure field', syntax: ['v = getfield(s,field)'], seealso: ['setfield', 'fieldnames'] },
+  orderfields: { summary: 'Order the fields of a structure alphabetically', syntax: ['s = orderfields(s)'], seealso: ['fieldnames', 'struct'] },
+  struct2cell: { summary: 'Convert a structure to a cell array', syntax: ['c = struct2cell(s)'], seealso: ['cell2struct', 'fieldnames'] },
+  cell2struct: { summary: 'Convert a cell array to a structure', syntax: ['s = cell2struct(c,fields)'], seealso: ['struct2cell', 'struct'] },
+  structfun: { summary: 'Apply a function to each field of a scalar structure', syntax: ['A = structfun(@f,s)', "A = structfun(@f,s,'UniformOutput',false)"], seealso: ['cellfun', 'arrayfun'] },
 };
 
 /** Base-MATLAB functions whose reference page is at /help/matlab/ref/<name>.html.
@@ -1192,7 +1261,9 @@ const BASE_REF = new Set<string>((
   'disp fprintf sprintf num2str str2num str2double mat2str int2str error warning input feval arrayfun bsxfun kron cross vecnorm ' +
   'isdiag issymmetric ishermitian istriu istril isbanded bandwidth gamma gammaln erf erfc erfinv beta filter filter2 conv2 detrend ' +
   'normalize rescale clip smoothdata isoutlier filloutliers rmoutliers islocalmax islocalmin sinpi cospi pi ' +
-  'plot fplot hold title xlabel ylabel legend grid axis gca gcf figure clf cla close clc format who whos clear help doc ans dot repmat'
+  'plot fplot hold title xlabel ylabel legend grid axis gca gcf figure clf cla close clc format who whos clear help doc ans dot repmat ' +
+  'cell iscell iscellstr num2cell cell2mat celldisp cellfun strsplit strjoin ' +
+  'struct isstruct isfield fieldnames numfields rmfield setfield getfield orderfields struct2cell cell2struct structfun'
 ).split(/\s+/));
 
 export function docUrl(name: string): string {

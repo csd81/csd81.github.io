@@ -226,7 +226,7 @@ export class Interpreter implements Env {
         if (lv.target.t === 'ident') {
           const cur = scope.vars.get(lv.target.name);
           if (cur && cur.kind === 'gobj') { this.graphics.setAxesProp(lv.name, val); return; }
-          const fields = isStruct(cur as Value) ? new Map((cur as StructV).fields) : new Map<string, Value[]>();
+          const fields = cur && isStruct(cur) ? new Map(cur.fields) : new Map<string, Value[]>();
           fields.set(lv.name, [val]);
           scope.vars.set(lv.target.name, { kind: 'struct', rows: 1, cols: 1, fields });
           return;
