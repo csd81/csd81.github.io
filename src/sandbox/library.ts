@@ -15,6 +15,8 @@
 
 const courseRaw = import.meta.glob('./mfiles/courses/**/*.m', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 const chapterRaw = import.meta.glob('/src/chapters/*/content/code/*.m', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+// Linear-algebra worked examples (Octave scripts, numbered <chapter>-<section>; source/author unverified).
+const linalgRaw = import.meta.glob('./mfiles/linalg/*.m', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 
 export interface MFile {
   id: string;        // unique path-based id
@@ -26,7 +28,7 @@ export interface MFile {
 export interface MFolder {
   id: string;
   label: string;
-  group: 'course' | 'chapter';
+  group: 'course' | 'chapter' | 'linalg';
   onPath: boolean;   // generic procedures always available to course folders
   files: MFile[];
 }
@@ -48,7 +50,7 @@ function prettifySlug(slug: string): string {
 }
 
 const folderMap = new Map<string, MFolder>();
-function ensureFolder(id: string, label: string, group: 'course' | 'chapter', onPath: boolean): MFolder {
+function ensureFolder(id: string, label: string, group: 'course' | 'chapter' | 'linalg', onPath: boolean): MFolder {
   let f = folderMap.get(id);
   if (!f) { f = { id, label, group, onPath, files: [] }; folderMap.set(id, f); }
   return f;
@@ -72,11 +74,29 @@ for (const [path, source] of Object.entries(chapterRaw)) {
   f.files.push({ id: path, name, file: name + '.m', folderId: f.id, source });
 }
 
-for (const f of folderMap.values()) f.files.sort((a, b) => a.file.localeCompare(b.file));
+// Linear-algebra book examples: ./mfiles/linalg/<chapter>-<section>O<topic>.m — one folder.
+for (const [path, source] of Object.entries(linalgRaw)) {
+  const m = /\/linalg\/([^/]+)\.m$/.exec(path);
+  if (!m) continue;
+  const name = m[1];
+  const f = ensureFolder('linalg/examples', 'Lineáris algebra (Octave példák)', 'linalg', false);
+  f.files.push({ id: path, name, file: name + '.m', folderId: f.id, source });
+}
+
+// Natural <chapter>-<section> ordering (so 1-37 < 2-1 < 11-3, not lexical).
+const natKey = (s: string): [number, number, string] => {
+  const m = /^(\d+)-(\d+)/.exec(s);
+  return m ? [+m[1], +m[2], s] : [Infinity, Infinity, s];
+};
+for (const f of folderMap.values()) f.files.sort((a, b) => {
+  if (f.group === 'linalg') { const ka = natKey(a.file), kb = natKey(b.file); return ka[0] - kb[0] || ka[1] - kb[1] || ka[2].localeCompare(kb[2]); }
+  return a.file.localeCompare(b.file);
+});
 
 const COURSE_ORDER = ['01-fixed-point', '02-iterations', '03-elimination', '04-interpolation', '05-integration', '06-minimization', 'procedures', 'pivoting'];
+const GROUP_ORDER: Record<MFolder['group'], number> = { course: 0, chapter: 1, linalg: 2 };
 export const FOLDERS: MFolder[] = [...folderMap.values()].sort((a, b) => {
-  if (a.group !== b.group) return a.group === 'course' ? -1 : 1;
+  if (a.group !== b.group) return GROUP_ORDER[a.group] - GROUP_ORDER[b.group];
   if (a.group === 'course') {
     const ai = COURSE_ORDER.indexOf(a.id.replace('course/', ''));
     const bi = COURSE_ORDER.indexOf(b.id.replace('course/', ''));

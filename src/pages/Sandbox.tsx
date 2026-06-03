@@ -47,6 +47,7 @@ export default function Sandbox() {
 
   const courseFolders = useMemo(() => FOLDERS.filter((f) => f.group === 'course'), []);
   const chapterFolders = useMemo(() => FOLDERS.filter((f) => f.group === 'chapter'), []);
+  const linalgFolders = useMemo(() => FOLDERS.filter((f) => f.group === 'linalg'), []);
   const wdLabel = folderById(folderId)?.label ?? '';
 
   const updateCursor = (ta: HTMLTextAreaElement) => {
@@ -141,6 +142,7 @@ export default function Sandbox() {
               <div className="mlab__tree">
                 <FileGroup title={t('Course examples', 'Kurzus példák')} folders={courseFolders} openId={openId} setOpenId={openFile} collapsed={collapsed} toggle={toggleFolder} />
                 <FileGroup title={t('Chapter algorithms', 'Fejezet-algoritmusok')} folders={chapterFolders} openId={openId} setOpenId={openFile} collapsed={collapsed} toggle={toggleFolder} />
+                <FileGroup title={t('Linear algebra examples', 'Lineáris algebra példák')} folders={linalgFolders} openId={openId} setOpenId={openFile} collapsed={collapsed} toggle={toggleFolder} />
               </div>
             </aside>
             <div className="mlab__gutter mlab__gutter--v mlab__gut-l" onPointerDown={startDrag('left')} title={t('Drag to resize', 'Húzd az átméretezéshez')} />
