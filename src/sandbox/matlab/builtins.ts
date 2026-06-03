@@ -1397,7 +1397,21 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(makeSym(s.rows, s.cols, F.map(simplifyExpr)));
   },
   limit: async (a) => { const s = symArg(a[0]); const v = a.length >= 3 ? asString(a[1]) : (symVarsOf(s)[0] ?? 'x'); const pt = symToExpr(a[a.length - 1]); const exprs = s.exprs.map((e) => limitAt(e, v, pt)); return ret(makeSym(s.rows, s.cols, exprs)); },
-  solve: async (a) => { if (a.length && isStruct(a[0]) && (a[0] as StructV).fields.has('Q')) return ret(quboSolveResult(a[0] as StructV)); const s = symArg(a[0]); const v = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar)) ? asString(a[1]) : (symVarsOf(s)[0] ?? 'x'); const roots = solveExpr(s.exprs[0], v); return ret(makeSym(roots.length, 1, roots)); },
+  solve: async (a, _n, env) => {
+    if (a.length && isStruct(a[0]) && (a[0] as StructV).fields.has('Q')) return ret(quboSolveResult(a[0] as StructV));
+    if (a.length && isStruct(a[0]) && (a[0] as StructV).fields.has('ODEFcn')) return solveOde(a, env);   // OO ode object
+    const s = symArg(a[0]); const v = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar)) ? asString(a[1]) : (symVarsOf(s)[0] ?? 'x'); const roots = solveExpr(s.exprs[0], v); return ret(makeSym(roots.length, 1, roots));
+  },
+  ode: async (a) => {
+    const f = new Map<string, Value[]>([['Solver', [str('ode45')]], ['InitialTime', [scalar(0)]]]);
+    for (let i = 0; i + 1 < a.length; i += 2) { let k = asString(a[i]); if (k === 'F') k = 'ODEFcn'; if (k === 'y0') k = 'InitialValue'; if (k === 't0') k = 'InitialTime'; f.set(k, [a[i + 1]]); }
+    return ret({ kind: 'struct', rows: 1, cols: 1, fields: f } as StructV);
+  },
+  odeEvent: async (a) => { const f = new Map<string, Value[]>(); for (let i = 0; i + 1 < a.length; i += 2) f.set(asString(a[i]), [a[i + 1]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields: f } as StructV); },
+  odeJacobian: async (a) => ret(a[0] ?? makeSym(0, 0, [])),
+  odeMassMatrix: async (a) => ret(a[0] ?? makeSym(0, 0, [])),
+  odeSensitivity: async (a) => { const f = new Map<string, Value[]>(); for (let i = 0; i + 1 < a.length; i += 2) f.set(asString(a[i]), [a[i + 1]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields: f } as StructV); },
+  odeDelay: async (a) => { const f = new Map<string, Value[]>(); for (let i = 0; i + 1 < a.length; i += 2) f.set(asString(a[i]), [a[i + 1]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields: f } as StructV); },
   jacobian: async (a) => { const s = symArg(a[0]); const vars = a.length >= 2 ? symNames(a[1]) : symVarsOf(s); const J: SymExpr[] = []; const nf = s.exprs.length; for (let c = 0; c < vars.length; c++) for (let r = 0; r < nf; r++) J[r + c * nf] = simplifyExpr(diffExpr(s.exprs[r], vars[c])); return ret(makeSym(nf, vars.length, J)); },
   hessian: async (a) => { const s = symArg(a[0]); const vars = a.length >= 2 ? symNames(a[1]) : symVarsOf(s); const nv = vars.length; const H: SymExpr[] = []; for (let i = 0; i < nv; i++) for (let j = 0; j < nv; j++) H[i + j * nv] = simplifyExpr(diffExpr(diffExpr(s.exprs[0], vars[i]), vars[j])); return ret(makeSym(nv, nv, H)); },
   taylor: async (a) => { const s = symArg(a[0]); const v = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar)) ? asString(a[1]) : (symVarsOf(s)[0] ?? 'x'); const ord = 6; let term = s.exprs[0]; let acc: SymExpr = sN(0); let fact = 1; for (let k = 0; k < ord; k++) { const c = symEval(term, new Map([[v, 0]])); if (Number.isFinite(c)) acc = sAdd(acc, sMul(sN(c / fact), sPow(sV(v), sN(k)))); term = diffExpr(term, v); fact *= (k + 1); } return ret(makeSym(1, 1, [simplifyExpr(acc)])); },
@@ -1728,6 +1742,20 @@ export const BUILTINS: Record<string, Builtin> = {
   transclosure: async (a) => { const g = gArg(a[0]); const R = reachMatrix(g); const edges: { s: number; t: number; w: number }[] = []; for (let i = 0; i < g.n; i++) for (let j = 0; j < g.n; j++) if (i !== j && R[i][j] && (g.directed || i < j)) edges.push({ s: i, t: j, w: 1 }); return ret(makeGraph(g.directed, g.n, edges, g.names)); },
   transreduction: async (a) => { const g = gArg(a[0]); const R = reachMatrix(g); const keep: { s: number; t: number; w: number }[] = []; for (const e of g.edges) { let redundant = false; for (let k = 0; k < g.n; k++) if (k !== e.s && k !== e.t && R[e.s][k] && R[k][e.t]) { redundant = true; break; } if (!redundant) keep.push(e); } return ret(makeGraph(g.directed, g.n, keep, g.names)); },
   biconncomp: async (a) => ret(rowVec(biconnected(gArg(a[0])))),
+  bctree: async (a) => {
+    const g = gArg(a[0]); const bin = biconnected(g); const nbc = Math.max(0, ...bin);
+    // vertices in each block
+    const blockVerts: Set<number>[] = Array.from({ length: nbc + 1 }, () => new Set<number>());
+    g.edges.forEach((e, i) => { blockVerts[bin[i]].add(e.s); blockVerts[bin[i]].add(e.t); });
+    const inBlocks = new Map<number, number[]>();
+    for (let b = 1; b <= nbc; b++) for (const v of blockVerts[b]) (inBlocks.get(v) ?? inBlocks.set(v, []).get(v)!).push(b);
+    // cut vertices: in ≥2 blocks. Tree: blocks 1..nbc, then one node per cut vertex.
+    const cut = [...inBlocks.entries()].filter(([, bs]) => bs.length >= 2).map(([v]) => v);
+    const cutNode = new Map(cut.map((v, i) => [v, nbc + 1 + i]));
+    const edges: { s: number; t: number; w: number }[] = [];
+    for (const [v, node] of cutNode) for (const b of inBlocks.get(v)!) edges.push({ s: node - 1, t: b - 1, w: 1 });
+    return ret(makeGraph(false, nbc + cut.length, edges));
+  },
   allpaths: async (a) => { const g = gArg(a[0]); const s = nodeIds(g, a[1])[0], t = nodeIds(g, a[2])[0]; const paths = enumeratePaths(g, s, t); return ret(makeCell(paths.length, 1, paths.map((p) => rowVec(p.map((x) => x + 1))))); },
   allcycles: async (a) => { const g = gArg(a[0]); const cyc = enumerateCycles(g); return ret(makeCell(cyc.length, 1, cyc.map((p) => rowVec(p.map((x) => x + 1))))); },
   cyclebasis: async (a) => { const g = gArg(a[0]); const cyc = cycleBasisOf(g); return ret(makeCell(cyc.length, 1, cyc.map((p) => rowVec(p.map((x) => x + 1))))); },
@@ -1831,7 +1859,9 @@ export const BUILTINS: Record<string, Builtin> = {
   ishole: async (a) => { const g = gGeom(a[0]); let nb = g.points.length ? 1 : 0; for (const p of g.points) if (Number.isNaN(p[0])) nb++; const o = zeros(nb, 1); o.isBool = true; return ret(o); },
   issimplified: async () => ret(bool(true)),
   isInterior: async (a) => { const g = gGeom(a[0]); const o = zeros((g.conn ?? []).length, 1); o.isBool = true; for (let i = 0; i < o.data.length; i++) o.data[i] = 1; return ret(o); },
-  sortboundaries: async (a) => ret(a[0]), rmholes: async (a) => ret(a[0]), rmslivers: async (a) => ret(a[0]),
+  sortboundaries: async (a) => ret(a[0]), rmholes: async (a) => ret(a[0]), rmslivers: async (a) => ret(a[0]), sortregions: async (a) => ret(a[0]),
+  boundaryshape: async (a) => { const g = gGeom(a[0]); if (g.gkind === 'polyshape') return ret(g); const pts = g.points; const k = pts[0]?.length === 2 ? convHull2D(pts.map((p) => p[0]), pts.map((p) => p[1])) : []; return ret({ kind: 'geom', gkind: 'polyshape', points: k.map((i) => pts[i - 1]), dim: 2 } as Geom); },
+  unmesh: async (a, n) => { const g = gGeom(a[0]); const P = fromRows(g.points); const T = zeros((g.conn ?? []).length, g.dim + 1); (g.conn ?? []).forEach((s, i) => s.forEach((v, j) => { T.data[i + j * (g.conn ?? []).length] = v + 1; })); return n >= 2 ? [P, T] : [P]; },
   regions: async (a) => ret(makeCell(1, 1, [a[0]])),
   addboundary: async (a) => { const g = gGeom(a[0]); const x = a.length >= 3 ? toArray(m(a[1])) : matRows(m(a[1])).map((p) => p[0]); const y = a.length >= 3 ? toArray(m(a[2])) : matRows(m(a[1])).map((p) => p[1]); const pts = g.points.slice(); if (pts.length) pts.push([NaN, NaN]); x.forEach((xi, i) => pts.push([xi, y[i]])); return ret({ ...g, points: pts } as Geom); },
   rmboundary: async (a) => { const g = gGeom(a[0]); const k = Math.round(asScalar(a[1])); const bnds: number[][][] = [[]]; for (const p of g.points) { if (Number.isNaN(p[0])) bnds.push([]); else bnds[bnds.length - 1].push(p); } bnds.splice(k - 1, 1); const pts: number[][] = []; bnds.forEach((b, i) => { if (i > 0) pts.push([NaN, NaN]); pts.push(...b); }); return ret({ ...g, points: pts } as Geom); },
@@ -4649,6 +4679,21 @@ async function pdepeSolve(a: Value[], env: Env): Promise<Value[]> {
   return [makeND([nt, N, neq], data)];
 }
 function mkStruct(fields: [string, Value][]): StructV { return { kind: 'struct', rows: 1, cols: 1, fields: new Map(fields.map(([k, v]) => [k, [v]])) }; }
+/** Object-oriented ode solve: solve(F, t0, tf) | solve(F, tspan) → ODEResults {Time, Solution}. */
+async function solveOde(a: Value[], env: Env): Promise<Value[]> {
+  const F = a[0] as StructV; const fcn = F.fields.get('ODEFcn')![0]; const y0 = F.fields.get('InitialValue')![0];
+  const t0v = F.fields.has('InitialTime') ? asScalar(F.fields.get('InitialTime')![0]) : 0;
+  const solver = F.fields.has('Solver') ? asString(F.fields.get('Solver')![0]) : 'ode45';
+  let tspan: Value;
+  if (a.length >= 3) tspan = rowVec([asScalar(a[1]), asScalar(a[2])]);
+  else if (a.length >= 2) tspan = isMat(a[1]) && numel(a[1]) >= 2 ? a[1] : rowVec([t0v, asScalar(a[1])]);
+  else throw new MatError('solve: a time span (t0,tf) is required');
+  const fn = (BUILTINS[solver] ?? BUILTINS.ode45);
+  const [T, Y] = await fn([fcn, tspan, y0], 2, env);   // T: nt×1, Y: nt×neq
+  const Ym = m(Y); const sol = zeros(Ym.cols, Ym.rows);   // Solution = neq×nt
+  for (let r = 0; r < Ym.rows; r++) for (let c = 0; c < Ym.cols; c++) sol.data[c + r * Ym.cols] = Ym.data[r + c * Ym.rows];
+  return [mkStruct([['Time', rowVec(toArray(m(T)))], ['Solution', sol]])];
+}
 /** bvp4c(odefun, bcfun, solinit): two-point BVP via trapezoidal collocation + Newton. */
 /** ode15i(odefun, tspan, y0, yp0): fully-implicit ODE F(t,y,y')=0 via implicit Euler + Newton. */
 async function ode15iSolve(a: Value[], nargout: number, env: Env): Promise<Value[]> {

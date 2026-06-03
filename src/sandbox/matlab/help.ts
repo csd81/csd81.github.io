@@ -451,6 +451,16 @@ const HELP: Record<string, HelpEntry> = {
   harmonic: { summary: 'Harmonic number H(n)', syntax: ['h = harmonic(n)'], seealso: ['symsum'] },
   heaviside: { summary: 'Heaviside step function', syntax: ['heaviside(x)'], seealso: ['dirac', 'sign'] },
   dirac: { summary: 'Dirac delta function', syntax: ['dirac(x)'], seealso: ['heaviside'] },
+  bctree: { summary: 'Block-cut tree of a graph', syntax: ['T = bctree(G)'], seealso: ['biconncomp'] },
+  sortregions: { summary: 'Sort polyshape regions', syntax: ['pg = sortregions(pgon)'], seealso: ['regions'] },
+  boundaryshape: { summary: 'Polyshape boundary of a triangulation/alphaShape', syntax: ['pg = boundaryshape(shp)'], seealso: ['polyshape', 'boundaryFacets'] },
+  unmesh: { summary: 'Extract points and connectivity from a mesh', syntax: ['[P,T] = unmesh(TR)'], seealso: ['triangulation'] },
+  ode: { summary: 'Create an ODE problem object (object-oriented interface)', syntax: ["F = ode('ODEFcn',@f,'InitialValue',y0)"], seealso: ['solve', 'ode45', 'odeEvent'] },
+  odeEvent: { summary: 'Event configuration for an ode object', syntax: ["odeEvent('EventFcn',@e)"], seealso: ['ode'] },
+  odeJacobian: { summary: 'Jacobian configuration for an ode object', syntax: ['odeJacobian(J)'], seealso: ['ode'] },
+  odeMassMatrix: { summary: 'Mass-matrix configuration for an ode object', syntax: ['odeMassMatrix(M)'], seealso: ['ode'] },
+  odeSensitivity: { summary: 'Sensitivity configuration for an ode object', syntax: ['odeSensitivity(...)'], seealso: ['ode'] },
+  odeDelay: { summary: 'Delay configuration for an ode object', syntax: ['odeDelay(...)'], seealso: ['ode', 'dde23'] },
   datetime: { summary: 'Create a datetime array', syntax: ['d = datetime(Y,M,D)', 'd = datetime(Y,M,D,H,MI,S)', "d = datetime('now')"], seealso: ['duration', 'datenum', 'year'] },
   duration: { summary: 'Create a duration array (from [H M S])', syntax: ['d = duration([h m s])'], seealso: ['hours', 'minutes', 'seconds', 'datetime'] },
   NaT: { summary: 'Not-a-Time (missing datetime)', syntax: ['d = NaT'], seealso: ['isnat', 'datetime', 'NaN'] },
@@ -725,6 +735,7 @@ const BASE_REF = new Set<string>((
   'sym syms int limit solve jacobian hessian taylor expand subs vpa latex pretty isAlways simplify logical ' +
   'curl divergence laplacian potential coeffs sym2poly poly2sym numden collect combine simplifyFraction horner compose children lhs rhs vpasolve finverse isolate equationsToMatrix symsum symprod assume assumeAlso assumptions sympref digits ' +
   'charpoly nextprime prevprime nthprime fibonacci eulerPhi powermod harmonic heaviside dirac ' +
+  'bctree sortregions boundaryshape unmesh ode odeEvent odeJacobian odeMassMatrix odeSensitivity odeDelay ' +
   'datetime duration NaT years days hours minutes seconds milliseconds year month day hour minute second ymd isdatetime isduration isnat ' +
   'table timetable array2table cell2table struct2table table2array table2cell table2struct istable istimetable istabular height width head tail summary ' +
   'hGate xGate yGate zGate sGate siGate tGate tiGate idGate rxGate ryGate rzGate cxGate cnotGate cyGate czGate chGate crxGate cryGate crzGate swapGate ccxGate mcxGate ' +

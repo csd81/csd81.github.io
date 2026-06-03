@@ -392,6 +392,10 @@ class Parser {
       // Bare colon as a whole-dimension subscript.
       if (this.atOp(':') && (this.peek(1).kind === 'punct' && (this.peek(1).value === ',' || this.peek(1).value === close))) {
         this.next(); args.push({ t: 'colon' });
+      } else if (open === '(' && this.peek().kind === 'ident' && this.peek(1).value === '=') {
+        // name=value argument (R2021a+) → emit the name as a string, then the value
+        const name = this.peek().value; this.next(); this.next();
+        args.push({ t: 'str', v: name }); args.push(this.parseExpr());
       } else {
         args.push(this.parseExpr());
       }
