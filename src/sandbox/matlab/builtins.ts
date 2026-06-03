@@ -425,7 +425,6 @@ export const BUILTINS: Record<string, Builtin> = {
     tf.isBool = true;
     return n >= 2 ? [tf, loc] : [tf];
   },
-  logical: async (a) => ret({ ...map(m(a[0]), (x) => (x !== 0 ? 1 : 0)), isBool: true }),
   fliplr: async (a) => {
     const A = m(a[0]); const o = zeros(A.rows, A.cols);
     for (let c = 0; c < A.cols; c++) for (let r = 0; r < A.rows; r++) o.data[r + (A.cols - 1 - c) * A.rows] = A.data[r + c * A.rows];
@@ -1096,7 +1095,6 @@ export const BUILTINS: Record<string, Builtin> = {
   insertBefore: async (a) => ret(mapStrArr(a[0], (x) => { const i = x.indexOf(asString(a[1])); return i < 0 ? x : x.slice(0, i) + asString(a[2]) + x.slice(i); })),
   eraseBetween: async (a) => ret(mapStrArr(a[0], (x) => { const l = asString(a[1]), r = asString(a[2]); const i = x.indexOf(l); if (i < 0) return x; const j = x.indexOf(r, i + l.length); return j < 0 ? x : x.slice(0, i + l.length) + x.slice(j); })),
   replaceBetween: async (a) => ret(mapStrArr(a[0], (x) => { const l = asString(a[1]), r = asString(a[2]); const i = x.indexOf(l); if (i < 0) return x; const j = x.indexOf(r, i + l.length); return j < 0 ? x : x.slice(0, i + l.length) + asString(a[3]) + x.slice(j); })),
-  compose: async (a) => ret(makeStr(sprintf(asString(a[0]), a.slice(1)))),
   convertStringsToChars: async (a) => ret(isStr(a[0]) ? str(asString(a[0])) : a[0]),
   convertCharsToStrings: async (a) => ret(isMat(a[0]) && (a[0] as Mat).isChar ? makeStr(asString(a[0])) : a[0]),
 
@@ -1395,6 +1393,35 @@ export const BUILTINS: Record<string, Builtin> = {
   latex: async (a) => ret(str(symArg(a[0]).exprs.map(exprToStr).join(', '))),
   pretty: async (a, _n, env) => { env.output(symArg(a[0]).exprs.map(exprToStr).join('\n') + '\n'); return []; },
   isAlways: async (a) => { const s = symArg(a[0]); const o = zeros(s.rows, s.cols); o.isBool = true; s.exprs.forEach((e, i) => { o.data[i] = Math.abs(symEval(e, new Map())) < 1e-12 ? 1 : 0; }); return ret(o); },
+  logical: async (a) => { if (!isSym(a[0])) return ret({ ...map(m(a[0]), (x) => (x !== 0 ? 1 : 0)), isBool: true }); const s = a[0]; const o = zeros(s.rows, s.cols); o.isBool = true; s.exprs.forEach((e, i) => { o.data[i] = Math.abs(symEval(e, new Map())) > 1e-12 ? 1 : 0; }); return ret(o); },
+  curl: async (a, n) => { if (isSym(a[0])) { const F = a[0].exprs; const v = symNames(a[1]); const c = [sAdd(diffExpr(F[2], v[1]), sNeg(diffExpr(F[1], v[2]))), sAdd(diffExpr(F[0], v[2]), sNeg(diffExpr(F[2], v[0]))), sAdd(diffExpr(F[1], v[0]), sNeg(diffExpr(F[0], v[1])))]; return ret(makeSym(3, 1, c.map(simplifyExpr))); } return curlNumeric(a, n); },
+  divergence: async (a, n, env) => { if (isSym(a[0])) { const F = a[0].exprs; const v = symNames(a[1]); let d: SymExpr = sN(0); for (let i = 0; i < F.length; i++) d = sAdd(d, diffExpr(F[i], v[i])); return ret(makeSym(1, 1, [simplifyExpr(d)])); } void env; return divergenceNumeric(a, n); },
+  laplacian: async (a) => { if (isGraph(a[0])) { const g = a[0]; const A = adjacencyMat(g); const L = zeros(g.n, g.n); for (let i = 0; i < g.n; i++) { let d = 0; for (let j = 0; j < g.n; j++) { d += A.data[i + j * g.n]; L.data[i + j * g.n] = -A.data[i + j * g.n]; } L.data[i + i * g.n] = d - A.data[i + i * g.n]; } return ret(denseToSparse(L)); } const s = symArg(a[0]); const v = a.length >= 2 ? symNames(a[1]) : symVarsOf(s); let L: SymExpr = sN(0); for (const vn of v) L = sAdd(L, diffExpr(diffExpr(s.exprs[0], vn), vn)); return ret(makeSym(1, 1, [simplifyExpr(L)])); },
+  potential: async (a) => { const F = symArg(a[0]).exprs; const v = symNames(a[1]); return ret(makeSym(1, 1, [simplifyExpr(integrate(F[0], v[0]))])); },
+  coeffs: async (a, n) => { const s = symArg(a[0]); const v = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar) || isSym(a[1])) ? (isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1])) : (symVarsOf(s)[0] ?? 'x'); const c = polyCoeffs(s.exprs[0], v); const nz = c.map((cc, i) => [cc, i] as [number, number]).filter(([cc]) => Math.abs(cc) > 1e-12); return n >= 2 ? [makeSym(1, nz.length, nz.map(([cc]) => sN(cc))), makeSym(1, nz.length, nz.map(([, i]) => i === 0 ? sN(1) : sPow(sV(v), sN(i))))] : [makeSym(1, nz.length, nz.map(([cc]) => sN(cc)))]; },
+  sym2poly: async (a) => { const s = symArg(a[0]); const v = symVarsOf(s)[0] ?? 'x'; return ret(rowVec(polyCoeffs(s.exprs[0], v).slice().reverse())); },
+  poly2sym: async (a) => { const c = toArray(m(a[0])); const v = a.length >= 2 ? (isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1])) : 'x'; let e: SymExpr = sN(0); const d = c.length - 1; c.forEach((ci, i) => { e = sAdd(e, sMul(sN(ci), sPow(sV(v), sN(d - i)))); }); return ret(makeSym(1, 1, [simplifyExpr(e)])); },
+  numden: async (a, n) => { const s = symArg(a[0]); const { num, den } = numDen(s.exprs[0]); return n >= 2 ? [makeSym(1, 1, [simplifyExpr(num)]), makeSym(1, 1, [simplifyExpr(den)])] : [makeSym(1, 1, [simplifyExpr(num)])]; },
+  collect: async (a) => { const s = symArg(a[0]); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => simplifyExpr(expandExpr(e))))); },
+  combine: async (a) => { const s = symArg(a[0]); return ret(makeSym(s.rows, s.cols, s.exprs.map(simplifyExpr))); },
+  simplifyFraction: async (a) => { const s = symArg(a[0]); return ret(makeSym(s.rows, s.cols, s.exprs.map(simplifyExpr))); },
+  horner: async (a) => ret(symArg(a[0])),
+  compose: async (a) => { if (!isSym(a[0])) return ret(makeStr(sprintf(asString(a[0]), a.slice(1)))); const f = a[0]; const g = symArg(a[1]); const v = symVarsOf(f)[0] ?? 'x'; return ret(makeSym(1, 1, [simplifyExpr(subsExpr(f.exprs[0], v, g.exprs[0]))])); },
+  children: async (a) => { const e = symArg(a[0]).exprs[0]; const kids = e.t === 'add' || e.t === 'mul' || e.t === 'fn' ? e.args : e.t === 'pow' ? [e.base, e.exp] : [e]; return ret(makeCell(1, kids.length, kids.map((k) => makeSym(1, 1, [k])))); },
+  lhs: async (a) => ret(symArg(a[0])),
+  rhs: async () => ret(makeSym(1, 1, [sN(0)])),
+  vpasolve: async (a) => { const s = symArg(a[0]); const v = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar) || isSym(a[1])) ? (isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1])) : (symVarsOf(s)[0] ?? 'x'); const re = solveExpr(s.exprs[0], v).map((r) => symEval(r, new Map())); return ret(colVec(re.filter(Number.isFinite))); },
+  finverse: async (a) => { const s = symArg(a[0]); const v = symVarsOf(s)[0] ?? 'x'; const roots = solveExpr(sAdd(s.exprs[0], sNeg(sV('y'))), v); return ret(makeSym(1, 1, [roots[0] ? simplifyExpr(subsExpr(roots[0], 'y', sV(v))) : sFn('finverse', s.exprs[0])])); },
+  isolate: async (a) => { const s = symArg(a[0]); const v = a.length >= 2 ? (isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1])) : (symVarsOf(s)[0] ?? 'x'); const roots = solveExpr(s.exprs[0], v); return ret(makeSym(1, 1, [roots[0] ?? s.exprs[0]])); },
+  equationsToMatrix: async (a, n) => {
+    const eqs = symArg(a[0]); const vars = symNames(a[1]); const ne = eqs.exprs.length, nv = vars.length;
+    const A = zeros(ne, nv), b = zeros(ne, 1);
+    for (let i = 0; i < ne; i++) { const e = eqs.exprs[i]; const env0 = new Map(vars.map((vn) => [vn, 0])); const c0 = symEval(e, env0); b.data[i] = -c0; for (let j = 0; j < nv; j++) { const env1 = new Map(env0); env1.set(vars[j], 1); A.data[i + j * ne] = symEval(e, env1) - c0; } }
+    return n >= 2 ? [A, b] : [A];
+  },
+  symsum: async (a) => { const s = symArg(a[0]); const k = isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1]); const lo = Math.round(asScalar(a[2])), hi = Math.round(asScalar(a[3])); let acc: SymExpr = sN(0); for (let i = lo; i <= hi; i++) acc = sAdd(acc, subsExpr(s.exprs[0], k, sN(i))); return ret(makeSym(1, 1, [simplifyExpr(acc)])); },
+  symprod: async (a) => { const s = symArg(a[0]); const k = isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1]); const lo = Math.round(asScalar(a[2])), hi = Math.round(asScalar(a[3])); let acc: SymExpr = sN(1); for (let i = lo; i <= hi; i++) acc = sMul(acc, subsExpr(s.exprs[0], k, sN(i))); return ret(makeSym(1, 1, [simplifyExpr(acc)])); },
+  assume: async () => [], assumeAlso: async () => [], assumptions: async () => ret(makeSym(0, 0, [])), sympref: async () => [], digits: async () => ret(scalar(32)),
   // ── datetime / duration objects ──
   datetime: async (a) => {
     if (a.length >= 1 && (isStr(a[0]) || (isMat(a[0]) && (a[0] as Mat).isChar))) { const w = asString(a[0]).toLowerCase(); const n = w === 'today' ? Math.floor(Date.now() / 86400000) + 719529 : Date.now() / 86400000 + 719529; return ret(makeTemporal('datetime', 1, 1, Float64Array.of(n))); }
@@ -1637,7 +1664,6 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   adjacency: async (a) => ret(denseToSparse(adjacencyMat(gArg(a[0])))),
   incidence: async (a) => { const g = gArg(a[0]); const I = zeros(g.n, g.edges.length); g.edges.forEach((e, j) => { I.data[e.s + j * g.n] += -1; I.data[e.t + j * g.n] += 1; }); return ret(denseToSparse(I)); },
-  laplacian: async (a) => { const g = gArg(a[0]); const A = adjacencyMat(g); const L = zeros(g.n, g.n); for (let i = 0; i < g.n; i++) { let d = 0; for (let j = 0; j < g.n; j++) { d += A.data[i + j * g.n]; L.data[i + j * g.n] = -A.data[i + j * g.n]; } L.data[i + i * g.n] = d - A.data[i + i * g.n]; } return ret(denseToSparse(L)); },
   shortestpath: async (a, n) => {
     const g = gArg(a[0]); const src = nodeIds(g, a[1])[0], dst = nodeIds(g, a[2])[0]; const { dist, prev } = dijkstra(g, src);
     if (!isFinite(dist[dst])) return n >= 2 ? [zeros(1, 0), scalar(Infinity)] : [zeros(1, 0)];
@@ -2250,21 +2276,6 @@ export const BUILTINS: Record<string, Builtin> = {
   delaunay3: async (a, n, env) => BUILTINS.delaunayn([horzcat([colvecOf(m(a[0])), colvecOf(m(a[1])), colvecOf(m(a[2]))])], n, env),
   dsearch: async (a, n, env) => BUILTINS.dsearchn([horzcat([colvecOf(m(a[0])), colvecOf(m(a[1]))]), horzcat([colvecOf(m(a[3])), colvecOf(m(a[4]))])], n, env),
   // vector calculus (finite differences on a meshgrid)
-  divergence: async (a) => {
-    const ms = a.filter((x): x is Mat => isMat(x) && !(x as Mat).isChar);
-    if (ms.length >= 6) { const U = ms[3], V = ms[4], W = ms[5]; const du = grad3(U, ms[0], 'x'), dv = grad3(V, ms[1], 'y'), dw = grad3(W, ms[2], 'z'); const o = makeND(ndSize(U), new Float64Array(numel(U))); for (let i = 0; i < o.data.length; i++) o.data[i] = du[i] + dv[i] + dw[i]; return ret(o); }
-    const U = ms.length >= 4 ? ms[2] : ms[0], V = ms.length >= 4 ? ms[3] : ms[1];
-    const hx = ms.length >= 4 ? gridStep(ms[0], 'x') : 1, hy = ms.length >= 4 ? gridStep(ms[1], 'y') : 1;
-    const { fx } = grad2(U, hx, hy), gy = grad2(V, hx, hy).fy; const o = zeros(U.rows, U.cols); for (let i = 0; i < o.data.length; i++) o.data[i] = fx[i] + gy[i]; return ret(o);
-  },
-  curl: async (a, n) => {
-    const ms = a.filter((x): x is Mat => isMat(x) && !(x as Mat).isChar);
-    const U = ms.length >= 4 ? ms[2] : ms[0], V = ms.length >= 4 ? ms[3] : ms[1];
-    const hx = ms.length >= 4 ? gridStep(ms[0], 'x') : 1, hy = ms.length >= 4 ? gridStep(ms[1], 'y') : 1;
-    const dVdx = grad2(V, hx, hy).fx, dUdy = grad2(U, hx, hy).fy;
-    const cz = zeros(U.rows, U.cols), av = zeros(U.rows, U.cols); for (let i = 0; i < cz.data.length; i++) { cz.data[i] = dVdx[i] - dUdy[i]; av.data[i] = cz.data[i] / 2; }
-    return n >= 2 ? [cz, av] : [cz];
-  },
   // classic sparse-Laplacian demo (Gilbert–Moler–Schreiber)
   numgrid: async (a) => ret(numgridOf(asString(a[0]), Math.round(asScalar(a[1])))),
   delsq: async (a) => ret(delsqOf(m(a[0]))),
@@ -2912,6 +2923,29 @@ const HELP: Record<string, HelpEntry> = {
   latex: { summary: 'LaTeX/text form of a symbolic expression', syntax: ['latex(f)'], seealso: ['pretty', 'sym'] },
   pretty: { summary: 'Pretty-print a symbolic expression', syntax: ['pretty(f)'], seealso: ['latex', 'disp'] },
   isAlways: { summary: 'Test whether a symbolic condition always holds', syntax: ['tf = isAlways(cond)'], seealso: ['logical', 'simplify'] },
+  potential: { summary: 'Scalar potential of a symbolic vector field', syntax: ['p = potential(F,vars)'], seealso: ['gradient', 'curl'] },
+  coeffs: { summary: 'Coefficients of a symbolic polynomial', syntax: ['c = coeffs(p,x)'], seealso: ['sym2poly', 'poly2sym'] },
+  sym2poly: { summary: 'Numeric coefficient vector of a symbolic polynomial', syntax: ['c = sym2poly(p)'], seealso: ['poly2sym', 'coeffs'] },
+  poly2sym: { summary: 'Symbolic polynomial from a coefficient vector', syntax: ['p = poly2sym(c)', 'p = poly2sym(c,x)'], seealso: ['sym2poly'] },
+  numden: { summary: 'Numerator and denominator of a symbolic expression', syntax: ['[N,D] = numden(f)'], seealso: ['simplifyFraction'] },
+  collect: { summary: 'Collect coefficients of like powers', syntax: ['collect(f,x)'], seealso: ['expand', 'simplify'] },
+  combine: { summary: 'Combine terms of identical structure', syntax: ['combine(f)'], seealso: ['simplify', 'expand'] },
+  simplifyFraction: { summary: 'Simplify a symbolic rational expression', syntax: ['simplifyFraction(f)'], seealso: ['simplify', 'numden'] },
+  horner: { summary: 'Horner (nested) polynomial form', syntax: ['horner(p)'], seealso: ['poly2sym'] },
+  children: { summary: 'Subexpressions of a symbolic expression', syntax: ['children(f)'], seealso: ['sym'] },
+  lhs: { summary: 'Left side of a symbolic equation', syntax: ['lhs(eqn)'], seealso: ['rhs', 'solve'] },
+  rhs: { summary: 'Right side of a symbolic equation', syntax: ['rhs(eqn)'], seealso: ['lhs'] },
+  vpasolve: { summary: 'Solve symbolic equations numerically', syntax: ['vpasolve(eqn,x)'], seealso: ['solve', 'vpa'] },
+  finverse: { summary: 'Functional inverse of a symbolic function', syntax: ['finverse(f)'], seealso: ['solve', 'compose'] },
+  isolate: { summary: 'Isolate a variable in a symbolic equation', syntax: ['isolate(eqn,x)'], seealso: ['solve'] },
+  equationsToMatrix: { summary: 'Convert linear equations to matrix form [A,b]', syntax: ['[A,b] = equationsToMatrix(eqns,vars)'], seealso: ['linsolve', 'solve'] },
+  symsum: { summary: 'Symbolic sum of a series', syntax: ['symsum(f,k,a,b)'], seealso: ['symprod', 'sum'] },
+  symprod: { summary: 'Symbolic product of a series', syntax: ['symprod(f,k,a,b)'], seealso: ['symsum', 'prod'] },
+  assume: { summary: 'Set an assumption on a symbolic variable (no-op)', syntax: ['assume(x>0)'], seealso: ['assumptions', 'assumeAlso'] },
+  assumeAlso: { summary: 'Add an assumption (no-op)', syntax: ['assumeAlso(cond)'], seealso: ['assume'] },
+  assumptions: { summary: 'Show assumptions (none tracked)', syntax: ['assumptions'], seealso: ['assume'] },
+  sympref: { summary: 'Set symbolic preferences (no-op)', syntax: ["sympref('default')"], seealso: ['sym'] },
+  digits: { summary: 'Variable-precision digits setting', syntax: ['digits(d)'], seealso: ['vpa'] },
   datetime: { summary: 'Create a datetime array', syntax: ['d = datetime(Y,M,D)', 'd = datetime(Y,M,D,H,MI,S)', "d = datetime('now')"], seealso: ['duration', 'datenum', 'year'] },
   duration: { summary: 'Create a duration array (from [H M S])', syntax: ['d = duration([h m s])'], seealso: ['hours', 'minutes', 'seconds', 'datetime'] },
   NaT: { summary: 'Not-a-Time (missing datetime)', syntax: ['d = NaT'], seealso: ['isnat', 'datetime', 'NaN'] },
@@ -3183,7 +3217,8 @@ const BASE_REF = new Set<string>((
   'bvp4c bvp5c bvpinit bvpset bvpget dde23 ddesd ddensd ddeset ddeget deval ' +
   'ode15i decic odextend bvpxtend equilibrate dissect symbfact ' +
   'datenum datevec datestr now today clock date weekday eomday etime addtodate ' +
-  'sym syms int limit solve jacobian hessian taylor expand subs vpa latex pretty isAlways simplify ' +
+  'sym syms int limit solve jacobian hessian taylor expand subs vpa latex pretty isAlways simplify logical ' +
+  'curl divergence laplacian potential coeffs sym2poly poly2sym numden collect combine simplifyFraction horner compose children lhs rhs vpasolve finverse isolate equationsToMatrix symsum symprod assume assumeAlso assumptions sympref digits ' +
   'datetime duration NaT years days hours minutes seconds milliseconds year month day hour minute second ymd isdatetime isduration isnat ' +
   'table timetable array2table cell2table struct2table table2array table2cell table2struct istable istimetable istabular height width head tail summary ' +
   'hGate xGate yGate zGate sGate siGate tGate tiGate idGate rxGate ryGate rzGate cxGate cnotGate cyGate czGate chGate crxGate cryGate crzGate swapGate ccxGate mcxGate ' +
@@ -4648,6 +4683,34 @@ function grad2(F: Mat, hx: number, hy: number): { fx: Float64Array; fy: Float64A
   return { fx, fy };
 }
 function gridStep(M: Mat, dir: 'x' | 'y'): number { return dir === 'x' ? (M.data[M.rows] - M.data[0]) || 1 : (M.data[1] - M.data[0]) || 1; }
+function divergenceNumeric(a: Value[], _n: number): Value[] {
+  const ms = a.filter((x): x is Mat => isMat(x) && !(x as Mat).isChar);
+  if (ms.length >= 6) { const U = ms[3], V = ms[4], W = ms[5]; const du = grad3(U, ms[0], 'x'), dv = grad3(V, ms[1], 'y'), dw = grad3(W, ms[2], 'z'); const o = makeND(ndSize(U), new Float64Array(numel(U))); for (let i = 0; i < o.data.length; i++) o.data[i] = du[i] + dv[i] + dw[i]; return [o]; }
+  const U = ms.length >= 4 ? ms[2] : ms[0], V = ms.length >= 4 ? ms[3] : ms[1];
+  const hx = ms.length >= 4 ? gridStep(ms[0], 'x') : 1, hy = ms.length >= 4 ? gridStep(ms[1], 'y') : 1;
+  const { fx } = grad2(U, hx, hy), gy = grad2(V, hx, hy).fy; const o = zeros(U.rows, U.cols); for (let i = 0; i < o.data.length; i++) o.data[i] = fx[i] + gy[i]; return [o];
+}
+function curlNumeric(a: Value[], n: number): Value[] {
+  const ms = a.filter((x): x is Mat => isMat(x) && !(x as Mat).isChar);
+  const U = ms.length >= 4 ? ms[2] : ms[0], V = ms.length >= 4 ? ms[3] : ms[1];
+  const hx = ms.length >= 4 ? gridStep(ms[0], 'x') : 1, hy = ms.length >= 4 ? gridStep(ms[1], 'y') : 1;
+  const dVdx = grad2(V, hx, hy).fx, dUdy = grad2(U, hx, hy).fy;
+  const cz = zeros(U.rows, U.cols), av = zeros(U.rows, U.cols); for (let i = 0; i < cz.data.length; i++) { cz.data[i] = dVdx[i] - dUdy[i]; av.data[i] = cz.data[i] / 2; }
+  return n >= 2 ? [cz, av] : [cz];
+}
+/** Polynomial coefficients of a symbolic expression in variable v (ascending; via Taylor at 0). */
+function polyCoeffs(e: SymExpr, v: string): number[] {
+  const c: number[] = []; let term = e; let fact = 1; let deg = 0;
+  for (let k = 0; k <= 12; k++) { const cv = symEval(term, new Map([[v, 0]])); c[k] = cv / fact; if (Math.abs(c[k]) > 1e-12) deg = k; term = simplifyExpr(diffExpr(term, v)); fact *= (k + 1); }
+  return c.slice(0, deg + 1);
+}
+/** Split an expression into numerator / denominator (denominator = product of negative powers). */
+function numDen(e: SymExpr): { num: SymExpr; den: SymExpr } {
+  const s = simplifyExpr(e);
+  if (s.t === 'mul') { const num: SymExpr[] = [], den: SymExpr[] = []; for (const f of s.args) { if (f.t === 'pow' && f.exp.t === 'n' && f.exp.v < 0) den.push(sPow(f.base, sN(-f.exp.v))); else num.push(f); } return { num: num.length ? sMul(...num) : sN(1), den: den.length ? sMul(...den) : sN(1) }; }
+  if (s.t === 'pow' && s.exp.t === 'n' && s.exp.v < 0) return { num: sN(1), den: sPow(s.base, sN(-s.exp.v)) };
+  return { num: s, den: sN(1) };
+}
 /** Central-difference derivative of a 3-D field along x (cols), y (rows), or z (pages). */
 function grad3(F: Mat, C: Mat, dir: 'x' | 'y' | 'z'): Float64Array {
   const d = ndSize(F); const d0 = d[0], d1 = d[1] ?? 1, d2 = d[2] ?? 1;
