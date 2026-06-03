@@ -1607,6 +1607,25 @@ export const BUILTINS: Record<string, Builtin> = {
     if (type === 'pagerank') return ret(colVec(pagerank(g)));
     throw new MatError(`centrality: unsupported type '${type}'`);
   },
+  flipedge: async (a) => { const g = gArg(a[0]); return ret(makeGraph(g.directed, g.n, g.edges.map((e) => ({ s: e.t, t: e.s, w: e.w })), g.names)); },
+  edgecount: async (a) => { const g = gArg(a[0]); const s = nodeIds(g, a[1]), t = nodeIds(g, a[2]); return ret(colVec(s.map((si, i) => { const ti = t[i]; return g.edges.filter((e) => (e.s === si && e.t === ti) || (!g.directed && e.s === ti && e.t === si)).length; }))); },
+  outedges: async (a) => { const g = gArg(a[0]); const i = nodeIds(g, a[1])[0]; const idx: number[] = []; g.edges.forEach((e, k) => { if (e.s === i || (!g.directed && e.t === i)) idx.push(k + 1); }); return ret(colVec(idx)); },
+  inedges: async (a) => { const g = gArg(a[0]); const i = nodeIds(g, a[1])[0]; const idx: number[] = []; g.edges.forEach((e, k) => { if (e.t === i || (!g.directed && e.s === i)) idx.push(k + 1); }); return ret(colVec(idx)); },
+  nearest: async (a, n) => { const g = gArg(a[0]); const src = nodeIds(g, a[1])[0]; const d = asScalar(a[2]); const { dist } = dijkstra(g, src); const nodes: number[] = [], ds: number[] = []; for (let i = 0; i < g.n; i++) if (i !== src && dist[i] <= d + 1e-12) { nodes.push(i + 1); ds.push(dist[i]); } return n >= 2 ? [colVec(nodes), colVec(ds)] : [colVec(nodes)]; },
+  hascycles: async (a) => { const g = gArg(a[0]); if (g.directed) return ret(bool(topoSort(g) === null)); const comps = new Set(connComp(g)).size; return ret(bool(g.edges.length >= g.n - comps + 1)); },
+  simplify: async (a) => { const g = gArg(a[0]); const seen = new Set<string>(); const edges: typeof g.edges = []; for (const e of g.edges) { if (e.s === e.t) continue; const k = g.directed ? `${e.s}_${e.t}` : `${Math.min(e.s, e.t)}_${Math.max(e.s, e.t)}`; if (seen.has(k)) continue; seen.add(k); edges.push(e); } return ret(makeGraph(g.directed, g.n, edges, g.names)); },
+  shortestpathtree: async (a) => { const g = gArg(a[0]); const src = nodeIds(g, a[1])[0]; const { prev } = dijkstra(g, src); const edges: { s: number; t: number; w: number }[] = []; for (let i = 0; i < g.n; i++) if (prev[i] >= 0) edges.push({ s: prev[i], t: i, w: 1 }); return ret(makeGraph(true, g.n, edges, g.names)); },
+  condensation: async (a) => { const g = gArg(a[0]); const { comp, count } = sccKosaraju(g); const seen = new Set<string>(); const edges: { s: number; t: number; w: number }[] = []; for (const e of g.edges) if (comp[e.s] !== comp[e.t]) { const k = `${comp[e.s]}_${comp[e.t]}`; if (!seen.has(k)) { seen.add(k); edges.push({ s: comp[e.s], t: comp[e.t], w: 1 }); } } return ret(makeGraph(true, count, edges)); },
+  transclosure: async (a) => { const g = gArg(a[0]); const R = reachMatrix(g); const edges: { s: number; t: number; w: number }[] = []; for (let i = 0; i < g.n; i++) for (let j = 0; j < g.n; j++) if (i !== j && R[i][j] && (g.directed || i < j)) edges.push({ s: i, t: j, w: 1 }); return ret(makeGraph(g.directed, g.n, edges, g.names)); },
+  transreduction: async (a) => { const g = gArg(a[0]); const R = reachMatrix(g); const keep: { s: number; t: number; w: number }[] = []; for (const e of g.edges) { let redundant = false; for (let k = 0; k < g.n; k++) if (k !== e.s && k !== e.t && R[e.s][k] && R[k][e.t]) { redundant = true; break; } if (!redundant) keep.push(e); } return ret(makeGraph(g.directed, g.n, keep, g.names)); },
+  biconncomp: async (a) => ret(rowVec(biconnected(gArg(a[0])))),
+  allpaths: async (a) => { const g = gArg(a[0]); const s = nodeIds(g, a[1])[0], t = nodeIds(g, a[2])[0]; const paths = enumeratePaths(g, s, t); return ret(makeCell(paths.length, 1, paths.map((p) => rowVec(p.map((x) => x + 1))))); },
+  allcycles: async (a) => { const g = gArg(a[0]); const cyc = enumerateCycles(g); return ret(makeCell(cyc.length, 1, cyc.map((p) => rowVec(p.map((x) => x + 1))))); },
+  cyclebasis: async (a) => { const g = gArg(a[0]); const cyc = cycleBasisOf(g); return ret(makeCell(cyc.length, 1, cyc.map((p) => rowVec(p.map((x) => x + 1))))); },
+  isisomorphic: async (a) => ret(bool(graphIsomorphism(gArg(a[0]), gArg(a[1])) !== null)),
+  isomorphism: async (a) => { const p = graphIsomorphism(gArg(a[0]), gArg(a[1])); return ret(p ? colVec(p.map((x) => x + 1)) : zeros(0, 1)); },
+  matchpairs: async (a, n) => { const C = m(a[0]); const big = a.length >= 2 ? asScalar(a[1]) : 1e6; const { assign, cost } = hungarian(C, big); const M = zeros(assign.length, 2); assign.forEach(([r, c], i) => { M.data[i] = r + 1; M.data[i + assign.length] = c + 1; }); return n >= 2 ? [M, scalar(cost)] : [M]; },
+  labeledge: async () => [], labelnode: async () => [], highlight: async () => [],
 
   // ── Geometry objects: triangulation / delaunayTriangulation / polyshape / alphaShape ──
   triangulation: async (a) => { const T = matRows(m(a[0])).map((r) => r.map((v) => Math.round(v) - 1)); const P = matRows(m(a[1])); return ret({ kind: 'geom', gkind: 'triangulation', points: P, conn: T, dim: P[0]?.length ?? 2 } as Geom); },
@@ -2836,6 +2855,24 @@ const HELP: Record<string, HelpEntry> = {
   subgraph: { summary: 'Extract a subgraph on a node subset', syntax: ['H = subgraph(G,nodes)'], seealso: ['rmnode', 'reordernodes'] },
   reordernodes: { summary: 'Reorder graph nodes', syntax: ['H = reordernodes(G,order)'], seealso: ['subgraph'] },
   centrality: { summary: 'Node centrality (degree/closeness/betweenness/pagerank)', syntax: ["c = centrality(G,'pagerank')"], seealso: ['degree', 'distances'] },
+  flipedge: { summary: 'Reverse directed graph edges', syntax: ['H = flipedge(G)'], seealso: ['digraph'] },
+  edgecount: { summary: 'Number of edges between node pairs', syntax: ['n = edgecount(G,s,t)'], seealso: ['findedge', 'numedges'] },
+  outedges: { summary: 'Edges leaving a node', syntax: ['idx = outedges(G,node)'], seealso: ['inedges', 'successors'] },
+  inedges: { summary: 'Edges entering a node', syntax: ['idx = inedges(G,node)'], seealso: ['outedges', 'predecessors'] },
+  nearest: { summary: 'Nodes within a distance of a source', syntax: ['ns = nearest(G,s,d)'], seealso: ['distances', 'shortestpath'] },
+  hascycles: { summary: 'True if the graph contains cycles', syntax: ['tf = hascycles(G)'], seealso: ['isdag', 'allcycles'] },
+  simplify: { summary: 'Remove self-loops and duplicate edges', syntax: ['H = simplify(G)'], seealso: ['graph', 'ismultigraph'] },
+  shortestpathtree: { summary: 'Shortest-path tree from a source', syntax: ['T = shortestpathtree(G,s)'], seealso: ['shortestpath', 'distances'] },
+  condensation: { summary: 'Condense strongly-connected components to nodes', syntax: ['C = condensation(G)'], seealso: ['conncomp', 'digraph'] },
+  transclosure: { summary: 'Transitive closure of a graph', syntax: ['T = transclosure(G)'], seealso: ['transreduction', 'distances'] },
+  transreduction: { summary: 'Transitive reduction of a graph', syntax: ['T = transreduction(G)'], seealso: ['transclosure'] },
+  biconncomp: { summary: 'Biconnected components (per edge)', syntax: ['bins = biconncomp(G)'], seealso: ['conncomp'] },
+  allpaths: { summary: 'All simple paths between two nodes', syntax: ['P = allpaths(G,s,t)'], seealso: ['shortestpath', 'allcycles'] },
+  allcycles: { summary: 'All simple cycles in a graph', syntax: ['C = allcycles(G)'], seealso: ['cyclebasis', 'hascycles'] },
+  cyclebasis: { summary: 'Fundamental cycle basis (undirected)', syntax: ['C = cyclebasis(G)'], seealso: ['allcycles'] },
+  isisomorphic: { summary: 'True if two graphs are isomorphic', syntax: ['tf = isisomorphic(G1,G2)'], seealso: ['isomorphism'] },
+  isomorphism: { summary: 'Node mapping between isomorphic graphs', syntax: ['p = isomorphism(G1,G2)'], seealso: ['isisomorphic'] },
+  matchpairs: { summary: 'Optimal (min-cost) linear assignment', syntax: ['M = matchpairs(Cost,costUnmatched)'], seealso: ['maxflow'] },
   humps: { summary: 'The classic MATLAB demo function (two peaks)', syntax: ['y = humps(x)'], seealso: ['fzero', 'integral'] },
   corrcov: { summary: 'Convert a covariance matrix to a correlation matrix', syntax: ['R = corrcov(C)'], seealso: ['cov', 'corrcoef'] },
   normpdf: { summary: 'Normal probability density function', syntax: ['y = normpdf(x,mu,sigma)'], seealso: ['normcdf', 'randn'] },
@@ -2953,6 +2990,7 @@ const BASE_REF = new Set<string>((
   'graph digraph numnodes numedges addnode rmnode addedge rmedge neighbors successors predecessors degree indegree outdegree ' +
   'findnode findedge adjacency incidence laplacian shortestpath distances bfsearch dfsearch conncomp toposort isdag ismultigraph ' +
   'minspantree maxflow subgraph reordernodes centrality ' +
+  'flipedge edgecount outedges inedges nearest hascycles simplify shortestpathtree condensation transclosure transreduction biconncomp allpaths allcycles cyclebasis isisomorphic isomorphism matchpairs labeledge labelnode highlight ' +
   'humps corrcov normpdf normcdf randsample timeit jsonencode jsondecode ' +
   'rsf2csf balance qz ordschur ordeig sylvester lsqminnorm expmv ' +
   'rms geomean harmmean movmad movprod movstd movvar mape rmse idivide polydiv betaincinv gammaincinv rosser rng convn optimset optimget quad2d ' +
@@ -4908,6 +4946,105 @@ function pagerank(g: Graph, damp = 0.85): number[] {
     let diff = 0; for (let i = 0; i < g.n; i++) diff += Math.abs(next[i] - pr[i]); pr = next; if (diff < 1e-12) break;
   }
   return pr;
+}
+/** Strongly-connected components (Kosaraju); comp[node] = 0-based component id. */
+function sccKosaraju(g: Graph): { comp: number[]; count: number } {
+  const out = adjList(g, 'out'); const order: number[] = []; const seen = new Array(g.n).fill(false);
+  const dfs1 = (u: number) => { seen[u] = true; for (const { to } of out[u]) if (!seen[to]) dfs1(to); order.push(u); };
+  for (let i = 0; i < g.n; i++) if (!seen[i]) dfs1(i);
+  const inn = adjList(g, 'in'); const comp = new Array(g.n).fill(-1); let c = 0;
+  const dfs2 = (u: number) => { comp[u] = c; for (const { to } of inn[u]) if (comp[to] < 0) dfs2(to); };
+  for (let i = order.length - 1; i >= 0; i--) { const u = order[i]; if (comp[u] < 0) { dfs2(u); c++; } }
+  return { comp, count: c };
+}
+/** Reachability matrix (BFS from each node over directed edges). */
+function reachMatrix(g: Graph): boolean[][] {
+  const adj = adjList(g, 'out'); const R: boolean[][] = Array.from({ length: g.n }, () => new Array(g.n).fill(false));
+  for (let s = 0; s < g.n; s++) { const q = [s]; const seen = new Array(g.n).fill(false); seen[s] = true; while (q.length) { const u = q.shift()!; for (const { to } of adj[u]) if (!seen[to]) { seen[to] = true; R[s][to] = true; q.push(to); } } }
+  return R;
+}
+/** Biconnected-component id per edge (undirected), via DFS low-link + edge stack. */
+function biconnected(g: Graph): number[] {
+  const adj: { to: number; e: number }[][] = Array.from({ length: g.n }, () => []);
+  g.edges.forEach((e, i) => { adj[e.s].push({ to: e.t, e: i }); if (e.s !== e.t) adj[e.t].push({ to: e.s, e: i }); });
+  const disc = new Array(g.n).fill(-1), low = new Array(g.n).fill(0); const bin = new Array(g.edges.length).fill(0);
+  let timer = 0, bc = 0; const stack: number[] = [];
+  const dfs = (u: number, pe: number) => {
+    disc[u] = low[u] = timer++;
+    for (const { to, e } of adj[u]) { if (e === pe) continue;
+      if (disc[to] < 0) { stack.push(e); dfs(to, e); low[u] = Math.min(low[u], low[to]); if (low[to] >= disc[u]) { bc++; let x; do { x = stack.pop()!; bin[x] = bc; } while (x !== e); } }
+      else if (disc[to] < disc[u]) { stack.push(e); low[u] = Math.min(low[u], disc[to]); }
+    }
+  };
+  for (let i = 0; i < g.n; i++) if (disc[i] < 0) dfs(i, -1);
+  return bin;
+}
+/** All simple paths s→t (bounded to avoid blow-up). */
+function enumeratePaths(g: Graph, s: number, t: number, cap = 2000): number[][] {
+  const adj = adjList(g, 'out'); const paths: number[][] = []; const onPath = new Array(g.n).fill(false);
+  const dfs = (u: number, path: number[]) => { if (paths.length >= cap) return; if (u === t) { paths.push(path.slice()); return; } onPath[u] = true; for (const { to } of adj[u]) if (!onPath[to]) { path.push(to); dfs(to, path); path.pop(); } onPath[u] = false; };
+  dfs(s, [s]); return paths;
+}
+/** All simple cycles (bounded), each listed once with its smallest start node. */
+function enumerateCycles(g: Graph, cap = 2000): number[][] {
+  const adj = adjList(g, 'out'); const cycles: number[][] = [];
+  for (let start = 0; start < g.n && cycles.length < cap; start++) {
+    const onPath = new Array(g.n).fill(false);
+    const dfs = (u: number, path: number[]) => { if (cycles.length >= cap) return; onPath[u] = true; for (const { to } of adj[u]) { if (to === start && path.length >= (g.directed ? 1 : 2)) cycles.push(path.slice()); else if (to > start && !onPath[to]) { path.push(to); dfs(to, path); path.pop(); } } onPath[u] = false; };
+    dfs(start, [start]);
+  }
+  // de-dup undirected cycles (each found in 2 directions)
+  if (!g.directed) { const seen = new Set<string>(); return cycles.filter((c) => { const k = [...c].sort((a, b) => a - b).join(','); if (seen.has(k)) return false; seen.add(k); return true; }); }
+  return cycles;
+}
+/** Fundamental cycle basis (undirected): non-tree edge + its tree path. */
+function cycleBasisOf(g: Graph): number[][] {
+  const par = new Array(g.n).fill(-1); const seen = new Array(g.n).fill(false); const adj = adjList(g, 'all');
+  const treeEdge = new Set<string>();
+  for (let s = 0; s < g.n; s++) if (!seen[s]) { seen[s] = true; const q = [s]; while (q.length) { const u = q.shift()!; for (const { to } of adj[u]) if (!seen[to]) { seen[to] = true; par[to] = u; treeEdge.add(`${Math.min(u, to)}_${Math.max(u, to)}`); q.push(to); } } }
+  const cyc: number[][] = []; const used = new Set<string>();
+  for (const e of g.edges) { if (e.s === e.t) continue; const k = `${Math.min(e.s, e.t)}_${Math.max(e.s, e.t)}`; if (treeEdge.has(k) || used.has(k)) continue; used.add(k);
+    const pathUp = (x: number) => { const p = [x]; while (par[x] >= 0) { x = par[x]; p.push(x); } return p; };
+    const pa = pathUp(e.s), pb = pathUp(e.t); const setB = new Map(pb.map((v, i) => [v, i])); let lca = -1, ai = 0; for (let i = 0; i < pa.length; i++) if (setB.has(pa[i])) { lca = pa[i]; ai = i; break; }
+    const cycle = pa.slice(0, ai + 1).concat(pb.slice(0, setB.get(lca)!).reverse()); cyc.push(cycle);
+  }
+  return cyc;
+}
+/** Graph isomorphism via degree-pruned backtracking; returns a permutation (g2→g1) or null. */
+function graphIsomorphism(g1: Graph, g2: Graph): number[] | null {
+  if (g1.n !== g2.n || g1.edges.length !== g2.edges.length) return null;
+  const adjSet = (g: Graph) => { const A = Array.from({ length: g.n }, () => new Set<number>()); for (const e of g.edges) { A[e.s].add(e.t); if (!g.directed) A[e.t].add(e.s); } return A; };
+  const A1 = adjSet(g1), A2 = adjSet(g2); const deg = (A: Set<number>[]) => A.map((s) => s.size);
+  const d1 = deg(A1), d2 = deg(A2); if ([...d1].sort().join() !== [...d2].sort().join()) return null;
+  const map = new Array(g1.n).fill(-1); const used = new Array(g2.n).fill(false);
+  const bt = (i: number): boolean => {
+    if (i === g1.n) return true;
+    for (let j = 0; j < g2.n; j++) { if (used[j] || d2[j] !== d1[i]) continue;
+      let ok = true; for (let k = 0; k < i; k++) { if (A1[i].has(k) !== A2[j].has(map[k]) || A1[k].has(i) !== A2[map[k]].has(j)) { ok = false; break; } }
+      if (ok) { map[i] = j; used[j] = true; if (bt(i + 1)) return true; used[j] = false; map[i] = -1; }
+    }
+    return false;
+  };
+  return bt(0) ? map.slice() : null;
+}
+/** Hungarian algorithm: min-cost assignment of a cost matrix → pairs + total cost. */
+function hungarian(C: Mat, _big: number): { assign: [number, number][]; cost: number } {
+  const nr = C.rows, nc = C.cols; const n = Math.max(nr, nc); const INF = 1e15;
+  const a: number[][] = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => (i < nr && j < nc ? C.data[i + j * nr] : 0)));
+  const u = new Array(n + 1).fill(0), v = new Array(n + 1).fill(0), p = new Array(n + 1).fill(0), way = new Array(n + 1).fill(0);
+  for (let i = 1; i <= n; i++) {
+    p[0] = i; let j0 = 0; const minv = new Array(n + 1).fill(INF); const usedc = new Array(n + 1).fill(false);
+    do { usedc[j0] = true; const i0 = p[j0]; let delta = INF, j1 = -1;
+      for (let j = 1; j <= n; j++) if (!usedc[j]) { const cur = a[i0 - 1][j - 1] - u[i0] - v[j]; if (cur < minv[j]) { minv[j] = cur; way[j] = j0; } if (minv[j] < delta) { delta = minv[j]; j1 = j; } }
+      for (let j = 0; j <= n; j++) if (usedc[j]) { u[p[j]] += delta; v[j] -= delta; } else minv[j] -= delta;
+      j0 = j1;
+    } while (p[j0] !== 0);
+    do { const j1 = way[j0]; p[j0] = p[j1]; j0 = j1; } while (j0);
+  }
+  const assign: [number, number][] = []; let cost = 0;
+  for (let j = 1; j <= n; j++) { const i = p[j]; if (i >= 1 && i <= nr && j <= nc) { assign.push([i - 1, j - 1]); cost += C.data[(i - 1) + (j - 1) * nr]; } }
+  assign.sort((x, y) => x[0] - y[0]);
+  return { assign, cost };
 }
 
 /** Draw a graph with a simple circular layout: edges as line segments, nodes as markers. */
