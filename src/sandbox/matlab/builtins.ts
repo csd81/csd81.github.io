@@ -16,7 +16,7 @@ import {
   type Table, isTable,
   type Sym, isSym, makeSym,
 } from './values';
-import { type SymExpr, sN, sV, sAdd, sSub, sMul, sPow, sFn, sNeg, simplifyExpr, diffExpr, subsExpr, evalExpr as symEval, exprToStr, symVars } from './sym';
+import { type SymExpr, sN, sV, sAdd, sSub, sMul, sPow, sFn, sNeg, sDiv, simplifyExpr, diffExpr, subsExpr, evalExpr as symEval, exprToStr, symVars } from './sym';
 import {
   det, inv, mldivide, diag, norm, eye,
   qr as qrDecomp, chol as cholFn, luOutputs, jacobiEigSym, svd as svdReal,
@@ -1529,6 +1529,12 @@ export const BUILTINS: Record<string, Builtin> = {
   poly2sym: async (a) => { const c = toArray(m(a[0])); const v = a.length >= 2 ? (isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1])) : 'x'; let e: SymExpr = sN(0); const d = c.length - 1; c.forEach((ci, i) => { e = sAdd(e, sMul(sN(ci), sPow(sV(v), sN(d - i)))); }); return ret(makeSym(1, 1, [simplifyExpr(e)])); },
   numden: async (a, n) => { const s = symArg(a[0]); const { num, den } = numDen(s.exprs[0]); return n >= 2 ? [makeSym(1, 1, [simplifyExpr(num)]), makeSym(1, 1, [simplifyExpr(den)])] : [makeSym(1, 1, [simplifyExpr(num)])]; },
   collect: async (a) => { const s = symArg(a[0]); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => simplifyExpr(expandExpr(e))))); },
+  laplace: async (a) => { const { s, indep, trans } = transformVars(a, 't', 's'); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => laplaceExpr(e, indep, trans)))); },
+  ilaplace: async (a) => { const { s, indep, trans } = transformVars(a, 's', 't'); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => ilaplaceExpr(e, indep, trans)))); },
+  ztrans: async (a) => { const { s, indep, trans } = transformVars(a, 'n', 'z'); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => ztransExpr(e, indep, trans)))); },
+  iztrans: async (a) => { const { s, indep, trans } = transformVars(a, 'z', 'n'); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => iztransExpr(e, indep, trans)))); },
+  fourier: async (a) => { const { s, indep, trans } = transformVars(a, 't', 'w'); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => fourierExpr(e, indep, trans)))); },
+  ifourier: async (a) => { const { s, indep, trans } = transformVars(a, 'w', 't'); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => ifourierExpr(e, indep, trans)))); },
   combine: async (a) => { const s = symArg(a[0]); return ret(makeSym(s.rows, s.cols, s.exprs.map(simplifyExpr))); },
   simplifyFraction: async (a) => { const s = symArg(a[0]); return ret(makeSym(s.rows, s.cols, s.exprs.map(simplifyExpr))); },
   horner: async (a) => ret(symArg(a[0])),
@@ -4264,6 +4270,17 @@ function symCharpolyCoeffs(e: SymExpr[], n: number): SymExpr[] {
 function symArg(v: Value): Sym { if (isSym(v)) return v; const M = m(v); return makeSym(M.rows, M.cols, Array.from(M.data, (x) => sN(x))); }
 function symToExpr(v: Value): SymExpr { if (isSym(v)) return v.exprs[0]; if (isStr(v) || (isMat(v) && (v as Mat).isChar)) { const t = asString(v).trim(); const num = Number(t); return Number.isFinite(num) && /^[-\d.]+$/.test(t) ? sN(num) : sV(t); } return sN(asScalar(v)); }
 function symVarsOf(s: Sym): string[] { const set = new Set<string>(); for (const e of s.exprs) symVars(e).forEach((x) => set.add(x)); return [...set].sort(); }
+/** Resolve (independent, transform) variables for an integral-transform call.
+ *  f(a)→default vars; f(a,trans); f(a,indep,trans). */
+function transformVars(a: Value[], defIndep: string, defTrans: string): { s: Sym; indep: string; trans: string } {
+  const s = symArg(a[0]); const vars = symVarsOf(s);
+  const nameOf = (v: Value): string => isSym(v) ? (symVarsOf(v)[0] ?? defIndep) : asString(v);
+  let indep = vars.includes(defIndep) ? defIndep : (vars[0] ?? defIndep);
+  let trans = defTrans;
+  if (a.length === 2) trans = nameOf(a[1]);
+  else if (a.length >= 3) { indep = nameOf(a[1]); trans = nameOf(a[2]); }
+  return { s, indep, trans };
+}
 function symNames(v: Value): string[] { if (isSym(v)) return v.exprs.map((e) => (e.t === 'v' ? e.name : symVars(e)[0] ?? 'x')); if (isCell(v)) return v.items.map((x) => asString(x)); if (isStr(v)) return v.items.slice(); return [asString(v)]; }
 /** Basic symbolic integration: linearity + xⁿ, 1/x, sin/cos/exp of the variable. */
 function integrate(e: SymExpr, x: string): SymExpr {
@@ -4308,6 +4325,217 @@ function expandExpr(e: SymExpr): SymExpr {
   const factors = e.args.map(expandExpr); let terms: SymExpr[] = [sN(1)];
   for (const f of factors) { const fterms = f.t === 'add' ? f.args : [f]; const next: SymExpr[] = []; for (const t of terms) for (const ft of fterms) next.push(sMul(t, ft)); terms = next; }
   return sAdd(...terms);
+}
+
+// ── Integral transforms (table-based symbolic Laplace / Fourier / Z) ──────────
+const symHasVar = (e: SymExpr, t: string): boolean => symVars(e).includes(t);
+const isZeroE = (e: SymExpr): boolean => { const s = simplifyExpr(e); return s.t === 'n' && Math.abs(s.v) < 1e-12; };
+const round0 = (x: number): number => (Math.abs(x - Math.round(x)) < 1e-9 ? Math.round(x) : x);
+/** If e is linear in t (e = a·t + b, a,b free of t) return {a,b}; else null. */
+function linearInT(e: SymExpr, t: string): { a: SymExpr; b: SymExpr } | null {
+  const a = simplifyExpr(diffExpr(e, t));
+  if (symHasVar(a, t)) return null;
+  return { a, b: simplifyExpr(subsExpr(e, t, sN(0))) };
+}
+
+/** Laplace transform of a single product term (no top-level sum). */
+function laplaceTerm(e: SymExpr, t: string, s: string): SymExpr {
+  e = simplifyExpr(e);
+  const factors = e.t === 'mul' ? e.args : [e];
+  const coef: SymExpr[] = []; let tpow = 0; let expA: SymExpr | null = null; const core: SymExpr[] = [];
+  for (const f of factors) {
+    if (!symHasVar(f, t)) { coef.push(f); continue; }
+    if (f.t === 'v' && f.name === t) { tpow += 1; continue; }
+    if (f.t === 'pow' && f.base.t === 'v' && f.base.name === t && f.exp.t === 'n' && Number.isInteger(f.exp.v) && f.exp.v > 0) { tpow += f.exp.v; continue; }
+    if (f.t === 'fn' && f.name === 'exp' && f.args.length === 1) { const lin = linearInT(f.args[0], t); if (lin) { expA = expA ? simplifyExpr(sAdd(expA, lin.a)) : lin.a; if (!isZeroE(lin.b)) coef.push(sFn('exp', lin.b)); continue; } }
+    core.push(f);
+  }
+  let F = laplaceCore(core.length ? simplifyExpr(sMul(...core)) : sN(1), t, s);
+  if (expA && !isZeroE(expA)) F = subsExpr(F, s, sSub(sV(s), expA));
+  for (let i = 0; i < tpow; i++) F = sNeg(diffExpr(F, s));
+  F = simplifyExpr(F);
+  return coef.length ? simplifyExpr(sMul(sMul(...coef), F)) : F;
+}
+/** Laplace transform table for a "core" factor (1, trig, hyperbolic, dirac, heaviside). */
+function laplaceCore(core: SymExpr, t: string, s: string): SymExpr {
+  const S = sV(s); core = simplifyExpr(core);
+  if (!symHasVar(core, t)) return sMul(core, sPow(S, sN(-1)));   // L{c} = c/s
+  if (core.t === 'fn' && core.args.length === 1) {
+    const lin = linearInT(core.args[0], t); const s2 = sMul(S, S);
+    if (lin && isZeroE(lin.b)) { const a = lin.a, a2 = sMul(a, a);
+      if (core.name === 'sin') return sDiv(a, sAdd(s2, a2));
+      if (core.name === 'cos') return sDiv(S, sAdd(s2, a2));
+      if (core.name === 'sinh') return sDiv(a, sSub(s2, a2));
+      if (core.name === 'cosh') return sDiv(S, sSub(s2, a2));
+    }
+    if (core.name === 'dirac' && lin && isZeroE(lin.b)) return sN(1);
+    if (core.name === 'heaviside' && lin && isZeroE(lin.b)) return sPow(S, sN(-1));
+  }
+  return sFn('laplace', core, sV(t), S);   // unevaluated
+}
+function laplaceExpr(e: SymExpr, t: string, s: string): SymExpr {
+  e = simplifyExpr(expandExpr(e));
+  if (e.t === 'add') return simplifyExpr(sAdd(...e.args.map((a) => laplaceTerm(a, t, s))));
+  return laplaceTerm(e, t, s);
+}
+
+/** Z-transform of a single product term. */
+function ztransTerm(e: SymExpr, n: string, z: string): SymExpr {
+  e = simplifyExpr(e);
+  const factors = e.t === 'mul' ? e.args : [e];
+  const coef: SymExpr[] = []; let npow = 0; let aBase: SymExpr | null = null; const core: SymExpr[] = [];
+  for (const f of factors) {
+    if (!symHasVar(f, n)) { coef.push(f); continue; }
+    if (f.t === 'v' && f.name === n) { npow += 1; continue; }
+    if (f.t === 'pow' && f.base.t === 'v' && f.base.name === n && f.exp.t === 'n' && Number.isInteger(f.exp.v) && f.exp.v > 0) { npow += f.exp.v; continue; }
+    if (f.t === 'pow' && !symHasVar(f.base, n)) { const lin = linearInT(f.exp, n); if (lin) { aBase = aBase ? simplifyExpr(sMul(aBase, sPow(f.base, lin.a))) : sPow(f.base, lin.a); if (!isZeroE(lin.b)) coef.push(sPow(f.base, lin.b)); continue; } }
+    if (f.t === 'fn' && f.name === 'exp' && f.args.length === 1) { const lin = linearInT(f.args[0], n); if (lin) { aBase = aBase ? simplifyExpr(sMul(aBase, sFn('exp', lin.a))) : sFn('exp', lin.a); if (!isZeroE(lin.b)) coef.push(sFn('exp', lin.b)); continue; } }
+    core.push(f);
+  }
+  let F = ztransCore(core.length ? simplifyExpr(sMul(...core)) : sN(1), n, z);
+  if (aBase && !isZeroE(sSub(aBase, sN(1)))) F = subsExpr(F, z, sDiv(sV(z), aBase));   // Z{aⁿf} = F(z/a)
+  for (let i = 0; i < npow; i++) F = sNeg(sMul(sV(z), diffExpr(F, z)));                 // Z{n·f} = -z F'(z)
+  F = simplifyExpr(F);
+  return coef.length ? simplifyExpr(sMul(sMul(...coef), F)) : F;
+}
+function ztransCore(core: SymExpr, n: string, z: string): SymExpr {
+  const Z = sV(z); core = simplifyExpr(core);
+  if (!symHasVar(core, n)) return sMul(core, sDiv(Z, sSub(Z, sN(1))));   // Z{c} = c·z/(z-1)
+  if (core.t === 'fn' && core.args.length === 1) {
+    const lin = linearInT(core.args[0], n);
+    if (lin && isZeroE(lin.b)) { const a = lin.a; const den = sAdd(sMul(Z, Z), sMul(sN(-2), Z, sFn('cos', a)), sN(1));
+      if (core.name === 'sin') return sDiv(sMul(Z, sFn('sin', a)), den);
+      if (core.name === 'cos') return sDiv(sMul(Z, sSub(Z, sFn('cos', a))), den);
+    }
+    if (core.name === 'kroneckerDelta' && lin && isZeroE(lin.b)) return sN(1);
+  }
+  return sFn('ztrans', core, sV(n), Z);
+}
+function ztransExpr(e: SymExpr, n: string, z: string): SymExpr {
+  e = simplifyExpr(expandExpr(e));
+  if (e.t === 'add') return simplifyExpr(sAdd(...e.args.map((a) => ztransTerm(a, n, z))));
+  return ztransTerm(e, n, z);
+}
+
+/** Complex Horner evaluation (coefficients highest-first). */
+function cPolyval(c: number[], xr: number, xi: number): [number, number] { let r = 0, i = 0; for (const cc of c) { const nr = r * xr - i * xi + cc, ni = r * xi + i * xr; r = nr; i = ni; } return [r, i]; }
+function polyDerivHi(c: number[]): number[] { const n = c.length - 1, d: number[] = []; for (let i = 0; i < n; i++) d.push(c[i] * (n - i)); return d.length ? d : [0]; }
+/** Taylor coefficients b_k = N^{(k)}(r)/k! by repeated synthetic division (coeffs highest-first). */
+function taylorAtReal(c: number[], r: number): number[] {
+  let work = c.slice(); const b: number[] = [];
+  while (work.length) { const out = [work[0]]; for (let i = 1; i < work.length; i++) out.push(work[i] + out[i - 1] * r); b.push(out[out.length - 1]); work = out.slice(0, out.length - 1); }
+  return b;
+}
+/** Partial-fraction inverse of a proper rational F(v)=num/den (numeric coeffs only). */
+function pfeInverse(F: SymExpr, v: string, mapReal: (A: number, r: number) => SymExpr, mapComplex: (p: number, q: number, ar: number, ai: number) => SymExpr, mapRepeated: ((A: number, r: number, pow: number) => SymExpr) | null): SymExpr | null {
+  const { num, den } = numDen(simplifyExpr(F));
+  if (symVars(num).some((x) => x !== v) || symVars(den).some((x) => x !== v)) return null;
+  const N = polyCoeffs(num, v).slice().reverse(), D = polyCoeffs(den, v).slice().reverse();   // highest-first
+  if (D.length < 2 || N.length >= D.length) return null;                                        // need proper rational
+  const roots = durandKerner(D); const used = new Array(roots.re.length).fill(false);
+  const groups: { re: number; im: number; mult: number }[] = [];
+  for (let i = 0; i < roots.re.length; i++) { if (used[i]) continue; const g = { re: roots.re[i], im: roots.im[i], mult: 1 }; used[i] = true; for (let j = i + 1; j < roots.re.length; j++) if (!used[j] && Math.hypot(roots.re[j] - g.re, roots.im[j] - g.im) < 1e-4) { used[j] = true; g.mult++; } groups.push(g); }
+  const lead = D[0]; const terms: SymExpr[] = [];
+  if (groups.every((g) => g.mult === 1)) {
+    const Dp = polyDerivHi(D);
+    for (const g of groups) {
+      const [nr, ni] = cPolyval(N, g.re, g.im); const [dr, di] = cPolyval(Dp, g.re, g.im); const dd = dr * dr + di * di;
+      const pr = (nr * dr + ni * di) / dd, pi = (ni * dr - nr * di) / dd;   // residue N/D'
+      if (Math.abs(g.im) < 1e-7) terms.push(mapReal(round0(pr), round0(g.re)));
+      else if (g.im > 0) terms.push(mapComplex(pr, pi, g.re, g.im));
+    }
+  } else if (groups.length === 1 && Math.abs(groups[0].im) < 1e-7 && mapRepeated) {
+    const r = groups[0].re, mlt = groups[0].mult, b = taylorAtReal(N, r);
+    for (let j = 0; j < mlt; j++) { const A = (b[j] ?? 0) / lead; if (Math.abs(A) > 1e-12) terms.push(mapRepeated(round0(A), round0(r), mlt - j)); }
+  } else return null;
+  return terms.length ? simplifyExpr(sAdd(...terms)) : sN(0);
+}
+function ilaplaceExpr(F: SymExpr, s: string, t: string): SymExpr {
+  const T = sV(t);
+  const expRT = (r: number): SymExpr => r === 0 ? sN(1) : sFn('exp', sMul(sN(r), T));
+  const res = pfeInverse(F, s,
+    (A, r) => sMul(sN(A), expRT(r)),
+    (p, q, ar, ai) => sMul(expRT(ar), sAdd(sMul(sN(2 * p), sFn('cos', sMul(sN(ai), T))), sMul(sN(-2 * q), sFn('sin', sMul(sN(ai), T))))),
+    (A, r, pow) => sMul(sN(A / factorialN(pow - 1)), pow > 1 ? sPow(T, sN(pow - 1)) : sN(1), expRT(r)));
+  return res ? simplifyExpr(res) : sFn('ilaplace', F, sV(s), T);
+}
+function iztransExpr(F: SymExpr, z: string, n: string): SymExpr {
+  const Nn = sV(n); const G = simplifyExpr(sMul(F, sPow(sV(z), sN(-1))));   // residues of F/z
+  const res = pfeInverse(G, z,
+    (A, r) => r === 0 ? sMul(sN(A), sFn('kroneckerDelta', Nn)) : sMul(sN(A), sPow(sN(r), Nn)),
+    (p, q, ar, ai) => { const rho = Math.hypot(ar, ai), th = Math.atan2(ai, ar); return sMul(sPow(sN(round0(rho)), Nn), sAdd(sMul(sN(2 * p), sFn('cos', sMul(sN(round0(th)), Nn))), sMul(sN(-2 * q), sFn('sin', sMul(sN(round0(th)), Nn))))); },
+    null);
+  return res ? simplifyExpr(res) : sFn('iztrans', F, sV(z), Nn);
+}
+
+/** Fourier transform F(w)=∫f(t)e^{-iwt}dt — small table; uses symbolic pi, 1i, dirac. */
+function fourierExpr(e: SymExpr, t: string, w: string): SymExpr {
+  e = simplifyExpr(expandExpr(e));
+  if (e.t === 'add') return simplifyExpr(sAdd(...e.args.map((a) => fourierTerm(a, t, w))));
+  return fourierTerm(e, t, w);
+}
+function fourierTerm(e: SymExpr, t: string, w: string): SymExpr {
+  const W = sV(w), PI = sV('pi'), I = sV('1i');
+  e = simplifyExpr(e);
+  if (!symHasVar(e, t)) return simplifyExpr(sMul(e, sN(2), PI, sFn('dirac', W)));   // c → 2πc·δ(w)
+  const factors = e.t === 'mul' ? e.args : [e];
+  const coef: SymExpr[] = []; let tpow = 0; const core: SymExpr[] = [];
+  for (const f of factors) {
+    if (!symHasVar(f, t)) { coef.push(f); continue; }
+    if (f.t === 'v' && f.name === t) { tpow += 1; continue; }
+    if (f.t === 'pow' && f.base.t === 'v' && f.base.name === t && f.exp.t === 'n' && Number.isInteger(f.exp.v) && f.exp.v > 0) { tpow += f.exp.v; continue; }
+    core.push(f);
+  }
+  let F = fourierCore(core.length ? simplifyExpr(sMul(...core)) : sN(1), t, w, W, PI, I);
+  for (let i = 0; i < tpow; i++) F = sMul(I, diffExpr(F, w));   // F{t·f} = i F'(w)
+  F = simplifyExpr(F);
+  return coef.length ? simplifyExpr(sMul(sMul(...coef), F)) : F;
+}
+function fourierCore(core: SymExpr, t: string, w: string, W: SymExpr, PI: SymExpr, I: SymExpr): SymExpr {
+  core = simplifyExpr(core);
+  if (!symHasVar(core, t)) return sMul(core, sN(2), PI, sFn('dirac', W));
+  if (core.t === 'fn' && core.args.length === 1) {
+    const lin = linearInT(core.args[0], t);
+    if (core.name === 'dirac' && lin && isZeroE(lin.b)) return sN(1);   // F{δ(t)} = 1
+    if (lin && isZeroE(lin.b)) { const a = lin.a; const dm = sFn('dirac', sSub(W, a)), dp = sFn('dirac', sAdd(W, a));
+      if (core.name === 'cos') return sMul(PI, sAdd(dm, dp));
+      if (core.name === 'sin') return sMul(sN(-1), I, PI, sSub(dm, dp));
+    }
+    if (core.name === 'exp') { const arg = simplifyExpr(core.args[0]);
+      // Gaussian exp(-a t²): coefficient of t² must be negative
+      const c2 = simplifyExpr(subsExpr(diffExpr(diffExpr(arg, t), t), t, sN(0)));   // 2·(t² coeff)
+      if (!symHasVar(c2, t) && c2.t === 'n' && c2.v < 0 && isZeroE(simplifyExpr(subsExpr(arg, t, sN(0)))) && isZeroE(simplifyExpr(subsExpr(diffExpr(arg, t), t, sN(0))))) {
+        const a = sN(-c2.v / 2);   // arg = -a t²
+        return sMul(sPow(sDiv(PI, a), sN(0.5)), sFn('exp', sDiv(sNeg(sMul(W, W)), sMul(sN(4), a))));
+      }
+    }
+  }
+  // exp(-a|t|) → 2a/(a²+w²)
+  if (core.t === 'mul' || (core.t === 'fn' && core.name === 'exp')) {
+    const ex = core.t === 'fn' ? core : null;
+    if (ex && ex.name === 'exp' && ex.args[0].t === 'mul') { const ab = ex.args[0].args; const absF = ab.find((x) => x.t === 'fn' && x.name === 'abs' && x.args[0].t === 'v' && x.args[0].name === t); if (absF) { const rest = ab.filter((x) => x !== absF); const aNeg = simplifyExpr(rest.length ? sMul(...rest) : sN(1)); const a = simplifyExpr(sNeg(aNeg)); if (!symHasVar(a, t)) return sDiv(sMul(sN(2), a), sAdd(sMul(a, a), sMul(W, W))); } }
+  }
+  return sFn('fourier', core, sV(t), W);
+}
+function ifourierExpr(F: SymExpr, w: string, t: string): SymExpr {
+  F = simplifyExpr(expandExpr(F));
+  if (F.t === 'add') return simplifyExpr(sAdd(...F.args.map((a) => ifourierTerm(a, w, t))));
+  return ifourierTerm(F, w, t);
+}
+function ifourierTerm(F: SymExpr, w: string, t: string): SymExpr {
+  const T = sV(t), PI = sV('pi');
+  F = simplifyExpr(F);
+  if (!symHasVar(F, w)) return simplifyExpr(sMul(F, sFn('dirac', T)));   // c → c·δ(t)
+  const factors = F.t === 'mul' ? F.args : [F];
+  const coef: SymExpr[] = []; const core: SymExpr[] = [];
+  for (const f of factors) { if (!symHasVar(f, w)) coef.push(f); else core.push(f); }
+  const c = core.length ? simplifyExpr(sMul(...core)) : sN(1);
+  let R: SymExpr | null = null;
+  if (c.t === 'fn' && c.name === 'dirac') { const lin = linearInT(c.args[0], w); if (lin && isZeroE(lin.b)) R = sDiv(sN(1), sMul(sN(2), PI)); }   // δ(w) → 1/(2π)
+  // 1/(w²+a²) → (π/a)·e^{-a|t|}
+  if (!R) { const { num, den } = numDen(c); if (!symHasVar(num, w)) { const dc = polyCoeffs(den, w); if (dc.length === 3 && Math.abs(dc[2] - 1) < 1e-12 && Math.abs(dc[1]) < 1e-12 && dc[0] > 0) { const a = Math.sqrt(dc[0]); R = sMul(sDiv(PI, sN(a)), sFn('exp', sMul(sN(-a), sFn('abs', T))), sPow(num as SymExpr, sN(1))); } } }
+  if (!R) return sFn('ifourier', F, sV(w), T);
+  return coef.length ? simplifyExpr(sMul(sMul(...coef), R)) : simplifyExpr(R);
 }
 
 // ── Quantum computing ──────────────────────────────────────────────────
