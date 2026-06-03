@@ -775,6 +775,12 @@ export const BUILTINS: Record<string, Builtin> = {
     for (let i = 0; i < nn; i++) for (let j = 0; j < nn; j++) if (A.data[i + j * nn] !== 0) { xs.push(XY.data[i], XY.data[j], NaN); ys.push(XY.data[i + nn], XY.data[j + nn], NaN); }
     env.graphics.addSeries(xs, ys); return [];
   },
+  treelayout: async (a, n) => { const par = toArray(m(a[0])).map((x) => Math.round(x)); const { x, y, h } = treeLayout(par); return n >= 3 ? [rowVec(x), rowVec(y), scalar(h)] : n >= 2 ? [rowVec(x), rowVec(y)] : [rowVec(x)]; },
+  treeplot: async (a, _n, env) => { const par = toArray(m(a[0])).map((x) => Math.round(x)); const { x, y } = treeLayout(par); const px: number[] = [], py: number[] = []; par.forEach((p, i) => { if (p > 0) { px.push(x[i], x[p - 1], NaN); py.push(y[i], y[p - 1], NaN); } }); env.graphics.addSeries(px, py); env.graphics.hold(true); env.graphics.scatter([rowVec(x), rowVec(y)]); env.graphics.hold(false); return []; },
+  etreeplot: async (a, _n, env) => { const par = etreeOf(asSparse(a[0])); const { x, y } = treeLayout(par); const px: number[] = [], py: number[] = []; par.forEach((p, i) => { if (p > 0) { px.push(x[i], x[p - 1], NaN); py.push(y[i], y[p - 1], NaN); } }); env.graphics.addSeries(px, py); env.graphics.hold(true); env.graphics.scatter([rowVec(x), rowVec(y)]); env.graphics.hold(false); return []; },
+  decomposition: async (a) => ret(mat(m(a[0]).rows, m(a[0]).cols, new Float64Array(m(a[0]).data))),
+  RandStream: async (a) => { const type = a.length ? asString(a[0]) : 'mt19937ar'; const seed = a.length >= 3 && isMat(a[2]) ? asScalar(a[2]) : (a.length >= 2 && isMat(a[1]) ? asScalar(a[1]) : 0); return ret({ kind: 'struct', rows: 1, cols: 1, fields: new Map<string, Value[]>([['Type', [str(type)]], ['Seed', [scalar(seed)]], ['NormalTransform', [str('Ziggurat')]]]) } as StructV); },
+  GraphPlot: async () => [], layout: async () => [], layoutcoords: async () => [],
   // ── more scalar math / reductions ──
   cbrt: ew(Math.cbrt),
   sinc: ew((x) => (x === 0 ? 1 : Math.sin(Math.PI * x) / (Math.PI * x))),
@@ -3037,6 +3043,11 @@ const HELP: Record<string, HelpEntry> = {
   spparms: { summary: 'Sparse solver tuning parameters (accepted, defaults used)', syntax: ["spparms('default')"], seealso: ['sparse'] },
   dmperm: { summary: 'Dulmage–Mendelsohn permutation / maximum matching', syntax: ['p = dmperm(A)', '[p,q] = dmperm(A)'], seealso: ['sprank', 'symrcm'] },
   gplot: { summary: 'Plot a graph from an adjacency matrix and node coordinates', syntax: ['gplot(A,xy)'], seealso: ['graph', 'spy'] },
+  treelayout: { summary: 'Lay out a tree from a parent-pointer vector', syntax: ['[x,y,h] = treelayout(parent)'], seealso: ['treeplot', 'etree'] },
+  treeplot: { summary: 'Plot a tree from a parent-pointer vector', syntax: ['treeplot(parent)'], seealso: ['treelayout', 'etreeplot'] },
+  etreeplot: { summary: 'Plot the elimination tree of a sparse matrix', syntax: ['etreeplot(A)'], seealso: ['etree', 'treeplot'] },
+  decomposition: { summary: 'Matrix decomposition for repeated linear solves', syntax: ['dA = decomposition(A)', 'x = dA\\b'], seealso: ['mldivide', 'lu', 'chol'] },
+  RandStream: { summary: 'Random number stream', syntax: ["s = RandStream('mt19937ar','Seed',n)"], seealso: ['rng', 'rand'] },
   colmmd: { summary: 'Column min-degree ordering (deprecated → colamd)', syntax: ['p = colmmd(S)'], seealso: ['colamd', 'symamd'] },
   symmmd: { summary: 'Symmetric min-degree ordering (deprecated → symamd)', syntax: ['p = symmmd(S)'], seealso: ['symamd', 'amd'] },
   luinc: { summary: 'Incomplete LU (deprecated → ilu)', syntax: ['[L,U] = luinc(A)'], seealso: ['ilu', 'lu'] },
@@ -3112,7 +3123,7 @@ const BASE_REF = new Set<string>((
   'deal func2str str2func assert narginchk nargoutchk nargchk validateattributes inputname isvarname genvarname colon flipdim condeig polyeig ' +
   'MException rethrow throw lasterr lasterror ' +
   'sparse full issparse spones nonzeros nzmax spdiags speye spalloc sprand sprandn sprandsym spy etree symrcm amd symamd colamd ichol ilu ' +
-  'spconvert spaugment spparms dmperm gplot colmmd symmmd luinc cholinc ' +
+  'spconvert spaugment spparms dmperm gplot colmmd symmmd luinc cholinc treelayout treeplot etreeplot decomposition RandStream GraphPlot layout layoutcoords ' +
   'gallery'
 ).split(/\s+/));
 
@@ -4426,6 +4437,18 @@ function symrcmOf(S: Sparse): number[] {
   return order.map((i) => i + 1);
 }
 /** Elimination tree parent vector (1-based; 0 = root), from the upper structure. */
+/** Layered layout of a tree from a parent-pointer vector (1-based, 0=root); MATLAB treelayout. */
+function treeLayout(parent: number[]): { x: number[]; y: number[]; h: number } {
+  const n = parent.length; const children: number[][] = Array.from({ length: n }, () => []); const roots: number[] = [];
+  for (let i = 0; i < n; i++) { if (parent[i] > 0) children[parent[i] - 1].push(i); else roots.push(i); }
+  const depth = new Array(n).fill(0); const setDepth = (i: number, d: number) => { depth[i] = d; for (const c of children[i]) setDepth(c, d + 1); };
+  roots.forEach((r) => setDepth(r, 0)); const maxd = Math.max(0, ...depth);
+  const x = new Array(n).fill(0); let leafPos = 0;
+  const assignX = (i: number): number => { if (!children[i].length) { x[i] = leafPos++; return x[i]; } const cs = children[i].map(assignX); x[i] = (Math.min(...cs) + Math.max(...cs)) / 2; return x[i]; };
+  roots.forEach(assignX); const nx = Math.max(1, leafPos);
+  const xn = x.map((v) => (v + 0.5) / nx); const y = depth.map((d) => 1 - (d + 0.5) / (maxd + 1));
+  return { x: xn, y, h: maxd + 1 };
+}
 function etreeOf(S: Sparse): number[] {
   const n = S.cols; const parent = new Array(n).fill(-1); const ancestor = new Array(n).fill(-1);
   for (let j = 0; j < n; j++) for (let p = S.colptr[j]; p < S.colptr[j + 1]; p++) {
