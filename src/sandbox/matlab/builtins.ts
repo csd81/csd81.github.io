@@ -955,6 +955,65 @@ export const BUILTINS: Record<string, Builtin> = {
   lasterr: async () => ret(str('')),
   lasterror: async () => { const fields = new Map<string, Value[]>([['identifier', [str('')]], ['message', [str('')]]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields } as StructV); },
 
+  // ── Batch J: language fundamentals (array/char/page/string) ──
+  repelem: async (a) => {
+    const A = m(a[0]);
+    if (a.length === 2 && (A.rows === 1 || A.cols === 1)) {
+      const reps = m(a[1]); const v = toArray(A); const out: number[] = [];
+      for (let i = 0; i < v.length; i++) { const k = reps.data.length === 1 ? reps.data[0] : reps.data[i]; for (let j = 0; j < k; j++) out.push(v[i]); }
+      return ret(A.cols === 1 ? colVec(out) : rowVec(out));
+    }
+    const rr = Math.round(asScalar(a[1])), cc = a.length >= 3 ? Math.round(asScalar(a[2])) : 1;
+    const o = zeros(A.rows * rr, A.cols * cc);
+    for (let c = 0; c < A.cols; c++) for (let r = 0; r < A.rows; r++) { const v = A.data[r + c * A.rows]; for (let dc = 0; dc < cc; dc++) for (let dr = 0; dr < rr; dr++) o.data[(r * rr + dr) + (c * cc + dc) * o.rows] = v; }
+    return ret(o);
+  },
+  topkrows: async (a, n) => {
+    const A = m(a[0]); const k = Math.round(asScalar(a[1])); const idx = [...Array(A.rows).keys()];
+    idx.sort((p, q) => { for (let c = 0; c < A.cols; c++) { const d = A.data[q + c * A.rows] - A.data[p + c * A.rows]; if (d) return d; } return 0; });
+    const sel = idx.slice(0, k); const B = zeros(sel.length, A.cols);
+    sel.forEach((src, d) => { for (let c = 0; c < A.cols; c++) B.data[d + c * sel.length] = A.data[src + c * A.rows]; });
+    return n >= 2 ? [B, colVec(sel.map((x) => x + 1))] : [B];
+  },
+  mat2cell: async (a) => {
+    const A = m(a[0]); const rs = toArray(m(a[1])).map((x) => Math.round(x)); const cs = a.length >= 3 ? toArray(m(a[2])).map((x) => Math.round(x)) : [A.cols];
+    const grid: Mat[][] = []; let r0 = 0;
+    for (const rb of rs) { const rowBlocks: Mat[] = []; let c0 = 0; for (const cb of cs) { const blk = zeros(rb, cb); for (let c = 0; c < cb; c++) for (let r = 0; r < rb; r++) blk.data[r + c * rb] = A.data[(r0 + r) + (c0 + c) * A.rows]; rowBlocks.push(blk); c0 += cb; } grid.push(rowBlocks); r0 += rb; }
+    const out: Value[] = []; for (let c = 0; c < cs.length; c++) for (let r = 0; r < rs.length; r++) out.push(grid[r][c]);
+    return ret(makeCell(rs.length, cs.length, out));
+  },
+  isletter: async (a) => charPred(a[0], (ch) => /[A-Za-z]/.test(ch)),
+  isspace: async (a) => charPred(a[0], (ch) => /\s/.test(ch)),
+  isstrprop: async (a) => { const p = asString(a[1]).toLowerCase(); const re: Record<string, RegExp> = { alpha: /[A-Za-z]/, digit: /[0-9]/, alphanum: /[A-Za-z0-9]/, wspace: /\s/, upper: /[A-Z]/, lower: /[a-z]/, punct: /[!-/:-@[-`{-~]/, xdigit: /[0-9A-Fa-f]/ }; const r = re[p] ?? /$^/; return charPred(a[0], (ch) => r.test(ch)); },
+  hex2num: async (a) => { const h = asString(a[0]).replace(/\s/g, '').padEnd(16, '0').slice(0, 16); const dv = new DataView(new ArrayBuffer(8)); dv.setBigUint64(0, BigInt('0x' + h)); return ret(scalar(dv.getFloat64(0))); },
+  num2hex: async (a) => { const dv = new DataView(new ArrayBuffer(8)); dv.setFloat64(0, asScalar(a[0])); return ret(str(dv.getBigUint64(0).toString(16).padStart(16, '0'))); },
+  native2unicode: async (a) => ret(str(toArray(m(a[0])).map((x) => String.fromCharCode(Math.round(x))).join(''))),
+  unicode2native: async (a) => ret(rowVec(asString(a[0]).split('').map((c) => c.charCodeAt(0)))),
+  // type predicates / introspection
+  isobject: async () => ret(bool(false)),
+  isjava: async () => ret(bool(false)),
+  isenum: async () => ret(bool(false)),
+  istabular: async () => ret(bool(false)),
+  isgraphics: async (a) => ret(bool(!isMat(a[0]) && (a[0] as { kind?: string }).kind === 'gobj')),
+  underlyingType: async (a, n, env) => BUILTINS.class(a, n, env),
+  isUnderlyingType: async (a, _n, env) => { const c = await BUILTINS.class([a[0]], 1, env); return ret(bool(asString(c[0]) === asString(a[1]))); },
+  function_handle: async (a) => ret(a[0]),
+  functions: async (a) => { const h = handle(a[0], 'functions'); const fields = new Map<string, Value[]>([['function', [str(h.name ?? 'anonymous')]], ['type', [str(h.name === 'anonymous' ? 'anonymous' : 'simple')]], ['file', [str('')]]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields } as StructV); },
+  // page-wise ops (each 2-D page of an N-D array)
+  pagetranspose: async (a) => ret(pageTranspose(m(a[0]), false)),
+  pagectranspose: async (a) => ret(pageTranspose(m(a[0]), true)),
+  pagemtimes: async (a) => ret(pageBinary(m(a[0]), m(a[1]), (X, Y) => matmul(X, Y))),
+  pagemldivide: async (a) => ret(pageBinary(m(a[0]), m(a[1]), (X, Y) => mldivide(X, Y))),
+  pagemrdivide: async (a) => ret(pageBinary(m(a[0]), m(a[1]), (X, Y) => transpose(mldivide(transpose(Y), transpose(X))))),
+  // string edits
+  insertAfter: async (a) => ret(mapStrArr(a[0], (x) => { const p = asString(a[1]); const i = x.indexOf(p); return i < 0 ? x : x.slice(0, i + p.length) + asString(a[2]) + x.slice(i + p.length); })),
+  insertBefore: async (a) => ret(mapStrArr(a[0], (x) => { const i = x.indexOf(asString(a[1])); return i < 0 ? x : x.slice(0, i) + asString(a[2]) + x.slice(i); })),
+  eraseBetween: async (a) => ret(mapStrArr(a[0], (x) => { const l = asString(a[1]), r = asString(a[2]); const i = x.indexOf(l); if (i < 0) return x; const j = x.indexOf(r, i + l.length); return j < 0 ? x : x.slice(0, i + l.length) + x.slice(j); })),
+  replaceBetween: async (a) => ret(mapStrArr(a[0], (x) => { const l = asString(a[1]), r = asString(a[2]); const i = x.indexOf(l); if (i < 0) return x; const j = x.indexOf(r, i + l.length); return j < 0 ? x : x.slice(0, i + l.length) + asString(a[3]) + x.slice(j); })),
+  compose: async (a) => ret(makeStr(sprintf(asString(a[0]), a.slice(1)))),
+  convertStringsToChars: async (a) => ret(isStr(a[0]) ? str(asString(a[0])) : a[0]),
+  convertCharsToStrings: async (a) => ret(isMat(a[0]) && (a[0] as Mat).isChar ? makeStr(asString(a[0])) : a[0]),
+
   // ── Batch I: language utilities (MATLAB v7 reference) ──
   deal: async (a, n) => { const k = Math.max(1, n); if (a.length === 1) return new Array(k).fill(a[0]); return a.slice(0, k); },
   func2str: async (a) => { const h = handle(a[0], 'func2str'); return ret(str(h.name && h.name !== 'anonymous' ? h.name : '@anonymous')); },
@@ -1780,6 +1839,21 @@ const HELP: Record<string, HelpEntry> = {
   fimplicit: { summary: 'Plot an implicit function f(x,y)=0', syntax: ['fimplicit(@(x,y) ...)'], seealso: ['fcontour', 'fplot'] },
   fplot3: { summary: 'Plot a 3-D parametric curve', syntax: ['fplot3(@(t)x,@(t)y,@(t)z,[t0 t1])'], seealso: ['plot3', 'fplot'] },
   pareto: { summary: 'Pareto chart (sorted bars)', syntax: ['pareto(y)'], seealso: ['bar', 'histogram'] },
+  repelem: { summary: 'Repeat copies of array elements', syntax: ['repelem(v,n)', 'repelem(A,r,c)'], seealso: ['repmat', 'kron'] },
+  topkrows: { summary: 'Top k sorted rows of a matrix', syntax: ['B = topkrows(A,k)', '[B,I] = topkrows(A,k)'], seealso: ['sortrows', 'maxk'] },
+  mat2cell: { summary: 'Partition a matrix into a cell array of blocks', syntax: ['C = mat2cell(A,rowsizes,colsizes)'], seealso: ['cell2mat', 'num2cell'] },
+  isletter: { summary: 'Determine which characters are letters', syntax: ['tf = isletter(s)'], seealso: ['isspace', 'isstrprop'] },
+  isspace: { summary: 'Determine which characters are whitespace', syntax: ['tf = isspace(s)'], seealso: ['isletter', 'isstrprop'] },
+  isstrprop: { summary: 'Determine which characters are of a category', syntax: ["tf = isstrprop(s,'digit')"], seealso: ['isletter', 'isspace'] },
+  hex2num: { summary: 'Convert an IEEE hex string to a double', syntax: ['x = hex2num(h)'], seealso: ['num2hex', 'hex2dec'] },
+  num2hex: { summary: 'Convert a double to its IEEE hex representation', syntax: ['h = num2hex(x)'], seealso: ['hex2num', 'dec2hex'] },
+  pagetranspose: { summary: 'Transpose each page of an N-D array', syntax: ['B = pagetranspose(A)'], seealso: ['pagectranspose', 'pagemtimes'] },
+  pagemtimes: { summary: 'Page-wise matrix multiplication', syntax: ['C = pagemtimes(A,B)'], seealso: ['pagetranspose', 'mtimes'] },
+  insertAfter: { summary: 'Insert text after a substring', syntax: ['insertAfter(str,pat,text)'], seealso: ['insertBefore', 'replace'] },
+  insertBefore: { summary: 'Insert text before a substring', syntax: ['insertBefore(str,pat,text)'], seealso: ['insertAfter', 'replace'] },
+  eraseBetween: { summary: 'Delete text between two delimiters', syntax: ['eraseBetween(str,l,r)'], seealso: ['replaceBetween', 'extractBetween'] },
+  replaceBetween: { summary: 'Replace text between two delimiters', syntax: ['replaceBetween(str,l,r,new)'], seealso: ['eraseBetween', 'replace'] },
+  compose: { summary: 'Format data into a string array', syntax: ['compose(fmt,A)'], seealso: ['sprintf', 'string'] },
   zlabel: { summary: 'Label the z-axis', syntax: ["zlabel('text')"], seealso: ['xlabel', 'ylabel', 'surf'] },
   peaks: { summary: 'Sample function of two variables (classic test surface)', syntax: ['Z = peaks(n)', 'peaks(n)'], seealso: ['surf', 'mesh', 'meshgrid'] },
   sphere: { summary: 'Generate/plot a unit sphere surface', syntax: ['[X,Y,Z] = sphere(n)', 'sphere(n)'], seealso: ['cylinder', 'ellipsoid', 'surf'] },
@@ -2051,6 +2125,10 @@ const BASE_REF = new Set<string>((
   'flag prism sky abyss nebula hsv2rgb rgb2hsv rgb2gray cmap2gray im2gray hex2rgb rgb2hex xscale yscale zscale yyaxis clim caxis colororder daspect pbaspect ' +
   'xtickangle ytickangle ztickangle xtickformat ytickformat ztickformat xticklabels yticklabels zticklabels fontname fontsize gtext annotation line rectangle ' +
   'imagesc image pie3 piechart donutchart pareto fimplicit fplot3 ' +
+  'repelem topkrows mat2cell isletter isspace isstrprop hex2num num2hex native2unicode unicode2native newline ' +
+  'isobject isjava isenum istabular isgraphics underlyingType isUnderlyingType function_handle functions ' +
+  'pagetranspose pagectranspose pagemtimes pagemldivide pagemrdivide ' +
+  'insertAfter insertBefore eraseBetween replaceBetween compose convertStringsToChars convertCharsToStrings ' +
   'cell iscell iscellstr num2cell cell2mat celldisp cellfun strsplit strjoin ' +
   'struct isstruct isfield fieldnames numfields rmfield setfield getfield orderfields struct2cell cell2struct structfun ' +
   'horzcat vertcat isequaln corr qmr condest wilkinson spones nonzeros bartlett blackman hamming hann typecast swapbytes ' +
@@ -2336,6 +2414,39 @@ const hotColor = (t: number): [number, number, number] => [clamp01(t / 0.375), c
 function hsv2rgb(h: number, s: number, v: number): [number, number, number] {
   const i = Math.floor(h * 6), f = h * 6 - i, p = v * (1 - s), q = v * (1 - f * s), u = v * (1 - (1 - f) * s);
   switch (((i % 6) + 6) % 6) { case 0: return [v, u, p]; case 1: return [q, v, p]; case 2: return [p, v, u]; case 3: return [p, q, v]; case 4: return [u, p, v]; default: return [v, p, q]; }
+}
+function charPred(v: Value, test: (ch: string) => boolean): Value[] {
+  const s = asString(v); const o = zeros(1, s.length); o.isBool = true;
+  for (let i = 0; i < s.length; i++) o.data[i] = test(s[i]) ? 1 : 0;
+  return [o];
+}
+/** Transpose every 2-D page of an N-D array (dims ≥3 preserved after the first two). */
+function pageTranspose(A: Mat, conj: boolean): Mat {
+  const dims = ndSize(A); const d0 = dims[0], d1 = dims[1]; const psz = d0 * d1; const npage = A.data.length / psz;
+  const out = new Float64Array(A.data.length); const oi = A.idata ? new Float64Array(A.data.length) : null;
+  for (let p = 0; p < npage; p++) for (let i = 0; i < d0; i++) for (let j = 0; j < d1; j++) {
+    const src = p * psz + i + j * d0, dst = p * psz + j + i * d1;
+    out[dst] = A.data[src]; if (oi && A.idata) oi[dst] = (conj ? -1 : 1) * A.idata[src];
+  }
+  const ndims = dims.slice(); ndims[0] = d1; ndims[1] = d0;
+  if (ndims.length > 2) return makeND(ndims, out, { idata: oi });
+  const r = mat(d1, d0, out); if (oi) r.idata = oi; return r;
+}
+/** Apply a 2-D matrix op page-by-page across two N-D arrays (broadcasting a single page). */
+function pageBinary(A: Mat, B: Mat, op: (X: Mat, Y: Mat) => Mat): Mat {
+  const da = ndSize(A), db = ndSize(B);
+  const ap = da[0] * da[1], bp = db[0] * db[1];
+  const na = A.data.length / ap, nb = B.data.length / bp; const np = Math.max(na, nb);
+  const pages: Mat[] = [];
+  for (let p = 0; p < np; p++) {
+    const X = mat(da[0], da[1], A.data.slice((p % na) * ap, (p % na) * ap + ap));
+    const Y = mat(db[0], db[1], B.data.slice((p % nb) * bp, (p % nb) * bp + bp));
+    pages.push(op(X, Y));
+  }
+  const r = pages[0].rows, c = pages[0].cols; const out = new Float64Array(r * c * np);
+  pages.forEach((pg, p) => out.set(pg.data, p * r * c));
+  const rest = (na >= nb ? da : db).slice(2);
+  return rest.length ? makeND([r, c, ...rest], out) : mat(r, c, out);
 }
 function rgb2hsvFn(r: number, g: number, b: number): [number, number, number] {
   const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
@@ -3278,4 +3389,5 @@ export const CONSTANTS: Record<string, () => Value> = {
   true: () => bool(true), false: () => bool(false),
   realmax: () => scalar(Number.MAX_VALUE), realmin: () => scalar(Number.MIN_VALUE),
   i: () => cscalar(0, 1), j: () => cscalar(0, 1),
+  newline: () => str('\n'),
 };
