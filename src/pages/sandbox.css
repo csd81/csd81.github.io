@@ -110,6 +110,17 @@
 .mlab__stat-state--busy { color: var(--brand-600, #2f6fed); }
 .mlab__filetab { font-family: var(--mono, monospace); text-transform: none; letter-spacing: 0; color: var(--text); }
 
+/* Thin, unobtrusive scrollbars for every scrollable pane (instead of the
+   default chunky native bar). Webkit + Firefox. */
+.mlab *, .mlab-embed * { scrollbar-width: thin; scrollbar-color: rgba(140, 150, 165, 0.45) transparent; }
+.mlab *::-webkit-scrollbar, .mlab-embed *::-webkit-scrollbar { width: 7px; height: 7px; }
+.mlab *::-webkit-scrollbar-track, .mlab-embed *::-webkit-scrollbar-track { background: transparent; }
+.mlab *::-webkit-scrollbar-thumb, .mlab-embed *::-webkit-scrollbar-thumb {
+  background: rgba(140, 150, 165, 0.4); border-radius: 4px; border: 2px solid transparent; background-clip: content-box;
+}
+.mlab *:hover::-webkit-scrollbar-thumb, .mlab-embed *:hover::-webkit-scrollbar-thumb { background: rgba(140, 150, 165, 0.6); background-clip: content-box; }
+.mlab *::-webkit-scrollbar-corner, .mlab-embed *::-webkit-scrollbar-corner { background: transparent; }
+
 .mlab__pane-head {
   display: flex; align-items: center; gap: 0.5rem;
   padding: 0.35rem 0.6rem;
