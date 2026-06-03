@@ -1128,6 +1128,22 @@ export const BUILTINS: Record<string, Builtin> = {
     }
     return ret(out);
   },
+  boundary: async (a, n) => {
+    const xs = toArray(m(a[0])), ys = toArray(m(a[1])); const k = convHull2D(xs, ys);
+    if (n >= 2) { const px = k.map((i) => xs[i - 1]), py = k.map((i) => ys[i - 1]); let s = 0; for (let i = 0; i < px.length; i++) { const j = (i + 1) % px.length; s += px[i] * py[j] - px[j] * py[i]; } return [colVec(k), scalar(Math.abs(s) / 2)]; }
+    return ret(colVec(k));
+  },
+  voronoi: async (a, n, env) => {
+    const xs = toArray(m(a[0])), ys = toArray(m(a[1])); const tris = delaunayTri(xs, ys);
+    const cc = tris.map((t) => circumcenter(xs[t[0]], ys[t[0]], xs[t[1]], ys[t[1]], xs[t[2]], ys[t[2]]));
+    const edgeMap = new Map<string, number[]>();
+    tris.forEach((t, ti) => { for (const [u, v] of [[t[0], t[1]], [t[1], t[2]], [t[2], t[0]]]) { const key = u < v ? `${u}_${v}` : `${v}_${u}`; (edgeMap.get(key) ?? edgeMap.set(key, []).get(key)!).push(ti); } });
+    const segs: [number, number, number, number][] = [];
+    for (const tl of edgeMap.values()) if (tl.length === 2) segs.push([cc[tl[0]][0], cc[tl[0]][1], cc[tl[1]][0], cc[tl[1]][1]]);
+    if (n >= 1) { const VX = zeros(2, segs.length), VY = zeros(2, segs.length); segs.forEach((s, j) => { VX.data[0 + j * 2] = s[0]; VX.data[1 + j * 2] = s[2]; VY.data[0 + j * 2] = s[1]; VY.data[1 + j * 2] = s[3]; }); return [VX, VY]; }
+    const px: number[] = [], py: number[] = []; for (const s of segs) { px.push(s[0], s[2], NaN); py.push(s[1], s[3], NaN); }
+    env.graphics.addSeries(px, py); return [];
+  },
   interp3: async () => { throw new MatError('interp3 requires 3-D arrays, which this 2-D engine does not support. Use interp1/interp2, or griddata for scattered data.'); },
   interpn: async () => { throw new MatError('interpn requires N-D arrays, which this 2-D engine does not support. Use interp1/interp2, or griddata for scattered data.'); },
   pchip: async (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])); const d = pchipSlopes(x, y); if (a.length < 3) return ret(makePP(x, hermiteCoefs(x, y, d))); return ret(map(m(a[2]), (q) => hermiteEval(x, y, d, q))); },
@@ -1729,7 +1745,9 @@ const HELP: Record<string, HelpEntry> = {
   airy: { summary: 'Airy functions (0=Ai,1=Ai′,2=Bi,3=Bi′)', syntax: ['y = airy(X)', 'y = airy(k,X)'], seealso: ['besselk', 'besselj'] },
   ellipke: { summary: 'Complete elliptic integrals K(m) and E(m)', syntax: ['[K,E] = ellipke(m)'], seealso: ['ellipj'] },
   ellipj: { summary: 'Jacobi elliptic functions sn, cn, dn', syntax: ['[sn,cn,dn] = ellipj(u,m)'], seealso: ['ellipke'] },
-  delaunay: { summary: '2-D Delaunay triangulation (vertex-index triples)', syntax: ['T = delaunay(x,y)'], seealso: ['griddata', 'convhull'] },
+  delaunay: { summary: '2-D Delaunay triangulation (vertex-index triples)', syntax: ['T = delaunay(x,y)'], seealso: ['griddata', 'convhull', 'voronoi'] },
+  boundary: { summary: 'Boundary polygon around a set of 2-D points (convex hull here)', syntax: ['k = boundary(x,y)', '[k,a] = boundary(x,y)'], seealso: ['convhull', 'polyarea'] },
+  voronoi: { summary: 'Voronoi diagram (line segments, or plot)', syntax: ['voronoi(x,y)', '[vx,vy] = voronoi(x,y)'], seealso: ['delaunay', 'convhull'] },
   griddata: { summary: 'Interpolate scattered 2-D data onto query points (linear or nearest)', syntax: ['vq = griddata(x,y,v,xq,yq)', "vq = griddata(x,y,v,xq,yq,'nearest')"], seealso: ['delaunay', 'interp2', 'scatteredInterpolant'] },
   interp3: { summary: '3-D interpolation (not supported: needs N-D arrays)', syntax: ['vq = interp3(...)'], seealso: ['interp2', 'interp1', 'griddata'] },
   interpn: { summary: 'N-D interpolation (not supported: needs N-D arrays)', syntax: ['vq = interpn(...)'], seealso: ['interp2', 'interp1', 'griddata'] },
@@ -1787,7 +1805,7 @@ const BASE_REF = new Set<string>((
   'horzcat vertcat isequaln corr qmr condest wilkinson spones nonzeros bartlett blackman hamming hann typecast swapbytes ' +
   'mkpp unmkpp ppval ' +
   'psi expint sinint cosint legendre besselj bessely besseli besselk besselh airy ellipke ellipj ' +
-  'delaunay griddata interp3 interpn ' +
+  'delaunay griddata interp3 interpn boundary voronoi ' +
   'rsf2csf balance qz ordschur ordeig sylvester lsqminnorm expmv ' +
   'rms geomean harmmean movmad movprod movstd movvar mape rmse idivide polydiv betaincinv gammaincinv rosser rng convn optimset optimget quad2d ' +
   'ismissing anymissing standardizeMissing rmmissing fillmissing isbetween isuniform allunique numunique uniquetol ismembertol issortedrows paddata trimdata resize discretize ' +
@@ -2520,6 +2538,13 @@ function delaunayTri(xs: number[], ys: number[]): number[][] {
     }
   }
   return tris.filter((t) => t.every((v) => v < n));
+}
+/** Circumcenter of a triangle (Voronoi vertex). */
+function circumcenter(ax: number, ay: number, bx: number, by: number, cx: number, cy: number): [number, number] {
+  const d = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by));
+  if (Math.abs(d) < 1e-300) return [(ax + bx + cx) / 3, (ay + by + cy) / 3];
+  const a2 = ax * ax + ay * ay, b2 = bx * bx + by * by, c2 = cx * cx + cy * cy;
+  return [(a2 * (by - cy) + b2 * (cy - ay) + c2 * (ay - by)) / d, (a2 * (cx - bx) + b2 * (ax - cx) + c2 * (bx - ax)) / d];
 }
 /** Barycentric coordinates of (px,py) in triangle a,b,c. */
 function bary(ax: number, ay: number, bx: number, by: number, cx: number, cy: number, px: number, py: number): [number, number, number] {
