@@ -9,7 +9,7 @@ import {
   isComplex, cmap, ewAdd, ewSub, ewMul, ewRDiv, ewLDiv, ewPow, ewEq, cmatmul,
   type Cell, type StructV, isCell, isStruct, makeCell, sparseToDense,
   type Str, isStr, makeStr, makeStrArr,
-  type Graph, type Geom,
+  type Graph, type Geom, type Quantum,
 } from './values';
 import { det, inv, mldivide } from './linalg';
 import { BUILTINS, CONSTANTS, builtinHelp, docUrl, type Env } from './builtins';
@@ -154,6 +154,7 @@ export class Interpreter implements Env {
       if (v.kind === 'str') { out.push({ name, size: `${v.rows}x${v.cols}`, klass: 'string', preview: dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) }); continue; }
       if (v.kind === 'graph') { out.push({ name, size: '1x1', klass: v.directed ? 'digraph' : 'graph', preview: `${v.n} nodes, ${v.edges.length} edges` }); continue; }
       if (v.kind === 'geom') { out.push({ name, size: '1x1', klass: v.gkind, preview: `${v.points.length} pts${v.conn ? `, ${v.conn.length} simplices` : ''}` }); continue; }
+      if (v.kind === 'quantum') { out.push({ name, size: '1x1', klass: `quantum.${v.qkind}`, preview: v.qkind === 'gate' ? `${v.gate}Gate` : v.qkind === 'circuit' ? `${v.numQubits} qubits, ${v.gates?.length ?? 0} gates` : `${v.numQubits} qubits` }); continue; }
       const klass = v.isChar ? 'char' : 'double';
       const preview = numel(v) <= 12 ? dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) : '…';
       out.push({ name, size: `${v.rows}x${v.cols}`, klass, preview });
@@ -431,6 +432,7 @@ export class Interpreter implements Env {
         if (isStruct(t)) { const vals = t.fields.get(e.name); if (!vals) throw new MatError(`reference to non-existent field '${e.name}'`); return vals.length ? vals : []; }
         if (t.kind === 'graph') return [graphProperty(t, e.name)];
         if (t.kind === 'geom') return [geomProperty(t, e.name)];
+        if (t.kind === 'quantum') return [quantumProperty(t, e.name)];
         throw new MatError(`cannot read field '.${e.name}'`);
       }
       case 'cell': return this.evalCellContent(e.target, e.args, scope);
@@ -551,6 +553,9 @@ export class Interpreter implements Env {
       for (const v of vals) if (isStr(v)) anyStr = true;
       grid.push(vals);
     }
+    // A matrix-literal of quantum gates → a gate list (cell) for quantumCircuit.
+    const flat = grid.flat();
+    if (flat.length && flat.some((v) => v.kind === 'quantum')) return { kind: 'cell', rows: 1, cols: flat.length, items: flat };
     if (anyStr) return buildStrMatrix(grid);
     const rowMats: Mat[] = [];
     for (const vals of grid) { const parts = vals.map(asMat); rowMats.push(parts.length === 0 ? empty() : parts.length === 1 ? parts[0] : horzcat(parts)); }
@@ -656,7 +661,18 @@ function asMat(v: Value): Mat {
   if (v.kind === 'gobj') throw new MatError('expected a numeric value, got a graphics handle');
   if (v.kind === 'graph') throw new MatError('expected a numeric value, got a graph (use adjacency(G) etc.)');
   if (v.kind === 'geom') throw new MatError(`expected a numeric value, got a ${v.gkind}`);
+  if (v.kind === 'quantum') throw new MatError(`expected a numeric value, got a quantum ${v.qkind}`);
   throw new MatError('expected a numeric value, got a function handle');
+}
+/** Read a quantum-object property via dot syntax (c.NumQubits, g.Type, …). */
+function quantumProperty(q: Quantum, name: string): Value {
+  const low = name.toLowerCase();
+  if (low === 'numqubits') return scalar(q.numQubits ?? 0);
+  if (low === 'numgates') return scalar(q.gates?.length ?? 0);
+  if (low === 'type') return str(q.gate ? q.gate : q.qkind);
+  if (low === 'targetqubits') return q.targets ? fromRows2([q.targets]) : empty();
+  if (low === 'controlqubits') return q.controls ? fromRows2([q.controls]) : empty();
+  throw new MatError(`quantum ${q.qkind} has no property '${name}'`);
 }
 /** Read a geometry-object property via dot syntax (TR.Points, pgon.Vertices, shp.Alpha, …). */
 function geomProperty(g: Geom, name: string): Value {

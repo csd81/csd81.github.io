@@ -11,6 +11,7 @@ import {
   type Str, isStr, makeStr, makeStrArr,
   type Graph, isGraph, makeGraph,
   type Geom, isGeom,
+  type Quantum, isQuantum,
 } from './values';
 import {
   det, inv, mldivide, diag, norm, eye,
@@ -1559,6 +1560,42 @@ export const BUILTINS: Record<string, Builtin> = {
     env.graphics.addSeries(px, py); return [];
   },
   rgbplot: async (a, _n, env) => { const C = m(a[0]); const idx = Array.from({ length: C.rows }, (_, i) => i + 1); env.graphics.hold(false); for (let col = 0; col < 3; col++) { if (col === 1) env.graphics.hold(true); env.graphics.addSeries(idx, Array.from({ length: C.rows }, (_, i) => C.data[i + col * C.rows]), ['r', 'g', 'b'][col]); } env.graphics.hold(false); return []; },
+
+  // ── Quantum computing: gates, circuits, simulation ──
+  hGate: async (a) => ret(mkGate('h', qList(a[0]))),
+  xGate: async (a) => ret(mkGate('x', qList(a[0]))),
+  yGate: async (a) => ret(mkGate('y', qList(a[0]))),
+  zGate: async (a) => ret(mkGate('z', qList(a[0]))),
+  sGate: async (a) => ret(mkGate('s', qList(a[0]))),
+  siGate: async (a) => ret(mkGate('si', qList(a[0]))),
+  tGate: async (a) => ret(mkGate('t', qList(a[0]))),
+  tiGate: async (a) => ret(mkGate('ti', qList(a[0]))),
+  idGate: async (a) => ret(mkGate('id', qList(a[0]))),
+  rxGate: async (a) => ret(mkGate('rx', qList(a[0]), [], [asScalar(a[1])])),
+  ryGate: async (a) => ret(mkGate('ry', qList(a[0]), [], [asScalar(a[1])])),
+  rzGate: async (a) => ret(mkGate('rz', qList(a[0]), [], [asScalar(a[1])])),
+  cxGate: async (a) => ret(mkGate('x', qList(a[1]), qList(a[0]))),
+  cnotGate: async (a) => ret(mkGate('x', qList(a[1]), qList(a[0]))),
+  cyGate: async (a) => ret(mkGate('y', qList(a[1]), qList(a[0]))),
+  czGate: async (a) => ret(mkGate('z', qList(a[1]), qList(a[0]))),
+  chGate: async (a) => ret(mkGate('h', qList(a[1]), qList(a[0]))),
+  crxGate: async (a) => ret(mkGate('rx', qList(a[1]), qList(a[0]), [asScalar(a[2])])),
+  cryGate: async (a) => ret(mkGate('ry', qList(a[1]), qList(a[0]), [asScalar(a[2])])),
+  crzGate: async (a) => ret(mkGate('rz', qList(a[1]), qList(a[0]), [asScalar(a[2])])),
+  swapGate: async (a) => ret(mkGate('swap', [qList(a[0])[0], qList(a[1])[0]])),
+  ccxGate: async (a) => ret(mkGate('x', qList(a[2]), [qList(a[0])[0], qList(a[1])[0]])),
+  mcxGate: async (a) => ret(mkGate('x', qList(a[1]), qList(a[0]))),
+  quantumCircuit: async (a) => {
+    let nq = 0; const gates: Quantum[] = [];
+    const collect = (v: Value) => { if (isQuantum(v) && v.qkind === 'gate') gates.push(v); else if (isCell(v)) v.items.forEach(collect); else if (isMat(v) && numel(v) === 1) nq = Math.max(nq, Math.round(asScalar(v))); };
+    for (const arg of a) collect(arg);
+    for (const g of gates) nq = Math.max(nq, ...(g.targets ?? []), ...(g.controls ?? []));
+    return ret({ kind: 'quantum', qkind: 'circuit', numQubits: nq, gates } as Quantum);
+  },
+  simulate: async (a) => { const c = qArg(a[0]); if (c.qkind !== 'circuit') throw new MatError('simulate: expected a quantumCircuit'); return ret(simulateCircuit(c)); },
+  probability: async (a) => { const st = qArg(a[0]); const n = st.re!.length; const p = zeros(n, 1); for (let i = 0; i < n; i++) p.data[i] = st.re![i] ** 2 + st.im![i] ** 2; return ret(p); },
+  querystates: async (a) => { const st = qArg(a[0]); const nq = st.numQubits!; const labels = Array.from({ length: st.re!.length }, (_, i) => '|' + i.toString(2).padStart(nq, '0') + '⟩'); return ret(makeStrArr(labels.length, 1, labels)); },
+  formula: async (a) => ret(str(stateFormula(qArg(a[0])))),
   interp3: async (a) => {
     // interp3(V,Xq,Yq,Zq) or interp3(X,Y,Z,V,Xq,Yq,Zq) — trilinear on a regular grid.
     let V: Mat, Xq: Mat, Yq: Mat, Zq: Mat, xv: number[], yv: number[], zv: number[];
@@ -2347,6 +2384,17 @@ const HELP: Record<string, HelpEntry> = {
   alphaSpectrum: { summary: 'Sorted alpha values of an alphaShape', syntax: ['s = alphaSpectrum(shp)'], seealso: ['criticalAlpha'] },
   triplot: { summary: '2-D triangulation plot', syntax: ['triplot(TR)', 'triplot(T,x,y)'], seealso: ['trisurf', 'trimesh'] },
   rgbplot: { summary: 'Plot the RGB components of a colormap', syntax: ['rgbplot(map)'], seealso: ['colormap', 'colorbar'] },
+  hGate: { summary: 'Hadamard gate', syntax: ['g = hGate(qubit)'], seealso: ['quantumCircuit', 'xGate', 'cxGate'] },
+  xGate: { summary: 'Pauli-X (NOT) gate', syntax: ['g = xGate(qubit)'], seealso: ['yGate', 'zGate', 'cxGate'] },
+  cxGate: { summary: 'Controlled-NOT gate', syntax: ['g = cxGate(control,target)'], seealso: ['cnotGate', 'ccxGate', 'czGate'] },
+  rxGate: { summary: 'X-rotation gate', syntax: ['g = rxGate(qubit,theta)'], seealso: ['ryGate', 'rzGate'] },
+  swapGate: { summary: 'Swap two qubits', syntax: ['g = swapGate(q1,q2)'], seealso: ['cxGate'] },
+  ccxGate: { summary: 'Toffoli (controlled-controlled-NOT) gate', syntax: ['g = ccxGate(c1,c2,target)'], seealso: ['cxGate', 'mcxGate'] },
+  quantumCircuit: { summary: 'Build a quantum circuit from gates', syntax: ['c = quantumCircuit([hGate(1) cxGate(1,2)])', 'c = quantumCircuit(n)'], seealso: ['simulate', 'hGate'] },
+  simulate: { summary: 'Simulate a quantum circuit from |0…0⟩', syntax: ['state = simulate(circuit)'], seealso: ['quantumCircuit', 'probability', 'formula'] },
+  probability: { summary: 'Measurement probabilities of a quantum state', syntax: ['p = probability(state)'], seealso: ['simulate', 'querystates'] },
+  querystates: { summary: 'Basis-state labels of a quantum state', syntax: ['s = querystates(state)'], seealso: ['probability', 'formula'] },
+  formula: { summary: 'Symbolic ket formula of a quantum state', syntax: ['f = formula(state)'], seealso: ['simulate', 'querystates'] },
   contour3: { summary: '3-D contour plot of a surface', syntax: ['contour3(X,Y,Z)'], seealso: ['contour', 'surf', 'mesh'] },
   quiver: { summary: '2-D vector field (arrows)', syntax: ['quiver(X,Y,U,V)', 'quiver(U,V)'], seealso: ['plot', 'streamline'] },
   bar: { summary: 'Bar graph', syntax: ['bar(y)', 'bar(x,y)'], seealso: ['barh', 'histogram', 'stem'] },
@@ -2695,6 +2743,8 @@ const BASE_REF = new Set<string>((
   'convexHull voronoiDiagram barycentricToCartesian cartesianToBarycentric perimeter centroid isinterior numsides numboundaries translate scale rotate ' +
   'volume surfaceArea inShape boundaryFacets criticalAlpha alphaSpectrum numRegions isConnected triplot rgbplot ' +
   'pdepe pdeval symvar vectorize quadv ldexp scalbn cholupdate stream2 stream3 ' +
+  'hGate xGate yGate zGate sGate siGate tGate tiGate idGate rxGate ryGate rzGate cxGate cnotGate cyGate czGate chGate crxGate cryGate crzGate swapGate ccxGate mcxGate ' +
+  'quantumCircuit simulate probability querystates formula ' +
   'sphere cylinder ellipsoid fsurf fmesh fcontour quiver ' +
   'bar barh area stem stairs scatter scatter3 plot3 stem3 errorbar pie histogram loglog semilogx semilogy subtitle sgtitle zlim xticks yticks zticks text box ' +
   'jet parula turbo hot cool gray bone copper pink spring summer autumn winter hsv lines colorcube cellstr dsearchn brighten ' +
@@ -3872,6 +3922,59 @@ function circumcenterND(pts: number[][]): number[] {
   const A: number[][] = []; const b: number[] = [];
   for (let i = 1; i <= d; i++) { A.push(pts[i].map((v, j) => 2 * (v - v0[j]))); b.push(pts[i].reduce((s, v) => s + v * v, 0) - v0.reduce((s, v) => s + v * v, 0)); }
   return solveLin(A, b) ?? v0.map((_, j) => pts.reduce((s, p) => s + p[j], 0) / pts.length);
+}
+
+// ── Quantum computing ──────────────────────────────────────────────────
+function qArg(v: Value, name = 'argument'): Quantum { if (!isQuantum(v)) throw new MatError(`${name}: expected a quantum object`); return v; }
+function qList(v: Value): number[] { return toArray(m(v)).map((x) => Math.round(x)); }
+function mkGate(gate: string, targets: number[], controls: number[] = [], angles: number[] = []): Quantum { return { kind: 'quantum', qkind: 'gate', gate, targets, controls, angles }; }
+/** 2×2 unitary (as [re,im] pairs, row-major) for a named single-qubit gate. */
+function gateMatrix(name: string, theta = 0): [number, number][] {
+  const r2 = 1 / Math.SQRT2;
+  switch (name) {
+    case 'id': return [[1, 0], [0, 0], [0, 0], [1, 0]];
+    case 'x': return [[0, 0], [1, 0], [1, 0], [0, 0]];
+    case 'y': return [[0, 0], [0, -1], [0, 1], [0, 0]];
+    case 'z': return [[1, 0], [0, 0], [0, 0], [-1, 0]];
+    case 'h': return [[r2, 0], [r2, 0], [r2, 0], [-r2, 0]];
+    case 's': return [[1, 0], [0, 0], [0, 0], [0, 1]];
+    case 'si': return [[1, 0], [0, 0], [0, 0], [0, -1]];
+    case 't': return [[1, 0], [0, 0], [0, 0], [Math.cos(Math.PI / 4), Math.sin(Math.PI / 4)]];
+    case 'ti': return [[1, 0], [0, 0], [0, 0], [Math.cos(Math.PI / 4), -Math.sin(Math.PI / 4)]];
+    case 'rx': { const c = Math.cos(theta / 2), s = Math.sin(theta / 2); return [[c, 0], [0, -s], [0, -s], [c, 0]]; }
+    case 'ry': { const c = Math.cos(theta / 2), s = Math.sin(theta / 2); return [[c, 0], [-s, 0], [s, 0], [c, 0]]; }
+    case 'rz': { const c = Math.cos(theta / 2), s = Math.sin(theta / 2); return [[c, -s], [0, 0], [0, 0], [c, s]]; }
+    default: return [[1, 0], [0, 0], [0, 0], [1, 0]];
+  }
+}
+/** Simulate a circuit on |0…0⟩; qubit 1 is the most-significant bit. */
+function simulateCircuit(c: Quantum): Quantum {
+  const n = c.numQubits ?? 1; const dim = 1 << n;
+  const re = new Float64Array(dim), im = new Float64Array(dim); re[0] = 1;
+  const bitOf = (q: number) => n - q;   // qubit q (1-based) → bit position (MSB=qubit 1)
+  for (const g of c.gates ?? []) {
+    if (g.gate === 'swap') { const [q1, q2] = g.targets!; const b1 = bitOf(q1), b2 = bitOf(q2); for (let i = 0; i < dim; i++) { const x1 = (i >> b1) & 1, x2 = (i >> b2) & 1; if (x1 < x2) { const j = i ^ (1 << b1) ^ (1 << b2); [re[i], re[j]] = [re[j], re[i]]; [im[i], im[j]] = [im[j], im[i]]; } } continue; }
+    const U = gateMatrix(g.gate!, g.angles?.[0] ?? 0); const ctrlMask = (g.controls ?? []).reduce((mk, q) => mk | (1 << bitOf(q)), 0);
+    for (const tq of g.targets!) {
+      const tb = bitOf(tq);
+      for (let i = 0; i < dim; i++) {
+        if (((i >> tb) & 1) !== 0) continue;             // process each 0/1 pair once
+        if ((i & ctrlMask) !== ctrlMask) continue;        // controls must all be 1
+        const j = i | (1 << tb);
+        const a0r = re[i], a0i = im[i], a1r = re[j], a1i = im[j];
+        re[i] = U[0][0] * a0r - U[0][1] * a0i + U[1][0] * a1r - U[1][1] * a1i;
+        im[i] = U[0][0] * a0i + U[0][1] * a0r + U[1][0] * a1i + U[1][1] * a1r;
+        re[j] = U[2][0] * a0r - U[2][1] * a0i + U[3][0] * a1r - U[3][1] * a1i;
+        im[j] = U[2][0] * a0i + U[2][1] * a0r + U[3][0] * a1i + U[3][1] * a1r;
+      }
+    }
+  }
+  return { kind: 'quantum', qkind: 'state', numQubits: n, re, im };
+}
+function stateFormula(st: Quantum): string {
+  const n = st.numQubits!; const parts: string[] = [];
+  for (let i = 0; i < st.re!.length; i++) { const r = st.re![i], im = st.im![i]; if (Math.hypot(r, im) < 1e-6) continue; const amp = Math.abs(im) < 1e-9 ? r.toFixed(4) : `(${r.toFixed(4)}${im >= 0 ? '+' : ''}${im.toFixed(4)}i)`; parts.push(`${amp} |${i.toString(2).padStart(n, '0')}⟩`); }
+  return parts.length ? parts.join(' + ') : '0';
 }
 
 // ── Graph / network ────────────────────────────────────────────────────

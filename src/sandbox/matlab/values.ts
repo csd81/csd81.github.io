@@ -72,7 +72,20 @@ export interface Geom {
   alpha?: number;       // alphaShape radius parameter
   dim: number;          // 2 or 3
 }
-export type Value = Mat | Handle | GObj | Cell | StructV | Sparse | Str | Graph | Geom;
+/** Quantum object: a gate, a circuit (list of gates), or a simulated state. */
+export interface Quantum {
+  kind: 'quantum';
+  qkind: 'gate' | 'circuit' | 'state';
+  gate?: string;            // gate name (gate)
+  targets?: number[];       // target qubits, 1-based (gate)
+  controls?: number[];      // control qubits, 1-based (gate)
+  angles?: number[];        // rotation angles (gate)
+  numQubits?: number;       // circuit/state qubit count
+  gates?: Quantum[];        // circuit's gate list
+  re?: Float64Array;        // state amplitudes (real part), length 2^n
+  im?: Float64Array;        // state amplitudes (imag part)
+}
+export type Value = Mat | Handle | GObj | Cell | StructV | Sparse | Str | Graph | Geom | Quantum;
 
 export class MatError extends Error {}
 
@@ -123,6 +136,7 @@ export function makeGraph(directed: boolean, n: number, edges: { s: number; t: n
   return { kind: 'graph', directed, n, edges, names };
 }
 export function isGeom(v: Value): v is Geom { return v.kind === 'geom'; }
+export function isQuantum(v: Value): v is Quantum { return v.kind === 'quantum'; }
 export function makeStrArr(rows: number, cols: number, items: string[]): Str { return { kind: 'str', rows, cols, items }; }
 export function makeStr(s: string): Str { return { kind: 'str', rows: 1, cols: 1, items: [s] }; }
 export function makeCell(rows: number, cols: number, items: Value[]): Cell { return { kind: 'cell', rows, cols, items }; }

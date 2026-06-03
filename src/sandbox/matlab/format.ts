@@ -58,6 +58,7 @@ function brief(v: Value): string {
   if (v.kind === 'str') return v.rows * v.cols === 1 ? `"${v.items[0]}"` : `[${v.rows}×${v.cols} string]`;
   if (v.kind === 'graph') return `[${v.directed ? 'digraph' : 'graph'}]`;
   if (v.kind === 'geom') return `[${v.gkind}]`;
+  if (v.kind === 'quantum') return `[quantum ${v.qkind}]`;
   if (v.isChar) return `'${asString(v)}'`;
   if (numel(v) === 0) return '[]';
   if (isScalar(v)) return `[${isComplex(v) ? fmtC(v.data[0], v.idata![0]) : formatScalar(v.data[0])}]`;
@@ -88,6 +89,7 @@ export function dispValue(v: Value): string {
   if (v.kind === 'str') return strLines(v).join('\n');
   if (v.kind === 'graph') return graphLines(v).join('\n');
   if (v.kind === 'geom') return geomLines(v).join('\n');
+  if (v.kind === 'quantum') return quantumLines(v).join('\n');
   if (v.kind === 'gobj') return `<${v.gtype} handle>`;
   if (isHandle(v)) return `@${v.name ?? 'anonymous'}`;
   if (v.kind === 'num' && v.nd) return ndLines(v).join('\n');
@@ -106,6 +108,7 @@ export function displayValue(name: string, v: Value): string {
   if (v.kind === 'str') return `${name} =\n\n${strLines(v).join('\n')}\n`;
   if (v.kind === 'graph') return `${name} =\n\n  ${v.directed ? 'digraph' : 'graph'} with properties:\n${graphLines(v).join('\n')}\n`;
   if (v.kind === 'geom') return `${name} =\n\n  ${v.gkind} with properties:\n${geomLines(v).join('\n')}\n`;
+  if (v.kind === 'quantum') return `${name} =\n\n  quantum.${v.qkind} with properties:\n${quantumLines(v).join('\n')}\n`;
   if (v.kind === 'num' && v.nd) return `${name} =\n\n${ndLines(v).join('\n')}\n`;
   if (v.kind === 'gobj') return `${name} =\n\n  <${v.gtype} handle>\n`;
   if (isHandle(v)) return `${name} =\n\n    @${v.name ?? 'anonymous function'}\n`;
@@ -143,6 +146,13 @@ function geomLines(v: { gkind: string; points: number[][]; conn?: number[][]; al
   return [`    Points: [${np}×${d} double]`, `    ConnectivityList: [${(v.conn ?? []).length}×${d + 1} double]`];
 }
 
+/** Summary display of a quantum object. */
+function quantumLines(v: { qkind: string; gate?: string; targets?: number[]; controls?: number[]; numQubits?: number; gates?: unknown[]; re?: Float64Array }): string[] {
+  if (v.qkind === 'gate') return [`    Type: "${v.gate}"`, `    TargetQubits: [${(v.targets ?? []).join(' ')}]`, ...(v.controls?.length ? [`    ControlQubits: [${v.controls.join(' ')}]`] : [])];
+  if (v.qkind === 'circuit') return [`    NumQubits: ${v.numQubits}`, `    Gates: [${v.gates?.length ?? 0}×1 quantum.gate]`];
+  return [`    NumQubits: ${v.numQubits}`, `    BasisStates: ${v.re ? v.re.length : 0}`];
+}
+
 /** Slice-wise display of an N-D array: each page as `(:,:,k) = <2-D slice>`. */
 function ndLines(v: Mat): string[] {
   const dims = v.nd!; const d0 = dims[0], d1 = dims[1], pageSize = d0 * d1;
@@ -165,7 +175,7 @@ function buildStream(args: Value[]): Array<{ s: string } | { n: number }> {
   for (const a of args) {
     if (isHandle(a)) { stream.push({ s: a.name ?? '@fn' }); continue; }
     if (a.kind === 'gobj') { stream.push({ s: `<${a.gtype}>` }); continue; }
-    if (a.kind === 'cell' || a.kind === 'struct' || a.kind === 'graph' || a.kind === 'geom') { stream.push({ s: brief(a) }); continue; }
+    if (a.kind === 'cell' || a.kind === 'struct' || a.kind === 'graph' || a.kind === 'geom' || a.kind === 'quantum') { stream.push({ s: brief(a) }); continue; }
     if (a.kind === 'str') { for (const s of a.items) stream.push({ s }); continue; }
     if (a.kind === 'sparse') { for (const v of a.values) stream.push({ n: v }); continue; }
     if (a.isChar) { stream.push({ s: asString(a) }); continue; }
