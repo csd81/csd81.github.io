@@ -69,6 +69,22 @@
 .mlab__gutter--h { cursor: row-resize; }
 .mlab__gutter--h::after { inset: 2px 0; }
 
+/* Collapsed-panel rail (click to restore), MATLAB-style snap-to-edge. */
+.mlab__rail {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 8px);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  cursor: pointer;
+  font: inherit; font-weight: 700; font-size: 0.72rem; letter-spacing: 0.06em;
+  display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+  writing-mode: vertical-rl;
+  padding: 0.5rem 0;
+}
+.mlab__rail:hover { color: var(--text); border-color: var(--brand-500); background: var(--surface); }
+.mlab__rail--l { grid-column: 1 / 2; grid-row: 1 / 4; }
+.mlab__rail--r { grid-column: 5 / 6; grid-row: 1 / 4; }
+
 .mlab__files, .mlab__editor, .mlab__figure, .mlab__term, .mlab__workspace {
   display: flex;
   flex-direction: column;
@@ -202,7 +218,8 @@
   .mlab { height: auto; min-height: calc(100dvh - var(--nav-h, 56px)); overflow: visible; }
   .mlab__grid { display: flex; flex-direction: column; overflow: visible; }
   .mlab__gutter { display: none; }
-  .mlab__files, .mlab__editor, .mlab__figure, .mlab__term, .mlab__workspace { grid-column: auto; grid-row: auto; }
+  .mlab__files, .mlab__editor, .mlab__figure, .mlab__term, .mlab__workspace, .mlab__rail { grid-column: auto; grid-row: auto; }
+  .mlab__rail { writing-mode: horizontal-tb; padding: 0.5rem; }
   .mlab__files { max-height: 220px; }
   .mlab__editor { min-height: 280px; }
   .mlab__figure { min-height: 300px; }

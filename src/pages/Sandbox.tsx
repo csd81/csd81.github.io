@@ -52,12 +52,20 @@ export default function Sandbox() {
     setCursor({ line: upto.split('\n').length, col: pos - nl });
   };
 
+  const SNAP_L = 140, SNAP_R = 160; // drag narrower than this → snap the panel closed
   const startDrag = (side: 'left' | 'right') => (e: React.PointerEvent) => {
     e.preventDefault();
     const startX = e.clientX, sL = leftW, sR = rightW;
     const onMove = (ev: PointerEvent) => {
-      if (side === 'left') setLeftW(clamp(sL + (ev.clientX - startX), 150, 520));
-      else setRightW(clamp(sR - (ev.clientX - startX), 180, 640));
+      if (side === 'left') {
+        const w = sL + (ev.clientX - startX);
+        if (w < SNAP_L) setLeftOpen(false);
+        else { setLeftOpen(true); setLeftW(clamp(w, SNAP_L, 520)); }
+      } else {
+        const w = sR - (ev.clientX - startX);
+        if (w < SNAP_R) setRightOpen(false);
+        else { setRightOpen(true); setRightW(clamp(w, SNAP_R, 640)); }
+      }
     };
     const onUp = () => {
       window.removeEventListener('pointermove', onMove);
@@ -87,8 +95,8 @@ export default function Sandbox() {
   };
 
   const gridStyle = {
-    '--left-w': (leftOpen ? leftW : 0) + 'px',
-    '--right-w': (rightOpen ? rightW : 0) + 'px',
+    '--left-w': leftOpen ? leftW + 'px' : '28px',
+    '--right-w': rightOpen ? rightW + 'px' : '28px',
     '--gl': leftOpen ? '6px' : '0px',
     '--gr': rightOpen ? '6px' : '0px',
     '--top-h': topH == null ? '1.4fr' : topH + 'px',
@@ -113,16 +121,21 @@ export default function Sandbox() {
 
       {/* Workbench */}
       <div className="mlab__grid" style={gridStyle} ref={gridRef}>
-        {/* File tree */}
-        <aside className={'mlab__files' + (leftOpen ? '' : ' mlab__pane--hidden')}>
-          <div className="mlab__pane-head"><span>{t('Current Folder', 'Aktuális mappa')}</span></div>
-          <div className="mlab__tree">
-            <FileGroup title={t('Course examples', 'Kurzus példák')} folders={courseFolders} openId={openId} setOpenId={setOpenId} collapsed={collapsed} toggle={toggleFolder} />
-            <FileGroup title={t('Chapter algorithms', 'Fejezet-algoritmusok')} folders={chapterFolders} openId={openId} setOpenId={setOpenId} collapsed={collapsed} toggle={toggleFolder} />
-          </div>
-        </aside>
-
-        {leftOpen && <div className="mlab__gutter mlab__gutter--v mlab__gut-l" onPointerDown={startDrag('left')} title={t('Drag to resize', 'Húzd az átméretezéshez')} />}
+        {/* File tree (or a collapsed rail) */}
+        {leftOpen ? (
+          <>
+            <aside className="mlab__files">
+              <div className="mlab__pane-head"><span>{t('Current Folder', 'Aktuális mappa')}</span></div>
+              <div className="mlab__tree">
+                <FileGroup title={t('Course examples', 'Kurzus példák')} folders={courseFolders} openId={openId} setOpenId={setOpenId} collapsed={collapsed} toggle={toggleFolder} />
+                <FileGroup title={t('Chapter algorithms', 'Fejezet-algoritmusok')} folders={chapterFolders} openId={openId} setOpenId={setOpenId} collapsed={collapsed} toggle={toggleFolder} />
+              </div>
+            </aside>
+            <div className="mlab__gutter mlab__gutter--v mlab__gut-l" onPointerDown={startDrag('left')} title={t('Drag to resize', 'Húzd az átméretezéshez')} />
+          </>
+        ) : (
+          <button className="mlab__rail mlab__rail--l" onClick={() => setLeftOpen(true)} title={t('Show files', 'Fájlok megjelenítése')}>▸ {t('Files', 'Fájlok')}</button>
+        )}
 
         {/* Editor */}
         <section className="mlab__editor" ref={editorRef}>
@@ -152,21 +165,20 @@ export default function Sandbox() {
         {/* Horizontal splitter between editor and command window */}
         <div className="mlab__gutter mlab__gutter--h mlab__gut-h" onPointerDown={startVDrag} title={t('Drag to resize', 'Húzd az átméretezéshez')} />
 
-        {rightOpen && <div className="mlab__gutter mlab__gutter--v mlab__gut-r" onPointerDown={startDrag('right')} title={t('Drag to resize', 'Húzd az átméretezéshez')} />}
-
-        {/* Figure */}
-        <section className={'mlab__figure' + (rightOpen ? '' : ' mlab__pane--hidden')}>
-          <div className="mlab__pane-head"><span>{t('Figure', 'Ábra')}</span></div>
-          <div className="mlab__fig-body"><FigurePane fig={fig} /></div>
-        </section>
-
         {/* Command window */}
         <CommandWindow lines={lines} busy={busy} prompt={prompt} onSubmit={submit} onClear={clearConsole} />
 
-        {/* Workspace */}
-        <section className={'mlab__workspace' + (rightOpen ? '' : ' mlab__pane--hidden')}>
-          <div className="mlab__pane-head"><span>{t('Workspace', 'Munkaterület')}</span></div>
-          <div className="mlab__ws-body">
+        {/* Figure + Workspace (or a collapsed rail) */}
+        {rightOpen ? (
+          <>
+            <div className="mlab__gutter mlab__gutter--v mlab__gut-r" onPointerDown={startDrag('right')} title={t('Drag to resize', 'Húzd az átméretezéshez')} />
+            <section className="mlab__figure">
+              <div className="mlab__pane-head"><span>{t('Figure', 'Ábra')}</span></div>
+              <div className="mlab__fig-body"><FigurePane fig={fig} /></div>
+            </section>
+            <section className="mlab__workspace">
+              <div className="mlab__pane-head"><span>{t('Workspace', 'Munkaterület')}</span></div>
+              <div className="mlab__ws-body">
             {workspace.length === 0 ? (
               <div className="mlab__ws-empty">{t('No variables', 'Nincs változó')}</div>
             ) : (
@@ -179,8 +191,12 @@ export default function Sandbox() {
                 </tbody>
               </table>
             )}
-          </div>
-        </section>
+              </div>
+            </section>
+          </>
+        ) : (
+          <button className="mlab__rail mlab__rail--r" onClick={() => setRightOpen(true)} title={t('Show figure & workspace', 'Ábra és munkaterület')}>◂ {t('Figure', 'Ábra')}</button>
+        )}
       </div>
 
       {/* Status bar */}
