@@ -4,7 +4,7 @@ import {
   mat, zeros, scalar, cscalar, bool, str, rowVec, colVec, fromRows, numel, isScalar, isEmpty,
   asScalar, asString, map, elementwise, matmul, transpose, horzcat, vertcat, toArray,
   isComplex, cmap, cmapReal, conj as conjFn, realPart, imagPart, csqrt, cexp, clog, ewPow, finishComplex,
-  ewAdd, ewSub, ewMul, ewRDiv, ewLDiv, ewEq, cmatmul, ctranspose as ctransposeFn,
+  ewAdd, ewSub, ewMul, ewRDiv, ewLDiv, ewEq, cmatmul, ctranspose as ctransposeFn, cmul, cdiv,
 } from './values';
 import {
   det, inv, mldivide, diag, norm, eye,
@@ -523,6 +523,75 @@ export const BUILTINS: Record<string, Builtin> = {
   int32: async (a) => ret(intCast(m(a[0]), 'int32')), uint32: async (a) => ret(intCast(m(a[0]), 'uint32')),
   int64: async (a) => ret(intCast(m(a[0]), 'int64')), uint64: async (a) => ret(intCast(m(a[0]), 'uint64')),
   cast: async (a) => { const A = m(a[0]); const ty = asString(a[1]); if (ty in INT_LIMITS) return ret(intCast(A, ty)); if (ty === 'char') return ret(A.isChar ? A : str(toArray(A).map((x) => String.fromCharCode(Math.round(x))).join(''))); return ret(mat(A.rows, A.cols, Float64Array.from(A.data))); },
+  // ── special matrices / index conversion ──
+  invhilb: async (a) => { const n = Math.round(asScalar(a[0])); const H = zeros(n, n); for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) H.data[r + c * n] = 1 / (r + c + 1); return ret(map(inv(H), (x) => Math.round(x))); },
+  hadamard: async (a) => { let n = Math.round(asScalar(a[0])); let H = mat(1, 1, Float64Array.of(1)); while (H.rows < n) { const k = H.rows; const o = zeros(2 * k, 2 * k); for (let r = 0; r < k; r++) for (let c = 0; c < k; c++) { const v = H.data[r + c * k]; o.data[r + c * 2 * k] = v; o.data[r + (c + k) * 2 * k] = v; o.data[(r + k) + c * 2 * k] = v; o.data[(r + k) + (c + k) * 2 * k] = -v; } H = o; } return ret(H); },
+  hankel: async (a) => { const c = toArray(m(a[0])); const r = a.length >= 2 ? toArray(m(a[1])) : c.map((_, i) => (i === 0 ? c[c.length - 1] : 0)); const nr = c.length, nc = r.length; const o = zeros(nr, nc); for (let i = 0; i < nr; i++) for (let j = 0; j < nc; j++) { const k = i + j; o.data[i + j * nr] = k < nr ? c[k] : (k - nr + 1 < nc ? r[k - nr + 1] : 0); } return ret(o); },
+  compan: async (a) => { const p = toArray(m(a[0])); const n = p.length - 1; if (n < 1) return ret(zeros(0, 0)); const o = zeros(n, n); for (let j = 0; j < n; j++) o.data[0 + j * n] = -p[j + 1] / p[0]; for (let i = 1; i < n; i++) o.data[i + (i - 1) * n] = 1; return ret(o); },
+  sub2ind: async (a) => { const sz = toArray(m(a[0])); const rows = sz[0]; const R = m(a[1]), C = a.length >= 3 ? m(a[2]) : null; return ret(C ? elementwise(R, C, (r, c) => (c - 1) * rows + r) : R); },
+  ind2sub: async (a, n) => { const sz = toArray(m(a[0])); const rows = sz[0]; const I = m(a[1]); const rr = map(I, (k) => ((k - 1) % rows) + 1); const cc = map(I, (k) => Math.floor((k - 1) / rows) + 1); return n >= 2 ? [rr, cc] : [rr]; },
+  rats: async (a) => { const [n2, d] = ratApprox(asScalar(a[0])); return ret(str(d === 1 ? `${n2}` : `${n2}/${d}`)); },
+  acscd: ew((x) => Math.asin(1 / x) / DEG), asecd: ew((x) => Math.acos(1 / x) / DEG),
+  cummax: async (a) => { const A = m(a[0]); const o = zeros(A.rows, A.cols); if (A.rows === 1 || A.cols === 1) { let mx = -Infinity; for (let i = 0; i < A.data.length; i++) { mx = Math.max(mx, A.data[i]); o.data[i] = mx; } } else for (let c = 0; c < A.cols; c++) { let mx = -Infinity; for (let r = 0; r < A.rows; r++) { mx = Math.max(mx, A.data[r + c * A.rows]); o.data[r + c * A.rows] = mx; } } return ret(o); },
+  cummin: async (a) => { const A = m(a[0]); const o = zeros(A.rows, A.cols); if (A.rows === 1 || A.cols === 1) { let mn = Infinity; for (let i = 0; i < A.data.length; i++) { mn = Math.min(mn, A.data[i]); o.data[i] = mn; } } else for (let c = 0; c < A.cols; c++) { let mn = Infinity; for (let r = 0; r < A.rows; r++) { mn = Math.min(mn, A.data[r + c * A.rows]); o.data[r + c * A.rows] = mn; } } return ret(o); },
+  // ── matrix algebra extras ──
+  polyvalm: async (a) => { const p = toArray(m(a[0])); const A = m(a[1]); const n = A.rows; let R = zeros(n, n); for (const c of p) { R = matmul(A, R); R.data[0] += 0; for (let i = 0; i < n; i++) R.data[i + i * n] += c; } return ret(R); },
+  isposdef: async (a) => { const A = m(a[0]); if (!isSymmetric(A)) return ret(bool(false)); const { values } = jacobiEigSym(A); return ret(bool(values.every((v) => v > 1e-12))); },
+  planerot: async (a, n) => { const v = toArray(m(a[0])); const [x, y] = v; const r = Math.hypot(x, y); const c = r === 0 ? 1 : x / r, s = r === 0 ? 0 : y / r; const G = fromRows([[c, s], [-s, c]]); return n >= 2 ? [G, colVec([r, 0])] : [G]; },
+  house: async (a, n) => { const x = toArray(m(a[0])); const nrm = Math.hypot(...x); const alpha = -Math.sign(x[0] || 1) * nrm; const v = x.slice(); v[0] -= alpha; let vn = 0; for (const e of v) vn += e * e; const beta = vn === 0 ? 0 : 2 / vn; return n >= 2 ? [colVec(v), scalar(beta)] : [colVec(v)]; },
+  funm: async (a, _n, env) => {
+    const A = m(a[0]); const f = handle(a[1], 'funm'); const { D, V } = generalEig(A, true); const nn = A.rows;
+    const Dre = new Float64Array(nn * nn), Dim = new Float64Array(nn * nn);
+    for (let i = 0; i < nn; i++) { const r = await env.callHandle(f, [D.im[i] === 0 ? scalar(D.re[i]) : finishComplex(1, 1, Float64Array.of(D.re[i]), Float64Array.of(D.im[i]))], 1); const z = m(r[0]); Dre[i + i * nn] = z.data[0]; Dim[i + i * nn] = z.idata ? z.idata[0] : 0; }
+    return ret(cmatmul(cmatmul(V!, finishComplex(nn, nn, Dre, Dim)), inv(V!)));
+  },
+  // ── quadrature aliases / ODE alias ──
+  quad: async (a, n, env) => BUILTINS.integral(a, n, env),
+  quadl: async (a, n, env) => BUILTINS.integral(a, n, env),
+  quadgk: async (a, n, env) => BUILTINS.integral(a, n, env),
+  ode23tb: async (a, n, env) => odeSolve(a, n, env),
+  odeset: async () => ret(zeros(0, 0)),
+  odeget: async () => ret(zeros(0, 0)),
+  // ── special functions ──
+  erfcx: async (a) => ret(map(m(a[0]), (x) => Math.exp(x * x) * (1 - erfFn(x)))),
+  erfcinv: async (a) => ret(map(m(a[0]), (y) => erfinvFn(1 - y))),
+  gammainc: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, p) => gammainc(x, p))),
+  betainc: async (a) => { const X = m(a[0]); const A2 = asScalar(a[1]), B2 = asScalar(a[2]); return ret(map(X, (x) => betainc(x, A2, B2))); },
+  // ── coordinate transforms ──
+  cart2pol: async (a, n) => { const X = m(a[0]), Y = m(a[1]); const th = elementwise(Y, X, (y, x) => Math.atan2(y, x)); const r = elementwise(X, Y, (x, y) => Math.hypot(x, y)); return n >= 2 ? [th, r] : [th]; },
+  pol2cart: async (a, n) => { const TH = m(a[0]), R = m(a[1]); const x = elementwise(R, TH, (r, t) => r * Math.cos(t)); const y = elementwise(R, TH, (r, t) => r * Math.sin(t)); return n >= 2 ? [x, y] : [x]; },
+  cart2sph: async (a, n) => { const X = m(a[0]), Y = m(a[1]), Z = m(a[2]); const az = elementwise(Y, X, (y, x) => Math.atan2(y, x)); const el = zeros(X.rows, X.cols), r = zeros(X.rows, X.cols); for (let i = 0; i < el.data.length; i++) { el.data[i] = Math.atan2(Z.data[i], Math.hypot(X.data[i], Y.data[i])); r.data[i] = Math.sqrt(X.data[i] ** 2 + Y.data[i] ** 2 + Z.data[i] ** 2); } return n >= 3 ? [az, el, r] : n >= 2 ? [az, el] : [az]; },
+  sph2cart: async (a, n) => { const AZ = m(a[0]), EL = m(a[1]), R = m(a[2]); const x = zeros(AZ.rows, AZ.cols), y = zeros(AZ.rows, AZ.cols), z = zeros(AZ.rows, AZ.cols); for (let i = 0; i < x.data.length; i++) { const az = AZ.data[i], el = EL.data[i], r = R.data[i]; x.data[i] = r * Math.cos(el) * Math.cos(az); y.data[i] = r * Math.cos(el) * Math.sin(az); z.data[i] = r * Math.sin(el); } return n >= 3 ? [x, y, z] : n >= 2 ? [x, y] : [x]; },
+  // ── geometry ──
+  polyarea: async (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])); let s = 0; const n = x.length; for (let i = 0; i < n; i++) { const j = (i + 1) % n; s += x[i] * y[j] - x[j] * y[i]; } return ret(scalar(Math.abs(s) / 2)); },
+  inpolygon: async (a) => { const xq = m(a[0]), yq = m(a[1]); const xv = toArray(m(a[2])), yv = toArray(m(a[3])); const o = zeros(xq.rows, xq.cols); for (let k = 0; k < xq.data.length; k++) o.data[k] = pointInPoly(xq.data[k], yq.data[k], xv, yv) ? 1 : 0; o.isBool = true; return [o]; },
+  convhull: async (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])); return ret(colVec(convHull2D(x, y))); },
+  rectint: async (a) => { const A = m(a[0]), B = m(a[1]); const o = zeros(A.rows, B.rows); for (let i = 0; i < A.rows; i++) for (let j = 0; j < B.rows; j++) { const ax = A.data[i], ay = A.data[i + A.rows], aw = A.data[i + 2 * A.rows], ah = A.data[i + 3 * A.rows]; const bx = B.data[j], by = B.data[j + B.rows], bw = B.data[j + 2 * B.rows], bh = B.data[j + 3 * B.rows]; const ix = Math.max(0, Math.min(ax + aw, bx + bw) - Math.max(ax, bx)); const iy = Math.max(0, Math.min(ay + ah, by + bh) - Math.max(ay, by)); o.data[i + j * A.rows] = ix * iy; } return ret(o); },
+  // ── distances ──
+  pdist: async (a) => { const X = m(a[0]); const out: number[] = []; for (let i = 0; i < X.rows; i++) for (let j = i + 1; j < X.rows; j++) { let s = 0; for (let c = 0; c < X.cols; c++) s += (X.data[i + c * X.rows] - X.data[j + c * X.rows]) ** 2; out.push(Math.sqrt(s)); } return ret(rowVec(out)); },
+  pdist2: async (a) => { const X = m(a[0]), Y = m(a[1]); const o = zeros(X.rows, Y.rows); for (let i = 0; i < X.rows; i++) for (let j = 0; j < Y.rows; j++) { let s = 0; for (let c = 0; c < X.cols; c++) s += (X.data[i + c * X.rows] - Y.data[j + c * Y.rows]) ** 2; o.data[i + j * X.rows] = Math.sqrt(s); } return ret(o); },
+  squareform: async (a) => { const V = m(a[0]); if (V.rows === 1 || V.cols === 1) { const v = toArray(V); const n = Math.round((1 + Math.sqrt(1 + 8 * v.length)) / 2); const o = zeros(n, n); let k = 0; for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) { o.data[i + j * n] = v[k]; o.data[j + i * n] = v[k]; k++; } return ret(o); } const n = V.rows; const out: number[] = []; for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) out.push(V.data[i + j * n]); return ret(rowVec(out)); },
+  // ── residue ──
+  residue: async (a, n) => {
+    const b = toArray(m(a[0])), aa = toArray(m(a[1]));
+    const { re, im } = durandKerner(aa);
+    const dp = aa.slice(0, -1).map((c, i) => c * (aa.length - 1 - i)); // a'(s)
+    const pevC = (coef: number[], xr: number, xi: number) => { let sr = coef[0], si = 0; for (let k = 1; k < coef.length; k++) { const [tr, ti] = cmul(sr, si, xr, xi); sr = tr + coef[k]; si = ti; } return [sr, si]; };
+    const rr = new Float64Array(re.length), ri = new Float64Array(re.length);
+    for (let k = 0; k < re.length; k++) { const [nbr, nbi] = pevC(b, re[k], im[k]); const [dar, dai] = pevC(dp, re[k], im[k]); const [qr, qi] = cdiv(nbr, nbi, dar, dai); rr[k] = qr; ri[k] = qi; }
+    const R = finishComplex(re.length, 1, rr, ri); const P = finishComplex(re.length, 1, Float64Array.from(re), Float64Array.from(im));
+    return n >= 2 ? [R, P, zeros(0, 0)] : [R];
+  },
+  // ── dense equivalents of sparse routines ──
+  sparse: async (a) => { if (a.length <= 1) return ret(m(a[0])); const ii = toArray(m(a[0])).map((x) => Math.round(x)), jj = toArray(m(a[1])).map((x) => Math.round(x)), vv = m(a[2]); const rows = a.length >= 4 ? Math.round(asScalar(a[3])) : Math.max(...ii), cols = a.length >= 5 ? Math.round(asScalar(a[4])) : Math.max(...jj); const o = zeros(rows, cols); for (let k = 0; k < ii.length; k++) o.data[(ii[k] - 1) + (jj[k] - 1) * rows] += vv.data.length === 1 ? vv.data[0] : vv.data[k]; return ret(o); },
+  full: async (a) => ret(m(a[0])),
+  issparse: async () => ret(bool(false)),
+  speye: async (a) => { const [r, c] = dims2(a); return ret(eye(r, c)); },
+  spalloc: async (a) => ret(zeros(Math.round(asScalar(a[0])), Math.round(asScalar(a[1])))),
+  nzmax: async (a) => ret(scalar(toArray(m(a[0])).filter((x) => x !== 0).length)),
+  sprand: async (a) => { const [r, c] = dims2(a); const o = zeros(r, c); for (let i = 0; i < o.data.length; i++) o.data[i] = Math.random(); return ret(o); },
+  sprandn: async (a) => { const [r, c] = dims2(a); const o = zeros(r, c); for (let i = 0; i < o.data.length; i++) { const u = Math.random() || 1e-12; o.data[i] = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * Math.random()); } return ret(o); },
+  spdiags: async (a) => { const B = m(a[0]); const d = toArray(m(a[1])).map((x) => Math.round(x)); const mm = Math.round(asScalar(a[2])), nn = Math.round(asScalar(a[3])); const o = zeros(mm, nn); for (let di = 0; di < d.length; di++) { const diag = d[di]; for (let r = 0; r < mm; r++) { const c = r + diag; if (c >= 0 && c < nn) o.data[r + c * mm] = B.data[Math.min(r, B.rows - 1) + di * B.rows]; } } return ret(o); },
 
   // ── Numerical methods (real-valued) ──
   trapz: async (a) => {
@@ -1165,6 +1234,44 @@ function fftShift(A: Mat, inverse: boolean): Mat {
   const scol = A.rows === 1 ? shift(A.cols) : sc;
   for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) { const nr = (r + sr) % A.rows, nc = (c + scol) % A.cols; o.data[nr + nc * A.rows] = A.data[r + c * A.rows]; if (im) im[nr + nc * A.rows] = A.idata![r + c * A.rows]; }
   if (im) o.idata = im; return o;
+}
+
+// ── Geometry / special-function helpers ───────────────────────────────────
+function pointInPoly(px: number, py: number, xv: number[], yv: number[]): boolean {
+  let inside = false; const n = xv.length;
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    if (((yv[i] > py) !== (yv[j] > py)) && (px < (xv[j] - xv[i]) * (py - yv[i]) / (yv[j] - yv[i] || 1e-300) + xv[i])) inside = !inside;
+  }
+  return inside;
+}
+/** 2-D convex hull (monotonic chain); returns 1-based vertex indices, closed. */
+function convHull2D(x: number[], y: number[]): number[] {
+  const idx = x.map((_, i) => i).sort((a, b) => x[a] - x[b] || y[a] - y[b]);
+  const cross = (o: number, a: number, b: number) => (x[a] - x[o]) * (y[b] - y[o]) - (y[a] - y[o]) * (x[b] - x[o]);
+  const lower: number[] = []; for (const p of idx) { while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop(); lower.push(p); }
+  const upper: number[] = []; for (let i = idx.length - 1; i >= 0; i--) { const p = idx[i]; while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop(); upper.push(p); }
+  const hull = [...lower.slice(0, -1), ...upper.slice(0, -1)];
+  return [...hull, hull[0]].map((i) => i + 1);
+}
+/** Regularised lower incomplete gamma P(a,x) (Numerical Recipes gammp). */
+function gammainc(x: number, a: number): number {
+  if (x < 0 || a <= 0) return NaN; if (x === 0) return 0;
+  const gln = logGamma(a);
+  if (x < a + 1) { let ap = a, sum = 1 / a, del = sum; for (let i = 0; i < 200; i++) { ap++; del *= x / ap; sum += del; if (Math.abs(del) < Math.abs(sum) * 1e-14) break; } return sum * Math.exp(-x + a * Math.log(x) - gln); }
+  let b = x + 1 - a, c = 1e300, d = 1 / b, h = d;
+  for (let i = 1; i < 200; i++) { const an = -i * (i - a); b += 2; d = an * d + b; if (Math.abs(d) < 1e-300) d = 1e-300; c = b + an / c; if (Math.abs(c) < 1e-300) c = 1e-300; d = 1 / d; const del = d * c; h *= del; if (Math.abs(del - 1) < 1e-14) break; }
+  return 1 - Math.exp(-x + a * Math.log(x) - gln) * h;
+}
+/** Regularised incomplete beta I_x(a,b) (continued fraction). */
+function betainc(x: number, a: number, b: number): number {
+  if (x <= 0) return 0; if (x >= 1) return 1;
+  const bt = Math.exp(logGamma(a + b) - logGamma(a) - logGamma(b) + a * Math.log(x) + b * Math.log(1 - x));
+  const cf = (xx: number, aa: number, bb: number) => {
+    let c = 1, d = 1 - (aa + bb) * xx / (aa + 1); if (Math.abs(d) < 1e-300) d = 1e-300; d = 1 / d; let h = d;
+    for (let mI = 1; mI < 200; mI++) { const m2 = 2 * mI; let aa2 = mI * (bb - mI) * xx / ((aa + m2 - 1) * (aa + m2)); d = 1 + aa2 * d; if (Math.abs(d) < 1e-300) d = 1e-300; c = 1 + aa2 / c; if (Math.abs(c) < 1e-300) c = 1e-300; d = 1 / d; h *= d * c; aa2 = -(aa + mI) * (aa + bb + mI) * xx / ((aa + m2) * (aa + m2 + 1)); d = 1 + aa2 * d; if (Math.abs(d) < 1e-300) d = 1e-300; c = 1 + aa2 / c; if (Math.abs(c) < 1e-300) c = 1e-300; d = 1 / d; const del = d * c; h *= del; if (Math.abs(del - 1) < 1e-14) break; }
+    return h;
+  };
+  return x < (a + 1) / (a + b + 2) ? bt * cf(x, a, b) / a : 1 - bt * cf(1 - x, b, a) / b;
 }
 
 // ── Set / conversion helpers ──────────────────────────────────────────────
