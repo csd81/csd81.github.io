@@ -32,16 +32,18 @@ export interface MFolder {
 }
 
 const COURSE_LABELS: Record<string, string> = {
-  'procedures': 'Procedures (shared)',
-  'pivoting': 'Pivoting (shared)',
-  '01-fixed-point': '01 · Fixed-point iteration',
-  '02-iterations': '02 · Root-finding iterations',
-  '03-elimination': '03 · Gaussian elimination',
-  '04-interpolation': '04 · Interpolation',
-  '05-integration': '05 · Numerical integration',
-  '06-minimization': '06 · Minimization',
+  '01-intro': '01 · Introduction',
+  '02-root-finding': '02 · Root finding',
+  '03-linear-system': '03 · Linear systems',
+  '04-iterative': '04 · Iterative linear solvers',
+  '05-decomposition': '05 · Matrix decompositions',
+  '06-interpolation': '06 · Interpolation',
+  '07-calculus': '07 · Numerical calculus',
+  '08-minimization': '08 · Minimization',
+  '09-curve-fitting': '09 · Curve fitting',
+  '10-ode': '10 · ODE solvers',
 };
-const PATH_FOLDERS = new Set(['procedures', 'pivoting']);
+const PATH_FOLDERS = new Set<string>();   // each course folder is self-contained
 
 function prettifySlug(slug: string): string {
   return slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -74,7 +76,7 @@ for (const [path, source] of Object.entries(chapterRaw)) {
 
 for (const f of folderMap.values()) f.files.sort((a, b) => a.file.localeCompare(b.file));
 
-const COURSE_ORDER = ['01-fixed-point', '02-iterations', '03-elimination', '04-interpolation', '05-integration', '06-minimization', 'procedures', 'pivoting'];
+const COURSE_ORDER = ['01-intro', '02-root-finding', '03-linear-system', '04-iterative', '05-decomposition', '06-interpolation', '07-calculus', '08-minimization', '09-curve-fitting', '10-ode'];
 const GROUP_ORDER: Record<MFolder['group'], number> = { course: 0, chapter: 1 };
 export const FOLDERS: MFolder[] = [...folderMap.values()].sort((a, b) => {
   if (a.group !== b.group) return GROUP_ORDER[a.group] - GROUP_ORDER[b.group];
