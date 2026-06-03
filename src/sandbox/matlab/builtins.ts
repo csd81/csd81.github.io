@@ -1533,6 +1533,47 @@ export const BUILTINS: Record<string, Builtin> = {
   shading: async (a, _n, env) => { env.graphics.command('shading', a); return []; },
   colorbar: async (a, _n, env) => { env.graphics.command('colorbar', a); return []; },
   colormap: async (a, _n, env) => { env.graphics.command('colormap', a); return []; },
+  // Colormap array generators (n×3 RGB).
+  parula: async (a) => ret(cmapGen(a, (t) => lerpAnchors(PARULA, t))),
+  turbo: async (a) => ret(cmapGen(a, (t) => lerpAnchors(TURBO, t))),
+  jet: async (a) => ret(cmapGen(a, jetColor)),
+  hot: async (a) => ret(cmapGen(a, hotColor)),
+  gray: async (a) => ret(cmapGen(a, (t) => [t, t, t])),
+  bone: async (a) => ret(cmapGen(a, (t) => [(7 * t) / 8 + clamp01((t - 0.75) / 0.25) / 8, (7 * t) / 8 + clamp01((t - 0.375) / 0.375) / 8, (7 * t) / 8 + clamp01(t / 0.375) / 8])),
+  copper: async (a) => ret(cmapGen(a, (t) => [clamp01(1.25 * t), 0.7812 * t, 0.4975 * t])),
+  pink: async (a) => ret(cmapGen(a, (t) => { const h = hotColor(t); return [Math.sqrt((2 * t + h[0]) / 3), Math.sqrt((2 * t + h[1]) / 3), Math.sqrt((2 * t + h[2]) / 3)]; })),
+  cool: async (a) => ret(cmapGen(a, (t) => [t, 1 - t, 1])),
+  spring: async (a) => ret(cmapGen(a, (t) => [1, t, 1 - t])),
+  summer: async (a) => ret(cmapGen(a, (t) => [t, 0.5 + 0.5 * t, 0.4])),
+  autumn: async (a) => ret(cmapGen(a, (t) => [1, t, 0])),
+  winter: async (a) => ret(cmapGen(a, (t) => [0, t, 1 - 0.5 * t])),
+  hsv: async (a) => ret(cmapGen(a, (t) => hsv2rgb(t, 1, 1))),
+  lines: async (a) => ret(cmapGen(a, (_t, i) => LINES7[i % 7] as [number, number, number])),
+  colorcube: async (a) => ret(cmapGen(a, (t) => hsv2rgb(t, 1, 0.6 + 0.4 * (t % 0.25) * 4))),
+  brighten: async (a) => {
+    // brighten(map, beta): map.^gamma, gamma = 1-beta (beta>0 brighter).
+    const M = m(a[0]); const beta = a.length >= 2 ? asScalar(a[1]) : asScalar(a[0]);
+    if (numel(M) === 1) return []; // brighten(beta) on current map — no current-map state here
+    const gamma = beta > 0 ? 1 - beta : 1 / (1 + beta);
+    return ret(map(M, (x) => Math.pow(Math.max(0, Math.min(1, x)), gamma)));
+  },
+  cellstr: async (a) => {
+    const v = a[0];
+    if (isCell(v)) return ret(v);
+    const A = m(v);
+    if (A.rows <= 1) return ret(makeCell(1, 1, [str(asString(A).replace(/\s+$/, ''))]));
+    const items: Value[] = [];
+    for (let r = 0; r < A.rows; r++) { let s = ''; for (let c = 0; c < A.cols; c++) s += String.fromCharCode(A.data[r + c * A.rows]); items.push(str(s.replace(/\s+$/, ''))); }
+    return ret(makeCell(A.rows, 1, items));
+  },
+  dsearchn: async (a) => {
+    // dsearchn(P, PQ) or dsearchn(P, T, PQ): nearest point in P to each query row.
+    const P = m(a[0]); const PQ = m(a[a.length >= 3 ? 2 : 1]); const dcols = P.cols;
+    const idx = new Float64Array(PQ.rows);
+    for (let q = 0; q < PQ.rows; q++) { let best = 0, bd = Infinity; for (let p = 0; p < P.rows; p++) { let d = 0; for (let c = 0; c < dcols; c++) { const diff = PQ.data[q + c * PQ.rows] - P.data[p + c * P.rows]; d += diff * diff; } if (d < bd) { bd = d; best = p; } } idx[q] = best + 1; }
+    return ret(mat(PQ.rows, 1, idx));
+  },
+  box: async () => [],
   view: async (a, _n, env) => { env.graphics.command('view', a); return []; },
   clf: async (_a, _n, env) => { env.graphics.command('clf', []); return []; },
   cla: async (_a, _n, env) => { env.graphics.command('cla', []); return []; },
@@ -1640,7 +1681,15 @@ const HELP: Record<string, HelpEntry> = {
   contour: { summary: '2-D contour plot of a surface', syntax: ['contour(Z)', 'contour(X,Y,Z)'], seealso: ['surf', 'mesh', 'colorbar'] },
   shading: { summary: 'Surface shading mode (faceted/flat/interp)', syntax: ['shading interp', 'shading flat'], seealso: ['surf', 'colormap'] },
   colorbar: { summary: 'Show a colour scale next to the plot', syntax: ['colorbar', 'colorbar off'], seealso: ['surf', 'colormap'] },
-  colormap: { summary: 'Set the colour map (parula/jet/hot/cool/gray/…)', syntax: ['colormap jet', "colormap('parula')"], seealso: ['surf', 'colorbar', 'shading'] },
+  colormap: { summary: 'Set the colour map (parula/jet/hot/cool/gray/…)', syntax: ['colormap jet', "colormap('parula')", 'colormap(jet(64))'], seealso: ['surf', 'colorbar', 'jet', 'parula'] },
+  jet: { summary: 'Jet colormap (n×3 RGB)', syntax: ['c = jet(n)'], seealso: ['parula', 'hot', 'colormap'] },
+  parula: { summary: 'Parula colormap (n×3 RGB)', syntax: ['c = parula(n)'], seealso: ['jet', 'turbo', 'colormap'] },
+  hsv: { summary: 'HSV colormap (n×3 RGB)', syntax: ['c = hsv(n)'], seealso: ['jet', 'colormap'] },
+  gray: { summary: 'Grayscale colormap (n×3 RGB)', syntax: ['c = gray(n)'], seealso: ['bone', 'colormap'] },
+  cellstr: { summary: 'Convert a char matrix to a cell array of strings', syntax: ['c = cellstr(S)'], seealso: ['char', 'iscellstr', 'strsplit'] },
+  dsearchn: { summary: 'Nearest point search', syntax: ['k = dsearchn(P,PQ)'], seealso: ['delaunay', 'griddata'] },
+  brighten: { summary: 'Brighten or darken a colormap', syntax: ['m2 = brighten(map,beta)'], seealso: ['colormap'] },
+  box: { summary: 'Display or hide the axes outline', syntax: ['box on', 'box off'], seealso: ['axis', 'grid'] },
   zlabel: { summary: 'Label the z-axis', syntax: ["zlabel('text')"], seealso: ['xlabel', 'ylabel', 'surf'] },
   peaks: { summary: 'Sample function of two variables (classic test surface)', syntax: ['Z = peaks(n)', 'peaks(n)'], seealso: ['surf', 'mesh', 'meshgrid'] },
   sphere: { summary: 'Generate/plot a unit sphere surface', syntax: ['[X,Y,Z] = sphere(n)', 'sphere(n)'], seealso: ['cylinder', 'ellipsoid', 'surf'] },
@@ -1881,7 +1930,8 @@ const BASE_REF = new Set<string>((
   'plot fplot hold title xlabel ylabel zlabel legend grid axis xlim ylim set gca gcf figure clf cla close clc format who whos clear help doc ans dot repmat ' +
   'surf surfc mesh meshc surface contour contourf contour3 pcolor shading colorbar colormap view peaks xline yline ' +
   'sphere cylinder ellipsoid fsurf fmesh fcontour quiver ' +
-  'bar barh area stem stairs scatter scatter3 plot3 stem3 errorbar pie histogram loglog semilogx semilogy subtitle sgtitle zlim xticks yticks zticks text ' +
+  'bar barh area stem stairs scatter scatter3 plot3 stem3 errorbar pie histogram loglog semilogx semilogy subtitle sgtitle zlim xticks yticks zticks text box ' +
+  'jet parula turbo hot cool gray bone copper pink spring summer autumn winter hsv lines colorcube cellstr dsearchn brighten ' +
   'cell iscell iscellstr num2cell cell2mat celldisp cellfun strsplit strjoin ' +
   'struct isstruct isfield fieldnames numfields rmfield setfield getfield orderfields struct2cell cell2struct structfun ' +
   'horzcat vertcat isequaln corr qmr condest wilkinson spones nonzeros bartlett blackman hamming hann typecast swapbytes ' +
@@ -2152,6 +2202,28 @@ async function sampleFn2(a: Value[], env: Env): Promise<{ X: Mat; Y: Mat; Z: Mat
   const Z = isMat(r[0]) && numel(r[0]) === m1 * m1 ? (r[0] as Mat) : zeros(m1, m1);
   return { X, Y, Z };
 }
+
+// ── Colormap generators (return an n×3 RGB matrix) ───────────────────────
+const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
+function cmapGen(args: Value[], f: (t: number, i: number, n: number) => [number, number, number]): Mat {
+  const n = args.length && isMat(args[0]) ? Math.round(asScalar(args[0])) : 256;
+  const M = zeros(n, 3);
+  for (let i = 0; i < n; i++) { const t = n > 1 ? i / (n - 1) : 0; const [r, g, b] = f(t, i, n); M.data[i] = r; M.data[i + n] = g; M.data[i + 2 * n] = b; }
+  return M;
+}
+const jetColor = (t: number): [number, number, number] => [clamp01(1.5 - Math.abs(4 * t - 3)), clamp01(1.5 - Math.abs(4 * t - 2)), clamp01(1.5 - Math.abs(4 * t - 1))];
+const hotColor = (t: number): [number, number, number] => [clamp01(t / 0.375), clamp01((t - 0.375) / 0.375), clamp01((t - 0.75) / 0.25)];
+function hsv2rgb(h: number, s: number, v: number): [number, number, number] {
+  const i = Math.floor(h * 6), f = h * 6 - i, p = v * (1 - s), q = v * (1 - f * s), u = v * (1 - (1 - f) * s);
+  switch (((i % 6) + 6) % 6) { case 0: return [v, u, p]; case 1: return [q, v, p]; case 2: return [p, v, u]; case 3: return [p, q, v]; case 4: return [u, p, v]; default: return [v, p, q]; }
+}
+function lerpAnchors(A: number[][], t: number): [number, number, number] {
+  const pos = clamp01(t) * (A.length - 1); const i = Math.min(A.length - 2, Math.floor(pos)); const f = pos - i;
+  return [A[i][0] + f * (A[i + 1][0] - A[i][0]), A[i][1] + f * (A[i + 1][1] - A[i][1]), A[i][2] + f * (A[i + 1][2] - A[i][2])];
+}
+const PARULA = [[0.2081, 0.1663, 0.5292], [0.0779, 0.5040, 0.8384], [0.0265, 0.6137, 0.8135], [0.4668, 0.6753, 0.5226], [0.9856, 0.7572, 0.2347], [0.9763, 0.9831, 0.0538]];
+const TURBO = [[0.19, 0.07, 0.23], [0.27, 0.48, 0.99], [0.11, 0.92, 0.62], [0.86, 0.99, 0.10], [0.99, 0.45, 0.05], [0.48, 0.01, 0.01]];
+const LINES7 = [[0, 0.447, 0.741], [0.85, 0.325, 0.098], [0.929, 0.694, 0.125], [0.494, 0.184, 0.556], [0.466, 0.674, 0.188], [0.301, 0.745, 0.933], [0.635, 0.078, 0.184]];
 
 /** Chebyshev spectral differentiation matrix (Trefethen), n×n with N=n-1 points. */
 function chebspecMat(n: number): Mat {
