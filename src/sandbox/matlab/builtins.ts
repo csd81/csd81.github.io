@@ -282,6 +282,32 @@ export const BUILTINS: Record<string, Builtin> = {
   airy: async (a) => { const hasK = a.length >= 2; const kind = hasK ? Math.round(asScalar(a[0])) : 0; const X = m(a[hasK ? 1 : 0]); return ret(map(X, (x) => airyFn(kind, x))); },
   ellipke: async (a, n) => { const M = m(a[0]); const K = zeros(M.rows, M.cols), E = zeros(M.rows, M.cols); for (let i = 0; i < M.data.length; i++) { const [k, e] = ellipkeFn(M.data[i]); K.data[i] = k; E.data[i] = e; } return n >= 2 ? [K, E] : [K]; },
   ellipj: async (a, n) => { const U = m(a[0]); const mm = asScalar(a[1]); const SN = zeros(U.rows, U.cols), CN = zeros(U.rows, U.cols), DN = zeros(U.rows, U.cols); for (let i = 0; i < U.data.length; i++) { const [sn, cn, dn] = sncndn(U.data[i], 1 - mm); SN.data[i] = sn; CN.data[i] = cn; DN.data[i] = dn; } return n >= 2 ? [SN, CN, DN] : [SN]; },
+  erfi: ew(erfiFn),
+  dawson: ew(dawsonFn),
+  fresnelc: ew((x) => fresnelCS(x)[0]),
+  fresnels: ew((x) => fresnelCS(x)[1]),
+  zeta: ew(zetaFn),
+  igamma: async (a) => ret(elementwise(m(a[0]), m(a[1]), igammaFn)),
+  pochhammer: async (a) => ret(elementwise(m(a[0]), m(a[1]), pochhammerFn)),
+  lambertw: async (a) => { const hasB = a.length >= 2; const branch = hasB ? Math.round(asScalar(a[0])) : 0; const X = m(a[hasB ? 1 : 0]); return ret(map(X, (x) => lambertwFn(x, branch))); },
+  chebyshevT: async (a) => { const nn = Math.round(asScalar(a[0])); return ret(map(m(a[1]), (x) => orthoPoly('T', nn, x))); },
+  chebyshevU: async (a) => { const nn = Math.round(asScalar(a[0])); return ret(map(m(a[1]), (x) => orthoPoly('U', nn, x))); },
+  legendreP: async (a) => { const nn = Math.round(asScalar(a[0])); return ret(map(m(a[1]), (x) => orthoPoly('P', nn, x))); },
+  hermiteH: async (a) => { const nn = Math.round(asScalar(a[0])); return ret(map(m(a[1]), (x) => orthoPoly('H', nn, x))); },
+  laguerreL: async (a) => { const nn = Math.round(asScalar(a[0])); return ret(map(m(a[1]), (x) => orthoPoly('L', nn, x))); },
+  divisors: async (a) => { const N = Math.abs(Math.round(asScalar(a[0]))); const d: number[] = []; for (let i = 1; i <= N; i++) if (N % i === 0) d.push(i); return ret(rowVec(d.length ? d : [N === 0 ? 0 : 1])); },
+  frac: ew((x) => x - Math.trunc(x)),
+  kroneckerDelta: async (a) => { const M = m(a[0]); const N = a.length >= 2 ? m(a[1]) : scalar(0); return ret(elementwise(M, N, (x, y) => x === y ? 1 : 0)); },
+  rectangularPulse: async (a) => { const X = m(a[a.length >= 3 ? 2 : 0]); const lo = a.length >= 3 ? asScalar(a[0]) : -0.5; const hi = a.length >= 3 ? asScalar(a[1]) : 0.5; return ret(map(X, (x) => x > lo && x < hi ? 1 : (x === lo || x === hi ? 0.5 : 0))); },
+  triangularPulse: async (a) => {
+    let lo: number, mid: number, hi: number, X: Mat;
+    if (a.length >= 4) { lo = asScalar(a[0]); mid = asScalar(a[1]); hi = asScalar(a[2]); X = m(a[3]); }
+    else if (a.length === 3) { lo = asScalar(a[0]); hi = asScalar(a[1]); mid = (lo + hi) / 2; X = m(a[2]); }
+    else { lo = -1; mid = 0; hi = 1; X = m(a[0]); }
+    return ret(map(X, (x) => { if (x <= lo || x >= hi) return 0; if (x === mid) return 1; return x < mid ? (x - lo) / (mid - lo) : (hi - x) / (hi - mid); }));
+  },
+  signIm: async (a) => { const X = m(a[0]); const o = zeros(X.rows, X.cols); for (let i = 0; i < X.data.length; i++) { const im = X.idata ? X.idata[i] : 0; o.data[i] = im !== 0 ? Math.sign(im) : -Math.sign(X.data[i]); } return ret(o); },
+  adjoint: async (a) => { const A = m(a[0]); if (A.rows !== A.cols) throw new MatError('adjoint: matrix must be square'); const d = det(A); if (Math.abs(d) > 1e-300 && Number.isFinite(d)) { const I = inv(A); return ret(map(I, (v) => v * d)); } return ret(adjugateCofactor(A)); },
   // special matrices
   magic: async (a) => ret(magicFn(Math.round(asScalar(a[0])))),
   hilb: async (a) => { const n = Math.round(asScalar(a[0])); const o = zeros(n, n); for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) o.data[r + c * n] = 1 / (r + c + 1); return ret(o); },
@@ -2788,6 +2814,167 @@ function cisi(x: number): [number, number] {
   return [si, ci];
 }
 
+/** Dawson integral D(x) = e^{-x²}∫₀ˣ e^{t²}dt (series for small x, asymptotic for large). */
+function dawsonFn(x: number): number {
+  if (x === 0) return 0;
+  if (Math.abs(x) < 3) {
+    let term = x, sum = x; // D(x) = Σ (-2)^n/(2n+1)!! x^{2n+1}
+    for (let n = 1; n <= 200; n++) { term *= -2 * x * x / (2 * n + 1); sum += term; if (Math.abs(term) < 1e-17 * Math.abs(sum)) break; }
+    return sum;
+  }
+  let term = 1, sum = 1; // D(x) ~ (1/2x) Σ (2k-1)!!/(2x²)^k
+  for (let k = 1; k <= 40; k++) { term *= (2 * k - 1) / (2 * x * x); sum += term; if (Math.abs(term) < 1e-16) break; }
+  return sum / (2 * x);
+}
+
+/** Imaginary error function erfi(x) = (2/√π)∫₀ˣ e^{t²}dt = (2/√π)e^{x²}D(x). */
+function erfiFn(x: number): number {
+  if (x === 0) return 0;
+  return (2 / Math.sqrt(Math.PI)) * Math.exp(x * x) * dawsonFn(x);
+}
+
+/** Fresnel integrals [C(x), S(x)] = ∫₀ˣ cos/sin(πt²/2)dt (Numerical Recipes frenel). */
+function fresnelCS(x: number): [number, number] {
+  const EPS = 1e-13, FPMIN = 1e-30, XMIN = 1.5, PIBY2 = Math.PI / 2;
+  const ax = Math.abs(x);
+  let c: number, s: number;
+  if (ax < Math.sqrt(FPMIN)) { c = ax; s = 0; }
+  else if (ax <= XMIN) {
+    let sum = 0, sums = 0, sumc = ax, sign = 1, fact = PIBY2 * ax * ax, odd = true, term = ax, n = 3;
+    for (let k = 1; k <= 200; k++) {
+      term *= fact / k; sum += sign * term / n; const test = Math.abs(sum) * EPS;
+      if (odd) { sign = -sign; sums = sum; sum = sumc; } else { sumc = sum; sum = sums; }
+      if (term < test) break; odd = !odd; n += 2;
+    }
+    s = sums; c = sumc;
+  } else {
+    const pix2 = Math.PI * ax * ax;
+    let br = 1, bi = -pix2, ccr = 1 / FPMIN, cci = 0;
+    let den = br * br + bi * bi, dr = br / den, di = -bi / den, hr = dr, hi = di, nn = -1;
+    for (let k = 2; k <= 200; k++) {
+      nn += 2; const a = -nn * (nn + 1); br += 4;
+      let tr = a * dr + br, ti = a * di + bi; den = tr * tr + ti * ti; dr = tr / den; di = -ti / den;
+      den = ccr * ccr + cci * cci; ccr = br + a * ccr / den; cci = bi - a * cci / den;
+      const delr = ccr * dr - cci * di, deli = ccr * di + cci * dr;
+      const nhr = hr * delr - hi * deli, nhi = hr * deli + hi * delr; hr = nhr; hi = nhi;
+      if (Math.abs(delr - 1) + Math.abs(deli) < EPS) break;
+    }
+    const thr = ax * hr + ax * hi, thi = ax * hi - ax * hr; hr = thr; hi = thi; // (ax,-ax)*h
+    const co = Math.cos(0.5 * pix2), si2 = Math.sin(0.5 * pix2);
+    const mr = co * hr - si2 * hi, mi = co * hi + si2 * hr; // (cos+isin)*h
+    const onemr = 1 - mr, onemi = -mi;
+    c = 0.5 * onemr - 0.5 * onemi; s = 0.5 * onemi + 0.5 * onemr; // (0.5+0.5i)*(1-...)
+  }
+  if (x < 0) { c = -c; s = -s; }
+  return [c, s];
+}
+
+/** Lambert W (real branches 0 and -1) via Halley iteration. */
+function lambertwFn(x: number, branch = 0): number {
+  const EM = -1 / Math.E;
+  if (branch !== 0 && branch !== -1) return NaN;
+  if (x < EM) return NaN; // complex
+  if (x === EM) return -1;
+  if (branch === 0 && x === 0) return 0;
+  let w: number;
+  if (branch === 0) {
+    if (x < 1) { const p = Math.sqrt(2 * (Math.E * x + 1)); w = -1 + p - p * p / 3 + 11 / 72 * p * p * p; }
+    else if (x > 3) w = Math.log(x) - Math.log(Math.log(x));
+    else w = Math.log(x);
+  } else {
+    if (x >= 0) return NaN;
+    const L1 = Math.log(-x), L2 = Math.log(-Math.log(-x)); w = L1 - L2 + L2 / L1;
+  }
+  for (let i = 0; i < 100; i++) {
+    const ew = Math.exp(w), f = w * ew - x;
+    const wn = w - f / (ew * (w + 1) - (w + 2) * f / (2 * w + 2));
+    if (Math.abs(wn - w) < 1e-15 * (Math.abs(wn) + 1)) { w = wn; break; }
+    w = wn;
+  }
+  return w;
+}
+
+/** Riemann zeta ζ(s) for real s (Euler–Maclaurin; reflection for s<0.5). */
+function zetaFn(s: number): number {
+  if (s === 1) return Infinity;
+  if (s === 0) return -0.5;
+  if (s < 0 && s % 2 === 0 && Number.isInteger(s)) return 0; // trivial zeros
+  if (s < 0.5) return Math.pow(2, s) * Math.pow(Math.PI, s - 1) * Math.sin(Math.PI * s / 2) * gammaFn(1 - s) * zetaFn(1 - s);
+  const N = 12, M = 6, Bern = [1 / 6, -1 / 30, 1 / 42, -1 / 30, 5 / 66, -691 / 2730];
+  let sum = 0;
+  for (let n = 1; n < N; n++) sum += Math.pow(n, -s);
+  sum += Math.pow(N, 1 - s) / (s - 1) + Math.pow(N, -s) / 2;
+  for (let k = 1; k <= M; k++) {
+    let poch = 1; for (let j = 0; j < 2 * k - 1; j++) poch *= (s + j);
+    let f2k = 1; for (let j = 1; j <= 2 * k; j++) f2k *= j;
+    sum += Bern[k - 1] / f2k * poch * Math.pow(N, -s - 2 * k + 1);
+  }
+  return sum;
+}
+
+/** Upper incomplete gamma Γ(a,x) = ∫ₓ^∞ t^{a-1}e^{-t}dt (unregularized). */
+function igammaFn(a: number, x: number): number {
+  if (x < 0 || a <= 0) return NaN;
+  if (x === 0) return gammaFn(a);
+  if (x < a + 1) {
+    let ap = a, sum = 1 / a, del = 1 / a;
+    for (let i = 0; i < 400; i++) { ap++; del *= x / ap; sum += del; if (Math.abs(del) < Math.abs(sum) * 1e-16) break; }
+    const P = sum * Math.exp(-x + a * Math.log(x) - logGamma(a));
+    return (1 - P) * gammaFn(a);
+  }
+  let b = x + 1 - a, c = 1e300, d = 1 / b, h = d;
+  for (let i = 1; i <= 400; i++) { const an = -i * (i - a); b += 2; d = an * d + b; if (Math.abs(d) < 1e-300) d = 1e-300; c = b + an / c; if (Math.abs(c) < 1e-300) c = 1e-300; d = 1 / d; const del = d * c; h *= del; if (Math.abs(del - 1) < 1e-16) break; }
+  return Math.exp(-x + a * Math.log(x) - logGamma(a)) * h * gammaFn(a);
+}
+
+/** Pochhammer (rising factorial) (x)_n = Γ(x+n)/Γ(x). */
+function pochhammerFn(x: number, n: number): number {
+  if (Number.isInteger(n) && n >= 0) { let p = 1; for (let i = 0; i < n; i++) p *= (x + i); return p; }
+  return gammaFn(x + n) / gammaFn(x);
+}
+
+/** Classical orthogonal polynomials by three-term recurrence. kind T,U,P,H,L. */
+function orthoPoly(kind: string, n: number, x: number): number {
+  if (n <= 0) return 1;
+  let p0 = 1, p1: number;
+  switch (kind) {
+    case 'T': p1 = x; break;
+    case 'U': p1 = 2 * x; break;
+    case 'P': p1 = x; break;
+    case 'H': p1 = 2 * x; break;
+    case 'L': p1 = 1 - x; break;
+    default: return NaN;
+  }
+  for (let k = 2; k <= n; k++) {
+    let pk: number;
+    switch (kind) {
+      case 'T': case 'U': pk = 2 * x * p1 - p0; break;
+      case 'P': pk = ((2 * k - 1) * x * p1 - (k - 1) * p0) / k; break;
+      case 'H': pk = 2 * x * p1 - 2 * (k - 1) * p0; break;
+      default: pk = ((2 * k - 1 - x) * p1 - (k - 1) * p0) / k; break; // L
+    }
+    p0 = p1; p1 = pk;
+  }
+  return p1;
+}
+
+/** Adjugate (classical adjoint) via cofactors — works for singular matrices too. */
+function adjugateCofactor(A: Mat): Mat {
+  const n = A.rows;
+  if (n === 1) return scalar(1);
+  const o = zeros(n, n);
+  const minor = (skipR: number, skipC: number): Mat => {
+    const sub = zeros(n - 1, n - 1); let rr = 0;
+    for (let r = 0; r < n; r++) { if (r === skipR) continue; let cc = 0; for (let c = 0; c < n; c++) { if (c === skipC) continue; sub.data[rr + cc * (n - 1)] = A.data[r + c * n]; cc++; } rr++; }
+    return sub;
+  };
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+    const cof = ((i + j) % 2 ? -1 : 1) * det(minor(i, j));
+    o.data[j + i * n] = cof; // transpose of cofactor matrix
+  }
+  return o;
+}
+
 /** Associated Legendre function P_l^m(x), 0≤m≤l, |x|≤1 (with Condon–Shortley phase). */
 function plgndr(l: number, mm: number, x: number): number {
   let pmm = 1;
@@ -5077,4 +5264,6 @@ export const CONSTANTS: Record<string, () => Value> = {
   realmax: () => scalar(Number.MAX_VALUE), realmin: () => scalar(Number.MIN_VALUE),
   i: () => cscalar(0, 1), j: () => cscalar(0, 1),
   newline: () => str('\n'),
+  eulergamma: () => scalar(0.5772156649015329),
+  catalan: () => scalar(0.915965594177219),
 };
