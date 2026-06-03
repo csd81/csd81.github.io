@@ -670,10 +670,22 @@ export const BUILTINS: Record<string, Builtin> = {
   planerot: async (a, n) => { const v = toArray(m(a[0])); const [x, y] = v; const r = Math.hypot(x, y); const c = r === 0 ? 1 : x / r, s = r === 0 ? 0 : y / r; const G = fromRows([[c, s], [-s, c]]); return n >= 2 ? [G, colVec([r, 0])] : [G]; },
   house: async (a, n) => { const x = toArray(m(a[0])); const nrm = Math.hypot(...x); const alpha = -Math.sign(x[0] || 1) * nrm; const v = x.slice(); v[0] -= alpha; let vn = 0; for (const e of v) vn += e * e; const beta = vn === 0 ? 0 : 2 / vn; return n >= 2 ? [colVec(v), scalar(beta)] : [colVec(v)]; },
   funm: async (a, _n, env) => {
-    const A = m(a[0]); const f = handle(a[1], 'funm'); const { D, V } = generalEig(A, true); const nn = A.rows;
-    const Dre = new Float64Array(nn * nn), Dim = new Float64Array(nn * nn);
-    for (let i = 0; i < nn; i++) { const r = await env.callHandle(f, [D.im[i] === 0 ? scalar(D.re[i]) : finishComplex(1, 1, Float64Array.of(D.re[i]), Float64Array.of(D.im[i]))], 1); const z = m(r[0]); Dre[i + i * nn] = z.data[0]; Dim[i + i * nn] = z.idata ? z.idata[0] : 0; }
-    return ret(cmatmul(cmatmul(V!, finishComplex(nn, nn, Dre, Dim)), inv(V!)));
+    const A = m(a[0]); const f = handle(a[1], 'funm'); const nn = A.rows; if (nn === 0) return ret(A);
+    const sc = schurFn(A); const cs = rsf2csfFn(sc.U, sc.T);
+    const Tre = cs.T.data, Tim = cs.T.idata ?? new Float64Array(nn * nn);
+    const tr = (i: number, j: number) => Tre[i + j * nn], ti = (i: number, j: number) => Tim[i + j * nn];
+    const Fre = new Float64Array(nn * nn), Fim = new Float64Array(nn * nn);
+    const fcall = async (re: number, im: number): Promise<[number, number]> => { const r = await env.callHandle(f, [im === 0 ? scalar(re) : finishComplex(1, 1, Float64Array.of(re), Float64Array.of(im))], 1); const z = m(r[0]); return [z.data[0], z.idata ? z.idata[0] : 0]; };
+    for (let i = 0; i < nn; i++) { const [pr, pi] = await fcall(tr(i, i), ti(i, i)); Fre[i + i * nn] = pr; Fim[i + i * nn] = pi; }
+    for (let d = 1; d < nn; d++) for (let i = 0; i + d < nn; i++) {
+      const j = i + d; let nr = 0, ni = 0;
+      { const [r, mm] = cmul(tr(i, j), ti(i, j), Fre[j + j * nn] - Fre[i + i * nn], Fim[j + j * nn] - Fim[i + i * nn]); nr += r; ni += mm; }
+      for (let k = i + 1; k < j; k++) { const [r1, m1] = cmul(Fre[i + k * nn], Fim[i + k * nn], tr(k, j), ti(k, j)); const [r2, m2] = cmul(tr(i, k), ti(i, k), Fre[k + j * nn], Fim[k + j * nn]); nr += r1 - r2; ni += m1 - m2; }
+      const dr = tr(j, j) - tr(i, i), di = ti(j, j) - ti(i, i);
+      if (Math.hypot(dr, di) < 1e-11) { const h = 1e-6; const lr = (tr(i, i) + tr(j, j)) / 2, li = (ti(i, i) + ti(j, j)) / 2; const [pr, pi] = await fcall(lr + h, li); const [mr, mi] = await fcall(lr - h, li); const [r, mm] = cmul(tr(i, j), ti(i, j), (pr - mr) / (2 * h), (pi - mi) / (2 * h)); Fre[i + j * nn] = r; Fim[i + j * nn] = mm; }
+      else { const [r, mm] = cdiv(nr, ni, dr, di); Fre[i + j * nn] = r; Fim[i + j * nn] = mm; }
+    }
+    return ret(cmatmul(cmatmul(cs.U, finishComplex(nn, nn, Fre, Fim)), ctransposeFn(cs.U)));
   },
   // ── quadrature aliases / ODE alias ──
   quad: async (a, n, env) => BUILTINS.integral(a, n, env),

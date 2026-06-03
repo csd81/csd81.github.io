@@ -418,12 +418,35 @@ export function expm(A: Mat): Mat {
 }
 
 /** f(A) for diagonalisable A via the eigendecomposition: V·f(D)·V⁻¹. */
+/** Matrix function f(A) via Schur–Parlett (complex Schur + Parlett recurrence with
+ *  confluent handling for equal/clustered eigenvalues — robust for repeated eigenvalues). */
 function funmViaEig(A: Mat, f: (re: number, im: number) => [number, number]): Mat {
-  const n = A.rows; const { D, V } = generalEig(A, true);
-  const Dre = new Float64Array(n * n), Dim = new Float64Array(n * n);
-  for (let i = 0; i < n; i++) { const [fr, fi] = f(D.re[i], D.im[i]); Dre[i + i * n] = fr; Dim[i + i * n] = fi; }
-  const Df = finishComplex(n, n, Dre, Dim);
-  return cmatmul(cmatmul(V!, Df), inv(V!));
+  const n = A.rows; if (n === 0) return A;
+  // complex Schur: A = U T Uᴴ, T upper-triangular
+  const sc = schur(A); const cs = rsf2csf(sc.U, sc.T);
+  const Tre = cs.T.data, Tim = cs.T.idata ?? new Float64Array(n * n);
+  const tr = (i: number, j: number) => Tre[i + j * n], ti = (i: number, j: number) => Tim[i + j * n];
+  const Fre = new Float64Array(n * n), Fim = new Float64Array(n * n);
+  for (let i = 0; i < n; i++) { const [a, b] = f(tr(i, i), ti(i, i)); Fre[i + i * n] = a; Fim[i + i * n] = b; }
+  const fprime = (re: number, im: number): [number, number] => { const h = 1e-6; const [pr, pi] = f(re + h, im); const [mr, mi] = f(re - h, im); return [(pr - mr) / (2 * h), (pi - mi) / (2 * h)]; };
+  for (let d = 1; d < n; d++) for (let i = 0; i + d < n; i++) {
+    const j = i + d;
+    // N = T_ij (F_jj − F_ii) + Σ_{i<k<j} (F_ik T_kj − T_ik F_kj)
+    let nr = 0, ni = 0;
+    { const [r, m] = cmul(tr(i, j), ti(i, j), Fre[j + j * n] - Fre[i + i * n], Fim[j + j * n] - Fim[i + i * n]); nr += r; ni += m; }
+    for (let k = i + 1; k < j; k++) {
+      const [r1, m1] = cmul(Fre[i + k * n], Fim[i + k * n], tr(k, j), ti(k, j));
+      const [r2, m2] = cmul(tr(i, k), ti(i, k), Fre[k + j * n], Fim[k + j * n]);
+      nr += r1 - r2; ni += m1 - m2;
+    }
+    const dr = tr(j, j) - tr(i, i), di = ti(j, j) - ti(i, i);
+    if (Math.hypot(dr, di) < 1e-11) {   // confluent: f'(λ) on the (near-)equal eigenvalue
+      const [pr, pi] = fprime((tr(i, i) + tr(j, j)) / 2, (ti(i, i) + ti(j, j)) / 2);
+      const [r, m] = cmul(tr(i, j), ti(i, j), pr, pi); Fre[i + j * n] = r; Fim[i + j * n] = m;
+    } else { const [r, m] = cdiv(nr, ni, dr, di); Fre[i + j * n] = r; Fim[i + j * n] = m; }
+  }
+  const F = finishComplex(n, n, Fre, Fim);
+  const Uc = cs.U; return cmatmul(cmatmul(Uc, F), ctranspose(Uc));   // U F Uᴴ
 }
 export const sqrtm = (A: Mat): Mat => funmViaEig(A, (re, im) => csqrt(re, im));
 export const logm = (A: Mat): Mat => funmViaEig(A, (re, im) => clog(re, im));
