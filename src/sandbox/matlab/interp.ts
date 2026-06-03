@@ -10,6 +10,7 @@ import {
   type Cell, type StructV, isCell, isStruct, makeCell, sparseToDense,
   type Str, isStr, makeStr, makeStrArr,
   type Graph, type Geom, type Quantum,
+  type Temporal, isTemporal, makeTemporal, numelOf,
 } from './values';
 import { det, inv, mldivide } from './linalg';
 import { BUILTINS, CONSTANTS, builtinHelp, docUrl, type Env } from './builtins';
@@ -155,6 +156,7 @@ export class Interpreter implements Env {
       if (v.kind === 'graph') { out.push({ name, size: '1x1', klass: v.directed ? 'digraph' : 'graph', preview: `${v.n} nodes, ${v.edges.length} edges` }); continue; }
       if (v.kind === 'geom') { out.push({ name, size: '1x1', klass: v.gkind, preview: `${v.points.length} pts${v.conn ? `, ${v.conn.length} simplices` : ''}` }); continue; }
       if (v.kind === 'quantum') { out.push({ name, size: '1x1', klass: `quantum.${v.qkind}`, preview: v.qkind === 'gate' ? `${v.gate}Gate` : v.qkind === 'circuit' ? `${v.numQubits} qubits, ${v.gates?.length ?? 0} gates` : `${v.numQubits} qubits` }); continue; }
+      if (v.kind === 'temporal') { out.push({ name, size: `${v.rows}x${v.cols}`, klass: v.tkind, preview: dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) }); continue; }
       const klass = v.isChar ? 'char' : 'double';
       const preview = numel(v) <= 12 ? dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) : '…';
       out.push({ name, size: `${v.rows}x${v.cols}`, klass, preview });
@@ -565,13 +567,13 @@ export class Interpreter implements Env {
   private async evalBinary(op: string, ae: Expr, be: Expr, scope: Scope): Promise<Value> {
     if (op === '&&') return bool(truthy(await this.evalExpr(ae, scope)) && truthy(await this.evalExpr(be, scope)));
     if (op === '||') return bool(truthy(await this.evalExpr(ae, scope)) || truthy(await this.evalExpr(be, scope)));
+    const av = await this.evalExpr(ae, scope), bv = await this.evalExpr(be, scope);
+    // datetime/duration arithmetic and comparison.
+    if (isTemporal(av) || isTemporal(bv)) return temporalBinary(op, av, bv);
     // String-class operators: `+` concatenates, `==`/`~=` compare element-wise.
-    if (op === '+' || op === '==' || op === '~=') {
-      const av = await this.evalExpr(ae, scope), bv = await this.evalExpr(be, scope);
-      if (isStr(av) || isStr(bv)) return strBinary(op, av, bv);
-    }
-    const a = asMat(await this.evalExpr(ae, scope));
-    const b = asMat(await this.evalExpr(be, scope));
+    if ((op === '+' || op === '==' || op === '~=') && (isStr(av) || isStr(bv))) return strBinary(op, av, bv);
+    const a = asMat(av);
+    const b = asMat(bv);
     switch (op) {
       case '+': return ewAdd(a, b);
       case '-': return ewSub(a, b);
@@ -662,7 +664,39 @@ function asMat(v: Value): Mat {
   if (v.kind === 'graph') throw new MatError('expected a numeric value, got a graph (use adjacency(G) etc.)');
   if (v.kind === 'geom') throw new MatError(`expected a numeric value, got a ${v.gkind}`);
   if (v.kind === 'quantum') throw new MatError(`expected a numeric value, got a quantum ${v.qkind}`);
+  if (v.kind === 'temporal') return { kind: 'num', rows: v.rows, cols: v.cols, data: new Float64Array(v.data) };  // datetime→datenum, duration→days
   throw new MatError('expected a numeric value, got a function handle');
+}
+/** datetime / duration arithmetic and comparison. */
+function temporalBinary(op: string, a: Value, b: Value): Value {
+  const A = isTemporal(a) ? a : null, B = isTemporal(b) ? b : null;
+  const bcast = (xd: Float64Array, yd: Float64Array, fn: (x: number, y: number) => number): Float64Array => {
+    const n = Math.max(xd.length, yd.length); const out = new Float64Array(n);
+    for (let i = 0; i < n; i++) out[i] = fn(xd.length === 1 ? xd[0] : xd[i], yd.length === 1 ? yd[0] : yd[i]);
+    return out;
+  };
+  const dimsT = (X: Temporal, Y: Temporal) => (numelOf(X) >= numelOf(Y) ? X : Y);
+  const mk = (kind: 'datetime' | 'duration', X: Temporal, Y: Temporal, fn: (x: number, y: number) => number, fmt?: string): Temporal => { const d = dimsT(X, Y); return makeTemporal(kind, d.rows, d.cols, bcast(X.data, Y.data, fn), fmt ?? (kind === 'datetime' ? X.fmt : undefined)); };
+  const cmp = (X: Temporal, Y: Temporal, fn: (x: number, y: number) => boolean): Mat => { const d = dimsT(X, Y); const out = bcast(X.data, Y.data, (x, y) => (fn(x, y) ? 1 : 0)); return { kind: 'num', rows: d.rows, cols: d.cols, data: out, isBool: true }; };
+  const cmpFn: Record<string, (x: number, y: number) => boolean> = { '==': (x, y) => x === y, '~=': (x, y) => x !== y, '<': (x, y) => x < y, '>': (x, y) => x > y, '<=': (x, y) => x <= y, '>=': (x, y) => x >= y };
+  if (A && B) {
+    if (op in cmpFn) return cmp(A, B, cmpFn[op]);
+    if (op === '-') {
+      if (A.tkind === 'datetime' && B.tkind === 'datetime') return mk('duration', A, B, (x, y) => x - y);
+      if (A.tkind === 'duration' && B.tkind === 'duration') return mk('duration', A, B, (x, y) => x - y);
+      if (A.tkind === 'datetime' && B.tkind === 'duration') return mk('datetime', A, B, (x, y) => x - y);
+    }
+    if (op === '+') {
+      if (A.tkind === 'duration' && B.tkind === 'duration') return mk('duration', A, B, (x, y) => x + y);
+      if (A.tkind === 'datetime' && B.tkind === 'duration') return mk('datetime', A, B, (x, y) => x + y);
+      if (A.tkind === 'duration' && B.tkind === 'datetime') return mk('datetime', B, A, (x, y) => x + y);
+    }
+    if ((op === '/' || op === './') && A.tkind === 'duration' && B.tkind === 'duration') { const d = dimsT(A, B); return { kind: 'num', rows: d.rows, cols: d.cols, data: bcast(A.data, B.data, (x, y) => x / y) }; }
+  }
+  const scalarMat = (v: Value) => { const mm = asMat(v); return mm.data; };
+  if (A && B === null && A.tkind === 'duration') { const s = scalarMat(b); if (op === '*' || op === '.*') return makeTemporal('duration', A.rows, A.cols, bcast(A.data, s, (x, k) => x * k), A.fmt); if (op === '/' || op === './') return makeTemporal('duration', A.rows, A.cols, bcast(A.data, s, (x, k) => x / k), A.fmt); }
+  if (B && A === null && B.tkind === 'duration' && (op === '*' || op === '.*')) { const s = scalarMat(a); return makeTemporal('duration', B.rows, B.cols, bcast(B.data, s, (x, k) => x * k), B.fmt); }
+  throw new MatError(`operator '${op}' is not supported for ${A ? A.tkind : 'numeric'} and ${B ? B.tkind : 'numeric'} operands`);
 }
 /** Read a quantum-object property via dot syntax (c.NumQubits, g.Type, …). */
 function quantumProperty(q: Quantum, name: string): Value {

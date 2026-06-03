@@ -59,6 +59,7 @@ function brief(v: Value): string {
   if (v.kind === 'graph') return `[${v.directed ? 'digraph' : 'graph'}]`;
   if (v.kind === 'geom') return `[${v.gkind}]`;
   if (v.kind === 'quantum') return `[quantum ${v.qkind}]`;
+  if (v.kind === 'temporal') return v.rows * v.cols === 1 ? fmtTemporal(v.tkind, v.data[0]) : `[${v.rows}×${v.cols} ${v.tkind}]`;
   if (v.isChar) return `'${asString(v)}'`;
   if (numel(v) === 0) return '[]';
   if (isScalar(v)) return `[${isComplex(v) ? fmtC(v.data[0], v.idata![0]) : formatScalar(v.data[0])}]`;
@@ -90,6 +91,7 @@ export function dispValue(v: Value): string {
   if (v.kind === 'graph') return graphLines(v).join('\n');
   if (v.kind === 'geom') return geomLines(v).join('\n');
   if (v.kind === 'quantum') return quantumLines(v).join('\n');
+  if (v.kind === 'temporal') return temporalLines(v).join('\n');
   if (v.kind === 'gobj') return `<${v.gtype} handle>`;
   if (isHandle(v)) return `@${v.name ?? 'anonymous'}`;
   if (v.kind === 'num' && v.nd) return ndLines(v).join('\n');
@@ -109,6 +111,7 @@ export function displayValue(name: string, v: Value): string {
   if (v.kind === 'graph') return `${name} =\n\n  ${v.directed ? 'digraph' : 'graph'} with properties:\n${graphLines(v).join('\n')}\n`;
   if (v.kind === 'geom') return `${name} =\n\n  ${v.gkind} with properties:\n${geomLines(v).join('\n')}\n`;
   if (v.kind === 'quantum') return `${name} =\n\n  quantum.${v.qkind} with properties:\n${quantumLines(v).join('\n')}\n`;
+  if (v.kind === 'temporal') return `${name} =\n\n${temporalLines(v).join('\n')}\n`;
   if (v.kind === 'num' && v.nd) return `${name} =\n\n${ndLines(v).join('\n')}\n`;
   if (v.kind === 'gobj') return `${name} =\n\n  <${v.gtype} handle>\n`;
   if (isHandle(v)) return `${name} =\n\n    @${v.name ?? 'anonymous function'}\n`;
@@ -146,6 +149,30 @@ function geomLines(v: { gkind: string; points: number[][]; conn?: number[][]; al
   return [`    Points: [${np}×${d} double]`, `    ConnectivityList: [${(v.conn ?? []).length}×${d + 1} double]`];
 }
 
+/** Format one datetime (serial datenum) or duration (days) value. */
+const TMONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+export function fmtTemporal(tkind: string, val: number): string {
+  if (Number.isNaN(val)) return tkind === 'datetime' ? 'NaT' : 'NaN';
+  if (tkind === 'datetime') {
+    const ms = Math.round((val - 719529) * 86400000); const d = new Date(ms); const p2 = (x: number) => String(x).padStart(2, '0');
+    const date = `${p2(d.getUTCDate())}-${TMONTHS[d.getUTCMonth()]}-${d.getUTCFullYear()}`;
+    const h = d.getUTCHours(), mi = d.getUTCMinutes(), s = d.getUTCSeconds();
+    return (h || mi || s) ? `${date} ${p2(h)}:${p2(mi)}:${p2(s)}` : date;
+  }
+  // duration → HH:MM:SS (days converted to hours) — MATLAB default 'hh:mm:ss'
+  const totalSec = val * 86400; const neg = totalSec < 0; const t = Math.abs(totalSec);
+  const hh = Math.floor(t / 3600), mm = Math.floor((t % 3600) / 60), ss = t % 60;
+  const p2 = (x: number) => String(Math.floor(x)).padStart(2, '0');
+  return `${neg ? '-' : ''}${p2(hh)}:${p2(mm)}:${ss % 1 ? ss.toFixed(3) : p2(ss)}`;
+}
+function temporalLines(v: { tkind: string; rows: number; cols: number; data: Float64Array }): string[] {
+  if (v.rows * v.cols === 1) return ['   ' + fmtTemporal(v.tkind, v.data[0])];
+  const strs: string[] = []; for (let i = 0; i < v.data.length; i++) strs.push(fmtTemporal(v.tkind, v.data[i]));
+  let w = 0; for (const s of strs) w = Math.max(w, s.length); const lines: string[] = [];
+  for (let r = 0; r < v.rows; r++) { const row: string[] = []; for (let c = 0; c < v.cols; c++) row.push(strs[r + c * v.rows].padStart(w)); lines.push('   ' + row.join('   ')); }
+  return lines;
+}
+
 /** Summary display of a quantum object. */
 function quantumLines(v: { qkind: string; gate?: string; targets?: number[]; controls?: number[]; numQubits?: number; gates?: unknown[]; re?: Float64Array }): string[] {
   if (v.qkind === 'gate') return [`    Type: "${v.gate}"`, `    TargetQubits: [${(v.targets ?? []).join(' ')}]`, ...(v.controls?.length ? [`    ControlQubits: [${v.controls.join(' ')}]`] : [])];
@@ -175,6 +202,7 @@ function buildStream(args: Value[]): Array<{ s: string } | { n: number }> {
   for (const a of args) {
     if (isHandle(a)) { stream.push({ s: a.name ?? '@fn' }); continue; }
     if (a.kind === 'gobj') { stream.push({ s: `<${a.gtype}>` }); continue; }
+    if (a.kind === 'temporal') { for (const x of a.data) stream.push({ s: fmtTemporal(a.tkind, x) }); continue; }
     if (a.kind === 'cell' || a.kind === 'struct' || a.kind === 'graph' || a.kind === 'geom' || a.kind === 'quantum') { stream.push({ s: brief(a) }); continue; }
     if (a.kind === 'str') { for (const s of a.items) stream.push({ s }); continue; }
     if (a.kind === 'sparse') { for (const v of a.values) stream.push({ n: v }); continue; }

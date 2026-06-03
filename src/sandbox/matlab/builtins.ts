@@ -12,6 +12,7 @@ import {
   type Graph, isGraph, makeGraph,
   type Geom, isGeom,
   type Quantum, isQuantum,
+  type Temporal, isTemporal, makeTemporal,
 } from './values';
 import {
   det, inv, mldivide, diag, norm, eye,
@@ -1290,12 +1291,13 @@ export const BUILTINS: Record<string, Builtin> = {
   ddeget: async (a) => { const s = a[0] as StructV; const v = isStruct(s) ? s.fields.get(asString(a[1])) : undefined; return ret(v && v.length ? v[0] : zeros(0, 0)); },
   // ── Dates & times (serial date numbers) ──
   datenum: async (a) => {
+    if (isTemporal(a[0])) { const t = a[0]; return ret(mat(t.rows, t.cols, new Float64Array(t.data))); }
     if (a.length === 1) { const M = m(a[0]); if (M.cols >= 3 && M.rows >= 1) { const o = zeros(M.rows, 1); for (let r = 0; r < M.rows; r++) { const v = Array.from({ length: M.cols }, (_, c) => M.data[r + c * M.rows]); o.data[r] = dnum(v[0], v[1], v[2], v[3] ?? 0, v[4] ?? 0, v[5] ?? 0); } return ret(o); } const v = toArray(M); return ret(scalar(dnum(v[0], v[1], v[2], v[3] ?? 0, v[4] ?? 0, v[5] ?? 0))); }
     const g = a.map((x) => toArray(m(x))); const n = Math.max(...g.map((x) => x.length)); const at = (gi: number, i: number) => g[gi] ? (g[gi].length === 1 ? g[gi][0] : g[gi][i]) : 0;
     const o = zeros(n, 1); for (let i = 0; i < n; i++) o.data[i] = dnum(at(0, i), at(1, i), at(2, i), at(3, i), at(4, i), at(5, i)); return ret(numel(o) === 1 ? scalar(o.data[0]) : o);
   },
-  datevec: async (a) => { const n = asScalar(m(a[0])); const v = dvec(n); return ret(rowVec(v)); },
-  datestr: async (a) => { const n = asScalar(m(a[0])); const fmt = a.length >= 2 && isMat(a[1]) && (a[1] as Mat).isChar ? asString(a[1]) : null; return ret(str(dstr(n, fmt))); },
+  datevec: async (a) => { const n = isTemporal(a[0]) ? a[0].data[0] : asScalar(m(a[0])); const v = dvec(n); return ret(rowVec(v)); },
+  datestr: async (a) => { const n = isTemporal(a[0]) ? a[0].data[0] : asScalar(m(a[0])); const fmt = a.length >= 2 && isMat(a[1]) && (a[1] as Mat).isChar ? asString(a[1]) : null; return ret(str(dstr(n, fmt))); },
   now: async () => ret(scalar(Date.now() / 86400000 + 719529)),
   today: async () => ret(scalar(Math.floor(Date.now() / 86400000) + 719529)),
   clock: async () => { const v = dvec(Date.now() / 86400000 + 719529); return ret(rowVec(v)); },
@@ -1304,6 +1306,32 @@ export const BUILTINS: Record<string, Builtin> = {
   eomday: async (a) => ret(elementwise(m(a[0]), m(a[1]), (y, mo) => [31, (y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][mo - 1] ?? NaN)),
   etime: async (a) => { const t2 = toArray(m(a[0])), t1 = toArray(m(a[1])); return ret(scalar((dnum(t2[0], t2[1], t2[2], t2[3], t2[4], t2[5]) - dnum(t1[0], t1[1], t1[2], t1[3], t1[4], t1[5])) * 86400)); },
   addtodate: async (a) => { const n = asScalar(m(a[0])), q = asScalar(m(a[1])), unit = asString(a[2]); const v = dvec(n); const idx = { year: 0, month: 1, day: 2, hour: 3, minute: 4, second: 5 }[unit] ?? 2; v[idx] += q; return ret(scalar(dnum(v[0], v[1], v[2], v[3], v[4], v[5]))); },
+  // ── datetime / duration objects ──
+  datetime: async (a) => {
+    if (a.length >= 1 && (isStr(a[0]) || (isMat(a[0]) && (a[0] as Mat).isChar))) { const w = asString(a[0]).toLowerCase(); const n = w === 'today' ? Math.floor(Date.now() / 86400000) + 719529 : Date.now() / 86400000 + 719529; return ret(makeTemporal('datetime', 1, 1, Float64Array.of(n))); }
+    if (a.length === 1 && isMat(a[0])) { const M = m(a[0]); if (M.cols >= 3) { const out = new Float64Array(M.rows); for (let r = 0; r < M.rows; r++) { const v = Array.from({ length: M.cols }, (_, c) => M.data[r + c * M.rows]); out[r] = dnum(v[0], v[1], v[2], v[3] ?? 0, v[4] ?? 0, v[5] ?? 0); } return ret(makeTemporal('datetime', M.rows, 1, out)); } }
+    const g = a.map((x) => toArray(m(x))); const n = Math.max(1, ...g.map((x) => x.length)); const at = (gi: number, i: number) => g[gi] ? (g[gi].length === 1 ? g[gi][0] : g[gi][i]) : 0;
+    const out = new Float64Array(n); for (let i = 0; i < n; i++) out[i] = dnum(at(0, i), at(1, i), at(2, i), at(3, i), at(4, i), at(5, i));
+    return ret(makeTemporal('datetime', n, 1, out));
+  },
+  NaT: async () => ret(makeTemporal('datetime', 1, 1, Float64Array.of(NaN))),
+  duration: async (a) => { const M = m(a[0]); if (M.cols >= 3) { const out = new Float64Array(M.rows); for (let r = 0; r < M.rows; r++) out[r] = (M.data[r] + M.data[r + M.rows] / 60 + M.data[r + 2 * M.rows] / 3600) / 24; return ret(makeTemporal('duration', M.rows, 1, out)); } return ret(makeTemporal('duration', M.rows, M.cols, new Float64Array(M.data))); },
+  years: async (a) => ret(durUnit(a[0], 365.2425)),
+  days: async (a) => ret(durUnit(a[0], 1)),
+  hours: async (a) => ret(durUnit(a[0], 1 / 24)),
+  minutes: async (a) => ret(durUnit(a[0], 1 / 1440)),
+  seconds: async (a) => ret(durUnit(a[0], 1 / 86400)),
+  milliseconds: async (a) => ret(durUnit(a[0], 1 / 86400000)),
+  year: async (a) => ret(dtCompMat(a[0], 0)),
+  month: async (a) => ret(dtCompMat(a[0], 1)),
+  day: async (a) => ret(dtCompMat(a[0], 2)),
+  hour: async (a) => ret(dtCompMat(a[0], 3)),
+  minute: async (a) => ret(dtCompMat(a[0], 4)),
+  second: async (a) => ret(dtCompMat(a[0], 5)),
+  ymd: async (a, n) => { const Y = dtCompMat(a[0], 0), M2 = dtCompMat(a[0], 1), D = dtCompMat(a[0], 2); return n >= 2 ? [Y, M2, D] : [Y]; },
+  isdatetime: async (a) => ret(bool(isTemporal(a[0]) && a[0].tkind === 'datetime')),
+  isduration: async (a) => ret(bool(isTemporal(a[0]) && a[0].tkind === 'duration')),
+  isnat: async (a) => { const t = a[0] as Temporal; const o = zeros(t.rows, t.cols); o.isBool = true; for (let i = 0; i < t.data.length; i++) o.data[i] = Number.isNaN(t.data[i]) ? 1 : 0; return ret(o); },
   deval: async (a) => {
     // deval(sol, xq) | deval(xq, sol) → interpolate the solution
     const sol = (isStruct(a[0]) ? a[0] : a[1]) as StructV; const xq = toArray(m(isStruct(a[0]) ? a[1] : a[0]));
@@ -2620,6 +2648,24 @@ const HELP: Record<string, HelpEntry> = {
   eomday: { summary: 'Last day of a month', syntax: ['d = eomday(Y,M)'], seealso: ['datenum', 'calendar'] },
   etime: { summary: 'Elapsed time between two clock vectors (seconds)', syntax: ['s = etime(t2,t1)'], seealso: ['clock', 'tic'] },
   addtodate: { summary: 'Add a quantity to a date field', syntax: ["n2 = addtodate(n,q,'day')"], seealso: ['datenum'] },
+  datetime: { summary: 'Create a datetime array', syntax: ['d = datetime(Y,M,D)', 'd = datetime(Y,M,D,H,MI,S)', "d = datetime('now')"], seealso: ['duration', 'datenum', 'year'] },
+  duration: { summary: 'Create a duration array (from [H M S])', syntax: ['d = duration([h m s])'], seealso: ['hours', 'minutes', 'seconds', 'datetime'] },
+  NaT: { summary: 'Not-a-Time (missing datetime)', syntax: ['d = NaT'], seealso: ['isnat', 'datetime', 'NaN'] },
+  years: { summary: 'Duration in years (or extract years from a duration)', syntax: ['d = years(x)'], seealso: ['days', 'duration'] },
+  days: { summary: 'Duration in days (or extract days)', syntax: ['d = days(x)'], seealso: ['hours', 'years'] },
+  hours: { summary: 'Duration in hours (or extract hours)', syntax: ['d = hours(x)'], seealso: ['minutes', 'days'] },
+  minutes: { summary: 'Duration in minutes (or extract minutes)', syntax: ['d = minutes(x)'], seealso: ['hours', 'seconds'] },
+  seconds: { summary: 'Duration in seconds (or extract seconds)', syntax: ['d = seconds(x)'], seealso: ['minutes', 'milliseconds'] },
+  milliseconds: { summary: 'Duration in milliseconds', syntax: ['d = milliseconds(x)'], seealso: ['seconds'] },
+  year: { summary: 'Year number of a datetime', syntax: ['y = year(d)'], seealso: ['month', 'day', 'datetime'] },
+  month: { summary: 'Month number of a datetime', syntax: ['mo = month(d)'], seealso: ['year', 'day'] },
+  day: { summary: 'Day-of-month of a datetime', syntax: ['d = day(dt)'], seealso: ['year', 'month'] },
+  hour: { summary: 'Hour of a datetime', syntax: ['h = hour(d)'], seealso: ['minute', 'second'] },
+  minute: { summary: 'Minute of a datetime', syntax: ['mi = minute(d)'], seealso: ['hour', 'second'] },
+  second: { summary: 'Second of a datetime', syntax: ['s = second(d)'], seealso: ['hour', 'minute'] },
+  isdatetime: { summary: 'True for datetime arrays', syntax: ['tf = isdatetime(d)'], seealso: ['isduration', 'datetime'] },
+  isduration: { summary: 'True for duration arrays', syntax: ['tf = isduration(d)'], seealso: ['isdatetime', 'duration'] },
+  isnat: { summary: 'True for NaT (missing) datetimes', syntax: ['tf = isnat(d)'], seealso: ['NaT', 'isnan'] },
   symvar: { summary: 'Free variables of an expression (alphabetical)', syntax: ["v = symvar('a*x+b')"], seealso: ['inline', 'str2func'] },
   vectorize: { summary: 'Vectorize an expression string (* / ^ → .* ./ .^)', syntax: ["s = vectorize('x^2')"], seealso: ['inline'] },
   quadv: { summary: 'Vectorized adaptive quadrature (→ quad)', syntax: ['q = quadv(f,a,b)'], seealso: ['quad', 'integral'] },
@@ -2806,6 +2852,7 @@ const BASE_REF = new Set<string>((
   'pdepe pdeval symvar vectorize quadv ldexp scalbn cholupdate stream2 stream3 ' +
   'bvp4c bvp5c bvpinit bvpset bvpget dde23 ddesd ddensd ddeset ddeget deval ' +
   'datenum datevec datestr now today clock date weekday eomday etime addtodate ' +
+  'datetime duration NaT years days hours minutes seconds milliseconds year month day hour minute second ymd isdatetime isduration isnat ' +
   'hGate xGate yGate zGate sGate siGate tGate tiGate idGate rxGate ryGate rzGate cxGate cnotGate cyGate czGate chGate crxGate cryGate crzGate swapGate ccxGate mcxGate ' +
   'quantumCircuit simulate probability querystates formula ' +
   'sphere cylinder ellipsoid fsurf fmesh fcontour quiver ' +
@@ -2923,6 +2970,16 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 function dnum(y: number, mo: number, d: number, h = 0, mi = 0, s = 0): number {
   const dt = new Date(0); dt.setUTCFullYear(y, mo - 1, d); dt.setUTCHours(h, mi, Math.floor(s), Math.round((s % 1) * 1000));
   return dt.getTime() / 86400000 + 719529;
+}
+/** duration unit helper: numeric → duration (days); duration → count in that unit. */
+function durUnit(v: Value, daysPerUnit: number): Value {
+  if (isTemporal(v) && v.tkind === 'duration') { const o = zeros(v.rows, v.cols); for (let i = 0; i < v.data.length; i++) o.data[i] = v.data[i] / daysPerUnit; return o; }
+  const M = m(v); return makeTemporal('duration', M.rows, M.cols, Float64Array.from(M.data, (x) => x * daysPerUnit));
+}
+/** datetime component (0=Y..5=S) of a datetime (or serial-number Mat). */
+function dtCompMat(v: Value, idx: number): Mat {
+  const data = isTemporal(v) ? v.data : m(v).data; const [r, c] = isTemporal(v) ? [v.rows, v.cols] : [m(v).rows, m(v).cols];
+  const o = zeros(r, c); for (let i = 0; i < data.length; i++) o.data[i] = dvec(data[i])[idx]; return o;
 }
 function dvec(n: number): number[] {
   const ms = Math.round((n - 719529) * 86400000); const dt = new Date(ms);

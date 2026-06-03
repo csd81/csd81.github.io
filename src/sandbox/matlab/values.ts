@@ -85,7 +85,17 @@ export interface Quantum {
   re?: Float64Array;        // state amplitudes (real part), length 2^n
   im?: Float64Array;        // state amplitudes (imag part)
 }
-export type Value = Mat | Handle | GObj | Cell | StructV | Sparse | Str | Graph | Geom | Quantum;
+/** datetime or duration array (column-major). datetime stores serial date numbers
+ *  (MATLAB datenum epoch); duration stores a length of time in days. */
+export interface Temporal {
+  kind: 'temporal';
+  tkind: 'datetime' | 'duration';
+  rows: number;
+  cols: number;
+  data: Float64Array;   // datetime → serial datenum; duration → days
+  fmt?: string;         // display format
+}
+export type Value = Mat | Handle | GObj | Cell | StructV | Sparse | Str | Graph | Geom | Quantum | Temporal;
 
 export class MatError extends Error {}
 
@@ -137,12 +147,14 @@ export function makeGraph(directed: boolean, n: number, edges: { s: number; t: n
 }
 export function isGeom(v: Value): v is Geom { return v.kind === 'geom'; }
 export function isQuantum(v: Value): v is Quantum { return v.kind === 'quantum'; }
+export function isTemporal(v: Value): v is Temporal { return v.kind === 'temporal'; }
+export function makeTemporal(tkind: 'datetime' | 'duration', rows: number, cols: number, data: Float64Array, fmt?: string): Temporal { return { kind: 'temporal', tkind, rows, cols, data, fmt }; }
 export function makeStrArr(rows: number, cols: number, items: string[]): Str { return { kind: 'str', rows, cols, items }; }
 export function makeStr(s: string): Str { return { kind: 'str', rows: 1, cols: 1, items: [s] }; }
 export function makeCell(rows: number, cols: number, items: Value[]): Cell { return { kind: 'cell', rows, cols, items }; }
 /** Dimensions of any value. */
 export function dimsOf(v: Value): [number, number] {
-  if (v.kind === 'num' || v.kind === 'cell' || v.kind === 'struct' || v.kind === 'sparse' || v.kind === 'str') return [v.rows, v.cols];
+  if (v.kind === 'num' || v.kind === 'cell' || v.kind === 'struct' || v.kind === 'sparse' || v.kind === 'str' || v.kind === 'temporal') return [v.rows, v.cols];
   return [1, 1];   // graph/handle/gobj are scalar objects
 
 }
