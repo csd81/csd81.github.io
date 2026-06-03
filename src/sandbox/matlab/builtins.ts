@@ -308,6 +308,30 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   signIm: async (a) => { const X = m(a[0]); const o = zeros(X.rows, X.cols); for (let i = 0; i < X.data.length; i++) { const im = X.idata ? X.idata[i] : 0; o.data[i] = im !== 0 ? Math.sign(im) : -Math.sign(X.data[i]); } return ret(o); },
   adjoint: async (a) => { const A = m(a[0]); if (A.rows !== A.cols) throw new MatError('adjoint: matrix must be square'); const d = det(A); if (Math.abs(d) > 1e-300 && Number.isFinite(d)) { const I = inv(A); return ret(map(I, (v) => v * d)); } return ret(adjugateCofactor(A)); },
+  ei: ew(eiFn),
+  logint: ew(logintFn),
+  sinhint: ew(shiFn),
+  coshint: ew(chiFn),
+  ssinint: ew((x) => cisi(x)[0] - Math.PI / 2),
+  hurwitzZeta: async (a) => ret(elementwise(m(a[0]), m(a[1]), hurwitzZetaFn)),
+  polylog: async (a) => { const nn = asScalar(a[0]); return ret(map(m(a[1]), (x) => polylogFn(nn, x))); },
+  dilog: ew(dilogFn),
+  wrightOmega: ew(wrightOmegaFn),
+  jacobiP: async (a) => { const nn = Math.round(asScalar(a[0])); const al = asScalar(a[1]), be = asScalar(a[2]); return ret(map(m(a[3]), (x) => jacobiPFn(nn, al, be, x))); },
+  gegenbauerC: async (a) => { const nn = Math.round(asScalar(a[0])); const al = asScalar(a[1]); return ret(map(m(a[2]), (x) => gegenbauerCFn(nn, al, x))); },
+  bernsteinMatrix: async (a) => { const nn = Math.round(asScalar(a[0])); const T = toArray(m(a[1])); const o = zeros(T.length, nn + 1); for (let i = 0; i < T.length; i++) { const t = T[i]; for (let k = 0; k <= nn; k++) o.data[i + k * T.length] = binomN(nn, k) * Math.pow(t, k) * Math.pow(1 - t, nn - k); } return ret(o); },
+  ellipticK: ew((mm) => ellipkeFn(mm)[0]),
+  ellipticCK: ew((mm) => ellipkeFn(1 - mm)[0]),
+  ellipticCE: ew((mm) => ellipkeFn(1 - mm)[1]),
+  ellipticE: async (a) => { if (a.length >= 2) return ret(elementwise(m(a[0]), m(a[1]), (phi, mm) => simpsonInt((t) => Math.sqrt(1 - mm * Math.sin(t) ** 2), 0, phi, 2000))); return ret(map(m(a[0]), (mm) => ellipkeFn(mm)[1])); },
+  ellipticF: async (a) => ret(elementwise(m(a[0]), m(a[1]), (phi, mm) => simpsonInt((t) => 1 / Math.sqrt(1 - mm * Math.sin(t) ** 2), 0, phi, 2000))),
+  bernoulli: async (a) => { const nn = Math.round(asScalar(a[0])); if (a.length >= 2) return ret(map(m(a[1]), (x) => bernoulliPoly(nn, x))); return ret(scalar(bernoulliNum(nn))); },
+  euler: async (a) => { const nn = Math.round(asScalar(a[0])); if (a.length >= 2) return ret(map(m(a[1]), (x) => eulerPoly(nn, x))); return ret(scalar(eulerNum(nn))); },
+  jacobiSymbol: async (a) => ret(elementwise(m(a[0]), m(a[1]), jacobiSym)),
+  factorIntegerPower: async (a, n) => { let N = Math.round(asScalar(a[0])); let bestB = N, bestE = 1; if (N > 1) { for (let e = Math.floor(Math.log2(N)); e >= 2; e--) { const b = Math.round(Math.pow(N, 1 / e)); for (const cand of [b - 1, b, b + 1]) { if (cand >= 2 && Math.pow(cand, e) === N) { bestB = cand; bestE = e; e = 1; break; } } } } return n >= 2 ? [scalar(bestB), scalar(bestE)] : [rowVec([bestB, bestE])]; },
+  isPrimitiveRoot: async (a) => { const N = Math.round(asScalar(a[1])); const phi = N <= 1 ? 0 : (() => { let n = N, r = N; for (let p = 2; p * p <= n; p++) if (n % p === 0) { while (n % p === 0) n /= p; r -= r / p; } if (n > 1) r -= r / n; return r; })(); const pf = (() => { const s = new Set<number>(); let n = phi; for (let p = 2; p * p <= n; p++) if (n % p === 0) { s.add(p); while (n % p === 0) n /= p; } if (n > 1) s.add(n); return s; })(); const powmod = (b: number, e: number, mo: number) => { b = ((b % mo) + mo) % mo; let r = 1; while (e > 0) { if (e & 1) r = (r * b) % mo; b = (b * b) % mo; e = Math.floor(e / 2); } return r; }; return ret(map(m(a[0]), (av) => { const x = Math.round(av); if (N <= 1 || gcd2(x, N) !== 1) return 0; for (const q of pf) if (powmod(x, phi / q, N) === 1) return 0; return 1; })); },
+  polynomialDegree: async (a) => { const s = symArg(a[0]); const v = a.length >= 2 ? (isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1])) : (symVarsOf(s)[0] ?? 'x'); const c = polyCoeffs(s.exprs[0], v); let d = 0; for (let i = 0; i < c.length; i++) if (Math.abs(c[i]) > 1e-12) d = i; return ret(scalar(d)); },
+  quorem: async (a, n) => { const A = m(a[0]), B = m(a[1]); const Q = elementwise(A, B, (x, y) => Math.floor(x / y)); const R = elementwise(A, B, (x, y) => x - Math.floor(x / y) * y); return n >= 2 ? [Q, R] : [Q]; },
   // special matrices
   magic: async (a) => ret(magicFn(Math.round(asScalar(a[0])))),
   hilb: async (a) => { const n = Math.round(asScalar(a[0])); const o = zeros(n, n); for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) o.data[r + c * n] = 1 / (r + c + 1); return ret(o); },
@@ -2992,6 +3016,100 @@ function orthoPoly(kind: string, n: number, x: number): number {
     p0 = p1; p1 = pk;
   }
   return p1;
+}
+
+/** Binomial coefficient C(n,k) via multiplicative formula (exact for moderate n). */
+function binomN(n: number, k: number): number {
+  if (k < 0 || k > n) return 0;
+  k = Math.min(k, n - k); let r = 1;
+  for (let i = 0; i < k; i++) r = r * (n - i) / (i + 1);
+  return Math.round(r);
+}
+
+/** Exponential integral Ei(x) (series, asymptotic for large x, reflection for x<0). */
+function eiFn(x: number): number {
+  if (x === 0) return -Infinity;
+  if (x < 0) return -expintE1(-x);
+  if (x > 40) { let term = 1, sum = 1; for (let k = 1; k <= 60; k++) { term *= k / x; sum += term; if (term < 1e-16) break; } return Math.exp(x) / x * sum; }
+  let sum = EULER_GAMMA + Math.log(x), term = 1;
+  for (let k = 1; k <= 500; k++) { term *= x / k; const add = term / k; sum += add; if (Math.abs(add) < 1e-17 * Math.abs(sum)) break; }
+  return sum;
+}
+/** Logarithmic integral li(x) = Ei(ln x). */
+function logintFn(x: number): number { if (x <= 0) return x === 0 ? 0 : NaN; if (x === 1) return -Infinity; return eiFn(Math.log(x)); }
+/** Hyperbolic sine integral Shi(x). */
+function shiFn(x: number): number { if (x === 0) return 0; let term = x, sum = x; for (let k = 1; k <= 300; k++) { term *= x * x / ((2 * k) * (2 * k + 1)); const add = term / (2 * k + 1); sum += add; if (Math.abs(add) < 1e-18 * Math.abs(sum)) break; } return sum; }
+/** Hyperbolic cosine integral Chi(x). */
+function chiFn(x: number): number { if (x === 0) return -Infinity; let sum = EULER_GAMMA + Math.log(Math.abs(x)), term = 1; for (let k = 1; k <= 300; k++) { term *= x * x / ((2 * k - 1) * (2 * k)); const add = term / (2 * k); sum += add; if (Math.abs(add) < 1e-18 * Math.abs(sum)) break; } return sum; }
+/** Hurwitz zeta ζ(s,a) for real s≠1, a>0 (Euler–Maclaurin). */
+function hurwitzZetaFn(s: number, a: number): number {
+  if (s === 1) return Infinity;
+  const N = 12, M = 6, Bern = [1 / 6, -1 / 30, 1 / 42, -1 / 30, 5 / 66, -691 / 2730];
+  let sum = 0; for (let n = 0; n < N; n++) sum += Math.pow(n + a, -s);
+  const Na = N + a; sum += Math.pow(Na, 1 - s) / (s - 1) + Math.pow(Na, -s) / 2;
+  for (let k = 1; k <= M; k++) { let poch = 1; for (let j = 0; j < 2 * k - 1; j++) poch *= (s + j); let f2k = 1; for (let j = 1; j <= 2 * k; j++) f2k *= j; sum += Bern[k - 1] / f2k * poch * Math.pow(Na, -s - 2 * k + 1); }
+  return sum;
+}
+/** Polylogarithm Li_n(x) (series for |x|<1; special values at x=0,1,-1). */
+function polylogFn(n: number, x: number): number {
+  if (x === 0) return 0;
+  if (x === 1) return zetaFn(n);
+  if (x === -1) return -(1 - Math.pow(2, 1 - n)) * zetaFn(n);
+  if (Math.abs(x) < 1) { let sum = 0, xp = 1; for (let k = 1; k <= 20000; k++) { xp *= x; const add = xp / Math.pow(k, n); sum += add; if (Math.abs(add) < 1e-17 * Math.abs(sum || 1)) break; } return sum; }
+  return NaN; // outside the real domain (would be complex)
+}
+/** Dawson's MATLAB dilog(x) = Li₂(1−x). */
+function dilogFn(x: number): number { return polylogFn(2, 1 - x); }
+/** Wright omega ω(x): the unique real solution of ω + ln ω = x. */
+function wrightOmegaFn(x: number): number {
+  if (!Number.isFinite(x)) return x;
+  let w = x <= 0 ? Math.exp(x) : (x < 1 ? Math.max(x, 1e-12) : x - Math.log(x));
+  for (let i = 0; i < 100; i++) { const f = w + Math.log(w) - x, wn = w - f / (1 + 1 / w); if (Math.abs(wn - w) < 1e-15 * (Math.abs(wn) + 1)) { w = wn; break; } w = wn <= 0 ? w / 2 : wn; }
+  return w;
+}
+/** Jacobi polynomial P_n^{(a,b)}(x) by recurrence. */
+function jacobiPFn(n: number, a: number, b: number, x: number): number {
+  if (n === 0) return 1;
+  let p0 = 1, p1 = (a - b) / 2 + (a + b + 2) / 2 * x;
+  for (let k = 2; k <= n; k++) {
+    const c1 = 2 * k * (k + a + b) * (2 * k + a + b - 2);
+    const c2 = (2 * k + a + b - 1) * (a * a - b * b);
+    const c3 = (2 * k + a + b - 1) * (2 * k + a + b) * (2 * k + a + b - 2);
+    const c4 = 2 * (k + a - 1) * (k + b - 1) * (2 * k + a + b);
+    const pk = ((c2 + c3 * x) * p1 - c4 * p0) / c1; p0 = p1; p1 = pk;
+  }
+  return p1;
+}
+/** Gegenbauer (ultraspherical) polynomial C_n^{(a)}(x) by recurrence. */
+function gegenbauerCFn(n: number, a: number, x: number): number {
+  if (n === 0) return 1;
+  let c0 = 1, c1 = 2 * a * x;
+  for (let k = 2; k <= n; k++) { const ck = (2 * x * (k + a - 1) * c1 - (k + 2 * a - 2) * c0) / k; c0 = c1; c1 = ck; }
+  return c1;
+}
+/** Bernoulli number B_n (B₁ = −½ convention). */
+function bernoulliNum(n: number): number { const B = [1]; for (let m = 1; m <= n; m++) { let s = 0; for (let k = 0; k < m; k++) s += binomN(m + 1, k) * B[k]; B[m] = -s / (m + 1); } return B[n]; }
+/** Bernoulli polynomial B_n(x). */
+function bernoulliPoly(n: number, x: number): number { let s = 0; for (let k = 0; k <= n; k++) s += binomN(n, k) * bernoulliNum(k) * Math.pow(x, n - k); return s; }
+/** Euler number E_n (odd → 0). */
+function eulerNum(n: number): number { if (n % 2 === 1) return 0; const E: number[] = []; for (let m = 0; m <= n; m += 2) { if (m === 0) { E[0] = 1; continue; } let s = 0; for (let k = 0; k < m / 2; k++) s += binomN(m, 2 * k) * E[2 * k]; E[m] = -s; } return E[n]; }
+/** Euler polynomial E_n(x). */
+function eulerPoly(n: number, x: number): number { let sum = 0; for (let k = 0; k <= n; k++) { let inner = 0; for (let i = 0; i <= k; i++) inner += (i % 2 ? -1 : 1) * binomN(k, i) * Math.pow(x + i, n); sum += inner / Math.pow(2, k); } return sum; }
+/** Jacobi symbol (a/n) for odd n>0. */
+function jacobiSym(a: number, n: number): number {
+  if (n <= 0 || n % 2 === 0) return NaN;
+  a = ((Math.round(a) % n) + n) % n; let result = 1;
+  while (a !== 0) {
+    while (a % 2 === 0) { a /= 2; const r = n % 8; if (r === 3 || r === 5) result = -result; }
+    [a, n] = [n, a]; if (a % 4 === 3 && n % 4 === 3) result = -result; a %= n;
+  }
+  return n === 1 ? result : 0;
+}
+/** Composite-Simpson integral on [a,b] with even nn panels. */
+function simpsonInt(f: (t: number) => number, a: number, b: number, nn: number): number {
+  if (a === b) return 0; const h = (b - a) / nn; let s = f(a) + f(b);
+  for (let i = 1; i < nn; i++) s += (i % 2 ? 4 : 2) * f(a + i * h);
+  return s * h / 3;
 }
 
 /** Shared check for the mustBe* numeric validators: every element must satisfy pred. */
