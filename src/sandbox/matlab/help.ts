@@ -168,6 +168,7 @@ const HELP: Record<string, HelpEntry> = {
   vertexNormal: { summary: 'Unit normals at triangulation vertices', syntax: ['N = vertexNormal(TR)'], seealso: ['faceNormal'] },
   featureEdges: { summary: 'Sharp/boundary edges of a triangulation', syntax: ['E = featureEdges(TR,angle)'], seealso: ['freeBoundary', 'edges'] },
   overlaps: { summary: 'Test whether two polyshapes overlap', syntax: ['tf = overlaps(p1,p2)'], seealso: ['polyshape', 'intersect'] },
+  subtract: { summary: 'Polygon difference of two polyshapes', syntax: ['pg = subtract(p1,p2)'], seealso: ['union', 'intersect', 'xor'] },
   holes: { summary: 'Hole boundaries of a polyshape', syntax: ['H = holes(pgon)'], seealso: ['polyshape', 'numboundaries'] },
   ishole: { summary: 'Which polyshape boundaries are holes', syntax: ['tf = ishole(pgon)'], seealso: ['holes', 'numboundaries'] },
   issimplified: { summary: 'True if a polyshape is well-defined/simplified', syntax: ['tf = issimplified(pgon)'], seealso: ['polyshape'] },
@@ -735,7 +736,7 @@ const BASE_REF = new Set<string>((
   'sym syms int limit solve jacobian hessian taylor expand subs vpa latex pretty isAlways simplify logical ' +
   'curl divergence laplacian potential coeffs sym2poly poly2sym numden collect combine simplifyFraction horner compose children lhs rhs vpasolve finverse isolate equationsToMatrix symsum symprod assume assumeAlso assumptions sympref digits ' +
   'charpoly nextprime prevprime nthprime fibonacci eulerPhi powermod harmonic heaviside dirac ' +
-  'bctree sortregions boundaryshape unmesh ode odeEvent odeJacobian odeMassMatrix odeSensitivity odeDelay ' +
+  'bctree sortregions boundaryshape unmesh subtract ode odeEvent odeJacobian odeMassMatrix odeSensitivity odeDelay ' +
   'datetime duration NaT years days hours minutes seconds milliseconds year month day hour minute second ymd isdatetime isduration isnat ' +
   'table timetable array2table cell2table struct2table table2array table2cell table2struct istable istimetable istabular height width head tail summary ' +
   'hGate xGate yGate zGate sGate siGate tGate tiGate idGate rxGate ryGate rzGate cxGate cnotGate cyGate czGate chGate crxGate cryGate crzGate swapGate ccxGate mcxGate ' +

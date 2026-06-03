@@ -642,8 +642,9 @@ export const BUILTINS: Record<string, Builtin> = {
   isapprox: async (a) => { const tol = a.length >= 3 ? asScalar(a[2]) : 1e-6; const r = elementwise(m(a[0]), m(a[1]), (x, y) => (Math.abs(x - y) <= tol + tol * Math.max(Math.abs(x), Math.abs(y)) ? 1 : 0)); return ret({ ...r, isBool: true }); },
   erfinv: async (a) => ret(map(m(a[0]), erfinvFn)),
   // ── set operations ──
-  intersect: async (a) => { const A = m(a[0]); const sb = new Set(toArray(m(a[1]))); const r = setUniq(toArray(A).filter((x) => sb.has(x))); return ret(A.rows === 1 ? rowVec(r) : colVec(r)); },
-  union: async (a) => { const A = m(a[0]); const r = setUniq([...toArray(A), ...toArray(m(a[1]))]); return ret(A.rows === 1 ? rowVec(r) : colVec(r)); },
+  intersect: async (a) => { if (isGeom(a[0]) && isGeom(a[1])) return ret(polyResultGeom(polyClip(polyVerts(a[0]), polyVerts(a[1]), 'and'))); const A = m(a[0]); const sb = new Set(toArray(m(a[1]))); const r = setUniq(toArray(A).filter((x) => sb.has(x))); return ret(A.rows === 1 ? rowVec(r) : colVec(r)); },
+  union: async (a) => { if (isGeom(a[0]) && isGeom(a[1])) return ret(polyResultGeom(polyClip(polyVerts(a[0]), polyVerts(a[1]), 'or'))); const A = m(a[0]); const r = setUniq([...toArray(A), ...toArray(m(a[1]))]); return ret(A.rows === 1 ? rowVec(r) : colVec(r)); },
+  subtract: async (a) => ret(polyResultGeom(polyClip(polyVerts(gGeom(a[0])), polyVerts(gGeom(a[1])), 'minus'))),
   setdiff: async (a) => { const A = m(a[0]); const sb = new Set(toArray(m(a[1]))); const r = setUniq(toArray(A).filter((x) => !sb.has(x))); return ret(A.rows === 1 ? rowVec(r) : colVec(r)); },
   setxor: async (a) => { const A = m(a[0]), B = m(a[1]); const sa = new Set(toArray(A)), sb = new Set(toArray(B)); const r = setUniq([...toArray(A).filter((x) => !sb.has(x)), ...toArray(B).filter((x) => !sa.has(x))]); return ret(A.rows === 1 ? rowVec(r) : colVec(r)); },
   // ── more statistics ──
@@ -2073,7 +2074,7 @@ export const BUILTINS: Record<string, Builtin> = {
   and: async (a) => ret({ ...elementwise(m(a[0]), m(a[1]), (x, y) => (x !== 0 && y !== 0 ? 1 : 0)), isBool: true }),
   or: async (a) => ret({ ...elementwise(m(a[0]), m(a[1]), (x, y) => (x !== 0 || y !== 0 ? 1 : 0)), isBool: true }),
   not: async (a) => ret({ ...map(m(a[0]), (x) => (x === 0 ? 1 : 0)), isBool: true }),
-  xor: async (a) => ret({ ...elementwise(m(a[0]), m(a[1]), (x, y) => ((x !== 0) !== (y !== 0) ? 1 : 0)), isBool: true }),
+  xor: async (a) => { if (isGeom(a[0]) && isGeom(a[1])) { const A = polyVerts(a[0]), B = polyVerts(a[1]); const parts = [...polyClip(A, B, 'minus'), ...polyClip(B, A, 'minus')].map((b) => (loopSignedArea(b) < 0 ? b.slice().reverse() : b)); return ret(polyResultGeom(parts)); } return ret({ ...elementwise(m(a[0]), m(a[1]), (x, y) => ((x !== 0) !== (y !== 0) ? 1 : 0)), isBool: true }); },
   // ── descriptive statistics ──
   median: async (a) => ret(colReduce(m(a[0]), (c) => { const s = [...c].sort((x, y) => x - y); const n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; })),
   std: async (a) => ret(colReduce(m(a[0]), (c) => Math.sqrt(variance(c)))),
@@ -4320,6 +4321,76 @@ function plotGraph(env: Env, g: Graph): void {
 
 // ── Geometry-object helpers (triangulation / polyshape / alphaShape) ──────
 function gGeom(v: Value, name = 'argument'): Geom { if (!isGeom(v)) throw new MatError(`${name}: expected a geometry object`); return v; }
+// ── Greiner–Hormann polygon clipping (union / intersect / difference) ──
+interface GHv { x: number; y: number; next: GHv; prev: GHv; inter: boolean; entry: boolean; visited: boolean; neighbor: GHv | null; alpha: number; }
+function ghBuild(poly: number[][]): GHv {
+  const verts: GHv[] = poly.map((p) => ({ x: p[0], y: p[1], next: null!, prev: null!, inter: false, entry: false, visited: false, neighbor: null, alpha: 0 }));
+  for (let i = 0; i < verts.length; i++) { verts[i].next = verts[(i + 1) % verts.length]; verts[i].prev = verts[(i - 1 + verts.length) % verts.length]; }
+  return verts[0];
+}
+function ghPointInside(x: number, y: number, poly: number[][]): boolean {
+  let inside = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { if ((poly[i][1] > y) !== (poly[j][1] > y) && x < (poly[j][0] - poly[i][0]) * (y - poly[i][1]) / (poly[j][1] - poly[i][1]) + poly[i][0]) inside = !inside; } return inside;
+}
+/** Clip subject by clip polygon. op: 'and' (∩), 'or' (∪), 'minus' (S−C). Returns result boundaries. */
+function polyClip(subj0: number[][], clip0: number[][], op: 'and' | 'or' | 'minus'): number[][][] {
+  // tiny deterministic joggle of the clip to avoid degenerate (shared vertex/edge) intersections
+  const clip = clip0.map((p, i) => [p[0] + 1e-9 * (((i * 2654435761) >>> 0) / 2 ** 32 - 0.5), p[1] + 1e-9 * (((i * 40503 + 7) >>> 0) / 2 ** 32 - 0.5)]);
+  const subj = subj0.map((p) => [p[0], p[1]]);
+  const S = ghBuild(subj), C = ghBuild(clip);
+  const list = (h: GHv): GHv[] => { const r: GHv[] = []; let v = h; do { r.push(v); v = v.next; } while (v !== h); return r; };
+  const sVerts = list(S), cVerts = list(C); let nInter = 0;
+  // phase 1: intersections
+  for (const si of sVerts) {
+    const s1 = si, s2 = si.next; if (s1.inter) continue;
+    for (const ci of cVerts) {
+      const c1 = ci, c2 = ci.next; if (c1.inter) continue;
+      const dx1 = s2.x - s1.x, dy1 = s2.y - s1.y, dx2 = c2.x - c1.x, dy2 = c2.y - c1.y;
+      const den = dx1 * dy2 - dy1 * dx2; if (Math.abs(den) < 1e-14) continue;
+      const a = ((c1.x - s1.x) * dy2 - (c1.y - s1.y) * dx2) / den;
+      const b = ((c1.x - s1.x) * dy1 - (c1.y - s1.y) * dx1) / den;
+      if (a <= 1e-12 || a >= 1 - 1e-12 || b <= 1e-12 || b >= 1 - 1e-12) continue;
+      const x = s1.x + a * dx1, y = s1.y + a * dy1;
+      const is: GHv = { x, y, next: null!, prev: null!, inter: true, entry: false, visited: false, neighbor: null, alpha: a };
+      const ic: GHv = { x, y, next: null!, prev: null!, inter: true, entry: false, visited: false, neighbor: null, alpha: b };
+      is.neighbor = ic; ic.neighbor = is;
+      // insert is between s1..s2 sorted by alpha; ic between c1..c2
+      let p = s1; while (p.next !== s2 && p.next.inter && p.next.alpha < a) p = p.next; is.next = p.next; is.prev = p; p.next.prev = is; p.next = is;
+      let q = c1; while (q.next !== c2 && q.next.inter && q.next.alpha < b) q = q.next; ic.next = q.next; ic.prev = q; q.next.prev = ic; q.next = ic;
+      nInter++;
+    }
+  }
+  if (nInter === 0) {   // disjoint / nested cases
+    const sIn = ghPointInside(subj[0][0], subj[0][1], clip), cIn = ghPointInside(clip[0][0], clip[0][1], subj);
+    if (op === 'and') return sIn ? [subj0] : cIn ? [clip0] : [];
+    if (op === 'or') return sIn ? [clip0] : cIn ? [subj0] : [subj0, clip0];
+    return cIn ? [subj0, clip0.slice().reverse()] : sIn ? [] : [subj0];   // minus: subject with hole, or empty, or subject
+  }
+  // phase 2: entry/exit
+  let e = ghPointInside(S.x, S.y, clip); for (const v of list(S)) if (v.inter) { v.entry = !e; e = !e; }
+  e = ghPointInside(C.x, C.y, subj); for (const v of list(C)) if (v.inter) { v.entry = !e; e = !e; }
+  // operation relabel: union flips both; minus flips clip only
+  if (op === 'or') { for (const v of list(S)) if (v.inter) v.entry = !v.entry; for (const v of list(C)) if (v.inter) v.entry = !v.entry; }
+  if (op === 'minus') { for (const v of list(C)) if (v.inter) v.entry = !v.entry; }
+  // phase 3: trace
+  const result: number[][][] = [];
+  for (const start of list(S)) {
+    if (!start.inter || start.visited) continue;
+    const poly: number[][] = []; let cur = start;
+    do {
+      cur.visited = true; if (cur.neighbor) cur.neighbor.visited = true;
+      if (cur.entry) { do { cur = cur.next; poly.push([cur.x, cur.y]); } while (!cur.inter); }
+      else { do { cur = cur.prev; poly.push([cur.x, cur.y]); } while (!cur.inter); }
+      cur = cur.neighbor!;
+    } while (cur !== start && poly.length < 100000);
+    if (poly.length >= 3) result.push(poly);
+  }
+  return result;
+}
+function polyResultGeom(boundaries: number[][][]): Geom {
+  const pts: number[][] = []; boundaries.forEach((b, i) => { if (i > 0) pts.push([NaN, NaN]); pts.push(...b); });
+  return { kind: 'geom', gkind: 'polyshape', points: pts, dim: 2 };
+}
+function polyVerts(g: Geom): number[][] { return g.points.filter((p) => !Number.isNaN(p[0])); }
 /** Map a per-simplex computation over a triangulation's connectivity → rows. */
 function perSimplex(g: Geom, fn: (pts: number[][]) => number[]): Mat {
   const T = g.conn ?? []; const rows = T.map((t) => fn(t.map((v) => g.points[v]))); return fromRows(rows.length ? rows : [[]]);
@@ -4330,17 +4401,25 @@ function freeBoundaryOf(g: Geom): number[][] {
   for (const t of g.conn ?? []) for (let omit = 0; omit < t.length; omit++) { const facet = t.filter((_, k) => k !== omit); const key = facet.slice().sort((a, b) => a - b).join(','); const e = count.get(key); if (e) e.n++; else count.set(key, { f: facet, n: 1 }); }
   void d; return [...count.values()].filter((e) => e.n === 1).map((e) => e.f);
 }
+/** Split a NaN-separated vertex list into its individual boundaries. */
+function polyBoundaries(verts: number[][]): number[][][] {
+  const out: number[][][] = []; let cur: number[][] = [];
+  for (const p of verts) { if (Number.isNaN(p[0])) { if (cur.length) out.push(cur); cur = []; } else cur.push(p); }
+  if (cur.length) out.push(cur);
+  return out;
+}
 function geomArea(g: Geom): number {
-  if (g.gkind === 'polyshape') return Math.abs(polySignedArea(g.points));
+  if (g.gkind === 'polyshape') { let total = 0; for (const b of polyBoundaries(g.points)) total += loopSignedArea(b); return Math.abs(total); }   // regions +, holes −
   // triangulation/alphaShape: sum of simplex measures
   const simplices = g.gkind === 'alphaShape' ? alphaSimplices(g) : (g.conn ?? []);
   const fac = factorialN(g.dim); let total = 0;
   for (const s of simplices) { const pts = s.map((v) => g.points[v]); const rows = pts.slice(1).map((p) => p.map((x, j) => x - pts[0][j])); total += Math.abs(detRows(rows)) / fac; }
   return total;
 }
-function polySignedArea(verts: number[][]): number { let s = 0; const v = verts.filter((p) => !Number.isNaN(p[0])); for (let i = 0; i < v.length; i++) { const j = (i + 1) % v.length; s += v[i][0] * v[j][1] - v[j][0] * v[i][1]; } return s / 2; }
-function polyAreaOf(pts: number[][]): number { return Math.abs(polySignedArea(pts)); }
-function polyPerim(verts: number[][]): number { let s = 0; const v = verts.filter((p) => !Number.isNaN(p[0])); for (let i = 0; i < v.length; i++) { const j = (i + 1) % v.length; s += Math.hypot(v[j][0] - v[i][0], v[j][1] - v[i][1]); } return s; }
+function loopSignedArea(v: number[][]): number { let s = 0; for (let i = 0; i < v.length; i++) { const j = (i + 1) % v.length; s += v[i][0] * v[j][1] - v[j][0] * v[i][1]; } return s / 2; }
+function polySignedArea(verts: number[][]): number { let s = 0; for (const b of polyBoundaries(verts)) s += loopSignedArea(b); return s; }
+function polyAreaOf(pts: number[][]): number { return Math.abs(loopSignedArea(pts.filter((p) => !Number.isNaN(p[0])))); }
+function polyPerim(verts: number[][]): number { let s = 0; for (const v of polyBoundaries(verts)) for (let i = 0; i < v.length; i++) { const j = (i + 1) % v.length; s += Math.hypot(v[j][0] - v[i][0], v[j][1] - v[i][1]); } return s; }
 function polyCentroid(verts: number[][]): number[] {
   const v = verts.filter((p) => !Number.isNaN(p[0])); let cx = 0, cy = 0, A = 0;
   for (let i = 0; i < v.length; i++) { const j = (i + 1) % v.length; const cr = v[i][0] * v[j][1] - v[j][0] * v[i][1]; A += cr; cx += (v[i][0] + v[j][0]) * cr; cy += (v[i][1] + v[j][1]) * cr; }
