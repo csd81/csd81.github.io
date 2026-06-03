@@ -311,51 +311,83 @@ const GENERAL_HELP =
   '  clear [name]  clear all or named variables\n' +
   'Pick a file on the left and press Run, or type commands here.';
 
-/** Short descriptions for common built-ins (shown by `help`). */
-export const BUILTIN_HELP: Record<string, string> = {
-  sin: 'sin(X)  Sine of X (radians), element-wise.',
-  cos: 'cos(X)  Cosine of X (radians), element-wise.',
-  tan: 'tan(X)  Tangent of X (radians), element-wise.',
-  atan: 'atan(X)  Inverse tangent, element-wise.',
-  exp: 'exp(X)  Exponential e.^X, element-wise.',
-  log: 'log(X)  Natural logarithm, element-wise.',
-  log10: 'log10(X)  Base-10 logarithm, element-wise.',
-  sqrt: 'sqrt(X)  Square root, element-wise.',
-  abs: 'abs(X)  Absolute value, element-wise.',
-  nthroot: 'nthroot(X,N)  Real N-th root of X (handles negative X for odd N).',
-  mod: 'mod(A,B)  Modulus after division (sign of divisor).',
-  rem: 'rem(A,B)  Remainder after division (sign of dividend).',
-  round: 'round(X)  Round to nearest integer.',
-  floor: 'floor(X)  Round towards minus infinity.',
-  ceil: 'ceil(X)  Round towards plus infinity.',
-  sum: 'sum(X)  Sum of elements (columns for a matrix). sum(X,DIM) along DIM.',
-  prod: 'prod(X)  Product of elements.',
-  mean: 'mean(X)  Average of elements.',
-  max: '[M,I]=max(X)  Largest element and its index (per column for a matrix).',
-  min: '[M,I]=min(X)  Smallest element and its index.',
-  zeros: 'zeros(N) / zeros(R,C)  Matrix of zeros.',
-  ones: 'ones(N) / ones(R,C)  Matrix of ones.',
-  eye: 'eye(N)  Identity matrix.',
-  linspace: 'linspace(A,B,N)  N points evenly spaced from A to B.',
-  size: '[R,C]=size(X)  Dimensions of X. size(X,DIM) one dimension.',
-  length: 'length(X)  Largest dimension of X.',
-  numel: 'numel(X)  Number of elements.',
-  diff: 'diff(X)  Differences between consecutive elements.',
-  diag: 'diag(X)  Diagonal of a matrix, or a diagonal matrix from a vector.',
-  inv: 'inv(A)  Inverse of a square matrix.',
-  det: 'det(A)  Determinant of a square matrix.',
-  norm: 'norm(X)  Vector/matrix norm. norm(X,P) for P = 1, 2, inf.',
-  transpose: "transpose(X) or X'  Transpose.",
-  plot: "plot(X,Y,...)  Line plot; pass a linespec like '*' or '--r'. plot(X,Y,X2,Y2) for several.",
-  fplot: 'fplot(@f)  Plot a function handle over the current x-range.',
-  hold: "hold on / hold off  Keep or replace existing plots.",
-  gca: 'gca  Handle to the current axes (set .XLim, .YLim, .XAxisLocation, …).',
-  disp: 'disp(X)  Display the value of X without its name.',
-  fprintf: "fprintf(FMT,...)  Formatted output, e.g. fprintf('x = %.4f\\n', x).",
-  sprintf: 'sprintf(FMT,...)  Like fprintf but returns the string.',
-  input: "input(PROMPT)  Read a value typed into the command window. input(PROMPT,'s') for text.",
-  arrayfun: 'arrayfun(@f,X)  Apply f to each element of X.',
+interface HelpEntry { summary: string; syntax: string[]; seealso?: string[] }
+
+/** Structured help for common built-ins (rendered MATLAB-style by `help`). */
+const HELP: Record<string, HelpEntry> = {
+  sin: { summary: 'Sine of argument in radians', syntax: ['Y = sin(X)'], seealso: ['cos', 'tan', 'asin', 'sinh'] },
+  cos: { summary: 'Cosine of argument in radians', syntax: ['Y = cos(X)'], seealso: ['sin', 'tan', 'acos', 'cosh'] },
+  tan: { summary: 'Tangent of argument in radians', syntax: ['Y = tan(X)'], seealso: ['sin', 'cos', 'atan'] },
+  atan: { summary: 'Inverse tangent in radians', syntax: ['Y = atan(X)'], seealso: ['atan2', 'tan', 'asin'] },
+  atan2: { summary: 'Four-quadrant inverse tangent', syntax: ['P = atan2(Y,X)'], seealso: ['atan', 'tan'] },
+  exp: { summary: 'Exponential e.^X (element-wise)', syntax: ['Y = exp(X)'], seealso: ['log', 'log10', 'sqrt'] },
+  log: { summary: 'Natural logarithm (element-wise)', syntax: ['Y = log(X)'], seealso: ['log10', 'log2', 'exp'] },
+  log10: { summary: 'Base-10 logarithm (element-wise)', syntax: ['Y = log10(X)'], seealso: ['log', 'log2'] },
+  log2: { summary: 'Base-2 logarithm (element-wise)', syntax: ['Y = log2(X)'], seealso: ['log', 'log10'] },
+  sqrt: { summary: 'Square root (element-wise)', syntax: ['Y = sqrt(X)'], seealso: ['nthroot', 'power', 'exp'] },
+  abs: { summary: 'Absolute value (element-wise)', syntax: ['Y = abs(X)'], seealso: ['sign', 'norm'] },
+  sign: { summary: 'Sign function (-1, 0, or 1)', syntax: ['Y = sign(X)'], seealso: ['abs'] },
+  nthroot: { summary: 'Real n-th root of X (handles negative X for odd N)', syntax: ['Y = nthroot(X,N)'], seealso: ['sqrt', 'power'] },
+  power: { summary: 'Element-wise power, X.^Y', syntax: ['Z = power(X,Y)', 'Z = X.^Y'], seealso: ['sqrt', 'nthroot'] },
+  mod: { summary: 'Remainder after division (sign of divisor)', syntax: ['R = mod(A,B)'], seealso: ['rem', 'floor'] },
+  rem: { summary: 'Remainder after division (sign of dividend)', syntax: ['R = rem(A,B)'], seealso: ['mod', 'fix'] },
+  round: { summary: 'Round to nearest integer', syntax: ['Y = round(X)'], seealso: ['floor', 'ceil', 'fix'] },
+  floor: { summary: 'Round toward negative infinity', syntax: ['Y = floor(X)'], seealso: ['ceil', 'round', 'fix'] },
+  ceil: { summary: 'Round toward positive infinity', syntax: ['Y = ceil(X)'], seealso: ['floor', 'round'] },
+  fix: { summary: 'Round toward zero', syntax: ['Y = fix(X)'], seealso: ['floor', 'ceil', 'round'] },
+  sum: { summary: 'Sum of elements', syntax: ['S = sum(X)', 'S = sum(X,DIM)'], seealso: ['prod', 'mean', 'cumsum'] },
+  prod: { summary: 'Product of elements', syntax: ['P = prod(X)', 'P = prod(X,DIM)'], seealso: ['sum', 'cumsum'] },
+  mean: { summary: 'Average of elements', syntax: ['M = mean(X)', 'M = mean(X,DIM)'], seealso: ['sum', 'max', 'min'] },
+  cumsum: { summary: 'Cumulative sum', syntax: ['Y = cumsum(X)'], seealso: ['sum', 'diff'] },
+  max: { summary: 'Largest element(s)', syntax: ['M = max(X)', '[M,I] = max(X)', 'M = max(A,B)'], seealso: ['min', 'sort', 'sum'] },
+  min: { summary: 'Smallest element(s)', syntax: ['M = min(X)', '[M,I] = min(X)', 'M = min(A,B)'], seealso: ['max', 'sort'] },
+  sort: { summary: 'Sort in ascending order', syntax: ['B = sort(X)', '[B,I] = sort(X)'], seealso: ['max', 'min'] },
+  zeros: { summary: 'Create an array of all zeros', syntax: ['X = zeros(N)', 'X = zeros(R,C)'], seealso: ['ones', 'eye', 'rand'] },
+  ones: { summary: 'Create an array of all ones', syntax: ['X = ones(N)', 'X = ones(R,C)'], seealso: ['zeros', 'eye'] },
+  eye: { summary: 'Identity matrix', syntax: ['I = eye(N)', 'I = eye(R,C)'], seealso: ['zeros', 'ones', 'diag'] },
+  rand: { summary: 'Uniformly distributed random numbers in (0,1)', syntax: ['X = rand(N)', 'X = rand(R,C)'], seealso: ['zeros', 'ones'] },
+  linspace: { summary: 'Linearly spaced vector', syntax: ['Y = linspace(A,B)', 'Y = linspace(A,B,N)'], seealso: ['colon', 'logspace'] },
+  repmat: { summary: 'Repeat copies of an array', syntax: ['B = repmat(A,M,N)'], seealso: ['reshape', 'ones'] },
+  reshape: { summary: 'Reshape array', syntax: ['B = reshape(A,R,C)'], seealso: ['repmat', 'size'] },
+  size: { summary: 'Array dimensions', syntax: ['[R,C] = size(X)', 'D = size(X,DIM)'], seealso: ['length', 'numel', 'ndims'] },
+  length: { summary: 'Length of largest array dimension', syntax: ['L = length(X)'], seealso: ['size', 'numel'] },
+  numel: { summary: 'Number of array elements', syntax: ['N = numel(X)'], seealso: ['size', 'length'] },
+  diff: { summary: 'Differences between adjacent elements', syntax: ['Y = diff(X)'], seealso: ['sum', 'cumsum'] },
+  diag: { summary: 'Diagonal matrices and diagonals of a matrix', syntax: ['D = diag(V)', 'V = diag(A)'], seealso: ['eye', 'trace'] },
+  inv: { summary: 'Inverse of a square matrix', syntax: ['Y = inv(A)'], seealso: ['det', 'mldivide', 'eye'] },
+  det: { summary: 'Matrix determinant', syntax: ['D = det(A)'], seealso: ['inv', 'trace'] },
+  trace: { summary: 'Sum of diagonal elements', syntax: ['t = trace(A)'], seealso: ['diag', 'det'] },
+  norm: { summary: 'Vector and matrix norms', syntax: ['n = norm(X)', 'n = norm(X,P)'], seealso: ['abs', 'dot'] },
+  dot: { summary: 'Dot product of two vectors', syntax: ['c = dot(A,B)'], seealso: ['norm'] },
+  transpose: { summary: "Transpose (also written X')", syntax: ['B = transpose(A)', "B = A'"], seealso: ['reshape'] },
+  mldivide: { summary: 'Solve linear systems A\\B (least squares if non-square)', syntax: ['X = mldivide(A,B)', 'X = A\\B'], seealso: ['inv', 'det'] },
+  plot: { summary: '2-D line plot', syntax: ['plot(X,Y)', "plot(X,Y,LineSpec)", 'plot(X1,Y1,X2,Y2,...)'], seealso: ['fplot', 'hold', 'gca'] },
+  fplot: { summary: 'Plot a function handle over a range', syntax: ['fplot(@f)', 'fplot(@f,[xmin xmax])'], seealso: ['plot', 'hold'] },
+  hold: { summary: 'Retain or clear plots in the current axes', syntax: ['hold on', 'hold off'], seealso: ['plot', 'cla', 'gca'] },
+  gca: { summary: 'Handle to the current axes', syntax: ['ax = gca'], seealso: ['gcf', 'plot', 'set'] },
+  disp: { summary: 'Display value without its variable name', syntax: ['disp(X)'], seealso: ['fprintf', 'sprintf'] },
+  fprintf: { summary: 'Write formatted data to the command window', syntax: ['fprintf(FORMAT,A,...)'], seealso: ['sprintf', 'disp'] },
+  sprintf: { summary: 'Format data into a string', syntax: ['str = sprintf(FORMAT,A,...)'], seealso: ['fprintf', 'num2str'] },
+  num2str: { summary: 'Convert numbers to a character array', syntax: ['s = num2str(X)'], seealso: ['str2num', 'sprintf'] },
+  input: { summary: 'Request user input in the command window', syntax: ['x = input(PROMPT)', "str = input(PROMPT,'s')"], seealso: ['disp', 'fprintf'] },
+  error: { summary: 'Throw an error and stop execution', syntax: ['error(MSG)', 'error(FORMAT,A,...)'], seealso: ['warning'] },
+  arrayfun: { summary: 'Apply a function to each element of an array', syntax: ['B = arrayfun(@f,A)'], seealso: ['feval'] },
+  feval: { summary: 'Evaluate a function handle', syntax: ['[y,...] = feval(@f,x,...)'], seealso: ['arrayfun'] },
 };
+
+export function docUrl(name: string): string {
+  return `https://www.mathworks.com/help/matlab/ref/${name.toLowerCase()}.html`;
+}
+
+/** MATLAB-style help block for a built-in, or null if unknown. */
+export function builtinHelp(name: string): string | null {
+  const e = HELP[name];
+  if (!e) return null;
+  let s = ` ${name} - ${e.summary}\n\n    Syntax\n` + e.syntax.map((x) => '      ' + x).join('\n');
+  if (e.seealso?.length) s += `\n\n    See also ${e.seealso.join(', ')}`;
+  s += `\n\n    Documentation for ${name}\n      ${docUrl(name)}`;
+  return s;
+}
 
 function trimNum(x: number): string {
   if (Number.isInteger(x)) return String(x);

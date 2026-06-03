@@ -8,7 +8,7 @@ import {
   horzcat, vertcat, range as makeRange, indexGet, indexSet, toArray, type Sub,
 } from './values';
 import { det, inv, mldivide } from './linalg';
-import { BUILTINS, CONSTANTS, BUILTIN_HELP, type Env } from './builtins';
+import { BUILTINS, CONSTANTS, builtinHelp, docUrl, type Env } from './builtins';
 import { displayValue, dispValue } from './format';
 import { Graphics } from './graphics';
 
@@ -45,16 +45,22 @@ export class Interpreter implements Env {
   requestInput(prompt: string) { return this.requestInputCb(prompt); }
   callHandle(h: Handle, args: Value[], nargout: number) { return h.call(args, nargout); }
   help(name: string): string {
-    const doc = this.helpDocs.get(name);
-    if (doc) return doc;
     const def = this.funcs.get(name);
-    if (def) {
-      const outs = def.outputs.length ? (def.outputs.length === 1 ? def.outputs[0] : `[${def.outputs.join(', ')}]`) + ' = ' : '';
-      return `${outs}${name}(${def.params.join(', ')})\n  (user function — no help comment)`;
+    const doc = this.helpDocs.get(name);
+    // User-defined .m function: show its comment block + a synthesized Syntax.
+    if (def || doc) {
+      const parts: string[] = [];
+      parts.push(doc ?? ` ${name}`);
+      if (def) {
+        const outs = def.outputs.length ? (def.outputs.length === 1 ? def.outputs[0] : `[${def.outputs.join(', ')}]`) + ' = ' : '';
+        parts.push(`    Syntax\n      ${outs}${name}(${def.params.join(', ')})`);
+      }
+      return parts.join('\n\n');
     }
-    if (name in BUILTIN_HELP) return BUILTIN_HELP[name];
-    if (name in BUILTINS) return `${name} is a built-in function.`;
-    if (name in CONSTANTS) return `${name} is a built-in constant.`;
+    const b = builtinHelp(name);
+    if (b) return b;
+    if (name in BUILTINS) return ` ${name} - built-in function\n\n    Documentation for ${name}\n      ${docUrl(name)}`;
+    if (name in CONSTANTS) return ` ${name} - built-in constant`;
     return `'${name}' not found. Type 'help' for an overview.`;
   }
   clearWorkspace(names: string[]) {

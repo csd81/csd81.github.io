@@ -149,6 +149,8 @@
 .mlab__line--cmd { color: #7fd1ff; }
 .mlab__line--err { color: #ff9a8a; }
 .mlab__line--prompt { color: #ffd479; }
+.mlab__link { color: #7fd1ff; text-decoration: underline; }
+.mlab__link:hover { color: #aee4ff; }
 .mlab__prompt-row { display: flex; align-items: baseline; gap: 0.4rem; }
 .mlab__caret { color: #7fd1ff; font-family: inherit; }
 .mlab__input {

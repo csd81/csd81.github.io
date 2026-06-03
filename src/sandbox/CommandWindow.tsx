@@ -1,6 +1,16 @@
 /** The interactive command window (REPL scrollback + input line with history). */
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import type { ConsoleLine } from './useSandbox';
+
+/** Turn http(s) URLs in console text into clickable links. */
+function linkify(text: string) {
+  const parts = text.split(/(https?:\/\/[^\s]+)/g);
+  return parts.map((p, i) =>
+    /^https?:\/\//.test(p)
+      ? <a key={i} className="mlab__link" href={p} target="_blank" rel="noreferrer noopener">{p}</a>
+      : <Fragment key={i}>{p}</Fragment>,
+  );
+}
 
 export default function CommandWindow({
   lines, busy, prompt, onSubmit, onClear,
@@ -53,7 +63,7 @@ export default function CommandWindow({
       </div>
       <div className="mlab__scroll" ref={scrollRef} onClick={() => inputRef.current?.focus()}>
         {lines.map((l, i) => (
-          <pre key={i} className={`mlab__line mlab__line--${l.kind}`}>{l.kind === 'cmd' ? '>> ' + l.text : l.text}</pre>
+          <pre key={i} className={`mlab__line mlab__line--${l.kind}`}>{linkify(l.kind === 'cmd' ? '>> ' + l.text : l.text)}</pre>
         ))}
         <div className="mlab__prompt-row">
           <span className="mlab__caret">{prompt !== null ? '' : '>>'}</span>
