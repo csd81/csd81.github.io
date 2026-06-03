@@ -61,7 +61,7 @@ function luSolve(a: Mat, b: Mat): Mat {
       let s = y[r];
       for (let c = r + 1; c < n; c++) s -= at(r, c) * y[c];
       const d = at(r, r);
-      y[r] = d === 0 ? (s === 0 ? 0 : NaN) : s / d;
+      y[r] = s / d;   // IEEE: singular pivot → ±Inf (s≠0) or NaN (0/0), matching MATLAB
     }
     for (let r = 0; r < n; r++) X.data[r + col * n] = y[r];
   }

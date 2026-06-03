@@ -59,7 +59,10 @@ export function simplifyExpr(e: SymExpr): SymExpr {
       if (isN(base, 0)) return sN(0);
       if (isN(base, 1)) return sN(1);
       if (base.t === 'n' && exp.t === 'n') return sN(Math.pow(base.v, exp.v));
-      if (base.t === 'pow') return simplifyExpr(sPow(base.base, sMul(base.exp, exp)));   // (a^b)^c → a^(b*c)
+      // (a^b)^c → a^(b·c) is only valid when the outer exponent c is an integer, or the
+      // inner base a is a positive real (else e.g. (x^2)^(1/2) ≠ x — it is |x|).
+      if (base.t === 'pow' && ((exp.t === 'n' && Number.isInteger(exp.v)) || (base.base.t === 'n' && base.base.v > 0)))
+        return simplifyExpr(sPow(base.base, sMul(base.exp, exp)));
       return sPow(base, exp);
     }
     case 'add': {

@@ -20,7 +20,8 @@ export function formatScalar(x: number): string {
   if (x === -Infinity) return '-Inf';
   if (Number.isInteger(x) && Math.abs(x) < 1e15) return String(x);
   const a = Math.abs(x);
-  if (a !== 0 && (a >= 1e5 || a < 1e-4)) return x.toExponential(4).replace('e', 'e');
+  // MATLAB-style exponent: keep the sign, zero-pad to ≥2 digits (1.2346e+05, not 1.2346e+5).
+  if (a !== 0 && (a >= 1e5 || a < 1e-4)) return x.toExponential(4).replace(/e([+-])(\d)$/, 'e$10$2');
   return x.toFixed(4);
 }
 

@@ -61,7 +61,8 @@ class Parser {
       while (!this.atPunct(']')) {
         if (this.peek().kind === 'ident') outputs.push(this.next().value);
         else if (this.atOp('~')) { this.next(); outputs.push('~'); }
-        if (!this.eatPunct(',')) break;
+        else break;                  // unexpected token → let expectPunct(']') report it
+        this.eatPunct(',');          // separator is optional: `[a b]` and `[a,b]` both valid
       }
       this.expectPunct(']');
       if (!this.eatOp('=')) this.err('expected = in function signature');
@@ -262,7 +263,7 @@ class Parser {
           const e = this.parsePostfix();
           lhs.push(this.toLValue(e));
         }
-        if (!this.eatPunct(',')) break;
+        this.eatPunct(',');   // separator optional: `[m n] = size(A)` and `[m,n] = …` both valid
       }
       if (!this.eatPunct(']')) { this.i = save; return null; }
       if (!this.atOp('=')) { this.i = save; return null; }
