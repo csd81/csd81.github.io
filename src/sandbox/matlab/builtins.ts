@@ -1298,6 +1298,40 @@ export const BUILTINS: Record<string, Builtin> = {
     const px: number[] = [], py: number[] = []; for (const s of segs) { px.push(s[0], s[2], NaN); py.push(s[1], s[3], NaN); }
     env.graphics.addSeries(px, py); return [];
   },
+  convhulln: async (a, n) => {
+    const P = m(a[0]); const pts = matRows(P); const facets = convhullnd(pts); const d = pts[0]?.length ?? 0;
+    const K = zeros(facets.length, d);
+    facets.forEach((f, i) => f.verts.forEach((v, j) => { K.data[i + j * facets.length] = v + 1; }));
+    if (n >= 2) { // hull volume: sum over facet simplices from an interior point
+      const c = pts[0].map((_, j) => pts.reduce((s, p) => s + p[j], 0) / pts.length);
+      let vol = 0; const fac = factorialN(d);
+      for (const f of facets) { const rows = f.verts.map((v) => pts[v].map((x, j) => x - c[j])); vol += Math.abs(detRows(rows)) / fac; }
+      return [K, scalar(vol)];
+    }
+    return ret(K);
+  },
+  delaunayn: async (a) => {
+    const P = m(a[0]); const pts = matRows(P); const simplices = delaunaynd(pts); const d = pts[0]?.length ?? 0;
+    const T = zeros(simplices.length, d + 1);
+    simplices.forEach((s, i) => s.forEach((v, j) => { T.data[i + j * simplices.length] = v + 1; }));
+    return ret(T);
+  },
+  voronoin: async (a, n) => {
+    const P = m(a[0]); const pts = matRows(P); const d = pts[0]?.length ?? 0; const simplices = delaunaynd(pts);
+    // Voronoi vertices = circumcenters of the Delaunay simplices; index 1 is the point at infinity.
+    const cc = simplices.map((s) => circumcenterND(s.map((v) => pts[v])));
+    const V = zeros(cc.length + 1, d); for (let j = 0; j < d; j++) V.data[0 + j * (cc.length + 1)] = Infinity;
+    cc.forEach((c, i) => c.forEach((x, j) => { V.data[(i + 1) + j * (cc.length + 1)] = x; }));
+    // C{i}: circumcenters of simplices incident to point i (+ the ∞ vertex for hull points).
+    const onHull = new Set<number>(); for (const f of convhullnd(pts)) f.verts.forEach((v) => onHull.add(v));
+    const cells: Value[] = [];
+    for (let i = 0; i < pts.length; i++) {
+      const inc: number[] = []; simplices.forEach((s, si) => { if (s.includes(i)) inc.push(si + 2); });
+      const list = onHull.has(i) ? [1, ...inc] : inc;
+      cells.push(rowVec(list));
+    }
+    return n >= 2 ? [V, makeCell(pts.length, 1, cells)] : [V];
+  },
   interp3: async (a) => {
     // interp3(V,Xq,Yq,Zq) or interp3(X,Y,Z,V,Xq,Yq,Zq) — trilinear on a regular grid.
     let V: Mat, Xq: Mat, Yq: Mat, Zq: Mat, xv: number[], yv: number[], zv: number[];
@@ -2082,6 +2116,9 @@ const HELP: Record<string, HelpEntry> = {
   delaunay: { summary: '2-D Delaunay triangulation (vertex-index triples)', syntax: ['T = delaunay(x,y)'], seealso: ['griddata', 'convhull', 'voronoi'] },
   boundary: { summary: 'Boundary polygon around a set of 2-D points (convex hull here)', syntax: ['k = boundary(x,y)', '[k,a] = boundary(x,y)'], seealso: ['convhull', 'polyarea'] },
   voronoi: { summary: 'Voronoi diagram (line segments, or plot)', syntax: ['voronoi(x,y)', '[vx,vy] = voronoi(x,y)'], seealso: ['delaunay', 'convhull'] },
+  convhulln: { summary: 'N-D convex hull (facet vertex indices, + volume)', syntax: ['K = convhulln(P)', '[K,V] = convhulln(P)'], seealso: ['convhull', 'delaunayn', 'voronoin'] },
+  delaunayn: { summary: 'N-D Delaunay triangulation (simplex vertex indices)', syntax: ['T = delaunayn(P)'], seealso: ['delaunay', 'convhulln', 'voronoin', 'griddatan'] },
+  voronoin: { summary: 'N-D Voronoi diagram (vertices V and cell index lists C)', syntax: ['[V,C] = voronoin(P)'], seealso: ['voronoi', 'delaunayn', 'convhulln'] },
   griddata: { summary: 'Interpolate scattered 2-D data onto query points (linear or nearest)', syntax: ['vq = griddata(x,y,v,xq,yq)', "vq = griddata(x,y,v,xq,yq,'nearest')"], seealso: ['delaunay', 'interp2', 'scatteredInterpolant'] },
   interp3: { summary: 'Trilinear interpolation on a 3-D grid', syntax: ['Vq = interp3(V,Xq,Yq,Zq)', 'Vq = interp3(X,Y,Z,V,Xq,Yq,Zq)'], seealso: ['interp2', 'interp1', 'griddata'] },
   interpn: { summary: 'Gridded interpolation (1-D/2-D/3-D)', syntax: ['Vq = interpn(...)'], seealso: ['interp3', 'interp2', 'interp1'] },
@@ -2151,7 +2188,7 @@ const BASE_REF = new Set<string>((
   'horzcat vertcat isequaln corr qmr condest wilkinson spones nonzeros bartlett blackman hamming hann typecast swapbytes ' +
   'mkpp unmkpp ppval ' +
   'psi expint sinint cosint legendre besselj bessely besseli besselk besselh airy ellipke ellipj ' +
-  'delaunay griddata interp3 interpn boundary voronoi ' +
+  'delaunay griddata interp3 interpn boundary voronoi convhulln delaunayn voronoin ' +
   'rsf2csf balance qz ordschur ordeig sylvester lsqminnorm expmv ' +
   'rms geomean harmmean movmad movprod movstd movvar mape rmse idivide polydiv betaincinv gammaincinv rosser rng convn optimset optimget quad2d ' +
   'ismissing anymissing standardizeMissing rmmissing fillmissing isbetween isuniform allunique numunique uniquetol ismembertol issortedrows paddata trimdata resize discretize ' +
@@ -2969,6 +3006,111 @@ function bary(ax: number, ay: number, bx: number, by: number, cx: number, cy: nu
   const l1 = ((by - cy) * (px - cx) + (cx - bx) * (py - cy)) / d;
   const l2 = ((cy - ay) * (px - cx) + (ax - cx) * (py - cy)) / d;
   return [l1, l2, 1 - l1 - l2];
+}
+
+// ── General n-dimensional geometry (convhulln / delaunayn / voronoin) ──────
+/** A column-major m×n Mat → array of m row-vectors. */
+function matRows(P: Mat): number[][] {
+  const rows: number[][] = [];
+  for (let i = 0; i < P.rows; i++) { const r: number[] = []; for (let j = 0; j < P.cols; j++) r.push(P.data[i + j * P.rows]); rows.push(r); }
+  return rows;
+}
+/** Determinant of a square matrix given as rows (Gaussian elimination). */
+function detRows(rows: number[][]): number {
+  const n = rows.length; const M = rows.map((r) => r.slice()); let det = 1;
+  for (let c = 0; c < n; c++) {
+    let piv = c; for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[piv][c])) piv = r;
+    if (Math.abs(M[piv][c]) < 1e-300) return 0;
+    if (piv !== c) { [M[c], M[piv]] = [M[piv], M[c]]; det = -det; }
+    det *= M[c][c];
+    for (let r = c + 1; r < n; r++) { const f = M[r][c] / M[c][c]; for (let k = c; k < n; k++) M[r][k] -= f * M[c][k]; }
+  }
+  return det;
+}
+/** Solve the n×n system Ax=b by Gaussian elimination with partial pivoting. Returns null if singular. */
+function solveLin(A: number[][], b: number[]): number[] | null {
+  const n = b.length; const M = A.map((r, i) => [...r, b[i]]);
+  for (let c = 0; c < n; c++) {
+    let piv = c; for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[piv][c])) piv = r;
+    if (Math.abs(M[piv][c]) < 1e-12) return null;
+    [M[c], M[piv]] = [M[piv], M[c]];
+    for (let r = 0; r < n; r++) if (r !== c) { const f = M[r][c] / M[c][c]; for (let k = c; k <= n; k++) M[r][k] -= f * M[c][k]; }
+  }
+  return M.map((r, i) => r[n] / r[i]);
+}
+/** Outward-oriented (d-1)-simplex facet of a d-dimensional hull. */
+interface Facet { verts: number[]; normal: number[]; offset: number }
+/** Hyperplane through d points (P[idx]); orient its normal so `interior` is on the negative side. */
+function makeFacet(P: number[][], idx: number[], interior: number[]): Facet | null {
+  const d = P[0].length; const base = P[idx[0]];
+  // normal ⟂ all edge vectors (idx[k]-idx[0]); solve the (d-1) constraints + a normalisation.
+  const A: number[][] = []; const rhs: number[] = [];
+  for (let k = 1; k < d; k++) { A.push(P[idx[k]].map((v, j) => v - base[j])); rhs.push(0); }
+  A.push(P[idx[0]].slice()); rhs.push(1); // arbitrary scaling row to avoid the trivial solution
+  let nrm = solveLin(A, rhs);
+  if (!nrm) { A[d - 1] = A[d - 1].map(() => Math.random()); nrm = solveLin(A, rhs); if (!nrm) return null; }
+  let offset = nrm.reduce((s, v, j) => s + v * base[j], 0);
+  if (nrm.reduce((s, v, j) => s + v * interior[j], 0) - offset > 0) { nrm = nrm.map((v) => -v); offset = -offset; }
+  return { verts: idx.slice(), normal: nrm, offset };
+}
+/** Incremental (beneath–beyond) convex hull of m points in d dimensions → facets of (d-1)-simplices. */
+function convhullnd(P: number[][]): Facet[] {
+  const m = P.length, d = P[0].length;
+  // Seed: find d+1 affinely-independent points.
+  const seed = [0]; const interiorPts: number[][] = [P[0]];
+  for (let i = 1; i < m && seed.length <= d; i++) {
+    const cand = [...seed, i];
+    if (cand.length === 1) { seed.push(i); continue; }
+    // rank check: edge vectors from cand[0] must be independent
+    const edges = cand.slice(1).map((idx) => P[idx].map((v, j) => v - P[cand[0]][j]));
+    if (matRank(edges) === edges.length) { seed.push(i); interiorPts.push(P[i]); }
+  }
+  if (seed.length < d + 1) return []; // degenerate (points lie in a lower-dim flat)
+  const interior = P[0].map((_, j) => seed.reduce((s, idx) => s + P[idx][j], 0) / seed.length);
+  let facets: Facet[] = [];
+  for (let omit = 0; omit < seed.length; omit++) { const f = makeFacet(P, seed.filter((_, k) => k !== omit), interior); if (f) facets.push(f); }
+  const inHull = new Set(seed);
+  for (let p = 0; p < m; p++) {
+    if (inHull.has(p)) continue;
+    const visible = facets.filter((f) => f.normal.reduce((s, v, j) => s + v * P[p][j], 0) - f.offset > 1e-9);
+    if (!visible.length) continue;
+    // Horizon: ridges (d-1 verts) shared by exactly one visible facet.
+    const ridgeCount = new Map<string, { verts: number[]; n: number }>();
+    for (const f of visible) for (let k = 0; k < d; k++) { const r = f.verts.filter((_, q) => q !== k); const key = r.slice().sort((a, b) => a - b).join(','); const e = ridgeCount.get(key); if (e) e.n++; else ridgeCount.set(key, { verts: r, n: 1 }); }
+    const vis = new Set(visible); facets = facets.filter((f) => !vis.has(f));
+    for (const { verts, n } of ridgeCount.values()) if (n === 1) { const f = makeFacet(P, [...verts, p], interior); if (f) facets.push(f); }
+    inHull.add(p);
+  }
+  return facets;
+}
+/** Rank of a small matrix (rows of equal length) by Gaussian elimination. */
+function matRank(rows: number[][]): number {
+  const R = rows.map((r) => r.slice()); const m = R.length, n = R[0]?.length ?? 0; let rank = 0;
+  for (let c = 0; c < n && rank < m; c++) {
+    let piv = -1; for (let r = rank; r < m; r++) if (Math.abs(R[r][c]) > 1e-10) { piv = r; break; }
+    if (piv < 0) continue;
+    [R[rank], R[piv]] = [R[piv], R[rank]];
+    for (let r = 0; r < m; r++) if (r !== rank) { const f = R[r][c] / R[rank][c]; for (let k = c; k < n; k++) R[r][k] -= f * R[rank][k]; }
+    rank++;
+  }
+  return rank;
+}
+/** Delaunay simplices of m points in d-D, via the lower convex hull of the paraboloid lift.
+ *  A tiny deterministic joggle breaks exact cocircular/cospherical degeneracies (cf. Qhull 'QJ'). */
+function delaunaynd(P: number[][]): number[][] {
+  const d = P[0].length;
+  const jit = (i: number, j: number) => 1e-9 * ((((i + 1) * 2654435761 + (j + 1) * 40503) >>> 0) / 2 ** 32 - 0.5);
+  const lifted = P.map((pt, i) => { const q = pt.map((v, j) => v + jit(i, j)); return [...q, q.reduce((s, v) => s + v * v, 0)]; });
+  const facets = convhullnd(lifted);
+  // Lower facets: outward normal points "down" in the lift dimension (negative last component).
+  return facets.filter((f) => f.normal[d] < -1e-12).map((f) => f.verts.slice());
+}
+/** Circumcenter of a d-simplex (d+1 points in d-D). */
+function circumcenterND(pts: number[][]): number[] {
+  const d = pts[0].length; const v0 = pts[0];
+  const A: number[][] = []; const b: number[] = [];
+  for (let i = 1; i <= d; i++) { A.push(pts[i].map((v, j) => 2 * (v - v0[j]))); b.push(pts[i].reduce((s, v) => s + v * v, 0) - v0.reduce((s, v) => s + v * v, 0)); }
+  return solveLin(A, b) ?? v0.map((_, j) => pts.reduce((s, p) => s + p[j], 0) / pts.length);
 }
 
 // ── Piecewise-polynomial (pp) form ───────────────────────────────────────
