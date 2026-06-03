@@ -647,3 +647,12 @@ export function cmapReal(a: Mat, f: (re: number, im: number) => number): Mat {
 export function conj(a: Mat): Mat { if (!a.idata) return a; const im = new Float64Array(a.idata.length); for (let i = 0; i < im.length; i++) im[i] = -a.idata[i]; return { kind: 'num', rows: a.rows, cols: a.cols, data: a.data, idata: im }; }
 export function realPart(a: Mat): Mat { return mat(a.rows, a.cols, Float64Array.from(a.data)); }
 export function imagPart(a: Mat): Mat { const o = zeros(a.rows, a.cols); if (a.idata) o.data.set(a.idata); return o; }
+
+/** Coerce a value to a dense Mat for generic numeric builtins (sparse densifies). */
+export function toMat(v: Value, name = 'argument'): Mat {
+  if (isSparse(v)) return sparseToDense(v);
+  if (!isMat(v)) throw new MatError(`${name}: expected a numeric value`);
+  return v;
+}
+/** Factorial n! (Inf beyond 170). Shared by numeric + symbolic builtins. */
+export function factorialN(n: number): number { if (n < 0) return NaN; if (n > 170) return Infinity; let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; }

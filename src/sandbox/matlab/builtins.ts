@@ -15,6 +15,7 @@ import {
   type Temporal, isTemporal, makeTemporal,
   type Table, isTable,
   type Sym, isSym, makeSym,
+  toMat as m, factorialN,
 } from './values';
 import { type SymExpr, sN, sV, sAdd, sSub, sMul, sPow, sFn, sNeg, sDiv, simplifyExpr, diffExpr, subsExpr, evalExpr as symEval, exprToStr, symVars } from './sym';
 import {
@@ -26,6 +27,12 @@ import {
 } from './linalg';
 import { dispValue, sprintf } from './format';
 import type { Graphics } from './graphics';
+import {
+  polyCoeffs, numDen, symDet, symInv, symCharpolyCoeffs, symArg, symToExpr, symVarsOf,
+  transformVars, symNames, integrate, limitAt, solveExpr, expandExpr,
+  laplaceExpr, ztransExpr, ilaplaceExpr, iztransExpr, fourierExpr, ifourierExpr,
+} from './sym-ops';
+import { SYM_BUILTINS } from './sym-builtins';
 
 /** Services the interpreter exposes to builtins. */
 export interface Env {
@@ -43,11 +50,6 @@ export interface Env {
 
 export type Builtin = (args: Value[], nargout: number, env: Env) => Promise<Value[]>;
 
-function m(v: Value, name = 'argument'): Mat {
-  if (isSparse(v)) return sparseToDense(v);   // sparse densifies for generic numeric builtins
-  if (!isMat(v)) throw new MatError(`${name}: expected a numeric value`);
-  return v;
-}
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
 const ew = (f: (x: number) => number): Builtin => async (a) => ret(map(m(a[0]), f));
 
@@ -167,6 +169,7 @@ function nthroot(x: number, n: number): number {
 }
 
 export const BUILTINS: Record<string, Builtin> = {
+  ...SYM_BUILTINS,
   // elementwise math
   sin: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmap(A, (re, im) => [Math.sin(re) * Math.cosh(im), Math.cos(re) * Math.sinh(im)]) : map(A, Math.sin)); },
   cos: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmap(A, (re, im) => [Math.cos(re) * Math.cosh(im), -Math.sin(re) * Math.sinh(im)]) : map(A, Math.cos)); },
@@ -330,8 +333,6 @@ export const BUILTINS: Record<string, Builtin> = {
   jacobiSymbol: async (a) => ret(elementwise(m(a[0]), m(a[1]), jacobiSym)),
   factorIntegerPower: async (a, n) => { let N = Math.round(asScalar(a[0])); let bestB = N, bestE = 1; if (N > 1) { for (let e = Math.floor(Math.log2(N)); e >= 2; e--) { const b = Math.round(Math.pow(N, 1 / e)); for (const cand of [b - 1, b, b + 1]) { if (cand >= 2 && Math.pow(cand, e) === N) { bestB = cand; bestE = e; e = 1; break; } } } } return n >= 2 ? [scalar(bestB), scalar(bestE)] : [rowVec([bestB, bestE])]; },
   isPrimitiveRoot: async (a) => { const N = Math.round(asScalar(a[1])); const phi = N <= 1 ? 0 : (() => { let n = N, r = N; for (let p = 2; p * p <= n; p++) if (n % p === 0) { while (n % p === 0) n /= p; r -= r / p; } if (n > 1) r -= r / n; return r; })(); const pf = (() => { const s = new Set<number>(); let n = phi; for (let p = 2; p * p <= n; p++) if (n % p === 0) { s.add(p); while (n % p === 0) n /= p; } if (n > 1) s.add(n); return s; })(); const powmod = (b: number, e: number, mo: number) => { b = ((b % mo) + mo) % mo; let r = 1; while (e > 0) { if (e & 1) r = (r * b) % mo; b = (b * b) % mo; e = Math.floor(e / 2); } return r; }; return ret(map(m(a[0]), (av) => { const x = Math.round(av); if (N <= 1 || gcd2(x, N) !== 1) return 0; for (const q of pf) if (powmod(x, phi / q, N) === 1) return 0; return 1; })); },
-  polynomialDegree: async (a) => { const s = symArg(a[0]); const v = a.length >= 2 ? (isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1])) : (symVarsOf(s)[0] ?? 'x'); const c = polyCoeffs(s.exprs[0], v); let d = 0; for (let i = 0; i < c.length; i++) if (Math.abs(c[i]) > 1e-12) d = i; return ret(scalar(d)); },
-  quorem: async (a, n) => { const A = m(a[0]), B = m(a[1]); const Q = elementwise(A, B, (x, y) => Math.floor(x / y)); const R = elementwise(A, B, (x, y) => x - Math.floor(x / y) * y); return n >= 2 ? [Q, R] : [Q]; },
   // special matrices
   magic: async (a) => ret(magicFn(Math.round(asScalar(a[0])))),
   hilb: async (a) => { const n = Math.round(asScalar(a[0])); const o = zeros(n, n); for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) o.data[r + c * n] = 1 / (r + c + 1); return ret(o); },
@@ -1477,23 +1478,6 @@ export const BUILTINS: Record<string, Builtin> = {
   etime: async (a) => { const t2 = toArray(m(a[0])), t1 = toArray(m(a[1])); return ret(scalar((dnum(t2[0], t2[1], t2[2], t2[3], t2[4], t2[5]) - dnum(t1[0], t1[1], t1[2], t1[3], t1[4], t1[5])) * 86400)); },
   addtodate: async (a) => { const n = asScalar(m(a[0])), q = asScalar(m(a[1])), unit = asString(a[2]); const v = dvec(n); const idx = { year: 0, month: 1, day: 2, hour: 3, minute: 4, second: 5 }[unit] ?? 2; v[idx] += q; return ret(scalar(dnum(v[0], v[1], v[2], v[3], v[4], v[5]))); },
   // ── Symbolic Math ──
-  sym: async (a) => {
-    if (isSym(a[0])) return ret(a[0]);
-    if (isStr(a[0]) || (isMat(a[0]) && (a[0] as Mat).isChar)) { const t = asString(a[0]).trim(); const num = Number(t); return ret(makeSym(1, 1, [Number.isFinite(num) && /^[-\d.]+$/.test(t) ? sN(num) : sV(t)])); }
-    const M = m(a[0]); return ret(makeSym(M.rows, M.cols, Array.from(M.data, (x) => sN(x))));
-  },
-  syms: async () => [],   // handled specially in interp (assigns symbolic variables)
-  int: async (a) => {
-    const s = symArg(a[0]); const varGiven = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar) || (isSym(a[1]) && symVars(a[1].exprs[0]).length));
-    const v = varGiven ? (isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1])) : (symVarsOf(s)[0] ?? 'x');
-    const F = s.exprs.map((e) => integrate(e, v));
-    // limits: int(f,x,a,b) (4-arg) or int(f,a,b) (3-arg, default var)
-    let lim: [Value, Value] | null = null;
-    if (a.length >= 4 && varGiven) lim = [a[2], a[3]]; else if (a.length >= 3 && !varGiven) lim = [a[1], a[2]];
-    if (lim) { const lo = symToExpr(lim[0]), hi = symToExpr(lim[1]); return ret(makeSym(s.rows, s.cols, F.map((Fe) => { const d = simplifyExpr(sAdd(subsExpr(Fe, v, hi), sNeg(subsExpr(Fe, v, lo)))); const num = symEval(d, new Map()); return Number.isFinite(num) ? sN(num) : d; }))); }
-    return ret(makeSym(s.rows, s.cols, F.map(simplifyExpr)));
-  },
-  limit: async (a) => { const s = symArg(a[0]); const v = a.length >= 3 ? asString(a[1]) : (symVarsOf(s)[0] ?? 'x'); const pt = symToExpr(a[a.length - 1]); const exprs = s.exprs.map((e) => limitAt(e, v, pt)); return ret(makeSym(s.rows, s.cols, exprs)); },
   solve: async (a, _n, env) => {
     if (a.length && isStruct(a[0]) && (a[0] as StructV).fields.has('Q')) return ret(quboSolveResult(a[0] as StructV));
     if (a.length && isStruct(a[0]) && (a[0] as StructV).fields.has('ODEFcn')) return solveOde(a, env);   // OO ode object
@@ -1509,51 +1493,12 @@ export const BUILTINS: Record<string, Builtin> = {
   odeMassMatrix: async (a) => ret(a[0] ?? makeSym(0, 0, [])),
   odeSensitivity: async (a) => { const f = new Map<string, Value[]>(); for (let i = 0; i + 1 < a.length; i += 2) f.set(asString(a[i]), [a[i + 1]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields: f } as StructV); },
   odeDelay: async (a) => { const f = new Map<string, Value[]>(); for (let i = 0; i + 1 < a.length; i += 2) f.set(asString(a[i]), [a[i + 1]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields: f } as StructV); },
-  jacobian: async (a) => { const s = symArg(a[0]); const vars = a.length >= 2 ? symNames(a[1]) : symVarsOf(s); const J: SymExpr[] = []; const nf = s.exprs.length; for (let c = 0; c < vars.length; c++) for (let r = 0; r < nf; r++) J[r + c * nf] = simplifyExpr(diffExpr(s.exprs[r], vars[c])); return ret(makeSym(nf, vars.length, J)); },
-  hessian: async (a) => { const s = symArg(a[0]); const vars = a.length >= 2 ? symNames(a[1]) : symVarsOf(s); const nv = vars.length; const H: SymExpr[] = []; for (let i = 0; i < nv; i++) for (let j = 0; j < nv; j++) H[i + j * nv] = simplifyExpr(diffExpr(diffExpr(s.exprs[0], vars[i]), vars[j])); return ret(makeSym(nv, nv, H)); },
-  taylor: async (a) => { const s = symArg(a[0]); const v = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar)) ? asString(a[1]) : (symVarsOf(s)[0] ?? 'x'); const ord = 6; let term = s.exprs[0]; let acc: SymExpr = sN(0); let fact = 1; for (let k = 0; k < ord; k++) { const c = symEval(term, new Map([[v, 0]])); if (Number.isFinite(c)) acc = sAdd(acc, sMul(sN(c / fact), sPow(sV(v), sN(k)))); term = diffExpr(term, v); fact *= (k + 1); } return ret(makeSym(1, 1, [simplifyExpr(acc)])); },
   simplify: async (a) => { if (isGraph(a[0])) { const g = a[0]; const seen = new Set<string>(); const edges: typeof g.edges = []; for (const e of g.edges) { if (e.s === e.t) continue; const k = g.directed ? `${e.s}_${e.t}` : `${Math.min(e.s, e.t)}_${Math.max(e.s, e.t)}`; if (seen.has(k)) continue; seen.add(k); edges.push(e); } return ret(makeGraph(g.directed, g.n, edges, g.names)); } const s = symArg(a[0]); return ret(makeSym(s.rows, s.cols, s.exprs.map(simplifyExpr))); },
-  expand: async (a) => { const s = symArg(a[0]); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => simplifyExpr(expandExpr(e))))); },
-  subs: async (a) => { const s = symArg(a[0]); const vn = a.length >= 3 ? (isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1])) : (symVarsOf(s)[0] ?? 'x'); const repl = symToExpr(a[a.length - 1]); const exprs = s.exprs.map((e) => simplifyExpr(subsExpr(e, vn, repl))); const out = makeSym(s.rows, s.cols, exprs); if (out.exprs.every((e) => symVars(e).length === 0)) { const M = zeros(s.rows, s.cols); out.exprs.forEach((e, i) => { M.data[i] = symEval(e, new Map()); }); return ret(M); } return ret(out); },
-  vpa: async (a) => { const s = symArg(a[0]); const M = zeros(s.rows, s.cols); let allNum = true; s.exprs.forEach((e, i) => { const v = symEval(e, new Map()); M.data[i] = v; if (!Number.isFinite(v)) allNum = false; }); return ret(allNum ? M : a[0]); },
-  latex: async (a) => ret(str(symArg(a[0]).exprs.map(exprToStr).join(', '))),
-  pretty: async (a, _n, env) => { env.output(symArg(a[0]).exprs.map(exprToStr).join('\n') + '\n'); return []; },
-  isAlways: async (a) => { const s = symArg(a[0]); const o = zeros(s.rows, s.cols); o.isBool = true; s.exprs.forEach((e, i) => { o.data[i] = Math.abs(symEval(e, new Map())) < 1e-12 ? 1 : 0; }); return ret(o); },
   logical: async (a) => { if (!isSym(a[0])) return ret({ ...map(m(a[0]), (x) => (x !== 0 ? 1 : 0)), isBool: true }); const s = a[0]; const o = zeros(s.rows, s.cols); o.isBool = true; s.exprs.forEach((e, i) => { o.data[i] = Math.abs(symEval(e, new Map())) > 1e-12 ? 1 : 0; }); return ret(o); },
   curl: async (a, n) => { if (isSym(a[0])) { const F = a[0].exprs; const v = symNames(a[1]); const c = [sAdd(diffExpr(F[2], v[1]), sNeg(diffExpr(F[1], v[2]))), sAdd(diffExpr(F[0], v[2]), sNeg(diffExpr(F[2], v[0]))), sAdd(diffExpr(F[1], v[0]), sNeg(diffExpr(F[0], v[1])))]; return ret(makeSym(3, 1, c.map(simplifyExpr))); } return curlNumeric(a, n); },
   divergence: async (a, n, env) => { if (isSym(a[0])) { const F = a[0].exprs; const v = symNames(a[1]); let d: SymExpr = sN(0); for (let i = 0; i < F.length; i++) d = sAdd(d, diffExpr(F[i], v[i])); return ret(makeSym(1, 1, [simplifyExpr(d)])); } void env; return divergenceNumeric(a, n); },
   laplacian: async (a) => { if (isGraph(a[0])) { const g = a[0]; const A = adjacencyMat(g); const L = zeros(g.n, g.n); for (let i = 0; i < g.n; i++) { let d = 0; for (let j = 0; j < g.n; j++) { d += A.data[i + j * g.n]; L.data[i + j * g.n] = -A.data[i + j * g.n]; } L.data[i + i * g.n] = d - A.data[i + i * g.n]; } return ret(denseToSparse(L)); } const s = symArg(a[0]); const v = a.length >= 2 ? symNames(a[1]) : symVarsOf(s); let L: SymExpr = sN(0); for (const vn of v) L = sAdd(L, diffExpr(diffExpr(s.exprs[0], vn), vn)); return ret(makeSym(1, 1, [simplifyExpr(L)])); },
-  potential: async (a) => { const F = symArg(a[0]).exprs; const v = symNames(a[1]); return ret(makeSym(1, 1, [simplifyExpr(integrate(F[0], v[0]))])); },
-  coeffs: async (a, n) => { const s = symArg(a[0]); const v = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar) || isSym(a[1])) ? (isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1])) : (symVarsOf(s)[0] ?? 'x'); const c = polyCoeffs(s.exprs[0], v); const nz = c.map((cc, i) => [cc, i] as [number, number]).filter(([cc]) => Math.abs(cc) > 1e-12); return n >= 2 ? [makeSym(1, nz.length, nz.map(([cc]) => sN(cc))), makeSym(1, nz.length, nz.map(([, i]) => i === 0 ? sN(1) : sPow(sV(v), sN(i))))] : [makeSym(1, nz.length, nz.map(([cc]) => sN(cc)))]; },
-  sym2poly: async (a) => { const s = symArg(a[0]); const v = symVarsOf(s)[0] ?? 'x'; return ret(rowVec(polyCoeffs(s.exprs[0], v).slice().reverse())); },
-  poly2sym: async (a) => { const c = toArray(m(a[0])); const v = a.length >= 2 ? (isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1])) : 'x'; let e: SymExpr = sN(0); const d = c.length - 1; c.forEach((ci, i) => { e = sAdd(e, sMul(sN(ci), sPow(sV(v), sN(d - i)))); }); return ret(makeSym(1, 1, [simplifyExpr(e)])); },
-  numden: async (a, n) => { const s = symArg(a[0]); const { num, den } = numDen(s.exprs[0]); return n >= 2 ? [makeSym(1, 1, [simplifyExpr(num)]), makeSym(1, 1, [simplifyExpr(den)])] : [makeSym(1, 1, [simplifyExpr(num)])]; },
-  collect: async (a) => { const s = symArg(a[0]); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => simplifyExpr(expandExpr(e))))); },
-  laplace: async (a) => { const { s, indep, trans } = transformVars(a, 't', 's'); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => laplaceExpr(e, indep, trans)))); },
-  ilaplace: async (a) => { const { s, indep, trans } = transformVars(a, 's', 't'); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => ilaplaceExpr(e, indep, trans)))); },
-  ztrans: async (a) => { const { s, indep, trans } = transformVars(a, 'n', 'z'); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => ztransExpr(e, indep, trans)))); },
-  iztrans: async (a) => { const { s, indep, trans } = transformVars(a, 'z', 'n'); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => iztransExpr(e, indep, trans)))); },
-  fourier: async (a) => { const { s, indep, trans } = transformVars(a, 't', 'w'); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => fourierExpr(e, indep, trans)))); },
-  ifourier: async (a) => { const { s, indep, trans } = transformVars(a, 'w', 't'); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => ifourierExpr(e, indep, trans)))); },
-  combine: async (a) => { const s = symArg(a[0]); return ret(makeSym(s.rows, s.cols, s.exprs.map(simplifyExpr))); },
-  simplifyFraction: async (a) => { const s = symArg(a[0]); return ret(makeSym(s.rows, s.cols, s.exprs.map(simplifyExpr))); },
-  horner: async (a) => ret(symArg(a[0])),
   compose: async (a) => { if (!isSym(a[0])) return ret(makeStr(sprintf(asString(a[0]), a.slice(1)))); const f = a[0]; const g = symArg(a[1]); const v = symVarsOf(f)[0] ?? 'x'; return ret(makeSym(1, 1, [simplifyExpr(subsExpr(f.exprs[0], v, g.exprs[0]))])); },
-  children: async (a) => { const e = symArg(a[0]).exprs[0]; const kids = e.t === 'add' || e.t === 'mul' || e.t === 'fn' ? e.args : e.t === 'pow' ? [e.base, e.exp] : [e]; return ret(makeCell(1, kids.length, kids.map((k) => makeSym(1, 1, [k])))); },
-  lhs: async (a) => ret(symArg(a[0])),
-  rhs: async () => ret(makeSym(1, 1, [sN(0)])),
-  vpasolve: async (a) => { const s = symArg(a[0]); const v = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar) || isSym(a[1])) ? (isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1])) : (symVarsOf(s)[0] ?? 'x'); const re = solveExpr(s.exprs[0], v).map((r) => symEval(r, new Map())); return ret(colVec(re.filter(Number.isFinite))); },
-  finverse: async (a) => { const s = symArg(a[0]); const v = symVarsOf(s)[0] ?? 'x'; const roots = solveExpr(sAdd(s.exprs[0], sNeg(sV('y'))), v); return ret(makeSym(1, 1, [roots[0] ? simplifyExpr(subsExpr(roots[0], 'y', sV(v))) : sFn('finverse', s.exprs[0])])); },
-  isolate: async (a) => { const s = symArg(a[0]); const v = a.length >= 2 ? (isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1])) : (symVarsOf(s)[0] ?? 'x'); const roots = solveExpr(s.exprs[0], v); return ret(makeSym(1, 1, [roots[0] ?? s.exprs[0]])); },
-  equationsToMatrix: async (a, n) => {
-    const eqs = symArg(a[0]); const vars = symNames(a[1]); const ne = eqs.exprs.length, nv = vars.length;
-    const A = zeros(ne, nv), b = zeros(ne, 1);
-    for (let i = 0; i < ne; i++) { const e = eqs.exprs[i]; const env0 = new Map(vars.map((vn) => [vn, 0])); const c0 = symEval(e, env0); b.data[i] = -c0; for (let j = 0; j < nv; j++) { const env1 = new Map(env0); env1.set(vars[j], 1); A.data[i + j * ne] = symEval(e, env1) - c0; } }
-    return n >= 2 ? [A, b] : [A];
-  },
-  symsum: async (a) => { const s = symArg(a[0]); const k = isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1]); const lo = Math.round(asScalar(a[2])), hi = Math.round(asScalar(a[3])); let acc: SymExpr = sN(0); for (let i = lo; i <= hi; i++) acc = sAdd(acc, subsExpr(s.exprs[0], k, sN(i))); return ret(makeSym(1, 1, [simplifyExpr(acc)])); },
-  symprod: async (a) => { const s = symArg(a[0]); const k = isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1]); const lo = Math.round(asScalar(a[2])), hi = Math.round(asScalar(a[3])); let acc: SymExpr = sN(1); for (let i = lo; i <= hi; i++) acc = sMul(acc, subsExpr(s.exprs[0], k, sN(i))); return ret(makeSym(1, 1, [simplifyExpr(acc)])); },
-  assume: async () => [], assumeAlso: async () => [], assumptions: async () => ret(makeSym(0, 0, [])), sympref: async () => [], digits: async () => ret(scalar(32)),
   // ── datetime / duration objects ──
   datetime: async (a) => {
     if (a.length >= 1 && (isStr(a[0]) || (isMat(a[0]) && (a[0] as Mat).isChar))) { const w = asString(a[0]).toLowerCase(); const n = w === 'today' ? Math.floor(Date.now() / 86400000) + 719529 : Date.now() / 86400000 + 719529; return ret(makeTemporal('datetime', 1, 1, Float64Array.of(n))); }
@@ -2778,7 +2723,6 @@ function dstr(n: number, fmt: string | null): string {
 // ── Math helpers for the elementary-math builtins ─────────────────────────
 const DEG = Math.PI / 180;
 function gcd2(a: number, b: number): number { a = Math.abs(Math.round(a)); b = Math.abs(Math.round(b)); while (b) { [a, b] = [b, a % b]; } return a; }
-function factorialN(n: number): number { if (n < 0) return NaN; if (n > 170) return Infinity; let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; }
 
 /** Lanczos approximation of the gamma function. */
 /** Reinterpret a raw byte buffer as the named numeric class (for typecast). */
@@ -3883,18 +3827,6 @@ function curlNumeric(a: Value[], n: number): Value[] {
   return n >= 2 ? [cz, av] : [cz];
 }
 /** Polynomial coefficients of a symbolic expression in variable v (ascending; via Taylor at 0). */
-function polyCoeffs(e: SymExpr, v: string): number[] {
-  const c: number[] = []; let term = e; let fact = 1; let deg = 0;
-  for (let k = 0; k <= 12; k++) { const cv = symEval(term, new Map([[v, 0]])); c[k] = cv / fact; if (Math.abs(c[k]) > 1e-12) deg = k; term = simplifyExpr(diffExpr(term, v)); fact *= (k + 1); }
-  return c.slice(0, deg + 1);
-}
-/** Split an expression into numerator / denominator (denominator = product of negative powers). */
-function numDen(e: SymExpr): { num: SymExpr; den: SymExpr } {
-  const s = simplifyExpr(e);
-  if (s.t === 'mul') { const num: SymExpr[] = [], den: SymExpr[] = []; for (const f of s.args) { if (f.t === 'pow' && f.exp.t === 'n' && f.exp.v < 0) den.push(sPow(f.base, sN(-f.exp.v))); else num.push(f); } return { num: num.length ? sMul(...num) : sN(1), den: den.length ? sMul(...den) : sN(1) }; }
-  if (s.t === 'pow' && s.exp.t === 'n' && s.exp.v < 0) return { num: sN(1), den: sPow(s.base, sN(-s.exp.v)) };
-  return { num: s, den: sN(1) };
-}
 /** Central-difference derivative of a 3-D field along x (cols), y (rows), or z (pages). */
 function grad3(F: Mat, C: Mat, dir: 'x' | 'y' | 'z'): Float64Array {
   const d = ndSize(F); const d0 = d[0], d1 = d[1] ?? 1, d2 = d[2] ?? 1;
@@ -4241,302 +4173,6 @@ function tensorProd(A: Mat, B: Mat, opts: Value[]): Mat {
 // ── Symbolic Math helpers ───────────────────────────────────────────────
 function isPrimeN(n: number): boolean { if (n < 2) return false; if (n < 4) return true; if (n % 2 === 0) return false; for (let i = 3; i * i <= n; i += 2) if (n % i === 0) return false; return true; }
 /** Determinant of an n×n symbolic matrix (column-major exprs) by cofactor expansion. */
-function symDet(e: SymExpr[], n: number): SymExpr {
-  if (n === 1) return e[0];
-  if (n === 2) return sSub(sMul(e[0], e[3]), sMul(e[2], e[1]));
-  let acc: SymExpr = sN(0);
-  for (let j = 0; j < n; j++) {
-    const minor: SymExpr[] = new Array((n - 1) * (n - 1)); let nc = 0;
-    for (let c = 0; c < n; c++) { if (c === j) continue; for (let r = 1; r < n; r++) minor[(r - 1) + nc * (n - 1)] = e[r + c * n]; nc++; }
-    acc = sAdd(acc, sMul(sN(j % 2 === 0 ? 1 : -1), e[0 + j * n], symDet(minor, n - 1)));
-  }
-  return acc;
-}
-/** Symbolic matrix inverse via adjugate / determinant. */
-function symInv(s: Sym): Sym {
-  const n = s.rows; const d = symDet(s.exprs, n); const out: SymExpr[] = new Array(n * n);
-  const minorDet = (ri: number, ci: number): SymExpr => { const minor: SymExpr[] = new Array((n - 1) * (n - 1)); let nc = 0; for (let c = 0; c < n; c++) { if (c === ci) continue; let nr = 0; for (let r = 0; r < n; r++) { if (r === ri) continue; minor[nr + nc * (n - 1)] = s.exprs[r + c * n]; nr++; } nc++; } return symDet(minor, n - 1); };
-  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) out[i + j * n] = simplifyExpr(sMul(sN((i + j) % 2 === 0 ? 1 : -1), minorDet(j, i), sPow(d, sN(-1))));   // adjugate transpose / det
-  return makeSym(n, n, out);
-}
-/** Characteristic-polynomial coefficients (highest power first) of a symbolic matrix. */
-function symCharpolyCoeffs(e: SymExpr[], n: number): SymExpr[] {
-  const L = '__l'; const M: SymExpr[] = e.map((x, i) => { const r = i % n, c = Math.floor(i / n); return r === c ? sSub(sV(L), x) : sNeg(x); });
-  const detL = simplifyExpr(symDet(M, n));
-  const c = polyCoeffs(detL, L);   // ascending numeric coeffs (works for numeric matrices)
-  if (c.some((x) => !Number.isFinite(x))) return [detL];   // symbolic entries → return the polynomial expression
-  return c.slice().reverse().map(sN);
-}
-function symArg(v: Value): Sym { if (isSym(v)) return v; const M = m(v); return makeSym(M.rows, M.cols, Array.from(M.data, (x) => sN(x))); }
-function symToExpr(v: Value): SymExpr { if (isSym(v)) return v.exprs[0]; if (isStr(v) || (isMat(v) && (v as Mat).isChar)) { const t = asString(v).trim(); const num = Number(t); return Number.isFinite(num) && /^[-\d.]+$/.test(t) ? sN(num) : sV(t); } return sN(asScalar(v)); }
-function symVarsOf(s: Sym): string[] { const set = new Set<string>(); for (const e of s.exprs) symVars(e).forEach((x) => set.add(x)); return [...set].sort(); }
-/** Resolve (independent, transform) variables for an integral-transform call.
- *  f(a)→default vars; f(a,trans); f(a,indep,trans). */
-function transformVars(a: Value[], defIndep: string, defTrans: string): { s: Sym; indep: string; trans: string } {
-  const s = symArg(a[0]); const vars = symVarsOf(s);
-  const nameOf = (v: Value): string => isSym(v) ? (symVarsOf(v)[0] ?? defIndep) : asString(v);
-  let indep = vars.includes(defIndep) ? defIndep : (vars[0] ?? defIndep);
-  let trans = defTrans;
-  if (a.length === 2) trans = nameOf(a[1]);
-  else if (a.length >= 3) { indep = nameOf(a[1]); trans = nameOf(a[2]); }
-  return { s, indep, trans };
-}
-function symNames(v: Value): string[] { if (isSym(v)) return v.exprs.map((e) => (e.t === 'v' ? e.name : symVars(e)[0] ?? 'x')); if (isCell(v)) return v.items.map((x) => asString(x)); if (isStr(v)) return v.items.slice(); return [asString(v)]; }
-/** Basic symbolic integration: linearity + xⁿ, 1/x, sin/cos/exp of the variable. */
-function integrate(e: SymExpr, x: string): SymExpr {
-  e = simplifyExpr(e);
-  if (e.t === 'add') return sAdd(...e.args.map((a) => integrate(a, x)));
-  if (e.t === 'mul') { const consts = e.args.filter((a) => symVars(a).indexOf(x) < 0); const rest = e.args.filter((a) => symVars(a).indexOf(x) >= 0); if (consts.length && rest.length) return sMul(sMul(...consts), integrate(rest.length === 1 ? rest[0] : sMul(...rest), x)); }
-  if (symVars(e).indexOf(x) < 0) return sMul(e, sV(x));                                  // constant → c·x
-  if (e.t === 'v' && e.name === x) return sMul(sN(0.5), sPow(sV(x), sN(2)));
-  if (e.t === 'pow' && e.base.t === 'v' && e.base.name === x && e.exp.t === 'n') { const n = e.exp.v; return n === -1 ? sFn('log', sV(x)) : sMul(sN(1 / (n + 1)), sPow(sV(x), sN(n + 1))); }
-  if (e.t === 'fn' && e.args[0].t === 'v' && e.args[0].name === x) {
-    if (e.name === 'sin') return sNeg(sFn('cos', sV(x)));
-    if (e.name === 'cos') return sFn('sin', sV(x));
-    if (e.name === 'exp') return sFn('exp', sV(x));
-  }
-  return sFn('int', e);   // unevaluated
-}
-/** Limit by substitution; one round of L'Hôpital for 0/0. */
-function limitAt(e: SymExpr, x: string, pt: SymExpr): SymExpr {
-  const p = symEval(pt, new Map()); const env = new Map([[x, p]]);
-  const v = symEval(e, env); if (Number.isFinite(v)) return sN(v);
-  // L'Hôpital for f/g → f'/g' if both → 0
-  if (e.t === 'mul') { const inv = e.args.find((a) => a.t === 'pow' && a.exp.t === 'n' && a.exp.v < 0); const num = e.args.filter((a) => a !== inv); if (inv) { const g = (inv as { base: SymExpr }).base; const f = num.length === 1 ? num[0] : sMul(...num); const fp = symEval(f, env), gp = symEval(g, env); if (Math.abs(fp) < 1e-9 && Math.abs(gp) < 1e-9) { const lv = symEval(sMul(diffExpr(f, x), sPow(diffExpr(g, x), sN(-1))), env); if (Number.isFinite(lv)) return sN(lv); } } }
-  return sFn('limit', e);
-}
-/** Solve p(x)=0 for polynomials up to degree 4 (numeric roots → symbolic numbers). */
-function solveExpr(e: SymExpr, x: string): SymExpr[] {
-  // extract polynomial coefficients via Taylor at 0: c_k = p^(k)(0)/k!
-  const coeffs: number[] = []; let term = e; let fact = 1; let deg = -1;
-  for (let k = 0; k <= 8; k++) { const c = symEval(term, new Map([[x, 0]])); if (!Number.isFinite(c)) return [sFn('solve', e)]; coeffs[k] = c / fact; if (Math.abs(coeffs[k]) > 1e-12) deg = k; term = simplifyExpr(diffExpr(term, x)); fact *= (k + 1); }
-  if (deg < 0) return [];
-  const p = coeffs.slice(0, deg + 1).reverse();   // highest power first
-  const { re, im } = durandKerner(p);
-  return re.map((r, i) => (Math.abs(im[i]) < 1e-9 ? sN(Math.abs(r - Math.round(r)) < 1e-9 ? Math.round(r) : r) : sFn('complex', sN(r), sN(im[i]))));
-}
-/** Distribute products over sums (expand). */
-function expandExpr(e: SymExpr): SymExpr {
-  if (e.t === 'n' || e.t === 'v') return e;
-  if (e.t === 'fn') return sFn(e.name, ...e.args.map(expandExpr));
-  if (e.t === 'add') return sAdd(...e.args.map(expandExpr));
-  if (e.t === 'pow') { const base = expandExpr(e.base); if (e.exp.t === 'n' && Number.isInteger(e.exp.v) && e.exp.v > 1 && e.exp.v <= 8) { let acc: SymExpr = base; for (let k = 1; k < e.exp.v; k++) acc = expandExpr(sMul(acc, base)); return acc; } return sPow(base, e.exp); }
-  // mul: distribute
-  const factors = e.args.map(expandExpr); let terms: SymExpr[] = [sN(1)];
-  for (const f of factors) { const fterms = f.t === 'add' ? f.args : [f]; const next: SymExpr[] = []; for (const t of terms) for (const ft of fterms) next.push(sMul(t, ft)); terms = next; }
-  return sAdd(...terms);
-}
-
-// ── Integral transforms (table-based symbolic Laplace / Fourier / Z) ──────────
-const symHasVar = (e: SymExpr, t: string): boolean => symVars(e).includes(t);
-const isZeroE = (e: SymExpr): boolean => { const s = simplifyExpr(e); return s.t === 'n' && Math.abs(s.v) < 1e-12; };
-const round0 = (x: number): number => (Math.abs(x - Math.round(x)) < 1e-9 ? Math.round(x) : x);
-/** If e is linear in t (e = a·t + b, a,b free of t) return {a,b}; else null. */
-function linearInT(e: SymExpr, t: string): { a: SymExpr; b: SymExpr } | null {
-  const a = simplifyExpr(diffExpr(e, t));
-  if (symHasVar(a, t)) return null;
-  return { a, b: simplifyExpr(subsExpr(e, t, sN(0))) };
-}
-
-/** Laplace transform of a single product term (no top-level sum). */
-function laplaceTerm(e: SymExpr, t: string, s: string): SymExpr {
-  e = simplifyExpr(e);
-  const factors = e.t === 'mul' ? e.args : [e];
-  const coef: SymExpr[] = []; let tpow = 0; let expA: SymExpr | null = null; const core: SymExpr[] = [];
-  for (const f of factors) {
-    if (!symHasVar(f, t)) { coef.push(f); continue; }
-    if (f.t === 'v' && f.name === t) { tpow += 1; continue; }
-    if (f.t === 'pow' && f.base.t === 'v' && f.base.name === t && f.exp.t === 'n' && Number.isInteger(f.exp.v) && f.exp.v > 0) { tpow += f.exp.v; continue; }
-    if (f.t === 'fn' && f.name === 'exp' && f.args.length === 1) { const lin = linearInT(f.args[0], t); if (lin) { expA = expA ? simplifyExpr(sAdd(expA, lin.a)) : lin.a; if (!isZeroE(lin.b)) coef.push(sFn('exp', lin.b)); continue; } }
-    core.push(f);
-  }
-  let F = laplaceCore(core.length ? simplifyExpr(sMul(...core)) : sN(1), t, s);
-  if (expA && !isZeroE(expA)) F = subsExpr(F, s, sSub(sV(s), expA));
-  for (let i = 0; i < tpow; i++) F = sNeg(diffExpr(F, s));
-  F = simplifyExpr(F);
-  return coef.length ? simplifyExpr(sMul(sMul(...coef), F)) : F;
-}
-/** Laplace transform table for a "core" factor (1, trig, hyperbolic, dirac, heaviside). */
-function laplaceCore(core: SymExpr, t: string, s: string): SymExpr {
-  const S = sV(s); core = simplifyExpr(core);
-  if (!symHasVar(core, t)) return sMul(core, sPow(S, sN(-1)));   // L{c} = c/s
-  if (core.t === 'fn' && core.args.length === 1) {
-    const lin = linearInT(core.args[0], t); const s2 = sMul(S, S);
-    if (lin && isZeroE(lin.b)) { const a = lin.a, a2 = sMul(a, a);
-      if (core.name === 'sin') return sDiv(a, sAdd(s2, a2));
-      if (core.name === 'cos') return sDiv(S, sAdd(s2, a2));
-      if (core.name === 'sinh') return sDiv(a, sSub(s2, a2));
-      if (core.name === 'cosh') return sDiv(S, sSub(s2, a2));
-    }
-    if (core.name === 'dirac' && lin && isZeroE(lin.b)) return sN(1);
-    if (core.name === 'heaviside' && lin && isZeroE(lin.b)) return sPow(S, sN(-1));
-  }
-  return sFn('laplace', core, sV(t), S);   // unevaluated
-}
-function laplaceExpr(e: SymExpr, t: string, s: string): SymExpr {
-  e = simplifyExpr(expandExpr(e));
-  if (e.t === 'add') return simplifyExpr(sAdd(...e.args.map((a) => laplaceTerm(a, t, s))));
-  return laplaceTerm(e, t, s);
-}
-
-/** Z-transform of a single product term. */
-function ztransTerm(e: SymExpr, n: string, z: string): SymExpr {
-  e = simplifyExpr(e);
-  const factors = e.t === 'mul' ? e.args : [e];
-  const coef: SymExpr[] = []; let npow = 0; let aBase: SymExpr | null = null; const core: SymExpr[] = [];
-  for (const f of factors) {
-    if (!symHasVar(f, n)) { coef.push(f); continue; }
-    if (f.t === 'v' && f.name === n) { npow += 1; continue; }
-    if (f.t === 'pow' && f.base.t === 'v' && f.base.name === n && f.exp.t === 'n' && Number.isInteger(f.exp.v) && f.exp.v > 0) { npow += f.exp.v; continue; }
-    if (f.t === 'pow' && !symHasVar(f.base, n)) { const lin = linearInT(f.exp, n); if (lin) { aBase = aBase ? simplifyExpr(sMul(aBase, sPow(f.base, lin.a))) : sPow(f.base, lin.a); if (!isZeroE(lin.b)) coef.push(sPow(f.base, lin.b)); continue; } }
-    if (f.t === 'fn' && f.name === 'exp' && f.args.length === 1) { const lin = linearInT(f.args[0], n); if (lin) { aBase = aBase ? simplifyExpr(sMul(aBase, sFn('exp', lin.a))) : sFn('exp', lin.a); if (!isZeroE(lin.b)) coef.push(sFn('exp', lin.b)); continue; } }
-    core.push(f);
-  }
-  let F = ztransCore(core.length ? simplifyExpr(sMul(...core)) : sN(1), n, z);
-  if (aBase && !isZeroE(sSub(aBase, sN(1)))) F = subsExpr(F, z, sDiv(sV(z), aBase));   // Z{aⁿf} = F(z/a)
-  for (let i = 0; i < npow; i++) F = sNeg(sMul(sV(z), diffExpr(F, z)));                 // Z{n·f} = -z F'(z)
-  F = simplifyExpr(F);
-  return coef.length ? simplifyExpr(sMul(sMul(...coef), F)) : F;
-}
-function ztransCore(core: SymExpr, n: string, z: string): SymExpr {
-  const Z = sV(z); core = simplifyExpr(core);
-  if (!symHasVar(core, n)) return sMul(core, sDiv(Z, sSub(Z, sN(1))));   // Z{c} = c·z/(z-1)
-  if (core.t === 'fn' && core.args.length === 1) {
-    const lin = linearInT(core.args[0], n);
-    if (lin && isZeroE(lin.b)) { const a = lin.a; const den = sAdd(sMul(Z, Z), sMul(sN(-2), Z, sFn('cos', a)), sN(1));
-      if (core.name === 'sin') return sDiv(sMul(Z, sFn('sin', a)), den);
-      if (core.name === 'cos') return sDiv(sMul(Z, sSub(Z, sFn('cos', a))), den);
-    }
-    if (core.name === 'kroneckerDelta' && lin && isZeroE(lin.b)) return sN(1);
-  }
-  return sFn('ztrans', core, sV(n), Z);
-}
-function ztransExpr(e: SymExpr, n: string, z: string): SymExpr {
-  e = simplifyExpr(expandExpr(e));
-  if (e.t === 'add') return simplifyExpr(sAdd(...e.args.map((a) => ztransTerm(a, n, z))));
-  return ztransTerm(e, n, z);
-}
-
-/** Complex Horner evaluation (coefficients highest-first). */
-function cPolyval(c: number[], xr: number, xi: number): [number, number] { let r = 0, i = 0; for (const cc of c) { const nr = r * xr - i * xi + cc, ni = r * xi + i * xr; r = nr; i = ni; } return [r, i]; }
-function polyDerivHi(c: number[]): number[] { const n = c.length - 1, d: number[] = []; for (let i = 0; i < n; i++) d.push(c[i] * (n - i)); return d.length ? d : [0]; }
-/** Taylor coefficients b_k = N^{(k)}(r)/k! by repeated synthetic division (coeffs highest-first). */
-function taylorAtReal(c: number[], r: number): number[] {
-  let work = c.slice(); const b: number[] = [];
-  while (work.length) { const out = [work[0]]; for (let i = 1; i < work.length; i++) out.push(work[i] + out[i - 1] * r); b.push(out[out.length - 1]); work = out.slice(0, out.length - 1); }
-  return b;
-}
-/** Partial-fraction inverse of a proper rational F(v)=num/den (numeric coeffs only). */
-function pfeInverse(F: SymExpr, v: string, mapReal: (A: number, r: number) => SymExpr, mapComplex: (p: number, q: number, ar: number, ai: number) => SymExpr, mapRepeated: ((A: number, r: number, pow: number) => SymExpr) | null): SymExpr | null {
-  const { num, den } = numDen(simplifyExpr(F));
-  if (symVars(num).some((x) => x !== v) || symVars(den).some((x) => x !== v)) return null;
-  const N = polyCoeffs(num, v).slice().reverse(), D = polyCoeffs(den, v).slice().reverse();   // highest-first
-  if (D.length < 2 || N.length >= D.length) return null;                                        // need proper rational
-  const roots = durandKerner(D); const used = new Array(roots.re.length).fill(false);
-  const groups: { re: number; im: number; mult: number }[] = [];
-  for (let i = 0; i < roots.re.length; i++) { if (used[i]) continue; const g = { re: roots.re[i], im: roots.im[i], mult: 1 }; used[i] = true; for (let j = i + 1; j < roots.re.length; j++) if (!used[j] && Math.hypot(roots.re[j] - g.re, roots.im[j] - g.im) < 1e-4) { used[j] = true; g.mult++; } groups.push(g); }
-  const lead = D[0]; const terms: SymExpr[] = [];
-  if (groups.every((g) => g.mult === 1)) {
-    const Dp = polyDerivHi(D);
-    for (const g of groups) {
-      const [nr, ni] = cPolyval(N, g.re, g.im); const [dr, di] = cPolyval(Dp, g.re, g.im); const dd = dr * dr + di * di;
-      const pr = (nr * dr + ni * di) / dd, pi = (ni * dr - nr * di) / dd;   // residue N/D'
-      if (Math.abs(g.im) < 1e-7) terms.push(mapReal(round0(pr), round0(g.re)));
-      else if (g.im > 0) terms.push(mapComplex(pr, pi, g.re, g.im));
-    }
-  } else if (groups.length === 1 && Math.abs(groups[0].im) < 1e-7 && mapRepeated) {
-    const r = groups[0].re, mlt = groups[0].mult, b = taylorAtReal(N, r);
-    for (let j = 0; j < mlt; j++) { const A = (b[j] ?? 0) / lead; if (Math.abs(A) > 1e-12) terms.push(mapRepeated(round0(A), round0(r), mlt - j)); }
-  } else return null;
-  return terms.length ? simplifyExpr(sAdd(...terms)) : sN(0);
-}
-function ilaplaceExpr(F: SymExpr, s: string, t: string): SymExpr {
-  const T = sV(t);
-  const expRT = (r: number): SymExpr => r === 0 ? sN(1) : sFn('exp', sMul(sN(r), T));
-  const res = pfeInverse(F, s,
-    (A, r) => sMul(sN(A), expRT(r)),
-    (p, q, ar, ai) => sMul(expRT(ar), sAdd(sMul(sN(2 * p), sFn('cos', sMul(sN(ai), T))), sMul(sN(-2 * q), sFn('sin', sMul(sN(ai), T))))),
-    (A, r, pow) => sMul(sN(A / factorialN(pow - 1)), pow > 1 ? sPow(T, sN(pow - 1)) : sN(1), expRT(r)));
-  return res ? simplifyExpr(res) : sFn('ilaplace', F, sV(s), T);
-}
-function iztransExpr(F: SymExpr, z: string, n: string): SymExpr {
-  const Nn = sV(n); const G = simplifyExpr(sMul(F, sPow(sV(z), sN(-1))));   // residues of F/z
-  const res = pfeInverse(G, z,
-    (A, r) => r === 0 ? sMul(sN(A), sFn('kroneckerDelta', Nn)) : sMul(sN(A), sPow(sN(r), Nn)),
-    (p, q, ar, ai) => { const rho = Math.hypot(ar, ai), th = Math.atan2(ai, ar); return sMul(sPow(sN(round0(rho)), Nn), sAdd(sMul(sN(2 * p), sFn('cos', sMul(sN(round0(th)), Nn))), sMul(sN(-2 * q), sFn('sin', sMul(sN(round0(th)), Nn))))); },
-    null);
-  return res ? simplifyExpr(res) : sFn('iztrans', F, sV(z), Nn);
-}
-
-/** Fourier transform F(w)=∫f(t)e^{-iwt}dt — small table; uses symbolic pi, 1i, dirac. */
-function fourierExpr(e: SymExpr, t: string, w: string): SymExpr {
-  e = simplifyExpr(expandExpr(e));
-  if (e.t === 'add') return simplifyExpr(sAdd(...e.args.map((a) => fourierTerm(a, t, w))));
-  return fourierTerm(e, t, w);
-}
-function fourierTerm(e: SymExpr, t: string, w: string): SymExpr {
-  const W = sV(w), PI = sV('pi'), I = sV('1i');
-  e = simplifyExpr(e);
-  if (!symHasVar(e, t)) return simplifyExpr(sMul(e, sN(2), PI, sFn('dirac', W)));   // c → 2πc·δ(w)
-  const factors = e.t === 'mul' ? e.args : [e];
-  const coef: SymExpr[] = []; let tpow = 0; const core: SymExpr[] = [];
-  for (const f of factors) {
-    if (!symHasVar(f, t)) { coef.push(f); continue; }
-    if (f.t === 'v' && f.name === t) { tpow += 1; continue; }
-    if (f.t === 'pow' && f.base.t === 'v' && f.base.name === t && f.exp.t === 'n' && Number.isInteger(f.exp.v) && f.exp.v > 0) { tpow += f.exp.v; continue; }
-    core.push(f);
-  }
-  let F = fourierCore(core.length ? simplifyExpr(sMul(...core)) : sN(1), t, w, W, PI, I);
-  for (let i = 0; i < tpow; i++) F = sMul(I, diffExpr(F, w));   // F{t·f} = i F'(w)
-  F = simplifyExpr(F);
-  return coef.length ? simplifyExpr(sMul(sMul(...coef), F)) : F;
-}
-function fourierCore(core: SymExpr, t: string, w: string, W: SymExpr, PI: SymExpr, I: SymExpr): SymExpr {
-  core = simplifyExpr(core);
-  if (!symHasVar(core, t)) return sMul(core, sN(2), PI, sFn('dirac', W));
-  if (core.t === 'fn' && core.args.length === 1) {
-    const lin = linearInT(core.args[0], t);
-    if (core.name === 'dirac' && lin && isZeroE(lin.b)) return sN(1);   // F{δ(t)} = 1
-    if (lin && isZeroE(lin.b)) { const a = lin.a; const dm = sFn('dirac', sSub(W, a)), dp = sFn('dirac', sAdd(W, a));
-      if (core.name === 'cos') return sMul(PI, sAdd(dm, dp));
-      if (core.name === 'sin') return sMul(sN(-1), I, PI, sSub(dm, dp));
-    }
-    if (core.name === 'exp') { const arg = simplifyExpr(core.args[0]);
-      // Gaussian exp(-a t²): coefficient of t² must be negative
-      const c2 = simplifyExpr(subsExpr(diffExpr(diffExpr(arg, t), t), t, sN(0)));   // 2·(t² coeff)
-      if (!symHasVar(c2, t) && c2.t === 'n' && c2.v < 0 && isZeroE(simplifyExpr(subsExpr(arg, t, sN(0)))) && isZeroE(simplifyExpr(subsExpr(diffExpr(arg, t), t, sN(0))))) {
-        const a = sN(-c2.v / 2);   // arg = -a t²
-        return sMul(sPow(sDiv(PI, a), sN(0.5)), sFn('exp', sDiv(sNeg(sMul(W, W)), sMul(sN(4), a))));
-      }
-    }
-  }
-  // exp(-a|t|) → 2a/(a²+w²)
-  if (core.t === 'mul' || (core.t === 'fn' && core.name === 'exp')) {
-    const ex = core.t === 'fn' ? core : null;
-    if (ex && ex.name === 'exp' && ex.args[0].t === 'mul') { const ab = ex.args[0].args; const absF = ab.find((x) => x.t === 'fn' && x.name === 'abs' && x.args[0].t === 'v' && x.args[0].name === t); if (absF) { const rest = ab.filter((x) => x !== absF); const aNeg = simplifyExpr(rest.length ? sMul(...rest) : sN(1)); const a = simplifyExpr(sNeg(aNeg)); if (!symHasVar(a, t)) return sDiv(sMul(sN(2), a), sAdd(sMul(a, a), sMul(W, W))); } }
-  }
-  return sFn('fourier', core, sV(t), W);
-}
-function ifourierExpr(F: SymExpr, w: string, t: string): SymExpr {
-  F = simplifyExpr(expandExpr(F));
-  if (F.t === 'add') return simplifyExpr(sAdd(...F.args.map((a) => ifourierTerm(a, w, t))));
-  return ifourierTerm(F, w, t);
-}
-function ifourierTerm(F: SymExpr, w: string, t: string): SymExpr {
-  const T = sV(t), PI = sV('pi');
-  F = simplifyExpr(F);
-  if (!symHasVar(F, w)) return simplifyExpr(sMul(F, sFn('dirac', T)));   // c → c·δ(t)
-  const factors = F.t === 'mul' ? F.args : [F];
-  const coef: SymExpr[] = []; const core: SymExpr[] = [];
-  for (const f of factors) { if (!symHasVar(f, w)) coef.push(f); else core.push(f); }
-  const c = core.length ? simplifyExpr(sMul(...core)) : sN(1);
-  let R: SymExpr | null = null;
-  if (c.t === 'fn' && c.name === 'dirac') { const lin = linearInT(c.args[0], w); if (lin && isZeroE(lin.b)) R = sDiv(sN(1), sMul(sN(2), PI)); }   // δ(w) → 1/(2π)
-  // 1/(w²+a²) → (π/a)·e^{-a|t|}
-  if (!R) { const { num, den } = numDen(c); if (!symHasVar(num, w)) { const dc = polyCoeffs(den, w); if (dc.length === 3 && Math.abs(dc[2] - 1) < 1e-12 && Math.abs(dc[1]) < 1e-12 && dc[0] > 0) { const a = Math.sqrt(dc[0]); R = sMul(sDiv(PI, sN(a)), sFn('exp', sMul(sN(-a), sFn('abs', T))), sPow(num as SymExpr, sN(1))); } } }
-  if (!R) return sFn('ifourier', F, sV(w), T);
-  return coef.length ? simplifyExpr(sMul(sMul(...coef), R)) : simplifyExpr(R);
-}
 
 // ── Quantum computing ──────────────────────────────────────────────────
 function qArg(v: Value, name = 'argument'): Quantum { if (!isQuantum(v)) throw new MatError(`${name}: expected a quantum object`); return v; }

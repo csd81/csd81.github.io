@@ -1,0 +1,85 @@
+/**
+ * Pure symbolic-math builtins (Symbolic Math Toolbox). Kept separate from the
+ * numeric builtins in `builtins.ts` because the symbolic and numeric worlds do
+ * different things under names that MATLAB overloads. Polymorphic functions that
+ * dispatch on numeric-vs-symbolic input (diff, det, inv, gradient, solve,
+ * simplify, logical, curl, divergence, laplacian, compose) stay in `builtins.ts`.
+ */
+import type { Builtin, Env } from './builtins';
+import {
+  type Value, type Mat, type Sym, isSym, isStr, isMat,
+  makeSym, makeCell, str, scalar, zeros, rowVec, colVec, toArray, elementwise,
+  asString, asScalar, toMat as m,
+} from './values';
+import {
+  type SymExpr, sN, sV, sAdd, sNeg, sMul, sPow, sFn,
+  simplifyExpr, diffExpr, subsExpr, evalExpr as symEval, exprToStr, symVars,
+} from './sym';
+import {
+  symArg, symToExpr, symVarsOf, symNames, transformVars, integrate, limitAt,
+  solveExpr, expandExpr, polyCoeffs, numDen,
+  laplaceExpr, ilaplaceExpr, ztransExpr, iztransExpr, fourierExpr, ifourierExpr,
+} from './sym-ops';
+
+const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
+
+export const SYM_BUILTINS: Record<string, Builtin> = {
+  polynomialDegree: async (a) => { const s = symArg(a[0]); const v = a.length >= 2 ? (isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1])) : (symVarsOf(s)[0] ?? 'x'); const c = polyCoeffs(s.exprs[0], v); let d = 0; for (let i = 0; i < c.length; i++) if (Math.abs(c[i]) > 1e-12) d = i; return ret(scalar(d)); },
+  quorem: async (a, n) => { const A = m(a[0]), B = m(a[1]); const Q = elementwise(A, B, (x, y) => Math.floor(x / y)); const R = elementwise(A, B, (x, y) => x - Math.floor(x / y) * y); return n >= 2 ? [Q, R] : [Q]; },
+  sym: async (a) => {
+    if (isSym(a[0])) return ret(a[0]);
+    if (isStr(a[0]) || (isMat(a[0]) && (a[0] as Mat).isChar)) { const t = asString(a[0]).trim(); const num = Number(t); return ret(makeSym(1, 1, [Number.isFinite(num) && /^[-\d.]+$/.test(t) ? sN(num) : sV(t)])); }
+    const M = m(a[0]); return ret(makeSym(M.rows, M.cols, Array.from(M.data, (x) => sN(x))));
+  },
+  syms: async () => [],   // handled specially in interp (assigns symbolic variables)
+  int: async (a) => {
+    const s = symArg(a[0]); const varGiven = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar) || (isSym(a[1]) && symVars(a[1].exprs[0]).length));
+    const v = varGiven ? (isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1])) : (symVarsOf(s)[0] ?? 'x');
+    const F = s.exprs.map((e) => integrate(e, v));
+    // limits: int(f,x,a,b) (4-arg) or int(f,a,b) (3-arg, default var)
+    let lim: [Value, Value] | null = null;
+    if (a.length >= 4 && varGiven) lim = [a[2], a[3]]; else if (a.length >= 3 && !varGiven) lim = [a[1], a[2]];
+    if (lim) { const lo = symToExpr(lim[0]), hi = symToExpr(lim[1]); return ret(makeSym(s.rows, s.cols, F.map((Fe) => { const d = simplifyExpr(sAdd(subsExpr(Fe, v, hi), sNeg(subsExpr(Fe, v, lo)))); const num = symEval(d, new Map()); return Number.isFinite(num) ? sN(num) : d; }))); }
+    return ret(makeSym(s.rows, s.cols, F.map(simplifyExpr)));
+  },
+  limit: async (a) => { const s = symArg(a[0]); const v = a.length >= 3 ? asString(a[1]) : (symVarsOf(s)[0] ?? 'x'); const pt = symToExpr(a[a.length - 1]); const exprs = s.exprs.map((e) => limitAt(e, v, pt)); return ret(makeSym(s.rows, s.cols, exprs)); },
+  jacobian: async (a) => { const s = symArg(a[0]); const vars = a.length >= 2 ? symNames(a[1]) : symVarsOf(s); const J: SymExpr[] = []; const nf = s.exprs.length; for (let c = 0; c < vars.length; c++) for (let r = 0; r < nf; r++) J[r + c * nf] = simplifyExpr(diffExpr(s.exprs[r], vars[c])); return ret(makeSym(nf, vars.length, J)); },
+  hessian: async (a) => { const s = symArg(a[0]); const vars = a.length >= 2 ? symNames(a[1]) : symVarsOf(s); const nv = vars.length; const H: SymExpr[] = []; for (let i = 0; i < nv; i++) for (let j = 0; j < nv; j++) H[i + j * nv] = simplifyExpr(diffExpr(diffExpr(s.exprs[0], vars[i]), vars[j])); return ret(makeSym(nv, nv, H)); },
+  taylor: async (a) => { const s = symArg(a[0]); const v = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar)) ? asString(a[1]) : (symVarsOf(s)[0] ?? 'x'); const ord = 6; let term = s.exprs[0]; let acc: SymExpr = sN(0); let fact = 1; for (let k = 0; k < ord; k++) { const c = symEval(term, new Map([[v, 0]])); if (Number.isFinite(c)) acc = sAdd(acc, sMul(sN(c / fact), sPow(sV(v), sN(k)))); term = diffExpr(term, v); fact *= (k + 1); } return ret(makeSym(1, 1, [simplifyExpr(acc)])); },
+  expand: async (a) => { const s = symArg(a[0]); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => simplifyExpr(expandExpr(e))))); },
+  subs: async (a) => { const s = symArg(a[0]); const vn = a.length >= 3 ? (isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1])) : (symVarsOf(s)[0] ?? 'x'); const repl = symToExpr(a[a.length - 1]); const exprs = s.exprs.map((e) => simplifyExpr(subsExpr(e, vn, repl))); const out = makeSym(s.rows, s.cols, exprs); if (out.exprs.every((e) => symVars(e).length === 0)) { const M = zeros(s.rows, s.cols); out.exprs.forEach((e, i) => { M.data[i] = symEval(e, new Map()); }); return ret(M); } return ret(out); },
+  vpa: async (a) => { const s = symArg(a[0]); const M = zeros(s.rows, s.cols); let allNum = true; s.exprs.forEach((e, i) => { const v = symEval(e, new Map()); M.data[i] = v; if (!Number.isFinite(v)) allNum = false; }); return ret(allNum ? M : a[0]); },
+  latex: async (a) => ret(str(symArg(a[0]).exprs.map(exprToStr).join(', '))),
+  pretty: async (a, _n, env) => { env.output(symArg(a[0]).exprs.map(exprToStr).join('\n') + '\n'); return []; },
+  isAlways: async (a) => { const s = symArg(a[0]); const o = zeros(s.rows, s.cols); o.isBool = true; s.exprs.forEach((e, i) => { o.data[i] = Math.abs(symEval(e, new Map())) < 1e-12 ? 1 : 0; }); return ret(o); },
+  potential: async (a) => { const F = symArg(a[0]).exprs; const v = symNames(a[1]); return ret(makeSym(1, 1, [simplifyExpr(integrate(F[0], v[0]))])); },
+  coeffs: async (a, n) => { const s = symArg(a[0]); const v = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar) || isSym(a[1])) ? (isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1])) : (symVarsOf(s)[0] ?? 'x'); const c = polyCoeffs(s.exprs[0], v); const nz = c.map((cc, i) => [cc, i] as [number, number]).filter(([cc]) => Math.abs(cc) > 1e-12); return n >= 2 ? [makeSym(1, nz.length, nz.map(([cc]) => sN(cc))), makeSym(1, nz.length, nz.map(([, i]) => i === 0 ? sN(1) : sPow(sV(v), sN(i))))] : [makeSym(1, nz.length, nz.map(([cc]) => sN(cc)))]; },
+  sym2poly: async (a) => { const s = symArg(a[0]); const v = symVarsOf(s)[0] ?? 'x'; return ret(rowVec(polyCoeffs(s.exprs[0], v).slice().reverse())); },
+  poly2sym: async (a) => { const c = toArray(m(a[0])); const v = a.length >= 2 ? (isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1])) : 'x'; let e: SymExpr = sN(0); const d = c.length - 1; c.forEach((ci, i) => { e = sAdd(e, sMul(sN(ci), sPow(sV(v), sN(d - i)))); }); return ret(makeSym(1, 1, [simplifyExpr(e)])); },
+  numden: async (a, n) => { const s = symArg(a[0]); const { num, den } = numDen(s.exprs[0]); return n >= 2 ? [makeSym(1, 1, [simplifyExpr(num)]), makeSym(1, 1, [simplifyExpr(den)])] : [makeSym(1, 1, [simplifyExpr(num)])]; },
+  collect: async (a) => { const s = symArg(a[0]); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => simplifyExpr(expandExpr(e))))); },
+  laplace: async (a) => { const { s, indep, trans } = transformVars(a, 't', 's'); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => laplaceExpr(e, indep, trans)))); },
+  ilaplace: async (a) => { const { s, indep, trans } = transformVars(a, 's', 't'); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => ilaplaceExpr(e, indep, trans)))); },
+  ztrans: async (a) => { const { s, indep, trans } = transformVars(a, 'n', 'z'); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => ztransExpr(e, indep, trans)))); },
+  iztrans: async (a) => { const { s, indep, trans } = transformVars(a, 'z', 'n'); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => iztransExpr(e, indep, trans)))); },
+  fourier: async (a) => { const { s, indep, trans } = transformVars(a, 't', 'w'); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => fourierExpr(e, indep, trans)))); },
+  ifourier: async (a) => { const { s, indep, trans } = transformVars(a, 'w', 't'); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => ifourierExpr(e, indep, trans)))); },
+  combine: async (a) => { const s = symArg(a[0]); return ret(makeSym(s.rows, s.cols, s.exprs.map(simplifyExpr))); },
+  simplifyFraction: async (a) => { const s = symArg(a[0]); return ret(makeSym(s.rows, s.cols, s.exprs.map(simplifyExpr))); },
+  horner: async (a) => ret(symArg(a[0])),
+  children: async (a) => { const e = symArg(a[0]).exprs[0]; const kids = e.t === 'add' || e.t === 'mul' || e.t === 'fn' ? e.args : e.t === 'pow' ? [e.base, e.exp] : [e]; return ret(makeCell(1, kids.length, kids.map((k) => makeSym(1, 1, [k])))); },
+  lhs: async (a) => ret(symArg(a[0])),
+  rhs: async () => ret(makeSym(1, 1, [sN(0)])),
+  vpasolve: async (a) => { const s = symArg(a[0]); const v = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar) || isSym(a[1])) ? (isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1])) : (symVarsOf(s)[0] ?? 'x'); const re = solveExpr(s.exprs[0], v).map((r) => symEval(r, new Map())); return ret(colVec(re.filter(Number.isFinite))); },
+  finverse: async (a) => { const s = symArg(a[0]); const v = symVarsOf(s)[0] ?? 'x'; const roots = solveExpr(sAdd(s.exprs[0], sNeg(sV('y'))), v); return ret(makeSym(1, 1, [roots[0] ? simplifyExpr(subsExpr(roots[0], 'y', sV(v))) : sFn('finverse', s.exprs[0])])); },
+  isolate: async (a) => { const s = symArg(a[0]); const v = a.length >= 2 ? (isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1])) : (symVarsOf(s)[0] ?? 'x'); const roots = solveExpr(s.exprs[0], v); return ret(makeSym(1, 1, [roots[0] ?? s.exprs[0]])); },
+  equationsToMatrix: async (a, n) => {
+    const eqs = symArg(a[0]); const vars = symNames(a[1]); const ne = eqs.exprs.length, nv = vars.length;
+    const A = zeros(ne, nv), b = zeros(ne, 1);
+    for (let i = 0; i < ne; i++) { const e = eqs.exprs[i]; const env0 = new Map(vars.map((vn) => [vn, 0])); const c0 = symEval(e, env0); b.data[i] = -c0; for (let j = 0; j < nv; j++) { const env1 = new Map(env0); env1.set(vars[j], 1); A.data[i + j * ne] = symEval(e, env1) - c0; } }
+    return n >= 2 ? [A, b] : [A];
+  },
+  symsum: async (a) => { const s = symArg(a[0]); const k = isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1]); const lo = Math.round(asScalar(a[2])), hi = Math.round(asScalar(a[3])); let acc: SymExpr = sN(0); for (let i = lo; i <= hi; i++) acc = sAdd(acc, subsExpr(s.exprs[0], k, sN(i))); return ret(makeSym(1, 1, [simplifyExpr(acc)])); },
+  symprod: async (a) => { const s = symArg(a[0]); const k = isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1]); const lo = Math.round(asScalar(a[2])), hi = Math.round(asScalar(a[3])); let acc: SymExpr = sN(1); for (let i = lo; i <= hi; i++) acc = sMul(acc, subsExpr(s.exprs[0], k, sN(i))); return ret(makeSym(1, 1, [simplifyExpr(acc)])); },
+  assume: async () => [], assumeAlso: async () => [], assumptions: async () => ret(makeSym(0, 0, [])), sympref: async () => [], digits: async () => ret(scalar(32)),
+};
