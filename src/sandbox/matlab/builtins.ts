@@ -592,6 +592,58 @@ export const BUILTINS: Record<string, Builtin> = {
   sprand: async (a) => { const [r, c] = dims2(a); const o = zeros(r, c); for (let i = 0; i < o.data.length; i++) o.data[i] = Math.random(); return ret(o); },
   sprandn: async (a) => { const [r, c] = dims2(a); const o = zeros(r, c); for (let i = 0; i < o.data.length; i++) { const u = Math.random() || 1e-12; o.data[i] = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * Math.random()); } return ret(o); },
   spdiags: async (a) => { const B = m(a[0]); const d = toArray(m(a[1])).map((x) => Math.round(x)); const mm = Math.round(asScalar(a[2])), nn = Math.round(asScalar(a[3])); const o = zeros(mm, nn); for (let di = 0; di < d.length; di++) { const diag = d[di]; for (let r = 0; r < mm; r++) { const c = r + diag; if (c >= 0 && c < nn) o.data[r + c * mm] = B.data[Math.min(r, B.rows - 1) + di * B.rows]; } } return ret(o); },
+  // ── more scalar math / reductions ──
+  cbrt: ew(Math.cbrt),
+  sinc: ew((x) => (x === 0 ? 1 : Math.sin(Math.PI * x) / (Math.PI * x))),
+  sumsq: async (a) => ret(colReduce(m(a[0]), (c) => c.reduce((s, x) => s + x * x, 0))),
+  range: async (a) => ret(colReduce(m(a[0]), (c) => Math.max(...c) - Math.min(...c))),
+  zscore: async (a) => ret(colMap(m(a[0]), (c) => normalizeVec(c, 'zscore'))),
+  center: async (a) => ret(colMap(m(a[0]), (c) => normalizeVec(c, 'center'))),
+  meansq: async (a) => ret(colReduce(m(a[0]), (c) => c.reduce((s, x) => s + x * x, 0) / c.length)),
+  issorted: async (a) => { const v = toArray(m(a[0])); let ok = true; for (let i = 1; i < v.length; i++) if (v[i] < v[i - 1]) { ok = false; break; } return ret(bool(ok)); },
+  normest: async (a) => ret(scalar(norm(m(a[0]), 2))),
+  // ── type predicates ──
+  islogical: async (a) => ret(bool(isMat(a[0]) && !!(a[0] as Mat).isBool)),
+  isinteger: async () => ret(bool(false)),
+  issquare: async (a) => { const A = m(a[0]); return ret(bool(A.rows === A.cols)); },
+  // ── nonlinear system + iterative solvers (dense direct fallback) ──
+  fsolve: async (a, _n, env) => {
+    const f = handle(a[0], 'fsolve'); let x = toArray(m(a[1])); const n = x.length;
+    const F = async (v: number[]) => { const r = await env.callHandle(f, [m(a[1]).rows === 1 ? rowVec(v) : colVec(v)], 1); return toArray(m(r[0])); };
+    for (let it = 0; it < 100; it++) {
+      const fx = await F(x); if (Math.hypot(...fx) < 1e-12) break;
+      const J = zeros(n, n); const h = 1e-7;
+      for (let j = 0; j < n; j++) { const xj = x.slice(); xj[j] += h; const fj = await F(xj); for (let i = 0; i < n; i++) J.data[i + j * n] = (fj[i] - fx[i]) / h; }
+      const dx = mldivide(J, colVec(fx)); for (let i = 0; i < n; i++) x[i] -= dx.data[i];
+    }
+    return ret(m(a[1]).rows === 1 ? rowVec(x) : colVec(x));
+  },
+  bicg: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
+  bicgstab: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
+  cgs: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
+  gmres: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
+  pcg: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
+  // ── string functions (operate on char arrays) ──
+  lower: async (a) => ret(str(asString(a[0]).toLowerCase())),
+  upper: async (a) => ret(str(asString(a[0]).toUpperCase())),
+  strtrim: async (a) => ret(str(asString(a[0]).trim())),
+  deblank: async (a) => ret(str(asString(a[0]).replace(/\s+$/, ''))),
+  strcmp: async (a) => ret(bool(getStr(a[0]) !== null && getStr(a[0]) === getStr(a[1]))),
+  strcmpi: async (a) => { const x = getStr(a[0]), y = getStr(a[1]); return ret(bool(x !== null && y !== null && x.toLowerCase() === y.toLowerCase())); },
+  strncmp: async (a) => { const x = getStr(a[0]), y = getStr(a[1]); const k = Math.round(asScalar(a[2])); return ret(bool(x !== null && y !== null && x.slice(0, k) === y.slice(0, k) && x.length >= k && y.length >= k)); },
+  strncmpi: async (a) => { const x = getStr(a[0]), y = getStr(a[1]); const k = Math.round(asScalar(a[2])); return ret(bool(x !== null && y !== null && x.slice(0, k).toLowerCase() === y.slice(0, k).toLowerCase() && x.length >= k && y.length >= k)); },
+  strrep: async (a) => ret(str(asString(a[0]).split(asString(a[1])).join(asString(a[2])))),
+  strcat: async (a) => ret(str(a.map((v) => (isMat(v) && (v as Mat).isChar ? asString(v).replace(/\s+$/, '') : asString(v))).join(''))),
+  strfind: async (a) => { const s = asString(a[0]), p = asString(a[1]); const out: number[] = []; if (p.length) { let i = s.indexOf(p); while (i >= 0) { out.push(i + 1); i = s.indexOf(p, i + 1); } } return ret(rowVec(out)); },
+  strtok: async (a, n) => { const s = asString(a[0]); const delim = a.length >= 2 ? asString(a[1]) : ' \t\n'; let i = 0; while (i < s.length && delim.includes(s[i])) i++; let j = i; while (j < s.length && !delim.includes(s[j])) j++; return n >= 2 ? [str(s.slice(i, j)), str(s.slice(j))] : [str(s.slice(i, j))]; },
+  regexprep: async (a) => { try { return ret(str(asString(a[0]).replace(new RegExp(asString(a[1]), 'g'), asString(a[2]).replace(/\$(\d)/g, '$$$1')))); } catch { return ret(a[0]); } },
+  // ── base conversions ──
+  dec2bin: async (a) => { const d = Math.round(asScalar(a[0])); let s2 = (d >>> 0).toString(2); if (a.length >= 2) s2 = s2.padStart(Math.round(asScalar(a[1])), '0'); return ret(str(s2)); },
+  bin2dec: async (a) => ret(scalar(parseInt(asString(a[0]).replace(/\s/g, ''), 2))),
+  dec2hex: async (a) => { const d = Math.round(asScalar(a[0])); let s2 = d.toString(16).toUpperCase(); if (a.length >= 2) s2 = s2.padStart(Math.round(asScalar(a[1])), '0'); return ret(str(s2)); },
+  hex2dec: async (a) => ret(scalar(parseInt(asString(a[0]).replace(/\s/g, ''), 16))),
+  dec2base: async (a) => { const d = Math.round(asScalar(a[0])); const b = Math.round(asScalar(a[1])); let s2 = d.toString(b).toUpperCase(); if (a.length >= 3) s2 = s2.padStart(Math.round(asScalar(a[2])), '0'); return ret(str(s2)); },
+  base2dec: async (a) => ret(scalar(parseInt(asString(a[0]).replace(/\s/g, ''), Math.round(asScalar(a[1]))))),
 
   // ── Numerical methods (real-valued) ──
   trapz: async (a) => {
@@ -1273,6 +1325,9 @@ function betainc(x: number, a: number, b: number): number {
   };
   return x < (a + 1) / (a + b + 2) ? bt * cf(x, a, b) / a : 1 - bt * cf(1 - x, b, a) / b;
 }
+
+// ── String helper ─────────────────────────────────────────────────────────
+function getStr(v: Value): string | null { if (isMat(v) && v.isChar) return asString(v); if (isMat(v) && numel(v) === 0) return ''; return null; }
 
 // ── Set / conversion helpers ──────────────────────────────────────────────
 function setUniq(arr: number[]): number[] { const s = new Set<number>(); const o: number[] = []; for (const x of arr) if (!s.has(x)) { s.add(x); o.push(x); } return o.sort((a, b) => a - b); }
