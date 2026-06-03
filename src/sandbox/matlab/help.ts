@@ -804,11 +804,35 @@ const BASE_REF = new Set<string>((
  *  (the plain ref/<name>.html 404s for these). */
 const DOUBLE_REF = new Set<string>('min max mink maxk'.split(/\s+/));
 
+/** Symbolic-Math-Toolbox-primary functions: documented at /help/symbolic/<name>.html,
+ *  NOT /help/matlab/ref/ (which 404s for e.g. `sym`). Checked before BASE_REF so the
+ *  symbolic-only names that also linger in BASE_REF are corrected. Overloaded functions
+ *  (sin/diff/factor/det/… — which have *both* a /ref/ and a /symbolic/ page) are left out
+ *  on purpose: they keep the numeric (double) reference page. */
+const SYM_REF = new Set<string>((
+  // CAS core + formula manipulation
+  'sym syms symfun str2sym symvar children formula argnames has sympref digits isAlways ' +
+  'vpa vpasolve solve eliminate isolate finverse equationsToMatrix subs simplify simplifyFraction ' +
+  'expand collect combine compose horner numden coeffs poly2sym sym2poly lhs rhs latex pretty ' +
+  'int limit taylor symsum symprod jacobian hessian laplacian potential charpoly ' +
+  'assume assumeAlso assumptions partfrac polynomialDegree quorem divisors frac adjoint bernsteinMatrix ' +
+  // integral transforms
+  'laplace ilaplace ztrans iztrans fourier ifourier htrans ihtrans ' +
+  // special functions (symbolic toolbox)
+  'chebyshevT chebyshevU hermiteH legendreP laguerreL jacobiP gegenbauerC bernoulli euler ' +
+  'dilog polylog hurwitzZeta zeta dawson fresnelc fresnels erfi ei logint sinhint coshint sinint cosint ssinint ' +
+  'wrightOmega igamma pochhammer lambertw kroneckerDelta rectangularPulse triangularPulse signIm ' +
+  'eulergamma catalan ellipticK ellipticE ellipticF ellipticCK ellipticCE dirac heaviside ' +
+  // number theory (symbolic toolbox)
+  'fibonacci harmonic nextprime nthprime prevprime eulerPhi factorIntegerPower isPrimitiveRoot jacobiSymbol powermod'
+).split(/\s+/));
+
 export function docUrl(name: string): string {
   const low = name.toLowerCase();
   // Direct reference page for base functions; doc-search for toolbox/aliases
   // (prctile/quantile/iqr → Statistics; xcorr/xcov → Signal; etc. would 404 under ref/).
   if (DOUBLE_REF.has(low)) return `https://www.mathworks.com/help/matlab/ref/double.${low}.html`;
+  if (SYM_REF.has(name)) return `https://www.mathworks.com/help/symbolic/${low}.html`;
   return BASE_REF.has(name)
     ? `https://www.mathworks.com/help/matlab/ref/${low}.html`
     : `https://www.mathworks.com/support/search.html?q=${encodeURIComponent(name)}`;
