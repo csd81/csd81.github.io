@@ -2,9 +2,13 @@
 import {
   type Value, type Mat, type Handle, MatError, isMat, isHandle,
   mat, zeros, scalar, bool, str, rowVec, colVec, fromRows, numel, isScalar, isEmpty,
-  asScalar, asString, map, elementwise, transpose, horzcat, vertcat, toArray,
+  asScalar, asString, map, elementwise, matmul, transpose, horzcat, vertcat, toArray,
 } from './values';
-import { det, inv, mldivide, diag, norm, eye } from './linalg';
+import {
+  det, inv, mldivide, diag, norm, eye,
+  qr as qrDecomp, chol as cholFn, luOutputs, jacobiEigSym, svd as svdReal,
+  rankOf, cond as condFn, pinv as pinvFn, orth as orthFn, nullspace, rref as rrefFn, vecnorm as vecnormFn, isSymmetric,
+} from './linalg';
 import { dispValue, sprintf } from './format';
 import type { Graphics } from './graphics';
 
@@ -339,6 +343,73 @@ export const BUILTINS: Record<string, Builtin> = {
   trace: async (a) => { const A = m(a[0]); let s = 0; const n = Math.min(A.rows, A.cols); for (let i = 0; i < n; i++) s += A.data[i + i * A.rows]; return ret(scalar(s)); },
   transpose: async (a) => ret(transpose(m(a[0]))),
   dot: async (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])); let s = 0; for (let i = 0; i < x.length; i++) s += x[i] * y[i]; return ret(scalar(s)); },
+  cross: async (a) => {
+    const x = toArray(m(a[0])), y = toArray(m(a[1]));
+    if (x.length !== 3 || y.length !== 3) throw new MatError('cross: inputs must be 3-element vectors');
+    const out = [x[1] * y[2] - x[2] * y[1], x[2] * y[0] - x[0] * y[2], x[0] * y[1] - x[1] * y[0]];
+    return ret(m(a[0]).cols === 1 ? colVec(out) : rowVec(out));
+  },
+  kron: async (a) => {
+    const A = m(a[0]), B = m(a[1]); const o = zeros(A.rows * B.rows, A.cols * B.cols);
+    for (let ar = 0; ar < A.rows; ar++) for (let ac = 0; ac < A.cols; ac++) { const av = A.data[ar + ac * A.rows]; for (let br = 0; br < B.rows; br++) for (let bc = 0; bc < B.cols; bc++) o.data[(ar * B.rows + br) + (ac * B.cols + bc) * o.rows] = av * B.data[br + bc * B.rows]; }
+    return ret(o);
+  },
+  tril: async (a) => { const A = m(a[0]); const k = a.length >= 2 ? Math.round(asScalar(a[1])) : 0; const o = zeros(A.rows, A.cols); for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) if (c - r <= k) o.data[r + c * A.rows] = A.data[r + c * A.rows]; o.isChar = A.isChar; return ret(o); },
+  triu: async (a) => { const A = m(a[0]); const k = a.length >= 2 ? Math.round(asScalar(a[1])) : 0; const o = zeros(A.rows, A.cols); for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) if (c - r >= k) o.data[r + c * A.rows] = A.data[r + c * A.rows]; o.isChar = A.isChar; return ret(o); },
+  linsolve: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
+  mrdivide: async (a) => ret(transpose(mldivide(transpose(m(a[1])), transpose(m(a[0]))))),
+  pinv: async (a) => ret(pinvFn(m(a[0]))),
+  rank: async (a) => ret(scalar(rankOf(m(a[0]), a.length >= 2 ? asScalar(a[1]) : undefined))),
+  rref: async (a) => ret(rrefFn(m(a[0]))),
+  cond: async (a) => ret(scalar(condFn(m(a[0])))),
+  rcond: async (a) => { const c = condFn(m(a[0])); return ret(scalar(c === Infinity ? 0 : 1 / c)); },
+  orth: async (a) => ret(orthFn(m(a[0]))),
+  null: async (a) => ret(nullspace(m(a[0]))),
+  vecnorm: async (a) => {
+    const p = a.length >= 2 ? asScalar(a[1]) : 2; const dim = a.length >= 3 ? Math.round(asScalar(a[2])) : 1;
+    return ret(vecnormFn(m(a[0]), p === Infinity ? 'inf' : p, dim));
+  },
+  chol: async (a) => ret(cholFn(m(a[0]))),
+  qr: async (a, n) => { const { Q, R } = qrDecomp(m(a[0])); return n >= 2 ? [Q, R] : [R]; },
+  lu: async (a, n) => {
+    const { L, U, P } = luOutputs(m(a[0]));
+    if (n >= 3) return [L, U, P];
+    return [matmul(transpose(P), L), U]; // [L,U] with A = L*U (psychologically-lower L)
+  },
+  svd: async (a, n) => {
+    const A = m(a[0]); const { U, s, V } = svdReal(A);
+    if (n >= 3) { const S = zeros(A.rows, A.cols); for (let i = 0; i < Math.min(A.rows, A.cols); i++) S.data[i + i * A.rows] = s[i] ?? 0; return [U, S, V]; }
+    return [colVec(s)];
+  },
+  eig: async (a, n) => {
+    const A = m(a[0]);
+    if (!isSymmetric(A)) throw new MatError('eig: only symmetric real matrices are supported (complex eigenvalues are deferred)');
+    const { values, V } = jacobiEigSym(A);
+    const order = values.map((_, i) => i).sort((i, j) => values[i] - values[j]); // ascending
+    const ev = order.map((i) => values[i]);
+    if (n >= 2) {
+      const Vs = zeros(A.rows, A.rows); order.forEach((src, dst) => { for (let r = 0; r < A.rows; r++) Vs.data[r + dst * A.rows] = V.data[r + src * A.rows]; });
+      const D = zeros(A.rows, A.rows); ev.forEach((v, i) => { D.data[i + i * A.rows] = v; });
+      return [Vs, D];
+    }
+    return [colVec(ev)];
+  },
+  // structure predicates
+  issymmetric: async (a) => ret(bool(isSymmetric(m(a[0])))),
+  ishermitian: async (a) => ret(bool(isSymmetric(m(a[0])))),
+  isdiag: async (a) => { const A = m(a[0]); for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) if (r !== c && A.data[r + c * A.rows] !== 0) return ret(bool(false)); return ret(bool(true)); },
+  istriu: async (a) => { const A = m(a[0]); for (let c = 0; c < A.cols; c++) for (let r = c + 1; r < A.rows; r++) if (A.data[r + c * A.rows] !== 0) return ret(bool(false)); return ret(bool(true)); },
+  istril: async (a) => { const A = m(a[0]); for (let r = 0; r < A.rows; r++) for (let c = r + 1; c < A.cols; c++) if (A.data[r + c * A.rows] !== 0) return ret(bool(false)); return ret(bool(true)); },
+  bandwidth: async (a, n) => {
+    const A = m(a[0]); let lower = 0, upper = 0;
+    for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) if (A.data[r + c * A.rows] !== 0) { if (r > c) lower = Math.max(lower, r - c); else if (c > r) upper = Math.max(upper, c - r); }
+    return n >= 2 ? [scalar(lower), scalar(upper)] : [scalar(lower)];
+  },
+  isbanded: async (a) => {
+    const A = m(a[0]); const lo = Math.round(asScalar(a[1])); const up = Math.round(asScalar(a[2]));
+    for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) if (A.data[r + c * A.rows] !== 0 && (r - c > lo || c - r > up)) return ret(bool(false));
+    return ret(bool(true));
+  },
 
   // strings / conversion
   num2str: async (a) => ret(str(isScalar(m(a[0])) ? trimNum(asScalar(a[0])) : matToStr(m(a[0])))),
@@ -540,6 +611,27 @@ const HELP: Record<string, HelpEntry> = {
   isvector: { summary: 'Determine whether input is a vector', syntax: ['tf = isvector(X)'], seealso: ['isrow', 'iscolumn', 'isscalar'] },
   isrow: { summary: 'Determine if input is a row vector', syntax: ['tf = isrow(X)'], seealso: ['iscolumn', 'isvector'] },
   iscolumn: { summary: 'Determine if input is a column vector', syntax: ['tf = iscolumn(X)'], seealso: ['isrow', 'isvector'] },
+  linsolve: { summary: 'Solve the linear system A*X = B', syntax: ['X = linsolve(A,B)'], seealso: ['mldivide', 'inv', 'lu'] },
+  mrdivide: { summary: 'Solve x*A = B (right division)', syntax: ['X = mrdivide(B,A)', 'X = B/A'], seealso: ['mldivide', 'inv'] },
+  pinv: { summary: 'Moore-Penrose pseudoinverse', syntax: ['B = pinv(A)'], seealso: ['inv', 'svd', 'mldivide'] },
+  kron: { summary: 'Kronecker tensor product', syntax: ['K = kron(A,B)'], seealso: ['repmat'] },
+  cross: { summary: 'Cross product of two 3-vectors', syntax: ['c = cross(a,b)'], seealso: ['dot'] },
+  tril: { summary: 'Lower triangular part of a matrix', syntax: ['L = tril(A)', 'L = tril(A,k)'], seealso: ['triu', 'diag'] },
+  triu: { summary: 'Upper triangular part of a matrix', syntax: ['U = triu(A)', 'U = triu(A,k)'], seealso: ['tril', 'diag'] },
+  rank: { summary: 'Rank of a matrix', syntax: ['r = rank(A)', 'r = rank(A,tol)'], seealso: ['svd', 'rref', 'null'] },
+  rref: { summary: 'Reduced row echelon form (Gauss-Jordan)', syntax: ['R = rref(A)'], seealso: ['rank', 'mldivide'] },
+  cond: { summary: 'Condition number (2-norm)', syntax: ['c = cond(A)'], seealso: ['norm', 'svd', 'rcond'] },
+  vecnorm: { summary: 'Vector-wise norm of a matrix', syntax: ['n = vecnorm(A)', 'n = vecnorm(A,p,dim)'], seealso: ['norm'] },
+  null: { summary: 'Orthonormal basis for the null space', syntax: ['Z = null(A)'], seealso: ['orth', 'rank', 'svd'] },
+  orth: { summary: 'Orthonormal basis for the range', syntax: ['Q = orth(A)'], seealso: ['null', 'qr', 'svd'] },
+  chol: { summary: 'Cholesky factorization (RᵀR = A)', syntax: ['R = chol(A)'], seealso: ['lu', 'qr'] },
+  qr: { summary: 'QR decomposition', syntax: ['[Q,R] = qr(A)', 'R = qr(A)'], seealso: ['lu', 'chol', 'svd'] },
+  lu: { summary: 'LU factorization with pivoting', syntax: ['[L,U] = lu(A)', '[L,U,P] = lu(A)'], seealso: ['qr', 'chol', 'inv'] },
+  svd: { summary: 'Singular value decomposition', syntax: ['s = svd(A)', '[U,S,V] = svd(A)'], seealso: ['eig', 'pinv', 'rank'] },
+  eig: { summary: 'Eigenvalues and eigenvectors (symmetric matrices)', syntax: ['e = eig(A)', '[V,D] = eig(A)'], seealso: ['svd', 'det', 'trace'] },
+  issymmetric: { summary: 'Determine if a matrix is symmetric', syntax: ['tf = issymmetric(A)'], seealso: ['istriu', 'istril', 'isdiag'] },
+  isdiag: { summary: 'Determine if a matrix is diagonal', syntax: ['tf = isdiag(A)'], seealso: ['diag', 'istriu', 'istril'] },
+  bandwidth: { summary: 'Lower and upper matrix bandwidth', syntax: ['[lo,up] = bandwidth(A)'], seealso: ['isbanded', 'tril', 'triu'] },
 };
 
 export function docUrl(name: string): string {
