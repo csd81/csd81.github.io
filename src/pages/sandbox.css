@@ -125,13 +125,38 @@
 .mlab__file:hover { background: var(--surface-2); color: var(--text); }
 .mlab__file--active { background: var(--brand-100, rgba(47,111,237,0.14)); color: var(--brand-700, var(--text)); font-weight: 700; }
 
-/* Editor */
-.mlab__code {
-  flex: 1 1 auto; min-height: 0; width: 100%; resize: none; border: 0; outline: none;
-  padding: 0.6rem 0.7rem;
-  font-family: var(--mono, ui-monospace, "JetBrains Mono", monospace); font-size: 0.82rem; line-height: 1.5;
-  tab-size: 2; background: var(--surface); color: var(--text); white-space: pre;
+/* Editor — highlighted <pre> behind a transparent <textarea>. */
+.mlab__editarea { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; background: var(--surface); }
+.mlab__hl, .mlab__code {
+  margin: 0; padding: 0.6rem 0.7rem; border: 0;
+  font-family: var(--mono, ui-monospace, "JetBrains Mono", monospace);
+  font-size: 0.82rem; line-height: 1.5; tab-size: 2;
+  white-space: pre; word-wrap: normal; overflow-wrap: normal;
 }
+.mlab__hl {
+  position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+  color: var(--text); z-index: 0;
+}
+.mlab__hl code { font: inherit; }
+.mlab__code {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  resize: none; outline: none; overflow: auto;
+  background: transparent; color: transparent; caret-color: var(--text); z-index: 1;
+}
+.mlab__code::selection { background: rgba(120, 160, 255, 0.35); }
+/* MATLAB-ish token colours (light defaults, dark overrides below). */
+.mlab__hl .tok-comment { color: #5a7d3a; font-style: italic; }
+.mlab__hl .tok-string  { color: #a31515; }
+.mlab__hl .tok-number  { color: #098658; }
+.mlab__hl .tok-keyword { color: #0b5cad; font-weight: 600; }
+.mlab__hl .tok-builtin { color: #7a3e9d; }
+.mlab__hl .tok-op      { color: #6b7480; }
+:root[data-theme="dark"] .mlab__hl .tok-comment { color: #6a9955; }
+:root[data-theme="dark"] .mlab__hl .tok-string  { color: #ce9178; }
+:root[data-theme="dark"] .mlab__hl .tok-number  { color: #b5cea8; }
+:root[data-theme="dark"] .mlab__hl .tok-keyword { color: #569cd6; }
+:root[data-theme="dark"] .mlab__hl .tok-builtin { color: #c586c0; }
+:root[data-theme="dark"] .mlab__hl .tok-op      { color: #9aa3af; }
 
 /* Figure */
 .mlab__fig-body { flex: 1 1 auto; min-height: 0; position: relative; padding: 4px; }
@@ -208,7 +233,7 @@
 .mlab-embed__full { font-size: 0.78rem; font-weight: 600; color: var(--brand-700); text-decoration: none; }
 .mlab-embed__full:hover { text-decoration: underline; }
 .mlab-embed__cols { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.mlab-embed__code { border: 1px solid var(--border); border-radius: 8px; min-height: 220px; }
+.mlab-embed__code { border: 1px solid var(--border); border-radius: 8px; min-height: 220px; flex: 0 0 auto; }
 .mlab-embed__fig { border: 1px solid var(--border); border-radius: 8px; min-height: 220px; position: relative; overflow: hidden; }
 .mlab-embed .mlab__term { min-height: 200px; border-radius: 8px; }
 @media (max-width: 760px) { .mlab-embed__cols { grid-template-columns: 1fr; } }

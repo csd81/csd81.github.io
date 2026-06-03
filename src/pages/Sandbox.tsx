@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLang } from '../shared/providers/LanguageProvider';
 import { FOLDERS, fileById, folderById, type MFile } from '../sandbox/library';
 import { useSandbox } from '../sandbox/useSandbox';
+import CodeEditor from '../sandbox/CodeEditor';
 import CommandWindow from '../sandbox/CommandWindow';
 import FigurePane from '../sandbox/FigurePane';
 import './sandbox.css';
@@ -11,6 +12,7 @@ const DEFAULT_FILE = FOLDERS.find((f) => f.id === 'course/01-fixed-point')?.file
   ?? FOLDERS[0]?.files[0]?.id ?? '';
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+const lf = (s: string | undefined) => (s ?? '').replace(/\r\n?/g, '\n'); // textareas use LF; keep the editor in sync
 
 export default function Sandbox() {
   const { lang } = useLang();
@@ -20,7 +22,7 @@ export default function Sandbox() {
   const open: MFile | undefined = fileById(openId);
   const folderId = open?.folderId ?? FOLDERS[0]?.id ?? '';
 
-  const [editor, setEditor] = useState<string>(open?.source ?? '');
+  const [editor, setEditor] = useState<string>(lf(open?.source));
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
   const [leftW, setLeftW] = useState(220);
@@ -30,7 +32,7 @@ export default function Sandbox() {
 
   const { lines, workspace, fig, busy, prompt, runSource, submit, clearConsole, resetSession } = useSandbox(folderId);
 
-  useEffect(() => { setEditor(fileById(openId)?.source ?? ''); setCursor({ line: 1, col: 1 }); }, [openId]);
+  useEffect(() => { setEditor(lf(fileById(openId)?.source)); setCursor({ line: 1, col: 1 }); }, [openId]);
 
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
   const toggleFolder = (id: string) =>
@@ -107,11 +109,9 @@ export default function Sandbox() {
             <span className="mlab__filetab">{open?.file ?? t('Editor', 'Szerkesztő')}</span>
             <span className="mlab__spacer" />
           </div>
-          <textarea
-            ref={taRef}
-            className="mlab__code"
+          <CodeEditor
             value={editor}
-            spellCheck={false}
+            textareaRef={taRef}
             onChange={(e) => { setEditor(e.target.value); updateCursor(e.currentTarget); }}
             onKeyUp={(e) => updateCursor(e.currentTarget)}
             onClick={(e) => updateCursor(e.currentTarget)}

@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { useLang } from '../shared/providers/LanguageProvider';
 import { FOLDERS, type MFile } from './library';
 import { useSandbox } from './useSandbox';
+import CodeEditor from './CodeEditor';
 import CommandWindow from './CommandWindow';
 import FigurePane from './FigurePane';
 import '../pages/sandbox.css';
@@ -27,10 +28,11 @@ export default function ChapterSandbox({ slug }: { slug: string }) {
 
 function ChapterRunner({ folderId, files }: { folderId: string; files: MFile[] }) {
   const { lang } = useLang();
+  const lf = (s: string) => s.replace(/\r\n?/g, '\n');
   const [openId, setOpenId] = useState(files[0].id);
-  const [editor, setEditor] = useState(files[0].source);
+  const [editor, setEditor] = useState(lf(files[0].source));
   const { lines, fig, busy, prompt, runSource, submit, clearConsole } = useSandbox(folderId);
-  useEffect(() => { const f = files.find((x) => x.id === openId); if (f) setEditor(f.source); }, [openId, files]);
+  useEffect(() => { const f = files.find((x) => x.id === openId); if (f) setEditor(lf(f.source)); }, [openId, files]);
   const t = (en: string, hu: string) => (lang === 'hu' ? hu : en);
 
   return (
@@ -44,7 +46,7 @@ function ChapterRunner({ folderId, files }: { folderId: string; files: MFile[] }
         <Link className="mlab-embed__full" to="/sandbox">{t('Open full sandbox →', 'Teljes homokozó →')}</Link>
       </div>
       <div className="mlab-embed__cols">
-        <textarea className="mlab__code mlab-embed__code" value={editor} spellCheck={false} onChange={(e) => setEditor(e.target.value)} />
+        <CodeEditor value={editor} wrapClassName="mlab-embed__code" onChange={(e) => setEditor(e.target.value)} />
         <div className="mlab-embed__fig"><FigurePane fig={fig} /></div>
       </div>
       <CommandWindow lines={lines} busy={busy} prompt={prompt} onSubmit={submit} onClear={clearConsole} />
