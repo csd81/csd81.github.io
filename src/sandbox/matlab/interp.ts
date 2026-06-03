@@ -5,7 +5,7 @@ import {
   type Value, type Mat, type Handle, MatError,
   isMat, isHandle, mat, zeros, scalar, bool, str, empty,
   numel, asScalar, asString, truthy, map, elementwise, matmul, transpose,
-  horzcat, vertcat, range as makeRange, indexGet, indexSet, toArray, type Sub,
+  horzcat, vertcat, range as makeRange, indexGet, indexSet, indexDelete, isEmpty, toArray, type Sub,
 } from './values';
 import { det, inv, mldivide } from './linalg';
 import { BUILTINS, CONSTANTS, builtinHelp, docUrl, type Env } from './builtins';
@@ -226,8 +226,10 @@ export class Interpreter implements Env {
       case 'index':
       case 'cell': {
         const container = asMat(await this.readContainer(lv.target, scope));
+        const rhs = asMat(val);
         const subs = await this.evalSubs(lv.args, container, scope);
-        const updated = indexSet(container, subs, asMat(val));
+        // `A(...) = []` deletes rows/columns/elements; otherwise it's a write.
+        const updated = isEmpty(rhs) ? indexDelete(container, subs) : indexSet(container, subs, rhs);
         await this.assignLValue(lv.target, updated, scope);
         return;
       }

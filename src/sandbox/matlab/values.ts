@@ -248,6 +248,44 @@ export function indexSet(m: Mat, subs: Sub[], rhs: Mat): Mat {
   throw new MatError('only 1-D and 2-D indexing are supported');
 }
 
+/** Null assignment `A(...) = []` — delete the indexed rows/columns/elements. */
+export function indexDelete(m: Mat, subs: Sub[]): Mat {
+  if (subs.length === 1) {
+    const s = subs[0];
+    if (s === 'colon') return empty();
+    const drop = new Set(s.map((x) => x - 1));
+    const keep: number[] = [];
+    for (let i = 0; i < numel(m); i++) if (!drop.has(i)) keep.push(m.data[i]);
+    const out = m.cols === 1 && m.rows !== 1 ? colVec(keep) : rowVec(keep);
+    out.isChar = m.isChar;
+    return out;
+  }
+  if (subs.length === 2) {
+    const [rs, cs] = subs;
+    if (rs === 'colon' && cs === 'colon') return empty();
+    if (rs === 'colon' && cs !== 'colon') {
+      const drop = new Set(cs.map((x) => x - 1));
+      const cols: number[] = [];
+      for (let c = 0; c < m.cols; c++) if (!drop.has(c)) cols.push(c);
+      const out = zeros(m.rows, cols.length);
+      cols.forEach((c, ci) => { for (let r = 0; r < m.rows; r++) out.data[r + ci * m.rows] = m.data[r + c * m.rows]; });
+      out.isChar = m.isChar;
+      return out;
+    }
+    if (cs === 'colon' && rs !== 'colon') {
+      const drop = new Set(rs.map((x) => x - 1));
+      const rows: number[] = [];
+      for (let r = 0; r < m.rows; r++) if (!drop.has(r)) rows.push(r);
+      const out = zeros(rows.length, m.cols);
+      rows.forEach((r, ri) => { for (let c = 0; c < m.cols; c++) out.data[ri + c * out.rows] = m.data[r + c * m.rows]; });
+      out.isChar = m.isChar;
+      return out;
+    }
+    throw new MatError('a null assignment must have a colon (:) in one subscript');
+  }
+  throw new MatError('null assignment supports 1-D and 2-D indexing only');
+}
+
 function growTo(m: Mat, rows: number, cols: number): Mat {
   if (rows === m.rows && cols === m.cols) return m;
   const out = zeros(rows, cols);
