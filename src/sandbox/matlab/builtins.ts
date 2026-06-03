@@ -2325,7 +2325,6 @@ const HELP: Record<string, HelpEntry> = {
   quiver: { summary: '2-D vector field (arrows)', syntax: ['quiver(X,Y,U,V)', 'quiver(U,V)'], seealso: ['plot', 'streamline'] },
   bar: { summary: 'Bar graph', syntax: ['bar(y)', 'bar(x,y)'], seealso: ['barh', 'histogram', 'stem'] },
   barh: { summary: 'Horizontal bar graph', syntax: ['barh(y)'], seealso: ['bar'] },
-  area: { summary: 'Filled area 2-D plot', syntax: ['area(y)', 'area(x,y)'], seealso: ['plot', 'bar'] },
   stem: { summary: 'Plot discrete sequence data (stems)', syntax: ['stem(y)', 'stem(x,y)'], seealso: ['plot', 'bar', 'stairs'] },
   stairs: { summary: 'Stairstep graph', syntax: ['stairs(y)', 'stairs(x,y)'], seealso: ['plot', 'stem'] },
   scatter: { summary: '2-D scatter plot (optional marker sizes)', syntax: ['scatter(x,y)', 'scatter(x,y,sz)'], seealso: ['plot', 'scatter3', 'bubblechart'] },
