@@ -841,6 +841,30 @@ export const BUILTINS: Record<string, Builtin> = {
   typecast: async (a) => { const A = m(a[0]); const buf = new Float64Array(A.data).buffer; return ret(rowVec(readAs(buf, asString(a[1])))); },
   swapbytes: async (a) => { const A = m(a[0]); const u = new Uint8Array(new Float64Array(A.data).buffer); for (let i = 0; i < u.length; i += 8) u.subarray(i, i + 8).reverse(); return ret(mat(A.rows, A.cols, new Float64Array(u.buffer))); },
 
+  // ── Batch H: bitwise + legacy string/data (MATLAB v6 reference) ──
+  bitand: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, y) => Number(BigInt(Math.round(x)) & BigInt(Math.round(y))))),
+  bitor: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, y) => Number(BigInt(Math.round(x)) | BigInt(Math.round(y))))),
+  bitxor: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, y) => Number(BigInt(Math.round(x)) ^ BigInt(Math.round(y))))),
+  bitshift: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, k) => { const b = BigInt(Math.round(x)), kk = Math.round(k); return Number(kk >= 0 ? b << BigInt(kk) : b >> BigInt(-kk)); })),
+  bitget: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, p) => Number((BigInt(Math.round(x)) >> BigInt(Math.round(p) - 1)) & 1n))),
+  bitset: async (a) => { const val = a.length >= 3 ? Math.round(asScalar(a[2])) : 1; return ret(elementwise(m(a[0]), m(a[1]), (x, p) => { const b = BigInt(Math.round(x)), bit = 1n << BigInt(Math.round(p) - 1); return Number(val ? (b | bit) : (b & ~bit)); })); },
+  bitcmp: async (a) => { const ty = a.length >= 2 && isMat(a[1]) && (a[1] as Mat).isChar ? asString(a[1]) : 'uint64'; const bits = { uint8: 8, int8: 8, uint16: 16, int16: 16, uint32: 32, int32: 32, uint64: 64, int64: 64 }[ty] ?? 64; const mask = (1n << BigInt(bits)) - 1n; return ret(map(m(a[0]), (x) => Number((~BigInt(Math.round(x))) & mask))); },
+  blanks: async (a) => ret(str(' '.repeat(Math.max(0, Math.round(asScalar(a[0])))))),
+  findstr: async (a) => { const s1 = asString(a[0]), s2 = asString(a[1]); const [hay, ndl] = s1.length >= s2.length ? [s1, s2] : [s2, s1]; const out: number[] = []; if (ndl.length) { let i = hay.indexOf(ndl); while (i >= 0) { out.push(i + 1); i = hay.indexOf(ndl, i + 1); } } return ret(rowVec(out)); },
+  strjust: async (a) => { const s = asString(a[0]); const mode = a.length >= 2 ? asString(a[1]).toLowerCase() : 'right'; const t = s.trim(); const pad = s.length - t.length; if (pad <= 0) return ret(str(t)); if (mode === 'left') return ret(str(t + ' '.repeat(pad))); if (mode === 'center') { const l = Math.floor(pad / 2); return ret(str(' '.repeat(l) + t + ' '.repeat(pad - l))); } return ret(str(' '.repeat(pad) + t)); },
+  strvcat: async (a) => { const ss = a.filter((v) => isMat(v) && (v as Mat).isChar).map((v) => asString(v)).filter((s) => s.length > 0); const w = ss.reduce((mx, s) => Math.max(mx, s.length), 0); const rows = ss.length; const M = zeros(rows, w); M.isChar = true; ss.forEach((s, r) => { for (let c = 0; c < w; c++) M.data[r + c * rows] = c < s.length ? s.charCodeAt(c) : 32; }); return ret(M); },
+  hist: async (a, n, env) => {
+    const x = toArray(m(a[0])).filter((v) => !Number.isNaN(v)); const nb = a.length >= 2 && isMat(a[1]) && numel(a[1]) === 1 ? Math.round(asScalar(a[1])) : 10;
+    let lo = Math.min(...x), hi = Math.max(...x); if (!Number.isFinite(lo) || lo === hi) { lo = (lo || 0) - 0.5; hi = (hi || 0) + 0.5; }
+    const w = (hi - lo) / nb; const centers: number[] = [], counts = new Array(nb).fill(0);
+    for (let i = 0; i < nb; i++) centers.push(lo + w * (i + 0.5));
+    for (const v of x) { let b = Math.floor((v - lo) / w); if (b < 0) b = 0; if (b >= nb) b = nb - 1; counts[b]++; }
+    if (n >= 1) return n >= 2 ? [rowVec(counts), rowVec(centers)] : [rowVec(counts)];
+    env.graphics.chart2d([rowVec(centers), rowVec(counts)], 'bar'); return [];
+  },
+  histc: async (a) => { const x = toArray(m(a[0])); const e = toArray(m(a[1])); const counts = new Array(e.length).fill(0); for (const v of x) { for (let i = 0; i < e.length - 1; i++) if (v >= e[i] && v < e[i + 1]) { counts[i]++; break; } if (v === e[e.length - 1]) counts[e.length - 1]++; } return ret(rowVec(counts)); },
+  exist: async (a, _n, env) => { const nm = asString(a[0]); if (env.workspaceVars().some((v) => v.name === nm)) return ret(scalar(1)); if (nm in BUILTINS || nm in CONSTANTS) return ret(scalar(5)); return ret(scalar(0)); },
+
   // ── Batch G: stats / preprocessing / misc numeric ──
   rms: async (a) => ret(colReduce(m(a[0]), (c) => Math.sqrt(c.reduce((s, x) => s + x * x, 0) / c.length))),
   geomean: async (a) => ret(colReduce(m(a[0]), (c) => Math.exp(c.reduce((s, x) => s + Math.log(x), 0) / c.length))),
@@ -1503,6 +1527,20 @@ const HELP: Record<string, HelpEntry> = {
   semilogx: { summary: 'Semilog plot (log x-axis)', syntax: ['semilogx(x,y)'], seealso: ['loglog', 'semilogy'] },
   semilogy: { summary: 'Semilog plot (log y-axis)', syntax: ['semilogy(x,y)'], seealso: ['loglog', 'semilogx'] },
   subtitle: { summary: 'Add a subtitle below the title', syntax: ["subtitle('text')"], seealso: ['title', 'sgtitle'] },
+  bitand: { summary: 'Bit-wise AND', syntax: ['c = bitand(a,b)'], seealso: ['bitor', 'bitxor', 'bitshift'] },
+  bitor: { summary: 'Bit-wise OR', syntax: ['c = bitor(a,b)'], seealso: ['bitand', 'bitxor'] },
+  bitxor: { summary: 'Bit-wise XOR', syntax: ['c = bitxor(a,b)'], seealso: ['bitand', 'bitor'] },
+  bitshift: { summary: 'Shift bits (left if k>0, right if k<0)', syntax: ['c = bitshift(a,k)'], seealso: ['bitand', 'pow2'] },
+  bitget: { summary: 'Get bit at a position (1 = least significant)', syntax: ['b = bitget(a,pos)'], seealso: ['bitset'] },
+  bitset: { summary: 'Set bit at a position', syntax: ['c = bitset(a,pos)', 'c = bitset(a,pos,val)'], seealso: ['bitget'] },
+  bitcmp: { summary: 'Bit-wise complement within an integer class width', syntax: ["c = bitcmp(a,'uint8')"], seealso: ['bitand'] },
+  blanks: { summary: 'Create a string of spaces', syntax: ['s = blanks(n)'], seealso: ['repmat', 'strjust'] },
+  findstr: { summary: 'Find one string within another (legacy; use strfind)', syntax: ['k = findstr(s1,s2)'], seealso: ['strfind', 'strrep'] },
+  strjust: { summary: 'Justify a character string (left/right/center)', syntax: ["s = strjust(str,'right')"], seealso: ['strtrim', 'blanks'] },
+  strvcat: { summary: 'Vertically concatenate strings into a char matrix (space-padded)', syntax: ['S = strvcat(s1,s2,...)'], seealso: ['char', 'strcat', 'vertcat'] },
+  hist: { summary: 'Histogram counts/plot (legacy; use histogram/histcounts)', syntax: ['[n,c] = hist(x)', 'hist(x,nbins)'], seealso: ['histogram', 'histcounts', 'histc'] },
+  histc: { summary: 'Histogram bin counts at specified edges (legacy)', syntax: ['n = histc(x,edges)'], seealso: ['histcounts', 'discretize'] },
+  exist: { summary: 'Check if a name is a variable (1) or built-in (5)', syntax: ["e = exist('name')"], seealso: ['isvarname', 'who'] },
   rms: { summary: 'Root-mean-square value', syntax: ['y = rms(X)'], seealso: ['mean', 'std', 'rmse'] },
   geomean: { summary: 'Geometric mean', syntax: ['m = geomean(X)'], seealso: ['mean', 'harmmean'] },
   harmmean: { summary: 'Harmonic mean', syntax: ['m = harmmean(X)'], seealso: ['mean', 'geomean'] },
@@ -1696,6 +1734,7 @@ const BASE_REF = new Set<string>((
   'rms geomean harmmean movmad movprod movstd movvar mape rmse idivide polydiv betaincinv gammaincinv rosser rng convn optimset optimget quad2d ' +
   'ismissing anymissing standardizeMissing rmmissing fillmissing isbetween isuniform allunique numunique uniquetol ismembertol issortedrows paddata trimdata resize discretize ' +
   'lsqr minres tfqmr bicgstabl symmlq spfun sprank colperm ' +
+  'bitand bitor bitxor bitshift bitget bitset bitcmp blanks findstr strjust strvcat hist histc exist ' +
   'sparse full issparse spones nonzeros nzmax spdiags speye spalloc sprand sprandn sprandsym spy etree symrcm amd symamd colamd ichol ilu ' +
   'gallery'
 ).split(/\s+/));
