@@ -54,6 +54,7 @@ function brief(v: Value): string {
   if (isHandle(v)) return `@${v.name ?? 'fn'}`;
   if (v.kind === 'cell') return `{${v.rows}×${v.cols} cell}`;
   if (v.kind === 'struct') return `[${v.rows}×${v.cols} struct]`;
+  if (v.kind === 'sparse') return `[${v.rows}×${v.cols} sparse]`;
   if (v.isChar) return `'${asString(v)}'`;
   if (numel(v) === 0) return '[]';
   if (isScalar(v)) return `[${isComplex(v) ? fmtC(v.data[0], v.idata![0]) : formatScalar(v.data[0])}]`;
@@ -69,10 +70,18 @@ function structLines(v: { rows: number; cols: number; fields: Map<string, Value[
   if (v.rows === 1 && v.cols === 1) return [...v.fields.entries()].map(([k, vals]) => `    ${k}: ${brief(vals[0])}`);
   return [`  ${v.rows}×${v.cols} struct array with fields:`, ...[...v.fields.keys()].map((k) => `    ${k}`)];
 }
+/** MATLAB-style sparse display: a column-major list of `(i,j)  value` lines. */
+function sparseLines(v: { rows: number; cols: number; colptr: Int32Array; rowind: Int32Array; values: Float64Array }): string[] {
+  if (v.values.length === 0) return [`   All zero sparse: ${v.rows}×${v.cols}`];
+  const out: string[] = [];
+  for (let j = 0; j < v.cols; j++) for (let p = v.colptr[j]; p < v.colptr[j + 1]; p++) out.push(`   (${v.rowind[p] + 1},${j + 1})${' '.repeat(Math.max(1, 8 - String(v.rowind[p] + 1).length))}${formatScalar(v.values[p])}`);
+  return out;
+}
 
 export function dispValue(v: Value): string {
   if (v.kind === 'cell') return cellLines(v).join('\n');
   if (v.kind === 'struct') return structLines(v).join('\n');
+  if (v.kind === 'sparse') return sparseLines(v).join('\n');
   if (v.kind === 'gobj') return `<${v.gtype} handle>`;
   if (isHandle(v)) return `@${v.name ?? 'anonymous'}`;
   if (v.isChar) return asString(v);
@@ -86,6 +95,7 @@ export function dispValue(v: Value): string {
 export function displayValue(name: string, v: Value): string {
   if (v.kind === 'cell') return `${name} =\n\n  ${v.rows}×${v.cols} cell array\n${cellLines(v).join('\n')}\n`;
   if (v.kind === 'struct') return `${name} =\n\n  struct with fields:\n${structLines(v).join('\n')}\n`;
+  if (v.kind === 'sparse') return `${name} =\n\n${sparseLines(v).join('\n')}\n`;
   if (v.kind === 'gobj') return `${name} =\n\n  <${v.gtype} handle>\n`;
   if (isHandle(v)) return `${name} =\n\n    @${v.name ?? 'anonymous function'}\n`;
   if (v.isChar) return `${name} =\n\n    ${asString(v)}\n`;
@@ -103,6 +113,7 @@ function buildStream(args: Value[]): Array<{ s: string } | { n: number }> {
     if (isHandle(a)) { stream.push({ s: a.name ?? '@fn' }); continue; }
     if (a.kind === 'gobj') { stream.push({ s: `<${a.gtype}>` }); continue; }
     if (a.kind === 'cell' || a.kind === 'struct') { stream.push({ s: brief(a) }); continue; }
+    if (a.kind === 'sparse') { for (const v of a.values) stream.push({ n: v }); continue; }
     if (a.isChar) { stream.push({ s: asString(a) }); continue; }
     for (let i = 0; i < a.data.length; i++) stream.push({ n: a.data[i] });
   }

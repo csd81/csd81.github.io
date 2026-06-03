@@ -38,7 +38,16 @@ export interface StructV {
   cols: number;
   fields: Map<string, Value[]>;  // field name → value per element (length rows*cols)
 }
-export type Value = Mat | Handle | GObj | Cell | StructV;
+/** Sparse matrix in Compressed Sparse Column (CSC) format. */
+export interface Sparse {
+  kind: 'sparse';
+  rows: number;
+  cols: number;
+  colptr: Int32Array;   // length cols+1: column j occupies rowind/values[colptr[j]..colptr[j+1])
+  rowind: Int32Array;   // row index of each stored entry (sorted within a column)
+  values: Float64Array; // the stored (structurally nonzero) values
+}
+export type Value = Mat | Handle | GObj | Cell | StructV | Sparse;
 
 export class MatError extends Error {}
 
@@ -82,11 +91,48 @@ export function isMat(v: Value): v is Mat { return v.kind === 'num'; }
 export function isHandle(v: Value): v is Handle { return v.kind === 'handle'; }
 export function isCell(v: Value): v is Cell { return v.kind === 'cell'; }
 export function isStruct(v: Value): v is StructV { return v.kind === 'struct'; }
+export function isSparse(v: Value): v is Sparse { return v.kind === 'sparse'; }
 export function makeCell(rows: number, cols: number, items: Value[]): Cell { return { kind: 'cell', rows, cols, items }; }
 /** Dimensions of any value. */
 export function dimsOf(v: Value): [number, number] {
-  if (v.kind === 'num' || v.kind === 'cell' || v.kind === 'struct') return [v.rows, v.cols];
+  if (v.kind === 'num' || v.kind === 'cell' || v.kind === 'struct' || v.kind === 'sparse') return [v.rows, v.cols];
   return [1, 1];
+}
+
+// ── Sparse (CSC) constructors / conversions ────────────────────────────
+/** Build a CSC matrix from triplets (1-based row/col indices), summing duplicates. */
+export function sparseFromTriplets(rows: number, cols: number, ii: number[], jj: number[], vv: number[]): Sparse {
+  const acc = new Map<number, number>();
+  for (let k = 0; k < ii.length; k++) {
+    const i = ii[k] - 1, j = jj[k] - 1; if (i < 0 || i >= rows || j < 0 || j >= cols) throw new MatError('sparse: index out of range');
+    const key = j * rows + i; const v = vv.length === 1 ? vv[0] : vv[k];
+    acc.set(key, (acc.get(key) ?? 0) + v);
+  }
+  return sparseFromMap(rows, cols, acc);
+}
+/** Build CSC from a column-major linear-index → value map (drops exact zeros). */
+export function sparseFromMap(rows: number, cols: number, acc: Map<number, number>): Sparse {
+  const keys = [...acc.keys()].filter((k) => acc.get(k) !== 0).sort((a, b) => a - b);
+  const colptr = new Int32Array(cols + 1);
+  const rowind = new Int32Array(keys.length); const values = new Float64Array(keys.length);
+  let p = 0, col = 0;
+  for (const key of keys) {
+    const j = Math.floor(key / rows), i = key - j * rows;
+    while (col < j) colptr[++col] = p;
+    rowind[p] = i; values[p] = acc.get(key)!; p++;
+  }
+  while (col < cols) colptr[++col] = p;
+  return { kind: 'sparse', rows, cols, colptr, rowind, values };
+}
+export function denseToSparse(A: Mat): Sparse {
+  const acc = new Map<number, number>();
+  for (let c = 0; c < A.cols; c++) for (let r = 0; r < A.rows; r++) { const v = A.data[r + c * A.rows]; if (v !== 0) acc.set(c * A.rows + r, v); }
+  return sparseFromMap(A.rows, A.cols, acc);
+}
+export function sparseToDense(S: Sparse): Mat {
+  const out = zeros(S.rows, S.cols);
+  for (let j = 0; j < S.cols; j++) for (let p = S.colptr[j]; p < S.colptr[j + 1]; p++) out.data[S.rowind[p] + j * S.rows] = S.values[p];
+  return out;
 }
 export function numelOf(v: Value): number { const [r, c] = dimsOf(v); return r * c; }
 export function numel(m: Mat): number { return m.rows * m.cols; }
@@ -110,6 +156,7 @@ export function asString(v: Value): string {
 /** Truthiness: nonempty and all elements nonzero (MATLAB `if` semantics). */
 export function truthy(v: Value): boolean {
   if (v.kind === 'cell' || v.kind === 'struct') return numelOf(v) > 0;
+  if (v.kind === 'sparse') { for (const x of v.values) if (x === 0) return false; return v.values.length === v.rows * v.cols && v.rows > 0; }
   if (!isMat(v)) return true;
   if (numel(v) === 0) return false;
   for (let i = 0; i < v.data.length; i++) if (v.data[i] === 0 && (!v.idata || v.idata[i] === 0)) return false;

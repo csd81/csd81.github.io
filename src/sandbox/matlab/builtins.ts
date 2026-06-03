@@ -6,6 +6,7 @@ import {
   isComplex, cmap, cmapReal, conj as conjFn, realPart, imagPart, csqrt, cexp, clog, ewPow, finishComplex,
   ewAdd, ewSub, ewMul, ewRDiv, ewLDiv, ewEq, cmatmul, ctranspose as ctransposeFn, cmul, cdiv,
   type Cell, type StructV, isCell, isStruct, makeCell, dimsOf, numelOf,
+  type Sparse, isSparse, sparseToDense, denseToSparse, sparseFromTriplets, sparseFromMap,
 } from './values';
 import {
   det, inv, mldivide, diag, norm, eye,
@@ -33,6 +34,7 @@ export interface Env {
 export type Builtin = (args: Value[], nargout: number, env: Env) => Promise<Value[]>;
 
 function m(v: Value, name = 'argument'): Mat {
+  if (isSparse(v)) return sparseToDense(v);   // sparse densifies for generic numeric builtins
   if (!isMat(v)) throw new MatError(`${name}: expected a numeric value`);
   return v;
 }
@@ -629,15 +631,37 @@ export const BUILTINS: Record<string, Builtin> = {
     return n >= 2 ? [R, P, zeros(0, 0)] : [R];
   },
   // ── dense equivalents of sparse routines ──
-  sparse: async (a) => { if (a.length <= 1) return ret(m(a[0])); const ii = toArray(m(a[0])).map((x) => Math.round(x)), jj = toArray(m(a[1])).map((x) => Math.round(x)), vv = m(a[2]); const rows = a.length >= 4 ? Math.round(asScalar(a[3])) : Math.max(...ii), cols = a.length >= 5 ? Math.round(asScalar(a[4])) : Math.max(...jj); const o = zeros(rows, cols); for (let k = 0; k < ii.length; k++) o.data[(ii[k] - 1) + (jj[k] - 1) * rows] += vv.data.length === 1 ? vv.data[0] : vv.data[k]; return ret(o); },
+  sparse: async (a) => {
+    if (a.length === 1) return ret(isSparse(a[0]) ? a[0] : denseToSparse(m(a[0])));
+    if (a.length === 2) return ret(sparseFromMap(Math.round(asScalar(a[0])), Math.round(asScalar(a[1])), new Map())); // all-zero m×n
+    const ii = toArray(m(a[0])).map((x) => Math.round(x)), jj = toArray(m(a[1])).map((x) => Math.round(x)), vv = toArray(m(a[2]));
+    const rows = a.length >= 4 ? Math.round(asScalar(a[3])) : Math.max(...ii), cols = a.length >= 5 ? Math.round(asScalar(a[4])) : Math.max(...jj);
+    return ret(sparseFromTriplets(rows, cols, ii, jj, vv));
+  },
   full: async (a) => ret(m(a[0])),
-  issparse: async () => ret(bool(false)),
-  speye: async (a) => { const [r, c] = dims2(a); return ret(eye(r, c)); },
-  spalloc: async (a) => ret(zeros(Math.round(asScalar(a[0])), Math.round(asScalar(a[1])))),
-  nzmax: async (a) => ret(scalar(toArray(m(a[0])).filter((x) => x !== 0).length)),
-  sprand: async (a) => { const [r, c] = dims2(a); const o = zeros(r, c); for (let i = 0; i < o.data.length; i++) o.data[i] = Math.random(); return ret(o); },
-  sprandn: async (a) => { const [r, c] = dims2(a); const o = zeros(r, c); for (let i = 0; i < o.data.length; i++) { const u = Math.random() || 1e-12; o.data[i] = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * Math.random()); } return ret(o); },
-  spdiags: async (a) => { const B = m(a[0]); const d = toArray(m(a[1])).map((x) => Math.round(x)); const mm = Math.round(asScalar(a[2])), nn = Math.round(asScalar(a[3])); const o = zeros(mm, nn); for (let di = 0; di < d.length; di++) { const diag = d[di]; for (let r = 0; r < mm; r++) { const c = r + diag; if (c >= 0 && c < nn) o.data[r + c * mm] = B.data[Math.min(r, B.rows - 1) + di * B.rows]; } } return ret(o); },
+  issparse: async (a) => ret(bool(isSparse(a[0]))),
+  speye: async (a) => { const [r, c] = dims2(a); const acc = new Map<number, number>(); for (let i = 0; i < Math.min(r, c); i++) acc.set(i * r + i, 1); return ret(sparseFromMap(r, c, acc)); },
+  spalloc: async (a) => ret(sparseFromMap(Math.round(asScalar(a[0])), Math.round(asScalar(a[1])), new Map())),
+  nzmax: async (a) => ret(scalar(isSparse(a[0]) ? a[0].values.length : toArray(m(a[0])).filter((x) => x !== 0).length)),
+  sprand: async (a) => ret(sprandGen(a, false)),
+  sprandn: async (a) => ret(sprandGen(a, true)),
+  sprandsym: async (a) => {
+    const n = Math.round(asScalar(a[0])); const dens = a.length >= 2 ? asScalar(a[1]) : 0.2;
+    const acc = new Map<number, number>(); const k = Math.round(dens * n * n / 2);
+    for (let t = 0; t < k; t++) { const i = Math.floor(Math.random() * n), j = Math.floor(Math.random() * n); const v = Math.random() * 2 - 1; acc.set(j * n + i, v); acc.set(i * n + j, v); }
+    for (let i = 0; i < n; i++) acc.set(i * n + i, n); // diagonally dominant
+    return ret(sparseFromMap(n, n, acc));
+  },
+  spdiags: async (a) => { const B = m(a[0]); const d = toArray(m(a[1])).map((x) => Math.round(x)); const mm = Math.round(asScalar(a[2])), nn = Math.round(asScalar(a[3])); const acc = new Map<number, number>(); for (let di = 0; di < d.length; di++) { const diag = d[di]; for (let r = 0; r < mm; r++) { const c = r + diag; if (c >= 0 && c < nn) { const v = B.data[Math.min(r, B.rows - 1) + di * B.rows]; if (v !== 0) acc.set(c * mm + r, v); } } } return ret(sparseFromMap(mm, nn, acc)); },
+  spones: async (a) => isSparse(a[0]) ? ret(sparseFromMap(a[0].rows, a[0].cols, new Map([...sparseEntries(a[0])].map(([k]) => [k, 1])))) : ret(map(m(a[0]), (x) => (x !== 0 ? 1 : 0))),
+  spy: async (a, _n, env) => { const S = asSparse(a[0]); const xs: number[] = [], ys: number[] = []; for (let j = 0; j < S.cols; j++) for (let p = S.colptr[j]; p < S.colptr[j + 1]; p++) { xs.push(j + 1); ys.push(S.rows - S.rowind[p]); } env.graphics.addSeries(xs, ys, 'o'); return []; },
+  etree: async (a) => ret(rowVec(etreeOf(asSparse(a[0])))),
+  symrcm: async (a) => ret(rowVec(symrcmOf(asSparse(a[0])))),
+  amd: async (a) => ret(rowVec(minDegreeOrder(symAdjacency(asSparse(a[0]))))),
+  symamd: async (a) => ret(rowVec(minDegreeOrder(symAdjacency(asSparse(a[0]))))),
+  colamd: async (a) => ret(rowVec(minDegreeOrder(colAdjacency(asSparse(a[0]))))),
+  ichol: async (a) => ret(ichol0(asSparse(a[0]))),
+  ilu: async (a, n) => { const { L, U } = ilu0(asSparse(a[0])); return n >= 2 ? [L, U] : [U]; },
   // ── more scalar math / reductions ──
   cbrt: ew(Math.cbrt),
   sinc: ew((x) => (x === 0 ? 1 : Math.sin(Math.PI * x) / (Math.PI * x))),
@@ -803,8 +827,7 @@ export const BUILTINS: Record<string, Builtin> = {
     for (let i = 0; i < n; i++) { W.data[i + i * n] = Math.abs(mid - i); if (i + 1 < n) { W.data[i + (i + 1) * n] = 1; W.data[(i + 1) + i * n] = 1; } }
     return ret(W);
   },
-  spones: async (a) => ret(map(m(a[0]), (x) => (x !== 0 ? 1 : 0))),
-  nonzeros: async (a) => ret(colVec(toArray(m(a[0])).filter((x) => x !== 0))),
+  nonzeros: async (a) => { if (isSparse(a[0])) return ret(colVec(Array.from(a[0].values))); return ret(colVec(toArray(m(a[0])).filter((x) => x !== 0))); },
   // Window functions (column vectors, like MATLAB).
   bartlett: async (a) => { const N = Math.round(asScalar(a[0])); const w: number[] = []; for (let n = 0; n < N; n++) w.push(N === 1 ? 1 : 1 - Math.abs((n - (N - 1) / 2) / ((N - 1) / 2))); return ret(colVec(w)); },
   blackman: async (a) => { const N = Math.round(asScalar(a[0])); const w: number[] = []; for (let n = 0; n < N; n++) w.push(N === 1 ? 1 : 0.42 - 0.5 * Math.cos((2 * Math.PI * n) / (N - 1)) + 0.08 * Math.cos((4 * Math.PI * n) / (N - 1))); return ret(colVec(w)); },
@@ -1002,7 +1025,7 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   randn: async (a) => { const [r, c] = dims2(a); const o = zeros(r, c); for (let i = 0; i < o.data.length; i++) { const u = Math.random() || 1e-12, w = Math.random(); o.data[i] = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * w); } return ret(o); },
   randi: async (a) => { const hi = Math.round(asScalar(a[0])); const r = a.length >= 2 ? Math.round(asScalar(a[1])) : 1; const c = a.length >= 3 ? Math.round(asScalar(a[2])) : r; const o = zeros(r, c); for (let i = 0; i < o.data.length; i++) o.data[i] = 1 + Math.floor(Math.random() * hi); return ret(o); },
-  nnz: async (a) => ret(scalar(toArray(m(a[0])).filter((x) => x !== 0).length)),
+  nnz: async (a) => ret(scalar(isSparse(a[0]) ? a[0].values.length : toArray(m(a[0])).filter((x) => x !== 0).length)),
   // ── array rearrangement ──
   blkdiag: async (a) => {
     const ps = a.map((v) => m(v)); const R = ps.reduce((s, p) => s + p.rows, 0), C = ps.reduce((s, p) => s + p.cols, 0);
@@ -1372,8 +1395,6 @@ const HELP: Record<string, HelpEntry> = {
   qmr: { summary: 'Quasi-minimal residual solver (here: direct solve A\\b)', syntax: ['x = qmr(A,b)'], seealso: ['gmres', 'bicg', 'pcg'] },
   condest1: { summary: '1-norm condition number estimate', syntax: ['c = condest1(A)'], seealso: ['condest', 'cond', 'rcond'] },
   wilkinson: { summary: "Wilkinson's eigenvalue test matrix (symmetric tridiagonal)", syntax: ['W = wilkinson(n)'], seealso: ['gallery', 'eig'] },
-  spones: { summary: 'Replace nonzero entries with 1', syntax: ['R = spones(S)'], seealso: ['nnz', 'nonzeros', 'sparse'] },
-  nonzeros: { summary: 'Nonzero matrix elements as a column vector (column-major)', syntax: ['v = nonzeros(A)'], seealso: ['nnz', 'find', 'spones'] },
   bartlett: { summary: 'Bartlett (triangular) window', syntax: ['w = bartlett(N)'], seealso: ['hamming', 'hann', 'blackman'] },
   blackman: { summary: 'Blackman window', syntax: ['w = blackman(N)'], seealso: ['hamming', 'hann', 'bartlett'] },
   hamming: { summary: 'Hamming window', syntax: ['w = hamming(N)'], seealso: ['hann', 'blackman', 'bartlett'] },
@@ -1406,6 +1427,26 @@ const HELP: Record<string, HelpEntry> = {
   balance: { summary: 'Diagonal scaling to improve eigenvalue conditioning', syntax: ['B = balance(A)', '[T,B] = balance(A)'], seealso: ['eig', 'schur'] },
   qz: { summary: 'Generalized (QZ) Schur decomposition of the pair (A,B); nonsingular B', syntax: ['[AA,BB,Q,Z] = qz(A,B)'], seealso: ['eig', 'schur'] },
   ordschur: { summary: 'Reorder eigenvalues in a Schur factorization', syntax: ['[US,TS] = ordschur(U,T,select)'], seealso: ['schur'] },
+  sparse: { summary: 'Create a sparse matrix (CSC)', syntax: ['S = sparse(A)', 'S = sparse(i,j,v)', 'S = sparse(i,j,v,m,n)', 'S = sparse(m,n)'], seealso: ['full', 'spdiags', 'speye', 'issparse'] },
+  full: { summary: 'Convert a sparse matrix to dense storage', syntax: ['A = full(S)'], seealso: ['sparse'] },
+  issparse: { summary: 'Determine whether a matrix is stored sparse', syntax: ['tf = issparse(S)'], seealso: ['sparse', 'full'] },
+  spones: { summary: 'Replace nonzero entries with 1 (preserving sparsity)', syntax: ['R = spones(S)'], seealso: ['nnz', 'nonzeros', 'spfun'] },
+  nonzeros: { summary: 'Nonzero matrix elements as a column vector (column-major)', syntax: ['v = nonzeros(S)'], seealso: ['nnz', 'find'] },
+  nzmax: { summary: 'Storage allocated for nonzero entries', syntax: ['n = nzmax(S)'], seealso: ['nnz'] },
+  spdiags: { summary: 'Extract or build sparse band/diagonal matrices', syntax: ['S = spdiags(B,d,m,n)'], seealso: ['diag', 'sparse'] },
+  speye: { summary: 'Sparse identity matrix', syntax: ['S = speye(n)', 'S = speye(m,n)'], seealso: ['eye', 'sparse'] },
+  spalloc: { summary: 'Allocate an all-zero sparse matrix', syntax: ['S = spalloc(m,n,nzmax)'], seealso: ['sparse'] },
+  sprand: { summary: 'Uniform random sparse matrix of given density', syntax: ['S = sprand(m,n,density)', 'S = sprand(A)'], seealso: ['sprandn', 'sprandsym', 'rand'] },
+  sprandn: { summary: 'Normal random sparse matrix of given density', syntax: ['S = sprandn(m,n,density)'], seealso: ['sprand', 'sprandsym'] },
+  sprandsym: { summary: 'Symmetric random sparse matrix (diagonally dominant)', syntax: ['S = sprandsym(n,density)'], seealso: ['sprand', 'sprandn'] },
+  spy: { summary: 'Plot the sparsity pattern of a matrix', syntax: ['spy(S)'], seealso: ['sparse', 'nnz'] },
+  etree: { summary: 'Elimination tree (parent vector; 0 = root)', syntax: ['p = etree(S)'], seealso: ['symrcm', 'amd', 'chol'] },
+  symrcm: { summary: 'Symmetric reverse Cuthill–McKee ordering', syntax: ['p = symrcm(S)'], seealso: ['amd', 'symamd', 'etree'] },
+  amd: { summary: 'Approximate (here exact greedy) minimum-degree ordering', syntax: ['p = amd(S)'], seealso: ['symamd', 'colamd', 'symrcm'] },
+  symamd: { summary: 'Symmetric minimum-degree ordering', syntax: ['p = symamd(S)'], seealso: ['amd', 'colamd'] },
+  colamd: { summary: 'Column minimum-degree ordering (AᵀA pattern)', syntax: ['p = colamd(S)'], seealso: ['amd', 'symamd'] },
+  ichol: { summary: 'Incomplete Cholesky IC(0) on the pattern of A', syntax: ['L = ichol(A)'], seealso: ['chol', 'ilu', 'pcg'] },
+  ilu: { summary: 'Incomplete LU ILU(0) on the pattern of A', syntax: ['[L,U] = ilu(A)'], seealso: ['lu', 'ichol', 'gmres'] },
 };
 
 /** Base-MATLAB functions whose reference page is at /help/matlab/ref/<name>.html.
@@ -1433,7 +1474,8 @@ const BASE_REF = new Set<string>((
   'mkpp unmkpp ppval ' +
   'psi expint sinint cosint legendre besselj bessely besseli besselk besselh airy ellipke ellipj ' +
   'delaunay griddata interp3 interpn ' +
-  'rsf2csf balance qz ordschur'
+  'rsf2csf balance qz ordschur ' +
+  'sparse full issparse spones nonzeros nzmax spdiags speye spalloc sprand sprandn sprandsym spy etree symrcm amd symamd colamd ichol ilu'
 ).split(/\s+/));
 
 export function docUrl(name: string): string {
@@ -1907,6 +1949,90 @@ function splineEval(x: number[], y: number[], q: number): number {
   const dx = q - x[i], hi = h[i];
   const aa = y[i], bb = (y[i + 1] - y[i]) / hi - hi * (2 * M[i] + M[i + 1]) / 6, cc = M[i] / 2, dd = (M[i + 1] - M[i]) / (6 * hi);
   return aa + bb * dx + cc * dx * dx + dd * dx * dx * dx;
+}
+
+// ── Sparse (CSC) helpers + structural algorithms ─────────────────────────
+const asSparse = (v: Value): Sparse => (isSparse(v) ? v : denseToSparse(m(v)));
+/** Iterate (linearKey, value) of a CSC matrix (column-major key = j*rows+i). */
+function* sparseEntries(S: Sparse): Generator<[number, number]> {
+  for (let j = 0; j < S.cols; j++) for (let p = S.colptr[j]; p < S.colptr[j + 1]; p++) yield [j * S.rows + S.rowind[p], S.values[p]];
+}
+/** sprand/sprandn(m,n,density) or sprand(A): random sparse pattern. */
+function sprandGen(a: Value[], normal: boolean): Sparse {
+  const rnd = () => (normal ? Math.sqrt(-2 * Math.log(Math.random() || 1e-12)) * Math.cos(2 * Math.PI * Math.random()) : Math.random());
+  if (a.length === 1) { const S = asSparse(a[0]); const acc = new Map<number, number>(); for (const [k] of sparseEntries(S)) acc.set(k, rnd()); return sparseFromMap(S.rows, S.cols, acc); }
+  const r = Math.round(asScalar(a[0])), c = Math.round(asScalar(a[1])), dens = a.length >= 3 ? asScalar(a[2]) : 0.1;
+  const acc = new Map<number, number>(); const k = Math.round(dens * r * c);
+  for (let t = 0; t < k; t++) acc.set(Math.floor(Math.random() * c) * r + Math.floor(Math.random() * r), rnd());
+  return sparseFromMap(r, c, acc);
+}
+/** Symmetric adjacency list of the nonzero pattern of A+Aᵀ (no self-loops). */
+function symAdjacency(S: Sparse): Set<number>[] {
+  const n = S.rows; const adj: Set<number>[] = Array.from({ length: n }, () => new Set<number>());
+  for (let j = 0; j < S.cols; j++) for (let p = S.colptr[j]; p < S.colptr[j + 1]; p++) { const i = S.rowind[p]; if (i !== j) { adj[i].add(j); adj[j].add(i); } }
+  return adj;
+}
+/** Column-intersection adjacency (pattern of AᵀA) for colamd. */
+function colAdjacency(S: Sparse): Set<number>[] {
+  const n = S.cols; const adj: Set<number>[] = Array.from({ length: n }, () => new Set<number>());
+  const rowCols = new Map<number, number[]>();
+  for (let j = 0; j < S.cols; j++) for (let p = S.colptr[j]; p < S.colptr[j + 1]; p++) { const i = S.rowind[p]; (rowCols.get(i) ?? rowCols.set(i, []).get(i)!).push(j); }
+  for (const cols of rowCols.values()) for (let x = 0; x < cols.length; x++) for (let y = x + 1; y < cols.length; y++) { adj[cols[x]].add(cols[y]); adj[cols[y]].add(cols[x]); }
+  return adj;
+}
+/** Greedy minimum-degree elimination ordering (1-based permutation). */
+function minDegreeOrder(adj0: Set<number>[]): number[] {
+  const n = adj0.length; const adj = adj0.map((s) => new Set(s)); const elim = new Array(n).fill(false); const order: number[] = [];
+  for (let step = 0; step < n; step++) {
+    let v = -1; for (let i = 0; i < n; i++) if (!elim[i] && (v < 0 || adj[i].size < adj[v].size)) v = i;
+    order.push(v + 1); elim[v] = true;
+    const nb = [...adj[v]].filter((u) => !elim[u]);
+    for (const x of nb) { adj[x].delete(v); for (const y of nb) if (x !== y) adj[x].add(y); }
+  }
+  return order;
+}
+/** Reverse Cuthill–McKee ordering (1-based permutation). */
+function symrcmOf(S: Sparse): number[] {
+  const n = S.rows; const adj = symAdjacency(S).map((s) => [...s]); const deg = adj.map((a) => a.length);
+  const visited = new Array(n).fill(false); const order: number[] = [];
+  while (order.length < n) {
+    let start = -1; for (let i = 0; i < n; i++) if (!visited[i] && (start < 0 || deg[i] < deg[start])) start = i;
+    const queue = [start]; visited[start] = true;
+    while (queue.length) { const v = queue.shift()!; order.push(v); const nb = adj[v].filter((u) => !visited[u]).sort((x, y) => deg[x] - deg[y]); for (const u of nb) { visited[u] = true; queue.push(u); } }
+  }
+  order.reverse();
+  return order.map((i) => i + 1);
+}
+/** Elimination tree parent vector (1-based; 0 = root), from the upper structure. */
+function etreeOf(S: Sparse): number[] {
+  const n = S.cols; const parent = new Array(n).fill(-1); const ancestor = new Array(n).fill(-1);
+  for (let j = 0; j < n; j++) for (let p = S.colptr[j]; p < S.colptr[j + 1]; p++) {
+    let i = S.rowind[p];
+    while (i !== -1 && i < j) { const next = ancestor[i]; ancestor[i] = j; if (next === -1) parent[i] = j; i = next; }
+  }
+  return parent.map((x) => x + 1);
+}
+/** Incomplete Cholesky IC(0): lower factor on the pattern of A (A assumed SPD). */
+function ichol0(S: Sparse): Sparse {
+  const n = S.rows; const A = sparseToDense(S); const inP = (i: number, j: number) => A.data[i + j * n] !== 0;
+  const L = zeros(n, n);
+  for (let k = 0; k < n; k++) {
+    let d = A.data[k + k * n]; for (let j = 0; j < k; j++) if (inP(k, j)) d -= L.data[k + j * n] ** 2;
+    L.data[k + k * n] = Math.sqrt(Math.max(d, 0));
+    for (let i = k + 1; i < n; i++) if (inP(i, k)) { let s = A.data[i + k * n]; for (let j = 0; j < k; j++) if (inP(i, j) && inP(k, j)) s -= L.data[i + j * n] * L.data[k + j * n]; L.data[i + k * n] = L.data[k + k * n] ? s / L.data[k + k * n] : 0; }
+  }
+  return denseToSparse(L);
+}
+/** Incomplete LU ILU(0): unit-lower L and upper U on the pattern of A (IKJ variant). */
+function ilu0(S: Sparse): { L: Sparse; U: Sparse } {
+  const n = S.rows; const A = sparseToDense(S); const inP = (i: number, j: number) => A.data[i + j * n] !== 0;
+  const w = Float64Array.from(A.data);
+  for (let i = 0; i < n; i++) {
+    for (let k = 0; k < i; k++) if (inP(i, k)) { w[i + k * n] /= w[k + k * n]; const lik = w[i + k * n]; for (let j = k + 1; j < n; j++) if (inP(i, j)) w[i + j * n] -= lik * w[k + j * n]; }
+  }
+  const L = zeros(n, n), U = zeros(n, n);
+  for (let i = 0; i < n; i++) { L.data[i + i * n] = 1; for (let j = 0; j < n; j++) if (inP(i, j)) { if (j < i) L.data[i + j * n] = w[i + j * n]; else U.data[i + j * n] = w[i + j * n]; } }
+  return { L: denseToSparse(L), U: denseToSparse(U) };
 }
 
 // ── 2-D Delaunay triangulation (Bowyer–Watson) + scattered interpolation ──

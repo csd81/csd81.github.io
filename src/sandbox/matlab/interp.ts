@@ -7,7 +7,7 @@ import {
   numel, asScalar, asString, truthy, map, elementwise, matmul, transpose, ctranspose,
   horzcat, vertcat, range as makeRange, indexGet, indexSet, indexDelete, isEmpty, toArray, type Sub,
   isComplex, cmap, ewAdd, ewSub, ewMul, ewRDiv, ewLDiv, ewPow, ewEq, cmatmul,
-  type Cell, type StructV, isCell, isStruct, makeCell,
+  type Cell, type StructV, isCell, isStruct, makeCell, sparseToDense,
 } from './values';
 import { det, inv, mldivide } from './linalg';
 import { BUILTINS, CONSTANTS, builtinHelp, docUrl, type Env } from './builtins';
@@ -148,6 +148,7 @@ export class Interpreter implements Env {
       if (v.kind === 'gobj') { out.push({ name, size: '1x1', klass: v.gtype, preview: `<${v.gtype}>` }); continue; }
       if (v.kind === 'cell') { out.push({ name, size: `${v.rows}x${v.cols}`, klass: 'cell', preview: dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) }); continue; }
       if (v.kind === 'struct') { out.push({ name, size: `${v.rows}x${v.cols}`, klass: 'struct', preview: dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) }); continue; }
+      if (v.kind === 'sparse') { out.push({ name, size: `${v.rows}x${v.cols}`, klass: 'sparse double', preview: `${v.values.length} nonzeros` }); continue; }
       const klass = v.isChar ? 'char' : 'double';
       const preview = numel(v) <= 12 ? dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) : '…';
       out.push({ name, size: `${v.rows}x${v.cols}`, klass, preview });
@@ -558,6 +559,7 @@ function identity(n: number): Mat {
 }
 function asMat(v: Value): Mat {
   if (isMat(v)) return v;
+  if (v.kind === 'sparse') return sparseToDense(v);   // sparse densifies on arithmetic/indexing
   if (v.kind === 'gobj') throw new MatError('expected a numeric value, got a graphics handle');
   throw new MatError('expected a numeric value, got a function handle');
 }
