@@ -4,6 +4,7 @@ import {
   mat, zeros, scalar, cscalar, bool, str, rowVec, colVec, fromRows, numel, isScalar, isEmpty,
   asScalar, asString, map, elementwise, matmul, transpose, horzcat, vertcat, toArray,
   isComplex, cmap, cmapReal, conj as conjFn, realPart, imagPart, csqrt, cexp, clog, ewPow, finishComplex,
+  ewAdd, ewSub, ewMul, ewRDiv, ewLDiv, ewEq, cmatmul, ctranspose as ctransposeFn,
 } from './values';
 import {
   det, inv, mldivide, diag, norm, eye,
@@ -532,6 +533,55 @@ export const BUILTINS: Record<string, Builtin> = {
   randn: async (a) => { const [r, c] = dims2(a); const o = zeros(r, c); for (let i = 0; i < o.data.length; i++) { const u = Math.random() || 1e-12, w = Math.random(); o.data[i] = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * w); } return ret(o); },
   randi: async (a) => { const hi = Math.round(asScalar(a[0])); const r = a.length >= 2 ? Math.round(asScalar(a[1])) : 1; const c = a.length >= 3 ? Math.round(asScalar(a[2])) : r; const o = zeros(r, c); for (let i = 0; i < o.data.length; i++) o.data[i] = 1 + Math.floor(Math.random() * hi); return ret(o); },
   nnz: async (a) => ret(scalar(toArray(m(a[0])).filter((x) => x !== 0).length)),
+  // ── array rearrangement ──
+  blkdiag: async (a) => {
+    const ps = a.map((v) => m(v)); const R = ps.reduce((s, p) => s + p.rows, 0), C = ps.reduce((s, p) => s + p.cols, 0);
+    const o = zeros(R, C); let ro = 0, co = 0;
+    for (const p of ps) { for (let c = 0; c < p.cols; c++) for (let r = 0; r < p.rows; r++) o.data[(ro + r) + (co + c) * R] = p.data[r + c * p.rows]; ro += p.rows; co += p.cols; }
+    return ret(o);
+  },
+  ndgrid: async (a, n) => {
+    const x = toArray(m(a[0])); const y = a.length >= 2 ? toArray(m(a[1])) : x;
+    const X = zeros(x.length, y.length), Y = zeros(x.length, y.length);
+    for (let r = 0; r < x.length; r++) for (let c = 0; c < y.length; c++) { X.data[r + c * x.length] = x[r]; Y.data[r + c * x.length] = y[c]; }
+    return n >= 2 ? [X, Y] : [X];
+  },
+  permute: async (a) => { const A = m(a[0]); const o = toArray(m(a[1])).map((x) => Math.round(x)); if (o.length === 2 && o[0] === 2 && o[1] === 1) return ret(transpose(A)); if (o.length === 2 && o[0] === 1 && o[1] === 2) return ret(A); throw new MatError('permute: only 2-D permutations are supported'); },
+  ipermute: async (a) => { const A = m(a[0]); const o = toArray(m(a[1])).map((x) => Math.round(x)); return ret(o.length === 2 && o[0] === 2 && o[1] === 1 ? transpose(A) : A); },
+  shiftdim: async (a) => { const A = m(a[0]); const n = a.length >= 2 ? Math.round(asScalar(a[1])) : (A.rows === 1 ? 1 : 0); return ret(n % 2 !== 0 ? transpose(A) : A); },
+  rot90: async (a) => { const A = m(a[0]); const k = a.length >= 2 ? Math.round(asScalar(a[1])) : 1; return ret(rot90n(A, k)); },
+  circshift: async (a) => {
+    const A = m(a[0]); const k = m(a[1]); const isVec = A.rows === 1 || A.cols === 1;
+    let sr = 0, sc = 0;
+    if (numel(k) >= 2) { sr = Math.round(k.data[0]); sc = Math.round(k.data[1]); }
+    else if (isVec && A.rows === 1) sc = Math.round(k.data[0]); else sr = Math.round(k.data[0]);
+    const o = zeros(A.rows, A.cols); o.isChar = A.isChar; const im = A.idata ? new Float64Array(A.rows * A.cols) : null;
+    const mod = (x: number, n: number) => ((x % n) + n) % n;
+    for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) { const nr = mod(r + sr, A.rows), nc = mod(c + sc, A.cols); o.data[nr + nc * A.rows] = A.data[r + c * A.rows]; if (im) im[nr + nc * A.rows] = A.idata![r + c * A.rows]; }
+    if (im) o.idata = im; return ret(o);
+  },
+  bsxfun: async (a, _n, env) => { const f = handle(a[0], 'bsxfun'); return env.callHandle(f, [a[1], a[2]], 1); },
+  // ── operator functions (named forms, for feval/arrayfun/bsxfun) ──
+  plus: async (a) => ret(ewAdd(m(a[0]), m(a[1]))),
+  minus: async (a) => ret(ewSub(m(a[0]), m(a[1]))),
+  uminus: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmap(A, (re, im) => [-re, -im]) : map(A, (x) => -x)); },
+  uplus: async (a) => ret(m(a[0])),
+  times: async (a) => ret(ewMul(m(a[0]), m(a[1]))),
+  mtimes: async (a) => ret(cmatmul(m(a[0]), m(a[1]))),
+  rdivide: async (a) => ret(ewRDiv(m(a[0]), m(a[1]))),
+  ldivide: async (a) => ret(ewLDiv(m(a[0]), m(a[1]))),
+  mpower: async (a) => { const A = m(a[0]), B = m(a[1]); if (isScalar(A) && isScalar(B)) return ret(ewPow(A, B)); throw new MatError('mpower: matrix power only via the ^ operator'); },
+  ctranspose: async (a) => ret(ctransposeFn(m(a[0]))),
+  eq: async (a) => ret(ewEq(m(a[0]), m(a[1]), true)),
+  ne: async (a) => ret(ewEq(m(a[0]), m(a[1]), false)),
+  lt: async (a) => ret({ ...elementwise(m(a[0]), m(a[1]), (x, y) => (x < y ? 1 : 0)), isBool: true }),
+  gt: async (a) => ret({ ...elementwise(m(a[0]), m(a[1]), (x, y) => (x > y ? 1 : 0)), isBool: true }),
+  le: async (a) => ret({ ...elementwise(m(a[0]), m(a[1]), (x, y) => (x <= y ? 1 : 0)), isBool: true }),
+  ge: async (a) => ret({ ...elementwise(m(a[0]), m(a[1]), (x, y) => (x >= y ? 1 : 0)), isBool: true }),
+  and: async (a) => ret({ ...elementwise(m(a[0]), m(a[1]), (x, y) => (x !== 0 && y !== 0 ? 1 : 0)), isBool: true }),
+  or: async (a) => ret({ ...elementwise(m(a[0]), m(a[1]), (x, y) => (x !== 0 || y !== 0 ? 1 : 0)), isBool: true }),
+  not: async (a) => ret({ ...map(m(a[0]), (x) => (x === 0 ? 1 : 0)), isBool: true }),
+  xor: async (a) => ret({ ...elementwise(m(a[0]), m(a[1]), (x, y) => ((x !== 0) !== (y !== 0) ? 1 : 0)), isBool: true }),
   squeeze: async (a) => ret(m(a[0])),
   sortrows: async (a, n) => {
     const A = m(a[0]); const rows: number[][] = [];
@@ -850,6 +900,13 @@ function magicFn(n: number): Mat {
     }
   }
   return M;
+}
+
+/** Rotate a matrix 90° counter-clockwise k times. */
+function rot90n(A: Mat, kk: number): Mat {
+  let R = A; const k = ((kk % 4) + 4) % 4;
+  for (let t = 0; t < k; t++) { const T = transpose(R); const o = zeros(T.rows, T.cols); o.isChar = T.isChar; const im = T.idata ? new Float64Array(T.data.length) : null; for (let c = 0; c < T.cols; c++) for (let r = 0; r < T.rows; r++) { o.data[(T.rows - 1 - r) + c * T.rows] = T.data[r + c * T.rows]; if (im) im[(T.rows - 1 - r) + c * T.rows] = T.idata![r + c * T.rows]; } if (im) o.idata = im; R = o; }
+  return R;
 }
 
 // ── Numerical-methods helpers ─────────────────────────────────────────────
