@@ -220,6 +220,34 @@ export class Interpreter implements Env {
         }
         return;
       }
+      case 'switch': {
+        const subj = await this.evalExpr(stmt.subject, scope);
+        const eq = (x: Value, y: Value): boolean => {
+          if (isMat(x) && isMat(y) && x.isChar && y.isChar) return asString(x) === asString(y);
+          if (isMat(x) && isMat(y)) { if (x.rows !== y.rows || x.cols !== y.cols) return false; for (let i = 0; i < x.data.length; i++) if (x.data[i] !== y.data[i]) return false; return true; }
+          return false;
+        };
+        for (const cl of stmt.clauses) {
+          for (const ve of cl.vals) {
+            if (eq(subj, await this.evalExpr(ve, scope))) { await this.runStmts(cl.body, scope); return; }
+          }
+        }
+        if (stmt.elseBody) await this.runStmts(stmt.elseBody, scope);
+        return;
+      }
+      case 'try': {
+        try { await this.runStmts(stmt.body, scope); }
+        catch (e) {
+          if (e instanceof ReturnSignal || e instanceof BreakSignal || e instanceof ContinueSignal) throw e;
+          if (stmt.catchVar) {
+            const msg = e instanceof MatError ? e.message : (e as Error)?.message ?? String(e);
+            const fields = new Map<string, Value[]>([['identifier', [str('')]], ['message', [str(msg)]], ['stack', [empty()]]]);
+            scope.vars.set(stmt.catchVar, { kind: 'struct', rows: 1, cols: 1, fields });
+          }
+          await this.runStmts(stmt.catchBody, scope);
+        }
+        return;
+      }
       case 'return': throw new ReturnSignal();
       case 'break': throw new BreakSignal();
       case 'continue': throw new ContinueSignal();

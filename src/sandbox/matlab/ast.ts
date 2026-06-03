@@ -31,6 +31,8 @@ export type Stmt =
   | { t: 'if'; clauses: { cond: Expr; body: Stmt[] }[]; elseBody?: Stmt[] }
   | { t: 'for'; varName: string; range: Expr; body: Stmt[] }
   | { t: 'while'; cond: Expr; body: Stmt[] }
+  | { t: 'switch'; subject: Expr; clauses: { vals: Expr[]; body: Stmt[] }[]; elseBody?: Stmt[] }
+  | { t: 'try'; body: Stmt[]; catchVar?: string; catchBody: Stmt[] }
   | { t: 'return' }
   | { t: 'break' }
   | { t: 'continue' }

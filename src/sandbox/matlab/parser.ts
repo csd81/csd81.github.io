@@ -112,6 +112,7 @@ class Parser {
         case 'continue': this.next(); return { t: 'continue' };
         case 'global': return this.parseGlobal();
         case 'switch': return this.parseSwitch();
+        case 'try': return this.parseTry();
       }
     }
     return this.parseSimpleStatement();
@@ -168,22 +169,39 @@ class Parser {
   }
 
   private parseSwitch(): Stmt {
-    // Minimal switch → if/elseif chain over equality. (Not used by corpora, but safe.)
     this.next();
     const subject = this.parseExpr();
     this.skipSeparators();
-    const clauses: { cond: Expr; body: Stmt[] }[] = [];
+    const clauses: { vals: Expr[]; body: Stmt[] }[] = [];
     let elseBody: Stmt[] | undefined;
     while (this.atKw('case')) {
       this.next();
-      const val = this.parseExpr();
+      const valE = this.parseExpr();
       this.eatPunct(',');
+      // `case {a,b,c}` matches any listed value; a bare value matches just itself.
+      const vals = valE.t === 'celllit' ? valE.rows.reduce<Expr[]>((acc, row) => acc.concat(row), []) : [valE];
       const body = this.parseBlock(new Set(['case', 'otherwise', 'end', 'endswitch']));
-      clauses.push({ cond: { t: 'binary', op: '==', a: subject, b: val }, body });
+      clauses.push({ vals, body });
     }
     if (this.atKw('otherwise')) { this.next(); elseBody = this.parseBlock(new Set(['end', 'endswitch'])); }
     if (this.atKw('end') || this.atKw('endswitch')) this.next();
-    return { t: 'if', clauses, elseBody };
+    return { t: 'switch', subject, clauses, elseBody };
+  }
+
+  private parseTry(): Stmt {
+    this.next(); // try
+    this.eatPunct(',');
+    const body = this.parseBlock(new Set(['catch', 'end', 'end_try_catch']));
+    let catchVar: string | undefined; let catchBody: Stmt[] = [];
+    if (this.atKw('catch')) {
+      this.next();
+      // `catch err` — a lone identifier on the catch line is the error variable.
+      const p1 = this.peek(1);
+      if (this.peek().kind === 'ident' && (p1.kind === 'nl' || (p1.kind === 'punct' && (p1.value === ';' || p1.value === ',')))) catchVar = this.next().value;
+      catchBody = this.parseBlock(new Set(['end', 'end_try_catch']));
+    }
+    if (this.atKw('end') || this.atKw('end_try_catch')) this.next(); else this.err("expected 'end'");
+    return { t: 'try', body, catchVar, catchBody };
   }
 
   private terminatorSuppresses(): boolean {

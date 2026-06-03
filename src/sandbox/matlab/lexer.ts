@@ -27,6 +27,7 @@ const KEYWORDS = new Set([
   'function', 'end', 'endfunction', 'endif', 'endfor', 'endwhile',
   'if', 'elseif', 'else', 'for', 'while', 'return', 'break', 'continue',
   'switch', 'case', 'otherwise', 'global',
+  'try', 'catch', 'end_try_catch',
 ]);
 
 // Multi-char operators, longest first.

@@ -865,6 +865,12 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   histc: async (a) => { const x = toArray(m(a[0])); const e = toArray(m(a[1])); const counts = new Array(e.length).fill(0); for (const v of x) { for (let i = 0; i < e.length - 1; i++) if (v >= e[i] && v < e[i + 1]) { counts[i]++; break; } if (v === e[e.length - 1]) counts[e.length - 1]++; } return ret(rowVec(counts)); },
   exist: async (a, _n, env) => { const nm = asString(a[0]); if (env.workspaceVars().some((v) => v.name === nm)) return ret(scalar(1)); if (nm in BUILTINS || nm in CONSTANTS) return ret(scalar(5)); return ret(scalar(0)); },
+  // Error/exception helpers (work with try/catch).
+  MException: async (a) => { const id = a.length ? asString(a[0]) : ''; const msg = a.length >= 2 ? sprintf(asString(a[1]), a.slice(2)) : ''; const fields = new Map<string, Value[]>([['identifier', [str(id)]], ['message', [str(msg)]], ['stack', [zeros(0, 0)]]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields } as StructV); },
+  rethrow: async (a) => { const e = a[0]; const msg = isStruct(e) && e.fields.get('message')?.[0] && isMat(e.fields.get('message')![0]) ? asString(e.fields.get('message')![0]) : 'rethrow: not an error struct'; throw new MatError(msg); },
+  throw: async (a) => { const e = a[0]; const msg = isStruct(e) && e.fields.get('message')?.[0] && isMat(e.fields.get('message')![0]) ? asString(e.fields.get('message')![0]) : String(e); throw new MatError(msg); },
+  lasterr: async () => ret(str('')),
+  lasterror: async () => { const fields = new Map<string, Value[]>([['identifier', [str('')]], ['message', [str('')]]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields } as StructV); },
 
   // ── Batch I: language utilities (MATLAB v7 reference) ──
   deal: async (a, n) => { const k = Math.max(1, n); if (a.length === 1) return new Array(k).fill(a[0]); return a.slice(0, k); },
@@ -1579,6 +1585,10 @@ const HELP: Record<string, HelpEntry> = {
   hist: { summary: 'Histogram counts/plot (legacy; use histogram/histcounts)', syntax: ['[n,c] = hist(x)', 'hist(x,nbins)'], seealso: ['histogram', 'histcounts', 'histc'] },
   histc: { summary: 'Histogram bin counts at specified edges (legacy)', syntax: ['n = histc(x,edges)'], seealso: ['histcounts', 'discretize'] },
   exist: { summary: 'Check if a name is a variable (1) or built-in (5)', syntax: ["e = exist('name')"], seealso: ['isvarname', 'who'] },
+  MException: { summary: 'Construct an exception object (struct with identifier/message)', syntax: ["ME = MException('comp:id','msg %d',v)"], seealso: ['error', 'throw', 'rethrow', 'try'] },
+  rethrow: { summary: 'Re-throw a caught exception', syntax: ['rethrow(err)'], seealso: ['error', 'try', 'MException'] },
+  throw: { summary: 'Throw an exception object', syntax: ['throw(ME)'], seealso: ['error', 'rethrow', 'MException'] },
+  lasterr: { summary: 'Last error message', syntax: ['s = lasterr'], seealso: ['error', 'try'] },
   deal: { summary: 'Distribute inputs to outputs', syntax: ['[a,b,...] = deal(x)', '[a,b] = deal(x,y)'], seealso: ['nargin', 'nargout'] },
   func2str: { summary: 'Convert a function handle to a string', syntax: ['s = func2str(@f)'], seealso: ['str2func'] },
   str2func: { summary: 'Construct a function handle from a name', syntax: ["h = str2func('sin')"], seealso: ['func2str', 'feval'] },
@@ -1784,6 +1794,7 @@ const BASE_REF = new Set<string>((
   'lsqr minres tfqmr bicgstabl symmlq spfun sprank colperm ' +
   'bitand bitor bitxor bitshift bitget bitset bitcmp blanks findstr strjust strvcat hist histc exist ' +
   'deal func2str str2func assert narginchk nargoutchk nargchk validateattributes inputname isvarname genvarname colon flipdim condeig polyeig ' +
+  'MException rethrow throw lasterr lasterror ' +
   'sparse full issparse spones nonzeros nzmax spdiags speye spalloc sprand sprandn sprandsym spy etree symrcm amd symamd colamd ichol ilu ' +
   'gallery'
 ).split(/\s+/));
