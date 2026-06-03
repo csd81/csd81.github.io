@@ -57,6 +57,14 @@ export default function PlotlyFigure({ fig, dark }: { fig: FigureSpec; dark: boo
     legend: { orientation: 'h', y: -0.18, font: { color: fg } },
     title: fig.title ? { text: fig.title, font: { color: fg, size: 14 } } : undefined,
   };
+  if (!has3D && fig.reflines?.length) {
+    layout.shapes = fig.reflines.map((r) => (r.axis === 'x'
+      ? { type: 'line', x0: r.value, x1: r.value, yref: 'paper', y0: 0, y1: 1, line: { color: r.color ?? fg, dash: r.dash, width: 1.5 } }
+      : { type: 'line', y0: r.value, y1: r.value, xref: 'paper', x0: 0, x1: 1, line: { color: r.color ?? fg, dash: r.dash, width: 1.5 } }));
+    layout.annotations = fig.reflines.filter((r) => r.label).map((r) => (r.axis === 'x'
+      ? { x: r.value, xref: 'x', yref: 'paper', y: 1, text: r.label, showarrow: false, font: { color: r.color ?? fg }, yanchor: 'bottom' }
+      : { y: r.value, yref: 'y', xref: 'paper', x: 1, text: r.label, showarrow: false, font: { color: r.color ?? fg }, xanchor: 'right' }));
+  }
   if (has3D) {
     layout.scene = {
       xaxis: { title: { text: fig.xlabel ?? 'x' }, gridcolor: grid, color: fg },

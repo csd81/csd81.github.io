@@ -7,7 +7,7 @@ const PlotlyFigure = lazy(() => import('./PlotlyFigure'));
 
 export default function FigurePane({ fig }: { fig: FigureSpec }) {
   const { theme } = useTheme();
-  if (!fig.series.length && !fig.surfaces?.length) {
+  if (!fig.series.length && !fig.surfaces?.length && !fig.reflines?.length) {
     return <div className="mlab__fig-empty">No figure yet — call <code>plot</code>, <code>surf</code>, <code>fplot</code>…</div>;
   }
   return (

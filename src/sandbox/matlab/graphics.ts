@@ -21,10 +21,19 @@ export interface Surface {
   kind: 'surf' | 'mesh' | 'contour';
   shading: 'faceted' | 'flat' | 'interp';
 }
+/** A constant reference line drawn across the axes (xline/yline). */
+export interface RefLine {
+  axis: 'x' | 'y';
+  value: number;
+  color?: string;
+  dash?: string;
+  label?: string;
+}
 export interface FigureSpec {
   version: number;
   series: Series[];
   surfaces?: Surface[];
+  reflines?: RefLine[];
   title?: string;
   xlabel?: string;
   ylabel?: string;
@@ -137,6 +146,14 @@ export class Graphics {
     for (let r = 0; r < nr; r++) { const row: number[] = []; for (let c = 0; c < nc; c++) row.push(Z.data[r + c * nr]); z.push(row); }
     this.fig.surfaces = this.fig.surfaces ?? [];
     this.fig.surfaces.push({ x: xv, y: yv, z, kind, shading: kind === 'surf' ? 'faceted' : 'faceted' });
+    this.touch();
+  }
+
+  /** xline/yline: a constant reference line (overlays without clearing the plot). */
+  refline(axis: 'x' | 'y', values: number[], spec?: string, label?: string) {
+    const s = spec ? parseLineSpec(spec) : {};
+    this.fig.reflines = this.fig.reflines ?? [];
+    for (const v of values) this.fig.reflines.push({ axis, value: v, color: s.color, dash: s.dash, label });
     this.touch();
   }
 

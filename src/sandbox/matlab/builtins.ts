@@ -1227,6 +1227,8 @@ export const BUILTINS: Record<string, Builtin> = {
     const v = toArray(m(a[0])); env.graphics.setYLim([v[0], v[1]]); return [];
   },
   zlabel: async (a, _n, env) => { env.graphics.command('zlabel', a); return []; },
+  xline: async (a, _n, env) => { const vals = toArray(m(a[0])); const spec = a.length >= 2 && isMat(a[1]) && (a[1] as Mat).isChar ? asString(a[1]) : undefined; const label = a.length >= 3 && isMat(a[2]) && (a[2] as Mat).isChar ? asString(a[2]) : undefined; env.graphics.refline('x', vals, spec, label); return []; },
+  yline: async (a, _n, env) => { const vals = toArray(m(a[0])); const spec = a.length >= 2 && isMat(a[1]) && (a[1] as Mat).isChar ? asString(a[1]) : undefined; const label = a.length >= 3 && isMat(a[2]) && (a[2] as Mat).isChar ? asString(a[2]) : undefined; env.graphics.refline('y', vals, spec, label); return []; },
   peaks: async (a, nargout, env) => {
     // peaks(n) → the classic n×n sample surface; with no output, plots it.
     const n = a.length && isMat(a[0]) && numel(a[0]) === 1 ? Math.round(asScalar(a[0])) : 49;
@@ -1363,6 +1365,8 @@ const HELP: Record<string, HelpEntry> = {
   colormap: { summary: 'Set the colour map (parula/jet/hot/cool/gray/…)', syntax: ['colormap jet', "colormap('parula')"], seealso: ['surf', 'colorbar', 'shading'] },
   zlabel: { summary: 'Label the z-axis', syntax: ["zlabel('text')"], seealso: ['xlabel', 'ylabel', 'surf'] },
   peaks: { summary: 'Sample function of two variables (classic test surface)', syntax: ['Z = peaks(n)', 'peaks(n)'], seealso: ['surf', 'mesh', 'meshgrid'] },
+  xline: { summary: 'Vertical reference line(s) at constant x', syntax: ['xline(x)', "xline(x,'--r')", "xline(x,'-','label')"], seealso: ['yline', 'plot', 'line'] },
+  yline: { summary: 'Horizontal reference line(s) at constant y', syntax: ['yline(y)', "yline(y,'--r')", "yline(y,'-','label')"], seealso: ['xline', 'plot', 'line'] },
   disp: { summary: 'Display value without its variable name', syntax: ['disp(X)'], seealso: ['fprintf', 'sprintf'] },
   fprintf: { summary: 'Write formatted data to the command window', syntax: ['fprintf(FORMAT,A,...)'], seealso: ['sprintf', 'disp'] },
   sprintf: { summary: 'Format data into a string', syntax: ['str = sprintf(FORMAT,A,...)'], seealso: ['fprintf', 'num2str'] },
@@ -1523,7 +1527,7 @@ const BASE_REF = new Set<string>((
   'isdiag issymmetric ishermitian istriu istril isbanded bandwidth gamma gammaln erf erfc erfinv beta filter filter2 conv2 detrend ' +
   'normalize rescale clip smoothdata isoutlier filloutliers rmoutliers islocalmax islocalmin sinpi cospi pi ' +
   'plot fplot hold title xlabel ylabel zlabel legend grid axis xlim ylim set gca gcf figure clf cla close clc format who whos clear help doc ans dot repmat ' +
-  'surf surfc mesh meshc surface contour contourf pcolor shading colorbar colormap view peaks ' +
+  'surf surfc mesh meshc surface contour contourf pcolor shading colorbar colormap view peaks xline yline ' +
   'cell iscell iscellstr num2cell cell2mat celldisp cellfun strsplit strjoin ' +
   'struct isstruct isfield fieldnames numfields rmfield setfield getfield orderfields struct2cell cell2struct structfun ' +
   'horzcat vertcat isequaln corr qmr condest wilkinson spones nonzeros bartlett blackman hamming hann typecast swapbytes ' +
