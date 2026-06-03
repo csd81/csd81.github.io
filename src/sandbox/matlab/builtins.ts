@@ -494,6 +494,35 @@ export const BUILTINS: Record<string, Builtin> = {
   islocalmin: async (a) => { const A = m(a[0]); const v = toArray(A); const o = v.map((_, i) => (i > 0 && i < v.length - 1 && v[i] < v[i - 1] && v[i] < v[i + 1] ? 1 : 0)); const out = A.cols === 1 ? colVec(o) : rowVec(o); out.isBool = true; return [out]; },
   isapprox: async (a) => { const tol = a.length >= 3 ? asScalar(a[2]) : 1e-6; const r = elementwise(m(a[0]), m(a[1]), (x, y) => (Math.abs(x - y) <= tol + tol * Math.max(Math.abs(x), Math.abs(y)) ? 1 : 0)); return ret({ ...r, isBool: true }); },
   erfinv: async (a) => ret(map(m(a[0]), erfinvFn)),
+  // ── set operations ──
+  intersect: async (a) => { const A = m(a[0]); const sb = new Set(toArray(m(a[1]))); const r = setUniq(toArray(A).filter((x) => sb.has(x))); return ret(A.rows === 1 ? rowVec(r) : colVec(r)); },
+  union: async (a) => { const A = m(a[0]); const r = setUniq([...toArray(A), ...toArray(m(a[1]))]); return ret(A.rows === 1 ? rowVec(r) : colVec(r)); },
+  setdiff: async (a) => { const A = m(a[0]); const sb = new Set(toArray(m(a[1]))); const r = setUniq(toArray(A).filter((x) => !sb.has(x))); return ret(A.rows === 1 ? rowVec(r) : colVec(r)); },
+  setxor: async (a) => { const A = m(a[0]), B = m(a[1]); const sa = new Set(toArray(A)), sb = new Set(toArray(B)); const r = setUniq([...toArray(A).filter((x) => !sb.has(x)), ...toArray(B).filter((x) => !sa.has(x))]); return ret(A.rows === 1 ? rowVec(r) : colVec(r)); },
+  // ── more statistics ──
+  histcounts: async (a, n) => {
+    const x = toArray(m(a[0])); let edges: number[];
+    if (a.length >= 2 && isMat(a[1]) && numel(a[1]) > 1) edges = toArray(m(a[1]));
+    else { const nb = a.length >= 2 ? Math.round(asScalar(a[1])) : 10; const mn = Math.min(...x), mx = Math.max(...x); const w = (mx - mn) / nb || 1; edges = Array.from({ length: nb + 1 }, (_, i) => mn + i * w); }
+    const counts = new Array(edges.length - 1).fill(0);
+    for (const v of x) { for (let b = 0; b < counts.length; b++) { if (v >= edges[b] && (v < edges[b + 1] || (b === counts.length - 1 && v <= edges[b + 1]))) { counts[b]++; break; } } }
+    return n >= 2 ? [rowVec(counts), rowVec(edges)] : [rowVec(counts)];
+  },
+  randperm: async (a) => { const nn = Math.round(asScalar(a[0])); const p = Array.from({ length: nn }, (_, i) => i + 1); for (let i = nn - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; } const k = a.length >= 2 ? Math.round(asScalar(a[1])) : nn; return ret(rowVec(p.slice(0, k))); },
+  mad: async (a) => { const flag = a.length >= 2 ? asScalar(a[1]) : 0; return ret(colReduce(m(a[0]), (c) => { if (flag === 1) { const s = [...c].sort((x, y) => x - y); const md = s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2; const d = c.map((x) => Math.abs(x - md)).sort((x, y) => x - y); return d.length % 2 ? d[(d.length - 1) / 2] : (d[d.length / 2 - 1] + d[d.length / 2]) / 2; } const mu = c.reduce((s2, x) => s2 + x, 0) / c.length; return c.reduce((s2, x) => s2 + Math.abs(x - mu), 0) / c.length; })); },
+  poly: async (a) => { const A = m(a[0]); if (A.rows > 1 && A.cols > 1) return ret(rowVec(charpolyC(A))); let c = [1]; for (const r of toArray(A)) { const nc = new Array(c.length + 1).fill(0); for (let i = 0; i < c.length; i++) { nc[i] += c[i]; nc[i + 1] -= c[i] * r; } c = nc; } return ret(rowVec(c)); },
+  // ── type tests / conversions ──
+  isnumeric: async (a) => ret(bool(isMat(a[0]) && !(a[0] as Mat).isChar)),
+  ischar: async (a) => ret(bool(isMat(a[0]) && !!(a[0] as Mat).isChar)),
+  isfloat: async (a) => ret(bool(isMat(a[0]) && !(a[0] as Mat).isChar)),
+  double: async (a) => { const A = m(a[0]); return ret({ kind: 'num', rows: A.rows, cols: A.cols, data: Float64Array.from(A.data), idata: A.idata ? Float64Array.from(A.idata) : undefined }); },
+  single: async (a) => { const A = m(a[0]); return ret(mat(A.rows, A.cols, Float64Array.from(A.data))); },
+  char: async (a) => { const A = m(a[0]); if (A.isChar) return ret(A); return ret(str(toArray(A).map((x) => String.fromCharCode(Math.round(x))).join(''))); },
+  int8: async (a) => ret(intCast(m(a[0]), 'int8')), uint8: async (a) => ret(intCast(m(a[0]), 'uint8')),
+  int16: async (a) => ret(intCast(m(a[0]), 'int16')), uint16: async (a) => ret(intCast(m(a[0]), 'uint16')),
+  int32: async (a) => ret(intCast(m(a[0]), 'int32')), uint32: async (a) => ret(intCast(m(a[0]), 'uint32')),
+  int64: async (a) => ret(intCast(m(a[0]), 'int64')), uint64: async (a) => ret(intCast(m(a[0]), 'uint64')),
+  cast: async (a) => { const A = m(a[0]); const ty = asString(a[1]); if (ty in INT_LIMITS) return ret(intCast(A, ty)); if (ty === 'char') return ret(A.isChar ? A : str(toArray(A).map((x) => String.fromCharCode(Math.round(x))).join(''))); return ret(mat(A.rows, A.cols, Float64Array.from(A.data))); },
 
   // ── Numerical methods (real-valued) ──
   trapz: async (a) => {
@@ -1136,6 +1165,16 @@ function fftShift(A: Mat, inverse: boolean): Mat {
   const scol = A.rows === 1 ? shift(A.cols) : sc;
   for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) { const nr = (r + sr) % A.rows, nc = (c + scol) % A.cols; o.data[nr + nc * A.rows] = A.data[r + c * A.rows]; if (im) im[nr + nc * A.rows] = A.idata![r + c * A.rows]; }
   if (im) o.idata = im; return o;
+}
+
+// ── Set / conversion helpers ──────────────────────────────────────────────
+function setUniq(arr: number[]): number[] { const s = new Set<number>(); const o: number[] = []; for (const x of arr) if (!s.has(x)) { s.add(x); o.push(x); } return o.sort((a, b) => a - b); }
+function intCast(A: Mat, ty: string): Mat { const [lo, hi] = INT_LIMITS[ty]; const o = zeros(A.rows, A.cols); for (let i = 0; i < A.data.length; i++) o.data[i] = Math.min(hi, Math.max(lo, Math.round(A.data[i]))); return o; }
+/** Characteristic polynomial coefficients (monic, high→low) for poly(matrix). */
+function charpolyC(A: Mat): number[] {
+  const n = A.rows; const c = [1]; let M = zeros(n, n); for (let i = 0; i < n; i++) M.data[i + i * n] = 1;
+  for (let k = 1; k <= n; k++) { const AM = matmul(A, M); let tr = 0; for (let i = 0; i < n; i++) tr += AM.data[i + i * n]; const ck = -tr / k; c.push(ck); M = mat(n, n, Float64Array.from(AM.data)); for (let i = 0; i < n; i++) M.data[i + i * n] += ck; }
+  return c;
 }
 
 // ── Signal / preprocessing helpers ────────────────────────────────────────
