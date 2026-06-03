@@ -1591,6 +1591,44 @@ export const BUILTINS: Record<string, Builtin> = {
   hsv: async (a) => ret(cmapGen(a, (t) => hsv2rgb(t, 1, 1))),
   lines: async (a) => ret(cmapGen(a, (_t, i) => LINES7[i % 7] as [number, number, number])),
   colorcube: async (a) => ret(cmapGen(a, (t) => hsv2rgb(t, 1, 0.6 + 0.4 * (t % 0.25) * 4))),
+  flag: async (a) => ret(cmapGen(a, (_t, i) => ([[1, 0, 0], [1, 1, 1], [0, 0, 1], [0, 0, 0]] as [number, number, number][])[i % 4])),
+  prism: async (a) => ret(cmapGen(a, (_t, i) => ([[1, 0, 0], [1, 0.5, 0], [1, 1, 0], [0, 1, 0], [0, 0, 1], [0.667, 0, 1]] as [number, number, number][])[i % 6])),
+  sky: async (a) => ret(cmapGen(a, (t) => lerpAnchors([[0.07, 0.04, 0.2], [0.2, 0.5, 0.85], [0.7, 0.9, 0.98]], t))),
+  abyss: async (a) => ret(cmapGen(a, (t) => lerpAnchors([[0, 0, 0], [0.0, 0.1, 0.4], [0.0, 0.45, 0.7], [0.85, 0.95, 1]], t))),
+  nebula: async (a) => ret(cmapGen(a, (t) => lerpAnchors([[0.02, 0.05, 0.2], [0.4, 0.1, 0.5], [0.9, 0.4, 0.5], [1, 0.9, 0.7]], t))),
+  // colour-space conversions
+  hsv2rgb: async (a) => { const M = m(a[0]); const o = zeros(M.rows, M.cols); for (let r = 0; r < M.rows; r++) { const [R, G, B] = hsv2rgb(M.data[r], M.data[r + M.rows], M.data[r + 2 * M.rows]); o.data[r] = R; o.data[r + M.rows] = G; o.data[r + 2 * M.rows] = B; } return ret(o); },
+  rgb2hsv: async (a) => { const M = m(a[0]); const o = zeros(M.rows, M.cols); for (let r = 0; r < M.rows; r++) { const [H, S, V] = rgb2hsvFn(M.data[r], M.data[r + M.rows], M.data[r + 2 * M.rows]); o.data[r] = H; o.data[r + M.rows] = S; o.data[r + 2 * M.rows] = V; } return ret(o); },
+  rgb2gray: async (a) => { const M = m(a[0]); const o = zeros(M.rows, M.cols); for (let r = 0; r < M.rows; r++) { const g = 0.2989 * M.data[r] + 0.587 * M.data[r + M.rows] + 0.114 * M.data[r + 2 * M.rows]; o.data[r] = g; o.data[r + M.rows] = g; o.data[r + 2 * M.rows] = g; } return ret(o); },
+  cmap2gray: async (a, n, env) => BUILTINS.rgb2gray(a, n, env),
+  im2gray: async (a, n, env) => BUILTINS.rgb2gray(a, n, env),
+  hex2rgb: async (a) => { const h = asString(a[0]).replace(/^#/, ''); return ret(rowVec([parseInt(h.slice(0, 2), 16) / 255, parseInt(h.slice(2, 4), 16) / 255, parseInt(h.slice(4, 6), 16) / 255])); },
+  rgb2hex: async (a) => { const v = toArray(m(a[0])); return ret(str('#' + v.slice(0, 3).map((x) => Math.round(Math.max(0, Math.min(1, x)) * 255).toString(16).padStart(2, '0')).join(''))); },
+  // axis scale + tick/aspect settings
+  xscale: async (a, _n, env) => { env.graphics.setScale('x', a.length && asString(a[0]).toLowerCase().startsWith('log') ? 'log' : 'linear'); return []; },
+  yscale: async (a, _n, env) => { env.graphics.setScale('y', a.length && asString(a[0]).toLowerCase().startsWith('log') ? 'log' : 'linear'); return []; },
+  zscale: async () => [],
+  yyaxis: async () => [],
+  caxis: async () => [], clim: async () => [], colororder: async () => [], daspect: async () => [], pbaspect: async () => [],
+  xtickangle: async () => [], ytickangle: async () => [], ztickangle: async () => [],
+  xtickformat: async () => [], ytickformat: async () => [], ztickformat: async () => [],
+  xticklabels: async () => [], yticklabels: async () => [], zticklabels: async () => [],
+  fontname: async () => [], fontsize: async () => [], gtext: async () => [], annotation: async () => [], line: async () => [], rectangle: async () => [],
+  // renderable plot variants
+  imagesc: async (a, _n, env) => { env.graphics.surface([m(a[a.length - 1])], 'contour'); env.graphics.command('colorbar', []); return []; },
+  image: async (a, _n, env) => { env.graphics.surface([m(a[a.length - 1])], 'contour'); return []; },
+  pie3: async (a, _n, env) => { env.graphics.pie(a); return []; },
+  piechart: async (a, _n, env) => { env.graphics.pie(a); return []; },
+  donutchart: async (a, _n, env) => { env.graphics.pie(a); return []; },
+  pareto: async (a, _n, env) => { const v = toArray(m(a[0])).slice().sort((x, y) => y - x); env.graphics.chart2d([rowVec(v.map((_, i) => i + 1)), rowVec(v)], 'bar'); return []; },
+  fimplicit: async (a, _n, env) => { const { X, Y, Z } = await sampleFn2(a, env); env.graphics.surface([X, Y, Z], 'contour'); return []; },
+  fplot3: async (a, _n, env) => {
+    const fx = handle(a[0], 'fplot3'), fy = handle(a[1], 'fplot3'), fz = handle(a[2], 'fplot3');
+    let lo = 0, hi = 2 * Math.PI; if (a.length >= 4 && isMat(a[3])) { const r = toArray(a[3] as Mat); lo = r[0]; hi = r[1]; }
+    const N = 200; const xs: number[] = [], ys: number[] = [], zs: number[] = [];
+    for (let i = 0; i < N; i++) { const t = lo + (hi - lo) * i / (N - 1); const ex = await env.callHandle(fx, [scalar(t)], 1), ey = await env.callHandle(fy, [scalar(t)], 1), ez = await env.callHandle(fz, [scalar(t)], 1); xs.push(asScalar(ex[0])); ys.push(asScalar(ey[0])); zs.push(asScalar(ez[0])); }
+    env.graphics.line3([rowVec(xs), rowVec(ys), rowVec(zs)], 'lines'); return [];
+  },
   brighten: async (a) => {
     // brighten(map, beta): map.^gamma, gamma = 1-beta (beta>0 brighter).
     const M = m(a[0]); const beta = a.length >= 2 ? asScalar(a[1]) : asScalar(a[0]);
@@ -1731,6 +1769,17 @@ const HELP: Record<string, HelpEntry> = {
   dsearchn: { summary: 'Nearest point search', syntax: ['k = dsearchn(P,PQ)'], seealso: ['delaunay', 'griddata'] },
   brighten: { summary: 'Brighten or darken a colormap', syntax: ['m2 = brighten(map,beta)'], seealso: ['colormap'] },
   box: { summary: 'Display or hide the axes outline', syntax: ['box on', 'box off'], seealso: ['axis', 'grid'] },
+  hsv2rgb: { summary: 'Convert HSV colors to RGB', syntax: ['rgb = hsv2rgb(hsv)'], seealso: ['rgb2hsv', 'colormap'] },
+  rgb2hsv: { summary: 'Convert RGB colors to HSV', syntax: ['hsv = rgb2hsv(rgb)'], seealso: ['hsv2rgb'] },
+  rgb2gray: { summary: 'Convert RGB to grayscale', syntax: ['g = rgb2gray(rgb)'], seealso: ['rgb2hsv', 'cmap2gray'] },
+  hex2rgb: { summary: 'Convert a hex color code to an RGB triplet', syntax: ["c = hex2rgb('#ff8800')"], seealso: ['rgb2hex'] },
+  rgb2hex: { summary: 'Convert an RGB triplet to a hex color code', syntax: ['h = rgb2hex([r g b])'], seealso: ['hex2rgb'] },
+  xscale: { summary: 'Set x-axis scale (linear/log)', syntax: ["xscale('log')"], seealso: ['yscale', 'loglog', 'semilogx'] },
+  yscale: { summary: 'Set y-axis scale (linear/log)', syntax: ["yscale('log')"], seealso: ['xscale', 'semilogy'] },
+  imagesc: { summary: 'Display a matrix as a scaled-color image', syntax: ['imagesc(C)'], seealso: ['image', 'pcolor', 'contourf'] },
+  fimplicit: { summary: 'Plot an implicit function f(x,y)=0', syntax: ['fimplicit(@(x,y) ...)'], seealso: ['fcontour', 'fplot'] },
+  fplot3: { summary: 'Plot a 3-D parametric curve', syntax: ['fplot3(@(t)x,@(t)y,@(t)z,[t0 t1])'], seealso: ['plot3', 'fplot'] },
+  pareto: { summary: 'Pareto chart (sorted bars)', syntax: ['pareto(y)'], seealso: ['bar', 'histogram'] },
   zlabel: { summary: 'Label the z-axis', syntax: ["zlabel('text')"], seealso: ['xlabel', 'ylabel', 'surf'] },
   peaks: { summary: 'Sample function of two variables (classic test surface)', syntax: ['Z = peaks(n)', 'peaks(n)'], seealso: ['surf', 'mesh', 'meshgrid'] },
   sphere: { summary: 'Generate/plot a unit sphere surface', syntax: ['[X,Y,Z] = sphere(n)', 'sphere(n)'], seealso: ['cylinder', 'ellipsoid', 'surf'] },
@@ -1999,6 +2048,9 @@ const BASE_REF = new Set<string>((
   'bar barh area stem stairs scatter scatter3 plot3 stem3 errorbar pie histogram loglog semilogx semilogy subtitle sgtitle zlim xticks yticks zticks text box ' +
   'jet parula turbo hot cool gray bone copper pink spring summer autumn winter hsv lines colorcube cellstr dsearchn brighten ' +
   'subplot tiledlayout nexttile sgtitle ' +
+  'flag prism sky abyss nebula hsv2rgb rgb2hsv rgb2gray cmap2gray im2gray hex2rgb rgb2hex xscale yscale zscale yyaxis clim caxis colororder daspect pbaspect ' +
+  'xtickangle ytickangle ztickangle xtickformat ytickformat ztickformat xticklabels yticklabels zticklabels fontname fontsize gtext annotation line rectangle ' +
+  'imagesc image pie3 piechart donutchart pareto fimplicit fplot3 ' +
   'cell iscell iscellstr num2cell cell2mat celldisp cellfun strsplit strjoin ' +
   'struct isstruct isfield fieldnames numfields rmfield setfield getfield orderfields struct2cell cell2struct structfun ' +
   'horzcat vertcat isequaln corr qmr condest wilkinson spones nonzeros bartlett blackman hamming hann typecast swapbytes ' +
@@ -2284,6 +2336,11 @@ const hotColor = (t: number): [number, number, number] => [clamp01(t / 0.375), c
 function hsv2rgb(h: number, s: number, v: number): [number, number, number] {
   const i = Math.floor(h * 6), f = h * 6 - i, p = v * (1 - s), q = v * (1 - f * s), u = v * (1 - (1 - f) * s);
   switch (((i % 6) + 6) % 6) { case 0: return [v, u, p]; case 1: return [q, v, p]; case 2: return [p, v, u]; case 3: return [p, q, v]; case 4: return [u, p, v]; default: return [v, p, q]; }
+}
+function rgb2hsvFn(r: number, g: number, b: number): [number, number, number] {
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  let h = 0; if (d !== 0) { if (mx === r) h = ((g - b) / d) % 6; else if (mx === g) h = (b - r) / d + 2; else h = (r - g) / d + 4; h /= 6; if (h < 0) h += 1; }
+  return [h, mx === 0 ? 0 : d / mx, mx];
 }
 function lerpAnchors(A: number[][], t: number): [number, number, number] {
   const pos = clamp01(t) * (A.length - 1); const i = Math.min(A.length - 2, Math.floor(pos)); const f = pos - i;
