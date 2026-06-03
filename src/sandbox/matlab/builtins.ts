@@ -1056,7 +1056,10 @@ export const BUILTINS: Record<string, Builtin> = {
   // ── Batch I: language utilities (MATLAB v7 reference) ──
   deal: async (a, n) => { const k = Math.max(1, n); if (a.length === 1) return new Array(k).fill(a[0]); return a.slice(0, k); },
   func2str: async (a) => { const h = handle(a[0], 'func2str'); return ret(str(h.name && h.name !== 'anonymous' ? h.name : '@anonymous')); },
-  str2func: async (a, _n, env) => ret(env.makeHandle(asString(a[0]).replace(/^@/, ''))),
+  str2func: async (a, _n, env) => { const sstr = asString(a[0]).trim(); return sstr.startsWith('@') ? ret(await env.evalInput(sstr)) : ret(env.makeHandle(sstr.replace(/^@/, ''))); },
+  eval: async (a, _n, env) => { const v = await env.evalInput(asString(a[0])); return v === undefined ? [] : ret(v); },
+  evalc: async (a, _n, env) => { let buf = ''; const orig = env.output; (env as { output: (t: string) => void }).output = (t) => { buf += t; }; try { await env.evalInput(asString(a[0])); } finally { (env as { output: (t: string) => void }).output = orig; } return ret(str(buf)); },
+  inline: async (a, _n, env) => { const expr = asString(a[0]); const vars = a.length >= 2 ? a.slice(1).map((v) => asString(v)) : guessVars(expr); return ret(await env.evalInput(`@(${vars.join(',')}) ${expr}`)); },
   assert: async (a) => { if (!truthy(a[0])) throw new MatError(a.length >= 2 && isMat(a[1]) && (a[1] as Mat).isChar ? asString(a[1]) : 'assert: condition failed'); return []; },
   narginchk: async () => [], nargoutchk: async () => [], nargchk: async () => ret(str('')),
   validateattributes: async () => [],
@@ -1819,6 +1822,45 @@ export const BUILTINS: Record<string, Builtin> = {
   fsurf: async (a, _n, env) => { const { X, Y, Z } = await sampleFn2(a, env); env.graphics.surface([X, Y, Z], 'surf'); return []; },
   fmesh: async (a, _n, env) => { const { X, Y, Z } = await sampleFn2(a, env); env.graphics.surface([X, Y, Z], 'mesh'); return []; },
   fcontour: async (a, _n, env) => { const { X, Y, Z } = await sampleFn2(a, env); env.graphics.surface([X, Y, Z], 'contour'); return []; },
+  // ez* easy-plotters (v6 reference) → delegate to the f* samplers; accept string expressions
+  ezplot: async (a, n, env) => BUILTINS.fplot([await ezFn(a[0], env, 'x'), ...a.slice(1)], n, env),
+  ezsurf: async (a, n, env) => BUILTINS.fsurf([await ezFn(a[0], env, 'x,y'), ...a.slice(1)], n, env),
+  ezsurfc: async (a, n, env) => BUILTINS.fsurf([await ezFn(a[0], env, 'x,y'), ...a.slice(1)], n, env),
+  ezmesh: async (a, n, env) => BUILTINS.fmesh([await ezFn(a[0], env, 'x,y'), ...a.slice(1)], n, env),
+  ezmeshc: async (a, n, env) => BUILTINS.fmesh([await ezFn(a[0], env, 'x,y'), ...a.slice(1)], n, env),
+  ezcontour: async (a, n, env) => BUILTINS.fcontour([await ezFn(a[0], env, 'x,y'), ...a.slice(1)], n, env),
+  ezcontourf: async (a, n, env) => BUILTINS.fcontour([await ezFn(a[0], env, 'x,y'), ...a.slice(1)], n, env),
+  ezplot3: async (a, n, env) => BUILTINS.fplot3([await ezFn(a[0], env, 't'), await ezFn(a[1], env, 't'), await ezFn(a[2], env, 't'), ...a.slice(3)], n, env),
+  ezpolar: async (a, _n, env) => {
+    const f = await ezFn(a[0], env, 't'); const lo = 0, hi = 2 * Math.PI; const N = 200;
+    const th: number[] = [], r: number[] = [];
+    for (let i = 0; i < N; i++) { const t = lo + (hi - lo) * i / (N - 1); th.push(t); r.push(asScalar((await env.callHandle(f as Handle, [scalar(t)], 1))[0])); }
+    env.graphics.polar([rowVec(th), rowVec(r)], 'lines'); return [];
+  },
+  // deprecated aliases (v6)
+  dblquad: async (a, n, env) => BUILTINS.integral2(a, n, env),
+  triplequad: async (a, n, env) => BUILTINS.integral3(a, n, env),
+  delaunay3: async (a, n, env) => BUILTINS.delaunayn([horzcat([colvecOf(m(a[0])), colvecOf(m(a[1])), colvecOf(m(a[2]))])], n, env),
+  dsearch: async (a, n, env) => BUILTINS.dsearchn([horzcat([colvecOf(m(a[0])), colvecOf(m(a[1]))]), horzcat([colvecOf(m(a[3])), colvecOf(m(a[4]))])], n, env),
+  // vector calculus (finite differences on a meshgrid)
+  divergence: async (a) => {
+    const ms = a.filter((x): x is Mat => isMat(x) && !(x as Mat).isChar);
+    if (ms.length >= 6) { const U = ms[3], V = ms[4], W = ms[5]; const du = grad3(U, ms[0], 'x'), dv = grad3(V, ms[1], 'y'), dw = grad3(W, ms[2], 'z'); const o = makeND(ndSize(U), new Float64Array(numel(U))); for (let i = 0; i < o.data.length; i++) o.data[i] = du[i] + dv[i] + dw[i]; return ret(o); }
+    const U = ms.length >= 4 ? ms[2] : ms[0], V = ms.length >= 4 ? ms[3] : ms[1];
+    const hx = ms.length >= 4 ? gridStep(ms[0], 'x') : 1, hy = ms.length >= 4 ? gridStep(ms[1], 'y') : 1;
+    const { fx } = grad2(U, hx, hy), gy = grad2(V, hx, hy).fy; const o = zeros(U.rows, U.cols); for (let i = 0; i < o.data.length; i++) o.data[i] = fx[i] + gy[i]; return ret(o);
+  },
+  curl: async (a, n) => {
+    const ms = a.filter((x): x is Mat => isMat(x) && !(x as Mat).isChar);
+    const U = ms.length >= 4 ? ms[2] : ms[0], V = ms.length >= 4 ? ms[3] : ms[1];
+    const hx = ms.length >= 4 ? gridStep(ms[0], 'x') : 1, hy = ms.length >= 4 ? gridStep(ms[1], 'y') : 1;
+    const dVdx = grad2(V, hx, hy).fx, dUdy = grad2(U, hx, hy).fy;
+    const cz = zeros(U.rows, U.cols), av = zeros(U.rows, U.cols); for (let i = 0; i < cz.data.length; i++) { cz.data[i] = dVdx[i] - dUdy[i]; av.data[i] = cz.data[i] / 2; }
+    return n >= 2 ? [cz, av] : [cz];
+  },
+  // classic sparse-Laplacian demo (Gilbert–Moler–Schreiber)
+  numgrid: async (a) => ret(numgridOf(asString(a[0]), Math.round(asScalar(a[1])))),
+  delsq: async (a) => ret(delsqOf(m(a[0]))),
   contour3: async (a, _n, env) => { env.graphics.surface(a, 'contour3'); return []; },
   quiver: async (a, _n, env) => {
     let xs: number[], ys: number[], us: number[], vs: number[];
@@ -2161,6 +2203,19 @@ const HELP: Record<string, HelpEntry> = {
   fsurf: { summary: 'Plot a 3-D surface from a function f(x,y)', syntax: ['fsurf(@(x,y) ...)', 'fsurf(f,[a b])'], seealso: ['surf', 'fmesh', 'fcontour', 'fplot'] },
   fmesh: { summary: 'Plot a 3-D mesh from a function f(x,y)', syntax: ['fmesh(@(x,y) ...)'], seealso: ['mesh', 'fsurf'] },
   fcontour: { summary: 'Contour plot of a function f(x,y)', syntax: ['fcontour(@(x,y) ...)'], seealso: ['contour', 'fsurf'] },
+  ezplot: { summary: 'Easy function plotter', syntax: ['ezplot(f)', "ezplot('x^2')"], seealso: ['fplot', 'ezsurf'] },
+  ezsurf: { summary: 'Easy 3-D surface plotter', syntax: ['ezsurf(f)'], seealso: ['fsurf', 'ezmesh'] },
+  ezmesh: { summary: 'Easy 3-D mesh plotter', syntax: ['ezmesh(f)'], seealso: ['fmesh', 'ezsurf'] },
+  ezcontour: { summary: 'Easy contour plotter', syntax: ['ezcontour(f)'], seealso: ['fcontour', 'ezsurf'] },
+  ezplot3: { summary: 'Easy 3-D parametric-curve plotter', syntax: ['ezplot3(fx,fy,fz)'], seealso: ['fplot3', 'ezplot'] },
+  ezpolar: { summary: 'Easy polar plotter', syntax: ['ezpolar(f)'], seealso: ['polarplot', 'ezplot'] },
+  eval: { summary: 'Evaluate a string as a MATLAB expression', syntax: ["eval('expr')"], seealso: ['feval', 'str2func', 'inline'] },
+  inline: { summary: 'Construct an inline function from a string (deprecated → @)', syntax: ["f = inline('x.^2')", "inline('a+b','a','b')"], seealso: ['str2func', 'eval'] },
+  divergence: { summary: 'Divergence of a vector field', syntax: ['div = divergence(X,Y,U,V)', 'divergence(X,Y,Z,U,V,W)'], seealso: ['curl', 'gradient'] },
+  curl: { summary: 'Curl of a 2-D vector field (z-component)', syntax: ['cz = curl(X,Y,U,V)', '[cz,cav] = curl(...)'], seealso: ['divergence', 'gradient'] },
+  numgrid: { summary: 'Number grid points in a region (S/L/D)', syntax: ["G = numgrid('L',n)"], seealso: ['delsq', 'sparse'] },
+  delsq: { summary: 'Discrete Laplacian on a numbered grid (sparse)', syntax: ['D = delsq(G)'], seealso: ['numgrid', 'sparse'] },
+  dblquad: { summary: 'Double integral over a rectangle (→ integral2)', syntax: ['q = dblquad(f,a,b,c,d)'], seealso: ['integral2', 'triplequad'] },
   contour3: { summary: '3-D contour plot of a surface', syntax: ['contour3(X,Y,Z)'], seealso: ['contour', 'surf', 'mesh'] },
   quiver: { summary: '2-D vector field (arrows)', syntax: ['quiver(X,Y,U,V)', 'quiver(U,V)'], seealso: ['plot', 'streamline'] },
   bar: { summary: 'Bar graph', syntax: ['bar(y)', 'bar(x,y)'], seealso: ['barh', 'histogram', 'stem'] },
@@ -2495,6 +2550,7 @@ const BASE_REF = new Set<string>((
   'surf surfc surfl mesh meshc surface contour contourf contour3 pcolor shading colorbar colormap view peaks xline yline ' +
   'polarplot polarscatter polarhistogram polaraxes compass rlim thetalim rticks thetaticks rticklabels thetaticklabels rtickangle ' +
   'bar3 bar3h quiver3 histogram2 plotmatrix contourc trisurf trimesh tetramesh streamline isosurface slice coneplot ' +
+  'ezplot ezsurf ezsurfc ezmesh ezmeshc ezcontour ezcontourf ezplot3 ezpolar eval evalc inline divergence curl numgrid delsq dblquad triplequad delaunay3 dsearch ' +
   'sphere cylinder ellipsoid fsurf fmesh fcontour quiver ' +
   'bar barh area stem stairs scatter scatter3 plot3 stem3 errorbar pie histogram loglog semilogx semilogy subtitle sgtitle zlim xticks yticks zticks text box ' +
   'jet parula turbo hot cool gray bone copper pink spring summer autumn winter hsv lines colorcube cellstr dsearchn brighten ' +
@@ -3380,6 +3436,61 @@ function bary(ax: number, ay: number, bx: number, by: number, cx: number, cy: nu
   return [l1, l2, 1 - l1 - l2];
 }
 
+/** ez*-plotter argument → function handle (handle as-is, or build an anon from a string expr). */
+async function ezFn(v: Value, env: Env, vars: string): Promise<Value> { return isHandle(v) ? v : env.evalInput(`@(${vars}) ${asString(v)}`); }
+/** symvar-like: the free variables of an expression (identifiers not followed by '(' and
+ *  not builtins/constants), alphabetical. */
+function guessVars(expr: string): string[] {
+  const found = new Set<string>(); const re = /[A-Za-z_]\w*/g; let mm: RegExpExecArray | null;
+  while ((mm = re.exec(expr))) { const name = mm[0]; const after = expr[re.lastIndex]; if (after === '(') continue; if (name in BUILTINS || name in CONSTANTS) continue; found.add(name); }
+  const vars = [...found].sort(); return vars.length ? vars : ['x'];
+}
+/** Central-difference gradient of a 2-D field; fx along columns (x), fy along rows (y). */
+function grad2(F: Mat, hx: number, hy: number): { fx: Float64Array; fy: Float64Array } {
+  const R = F.rows, C = F.cols; const fx = new Float64Array(R * C), fy = new Float64Array(R * C);
+  for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) {
+    fx[r + c * R] = C === 1 ? 0 : c === 0 ? (F.data[r + R] - F.data[r]) / hx : c === C - 1 ? (F.data[r + c * R] - F.data[r + (c - 1) * R]) / hx : (F.data[r + (c + 1) * R] - F.data[r + (c - 1) * R]) / (2 * hx);
+    fy[r + c * R] = R === 1 ? 0 : r === 0 ? (F.data[1 + c * R] - F.data[c * R]) / hy : r === R - 1 ? (F.data[r + c * R] - F.data[(r - 1) + c * R]) / hy : (F.data[(r + 1) + c * R] - F.data[(r - 1) + c * R]) / (2 * hy);
+  }
+  return { fx, fy };
+}
+function gridStep(M: Mat, dir: 'x' | 'y'): number { return dir === 'x' ? (M.data[M.rows] - M.data[0]) || 1 : (M.data[1] - M.data[0]) || 1; }
+/** Central-difference derivative of a 3-D field along x (cols), y (rows), or z (pages). */
+function grad3(F: Mat, C: Mat, dir: 'x' | 'y' | 'z'): Float64Array {
+  const d = ndSize(F); const d0 = d[0], d1 = d[1] ?? 1, d2 = d[2] ?? 1;
+  const stride = dir === 'y' ? 1 : dir === 'x' ? d0 : d0 * d1; const n = dir === 'y' ? d0 : dir === 'x' ? d1 : d2;
+  const h = (dir === 'y' ? C.data[1] - C.data[0] : dir === 'x' ? C.data[d0] - C.data[0] : C.data[d0 * d1] - C.data[0]) || 1;
+  const out = new Float64Array(F.data.length);
+  const idxAlong = (base: number, p: number) => base + p * stride;
+  for (let k = 0; k < d2; k++) for (let i = 0; i < d1; i++) for (let j = 0; j < d0; j++) {
+    const lin = j + i * d0 + k * d0 * d1; const p = dir === 'y' ? j : dir === 'x' ? i : k; const base = lin - p * stride;
+    out[lin] = n === 1 ? 0 : p === 0 ? (F.data[idxAlong(base, 1)] - F.data[lin]) / h : p === n - 1 ? (F.data[lin] - F.data[idxAlong(base, p - 1)]) / h : (F.data[idxAlong(base, p + 1)] - F.data[idxAlong(base, p - 1)]) / (2 * h);
+  }
+  return out;
+}
+/** numgrid(R,n): grid-point numbering for a region ('S' square, 'L' L-shape, 'D' disc). */
+function numgridOf(R: string, n: number): Mat {
+  const G = zeros(n, n); const half = (n - 1) / 2;
+  const inside = (r: number, c: number): boolean => {
+    const interior = r > 0 && r < n - 1 && c > 0 && c < n - 1; if (!interior) return false;
+    const xc = (c - half) / half, yc = (half - r) / half;
+    if (R === 'L') return !(xc > 0 && yc > 0);
+    if (R === 'D' || R === 'C') return xc * xc + yc * yc < 1;
+    return true;   // 'S' and default
+  };
+  let k = 0; for (let c = 0; c < n; c++) for (let r = 0; r < n; r++) if (inside(r, c)) G.data[r + c * n] = ++k;
+  return G;
+}
+/** delsq(G): the 5-point discrete negative-Laplacian on the numbered grid points (sparse). */
+function delsqOf(G: Mat): Sparse {
+  const n = G.rows; const ii: number[] = [], jj: number[] = [], vv: number[] = []; let kmax = 0;
+  for (let c = 0; c < G.cols; c++) for (let r = 0; r < n; r++) {
+    const p = G.data[r + c * n]; if (p === 0) continue; kmax = Math.max(kmax, p);
+    ii.push(p); jj.push(p); vv.push(4);
+    for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) { const nr = r + dr, nc = c + dc; if (nr < 0 || nr >= n || nc < 0 || nc >= G.cols) continue; const q = G.data[nr + nc * n]; if (q > 0) { ii.push(p); jj.push(q); vv.push(-1); } }
+  }
+  return sparseFromTriplets(kmax, kmax, ii, jj, vv);
+}
 /** Column-major Mat → row-major number[][] grid (z[r][c]). */
 function matToGrid(Z: Mat): number[][] {
   const g: number[][] = []; for (let r = 0; r < Z.rows; r++) { const row: number[] = []; for (let c = 0; c < Z.cols; c++) row.push(Z.data[r + c * Z.rows]); g.push(row); }
