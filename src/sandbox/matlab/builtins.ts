@@ -16,7 +16,7 @@ import {
   type Table, isTable,
   type Sym, isSym, makeSym,
 } from './values';
-import { type SymExpr, sN, sV, sAdd, sMul, sPow, sFn, sNeg, simplifyExpr, diffExpr, subsExpr, evalExpr as symEval, exprToStr, symVars } from './sym';
+import { type SymExpr, sN, sV, sAdd, sSub, sMul, sPow, sFn, sNeg, simplifyExpr, diffExpr, subsExpr, evalExpr as symEval, exprToStr, symVars } from './sym';
 import {
   det, inv, mldivide, diag, norm, eye,
   qr as qrDecomp, chol as cholFn, luOutputs, jacobiEigSym, svd as svdReal,
@@ -455,8 +455,19 @@ export const BUILTINS: Record<string, Builtin> = {
   ismatrix: async () => ret(bool(true)),
 
   // linear algebra
-  det: async (a) => { const A = m(a[0]); if (isComplex(A)) { const [re, im] = cDet(A); return ret(cscalar(re, im)); } return ret(scalar(det(A))); },
-  inv: async (a) => ret(inv(m(a[0]))),
+  det: async (a) => { if (isSym(a[0])) return ret(makeSym(1, 1, [simplifyExpr(symDet(a[0].exprs, a[0].rows))])); const A = m(a[0]); if (isComplex(A)) { const [re, im] = cDet(A); return ret(cscalar(re, im)); } return ret(scalar(det(A))); },
+  inv: async (a) => { if (isSym(a[0])) return ret(symInv(a[0])); return ret(inv(m(a[0]))); },
+  charpoly: async (a) => { if (isSym(a[0])) { const c = symCharpolyCoeffs(a[0].exprs, a[0].rows); return ret(makeSym(1, c.length, c)); } const A = m(a[0]); return ret(rowVec(charpolyC(A))); },
+  // number theory
+  nextprime: async (a) => ret(map(m(a[0]), (x) => { let n = Math.floor(x) + 1; while (!isPrimeN(n)) n++; return n; })),
+  prevprime: async (a) => ret(map(m(a[0]), (x) => { let n = Math.ceil(x) - 1; while (n > 1 && !isPrimeN(n)) n--; return n >= 2 ? n : NaN; })),
+  nthprime: async (a) => ret(map(m(a[0]), (x) => { let cnt = 0, n = 1; while (cnt < Math.round(x)) { n++; if (isPrimeN(n)) cnt++; } return n; })),
+  fibonacci: async (a) => ret(map(m(a[0]), (x) => { const k = Math.round(x); let p = 0, q = 1; for (let i = 0; i < k; i++) { [p, q] = [q, p + q]; } return p; })),
+  eulerPhi: async (a) => ret(map(m(a[0]), (x) => { let n = Math.round(x), r = n; for (let p = 2; p * p <= n; p++) if (n % p === 0) { while (n % p === 0) n /= p; r -= r / p; } if (n > 1) r -= r / n; return r; })),
+  powermod: async (a) => { const base = asScalar(a[0]); let e = asScalar(a[1]); const mod = asScalar(a[2]); let b = ((base % mod) + mod) % mod, r = 1; while (e > 0) { if (e & 1) r = (r * b) % mod; b = (b * b) % mod; e = Math.floor(e / 2); } return ret(scalar(r)); },
+  harmonic: async (a) => ret(map(m(a[0]), (x) => { let s = 0; for (let k = 1; k <= Math.round(x); k++) s += 1 / k; return s; })),
+  heaviside: async (a) => { if (isSym(a[0])) return ret(makeSym(a[0].rows, a[0].cols, a[0].exprs.map((e) => simplifyExpr(sFn('heaviside', e))))); return ret(map(m(a[0]), (x) => (x > 0 ? 1 : x < 0 ? 0 : 0.5))); },
+  dirac: async (a) => { if (isSym(a[0])) return ret(makeSym(a[0].rows, a[0].cols, a[0].exprs.map((e) => simplifyExpr(sFn('dirac', e))))); return ret(map(m(a[0]), (x) => (x === 0 ? Infinity : 0))); },
   mldivide: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
   diag: async (a) => ret(diag(m(a[0]))),
   trace: async (a) => { const A = m(a[0]); let s = 0; const n = Math.min(A.rows, A.cols); for (let i = 0; i < n; i++) s += A.data[i + i * A.rows]; return ret(scalar(s)); },
@@ -2946,6 +2957,16 @@ const HELP: Record<string, HelpEntry> = {
   assumptions: { summary: 'Show assumptions (none tracked)', syntax: ['assumptions'], seealso: ['assume'] },
   sympref: { summary: 'Set symbolic preferences (no-op)', syntax: ["sympref('default')"], seealso: ['sym'] },
   digits: { summary: 'Variable-precision digits setting', syntax: ['digits(d)'], seealso: ['vpa'] },
+  charpoly: { summary: 'Characteristic polynomial of a matrix', syntax: ['c = charpoly(A)'], seealso: ['poly', 'eig', 'det'] },
+  nextprime: { summary: 'Next prime number', syntax: ['p = nextprime(n)'], seealso: ['prevprime', 'isprime'] },
+  prevprime: { summary: 'Previous prime number', syntax: ['p = prevprime(n)'], seealso: ['nextprime', 'primes'] },
+  nthprime: { summary: 'nth prime number', syntax: ['p = nthprime(n)'], seealso: ['primes', 'nextprime'] },
+  fibonacci: { summary: 'Fibonacci numbers', syntax: ['f = fibonacci(n)'], seealso: ['factorial'] },
+  eulerPhi: { summary: 'Euler totient function φ(n)', syntax: ['p = eulerPhi(n)'], seealso: ['factor', 'gcd'] },
+  powermod: { summary: 'Modular exponentiation (aᵉ mod m)', syntax: ['r = powermod(a,e,m)'], seealso: ['mod'] },
+  harmonic: { summary: 'Harmonic number H(n)', syntax: ['h = harmonic(n)'], seealso: ['symsum'] },
+  heaviside: { summary: 'Heaviside step function', syntax: ['heaviside(x)'], seealso: ['dirac', 'sign'] },
+  dirac: { summary: 'Dirac delta function', syntax: ['dirac(x)'], seealso: ['heaviside'] },
   datetime: { summary: 'Create a datetime array', syntax: ['d = datetime(Y,M,D)', 'd = datetime(Y,M,D,H,MI,S)', "d = datetime('now')"], seealso: ['duration', 'datenum', 'year'] },
   duration: { summary: 'Create a duration array (from [H M S])', syntax: ['d = duration([h m s])'], seealso: ['hours', 'minutes', 'seconds', 'datetime'] },
   NaT: { summary: 'Not-a-Time (missing datetime)', syntax: ['d = NaT'], seealso: ['isnat', 'datetime', 'NaN'] },
@@ -3219,6 +3240,7 @@ const BASE_REF = new Set<string>((
   'datenum datevec datestr now today clock date weekday eomday etime addtodate ' +
   'sym syms int limit solve jacobian hessian taylor expand subs vpa latex pretty isAlways simplify logical ' +
   'curl divergence laplacian potential coeffs sym2poly poly2sym numden collect combine simplifyFraction horner compose children lhs rhs vpasolve finverse isolate equationsToMatrix symsum symprod assume assumeAlso assumptions sympref digits ' +
+  'charpoly nextprime prevprime nthprime fibonacci eulerPhi powermod harmonic heaviside dirac ' +
   'datetime duration NaT years days hours minutes seconds milliseconds year month day hour minute second ymd isdatetime isduration isnat ' +
   'table timetable array2table cell2table struct2table table2array table2cell table2struct istable istimetable istabular height width head tail summary ' +
   'hGate xGate yGate zGate sGate siGate tGate tiGate idGate rxGate ryGate rzGate cxGate cnotGate cyGate czGate chGate crxGate cryGate crzGate swapGate ccxGate mcxGate ' +
@@ -5055,6 +5077,34 @@ function tensorProd(A: Mat, B: Mat, opts: Value[]): Mat {
 }
 
 // ── Symbolic Math helpers ───────────────────────────────────────────────
+function isPrimeN(n: number): boolean { if (n < 2) return false; if (n < 4) return true; if (n % 2 === 0) return false; for (let i = 3; i * i <= n; i += 2) if (n % i === 0) return false; return true; }
+/** Determinant of an n×n symbolic matrix (column-major exprs) by cofactor expansion. */
+function symDet(e: SymExpr[], n: number): SymExpr {
+  if (n === 1) return e[0];
+  if (n === 2) return sSub(sMul(e[0], e[3]), sMul(e[2], e[1]));
+  let acc: SymExpr = sN(0);
+  for (let j = 0; j < n; j++) {
+    const minor: SymExpr[] = new Array((n - 1) * (n - 1)); let nc = 0;
+    for (let c = 0; c < n; c++) { if (c === j) continue; for (let r = 1; r < n; r++) minor[(r - 1) + nc * (n - 1)] = e[r + c * n]; nc++; }
+    acc = sAdd(acc, sMul(sN(j % 2 === 0 ? 1 : -1), e[0 + j * n], symDet(minor, n - 1)));
+  }
+  return acc;
+}
+/** Symbolic matrix inverse via adjugate / determinant. */
+function symInv(s: Sym): Sym {
+  const n = s.rows; const d = symDet(s.exprs, n); const out: SymExpr[] = new Array(n * n);
+  const minorDet = (ri: number, ci: number): SymExpr => { const minor: SymExpr[] = new Array((n - 1) * (n - 1)); let nc = 0; for (let c = 0; c < n; c++) { if (c === ci) continue; let nr = 0; for (let r = 0; r < n; r++) { if (r === ri) continue; minor[nr + nc * (n - 1)] = s.exprs[r + c * n]; nr++; } nc++; } return symDet(minor, n - 1); };
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) out[i + j * n] = simplifyExpr(sMul(sN((i + j) % 2 === 0 ? 1 : -1), minorDet(j, i), sPow(d, sN(-1))));   // adjugate transpose / det
+  return makeSym(n, n, out);
+}
+/** Characteristic-polynomial coefficients (highest power first) of a symbolic matrix. */
+function symCharpolyCoeffs(e: SymExpr[], n: number): SymExpr[] {
+  const L = '__l'; const M: SymExpr[] = e.map((x, i) => { const r = i % n, c = Math.floor(i / n); return r === c ? sSub(sV(L), x) : sNeg(x); });
+  const detL = simplifyExpr(symDet(M, n));
+  const c = polyCoeffs(detL, L);   // ascending numeric coeffs (works for numeric matrices)
+  if (c.some((x) => !Number.isFinite(x))) return [detL];   // symbolic entries → return the polynomial expression
+  return c.slice().reverse().map(sN);
+}
 function symArg(v: Value): Sym { if (isSym(v)) return v; const M = m(v); return makeSym(M.rows, M.cols, Array.from(M.data, (x) => sN(x))); }
 function symToExpr(v: Value): SymExpr { if (isSym(v)) return v.exprs[0]; if (isStr(v) || (isMat(v) && (v as Mat).isChar)) { const t = asString(v).trim(); const num = Number(t); return Number.isFinite(num) && /^[-\d.]+$/.test(t) ? sN(num) : sV(t); } return sN(asScalar(v)); }
 function symVarsOf(s: Sym): string[] { const set = new Set<string>(); for (const e of s.exprs) symVars(e).forEach((x) => set.add(x)); return [...set].sort(); }
