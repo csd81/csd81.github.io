@@ -601,6 +601,33 @@ export const BUILTINS: Record<string, Builtin> = {
   movmax: async (a) => ret(movWindow(m(a[0]), Math.round(asScalar(a[1])), (w) => Math.max(...w))),
   movmin: async (a) => ret(movWindow(m(a[0]), Math.round(asScalar(a[1])), (w) => Math.min(...w))),
   accumarray: async (a) => { const subs = toArray(m(a[0])).map((x) => Math.round(x)); const vals = m(a[1]); const n = subs.length ? Math.max(...subs) : 0; const o = zeros(n, 1); for (let i = 0; i < subs.length; i++) o.data[subs[i] - 1] += vals.data.length === 1 ? vals.data[0] : vals.data[i]; return ret(o); },
+  // ── discrete maths / float limits ──
+  perms: async (a) => {
+    const v = toArray(m(a[0])); const acc: number[][] = [];
+    const rec = (cur: number[], rest: number[]) => { if (!rest.length) { acc.push(cur); return; } for (let i = 0; i < rest.length; i++) rec([...cur, rest[i]], [...rest.slice(0, i), ...rest.slice(i + 1)]); };
+    rec([], v); acc.sort((x, y) => { for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return y[i] - x[i]; return 0; });
+    return ret(fromRows(acc));
+  },
+  rat: async (a) => { const [n, d] = ratApprox(asScalar(a[0])); return ret(str(d === 1 ? `${n}` : `${n}/${d}`)); },
+  flintmax: async () => ret(scalar(2 ** 53)),
+  intmax: async (a) => ret(scalar(INT_LIMITS[a.length ? asString(a[0]) : 'int32']?.[1] ?? 2147483647)),
+  intmin: async (a) => ret(scalar(INT_LIMITS[a.length ? asString(a[0]) : 'int32']?.[0] ?? -2147483648)),
+  // ── transforms ──
+  fft: async (a) => ret(fftApply(m(a[0]), -1)),
+  ifft: async (a) => ret(fftApply(m(a[0]), 1)),
+  fft2: async (a) => ret(transpose(fftApply(transpose(fftApply(m(a[0]), -1)), -1))),
+  ifft2: async (a) => ret(transpose(fftApply(transpose(fftApply(m(a[0]), 1)), 1))),
+  fftshift: async (a) => ret(fftShift(m(a[0]), false)),
+  ifftshift: async (a) => ret(fftShift(m(a[0]), true)),
+  unwrap: async (a) => { const A = m(a[0]); const v = toArray(A); const out = [v[0] ?? 0]; let off = 0; for (let i = 1; i < v.length; i++) { off += -2 * Math.PI * Math.round((v[i] - v[i - 1]) / (2 * Math.PI)); out.push(v[i] + off); } return ret(A.cols === 1 ? colVec(out) : rowVec(out)); },
+  cplxpair: async (a) => {
+    const A = m(a[0]); const n = numel(A); const tol = 1e-6;
+    const items = Array.from({ length: n }, (_, i) => ({ re: A.data[i], im: A.idata ? A.idata[i] : 0 }));
+    const reals = items.filter((z) => Math.abs(z.im) <= tol * (1 + Math.abs(z.re))).sort((x, y) => x.re - y.re);
+    const cplx = items.filter((z) => Math.abs(z.im) > tol * (1 + Math.abs(z.re))).sort((x, y) => x.re - y.re || x.im - y.im);
+    const ordered = [...cplx, ...reals];
+    return ret(finishComplex(A.rows === 1 ? 1 : n, A.rows === 1 ? n : 1, Float64Array.from(ordered.map((z) => z.re)), Float64Array.from(ordered.map((z) => z.im))));
+  },
   squeeze: async (a) => ret(m(a[0])),
   sortrows: async (a, n) => {
     const A = m(a[0]); const rows: number[][] = [];
@@ -919,6 +946,55 @@ function magicFn(n: number): Mat {
     }
   }
   return M;
+}
+
+// ── Discrete / transform helpers ──────────────────────────────────────────
+const INT_LIMITS: Record<string, [number, number]> = {
+  int8: [-128, 127], int16: [-32768, 32767], int32: [-2147483648, 2147483647], int64: [-9223372036854775808, 9223372036854775807],
+  uint8: [0, 255], uint16: [0, 65535], uint32: [0, 4294967295], uint64: [0, 18446744073709551615],
+};
+function ratApprox(x: number): [number, number] {
+  if (Number.isInteger(x)) return [x, 1];
+  const sgn = x < 0 ? -1 : 1; x = Math.abs(x);
+  let h1 = 1, h0 = 0, k1 = 0, k0 = 1, b = x;
+  for (let i = 0; i < 20; i++) { const aa = Math.floor(b); const h2 = aa * h1 + h0, k2 = aa * k1 + k0; h0 = h1; h1 = h2; k0 = k1; k1 = k2; if (Math.abs(x - h1 / k1) < 1e-6 * x || b === aa) break; b = 1 / (b - aa); }
+  return [sgn * h1, k1];
+}
+/** Unscaled DFT (radix-2 when n is a power of two, else O(n²)). sign=-1 forward, +1 inverse. */
+function fftVec(re: number[], im: number[], sign: number): { re: number[]; im: number[] } {
+  const n = re.length; if (n <= 1) return { re: re.slice(), im: im.slice() };
+  if ((n & (n - 1)) === 0) {
+    const er: number[] = [], ei: number[] = [], or2: number[] = [], oi: number[] = [];
+    for (let i = 0; i < n; i += 2) { er.push(re[i]); ei.push(im[i]); or2.push(re[i + 1]); oi.push(im[i + 1]); }
+    const E = fftVec(er, ei, sign), O = fftVec(or2, oi, sign);
+    const R = new Array(n), I = new Array(n);
+    for (let k = 0; k < n / 2; k++) { const ang = sign * 2 * Math.PI * k / n; const c = Math.cos(ang), s = Math.sin(ang); const tr = c * O.re[k] - s * O.im[k], ti = c * O.im[k] + s * O.re[k]; R[k] = E.re[k] + tr; I[k] = E.im[k] + ti; R[k + n / 2] = E.re[k] - tr; I[k + n / 2] = E.im[k] - ti; }
+    return { re: R, im: I };
+  }
+  const R = new Array(n).fill(0), I = new Array(n).fill(0);
+  for (let k = 0; k < n; k++) { let sr = 0, si = 0; for (let t = 0; t < n; t++) { const ang = sign * 2 * Math.PI * k * t / n; const c = Math.cos(ang), s = Math.sin(ang); sr += re[t] * c - im[t] * s; si += re[t] * s + im[t] * c; } R[k] = sr; I[k] = si; }
+  return { re: R, im: I };
+}
+/** Apply 1-D FFT to a vector (whole) or each column of a matrix. sign=-1 fft, +1 ifft. */
+function fftApply(A: Mat, sign: number): Mat {
+  const inv = sign > 0;
+  if (A.rows === 1 || A.cols === 1) {
+    const n = numel(A); const re = Array.from(A.data); const im = A.idata ? Array.from(A.idata) : new Array(n).fill(0);
+    const R = fftVec(re, im, sign); if (inv) for (let i = 0; i < n; i++) { R.re[i] /= n; R.im[i] /= n; }
+    const Re = Float64Array.from(R.re), Im = Float64Array.from(R.im);
+    return A.rows === 1 ? finishComplex(1, n, Re, Im) : finishComplex(n, 1, Re, Im);
+  }
+  const rows = A.rows, cols = A.cols; const Re = new Float64Array(rows * cols), Im = new Float64Array(rows * cols);
+  for (let c = 0; c < cols; c++) { const re: number[] = [], im: number[] = []; for (let r = 0; r < rows; r++) { re.push(A.data[r + c * rows]); im.push(A.idata ? A.idata[r + c * rows] : 0); } const R = fftVec(re, im, sign); if (inv) for (let i = 0; i < rows; i++) { R.re[i] /= rows; R.im[i] /= rows; } for (let r = 0; r < rows; r++) { Re[r + c * rows] = R.re[r]; Im[r + c * rows] = R.im[r]; } }
+  return finishComplex(rows, cols, Re, Im);
+}
+function fftShift(A: Mat, inverse: boolean): Mat {
+  const shift = (len: number) => (inverse ? Math.floor(len / 2) : Math.ceil(len / 2));
+  const o = zeros(A.rows, A.cols); const im = A.idata ? new Float64Array(A.data.length) : null;
+  const sr = A.rows === 1 ? 0 : shift(A.rows), sc = A.cols === 1 ? 0 : (A.rows === 1 ? shift(A.cols) : shift(A.cols));
+  const scol = A.rows === 1 ? shift(A.cols) : sc;
+  for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) { const nr = (r + sr) % A.rows, nc = (c + scol) % A.cols; o.data[nr + nc * A.rows] = A.data[r + c * A.rows]; if (im) im[nr + nc * A.rows] = A.idata![r + c * A.rows]; }
+  if (im) o.idata = im; return o;
 }
 
 // ── Statistics helpers ────────────────────────────────────────────────────
