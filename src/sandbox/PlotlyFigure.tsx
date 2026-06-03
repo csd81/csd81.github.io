@@ -22,7 +22,7 @@ export default function PlotlyFigure({ fig, dark }: { fig: FigureSpec; dark: boo
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const axis = (range?: [number, number], origin?: boolean, title?: string): any => ({
     range, title: title ? { text: title } : undefined,
-    gridcolor: grid, zeroline: true, zerolinecolor: zero, zerolinewidth: origin ? 1.5 : 1,
+    gridcolor: grid, zeroline: true, zerolinecolor: origin ? fg : zero, zerolinewidth: origin ? 2 : 1,
     showline: !origin, linecolor: grid, color: fg, automargin: true,
   });
 

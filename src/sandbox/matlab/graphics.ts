@@ -130,6 +130,20 @@ export class Graphics {
     this.touch();
   }
 
+  // ── Axis limits (used by xlim/ylim/axis) ──
+  /** Data extent of the current series along one axis (fallback when no limit is set). */
+  private dataRange(which: 'x' | 'y'): [number, number] {
+    let lo = Infinity, hi = -Infinity;
+    for (const s of this.fig.series) for (const v of which === 'x' ? s.x : s.y) { if (Number.isFinite(v)) { if (v < lo) lo = v; if (v > hi) hi = v; } }
+    if (!Number.isFinite(lo)) return [0, 1];
+    if (lo === hi) return [lo - 1, hi + 1];
+    return [lo, hi];
+  }
+  getXLim(): [number, number] { return this.fig.xRange ?? this.dataRange('x'); }
+  getYLim(): [number, number] { return this.fig.yRange ?? this.dataRange('y'); }
+  setXLim(r?: [number, number]) { this.fig.xRange = r; this.touch(); }
+  setYLim(r?: [number, number]) { this.fig.yRange = r; this.touch(); }
+
   command(name: string, args: Value[]) {
     const arg0 = args[0] && isMat(args[0]) && (args[0] as Mat).isChar ? asString(args[0]) : '';
     switch (name) {
@@ -139,7 +153,16 @@ export class Graphics {
       case 'xlabel': if (arg0) { this.fig.xlabel = arg0; this.touch(); } break;
       case 'ylabel': if (arg0) { this.fig.ylabel = arg0; this.touch(); } break;
       case 'legend': this.fig.legend = args.filter((a) => isMat(a) && (a as Mat).isChar).map((a) => asString(a as Mat)); this.touch(); break;
-      case 'axis': /* axis equal/tight — ignored visually */ break;
+      case 'axis': {
+        // axis([xmin xmax ymin ymax]) | axis auto | axis (equal/tight/… ignored visually)
+        if (args[0] && isMat(args[0]) && !(args[0] as Mat).isChar) {
+          const v = toArray(args[0] as Mat);
+          if (v.length >= 2) this.fig.xRange = [v[0], v[1]];
+          if (v.length >= 4) this.fig.yRange = [v[2], v[3]];
+          this.touch();
+        } else if (arg0.toLowerCase() === 'auto') { this.fig.xRange = undefined; this.fig.yRange = undefined; this.touch(); }
+        break;
+      }
       case 'clf': case 'cla': case 'close': this.reset(); break;
       case 'figure': this.reset(); break;
       default: break;

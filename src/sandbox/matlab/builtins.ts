@@ -1216,6 +1216,16 @@ export const BUILTINS: Record<string, Builtin> = {
   ylabel: async (a, _n, env) => { env.graphics.command('ylabel', a); return []; },
   legend: async (a, _n, env) => { env.graphics.command('legend', a); return []; },
   axis: async (a, _n, env) => { env.graphics.command('axis', a); return []; },
+  xlim: async (a, _n, env) => {
+    if (!a.length) return ret(rowVec(env.graphics.getXLim()));
+    if (isMat(a[0]) && (a[0] as Mat).isChar) { if (asString(a[0]).toLowerCase() === 'auto') env.graphics.setXLim(undefined); return []; }
+    const v = toArray(m(a[0])); env.graphics.setXLim([v[0], v[1]]); return [];
+  },
+  ylim: async (a, _n, env) => {
+    if (!a.length) return ret(rowVec(env.graphics.getYLim()));
+    if (isMat(a[0]) && (a[0] as Mat).isChar) { if (asString(a[0]).toLowerCase() === 'auto') env.graphics.setYLim(undefined); return []; }
+    const v = toArray(m(a[0])); env.graphics.setYLim([v[0], v[1]]); return [];
+  },
   clf: async (_a, _n, env) => { env.graphics.command('clf', []); return []; },
   cla: async (_a, _n, env) => { env.graphics.command('cla', []); return []; },
   close: async (_a, _n, env) => { env.graphics.command('close', []); return []; },
@@ -1313,6 +1323,10 @@ const HELP: Record<string, HelpEntry> = {
   fplot: { summary: 'Plot a function handle over a range', syntax: ['fplot(@f)', 'fplot(@f,[xmin xmax])'], seealso: ['plot', 'hold'] },
   hold: { summary: 'Retain or clear plots in the current axes', syntax: ['hold on', 'hold off'], seealso: ['plot', 'cla', 'gca'] },
   gca: { summary: 'Handle to the current axes', syntax: ['ax = gca'], seealso: ['gcf', 'plot', 'set'] },
+  xlim: { summary: 'Set or query x-axis limits', syntax: ['xlim([xmin xmax])', "xlim('auto')", 'l = xlim'], seealso: ['ylim', 'axis', 'set'] },
+  ylim: { summary: 'Set or query y-axis limits', syntax: ['ylim([ymin ymax])', "ylim('auto')", 'l = ylim'], seealso: ['xlim', 'axis', 'set'] },
+  axis: { summary: 'Set axis limits/mode: axis([xmin xmax ymin ymax]), axis auto/equal/tight', syntax: ['axis([xmin xmax ymin ymax])', 'axis auto'], seealso: ['xlim', 'ylim', 'set'] },
+  set: { summary: "Set graphics object properties, e.g. set(gca,'XAxisLocation','origin','XLim',[a b])", syntax: ["set(gca,'Prop',val,...)"], seealso: ['gca', 'gcf', 'xlim', 'ylim'] },
   disp: { summary: 'Display value without its variable name', syntax: ['disp(X)'], seealso: ['fprintf', 'sprintf'] },
   fprintf: { summary: 'Write formatted data to the command window', syntax: ['fprintf(FORMAT,A,...)'], seealso: ['sprintf', 'disp'] },
   sprintf: { summary: 'Format data into a string', syntax: ['str = sprintf(FORMAT,A,...)'], seealso: ['fprintf', 'num2str'] },
@@ -1472,7 +1486,7 @@ const BASE_REF = new Set<string>((
   'disp fprintf sprintf num2str str2num str2double mat2str int2str error warning input feval arrayfun bsxfun kron cross vecnorm ' +
   'isdiag issymmetric ishermitian istriu istril isbanded bandwidth gamma gammaln erf erfc erfinv beta filter filter2 conv2 detrend ' +
   'normalize rescale clip smoothdata isoutlier filloutliers rmoutliers islocalmax islocalmin sinpi cospi pi ' +
-  'plot fplot hold title xlabel ylabel legend grid axis gca gcf figure clf cla close clc format who whos clear help doc ans dot repmat ' +
+  'plot fplot hold title xlabel ylabel legend grid axis xlim ylim set gca gcf figure clf cla close clc format who whos clear help doc ans dot repmat ' +
   'cell iscell iscellstr num2cell cell2mat celldisp cellfun strsplit strjoin ' +
   'struct isstruct isfield fieldnames numfields rmfield setfield getfield orderfields struct2cell cell2struct structfun ' +
   'horzcat vertcat isequaln corr qmr condest wilkinson spones nonzeros bartlett blackman hamming hann typecast swapbytes ' +
