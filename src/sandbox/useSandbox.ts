@@ -6,7 +6,7 @@ import { folderSources } from './library';
 export interface ConsoleLine { kind: 'cmd' | 'out' | 'err' | 'prompt'; text: string }
 export interface WsVar { name: string; size: string; klass: string; preview: string }
 
-const EMPTY_FIG: FigureSpec = { version: 0, series: [] };
+const EMPTY_FIG: FigureSpec = { version: 0, rows: 1, cols: 1, current: 0, panels: [{ series: [] }] };
 
 type FromWorker =
   | { type: 'output'; text: string }

@@ -33,8 +33,8 @@ export interface RefLine {
   dash?: string;
   label?: string;
 }
-export interface FigureSpec {
-  version: number;
+/** One axes panel (the drawable content of a single subplot/tile). */
+export interface Panel {
   series: Series[];
   surfaces?: Surface[];
   reflines?: RefLine[];
@@ -53,6 +53,14 @@ export interface FigureSpec {
   xScale?: 'linear' | 'log';
   yScale?: 'linear' | 'log';
   subtitle?: string;
+}
+export interface FigureSpec {
+  version: number;
+  rows: number;          // tile-layout rows
+  cols: number;          // tile-layout cols
+  current: number;       // active panel index (row-major: r*cols + c)
+  panels: Panel[];
+  sgtitle?: string;      // overall title across all tiles
 }
 
 const COLOR_MAP: Record<string, string> = {
@@ -80,39 +88,54 @@ function parseLineSpec(spec: string): Partial<Series> {
   return out;
 }
 
+const emptyPanel = (): Panel => ({ series: [] });
+
 export class Graphics {
-  fig: FigureSpec = { version: 0, series: [] };
+  fig: FigureSpec = { version: 0, rows: 1, cols: 1, current: 0, panels: [emptyPanel()] };
   private holding = false;
   private colorIdx = 0;
   private palette = ['#2f6fed', '#e2483d', '#2e9e4f', '#c542b5', '#d6b800', '#16a0c0'];
 
-  reset() { this.fig = { version: this.fig.version + 1, series: [] }; this.colorIdx = 0; this.holding = false; }
+  /** The active axes panel — every drawing command targets it. */
+  private cur(): Panel { return this.fig.panels[this.fig.current] ?? (this.fig.panels[this.fig.current] = emptyPanel()); }
+
+  reset() { this.fig = { version: this.fig.version + 1, rows: 1, cols: 1, current: 0, panels: [emptyPanel()] }; this.colorIdx = 0; this.holding = false; }
   private touch() { this.fig = { ...this.fig, version: this.fig.version + 1 }; }
   private nextColor() { return this.palette[this.colorIdx++ % this.palette.length]; }
 
   hold(on?: boolean) { this.holding = on === undefined ? !this.holding : on; }
 
-  private startPlot() { if (!this.holding) { this.fig.series = []; this.fig.surfaces = []; this.colorIdx = 0; this.fig.xScale = undefined; this.fig.yScale = undefined; } }
+  /** subplot(m,n,p): m×n grid, activate panel p (row-major, 1-based). */
+  subplot(m: number, n: number, p: number) {
+    if (this.fig.rows !== m || this.fig.cols !== n) { this.fig.rows = m; this.fig.cols = n; this.fig.panels = Array.from({ length: m * n }, () => emptyPanel()); }
+    this.fig.current = Math.max(0, Math.min(m * n - 1, p - 1)); this.colorIdx = 0; this.touch();
+  }
+  /** tiledlayout(m,n): set up the grid; nexttile selects panels in turn. */
+  tiledlayout(m: number, n: number) { this.fig.rows = m; this.fig.cols = n; this.fig.panels = Array.from({ length: m * n }, () => emptyPanel()); this.fig.current = -1; this.touch(); }
+  nexttile(p?: number) { this.fig.current = p !== undefined ? p - 1 : this.fig.current + 1; if (this.fig.current >= this.fig.panels.length) this.fig.panels.push(emptyPanel()); if (this.fig.current < 0) this.fig.current = 0; this.colorIdx = 0; this.touch(); }
+  sgtitle(s: string) { this.fig.sgtitle = s; this.touch(); }
+
+  private startPlot() { const c = this.cur(); if (!this.holding) { c.series = []; c.surfaces = []; this.colorIdx = 0; c.xScale = undefined; c.yScale = undefined; } }
   /** Parse a single (x,y) or (y) chart argument list into plain arrays. */
   private xyVec(args: Value[]): { x: number[]; y: number[] } {
     const mats = args.filter((a): a is Mat => isMat(a) && !(a as Mat).isChar);
     if (mats.length >= 2) return { x: toArray(mats[0]), y: toArray(mats[1]) };
     const y = mats.length ? toArray(mats[0]) : []; return { x: y.map((_, i) => i + 1), y };
   }
-  setScale(which: 'x' | 'y', scale: 'linear' | 'log') { if (which === 'x') this.fig.xScale = scale; else this.fig.yScale = scale; this.touch(); }
+  setScale(which: 'x' | 'y', scale: 'linear' | 'log') { if (which === 'x') this.cur().xScale = scale; else this.cur().yScale = scale; this.touch(); }
 
   /** bar/barh/area/stem/stairs — single-series 2-D charts. */
   chart2d(args: Value[], type: NonNullable<Series['type']>) {
     this.startPlot(); const { x, y } = this.xyVec(args);
     const mode = type === 'stem' ? 'markers' : 'lines';
-    this.fig.series.push({ x, y, mode, type, color: this.nextColor() });
+    this.cur().series.push({ x, y, mode, type, color: this.nextColor() });
     this.touch();
   }
   scatter(args: Value[]) {
     this.startPlot(); const mats = args.filter((a): a is Mat => isMat(a) && !(a as Mat).isChar);
     const x = toArray(mats[0]), y = toArray(mats[1]);
     const sizes = mats.length >= 3 && numel(mats[2]) > 1 ? toArray(mats[2]) : undefined;
-    this.fig.series.push({ x, y, mode: 'markers', symbol: 'circle', sizes, color: this.nextColor() });
+    this.cur().series.push({ x, y, mode: 'markers', symbol: 'circle', sizes, color: this.nextColor() });
     this.touch();
   }
   errorbar(args: Value[]) {
@@ -120,22 +143,22 @@ export class Graphics {
     let x: number[], y: number[], e: number[];
     if (mats.length >= 3) { x = toArray(mats[0]); y = toArray(mats[1]); e = toArray(mats[2]); }
     else { y = toArray(mats[0]); e = toArray(mats[1]); x = y.map((_, i) => i + 1); }
-    this.fig.series.push({ x, y, error: e, mode: 'lines+markers', symbol: 'circle', color: this.nextColor() });
+    this.cur().series.push({ x, y, error: e, mode: 'lines+markers', symbol: 'circle', color: this.nextColor() });
     this.touch();
   }
-  pie(args: Value[]) { this.startPlot(); const v = toArray((args.find((a) => isMat(a)) as Mat)); this.fig.series.push({ x: [], y: v, type: 'pie', mode: 'markers', color: this.nextColor() }); this.touch(); }
+  pie(args: Value[]) { this.startPlot(); const v = toArray((args.find((a) => isMat(a)) as Mat)); this.cur().series.push({ x: [], y: v, type: 'pie', mode: 'markers', color: this.nextColor() }); this.touch(); }
   /** plot3/scatter3 — a 3-D line or scatter. */
   line3(args: Value[], mode: 'lines' | 'markers') {
     this.startPlot(); const mats = args.filter((a): a is Mat => isMat(a) && !(a as Mat).isChar);
     const spec = args.find((a) => isMat(a) && (a as Mat).isChar);
     const s = spec ? parseLineSpec(asString(spec as Mat)) : {};
-    this.fig.series.push({ x: toArray(mats[0]), y: toArray(mats[1]), z: toArray(mats[2]), mode: spec ? (s.mode ?? mode) : mode, symbol: s.symbol, dash: s.dash, color: s.color ?? this.nextColor() });
+    this.cur().series.push({ x: toArray(mats[0]), y: toArray(mats[1]), z: toArray(mats[2]), mode: spec ? (s.mode ?? mode) : mode, symbol: s.symbol, dash: s.dash, color: s.color ?? this.nextColor() });
     this.touch();
   }
 
   /** plot(x, y, x2, y2, 'spec', ...) — also plot(y) and plot(x, Ymatrix). */
   plot(args: Value[]) {
-    if (!this.holding) { this.fig.series = []; this.colorIdx = 0; this.fig.xScale = undefined; this.fig.yScale = undefined; }
+    if (!this.holding) { this.cur().series = []; this.colorIdx = 0; this.cur().xScale = undefined; this.cur().yScale = undefined; }
     let i = 0;
     const nums = args.map((a) => (isMat(a) ? a : null));
     while (i < args.length) {
@@ -162,7 +185,7 @@ export class Graphics {
       for (let c = 0; c < ncols; c++) {
         const ys: number[] = [];
         for (let r = 0; r < colLen; r++) ys.push(asColumns ? ymat.data[r + c * ymat.rows] : ymat.data[r]);
-        this.fig.series.push({
+        this.cur().series.push({
           x: xs.slice(0, ys.length),
           y: ys,
           mode: spec.mode ?? 'lines',
@@ -176,7 +199,7 @@ export class Graphics {
 
   /** surf/mesh/contour(X,Y,Z) — also surf(Z). X/Y may be meshgrid matrices or vectors. */
   surface(args: Value[], kind: Surface['kind']) {
-    if (!this.holding) { this.fig.series = []; this.fig.surfaces = []; this.colorIdx = 0; }
+    if (!this.holding) { this.cur().series = []; this.cur().surfaces = []; this.colorIdx = 0; }
     const mats = args.filter((a): a is Mat => isMat(a) && !(a as Mat).isChar);
     let X: Mat | null, Y: Mat | null, Z: Mat;
     if (mats.length >= 3) { X = mats[0]; Y = mats[1]; Z = mats[2]; }
@@ -192,33 +215,32 @@ export class Graphics {
     const xv = vecFrom(X, nc, 'row'), yv = vecFrom(Y, nr, 'col');
     const z: number[][] = [];
     for (let r = 0; r < nr; r++) { const row: number[] = []; for (let c = 0; c < nc; c++) row.push(Z.data[r + c * nr]); z.push(row); }
-    this.fig.surfaces = this.fig.surfaces ?? [];
-    this.fig.surfaces.push({ x: xv, y: yv, z, kind, shading: kind === 'surf' ? 'faceted' : 'faceted' });
+    const cp = this.cur(); cp.surfaces = cp.surfaces ?? []; cp.surfaces.push({ x: xv, y: yv, z, kind, shading: 'faceted' });
     this.touch();
   }
 
   /** quiver(x,y,u,v): a 2-D vector field drawn as line segments (NaN-separated). */
   quiver(xs: number[], ys: number[], us: number[], vs: number[], scale = 0.9) {
-    if (!this.holding) { this.fig.series = []; this.fig.surfaces = []; this.colorIdx = 0; }
+    if (!this.holding) { this.cur().series = []; this.cur().surfaces = []; this.colorIdx = 0; }
     const X: number[] = [], Y: number[] = [];
     for (let i = 0; i < xs.length; i++) { X.push(xs[i], xs[i] + scale * us[i], NaN); Y.push(ys[i], ys[i] + scale * vs[i], NaN); }
-    this.fig.series.push({ x: X, y: Y, mode: 'lines', color: this.nextColor() });
+    this.cur().series.push({ x: X, y: Y, mode: 'lines', color: this.nextColor() });
     this.touch();
   }
 
   /** xline/yline: a constant reference line (overlays without clearing the plot). */
   refline(axis: 'x' | 'y', values: number[], spec?: string, label?: string) {
     const s = spec ? parseLineSpec(spec) : {};
-    this.fig.reflines = this.fig.reflines ?? [];
-    for (const v of values) this.fig.reflines.push({ axis, value: v, color: s.color, dash: s.dash, label });
+    const cp = this.cur(); cp.reflines = cp.reflines ?? [];
+    for (const v of values) cp.reflines.push({ axis, value: v, color: s.color, dash: s.dash, label });
     this.touch();
   }
 
   /** fplot adds a sampled series; the caller supplies already-sampled points. */
   addSeries(x: number[], y: number[], spec?: string) {
-    if (!this.holding) { this.fig.series = []; this.colorIdx = 0; }
+    if (!this.holding) { this.cur().series = []; this.colorIdx = 0; }
     const s = spec ? parseLineSpec(spec) : {};
-    this.fig.series.push({ x, y, mode: s.mode ?? 'lines', symbol: s.symbol, dash: s.dash, color: s.color ?? this.nextColor() });
+    this.cur().series.push({ x, y, mode: s.mode ?? 'lines', symbol: s.symbol, dash: s.dash, color: s.color ?? this.nextColor() });
     this.touch();
   }
 
@@ -229,11 +251,11 @@ export class Graphics {
       const a = toArray(value); return [a[0], a[1]];
     };
     switch (lower) {
-      case 'xlim': this.fig.xRange = range(); break;
-      case 'ylim': this.fig.yRange = range(); break;
-      case 'xaxislocation': this.fig.xOrigin = isMat(value) && value.isChar ? asString(value) === 'origin' : false; break;
-      case 'yaxislocation': this.fig.yOrigin = isMat(value) && value.isChar ? asString(value) === 'origin' : false; break;
-      case 'title': if (isMat(value) && value.isChar) this.fig.title = asString(value); break;
+      case 'xlim': this.cur().xRange = range(); break;
+      case 'ylim': this.cur().yRange = range(); break;
+      case 'xaxislocation': this.cur().xOrigin = isMat(value) && value.isChar ? asString(value) === 'origin' : false; break;
+      case 'yaxislocation': this.cur().yOrigin = isMat(value) && value.isChar ? asString(value) === 'origin' : false; break;
+      case 'title': if (isMat(value) && value.isChar) this.cur().title = asString(value); break;
       default: break; // ignore unknown axes properties
     }
     this.touch();
@@ -243,40 +265,40 @@ export class Graphics {
   /** Data extent of the current series along one axis (fallback when no limit is set). */
   private dataRange(which: 'x' | 'y'): [number, number] {
     let lo = Infinity, hi = -Infinity;
-    for (const s of this.fig.series) for (const v of which === 'x' ? s.x : s.y) { if (Number.isFinite(v)) { if (v < lo) lo = v; if (v > hi) hi = v; } }
+    for (const s of this.cur().series) for (const v of which === 'x' ? s.x : s.y) { if (Number.isFinite(v)) { if (v < lo) lo = v; if (v > hi) hi = v; } }
     if (!Number.isFinite(lo)) return [0, 1];
     if (lo === hi) return [lo - 1, hi + 1];
     return [lo, hi];
   }
-  getXLim(): [number, number] { return this.fig.xRange ?? this.dataRange('x'); }
-  getYLim(): [number, number] { return this.fig.yRange ?? this.dataRange('y'); }
-  setXLim(r?: [number, number]) { this.fig.xRange = r; this.touch(); }
-  setYLim(r?: [number, number]) { this.fig.yRange = r; this.touch(); }
+  getXLim(): [number, number] { return this.cur().xRange ?? this.dataRange('x'); }
+  getYLim(): [number, number] { return this.cur().yRange ?? this.dataRange('y'); }
+  setXLim(r?: [number, number]) { this.cur().xRange = r; this.touch(); }
+  setYLim(r?: [number, number]) { this.cur().yRange = r; this.touch(); }
 
   command(name: string, args: Value[]) {
     const arg0 = args[0] && isMat(args[0]) && (args[0] as Mat).isChar ? asString(args[0]) : '';
     switch (name) {
       case 'hold': this.hold(arg0 === '' ? undefined : arg0 === 'on'); break;
-      case 'grid': this.fig.grid = arg0 !== 'off'; this.touch(); break;
-      case 'title': if (arg0) { this.fig.title = arg0; this.touch(); } break;
-      case 'xlabel': if (arg0) { this.fig.xlabel = arg0; this.touch(); } break;
-      case 'ylabel': if (arg0) { this.fig.ylabel = arg0; this.touch(); } break;
-      case 'legend': this.fig.legend = args.filter((a) => isMat(a) && (a as Mat).isChar).map((a) => asString(a as Mat)); this.touch(); break;
+      case 'grid': this.cur().grid = arg0 !== 'off'; this.touch(); break;
+      case 'title': if (arg0) { this.cur().title = arg0; this.touch(); } break;
+      case 'xlabel': if (arg0) { this.cur().xlabel = arg0; this.touch(); } break;
+      case 'ylabel': if (arg0) { this.cur().ylabel = arg0; this.touch(); } break;
+      case 'legend': this.cur().legend = args.filter((a) => isMat(a) && (a as Mat).isChar).map((a) => asString(a as Mat)); this.touch(); break;
       case 'axis': {
         // axis([xmin xmax ymin ymax]) | axis auto | axis (equal/tight/… ignored visually)
         if (args[0] && isMat(args[0]) && !(args[0] as Mat).isChar) {
           const v = toArray(args[0] as Mat);
-          if (v.length >= 2) this.fig.xRange = [v[0], v[1]];
-          if (v.length >= 4) this.fig.yRange = [v[2], v[3]];
+          if (v.length >= 2) this.cur().xRange = [v[0], v[1]];
+          if (v.length >= 4) this.cur().yRange = [v[2], v[3]];
           this.touch();
-        } else if (arg0.toLowerCase() === 'auto') { this.fig.xRange = undefined; this.fig.yRange = undefined; this.touch(); }
+        } else if (arg0.toLowerCase() === 'auto') { this.cur().xRange = undefined; this.cur().yRange = undefined; this.touch(); }
         break;
       }
-      case 'zlabel': if (arg0) { this.fig.zlabel = arg0; this.touch(); } break;
-      case 'subtitle': if (arg0) { this.fig.subtitle = arg0; this.touch(); } break;
-      case 'shading': if (arg0 && this.fig.surfaces) { for (const s of this.fig.surfaces) s.shading = (arg0 as Surface['shading']); this.touch(); } break;
-      case 'colorbar': this.fig.colorbar = arg0 !== 'off'; this.touch(); break;
-      case 'colormap': if (arg0) { this.fig.colormap = arg0; this.touch(); } break;
+      case 'zlabel': if (arg0) { this.cur().zlabel = arg0; this.touch(); } break;
+      case 'subtitle': if (arg0) { this.cur().subtitle = arg0; this.touch(); } break;
+      case 'shading': { const sf = this.cur().surfaces; if (arg0 && sf) { for (const s of sf) s.shading = (arg0 as Surface['shading']); this.touch(); } break; }
+      case 'colorbar': this.cur().colorbar = arg0 !== 'off'; this.touch(); break;
+      case 'colormap': if (arg0) { this.cur().colormap = arg0; this.touch(); } break;
       case 'view': /* camera angle — Plotly default; ignored */ break;
       case 'clf': case 'cla': case 'close': this.reset(); break;
       case 'figure': this.reset(); break;

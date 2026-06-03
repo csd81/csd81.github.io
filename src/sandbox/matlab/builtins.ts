@@ -1467,7 +1467,6 @@ export const BUILTINS: Record<string, Builtin> = {
     if (!isHandle(f)) throw new MatError('fplot: expected a function handle');
     let lo = -5, hi = 5;
     if (a.length >= 2 && isMat(a[1]) && numel(a[1]) >= 2) { const rg = toArray(a[1] as Mat); lo = rg[0]; hi = rg[1]; }
-    else if (env.graphics.fig.xRange) { [lo, hi] = env.graphics.fig.xRange; }
     const N = 400; const xs: number[] = []; const ys: number[] = [];
     for (let i = 0; i < N; i++) {
       const x = lo + (hi - lo) * i / (N - 1);
@@ -1496,7 +1495,15 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   zlabel: async (a, _n, env) => { env.graphics.command('zlabel', a); return []; },
   subtitle: async (a, _n, env) => { env.graphics.command('subtitle', a); return []; },
-  sgtitle: async (a, _n, env) => { env.graphics.command('title', a); return []; },
+  sgtitle: async (a, _n, env) => { if (a.length && isMat(a[0]) && (a[0] as Mat).isChar) env.graphics.sgtitle(asString(a[0])); return []; },
+  subplot: async (a, _n, env) => {
+    // subplot(m,n,p) or subplot(mnp) e.g. subplot(221)
+    if (a.length === 1) { const v = Math.round(asScalar(a[0])); env.graphics.subplot(Math.floor(v / 100), Math.floor((v % 100) / 10), v % 10); }
+    else env.graphics.subplot(Math.round(asScalar(a[0])), Math.round(asScalar(a[1])), Math.round(asScalar(a[2])));
+    return [{ kind: 'gobj', gtype: 'axes' }];
+  },
+  tiledlayout: async (a, _n, env) => { const m = a.length >= 1 ? Math.round(asScalar(a[0])) : 1; const n = a.length >= 2 ? Math.round(asScalar(a[1])) : 1; env.graphics.tiledlayout(m, n); return []; },
+  nexttile: async (a, _n, env) => { env.graphics.nexttile(a.length && isMat(a[0]) ? Math.round(asScalar(a[0])) : undefined); return [{ kind: 'gobj', gtype: 'axes' }]; },
   bar: async (a, _n, env) => { env.graphics.chart2d(a, 'bar'); return []; },
   barh: async (a, _n, env) => { env.graphics.chart2d(a, 'barh'); return []; },
   area: async (a, _n, env) => { env.graphics.chart2d(a, 'area'); return []; },
@@ -1749,6 +1756,10 @@ const HELP: Record<string, HelpEntry> = {
   semilogx: { summary: 'Semilog plot (log x-axis)', syntax: ['semilogx(x,y)'], seealso: ['loglog', 'semilogy'] },
   semilogy: { summary: 'Semilog plot (log y-axis)', syntax: ['semilogy(x,y)'], seealso: ['loglog', 'semilogx'] },
   subtitle: { summary: 'Add a subtitle below the title', syntax: ["subtitle('text')"], seealso: ['title', 'sgtitle'] },
+  subplot: { summary: 'Create/select axes in an m×n grid', syntax: ['subplot(m,n,p)'], seealso: ['tiledlayout', 'nexttile', 'figure'] },
+  tiledlayout: { summary: 'Set up a tiled chart layout', syntax: ['tiledlayout(m,n)'], seealso: ['nexttile', 'subplot'] },
+  nexttile: { summary: 'Advance to / select the next tile', syntax: ['nexttile', 'nexttile(p)'], seealso: ['tiledlayout', 'subplot'] },
+  sgtitle: { summary: 'Add a title spanning all subplots/tiles', syntax: ["sgtitle('text')"], seealso: ['title', 'subplot'] },
   string: { summary: 'Create a string array (the "…" string class)', syntax: ['s = string(x)'], seealso: ['char', 'isstring', 'strings'] },
   strings: { summary: 'Create an array of empty strings', syntax: ['s = strings(n)', 's = strings(r,c)'], seealso: ['string', 'blanks'] },
   isstring: { summary: 'Determine whether input is a string array', syntax: ['tf = isstring(s)'], seealso: ['ischar', 'iscellstr', 'isStringScalar'] },
@@ -1987,6 +1998,7 @@ const BASE_REF = new Set<string>((
   'sphere cylinder ellipsoid fsurf fmesh fcontour quiver ' +
   'bar barh area stem stairs scatter scatter3 plot3 stem3 errorbar pie histogram loglog semilogx semilogy subtitle sgtitle zlim xticks yticks zticks text box ' +
   'jet parula turbo hot cool gray bone copper pink spring summer autumn winter hsv lines colorcube cellstr dsearchn brighten ' +
+  'subplot tiledlayout nexttile sgtitle ' +
   'cell iscell iscellstr num2cell cell2mat celldisp cellfun strsplit strjoin ' +
   'struct isstruct isfield fieldnames numfields rmfield setfield getfield orderfields struct2cell cell2struct structfun ' +
   'horzcat vertcat isequaln corr qmr condest wilkinson spones nonzeros bartlett blackman hamming hann typecast swapbytes ' +
