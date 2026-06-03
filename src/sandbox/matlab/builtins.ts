@@ -1332,6 +1332,36 @@ export const BUILTINS: Record<string, Builtin> = {
     }
     return n >= 2 ? [V, makeCell(pts.length, 1, cells)] : [V];
   },
+  tsearchn: async (a, n) => {
+    // tsearchn(P,T,PQ): index (into T) of the simplex enclosing each query point, + barycentric coords.
+    const pts = matRows(m(a[0])); const T = matRows(m(a[1])).map((r) => r.map((v) => Math.round(v) - 1)); const Q = matRows(m(a[2]));
+    const d = pts[0].length; const idx = zeros(Q.length, 1); const BC = zeros(Q.length, d + 1);
+    Q.forEach((q, qi) => {
+      let found = NaN, bc: number[] | null = null;
+      for (let ti = 0; ti < T.length; ti++) { const w = barycentricND(T[ti].map((v) => pts[v]), q); if (w.every((x) => x >= -1e-9)) { found = ti + 1; bc = w; break; } }
+      idx.data[qi] = found;
+      if (bc) bc.forEach((x, j) => { BC.data[qi + j * Q.length] = x; });
+      else for (let j = 0; j <= d; j++) BC.data[qi + j * Q.length] = NaN;
+    });
+    return n >= 2 ? [idx, BC] : [idx];
+  },
+  griddatan: async (a) => {
+    // griddatan(P,v,PQ[,method]): scattered N-D interpolation (linear default, or nearest).
+    const pts = matRows(m(a[0])); const vs = toArray(m(a[1])); const Q = matRows(m(a[2]));
+    const method = a.length >= 4 && isMat(a[3]) && (a[3] as Mat).isChar ? asString(a[3]).toLowerCase() : 'linear';
+    const out = zeros(m(a[2]).rows, 1);
+    if (method === 'nearest') {
+      Q.forEach((q, qi) => { let best = 0, bd = Infinity; pts.forEach((p, i) => { const dd = p.reduce((s, x, j) => s + (x - q[j]) ** 2, 0); if (dd < bd) { bd = dd; best = i; } }); out.data[qi] = vs[best]; });
+      return ret(out);
+    }
+    const T = delaunaynd(pts);
+    Q.forEach((q, qi) => {
+      let val = NaN;
+      for (const s of T) { const w = barycentricND(s.map((v) => pts[v]), q); if (w.every((x) => x >= -1e-9)) { val = w.reduce((acc, x, j) => acc + x * vs[s[j]], 0); break; } }
+      out.data[qi] = val;
+    });
+    return ret(out);
+  },
   interp3: async (a) => {
     // interp3(V,Xq,Yq,Zq) or interp3(X,Y,Z,V,Xq,Yq,Zq) — trilinear on a regular grid.
     let V: Mat, Xq: Mat, Yq: Mat, Zq: Mat, xv: number[], yv: number[], zv: number[];
@@ -2119,6 +2149,8 @@ const HELP: Record<string, HelpEntry> = {
   convhulln: { summary: 'N-D convex hull (facet vertex indices, + volume)', syntax: ['K = convhulln(P)', '[K,V] = convhulln(P)'], seealso: ['convhull', 'delaunayn', 'voronoin'] },
   delaunayn: { summary: 'N-D Delaunay triangulation (simplex vertex indices)', syntax: ['T = delaunayn(P)'], seealso: ['delaunay', 'convhulln', 'voronoin', 'griddatan'] },
   voronoin: { summary: 'N-D Voronoi diagram (vertices V and cell index lists C)', syntax: ['[V,C] = voronoin(P)'], seealso: ['voronoi', 'delaunayn', 'convhulln'] },
+  tsearchn: { summary: 'N-D enclosing-simplex search (index + barycentric coords)', syntax: ['t = tsearchn(P,T,PQ)', '[t,bc] = tsearchn(P,T,PQ)'], seealso: ['delaunayn', 'griddatan', 'dsearchn'] },
+  griddatan: { summary: 'Interpolate scattered N-D data (linear or nearest)', syntax: ['vq = griddatan(P,v,PQ)', "vq = griddatan(P,v,PQ,'nearest')"], seealso: ['griddata', 'delaunayn', 'tsearchn'] },
   griddata: { summary: 'Interpolate scattered 2-D data onto query points (linear or nearest)', syntax: ['vq = griddata(x,y,v,xq,yq)', "vq = griddata(x,y,v,xq,yq,'nearest')"], seealso: ['delaunay', 'interp2', 'scatteredInterpolant'] },
   interp3: { summary: 'Trilinear interpolation on a 3-D grid', syntax: ['Vq = interp3(V,Xq,Yq,Zq)', 'Vq = interp3(X,Y,Z,V,Xq,Yq,Zq)'], seealso: ['interp2', 'interp1', 'griddata'] },
   interpn: { summary: 'Gridded interpolation (1-D/2-D/3-D)', syntax: ['Vq = interpn(...)'], seealso: ['interp3', 'interp2', 'interp1'] },
@@ -2188,7 +2220,7 @@ const BASE_REF = new Set<string>((
   'horzcat vertcat isequaln corr qmr condest wilkinson spones nonzeros bartlett blackman hamming hann typecast swapbytes ' +
   'mkpp unmkpp ppval ' +
   'psi expint sinint cosint legendre besselj bessely besseli besselk besselh airy ellipke ellipj ' +
-  'delaunay griddata interp3 interpn boundary voronoi convhulln delaunayn voronoin ' +
+  'delaunay griddata interp3 interpn boundary voronoi convhulln delaunayn voronoin tsearchn griddatan ' +
   'rsf2csf balance qz ordschur ordeig sylvester lsqminnorm expmv ' +
   'rms geomean harmmean movmad movprod movstd movvar mape rmse idivide polydiv betaincinv gammaincinv rosser rng convn optimset optimget quad2d ' +
   'ismissing anymissing standardizeMissing rmmissing fillmissing isbetween isuniform allunique numunique uniquetol ismembertol issortedrows paddata trimdata resize discretize ' +
@@ -3104,6 +3136,14 @@ function delaunaynd(P: number[][]): number[][] {
   const facets = convhullnd(lifted);
   // Lower facets: outward normal points "down" in the lift dimension (negative last component).
   return facets.filter((f) => f.normal[d] < -1e-12).map((f) => f.verts.slice());
+}
+/** Barycentric weights of q within the d-simplex `pts` (d+1 points in d-D); w0 first. */
+function barycentricND(pts: number[][], q: number[]): number[] {
+  const d = q.length; const v0 = pts[0];
+  const A: number[][] = []; const b: number[] = [];
+  for (let i = 0; i < d; i++) { A.push(pts.slice(1).map((p) => p[i] - v0[i])); b.push(q[i] - v0[i]); }
+  const w = solveLin(A, b); if (!w) return new Array(d + 1).fill(NaN);
+  return [1 - w.reduce((s, x) => s + x, 0), ...w];
 }
 /** Circumcenter of a d-simplex (d+1 points in d-D). */
 function circumcenterND(pts: number[][]): number[] {
