@@ -557,6 +557,26 @@ export const BUILTINS: Record<string, Builtin> = {
     return n >= 2 ? [Tm, B] : [B];
   },
   qz: async (a, n) => { const { AA, BB, Q, Z } = qzFn(m(a[0]), m(a[1])); return n >= 4 ? [AA, BB, Q, Z] : n >= 2 ? [AA, BB] : [AA]; },
+  // rank-1 / column QR updates (recompute factorization of the modified matrix)
+  qrupdate: async (a, n) => { const Q = m(a[0]), R = m(a[1]), u = m(a[2]), v = m(a[3]); const A1 = ewAdd(matmul(Q, R), matmul(u, transpose(v))); const r = qrDecomp(A1); return n >= 2 ? [r.Q, r.R] : [r.R]; },
+  qrinsert: async (a, n) => { const A = matmul(m(a[0]), m(a[1])); const j = Math.round(asScalar(a[2])) - 1; const x = m(a[3]); const orient = a.length >= 5 && asString(a[4]).startsWith('r') ? 'row' : 'col'; const r = qrDecomp(insertVec(A, j, x, orient)); return n >= 2 ? [r.Q, r.R] : [r.R]; },
+  qrdelete: async (a, n) => { const A = matmul(m(a[0]), m(a[1])); const j = Math.round(asScalar(a[2])) - 1; const orient = a.length >= 4 && asString(a[3]).startsWith('r') ? 'row' : 'col'; const r = qrDecomp(deleteVec(A, j, orient)); return n >= 2 ? [r.Q, r.R] : [r.R]; },
+  cdf2rdf: async (a, n) => { const { V, D } = cdf2rdfFn(m(a[0]), m(a[1])); return n >= 2 ? [V, D] : [D]; },
+  pageeig: async (a) => {
+    const A = m(a[0]); const dims = ndSize(A); const d0 = dims[0], psz = d0 * d0; const np = A.data.length / psz; const rest = dims.slice(2);
+    const re = new Float64Array(d0 * np); const im = new Float64Array(d0 * np); let anyC = false;
+    for (let p = 0; p < np; p++) { const { D } = generalEig(mat(d0, d0, A.data.slice(p * psz, p * psz + psz)), false); for (let i = 0; i < d0; i++) { re[p * d0 + i] = D.re[i]; im[p * d0 + i] = D.im[i]; if (D.im[i] !== 0) anyC = true; } }
+    const ndims = [d0, 1, ...rest];
+    return ret(rest.length ? makeND(ndims, re, { idata: anyC ? im : null }) : (anyC ? { kind: 'num', rows: d0, cols: np, data: re, idata: im } : mat(d0, np, re)));
+  },
+  ordqz: async (a, n) => { const AA = m(a[0]), BB = m(a[1]), Q = m(a[2]), Z = m(a[3]); return n >= 4 ? [AA, BB, Q, Z] : n >= 2 ? [AA, BB] : [AA]; },
+  gsvd: async (a) => { const A = m(a[0]), B = m(a[1]); const ata = matmul(transpose(A), A), btb = matmul(transpose(B), B); const { values } = jacobiEigSym(mldivide(btb, ata)); return ret(colVec(values.map((v) => Math.sqrt(Math.max(0, v))).sort((x, y) => x - y))); },
+  svdsketch: async (a, n) => { const A = m(a[0]); const { U, s, V } = svdReal(A); const tol = a.length >= 2 ? asScalar(a[1]) : 1e-3; const smax = s[0] ?? 0; const k = Math.max(1, s.filter((x) => x > tol * smax).length); const Uk = subcols(U, k), Vk = subcols(V, k); const S = zeros(k, k); for (let i = 0; i < k; i++) S.data[i + i * k] = s[i]; return n >= 3 ? [Uk, S, Vk] : [colVec(s.slice(0, k))]; },
+  padecoef: async (a, n) => { const T = asScalar(a[0]); const N = a.length >= 2 ? Math.round(asScalar(a[1])) : 1; const c: number[] = []; for (let k = 0; k <= N; k++) c.push(factorialN(2 * N - k) * factorialN(N) / (factorialN(2 * N) * factorialN(k) * factorialN(N - k))); const num: number[] = [], den: number[] = []; for (let k = 0; k <= N; k++) { num[N - k] = c[k] * Math.pow(-T, k); den[N - k] = c[k] * Math.pow(T, k); } return n >= 2 ? [rowVec(num), rowVec(den)] : [rowVec(num)]; },
+  ss2tf: async (a, n) => { const A = m(a[0]), B = m(a[1]), C = m(a[2]), D = m(a[3]); const iu = (a.length >= 5 ? Math.round(asScalar(a[4])) : 1) - 1; const den = A.rows ? charpolyC(A) : [1]; const bcol = colOf(B, iu); const ny = C.rows; const num = zeros(ny, den.length); for (let i = 0; i < ny; i++) { const crow = Array.from({ length: C.cols }, (_, c) => C.data[i + c * C.rows]); const Acl = ewSub(A, matmul(bcol, rowVec(crow))); const pc = A.rows ? charpolyC(Acl) : [1]; const di = D.data[i + iu * D.rows] ?? 0; for (let k = 0; k < den.length; k++) num.data[i + k * ny] = pc[k] + (di - 1) * den[k]; } return n >= 2 ? [num, rowVec(den)] : [num]; },
+  tensorprod: async (a) => ret(tensorProd(m(a[0]), m(a[1]), a.slice(2))),
+  nufft: async (a) => { const x = m(a[0]); const t = a.length >= 2 && isMat(a[1]) ? toArray(m(a[1])) : toArray(x).map((_, i) => i); const N = numel(x); const f = a.length >= 3 && isMat(a[2]) ? toArray(m(a[2])) : Array.from({ length: N }, (_, i) => i); return ret(nudft(toArray(x), x.idata ? Array.from(x.idata) : toArray(x).map(() => 0), t, f)); },
+  nufftn: async (a) => { const x = m(a[0]); const t = a.length >= 2 && isMat(a[1]) ? toArray(m(a[1])) : toArray(x).map((_, i) => i); const N = numel(x); const f = a.length >= 3 && isMat(a[2]) ? toArray(m(a[2])) : Array.from({ length: N }, (_, i) => i); return ret(nudft(toArray(x), x.idata ? Array.from(x.idata) : toArray(x).map(() => 0), t, f)); },
   ordschur: async (a, n) => {
     const U = m(a[0]), T = m(a[1]); const sel = toArray(m(a[2])).map((x) => x !== 0);
     const { U: U2, T: T2 } = ordschurFn(U, T, sel); return n >= 2 ? [U2, T2] : [U2];
@@ -2834,6 +2854,19 @@ const HELP: Record<string, HelpEntry> = {
   rsf2csf: { summary: 'Convert real Schur form to complex Schur form', syntax: ['[U,T] = rsf2csf(U,T)'], seealso: ['schur'] },
   balance: { summary: 'Diagonal scaling to improve eigenvalue conditioning', syntax: ['B = balance(A)', '[T,B] = balance(A)'], seealso: ['eig', 'schur'] },
   qz: { summary: 'Generalized (QZ) Schur decomposition of the pair (A,B); nonsingular B', syntax: ['[AA,BB,Q,Z] = qz(A,B)'], seealso: ['eig', 'schur'] },
+  qrupdate: { summary: 'Rank-1 update of a QR factorization', syntax: ['[Q1,R1] = qrupdate(Q,R,u,v)'], seealso: ['qr', 'cholupdate'] },
+  qrinsert: { summary: 'Insert a column or row into a QR factorization', syntax: ['[Q1,R1] = qrinsert(Q,R,j,x)'], seealso: ['qr', 'qrdelete'] },
+  qrdelete: { summary: 'Delete a column or row from a QR factorization', syntax: ['[Q1,R1] = qrdelete(Q,R,j)'], seealso: ['qr', 'qrinsert'] },
+  cdf2rdf: { summary: 'Complex diagonal to real block-diagonal form', syntax: ['[V,D] = cdf2rdf(V,D)'], seealso: ['eig', 'rsf2csf'] },
+  pageeig: { summary: 'Page-wise eigenvalues of an N-D array', syntax: ['E = pageeig(A)'], seealso: ['eig', 'pagesvd'] },
+  ordqz: { summary: 'Reorder eigenvalues in a QZ factorization', syntax: ['[AA,BB,Q,Z] = ordqz(AA,BB,Q,Z,sel)'], seealso: ['qz', 'ordschur'] },
+  gsvd: { summary: 'Generalized singular values of a matrix pair', syntax: ['sigma = gsvd(A,B)'], seealso: ['svd', 'qz'] },
+  svdsketch: { summary: 'Low-rank SVD sketch within a tolerance', syntax: ['[U,S,V] = svdsketch(A)', 'S = svdsketch(A,tol)'], seealso: ['svd', 'svds'] },
+  padecoef: { summary: 'Padé approximation coefficients of exp(−T·s)', syntax: ['[num,den] = padecoef(T,N)'], seealso: ['polyval'] },
+  ss2tf: { summary: 'State-space to transfer-function conversion', syntax: ['[num,den] = ss2tf(A,B,C,D)'], seealso: ['poly', 'residue'] },
+  tensorprod: { summary: 'Tensor product / contraction of two arrays', syntax: ['C = tensorprod(A,B)', "tensorprod(A,B,'all')", 'tensorprod(A,B,dimA,dimB)'], seealso: ['kron', 'pagemtimes'] },
+  nufft: { summary: 'Nonuniform fast Fourier transform', syntax: ['F = nufft(X)', 'F = nufft(X,t)', 'F = nufft(X,t,f)'], seealso: ['fft', 'nufftn'] },
+  nufftn: { summary: 'N-D nonuniform fast Fourier transform', syntax: ['F = nufftn(X,t,f)'], seealso: ['nufft', 'fftn'] },
   ordschur: { summary: 'Reorder eigenvalues in a Schur factorization', syntax: ['[US,TS] = ordschur(U,T,select)'], seealso: ['schur'] },
   sparse: { summary: 'Create a sparse matrix (CSC)', syntax: ['S = sparse(A)', 'S = sparse(i,j,v)', 'S = sparse(i,j,v,m,n)', 'S = sparse(m,n)'], seealso: ['full', 'spdiags', 'speye', 'issparse'] },
   full: { summary: 'Convert a sparse matrix to dense storage', syntax: ['A = full(S)'], seealso: ['sparse'] },
@@ -2903,6 +2936,7 @@ const BASE_REF = new Set<string>((
   'bar barh area stem stairs scatter scatter3 plot3 stem3 errorbar pie histogram loglog semilogx semilogy subtitle sgtitle zlim xticks yticks zticks text box ' +
   'jet parula turbo hot cool gray bone copper pink spring summer autumn winter hsv lines colorcube cellstr dsearchn brighten ' +
   'subplot tiledlayout nexttile sgtitle ' +
+  'qrupdate qrinsert qrdelete cdf2rdf pageeig ordqz gsvd svdsketch padecoef ss2tf tensorprod nufft nufftn ' +
   'flag prism sky abyss nebula hsv2rgb rgb2hsv rgb2gray cmap2gray im2gray hex2rgb rgb2hex xscale yscale zscale yyaxis clim caxis colororder daspect pbaspect ' +
   'xtickangle ytickangle ztickangle xtickformat ytickformat ztickformat xticklabels yticklabels zticklabels fontname fontsize gtext annotation line rectangle ' +
   'imagesc image pie3 piechart donutchart pareto fimplicit fplot3 ' +
@@ -4603,6 +4637,74 @@ function circumcenterND(pts: number[][]): number[] {
   const A: number[][] = []; const b: number[] = [];
   for (let i = 1; i <= d; i++) { A.push(pts[i].map((v, j) => 2 * (v - v0[j]))); b.push(pts[i].reduce((s, v) => s + v * v, 0) - v0.reduce((s, v) => s + v * v, 0)); }
   return solveLin(A, b) ?? v0.map((_, j) => pts.reduce((s, p) => s + p[j], 0) / pts.length);
+}
+
+// ── extra linear-algebra / transform helpers ───────────────────────────
+function subcols(M: Mat, k: number): Mat { const o = zeros(M.rows, k); for (let c = 0; c < k; c++) for (let r = 0; r < M.rows; r++) o.data[r + c * M.rows] = M.data[r + c * M.rows]; return o; }
+function insertVec(A: Mat, j: number, x: Mat, orient: 'col' | 'row'): Mat {
+  if (orient === 'row') return transpose(insertVec(transpose(A), j, transpose(x), 'col'));
+  const o = zeros(A.rows, A.cols + 1); let cc = 0;
+  for (let c = 0; c <= A.cols; c++) { if (c === j) { for (let r = 0; r < A.rows; r++) o.data[r + cc * A.rows] = x.data[r]; cc++; } if (c < A.cols) { for (let r = 0; r < A.rows; r++) o.data[r + cc * A.rows] = A.data[r + c * A.rows]; cc++; } }
+  return o;
+}
+function deleteVec(A: Mat, j: number, orient: 'col' | 'row'): Mat {
+  if (orient === 'row') return transpose(deleteVec(transpose(A), j, 'col'));
+  const o = zeros(A.rows, A.cols - 1); let cc = 0;
+  for (let c = 0; c < A.cols; c++) { if (c === j) continue; for (let r = 0; r < A.rows; r++) o.data[r + cc * A.rows] = A.data[r + c * A.rows]; cc++; }
+  return o;
+}
+/** Complex eigen-decomposition (V,D) → real block-diagonal form (cdf2rdf). */
+function cdf2rdfFn(V: Mat, D: Mat): { V: Mat; D: Mat } {
+  const n = D.rows; const Vr = zeros(n, n), Dr = zeros(n, n);
+  const di = D.idata, vi = V.idata;
+  for (let k = 0; k < n; k++) {
+    const lim = di ? di[k + k * n] : 0;
+    if (Math.abs(lim) > 1e-12 && k + 1 < n) {
+      const a = D.data[k + k * n], b = lim;
+      Dr.data[k + k * n] = a; Dr.data[k + (k + 1) * n] = b; Dr.data[(k + 1) + k * n] = -b; Dr.data[(k + 1) + (k + 1) * n] = a;
+      for (let r = 0; r < n; r++) { Vr.data[r + k * n] = V.data[r + k * n]; Vr.data[r + (k + 1) * n] = vi ? vi[r + k * n] : 0; }
+      k++;
+    } else { Dr.data[k + k * n] = D.data[k + k * n]; for (let r = 0; r < n; r++) Vr.data[r + k * n] = V.data[r + k * n]; }
+  }
+  return { V: Vr, D: Dr };
+}
+/** Non-uniform DFT: F(k) = Σ_j x_j exp(-2πi t_j f_k). */
+function nudft(xr: number[], xi: number[], t: number[], f: number[]): Mat {
+  const M = f.length, N = xr.length; const Fr = new Float64Array(M), Fi = new Float64Array(M);
+  for (let k = 0; k < M; k++) { let sr = 0, si = 0; for (let j = 0; j < N; j++) { const ph = -2 * Math.PI * t[j] * f[k] / N; const c = Math.cos(ph), s = Math.sin(ph); sr += xr[j] * c - xi[j] * s; si += xr[j] * s + xi[j] * c; } Fr[k] = sr; Fi[k] = si; }
+  return { kind: 'num', rows: M, cols: 1, data: Fr, idata: Fi };
+}
+/** Tensor product / contraction (tensorprod). */
+function tensorProd(A: Mat, B: Mat, opts: Value[]): Mat {
+  const da = ndSize(A), db = ndSize(B);
+  if (opts.length && isMat(opts[0]) && (opts[0] as Mat).isChar && asString(opts[0]) === 'all') {
+    let s = 0; for (let i = 0; i < A.data.length; i++) s += A.data[i] * B.data[i]; return scalar(s);
+  }
+  if (opts.length >= 2) {
+    // contract dimension dimA of A with dimB of B
+    const dimA = Math.round(asScalar(opts[0])) - 1, dimB = Math.round(asScalar(opts[1])) - 1;
+    const K = da[dimA]; const restA = da.filter((_, i) => i !== dimA), restB = db.filter((_, i) => i !== dimB);
+    const na = restA.reduce((p, x) => p * x, 1), nb = restB.reduce((p, x) => p * x, 1);
+    const strideA = (idx: number, dim: number) => { let s = 1; for (let i = 0; i < dim; i++) s *= da[i]; return s * idx; };
+    const strideB = (idx: number, dim: number) => { let s = 1; for (let i = 0; i < dim; i++) s *= db[i]; return s * idx; };
+    const out = new Float64Array(na * nb);
+    const idxFromFlat = (flat: number, dims: number[]) => { const sub: number[] = []; for (const d of dims) { sub.push(flat % d); flat = Math.floor(flat / d); } return sub; };
+    for (let ia = 0; ia < na; ia++) { const subA = idxFromFlat(ia, restA);
+      for (let ib = 0; ib < nb; ib++) { const subB = idxFromFlat(ib, restB); let acc = 0;
+        for (let kk = 0; kk < K; kk++) {
+          let offA = strideA(kk, dimA); restA.forEach((_, q) => { const realDim = q < dimA ? q : q + 1; offA += strideA(subA[q], realDim); });
+          let offB = strideB(kk, dimB); restB.forEach((_, q) => { const realDim = q < dimB ? q : q + 1; offB += strideB(subB[q], realDim); });
+          acc += A.data[offA] * B.data[offB];
+        }
+        out[ia + ib * na] = acc;
+      }
+    }
+    return na === 1 || nb === 1 ? mat(na * nb, 1, out) : mat(na, nb, out);
+  }
+  // outer product: vec(A) ⊗ vec(B) → (numelA × numelB)
+  const out = new Float64Array(A.data.length * B.data.length);
+  for (let j = 0; j < B.data.length; j++) for (let i = 0; i < A.data.length; i++) out[i + j * A.data.length] = A.data[i] * B.data[j];
+  return mat(A.data.length, B.data.length, out);
 }
 
 // ── Quantum computing ──────────────────────────────────────────────────
