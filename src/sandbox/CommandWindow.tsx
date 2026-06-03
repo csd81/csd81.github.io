@@ -77,6 +77,16 @@ export default function CommandWindow({
             placeholder={busy ? 'running…' : prompt !== null ? 'enter a value…' : ''}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={onKey}
+            onPaste={(e) => {
+              // A single-line <input> would flatten pasted code; run multi-line
+              // pastes as a block instead (only when not answering an input() prompt).
+              const text = e.clipboardData.getData('text');
+              if (prompt === null && /\n/.test(text)) {
+                e.preventDefault();
+                const block = text.replace(/\s+$/, '');
+                if (block) { setHistory((h) => [...h, block]); setHIdx(-1); setValue(''); onSubmit(block); }
+              }
+            }}
           />
         </div>
       </div>

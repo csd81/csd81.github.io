@@ -965,11 +965,33 @@ const HELP: Record<string, HelpEntry> = {
   nnz: { summary: 'Number of nonzero elements', syntax: ['n = nnz(A)'], seealso: ['find', 'any'] },
 };
 
+/** Base-MATLAB functions whose reference page is at /help/matlab/ref/<name>.html.
+ *  Anything not listed (toolbox functions, internal aliases) falls back to search. */
+const BASE_REF = new Set<string>((
+  'zeros ones eye diag blkdiag cat horzcat vertcat linspace logspace meshgrid ndgrid size length numel ndims ' +
+  'isempty isvector ismatrix isscalar isnumeric reshape squeeze permute ipermute shiftdim flip fliplr flipud rot90 circshift ' +
+  'tril triu sort sortrows abs sign sqrt nthroot ceil floor round fix mod rem hypot sum prod cumsum cumprod diff ' +
+  'movsum movmean movmedian movmax movmin cummax cummin accumarray sin sind cos cosd tan tand asin asind acos acosd atan atand atan2 atan2d ' +
+  'sinh cosh tanh asinh acosh atanh sec csc cot exp expm1 log log10 log2 log1p pow2 reallog realpow realsqrt ' +
+  'inv pinv linsolve lscov det norm rank rref null orth trace cond condest rcond subspace eig eigs svd svds lu qr chol ldl schur hess ' +
+  'expm logm sqrtm fzero fminbnd fminsearch lsqnonneg roots polyfit polyval conv deconv polyder polyint interp1 interp2 spline pchip makima interpft ' +
+  'integral integral2 integral3 trapz cumtrapz gradient del2 ode45 ode23 ode113 ode15s ode23s ode23t ' +
+  'mean median mode std var min max bounds mink maxk corrcoef cov factor factorial gcd lcm nchoosek perms primes isprime rat ' +
+  'eps flintmax realmax realmin intmax intmin real imag conj angle unwrap fft ifft fft2 ifft2 fftn ifftn fftshift ifftshift ' +
+  'isnan isinf isfinite isreal isfloat plus minus times rdivide ldivide mtimes mrdivide mldivide power mpower uminus uplus transpose ctranspose ' +
+  'eq ne lt gt le ge and or not xor isequal isequaln isapprox unique ismember logical find nnz any all ' +
+  'disp fprintf sprintf num2str str2num str2double mat2str int2str error warning input feval arrayfun bsxfun kron cross vecnorm ' +
+  'isdiag issymmetric ishermitian istriu istril isbanded bandwidth gamma gammaln erf erfc erfinv beta filter filter2 conv2 detrend ' +
+  'normalize rescale clip smoothdata isoutlier filloutliers rmoutliers islocalmax islocalmin sinpi cospi pi ' +
+  'plot fplot hold title xlabel ylabel legend grid axis gca gcf figure clf cla close clc format who whos clear help doc ans dot repmat'
+).split(/\s+/));
+
 export function docUrl(name: string): string {
-  // Use the documentation search rather than a guessed ref/<name>.html path:
-  // toolbox functions (prctile, quantile, …) live under other product paths and
-  // would 404, so search reliably resolves to the right page for any function.
-  return `https://www.mathworks.com/help/search.html?qdoc=${encodeURIComponent(name)}`;
+  // Direct reference page for base functions; doc-search for toolbox/aliases
+  // (prctile/quantile/iqr → Statistics; xcorr/xcov → Signal; etc. would 404 under ref/).
+  return BASE_REF.has(name)
+    ? `https://www.mathworks.com/help/matlab/ref/${name.toLowerCase()}.html`
+    : `https://www.mathworks.com/help/search.html?qdoc=${encodeURIComponent(name)}`;
 }
 
 /** MATLAB-style help block for a built-in, or null if unknown. */
