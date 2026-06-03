@@ -2,7 +2,7 @@
  * Collects `plot`/`fplot`/`hold`/`gca`/axis-property calls into a serialisable
  * figure spec that the React Plotly pane renders.
  */
-import { type Value, type Mat, isMat, isHandle, toArray, asString, MatError } from './values';
+import { type Value, type Mat, isMat, isHandle, toArray, asString, numel, MatError } from './values';
 
 export interface Series {
   x: number[];
@@ -12,6 +12,10 @@ export interface Series {
   dash?: string;
   color?: string;
   name?: string;
+  type?: 'line' | 'bar' | 'barh' | 'area' | 'stem' | 'stairs' | 'pie';
+  z?: number[];        // present → 3-D line/scatter
+  error?: number[];    // symmetric y error-bar half-widths
+  sizes?: number[];    // per-point marker areas (scatter)
 }
 /** A 3-D gridded surface (surf/mesh/contour). z[r][c] sits at (x[c], y[r]). */
 export interface Surface {
@@ -46,6 +50,9 @@ export interface FigureSpec {
   legend?: string[];
   colorbar?: boolean;
   colormap?: string;
+  xScale?: 'linear' | 'log';
+  yScale?: 'linear' | 'log';
+  subtitle?: string;
 }
 
 const COLOR_MAP: Record<string, string> = {
@@ -85,9 +92,50 @@ export class Graphics {
 
   hold(on?: boolean) { this.holding = on === undefined ? !this.holding : on; }
 
+  private startPlot() { if (!this.holding) { this.fig.series = []; this.fig.surfaces = []; this.colorIdx = 0; this.fig.xScale = undefined; this.fig.yScale = undefined; } }
+  /** Parse a single (x,y) or (y) chart argument list into plain arrays. */
+  private xyVec(args: Value[]): { x: number[]; y: number[] } {
+    const mats = args.filter((a): a is Mat => isMat(a) && !(a as Mat).isChar);
+    if (mats.length >= 2) return { x: toArray(mats[0]), y: toArray(mats[1]) };
+    const y = mats.length ? toArray(mats[0]) : []; return { x: y.map((_, i) => i + 1), y };
+  }
+  setScale(which: 'x' | 'y', scale: 'linear' | 'log') { if (which === 'x') this.fig.xScale = scale; else this.fig.yScale = scale; this.touch(); }
+
+  /** bar/barh/area/stem/stairs — single-series 2-D charts. */
+  chart2d(args: Value[], type: NonNullable<Series['type']>) {
+    this.startPlot(); const { x, y } = this.xyVec(args);
+    const mode = type === 'stem' ? 'markers' : 'lines';
+    this.fig.series.push({ x, y, mode, type, color: this.nextColor() });
+    this.touch();
+  }
+  scatter(args: Value[]) {
+    this.startPlot(); const mats = args.filter((a): a is Mat => isMat(a) && !(a as Mat).isChar);
+    const x = toArray(mats[0]), y = toArray(mats[1]);
+    const sizes = mats.length >= 3 && numel(mats[2]) > 1 ? toArray(mats[2]) : undefined;
+    this.fig.series.push({ x, y, mode: 'markers', symbol: 'circle', sizes, color: this.nextColor() });
+    this.touch();
+  }
+  errorbar(args: Value[]) {
+    this.startPlot(); const mats = args.filter((a): a is Mat => isMat(a) && !(a as Mat).isChar);
+    let x: number[], y: number[], e: number[];
+    if (mats.length >= 3) { x = toArray(mats[0]); y = toArray(mats[1]); e = toArray(mats[2]); }
+    else { y = toArray(mats[0]); e = toArray(mats[1]); x = y.map((_, i) => i + 1); }
+    this.fig.series.push({ x, y, error: e, mode: 'lines+markers', symbol: 'circle', color: this.nextColor() });
+    this.touch();
+  }
+  pie(args: Value[]) { this.startPlot(); const v = toArray((args.find((a) => isMat(a)) as Mat)); this.fig.series.push({ x: [], y: v, type: 'pie', mode: 'markers', color: this.nextColor() }); this.touch(); }
+  /** plot3/scatter3 — a 3-D line or scatter. */
+  line3(args: Value[], mode: 'lines' | 'markers') {
+    this.startPlot(); const mats = args.filter((a): a is Mat => isMat(a) && !(a as Mat).isChar);
+    const spec = args.find((a) => isMat(a) && (a as Mat).isChar);
+    const s = spec ? parseLineSpec(asString(spec as Mat)) : {};
+    this.fig.series.push({ x: toArray(mats[0]), y: toArray(mats[1]), z: toArray(mats[2]), mode: spec ? (s.mode ?? mode) : mode, symbol: s.symbol, dash: s.dash, color: s.color ?? this.nextColor() });
+    this.touch();
+  }
+
   /** plot(x, y, x2, y2, 'spec', ...) — also plot(y) and plot(x, Ymatrix). */
   plot(args: Value[]) {
-    if (!this.holding) { this.fig.series = []; this.colorIdx = 0; }
+    if (!this.holding) { this.fig.series = []; this.colorIdx = 0; this.fig.xScale = undefined; this.fig.yScale = undefined; }
     let i = 0;
     const nums = args.map((a) => (isMat(a) ? a : null));
     while (i < args.length) {
@@ -225,6 +273,7 @@ export class Graphics {
         break;
       }
       case 'zlabel': if (arg0) { this.fig.zlabel = arg0; this.touch(); } break;
+      case 'subtitle': if (arg0) { this.fig.subtitle = arg0; this.touch(); } break;
       case 'shading': if (arg0 && this.fig.surfaces) { for (const s of this.fig.surfaces) s.shading = (arg0 as Surface['shading']); this.touch(); } break;
       case 'colorbar': this.fig.colorbar = arg0 !== 'off'; this.touch(); break;
       case 'colormap': if (arg0) { this.fig.colormap = arg0; this.touch(); } break;

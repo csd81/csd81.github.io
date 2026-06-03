@@ -16,15 +16,31 @@ export default function PlotlyFigure({ fig, dark }: { fig: FigureSpec; dark: boo
     gray: 'Greys', bone: 'Greys', autumn: 'YlOrRd', winter: 'Blues', spring: 'Pinkjet', summer: 'YlGn', copper: 'Hot', turbo: 'Turbo', viridis: 'Viridis',
   };
   const colorscale = CMAP[(fig.colormap ?? 'parula').toLowerCase()] ?? 'Viridis';
-  const has3D = !!fig.surfaces?.some((s) => s.kind !== 'contour'); // only plain contour is a 2-D trace
+  const has3D = !!fig.surfaces?.some((s) => s.kind !== 'contour') || fig.series.some((s) => s.z);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const data: any[] = fig.series.map((s, i) => ({
-    x: s.x, y: s.y, type: 'scatter', mode: s.mode,
-    line: { color: s.color, dash: s.dash, width: 2 },
-    marker: { color: s.color, symbol: s.symbol ?? 'circle', size: 7 },
-    name: fig.legend?.[i] ?? `data${i + 1}`,
-  }));
+  const data: any[] = [];
+  fig.series.forEach((s, i) => {
+    const name = fig.legend?.[i] ?? `data${i + 1}`;
+    const line = { color: s.color, dash: s.dash, width: 2 };
+    const marker = { color: s.color, symbol: s.symbol ?? 'circle', size: s.sizes ? undefined : 7, ...(s.sizes ? { size: s.sizes } : {}) };
+    if (s.type === 'pie') { data.push({ type: 'pie', values: s.y, labels: s.y.map((_, j) => `${j + 1}`) }); return; }
+    if (s.z) { data.push({ type: 'scatter3d', x: s.x, y: s.y, z: s.z, mode: s.mode, line: { color: s.color, width: 4 }, marker: { color: s.color, size: 4 }, name }); return; }
+    if (s.type === 'bar') { data.push({ type: 'bar', x: s.x, y: s.y, marker: { color: s.color }, name }); return; }
+    if (s.type === 'barh') { data.push({ type: 'bar', orientation: 'h', x: s.y, y: s.x, marker: { color: s.color }, name }); return; }
+    if (s.type === 'stem') {
+      const sx: number[] = [], sy: number[] = []; for (let j = 0; j < s.x.length; j++) { sx.push(s.x[j], s.x[j], NaN); sy.push(0, s.y[j], NaN); }
+      data.push({ type: 'scatter', x: sx, y: sy, mode: 'lines', line, showlegend: false });
+      data.push({ type: 'scatter', x: s.x, y: s.y, mode: 'markers', marker: { color: s.color, symbol: 'circle', size: 7 }, name });
+      return;
+    }
+    data.push({
+      type: 'scatter', x: s.x, y: s.y, mode: s.mode, line: { ...line, shape: s.type === 'stairs' ? 'hv' : 'linear' },
+      marker, name,
+      ...(s.type === 'area' ? { fill: 'tozeroy' } : {}),
+      ...(s.error ? { error_y: { type: 'data', array: s.error, visible: true } } : {}),
+    });
+  });
   for (const s of fig.surfaces ?? []) {
     if (s.kind === 'contour') {
       data.push({ type: 'contour', x: s.x, y: s.y, z: s.z, colorscale, showscale: !!fig.colorbar, contours: { coloring: 'fill' } });
@@ -74,9 +90,10 @@ export default function PlotlyFigure({ fig, dark }: { fig: FigureSpec; dark: boo
       zaxis: { title: { text: fig.zlabel ?? 'z' }, gridcolor: grid, color: fg },
     };
   } else {
-    layout.xaxis = axis(fig.xRange, fig.xOrigin, fig.xlabel);
-    layout.yaxis = axis(fig.yRange, fig.yOrigin, fig.ylabel);
+    layout.xaxis = { ...axis(fig.xRange, fig.xOrigin, fig.xlabel), ...(fig.xScale === 'log' ? { type: 'log' } : {}) };
+    layout.yaxis = { ...axis(fig.yRange, fig.yOrigin, fig.ylabel), ...(fig.yScale === 'log' ? { type: 'log' } : {}) };
   }
+  if (fig.title && fig.subtitle) layout.title = { text: `${fig.title}<br><sub>${fig.subtitle}</sub>`, font: { color: fg, size: 14 } };
 
   return (
     <Plot

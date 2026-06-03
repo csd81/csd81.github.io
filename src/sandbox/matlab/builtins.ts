@@ -1298,6 +1298,37 @@ export const BUILTINS: Record<string, Builtin> = {
     const v = toArray(m(a[0])); env.graphics.setYLim([v[0], v[1]]); return [];
   },
   zlabel: async (a, _n, env) => { env.graphics.command('zlabel', a); return []; },
+  subtitle: async (a, _n, env) => { env.graphics.command('subtitle', a); return []; },
+  sgtitle: async (a, _n, env) => { env.graphics.command('title', a); return []; },
+  bar: async (a, _n, env) => { env.graphics.chart2d(a, 'bar'); return []; },
+  barh: async (a, _n, env) => { env.graphics.chart2d(a, 'barh'); return []; },
+  area: async (a, _n, env) => { env.graphics.chart2d(a, 'area'); return []; },
+  stem: async (a, _n, env) => { env.graphics.chart2d(a, 'stem'); return []; },
+  stairs: async (a, _n, env) => { env.graphics.chart2d(a, 'stairs'); return []; },
+  scatter: async (a, _n, env) => { env.graphics.scatter(a); return []; },
+  errorbar: async (a, _n, env) => { env.graphics.errorbar(a); return []; },
+  pie: async (a, _n, env) => { env.graphics.pie(a); return []; },
+  plot3: async (a, _n, env) => { env.graphics.line3(a, 'lines'); return []; },
+  scatter3: async (a, _n, env) => { env.graphics.line3(a, 'markers'); return []; },
+  stem3: async (a, _n, env) => { env.graphics.line3(a, 'markers'); return []; },
+  loglog: async (a, _n, env) => { env.graphics.plot(a); env.graphics.setScale('x', 'log'); env.graphics.setScale('y', 'log'); return []; },
+  semilogx: async (a, _n, env) => { env.graphics.plot(a); env.graphics.setScale('x', 'log'); return []; },
+  semilogy: async (a, _n, env) => { env.graphics.plot(a); env.graphics.setScale('y', 'log'); return []; },
+  histogram: async (a, _n, env) => {
+    const x = toArray(m(a[0])).filter((v) => !Number.isNaN(v));
+    let edges: number[];
+    if (a.length >= 2 && isMat(a[1]) && numel(a[1]) > 1) edges = toArray(m(a[1]));
+    else { const nb = a.length >= 2 && isMat(a[1]) && numel(a[1]) === 1 ? Math.round(asScalar(a[1])) : Math.max(1, Math.ceil(Math.sqrt(x.length))); let lo = Math.min(...x), hi = Math.max(...x); if (!Number.isFinite(lo) || lo === hi) { lo = (lo || 0) - 0.5; hi = (hi || 0) + 0.5; } edges = []; for (let i = 0; i <= nb; i++) edges.push(lo + (hi - lo) * i / nb); }
+    const N = new Array(edges.length - 1).fill(0); const last = edges.length - 1;
+    for (const v of x) { if (v < edges[0] || v > edges[last]) continue; let b = last - 1; for (let i = 0; i < last; i++) if (v < edges[i + 1]) { b = i; break; } N[b]++; }
+    const centers = N.map((_, i) => (edges[i] + edges[i + 1]) / 2);
+    env.graphics.chart2d([rowVec(centers), rowVec(N)], 'bar'); return [];
+  },
+  zlim: async (a, _n, env) => { if (a.length && isMat(a[0]) && !(a[0] as Mat).isChar) env.graphics.command('zlim', a); return []; },
+  xticks: async () => [],
+  yticks: async () => [],
+  zticks: async () => [],
+  text: async () => [],
   xline: async (a, _n, env) => { const vals = toArray(m(a[0])); const spec = a.length >= 2 && isMat(a[1]) && (a[1] as Mat).isChar ? asString(a[1]) : undefined; const label = a.length >= 3 && isMat(a[2]) && (a[2] as Mat).isChar ? asString(a[2]) : undefined; env.graphics.refline('x', vals, spec, label); return []; },
   yline: async (a, _n, env) => { const vals = toArray(m(a[0])); const spec = a.length >= 2 && isMat(a[1]) && (a[1] as Mat).isChar ? asString(a[1]) : undefined; const label = a.length >= 3 && isMat(a[2]) && (a[2] as Mat).isChar ? asString(a[2]) : undefined; env.graphics.refline('y', vals, spec, label); return []; },
   peaks: async (a, nargout, env) => {
@@ -1457,6 +1488,21 @@ const HELP: Record<string, HelpEntry> = {
   fcontour: { summary: 'Contour plot of a function f(x,y)', syntax: ['fcontour(@(x,y) ...)'], seealso: ['contour', 'fsurf'] },
   contour3: { summary: '3-D contour plot of a surface', syntax: ['contour3(X,Y,Z)'], seealso: ['contour', 'surf', 'mesh'] },
   quiver: { summary: '2-D vector field (arrows)', syntax: ['quiver(X,Y,U,V)', 'quiver(U,V)'], seealso: ['plot', 'streamline'] },
+  bar: { summary: 'Bar graph', syntax: ['bar(y)', 'bar(x,y)'], seealso: ['barh', 'histogram', 'stem'] },
+  barh: { summary: 'Horizontal bar graph', syntax: ['barh(y)'], seealso: ['bar'] },
+  area: { summary: 'Filled area 2-D plot', syntax: ['area(y)', 'area(x,y)'], seealso: ['plot', 'bar'] },
+  stem: { summary: 'Plot discrete sequence data (stems)', syntax: ['stem(y)', 'stem(x,y)'], seealso: ['plot', 'bar', 'stairs'] },
+  stairs: { summary: 'Stairstep graph', syntax: ['stairs(y)', 'stairs(x,y)'], seealso: ['plot', 'stem'] },
+  scatter: { summary: '2-D scatter plot (optional marker sizes)', syntax: ['scatter(x,y)', 'scatter(x,y,sz)'], seealso: ['plot', 'scatter3', 'bubblechart'] },
+  scatter3: { summary: '3-D scatter plot', syntax: ['scatter3(x,y,z)'], seealso: ['scatter', 'plot3'] },
+  plot3: { summary: '3-D line plot', syntax: ['plot3(x,y,z)', "plot3(x,y,z,'-r')"], seealso: ['plot', 'scatter3'] },
+  errorbar: { summary: 'Line plot with error bars', syntax: ['errorbar(x,y,e)', 'errorbar(y,e)'], seealso: ['plot'] },
+  pie: { summary: 'Pie chart', syntax: ['pie(x)'], seealso: ['bar', 'histogram'] },
+  histogram: { summary: 'Histogram plot (bars of bin counts)', syntax: ['histogram(x)', 'histogram(x,nbins)', 'histogram(x,edges)'], seealso: ['histcounts', 'bar'] },
+  loglog: { summary: 'Log-log scale plot', syntax: ['loglog(x,y)'], seealso: ['plot', 'semilogx', 'semilogy'] },
+  semilogx: { summary: 'Semilog plot (log x-axis)', syntax: ['semilogx(x,y)'], seealso: ['loglog', 'semilogy'] },
+  semilogy: { summary: 'Semilog plot (log y-axis)', syntax: ['semilogy(x,y)'], seealso: ['loglog', 'semilogx'] },
+  subtitle: { summary: 'Add a subtitle below the title', syntax: ["subtitle('text')"], seealso: ['title', 'sgtitle'] },
   rms: { summary: 'Root-mean-square value', syntax: ['y = rms(X)'], seealso: ['mean', 'std', 'rmse'] },
   geomean: { summary: 'Geometric mean', syntax: ['m = geomean(X)'], seealso: ['mean', 'harmmean'] },
   harmmean: { summary: 'Harmonic mean', syntax: ['m = harmmean(X)'], seealso: ['mean', 'geomean'] },
@@ -1639,6 +1685,7 @@ const BASE_REF = new Set<string>((
   'plot fplot hold title xlabel ylabel zlabel legend grid axis xlim ylim set gca gcf figure clf cla close clc format who whos clear help doc ans dot repmat ' +
   'surf surfc mesh meshc surface contour contourf contour3 pcolor shading colorbar colormap view peaks xline yline ' +
   'sphere cylinder ellipsoid fsurf fmesh fcontour quiver ' +
+  'bar barh area stem stairs scatter scatter3 plot3 stem3 errorbar pie histogram loglog semilogx semilogy subtitle sgtitle zlim xticks yticks zticks text ' +
   'cell iscell iscellstr num2cell cell2mat celldisp cellfun strsplit strjoin ' +
   'struct isstruct isfield fieldnames numfields rmfield setfield getfield orderfields struct2cell cell2struct structfun ' +
   'horzcat vertcat isequaln corr qmr condest wilkinson spones nonzeros bartlett blackman hamming hann typecast swapbytes ' +
