@@ -1,8 +1,8 @@
 /** Built-in functions for the MATLAB subset. */
 import {
   type Value, type Mat, type Handle, MatError, isMat, isHandle,
-  mat, zeros, scalar, str, rowVec, colVec, fromRows, numel, isScalar, isEmpty,
-  asScalar, asString, map, elementwise, transpose, toArray,
+  mat, zeros, scalar, bool, str, rowVec, colVec, fromRows, numel, isScalar, isEmpty,
+  asScalar, asString, map, elementwise, transpose, horzcat, vertcat, toArray,
 } from './values';
 import { det, inv, mldivide, diag, norm, eye } from './linalg';
 import { dispValue, sprintf } from './format';
@@ -176,6 +176,69 @@ export const BUILTINS: Record<string, Builtin> = {
     const sorted = A.cols === 1 ? colVec(vals.map((v) => v[0])) : rowVec(vals.map((v) => v[0]));
     return n >= 2 ? [sorted, A.cols === 1 ? colVec(vals.map((v) => v[1])) : rowVec(vals.map((v) => v[1]))] : [sorted];
   },
+  find: async (a, n) => {
+    const A = m(a[0]);
+    const all: number[] = [];
+    for (let i = 0; i < A.data.length; i++) if (A.data[i] !== 0) all.push(i); // 0-based linear
+    const k = a.length >= 2 ? Math.round(asScalar(a[1])) : all.length;
+    const sel = all.slice(0, Math.max(0, k));
+    const orient = (arr: number[]) => (A.rows === 1 ? rowVec(arr) : colVec(arr));
+    if (n >= 2) {
+      const rows = sel.map((i) => (i % A.rows) + 1);
+      const cols = sel.map((i) => Math.floor(i / A.rows) + 1);
+      if (n >= 3) return [orient(rows), orient(cols), orient(sel.map((i) => A.data[i]))];
+      return [orient(rows), orient(cols)];
+    }
+    return [orient(sel.map((i) => i + 1))];
+  },
+  isequal: async (a) => {
+    const eq = (x: Value, y: Value): boolean => {
+      if (!isMat(x) || !isMat(y)) return x === y;
+      if (x.rows !== y.rows || x.cols !== y.cols) return false;
+      for (let i = 0; i < x.data.length; i++) if (x.data[i] !== y.data[i]) return false;
+      return true;
+    };
+    for (let i = 1; i < a.length; i++) if (!eq(a[0], a[i])) return ret(bool(false));
+    return ret(bool(true));
+  },
+  unique: async (a) => {
+    const A = m(a[0]); const seen = new Set<number>(); const vals: number[] = [];
+    for (const v of toArray(A)) if (!seen.has(v)) { seen.add(v); vals.push(v); }
+    vals.sort((x, y) => x - y);
+    return ret(A.rows === 1 ? rowVec(vals) : colVec(vals));
+  },
+  ismember: async (a, n) => {
+    const A = m(a[0]); const bArr = toArray(m(a[1]));
+    const tf = zeros(A.rows, A.cols); const loc = zeros(A.rows, A.cols);
+    for (let i = 0; i < A.data.length; i++) { const j = bArr.lastIndexOf(A.data[i]); if (j >= 0) { tf.data[i] = 1; loc.data[i] = j + 1; } }
+    tf.isBool = true;
+    return n >= 2 ? [tf, loc] : [tf];
+  },
+  logical: async (a) => ret({ ...map(m(a[0]), (x) => (x !== 0 ? 1 : 0)), isBool: true }),
+  fliplr: async (a) => {
+    const A = m(a[0]); const o = zeros(A.rows, A.cols);
+    for (let c = 0; c < A.cols; c++) for (let r = 0; r < A.rows; r++) o.data[r + (A.cols - 1 - c) * A.rows] = A.data[r + c * A.rows];
+    o.isChar = A.isChar; return ret(o);
+  },
+  flipud: async (a) => {
+    const A = m(a[0]); const o = zeros(A.rows, A.cols);
+    for (let c = 0; c < A.cols; c++) for (let r = 0; r < A.rows; r++) o.data[(A.rows - 1 - r) + c * A.rows] = A.data[r + c * A.rows];
+    o.isChar = A.isChar; return ret(o);
+  },
+  flip: async (a) => {
+    const A = m(a[0]); const dim = a.length >= 2 ? Math.round(asScalar(a[1])) : (A.rows > 1 ? 1 : 2);
+    const o = zeros(A.rows, A.cols);
+    for (let c = 0; c < A.cols; c++) for (let r = 0; r < A.rows; r++) {
+      const rr = dim === 1 ? A.rows - 1 - r : r; const cc = dim === 2 ? A.cols - 1 - c : c;
+      o.data[rr + cc * A.rows] = A.data[r + c * A.rows];
+    }
+    o.isChar = A.isChar; return ret(o);
+  },
+  cat: async (a) => { const dim = Math.round(asScalar(a[0])); const parts = a.slice(1).map((v) => m(v)); return ret(dim === 1 ? vertcat(parts) : horzcat(parts)); },
+  isvector: async (a) => { const A = m(a[0]); return ret(bool(A.rows === 1 || A.cols === 1)); },
+  isrow: async (a) => ret(bool(m(a[0]).rows === 1)),
+  iscolumn: async (a) => ret(bool(m(a[0]).cols === 1)),
+  ismatrix: async () => ret(bool(true)),
 
   // linear algebra
   det: async (a) => ret(scalar(det(m(a[0])))),
@@ -374,6 +437,18 @@ const HELP: Record<string, HelpEntry> = {
   error: { summary: 'Throw an error and stop execution', syntax: ['error(MSG)', 'error(FORMAT,A,...)'], seealso: ['warning'] },
   arrayfun: { summary: 'Apply a function to each element of an array', syntax: ['B = arrayfun(@f,A)'], seealso: ['feval'] },
   feval: { summary: 'Evaluate a function handle', syntax: ['[y,...] = feval(@f,x,...)'], seealso: ['arrayfun'] },
+  find: { summary: 'Find indices of nonzero elements', syntax: ['k = find(X)', 'k = find(X,n)', '[r,c] = find(X)'], seealso: ['any', 'sort', 'ismember'] },
+  isequal: { summary: 'Determine array equality', syntax: ['tf = isequal(A,B,...)'], seealso: ['unique', 'ismember'] },
+  unique: { summary: 'Sorted unique values of an array', syntax: ['C = unique(A)'], seealso: ['sort', 'ismember', 'find'] },
+  ismember: { summary: 'Test membership of A in B (element-wise)', syntax: ['tf = ismember(A,B)', '[tf,loc] = ismember(A,B)'], seealso: ['unique', 'find'] },
+  logical: { summary: 'Convert numeric values to logical (0/1)', syntax: ['L = logical(X)'], seealso: ['true', 'false', 'find'] },
+  flip: { summary: 'Flip order of elements', syntax: ['B = flip(A)', 'B = flip(A,dim)'], seealso: ['fliplr', 'flipud', 'sort'] },
+  fliplr: { summary: 'Flip array left to right', syntax: ['B = fliplr(A)'], seealso: ['flipud', 'flip'] },
+  flipud: { summary: 'Flip array up to down', syntax: ['B = flipud(A)'], seealso: ['fliplr', 'flip'] },
+  cat: { summary: 'Concatenate arrays along a dimension', syntax: ['C = cat(dim,A,B,...)'], seealso: ['horzcat', 'vertcat', 'repmat'] },
+  isvector: { summary: 'Determine whether input is a vector', syntax: ['tf = isvector(X)'], seealso: ['isrow', 'iscolumn', 'isscalar'] },
+  isrow: { summary: 'Determine if input is a row vector', syntax: ['tf = isrow(X)'], seealso: ['iscolumn', 'isvector'] },
+  iscolumn: { summary: 'Determine if input is a column vector', syntax: ['tf = iscolumn(X)'], seealso: ['isrow', 'isvector'] },
 };
 
 export function docUrl(name: string): string {
