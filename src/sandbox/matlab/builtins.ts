@@ -591,7 +591,6 @@ export const BUILTINS: Record<string, Builtin> = {
   quad: async (a, n, env) => BUILTINS.integral(a, n, env),
   quadl: async (a, n, env) => BUILTINS.integral(a, n, env),
   quadgk: async (a, n, env) => BUILTINS.integral(a, n, env),
-  ode23tb: async (a, n, env) => odeSolve(a, n, env),
   odeset: async (a) => {
     const fields = new Map<string, Value[]>();
     if (a.length && isStruct(a[0])) for (const [k, v] of a[0].fields) fields.set(k, v.slice());
@@ -989,11 +988,14 @@ export const BUILTINS: Record<string, Builtin> = {
   spline: async (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])); if (a.length < 3) return ret(makePP(x, splineCoefs(x, y))); const xq = m(a[2]); return ret(map(xq, (q) => splineEval(x, y, q))); },
   roots: async (a) => { const { re, im } = durandKerner(toArray(m(a[0]))); return ret(finishComplex(re.length, 1, Float64Array.from(re), Float64Array.from(im))); },
   ode45: async (a, n, env) => odeSolve(a, n, env),
-  ode15s: async (a, n, env) => odeSolve(a, n, env),
-  ode23: async (a, n, env) => odeSolve(a, n, env),
+  ode78: async (a, n, env) => odeSolve(a, n, env),
+  ode89: async (a, n, env) => odeSolve(a, n, env),
   ode113: async (a, n, env) => odeSolve(a, n, env),
-  ode23s: async (a, n, env) => odeSolve(a, n, env),
-  ode23t: async (a, n, env) => odeSolve(a, n, env),
+  ode23: async (a, n, env) => odeSolveBS23(a, n, env),
+  ode15s: async (a, n, env) => odeSolveNDF(a, n, env),
+  ode23s: async (a, n, env) => odeSolveRos23(a, n, env),
+  ode23t: async (a, n, env) => odeSolveNDF(a, n, env),
+  ode23tb: async (a, n, env) => odeSolveRos23(a, n, env),
   cumtrapz: async (a) => {
     let x: number[], y: number[];
     if (a.length >= 2) { x = toArray(m(a[0])); y = toArray(m(a[1])); } else { y = toArray(m(a[0])); x = y.map((_, i) => i + 1); }
@@ -1502,8 +1504,10 @@ const HELP: Record<string, HelpEntry> = {
   interp1: { summary: '1-D interpolation', syntax: ["yq = interp1(x,v,xq)", "yq = interp1(x,v,xq,'nearest')"], seealso: ['spline', 'polyfit'] },
   spline: { summary: 'Cubic spline interpolation', syntax: ['yq = spline(x,v,xq)'], seealso: ['interp1', 'polyfit'] },
   roots: { summary: 'Polynomial roots (real or complex)', syntax: ['r = roots(p)'], seealso: ['polyval', 'polyfit', 'fzero'] },
-  ode45: { summary: 'Solve nonstiff ODEs (adaptive Dormand-Prince RK45)', syntax: ['[t,y] = ode45(@f,tspan,y0)', '[t,y] = ode45(@f,tspan,y0,opts)'], seealso: ['ode15s', 'odeset'] },
-  ode15s: { summary: 'Solve ODEs (aliased to the RK45 solver here; nonstiff only)', syntax: ['[t,y] = ode15s(@f,tspan,y0)'], seealso: ['ode45', 'odeset'] },
+  ode45: { summary: 'Solve nonstiff ODEs (adaptive Dormand-Prince RK45)', syntax: ['[t,y] = ode45(@f,tspan,y0)', '[t,y] = ode45(@f,tspan,y0,opts)'], seealso: ['ode23', 'ode15s', 'ode23s', 'odeset'] },
+  ode23: { summary: 'Solve nonstiff ODEs (adaptive Bogacki-Shampine 2,3)', syntax: ['[t,y] = ode23(@f,tspan,y0)'], seealso: ['ode45', 'ode23s', 'odeset'] },
+  ode15s: { summary: 'Solve stiff ODEs (variable-order 1–5 NDF/BDF)', syntax: ['[t,y] = ode15s(@f,tspan,y0)', "opts=odeset('MaxOrder',2)"], seealso: ['ode23s', 'ode45', 'odeset'] },
+  ode23s: { summary: 'Solve stiff ODEs (modified Rosenbrock 2,3; L-stable, numeric Jacobian)', syntax: ['[t,y] = ode23s(@f,tspan,y0)'], seealso: ['ode15s', 'ode45', 'odeset'] },
   odeset: { summary: 'Create/modify an ODE options struct (RelTol, AbsTol, InitialStep, MaxStep)', syntax: ["opts = odeset('RelTol',1e-6,'AbsTol',1e-8)"], seealso: ['ode45', 'ode15s'] },
   logspace: { summary: 'Logarithmically spaced vector', syntax: ['y = logspace(a,b)', 'y = logspace(a,b,n)'], seealso: ['linspace'] },
   meshgrid: { summary: '2-D grid coordinates', syntax: ['[X,Y] = meshgrid(x,y)'], seealso: ['linspace'] },
@@ -1603,7 +1607,7 @@ const BASE_REF = new Set<string>((
   'sinh cosh tanh asinh acosh atanh sec csc cot exp expm1 log log10 log2 log1p pow2 reallog realpow realsqrt ' +
   'inv pinv linsolve lscov det norm rank rref null orth trace cond condest rcond subspace eig eigs svd svds lu qr chol ldl schur hess ' +
   'expm logm sqrtm fzero fminbnd fminsearch lsqnonneg roots polyfit polyval conv deconv polyder polyint interp1 interp2 spline pchip makima interpft ' +
-  'integral integral2 integral3 trapz cumtrapz gradient del2 ode45 ode23 ode113 ode15s ode23s ode23t odeset ' +
+  'integral integral2 integral3 trapz cumtrapz gradient del2 ode45 ode23 ode78 ode89 ode113 ode15s ode23s ode23t ode23tb odeset quadgk quad2d ' +
   'mean median mode std var min max bounds mink maxk corrcoef cov factor factorial gcd lcm nchoosek perms primes isprime rat ' +
   'eps flintmax realmax realmin intmax intmin real imag conj angle unwrap fft ifft fft2 ifft2 fftn ifftn fftshift ifftshift ' +
   'isnan isinf isfinite isreal isfloat plus minus times rdivide ldivide mtimes mrdivide mldivide power mpower uminus uplus transpose ctranspose ' +
@@ -2566,6 +2570,205 @@ async function odeSolve(a: Value[], nargout: number, env: Env): Promise<Value[]>
 
   const Ymat = zeros(T.length, neq); for (let r = 0; r < T.length; r++) for (let c = 0; c < neq; c++) Ymat.data[r + c * T.length] = Y[r][c];
   return nargout >= 2 ? [colVec(T), Ymat] : [Ymat];
+}
+
+// ── Shared ODE helpers (Shampine–Reichelt "The MATLAB ODE Suite") ──
+/** Assemble the [t,y] (or y) output from collected times/states. */
+function odeOut(T: number[], Y: number[][], neq: number, nargout: number): Value[] {
+  const Ymat = zeros(T.length, neq); for (let r = 0; r < T.length; r++) for (let c = 0; c < neq; c++) Ymat.data[r + c * T.length] = Y[r][c];
+  return nargout >= 2 ? [colVec(T), Ymat] : [Ymat];
+}
+/** Numerical Jacobian ∂f/∂y by forward differences. */
+async function numJac(evalF: (t: number, y: number[]) => Promise<number[]>, t: number, y: number[], f0: number[], neq: number): Promise<Mat> {
+  const J = zeros(neq, neq);
+  for (let j = 0; j < neq; j++) {
+    const dy = Math.sqrt(2.220446049250313e-16) * Math.max(Math.abs(y[j]), 1e-3);
+    const yp = y.slice(); yp[j] += dy;
+    const fp = await evalF(t, yp);
+    for (let i = 0; i < neq; i++) J.data[i + j * neq] = (fp[i] - f0[i]) / dy;
+  }
+  return J;
+}
+const vsolve = (W: Mat, rhs: number[]): number[] => toArray(mldivide(W, colVec(rhs)));
+
+/** ode23 — Bogacki–Shampine (2,3) explicit RK pair (FSAL), nonstiff. */
+async function odeSolveBS23(a: Value[], nargout: number, env: Env): Promise<Value[]> {
+  const f = handle(a[0], 'ode23'); const tspan = toArray(m(a[1])); const y0 = toArray(m(a[2])); const neq = y0.length;
+  const { relTol, absTol, h0, hMax } = odeOpts(a[3]);
+  const evalF = async (t: number, y: number[]) => { const r = await env.callHandle(f, [scalar(t), colVec(y)], 1); return isMat(r[0]) ? toArray(r[0] as Mat) : new Array(neq).fill(0); };
+  const t0 = tspan[0], tEnd = tspan[tspan.length - 1]; const dir = tEnd >= t0 ? 1 : -1;
+  const wantPoints = tspan.length > 2 ? tspan.slice() : null; let nextWant = 1;
+  const T = [t0]; const Y = [y0.slice()];
+  let t = t0, y = y0.slice(); let k1 = await evalF(t, y);
+  const span = Math.abs(tEnd - t0);
+  let h = h0 > 0 ? h0 * dir : initStep(y, k1, relTol, absTol, neq, dir, hMax, span);
+  const SAFE = 0.9, EXP = 1 / 3; let steps = 0;
+  while (dir * (tEnd - t) > 1e-14 * Math.max(1, Math.abs(tEnd))) {
+    if (++steps > 1e6) throw new MatError('ode23: too many steps');
+    if (dir * (t + h - tEnd) > 0) h = tEnd - t;
+    const k2 = await evalF(t + 0.5 * h, y.map((v, i) => v + 0.5 * h * k1[i]));
+    const k3 = await evalF(t + 0.75 * h, y.map((v, i) => v + 0.75 * h * k2[i]));
+    const ynew = y.map((v, i) => v + h * (2 / 9 * k1[i] + 1 / 3 * k2[i] + 4 / 9 * k3[i]));
+    const k4 = await evalF(t + h, ynew);
+    let err = 0;
+    for (let i = 0; i < neq; i++) { const e = h * (-5 / 72 * k1[i] + 1 / 12 * k2[i] + 1 / 9 * k3[i] - 1 / 8 * k4[i]); const sc = absTol + relTol * Math.max(Math.abs(y[i]), Math.abs(ynew[i])); err += (e / sc) ** 2; }
+    err = Math.sqrt(err / (neq || 1));
+    if (err <= 1) {
+      const tNew = t + h;
+      if (wantPoints) while (nextWant < wantPoints.length && dir * (wantPoints[nextWant] - tNew) <= 1e-14) { const s = (wantPoints[nextWant] - t) / h; Y.push(hermiteStep(y, ynew, k1, k4, h, s)); T.push(wantPoints[nextWant]); nextWant++; }
+      else { T.push(tNew); Y.push(ynew.slice()); }
+      t = tNew; y = ynew; k1 = k4; // FSAL
+    }
+    const fac = err === 0 ? 5 : Math.min(5, Math.max(0.2, SAFE * err ** -EXP));
+    h = dir * Math.min(Math.abs(h * fac), hMax, span);
+    if (Math.abs(h) < 1e-14 * Math.max(1, Math.abs(t))) throw new MatError('ode23: step size underflow (problem may be stiff — try ode15s/ode23s)');
+  }
+  return odeOut(T, Y, neq, nargout);
+}
+
+/** ode23s — modified Rosenbrock (2,3) pair, L-stable, for stiff problems. */
+async function odeSolveRos23(a: Value[], nargout: number, env: Env): Promise<Value[]> {
+  const f = handle(a[0], 'ode23s'); const tspan = toArray(m(a[1])); const y0 = toArray(m(a[2])); const neq = y0.length;
+  const { relTol, absTol, h0, hMax } = odeOpts(a[3]);
+  const evalF = async (t: number, y: number[]) => { const r = await env.callHandle(f, [scalar(t), colVec(y)], 1); return isMat(r[0]) ? toArray(r[0] as Mat) : new Array(neq).fill(0); };
+  const d = 1 / (2 + Math.SQRT2), e32 = 6 + Math.SQRT2;
+  const t0 = tspan[0], tEnd = tspan[tspan.length - 1]; const dir = tEnd >= t0 ? 1 : -1;
+  const wantPoints = tspan.length > 2 ? tspan.slice() : null; let nextWant = 1;
+  const T = [t0]; const Y = [y0.slice()];
+  let t = t0, y = y0.slice(); let F0 = await evalF(t, y);
+  const span = Math.abs(tEnd - t0);
+  let h = h0 > 0 ? h0 * dir : initStep(y, F0, relTol, absTol, neq, dir, hMax, span);
+  let steps = 0; const SAFE = 0.9, EXP = 1 / 3;
+  while (dir * (tEnd - t) > 1e-14 * Math.max(1, Math.abs(tEnd))) {
+    if (++steps > 1e6) throw new MatError('ode23s: too many steps');
+    if (dir * (t + h - tEnd) > 0) h = tEnd - t;
+    const J = await numJac(evalF, t, y, F0, neq);
+    const dt = Math.sqrt(2.220446049250313e-16) * (Math.abs(t) + 1) * dir;
+    const Ft = await evalF(t + dt, y); const Tt = F0.map((v, i) => (Ft[i] - v) / dt); // ∂f/∂t
+    const W = zeros(neq, neq); for (let c = 0; c < neq; c++) for (let r = 0; r < neq; r++) W.data[r + c * neq] = (r === c ? 1 : 0) - h * d * J.data[r + c * neq];
+    const k1 = vsolve(W, F0.map((v, i) => v + h * d * Tt[i]));
+    const F1 = await evalF(t + 0.5 * h, y.map((v, i) => v + 0.5 * h * k1[i]));
+    const k2raw = vsolve(W, F1.map((v, i) => v - k1[i])); const k2 = k2raw.map((v, i) => v + k1[i]);
+    const ynew = y.map((v, i) => v + h * k2[i]);
+    const F2 = await evalF(t + h, ynew);
+    const k3 = vsolve(W, F2.map((v, i) => v - e32 * (k2[i] - F1[i]) - 2 * (k1[i] - F0[i]) + h * d * Tt[i]));
+    let err = 0;
+    for (let i = 0; i < neq; i++) { const e = (h / 6) * (k1[i] - 2 * k2[i] + k3[i]); const sc = absTol + relTol * Math.max(Math.abs(y[i]), Math.abs(ynew[i])); err += (e / sc) ** 2; }
+    err = Math.sqrt(err / (neq || 1));
+    if (err <= 1) {
+      const tNew = t + h;
+      if (wantPoints) while (nextWant < wantPoints.length && dir * (wantPoints[nextWant] - tNew) <= 1e-14) { const s = (wantPoints[nextWant] - t) / h; Y.push(y.map((yi, i) => yi + h * (s * (1 - s) / (1 - 2 * d) * k1[i] + s * (s - 2 * d) / (1 - 2 * d) * k2[i]))); T.push(wantPoints[nextWant]); nextWant++; }
+      else { T.push(tNew); Y.push(ynew.slice()); }
+      t = tNew; y = ynew; F0 = F2; // FSAL
+    }
+    const fac = err === 0 ? 5 : Math.min(5, Math.max(0.2, SAFE * err ** -EXP));
+    h = dir * Math.min(Math.abs(h * fac), hMax, span);
+    if (Math.abs(h) < 1e-14 * Math.max(1, Math.abs(t))) throw new MatError('ode23s: step size underflow');
+  }
+  return odeOut(T, Y, neq, nargout);
+}
+
+const NDF_KAPPA = [0, -0.1850, -1 / 9, -0.0823, -0.0415, 0];
+/** ode15s — variable-order (1–5) NDF stiff solver in backward-difference form. */
+async function odeSolveNDF(a: Value[], nargout: number, env: Env): Promise<Value[]> {
+  const f = handle(a[0], 'ode15s'); const tspan = toArray(m(a[1])); const y0 = toArray(m(a[2])); const neq = y0.length;
+  const { relTol, absTol, h0, hMax } = odeOpts(a[3]);
+  const maxk = Math.min(5, (a[3] && isStruct(a[3]) && a[3].fields.get('MaxOrder')?.[0] && isMat(a[3].fields.get('MaxOrder')![0]) ? Math.round(asScalar(a[3].fields.get('MaxOrder')![0])) : 5));
+  const evalF = async (t: number, y: number[]) => { const r = await env.callHandle(f, [scalar(t), colVec(y)], 1); return isMat(r[0]) ? toArray(r[0] as Mat) : new Array(neq).fill(0); };
+  const G = [0, 1, 1.5, 1 + 1 / 2 + 1 / 3, 0, 0]; G[4] = G[3] + 1 / 4; G[5] = G[4] + 1 / 5; // γ_k
+  const t0 = tspan[0], tEnd = tspan[tspan.length - 1]; const dir = tEnd >= t0 ? 1 : -1;
+  const wantPoints = tspan.length > 2 ? tspan.slice() : null; let nextWant = 1;
+  const T = [t0]; const Y = [y0.slice()];
+  let t = t0, y = y0.slice(); let f0 = await evalF(t, y);
+  const span = Math.abs(tEnd - t0);
+  let h = h0 > 0 ? h0 * dir : initStep(y, f0, relTol, absTol, neq, dir, hMax, span);
+  let k = 1;
+  // dif[j] = ∇^j y (j = 1..k+1); seed first difference ≈ h·y'.
+  const dif: number[][] = Array.from({ length: maxk + 2 }, () => new Array(neq).fill(0));
+  dif[1] = f0.map((v) => v * h);
+  let J = await numJac(evalF, t, y, f0, neq);
+  let steps = 0, nReject = 0, nAccept = 0;
+  while (dir * (tEnd - t) > 1e-14 * Math.max(1, Math.abs(tEnd))) {
+    if (++steps > 2e6) throw new MatError('ode15s: too many steps');
+    let hStep = h; if (dir * (t + hStep - tEnd) > 0) hStep = tEnd - t;
+    if (hStep !== h) { rescaleDif(dif, k, hStep / h, neq); h = hStep; }
+    const alpha = (1 - NDF_KAPPA[k]) * G[k];
+    const c = h / alpha;
+    // predictor y^(0) = Σ_{m=0}^k ∇^m y_n ; Ψ = (1/alpha) Σ γ_m ∇^m
+    const ypred = y.slice(); const psi = new Array(neq).fill(0);
+    for (let j = 1; j <= k; j++) for (let i = 0; i < neq; i++) { ypred[i] += dif[j][i]; psi[i] += G[j] * dif[j][i] / alpha; }
+    // Iteration matrix M = I - c J
+    const M = zeros(neq, neq); for (let cc = 0; cc < neq; cc++) for (let rr = 0; rr < neq; rr++) M.data[rr + cc * neq] = (rr === cc ? 1 : 0) - c * J.data[rr + cc * neq];
+    // Simplified Newton for ynew; d accumulates ∇^{k+1} y_{n+1}
+    let ynew = ypred.slice(); const dacc = new Array(neq).fill(0); let converged = false, prevNorm = Infinity;
+    for (let it = 0; it < 12; it++) {
+      const Fv = await evalF(t + h, ynew);
+      const rhs = new Array(neq); for (let i = 0; i < neq; i++) rhs[i] = c * Fv[i] - psi[i] - (ynew[i] - ypred[i]);
+      const delta = vsolve(M, rhs);
+      let dn = 0; for (let i = 0; i < neq; i++) { ynew[i] += delta[i]; dacc[i] += delta[i]; const sc = absTol + relTol * Math.abs(ynew[i]); dn += (delta[i] / sc) ** 2; }
+      dn = Math.sqrt(dn / (neq || 1));
+      if (dn < 1e-3) { converged = true; break; }
+      if (it > 0 && dn > prevNorm) break; // diverging
+      prevNorm = dn;
+    }
+    if (!converged) { nAccept = 0; if (k > 1) k--; rescaleDif(dif, k, 0.5, neq); h *= 0.5; if (Math.abs(h) < 1e-13 * Math.max(1, Math.abs(t))) throw new MatError('ode15s: step size underflow'); continue; }
+    // Local error ∝ (κγ_k + 1/(k+1)) ∇^{k+1}y
+    const errc = NDF_KAPPA[k] * G[k] + 1 / (k + 1);
+    let err = 0; for (let i = 0; i < neq; i++) { const sc = absTol + relTol * Math.max(Math.abs(y[i]), Math.abs(ynew[i])); err += (errc * dacc[i] / sc) ** 2; } err = Math.sqrt(err / (neq || 1));
+    if (err <= 1) {
+      const tNew = t + h;
+      // commit difference table: ∇^{k+1}=dacc, then ∇^j += ∇^{j+1}
+      dif[k + 1] = dacc.slice(); for (let j = k; j >= 1; j--) for (let i = 0; i < neq; i++) dif[j][i] += dif[j + 1][i];
+      if (wantPoints) while (nextWant < wantPoints.length && dir * (wantPoints[nextWant] - tNew) <= 1e-14) {
+        // Newton backward-difference interpolant about t_{n+1}: y(t_{n+1}+sh)=Σ C(s) ∇^j y_{n+1}.
+        const s = (wantPoints[nextWant] - tNew) / h; const yi = ynew.slice(); let coef = 1;
+        for (let j = 1; j <= k; j++) { coef *= (s + j - 1) / j; for (let i = 0; i < neq; i++) yi[i] += coef * dif[j][i]; }
+        Y.push(yi); T.push(wantPoints[nextWant]); nextWant++;
+      } else { T.push(tNew); Y.push(ynew.slice()); }
+      t = tNew; y = ynew; f0 = await evalF(t, y);
+      nReject = 0; nAccept++;
+      // Step growth from the order-(k) error estimate.
+      const fac = err === 0 ? 10 : Math.min(10, Math.max(0.2, 0.9 * err ** (-1 / (k + 1))));
+      // Ramp the order up to maxk on smooth progress (cold-start ramp); rejects pull it back.
+      if (k < maxk && nAccept >= 1) k++;
+      const hNew = dir * Math.min(Math.abs(h * fac), hMax, span);
+      rescaleDif(dif, k, hNew / h, neq); // differences must follow every step-size change (D*=D·R·U)
+      h = hNew;
+      J = await numJac(evalF, t, y, f0, neq); // ode15s here refreshes the Jacobian each step
+    } else {
+      nReject++; nAccept = 0; const fac = Math.max(0.25, 0.9 * err ** (-1 / (k + 1)));
+      if (nReject >= 2 && k > 1) { k--; }
+      rescaleDif(dif, k, fac, neq); h = dir * Math.min(Math.abs(h * fac), hMax, span);
+      if (Math.abs(h) < 1e-13 * Math.max(1, Math.abs(t))) throw new MatError('ode15s: step size underflow');
+    }
+  }
+  return odeOut(T, Y, neq, nargout);
+}
+/** Rescale the backward-difference table for a step-size ratio rho = hnew/h (D* = D·R·U). */
+function rescaleDif(dif: number[][], k: number, rho: number, neq: number): void {
+  if (rho === 1 || k < 1) return;
+  // U: U[m][r] = (-1)? integer matrix with U²=I; R[m][r] from products. Build (k×k) M = R·U.
+  const R = mat2d(k, k), U = mat2d(k, k);
+  for (let r = 1; r <= k; r++) { let pr = 1, pu = 1; for (let j = 1; j <= k; j++) { pr *= (j - 1 - r * rho); pu *= (j - 1 - r); R[j - 1][r - 1] = pr / fact(j); U[j - 1][r - 1] = pu / fact(j); } }
+  // RU[j][r] = Σ_m R[j][m] U[m][r]
+  const RU = mat2d(k, k); for (let j = 0; j < k; j++) for (let r = 0; r < k; r++) { let s = 0; for (let mm = 0; mm < k; mm++) s += R[j][mm] * U[mm][r]; RU[j][r] = s; }
+  const old = dif.map((col) => col.slice());
+  for (let r = 1; r <= k; r++) for (let i = 0; i < neq; i++) { let s = 0; for (let j = 1; j <= k; j++) s += old[j][i] * RU[j - 1][r - 1]; dif[r][i] = s; }
+}
+const mat2d = (r: number, c: number): number[][] => Array.from({ length: r }, () => new Array(c).fill(0));
+const fact = (n: number): number => { let p = 1; for (let i = 2; i <= n; i++) p *= i; return p; };
+/** Hairer initial-step heuristic (shared by the new solvers). */
+function initStep(y: number[], f0: number[], relTol: number, absTol: number, neq: number, dir: number, hMax: number, span: number): number {
+  const sc = y.map((yi) => absTol + relTol * Math.abs(yi));
+  const d0 = Math.hypot(...y.map((yi, j) => yi / sc[j])) / Math.sqrt(neq || 1);
+  const d1 = Math.hypot(...f0.map((fi, j) => fi / sc[j])) / Math.sqrt(neq || 1);
+  const h = (d0 < 1e-5 || d1 < 1e-5 ? 1e-6 : 0.01 * (d0 / d1)) * dir;
+  return dir * Math.min(Math.abs(h), hMax, span);
+}
+/** Cubic-Hermite value at fraction s using endpoint values/slopes (for BS23 dense output). */
+function hermiteStep(y0: number[], y1: number[], f0: number[], f1: number[], h: number, s: number): number[] {
+  const h00 = 2 * s ** 3 - 3 * s ** 2 + 1, h10 = s ** 3 - 2 * s ** 2 + s, h01 = -2 * s ** 3 + 3 * s ** 2, h11 = s ** 3 - s ** 2;
+  return y0.map((_, i) => h00 * y0[i] + h10 * h * f0[i] + h01 * y1[i] + h11 * h * f1[i]);
 }
 
 /** Numeric constants exposed as bare identifiers. */
