@@ -1564,6 +1564,27 @@ export const BUILTINS: Record<string, Builtin> = {
   quantile: async (a) => { const A = m(a[0]); const s = toArray(A).sort((x, y) => x - y); const Q = m(a[1]); const out = map(Q, (q) => pctile(s, q * 100)); return ret(out); },
   cov: async (a) => { let X = m(a[0]); if (a.length >= 2) X = horzcat([colvecOf(X), colvecOf(m(a[1]))]); else if (X.rows === 1 || X.cols === 1) return ret(scalar(variance(toArray(X)))); return ret(covMatrix(X)); },
   corrcoef: async (a) => { let X = m(a[0]); if (a.length >= 2) X = horzcat([colvecOf(X), colvecOf(m(a[1]))]); const C = covMatrix(X); const p = C.rows; const R = zeros(p, p); for (let i = 0; i < p; i++) for (let j = 0; j < p; j++) R.data[i + j * p] = C.data[i + j * p] / Math.sqrt(C.data[i + i * p] * C.data[j + j * p]); return ret(R); },
+  corrcov: async (a) => { const C = m(a[0]); const p = C.rows; const sd = Array.from({ length: p }, (_, i) => Math.sqrt(C.data[i + i * p])); const R = zeros(p, p); for (let i = 0; i < p; i++) for (let j = 0; j < p; j++) R.data[i + j * p] = C.data[i + j * p] / (sd[i] * sd[j]); return ret(R); },
+  humps: async (a) => { const x = a.length ? toArray(m(a[0])) : Array.from({ length: 101 }, (_, i) => i / 100); return ret(rowVec(x.map((t) => 1 / ((t - 0.3) ** 2 + 0.01) + 1 / ((t - 0.9) ** 2 + 0.04) - 6))); },
+  normpdf: async (a) => { const x = m(a[0]); const mu = a.length >= 2 ? asScalar(a[1]) : 0, sg = a.length >= 3 ? asScalar(a[2]) : 1; return ret(map(x, (t) => Math.exp(-((t - mu) ** 2) / (2 * sg * sg)) / (sg * Math.sqrt(2 * Math.PI)))); },
+  normcdf: async (a) => { const x = m(a[0]); const mu = a.length >= 2 ? asScalar(a[1]) : 0, sg = a.length >= 3 ? asScalar(a[2]) : 1; return ret(map(x, (t) => 0.5 * (1 + erfFn((t - mu) / (sg * Math.SQRT2))))); },
+  randsample: async (a) => {
+    const first = m(a[0]); const pop = numel(first) === 1 ? Array.from({ length: Math.round(first.data[0]) }, (_, i) => i + 1) : toArray(first);
+    const k = a.length >= 2 ? Math.round(asScalar(a[1])) : 1; const replace = a.length >= 3 && truthy(a[2]);
+    const out: number[] = [];
+    if (replace) { for (let i = 0; i < k; i++) out.push(pop[Math.floor(Math.random() * pop.length)]); }
+    else { const idx = pop.map((_, i) => i); for (let i = idx.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [idx[i], idx[j]] = [idx[j], idx[i]]; } for (let i = 0; i < k; i++) out.push(pop[idx[i]]); }
+    return ret(numel(first) === 1 || first.rows === 1 ? rowVec(out) : colVec(out));
+  },
+  timeit: async (a, _n, env) => {
+    const f = handle(a[0], 'timeit'); const t0 = performance.now(); await env.callHandle(f, [], a.length >= 2 ? Math.round(asScalar(a[1])) : 0);
+    const warm = performance.now() - t0; const reps = warm > 50 ? 3 : warm > 1 ? 20 : 100;
+    const times: number[] = [];
+    for (let i = 0; i < reps; i++) { const s = performance.now(); await env.callHandle(f, [], a.length >= 2 ? Math.round(asScalar(a[1])) : 0); times.push((performance.now() - s) / 1000); }
+    times.sort((x, y) => x - y); return ret(scalar(times[Math.floor(times.length / 2)]));
+  },
+  jsonencode: async (a) => ret(str(jsonEncode(a[0]))),
+  jsondecode: async (a) => ret(jsonDecode(JSON.parse(asString(a[0])))),
   movsum: async (a) => ret(movWindow(m(a[0]), Math.round(asScalar(a[1])), (w) => w.reduce((s, x) => s + x, 0))),
   movmean: async (a) => ret(movWindow(m(a[0]), Math.round(asScalar(a[1])), (w) => w.reduce((s, x) => s + x, 0) / w.length)),
   movmedian: async (a) => ret(movWindow(m(a[0]), Math.round(asScalar(a[1])), (w) => { const s = [...w].sort((x, y) => x - y); const n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; })),
@@ -2252,6 +2273,14 @@ const HELP: Record<string, HelpEntry> = {
   subgraph: { summary: 'Extract a subgraph on a node subset', syntax: ['H = subgraph(G,nodes)'], seealso: ['rmnode', 'reordernodes'] },
   reordernodes: { summary: 'Reorder graph nodes', syntax: ['H = reordernodes(G,order)'], seealso: ['subgraph'] },
   centrality: { summary: 'Node centrality (degree/closeness/betweenness/pagerank)', syntax: ["c = centrality(G,'pagerank')"], seealso: ['degree', 'distances'] },
+  humps: { summary: 'The classic MATLAB demo function (two peaks)', syntax: ['y = humps(x)'], seealso: ['fzero', 'integral'] },
+  corrcov: { summary: 'Convert a covariance matrix to a correlation matrix', syntax: ['R = corrcov(C)'], seealso: ['cov', 'corrcoef'] },
+  normpdf: { summary: 'Normal probability density function', syntax: ['y = normpdf(x,mu,sigma)'], seealso: ['normcdf', 'randn'] },
+  normcdf: { summary: 'Normal cumulative distribution function', syntax: ['p = normcdf(x,mu,sigma)'], seealso: ['normpdf', 'erf'] },
+  randsample: { summary: 'Random sample from a population', syntax: ['y = randsample(n,k)', 'y = randsample(pop,k,replace)'], seealso: ['randperm', 'datasample'] },
+  timeit: { summary: 'Time a function handle (median of repeated calls)', syntax: ['t = timeit(f)'], seealso: ['tic', 'toc'] },
+  jsonencode: { summary: 'Encode a value as JSON text', syntax: ['s = jsonencode(v)'], seealso: ['jsondecode'] },
+  jsondecode: { summary: 'Decode JSON text into a value', syntax: ['v = jsondecode(s)'], seealso: ['jsonencode'] },
   griddata: { summary: 'Interpolate scattered 2-D data onto query points (linear or nearest)', syntax: ['vq = griddata(x,y,v,xq,yq)', "vq = griddata(x,y,v,xq,yq,'nearest')"], seealso: ['delaunay', 'interp2', 'scatteredInterpolant'] },
   interp3: { summary: 'Trilinear interpolation on a 3-D grid', syntax: ['Vq = interp3(V,Xq,Yq,Zq)', 'Vq = interp3(X,Y,Z,V,Xq,Yq,Zq)'], seealso: ['interp2', 'interp1', 'griddata'] },
   interpn: { summary: 'Gridded interpolation (1-D/2-D/3-D)', syntax: ['Vq = interpn(...)'], seealso: ['interp3', 'interp2', 'interp1'] },
@@ -2325,6 +2354,7 @@ const BASE_REF = new Set<string>((
   'graph digraph numnodes numedges addnode rmnode addedge rmedge neighbors successors predecessors degree indegree outdegree ' +
   'findnode findedge adjacency incidence laplacian shortestpath distances bfsearch dfsearch conncomp toposort isdag ismultigraph ' +
   'minspantree maxflow subgraph reordernodes centrality ' +
+  'humps corrcov normpdf normcdf randsample timeit jsonencode jsondecode ' +
   'rsf2csf balance qz ordschur ordeig sylvester lsqminnorm expmv ' +
   'rms geomean harmmean movmad movprod movstd movvar mape rmse idivide polydiv betaincinv gammaincinv rosser rng convn optimset optimget quad2d ' +
   'ismissing anymissing standardizeMissing rmmissing fillmissing isbetween isuniform allunique numunique uniquetol ismembertol issortedrows paddata trimdata resize discretize ' +
@@ -2370,6 +2400,36 @@ function matToStr(A: Mat): string {
   const rows: string[] = [];
   for (let r = 0; r < A.rows; r++) { const row: string[] = []; for (let c = 0; c < A.cols; c++) row.push(trimNum(A.data[r + c * A.rows])); rows.push(row.join(' ')); }
   return `[${rows.join(';')}]`;   // MATLAB brackets vectors/matrices
+}
+
+/** Encode a Value as a JSON string (jsonencode). */
+function jsonEncode(v: Value): string {
+  if (isStr(v)) return v.rows * v.cols === 1 ? JSON.stringify(v.items[0]) : JSON.stringify(v.items);
+  if (isCell(v)) return '[' + v.items.map((x) => jsonEncode(x)).join(',') + ']';
+  if (isStruct(v)) { const o: string[] = []; for (const [k, vals] of v.fields) o.push(JSON.stringify(k) + ':' + jsonEncode(vals[0])); return '{' + o.join(',') + '}'; }
+  const A = m(v);
+  if (A.isChar) return JSON.stringify(asString(A));
+  if (numel(A) === 1) return jsonNum(A.data[0]);
+  if (A.rows === 1 || A.cols === 1) return '[' + toArray(A).map(jsonNum).join(',') + ']';
+  const rows: string[] = []; for (let r = 0; r < A.rows; r++) { const row: string[] = []; for (let c = 0; c < A.cols; c++) row.push(jsonNum(A.data[r + c * A.rows])); rows.push('[' + row.join(',') + ']'); }
+  return '[' + rows.join(',') + ']';
+}
+const jsonNum = (x: number) => (Number.isFinite(x) ? String(x) : 'null');
+/** Decode a parsed JSON value into a MATLAB Value (jsondecode). */
+function jsonDecode(j: unknown): Value {
+  if (typeof j === 'number') return scalar(j);
+  if (typeof j === 'boolean') return bool(j);
+  if (j === null) return scalar(NaN);
+  if (typeof j === 'string') return makeStr(j);
+  if (Array.isArray(j)) {
+    if (j.every((x) => typeof x === 'number')) return colVec(j as number[]);            // numeric array → column vector
+    if (j.length && j.every((x) => Array.isArray(x) && (x as unknown[]).every((y) => typeof y === 'number') && (x as unknown[]).length === (j[0] as unknown[]).length))
+      return fromRows(j as number[][]);                                                  // rectangular numeric → matrix
+    return makeCell(j.length, 1, j.map((x) => jsonDecode(x)));                            // otherwise → cell column
+  }
+  const o = j as Record<string, unknown>; const fields = new Map<string, Value[]>();
+  for (const k of Object.keys(o)) fields.set(k, [jsonDecode(o[k])]);
+  return { kind: 'struct', rows: 1, cols: 1, fields };
 }
 
 // ── Math helpers for the elementary-math builtins ─────────────────────────
