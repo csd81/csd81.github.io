@@ -70,7 +70,7 @@ export default function PlotlyFigure({ fig, dark }: { fig: FigureSpec; dark: boo
       const sceneKey = 'scene' + suf;
       for (const s of p.surfaces ?? []) {
         if (s.kind === 'contour') continue; // contour handled in the 2-D branch below
-        data.push({ type: 'surface', scene: sceneKey, x: s.x, y: s.y, z: s.z, colorscale, showscale: !!p.colorbar, opacity: s.kind === 'mesh' ? 0.55 : 1, contours: s.kind === 'contour3' ? { z: { show: true, usecolormap: true, width: 2 } } : s.shading === 'faceted' ? { x: { show: true, color: zero, width: 1 }, y: { show: true, color: zero, width: 1 } } : undefined });
+        data.push({ type: 'surface', scene: sceneKey, x: s.xm ?? s.x, y: s.ym ?? s.y, z: s.z, surfacecolor: s.cdata, colorscale, showscale: !!p.colorbar, opacity: s.kind === 'mesh' ? 0.55 : 1, contours: s.kind === 'contour3' ? { z: { show: true, usecolormap: true, width: 2 } } : s.shading === 'faceted' ? { x: { show: true, color: zero, width: 1 }, y: { show: true, color: zero, width: 1 } } : undefined });
       }
       for (const mesh of p.meshes ?? []) {
         if (mesh.wire) {

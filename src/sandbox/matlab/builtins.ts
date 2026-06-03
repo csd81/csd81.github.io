@@ -1521,6 +1521,12 @@ export const BUILTINS: Record<string, Builtin> = {
   logspace: async (a) => { const lo = asScalar(a[0]), hi = asScalar(a[1]); const k = a.length >= 3 ? Math.round(asScalar(a[2])) : 50; const out: number[] = []; for (let i = 0; i < k; i++) out.push(Math.pow(10, lo + (hi - lo) * i / (k - 1))); return ret(rowVec(out)); },
   meshgrid: async (a, n) => {
     const x = toArray(m(a[0])); const y = a.length >= 2 ? toArray(m(a[1])) : x;
+    if (n >= 3 || a.length >= 3) {   // 3-D grid: [X,Y,Z] = meshgrid(x,y,z)
+      const z = a.length >= 3 ? toArray(m(a[2])) : x; const ny = y.length, nx = x.length, nz = z.length; const sz = ny * nx * nz;
+      const X = new Float64Array(sz), Y = new Float64Array(sz), Z = new Float64Array(sz);
+      for (let k = 0; k < nz; k++) for (let c = 0; c < nx; c++) for (let r = 0; r < ny; r++) { const idx = r + c * ny + k * ny * nx; X[idx] = x[c]; Y[idx] = y[r]; Z[idx] = z[k]; }
+      return [makeND([ny, nx, nz], X), makeND([ny, nx, nz], Y), makeND([ny, nx, nz], Z)];
+    }
     const X = zeros(y.length, x.length), Y = zeros(y.length, x.length);
     for (let r = 0; r < y.length; r++) for (let c = 0; c < x.length; c++) { X.data[r + c * y.length] = x[c]; Y.data[r + c * y.length] = y[r]; }
     return n >= 2 ? [X, Y] : [X];
@@ -1537,6 +1543,12 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   ndgrid: async (a, n) => {
     const x = toArray(m(a[0])); const y = a.length >= 2 ? toArray(m(a[1])) : x;
+    if (n >= 3 || a.length >= 3) {   // 3-D: [X,Y,Z] = ndgrid(x,y,z)
+      const z = a.length >= 3 ? toArray(m(a[2])) : x; const nx = x.length, ny = y.length, nz = z.length; const sz = nx * ny * nz;
+      const X = new Float64Array(sz), Y = new Float64Array(sz), Z = new Float64Array(sz);
+      for (let k = 0; k < nz; k++) for (let c = 0; c < ny; c++) for (let r = 0; r < nx; r++) { const idx = r + c * nx + k * nx * ny; X[idx] = x[r]; Y[idx] = y[c]; Z[idx] = z[k]; }
+      return [makeND([nx, ny, nz], X), makeND([nx, ny, nz], Y), makeND([nx, ny, nz], Z)];
+    }
     const X = zeros(x.length, y.length), Y = zeros(x.length, y.length);
     for (let r = 0; r < x.length; r++) for (let c = 0; c < y.length; c++) { X.data[r + c * x.length] = x[r]; Y.data[r + c * x.length] = y[c]; }
     return n >= 2 ? [X, Y] : [X];
@@ -1827,6 +1839,51 @@ export const BUILTINS: Record<string, Builtin> = {
     return [];
   },
   histogram2: async (a, _n, env) => { const x = toArray(m(a[0])), y = toArray(m(a[1])); const nb = a.length >= 3 && isMat(a[2]) ? toArray(m(a[2])) : [10, 10]; env.graphics.histogram2(x, y, nb[0], nb[1] ?? nb[0]); return []; },
+  slice: async (a, _n, env) => {
+    const ms = a.filter((x): x is Mat => isMat(x) && !(x as Mat).isChar);
+    let V: Mat, xv: number[], yv: number[], zv: number[], sx: number[], sy: number[], sz: number[];
+    if (ms.length >= 7) { V = ms[3]; const d = ndSize(V); xv = gridAxis(ms[0], 2, d); yv = gridAxis(ms[1], 1, d); zv = gridAxis(ms[2], 3, d); sx = toArray(ms[4]); sy = toArray(ms[5]); sz = toArray(ms[6]); }
+    else { V = ms[0]; const d = ndSize(V); xv = ax(d[1] ?? 1); yv = ax(d[0]); zv = ax(d[2] ?? 1); sx = ms[1] ? toArray(ms[1]) : []; sy = ms[2] ? toArray(ms[2]) : []; sz = ms[3] ? toArray(ms[3]) : []; }
+    const samp = (px: number, py: number, pz: number) => trilinearV(V, xv, yv, zv, px, py, pz);
+    env.graphics.hold(false); let first = true;
+    const plane = (xm: number[][], ym: number[][], zm: number[][], cd: number[][]) => { if (!first) env.graphics.hold(true); env.graphics.slicePlane(xm, ym, zm, cd); first = false; };
+    for (const xc of sx) plane(yv.map(() => zv.map(() => xc)), yv.map((y) => zv.map(() => y)), yv.map(() => zv.map((z) => z)), yv.map((y) => zv.map((z) => samp(xc, y, z))));
+    for (const yc of sy) plane(xv.map((x) => zv.map(() => x)), xv.map(() => zv.map(() => yc)), xv.map(() => zv.map((z) => z)), xv.map((x) => zv.map((z) => samp(x, yc, z))));
+    for (const zc of sz) plane(yv.map(() => xv.map((x) => x)), yv.map((y) => xv.map(() => y)), yv.map(() => xv.map(() => zc)), yv.map((y) => xv.map((x) => samp(x, y, zc))));
+    env.graphics.hold(false); return [];
+  },
+  // 3-D triangulated surfaces
+  trisurf: async (a, _n, env) => { const T = matRows(m(a[0])).map((r) => r.map((v) => Math.round(v) - 1)); env.graphics.trimesh(T, toArray(m(a[1])), toArray(m(a[2])), toArray(m(a[3])), false); return []; },
+  trimesh: async (a, _n, env) => { const T = matRows(m(a[0])).map((r) => r.map((v) => Math.round(v) - 1)); env.graphics.trimesh(T, toArray(m(a[1])), toArray(m(a[2])), toArray(m(a[3])), true); return []; },
+  tetramesh: async (a, _n, env) => {
+    const T = matRows(m(a[0])).map((r) => r.map((v) => Math.round(v) - 1)); const X = m(a[1]);
+    const faces: number[][] = []; for (const t of T) faces.push([t[0], t[1], t[2]], [t[0], t[1], t[3]], [t[0], t[2], t[3]], [t[1], t[2], t[3]]);
+    env.graphics.trimesh(faces, toArray(colOf(X, 0)), toArray(colOf(X, 1)), toArray(colOf(X, 2)), true); return [];
+  },
+  coneplot: async (a, _n, env) => {   // approximated by 3-D arrows
+    const ms = a.filter((x): x is Mat => isMat(x) && !(x as Mat).isChar).map((x) => toArray(x));
+    if (ms.length >= 6) env.graphics.quiver3(ms[0], ms[1], ms[2], ms[3], ms[4], ms[5]); return [];
+  },
+  streamline: async (a, _n, env) => {
+    const ms = a.filter((x): x is Mat => isMat(x) && !(x as Mat).isChar);
+    if (ms.length >= 9) {   // 3-D: X,Y,Z,U,V,W,sx,sy,sz
+      const seg = streamlines3(ms[0], ms[1], ms[2], ms[3], ms[4], ms[5], toArray(ms[6]), toArray(ms[7]), toArray(ms[8]));
+      env.graphics.line3([rowVec(seg.x), rowVec(seg.y), rowVec(seg.z)], 'lines'); return [];
+    }
+    // 2-D: X,Y,U,V,sx,sy
+    const seg = streamlines2(ms[0], ms[1], ms[2], ms[3], toArray(ms[4]), toArray(ms[5]));
+    env.graphics.addSeries(seg.x, seg.y); return [];
+  },
+  isosurface: async (a, n, env) => {
+    // isosurface(X,Y,Z,V,isoval) | isosurface(V,isoval) → [F,V] or plot
+    const ms = a.filter((x): x is Mat => isMat(x) && !(x as Mat).isChar);
+    let V: Mat, xv: number[], yv: number[], zv: number[], iso: number;
+    if (ms.length >= 5) { V = ms[3]; iso = asScalar(ms[4]); const d = ndSize(V); xv = gridAxis(ms[0], 2, d); yv = gridAxis(ms[1], 1, d); zv = gridAxis(ms[2], 3, d); }
+    else { V = ms[0]; iso = asScalar(ms[1]); const d = ndSize(V); xv = ax(d[1] ?? 1); yv = ax(d[0]); zv = ax(d[2] ?? 1); }
+    const { verts, faces } = marchingTets(V, xv, yv, zv, iso);
+    if (n >= 2) { const F = zeros(faces.length, 3); faces.forEach((f, i) => f.forEach((v, j) => { F.data[i + j * faces.length] = v + 1; })); const Vm = zeros(verts.length, 3); verts.forEach((p, i) => { Vm.data[i] = p[0]; Vm.data[i + verts.length] = p[1]; Vm.data[i + 2 * verts.length] = p[2]; }); return [F, Vm]; }
+    env.graphics.trimesh(faces, verts.map((p) => p[0]), verts.map((p) => p[1]), verts.map((p) => p[2]), false); return [];
+  },
   plotmatrix: async (a, _n, env) => {
     const X = m(a[0]); const Y = a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar ? m(a[1]) : X;
     const col = (M: Mat, j: number) => Array.from({ length: M.rows }, (_, r) => M.data[r + j * M.rows]);
@@ -2128,6 +2185,13 @@ const HELP: Record<string, HelpEntry> = {
   histogram2: { summary: 'Bivariate histogram (rendered as a heatmap)', syntax: ['histogram2(x,y)', 'histogram2(x,y,nbins)'], seealso: ['histogram', 'histcounts2'] },
   plotmatrix: { summary: 'Scatter-plot matrix of column pairs (histograms on the diagonal)', syntax: ['plotmatrix(X)', 'plotmatrix(X,Y)'], seealso: ['scatter', 'subplot'] },
   contourc: { summary: 'Compute contour-line data (contour matrix)', syntax: ['C = contourc(Z)', 'C = contourc(x,y,Z,levels)'], seealso: ['contour', 'contourf'] },
+  trisurf: { summary: 'Triangulated 3-D surface', syntax: ['trisurf(T,x,y,z)'], seealso: ['trimesh', 'delaunay', 'surf'] },
+  trimesh: { summary: 'Triangulated 3-D wireframe mesh', syntax: ['trimesh(T,x,y,z)'], seealso: ['trisurf', 'mesh'] },
+  tetramesh: { summary: 'Plot the faces of a tetrahedral mesh', syntax: ['tetramesh(T,X)'], seealso: ['trimesh', 'delaunayn'] },
+  streamline: { summary: '2-D/3-D streamlines of a vector field', syntax: ['streamline(X,Y,U,V,sx,sy)', 'streamline(X,Y,Z,U,V,W,sx,sy,sz)'], seealso: ['quiver', 'quiver3'] },
+  isosurface: { summary: 'Isosurface of a 3-D scalar field (marching tetrahedra)', syntax: ['isosurface(X,Y,Z,V,isoval)', '[F,V] = isosurface(...)'], seealso: ['slice', 'trisurf'] },
+  slice: { summary: 'Coloured slice planes through a 3-D volume', syntax: ['slice(X,Y,Z,V,sx,sy,sz)'], seealso: ['isosurface', 'contourslice'] },
+  coneplot: { summary: '3-D vector field (approximated by arrows)', syntax: ['coneplot(X,Y,Z,U,V,W)'], seealso: ['quiver3', 'streamline'] },
   plot3: { summary: '3-D line plot', syntax: ['plot3(x,y,z)', "plot3(x,y,z,'-r')"], seealso: ['plot', 'scatter3'] },
   errorbar: { summary: 'Line plot with error bars', syntax: ['errorbar(x,y,e)', 'errorbar(y,e)'], seealso: ['plot'] },
   pie: { summary: 'Pie chart', syntax: ['pie(x)'], seealso: ['bar', 'histogram'] },
@@ -2430,7 +2494,7 @@ const BASE_REF = new Set<string>((
   'plot fplot hold title xlabel ylabel zlabel legend grid axis xlim ylim set gca gcf figure clf cla close clc format who whos clear help doc ans dot repmat ' +
   'surf surfc surfl mesh meshc surface contour contourf contour3 pcolor shading colorbar colormap view peaks xline yline ' +
   'polarplot polarscatter polarhistogram polaraxes compass rlim thetalim rticks thetaticks rticklabels thetaticklabels rtickangle ' +
-  'bar3 bar3h quiver3 histogram2 plotmatrix contourc ' +
+  'bar3 bar3h quiver3 histogram2 plotmatrix contourc trisurf trimesh tetramesh streamline isosurface slice coneplot ' +
   'sphere cylinder ellipsoid fsurf fmesh fcontour quiver ' +
   'bar barh area stem stairs scatter scatter3 plot3 stem3 errorbar pie histogram loglog semilogx semilogy subtitle sgtitle zlim xticks yticks zticks text box ' +
   'jet parula turbo hot cool gray bone copper pink spring summer autumn winter hsv lines colorcube cellstr dsearchn brighten ' +
@@ -3345,6 +3409,93 @@ function marchingSquares(xv: number[], yv: number[], z: number[][], levels: numb
   }
   const out = zeros(2, cols.length); cols.forEach((cc, j) => { out.data[0 + j * 2] = cc[0]; out.data[1 + j * 2] = cc[1]; });
   return out;
+}
+
+function colOf(M: Mat, j: number): Mat { return colVec(Array.from({ length: M.rows }, (_, r) => M.data[r + j * M.rows])); }
+const ax = (n: number): number[] => Array.from({ length: n }, (_, i) => i + 1);
+/** Extract a 1-D axis vector from a meshgrid matrix or vector (cf. interp3). */
+function gridAxis(M: Mat, axis: 1 | 2 | 3, d: number[]): number[] {
+  if (M.nd || (M.rows > 1 && M.cols > 1)) { const r = d[0]; if (axis === 1) return Array.from({ length: d[0] }, (_, i) => M.data[i]); if (axis === 2) return Array.from({ length: d[1] ?? 1 }, (_, j) => M.data[j * r]); return Array.from({ length: d[2] ?? 1 }, (_, k) => M.data[k * r * (d[1] ?? 1)]); }
+  return toArray(M);
+}
+/** Bilinear sample of a grid (rows=y, cols=x) at (px,py); returns 0 outside. */
+function bilin(xv: number[], yv: number[], G: number[][], px: number, py: number): number {
+  if (px < xv[0] || px > xv[xv.length - 1] || py < yv[0] || py > yv[yv.length - 1]) return NaN;
+  let i = 0; while (i < xv.length - 2 && px > xv[i + 1]) i++; let j = 0; while (j < yv.length - 2 && py > yv[j + 1]) j++;
+  const tx = (px - xv[i]) / (xv[i + 1] - xv[i] || 1), ty = (py - yv[j]) / (yv[j + 1] - yv[j] || 1);
+  return G[j][i] * (1 - tx) * (1 - ty) + G[j][i + 1] * tx * (1 - ty) + G[j + 1][i] * (1 - tx) * ty + G[j + 1][i + 1] * tx * ty;
+}
+function streamlines2(X: Mat, Y: Mat, U: Mat, V: Mat, sx: number[], sy: number[]): { x: number[]; y: number[] } {
+  const xv = X.rows > 1 && X.cols > 1 ? Array.from({ length: X.cols }, (_, c) => X.data[0 + c * X.rows]) : toArray(X);
+  const yv = Y.rows > 1 && Y.cols > 1 ? Array.from({ length: Y.rows }, (_, r) => Y.data[r]) : toArray(Y);
+  const Ug = matToGrid(U), Vg = matToGrid(V);
+  const span = Math.max(xv[xv.length - 1] - xv[0], yv[yv.length - 1] - yv[0]); const h = span / 200;
+  const X2: number[] = [], Y2: number[] = [];
+  for (let s = 0; s < sx.length; s++) {
+    let px = sx[s], py = sy[s];
+    for (let step = 0; step < 1000; step++) {
+      const u = bilin(xv, yv, Ug, px, py), v = bilin(xv, yv, Vg, px, py); if (!isFinite(u) || !isFinite(v)) break;
+      const mag = Math.hypot(u, v); if (mag < 1e-9) break;
+      X2.push(px); Y2.push(py); px += h * u / mag; py += h * v / mag;
+    }
+    X2.push(NaN); Y2.push(NaN);
+  }
+  return { x: X2, y: Y2 };
+}
+function streamlines3(X: Mat, Y: Mat, Z: Mat, U: Mat, V: Mat, W: Mat, sx: number[], sy: number[], sz: number[]): { x: number[]; y: number[]; z: number[] } {
+  const d = ndSize(U); const xv = gridAxis(X, 2, d), yv = gridAxis(Y, 1, d), zv = gridAxis(Z, 3, d);
+  const d0 = d[0], d1 = d[1] ?? 1;
+  const samp = (G: Mat, px: number, py: number, pz: number) => {
+    const loc = (g: number[], q: number): [number, number] => { if (q < g[0] || q > g[g.length - 1]) return [-1, 0]; let i = 0; while (i < g.length - 2 && q > g[i + 1]) i++; return [i, (q - g[i]) / (g[i + 1] - g[i] || 1)]; };
+    const [i, tx] = loc(xv, px), [j, ty] = loc(yv, py), [k, tz] = loc(zv, pz); if (i < 0 || j < 0 || k < 0) return NaN;
+    const at = (a: number, b: number, cc: number) => G.data[b + a * d0 + cc * d0 * d1];   // (yj, xi, zk)
+    const c00 = at(j, i, k) * (1 - tx) + at(j, i + 1, k) * tx, c10 = at(j + 1, i, k) * (1 - tx) + at(j + 1, i + 1, k) * tx;
+    const c01 = at(j, i, k + 1) * (1 - tx) + at(j, i + 1, k + 1) * tx, c11 = at(j + 1, i, k + 1) * (1 - tx) + at(j + 1, i + 1, k + 1) * tx;
+    return (c00 * (1 - ty) + c10 * ty) * (1 - tz) + (c01 * (1 - ty) + c11 * ty) * tz;
+  };
+  const span = Math.max(xv[xv.length - 1] - xv[0], yv[yv.length - 1] - yv[0], zv[zv.length - 1] - zv[0]); const h = span / 200;
+  const X2: number[] = [], Y2: number[] = [], Z2: number[] = [];
+  for (let s = 0; s < sx.length; s++) {
+    let px = sx[s], py = sy[s], pz = sz[s];
+    for (let step = 0; step < 1000; step++) {
+      const u = samp(U, px, py, pz), v = samp(V, px, py, pz), w = samp(W, px, py, pz); if (!isFinite(u) || !isFinite(v) || !isFinite(w)) break;
+      const mag = Math.hypot(u, v, w); if (mag < 1e-9) break;
+      X2.push(px); Y2.push(py); Z2.push(pz); px += h * u / mag; py += h * v / mag; pz += h * w / mag;
+    }
+    X2.push(NaN); Y2.push(NaN); Z2.push(NaN);
+  }
+  return { x: X2, y: Y2, z: Z2 };
+}
+/** Trilinear sample of a 3-D volume V on grid vectors (xv=cols, yv=rows, zv=pages); NaN outside. */
+function trilinearV(V: Mat, xv: number[], yv: number[], zv: number[], px: number, py: number, pz: number): number {
+  const d = ndSize(V); const d0 = d[0], d1 = d[1] ?? 1;
+  const loc = (g: number[], q: number): [number, number] => { if (q < g[0] - 1e-9 || q > g[g.length - 1] + 1e-9) return [-1, 0]; let i = 0; while (i < g.length - 2 && q > g[i + 1]) i++; return [i, (q - g[i]) / (g[i + 1] - g[i] || 1)]; };
+  const [i, tx] = loc(xv, px), [j, ty] = loc(yv, py), [k, tz] = loc(zv, pz); if (i < 0 || j < 0 || k < 0) return NaN;
+  const at = (a: number, b: number, cc: number) => V.data[b + a * d0 + cc * d0 * d1];   // (yj rows, xi cols, zk pages)
+  const c00 = at(j, i, k) * (1 - tx) + at(j, i + 1, k) * tx, c10 = at(j + 1, i, k) * (1 - tx) + at(j + 1, i + 1, k) * tx;
+  const c01 = at(j, i, k + 1) * (1 - tx) + at(j, i + 1, k + 1) * tx, c11 = at(j + 1, i, k + 1) * (1 - tx) + at(j + 1, i + 1, k + 1) * tx;
+  return (c00 * (1 - ty) + c10 * ty) * (1 - tz) + (c01 * (1 - ty) + c11 * ty) * tz;
+}
+/** Isosurface via marching tetrahedra (each cube split into 6 tets). Per-triangle vertices. */
+function marchingTets(V: Mat, xv: number[], yv: number[], zv: number[], iso: number): { verts: [number, number, number][]; faces: number[][] } {
+  const d = ndSize(V); const d0 = d[0], d1 = d[1] ?? 1, d2 = d[2] ?? 1;
+  const val = (i: number, j: number, k: number) => V.data[j + i * d0 + k * d0 * d1];   // i=x col, j=y row, k=z page
+  const corner = (i: number, j: number, k: number): [[number, number, number], number] => [[xv[i], yv[j], zv[k]], val(i, j, k)];
+  const verts: [number, number, number][] = []; const faces: number[][] = [];
+  const TETS = [[0, 5, 1, 6], [0, 1, 2, 6], [0, 2, 3, 6], [0, 3, 7, 6], [0, 7, 4, 6], [0, 4, 5, 6]];
+  const emit = (tet: [[number, number, number], number][]) => {
+    const below = tet.filter(([, v]) => v < iso); const above = tet.filter(([, v]) => v >= iso);
+    if (!below.length || !above.length) return;
+    const cross = (A: [[number, number, number], number], B: [[number, number, number], number]): [number, number, number] => { const t = (iso - A[1]) / (B[1] - A[1] || 1); return [A[0][0] + t * (B[0][0] - A[0][0]), A[0][1] + t * (B[0][1] - A[0][1]), A[0][2] + t * (B[0][2] - A[0][2])]; };
+    const tri = (a: [number, number, number], b: [number, number, number], c: [number, number, number]) => { const n = verts.length; verts.push(a, b, c); faces.push([n, n + 1, n + 2]); };
+    if (below.length === 1 || above.length === 1) { const solo = below.length === 1 ? below[0] : above[0]; const others = below.length === 1 ? above : below; tri(cross(solo, others[0]), cross(solo, others[1]), cross(solo, others[2])); }
+    else { const p = below, q = above; const a = cross(p[0], q[0]), b = cross(p[0], q[1]), c = cross(p[1], q[0]), dd = cross(p[1], q[1]); tri(a, b, c); tri(b, dd, c); }
+  };
+  for (let k = 0; k < d2 - 1; k++) for (let j = 0; j < d0 - 1; j++) for (let i = 0; i < d1 - 1; i++) {
+    const cube = [corner(i, j, k), corner(i + 1, j, k), corner(i + 1, j + 1, k), corner(i, j + 1, k), corner(i, j, k + 1), corner(i + 1, j, k + 1), corner(i + 1, j + 1, k + 1), corner(i, j + 1, k + 1)];
+    for (const t of TETS) emit([cube[t[0]], cube[t[1]], cube[t[2]], cube[t[3]]]);
+  }
+  return { verts, faces };
 }
 
 // ── General n-dimensional geometry (convhulln / delaunayn / voronoin) ──────

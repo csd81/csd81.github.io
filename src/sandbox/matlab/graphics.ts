@@ -37,6 +37,9 @@ export interface Surface {
   z: number[][];
   kind: 'surf' | 'mesh' | 'contour' | 'contour3';
   shading: 'faceted' | 'flat' | 'interp';
+  xm?: number[][];     // optional full 2-D x/y coordinate matrices (slice planes)
+  ym?: number[][];
+  cdata?: number[][];  // optional surface-colour override (slice value field)
 }
 /** A constant reference line drawn across the axes (xline/yline). */
 export interface RefLine {
@@ -302,6 +305,12 @@ export class Graphics {
     };
     for (let r = 0; r < Z.length; r++) for (let c = 0; c < Z[r].length; c++) box(c + 1, r + 1, Z[r][c]);
     const cp = this.cur(); cp.meshes = cp.meshes ?? []; cp.meshes.push({ x, y, z, i: ti, j: tj, k: tk });
+    this.touch();
+  }
+  /** slice plane: a parametric coloured surface (x,y,z all 2-D + colour field). */
+  slicePlane(xm: number[][], ym: number[][], zm: number[][], cdata: number[][]) {
+    if (!this.holding) { this.cur().series = []; this.cur().surfaces = []; this.colorIdx = 0; }
+    const cp = this.cur(); cp.surfaces = cp.surfaces ?? []; cp.surfaces.push({ x: [], y: [], z: zm, xm, ym, cdata, kind: 'surf', shading: 'interp' }); cp.colorbar = true;
     this.touch();
   }
   /** histogram2(x,y): bivariate histogram rendered as a filled-contour (heatmap) of bin counts. */
