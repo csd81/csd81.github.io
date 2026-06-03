@@ -1288,6 +1288,22 @@ export const BUILTINS: Record<string, Builtin> = {
   ddensd: async (a, _n, env) => dde23Solve(a, env),
   ddeset: async (a) => { const f = new Map<string, Value[]>(); for (let i = 0; i + 1 < a.length; i += 2) f.set(asString(a[i]), [a[i + 1]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields: f } as StructV); },
   ddeget: async (a) => { const s = a[0] as StructV; const v = isStruct(s) ? s.fields.get(asString(a[1])) : undefined; return ret(v && v.length ? v[0] : zeros(0, 0)); },
+  // ── Dates & times (serial date numbers) ──
+  datenum: async (a) => {
+    if (a.length === 1) { const M = m(a[0]); if (M.cols >= 3 && M.rows >= 1) { const o = zeros(M.rows, 1); for (let r = 0; r < M.rows; r++) { const v = Array.from({ length: M.cols }, (_, c) => M.data[r + c * M.rows]); o.data[r] = dnum(v[0], v[1], v[2], v[3] ?? 0, v[4] ?? 0, v[5] ?? 0); } return ret(o); } const v = toArray(M); return ret(scalar(dnum(v[0], v[1], v[2], v[3] ?? 0, v[4] ?? 0, v[5] ?? 0))); }
+    const g = a.map((x) => toArray(m(x))); const n = Math.max(...g.map((x) => x.length)); const at = (gi: number, i: number) => g[gi] ? (g[gi].length === 1 ? g[gi][0] : g[gi][i]) : 0;
+    const o = zeros(n, 1); for (let i = 0; i < n; i++) o.data[i] = dnum(at(0, i), at(1, i), at(2, i), at(3, i), at(4, i), at(5, i)); return ret(numel(o) === 1 ? scalar(o.data[0]) : o);
+  },
+  datevec: async (a) => { const n = asScalar(m(a[0])); const v = dvec(n); return ret(rowVec(v)); },
+  datestr: async (a) => { const n = asScalar(m(a[0])); const fmt = a.length >= 2 && isMat(a[1]) && (a[1] as Mat).isChar ? asString(a[1]) : null; return ret(str(dstr(n, fmt))); },
+  now: async () => ret(scalar(Date.now() / 86400000 + 719529)),
+  today: async () => ret(scalar(Math.floor(Date.now() / 86400000) + 719529)),
+  clock: async () => { const v = dvec(Date.now() / 86400000 + 719529); return ret(rowVec(v)); },
+  date: async () => ret(str(dstr(Math.floor(Date.now() / 86400000) + 719529, 'dd-mmm-yyyy'))),
+  weekday: async (a) => { const n = m(a[0]); const o = map(n, (x) => (new Date((x - 719529) * 86400000).getUTCDay()) + 1); return ret(o); },
+  eomday: async (a) => ret(elementwise(m(a[0]), m(a[1]), (y, mo) => [31, (y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][mo - 1] ?? NaN)),
+  etime: async (a) => { const t2 = toArray(m(a[0])), t1 = toArray(m(a[1])); return ret(scalar((dnum(t2[0], t2[1], t2[2], t2[3], t2[4], t2[5]) - dnum(t1[0], t1[1], t1[2], t1[3], t1[4], t1[5])) * 86400)); },
+  addtodate: async (a) => { const n = asScalar(m(a[0])), q = asScalar(m(a[1])), unit = asString(a[2]); const v = dvec(n); const idx = { year: 0, month: 1, day: 2, hour: 3, minute: 4, second: 5 }[unit] ?? 2; v[idx] += q; return ret(scalar(dnum(v[0], v[1], v[2], v[3], v[4], v[5]))); },
   deval: async (a) => {
     // deval(sol, xq) | deval(xq, sol) → interpolate the solution
     const sol = (isStruct(a[0]) ? a[0] : a[1]) as StructV; const xq = toArray(m(isStruct(a[0]) ? a[1] : a[0]));
@@ -2593,6 +2609,17 @@ const HELP: Record<string, HelpEntry> = {
   ddeset: { summary: 'Create/modify a DDE options structure', syntax: ["opts = ddeset('RelTol',1e-4)"], seealso: ['ddeget', 'dde23'] },
   ddeget: { summary: 'Read a DDE option', syntax: ['v = ddeget(opts,name)'], seealso: ['ddeset'] },
   deval: { summary: 'Evaluate an ODE/BVP/DDE solution structure', syntax: ['y = deval(sol,xq)'], seealso: ['bvp4c', 'dde23', 'ode45'] },
+  datenum: { summary: 'Convert date to a serial date number', syntax: ['n = datenum(Y,M,D)', 'n = datenum(Y,M,D,H,MI,S)'], seealso: ['datevec', 'datestr', 'now'] },
+  datevec: { summary: 'Convert a serial date number to [Y M D H MI S]', syntax: ['v = datevec(n)'], seealso: ['datenum', 'datestr'] },
+  datestr: { summary: 'Convert a serial date number to text', syntax: ['s = datestr(n)', "s = datestr(n,'yyyy-mm-dd')"], seealso: ['datenum', 'datevec'] },
+  now: { summary: 'Current date and time as a serial date number', syntax: ['n = now'], seealso: ['clock', 'today', 'date'] },
+  today: { summary: "Today's serial date number (midnight)", syntax: ['n = today'], seealso: ['now', 'date'] },
+  clock: { summary: 'Current time as [Y M D H MI S]', syntax: ['c = clock'], seealso: ['now', 'etime'] },
+  date: { summary: "Current date as 'dd-mmm-yyyy'", syntax: ['s = date'], seealso: ['now', 'datestr'] },
+  weekday: { summary: 'Day of week (1=Sun … 7=Sat)', syntax: ['d = weekday(n)'], seealso: ['datenum', 'eomday'] },
+  eomday: { summary: 'Last day of a month', syntax: ['d = eomday(Y,M)'], seealso: ['datenum', 'calendar'] },
+  etime: { summary: 'Elapsed time between two clock vectors (seconds)', syntax: ['s = etime(t2,t1)'], seealso: ['clock', 'tic'] },
+  addtodate: { summary: 'Add a quantity to a date field', syntax: ["n2 = addtodate(n,q,'day')"], seealso: ['datenum'] },
   symvar: { summary: 'Free variables of an expression (alphabetical)', syntax: ["v = symvar('a*x+b')"], seealso: ['inline', 'str2func'] },
   vectorize: { summary: 'Vectorize an expression string (* / ^ → .* ./ .^)', syntax: ["s = vectorize('x^2')"], seealso: ['inline'] },
   quadv: { summary: 'Vectorized adaptive quadrature (→ quad)', syntax: ['q = quadv(f,a,b)'], seealso: ['quad', 'integral'] },
@@ -2778,6 +2805,7 @@ const BASE_REF = new Set<string>((
   'volume surfaceArea inShape boundaryFacets criticalAlpha alphaSpectrum numRegions isConnected triplot rgbplot ' +
   'pdepe pdeval symvar vectorize quadv ldexp scalbn cholupdate stream2 stream3 ' +
   'bvp4c bvp5c bvpinit bvpset bvpget dde23 ddesd ddensd ddeset ddeget deval ' +
+  'datenum datevec datestr now today clock date weekday eomday etime addtodate ' +
   'hGate xGate yGate zGate sGate siGate tGate tiGate idGate rxGate ryGate rzGate cxGate cnotGate cyGate czGate chGate crxGate cryGate crzGate swapGate ccxGate mcxGate ' +
   'quantumCircuit simulate probability querystates formula ' +
   'sphere cylinder ellipsoid fsurf fmesh fcontour quiver ' +
@@ -2877,6 +2905,26 @@ function jsonDecode(j: unknown): Value {
   const o = j as Record<string, unknown>; const fields = new Map<string, Value[]>();
   for (const k of Object.keys(o)) fields.set(k, [jsonDecode(o[k])]);
   return { kind: 'struct', rows: 1, cols: 1, fields };
+}
+
+// ── Serial date-number helpers (MATLAB epoch: datenum=719529 at 1970-01-01) ──
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function dnum(y: number, mo: number, d: number, h = 0, mi = 0, s = 0): number {
+  const dt = new Date(0); dt.setUTCFullYear(y, mo - 1, d); dt.setUTCHours(h, mi, Math.floor(s), Math.round((s % 1) * 1000));
+  return dt.getTime() / 86400000 + 719529;
+}
+function dvec(n: number): number[] {
+  const ms = Math.round((n - 719529) * 86400000); const dt = new Date(ms);
+  return [dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate(), dt.getUTCHours(), dt.getUTCMinutes(), dt.getUTCSeconds() + dt.getUTCMilliseconds() / 1000];
+}
+function dstr(n: number, fmt: string | null): string {
+  const [y, mo, d, h, mi, s] = dvec(n); const p2 = (x: number) => String(Math.floor(x)).padStart(2, '0');
+  if (fmt) return fmt
+    .replace(/yyyy/g, String(y)).replace(/yy/g, String(y % 100).padStart(2, '0'))
+    .replace(/mmm/g, MONTHS[mo - 1]).replace(/mm/g, p2(mo))
+    .replace(/dd/g, p2(d)).replace(/HH/g, p2(h)).replace(/MM/g, p2(mi)).replace(/SS/g, p2(s));
+  const date = `${p2(d)}-${MONTHS[mo - 1]}-${y}`;
+  return (h || mi || s) ? `${date} ${p2(h)}:${p2(mi)}:${p2(s)}` : date;
 }
 
 // ── Math helpers for the elementary-math builtins ─────────────────────────
