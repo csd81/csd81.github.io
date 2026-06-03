@@ -1005,6 +1005,14 @@ export const BUILTINS: Record<string, Builtin> = {
   pagemtimes: async (a) => ret(pageBinary(m(a[0]), m(a[1]), (X, Y) => matmul(X, Y))),
   pagemldivide: async (a) => ret(pageBinary(m(a[0]), m(a[1]), (X, Y) => mldivide(X, Y))),
   pagemrdivide: async (a) => ret(pageBinary(m(a[0]), m(a[1]), (X, Y) => transpose(mldivide(transpose(Y), transpose(X))))),
+  pagesvd: async (a) => {
+    const A = m(a[0]); const dims = ndSize(A); const d0 = dims[0], d1 = dims[1], psz = d0 * d1; const np = A.data.length / psz; const k = Math.min(d0, d1);
+    const out = new Float64Array(k * np);
+    for (let p = 0; p < np; p++) { const { s } = svdReal(mat(d0, d1, A.data.slice(p * psz, p * psz + psz))); for (let i = 0; i < k; i++) out[p * k + i] = s[i]; }
+    const rest = dims.slice(2);
+    return ret(rest.length ? makeND([k, 1, ...rest], out) : mat(k, 1, out));
+  },
+  linkaxes: async () => [], alpha: async () => [], alphamap: async () => [],
   // string edits
   insertAfter: async (a) => ret(mapStrArr(a[0], (x) => { const p = asString(a[1]); const i = x.indexOf(p); return i < 0 ? x : x.slice(0, i + p.length) + asString(a[2]) + x.slice(i + p.length); })),
   insertBefore: async (a) => ret(mapStrArr(a[0], (x) => { const i = x.indexOf(asString(a[1])); return i < 0 ? x : x.slice(0, i) + asString(a[2]) + x.slice(i); })),
@@ -1849,6 +1857,7 @@ const HELP: Record<string, HelpEntry> = {
   num2hex: { summary: 'Convert a double to its IEEE hex representation', syntax: ['h = num2hex(x)'], seealso: ['hex2num', 'dec2hex'] },
   pagetranspose: { summary: 'Transpose each page of an N-D array', syntax: ['B = pagetranspose(A)'], seealso: ['pagectranspose', 'pagemtimes'] },
   pagemtimes: { summary: 'Page-wise matrix multiplication', syntax: ['C = pagemtimes(A,B)'], seealso: ['pagetranspose', 'mtimes'] },
+  pagesvd: { summary: 'Page-wise singular values of an N-D array', syntax: ['S = pagesvd(A)'], seealso: ['svd', 'pagemtimes'] },
   insertAfter: { summary: 'Insert text after a substring', syntax: ['insertAfter(str,pat,text)'], seealso: ['insertBefore', 'replace'] },
   insertBefore: { summary: 'Insert text before a substring', syntax: ['insertBefore(str,pat,text)'], seealso: ['insertAfter', 'replace'] },
   eraseBetween: { summary: 'Delete text between two delimiters', syntax: ['eraseBetween(str,l,r)'], seealso: ['replaceBetween', 'extractBetween'] },
@@ -2127,7 +2136,7 @@ const BASE_REF = new Set<string>((
   'imagesc image pie3 piechart donutchart pareto fimplicit fplot3 ' +
   'repelem topkrows mat2cell isletter isspace isstrprop hex2num num2hex native2unicode unicode2native newline ' +
   'isobject isjava isenum istabular isgraphics underlyingType isUnderlyingType function_handle functions ' +
-  'pagetranspose pagectranspose pagemtimes pagemldivide pagemrdivide ' +
+  'pagetranspose pagectranspose pagemtimes pagemldivide pagemrdivide pagesvd linkaxes alpha alphamap ' +
   'insertAfter insertBefore eraseBetween replaceBetween compose convertStringsToChars convertCharsToStrings ' +
   'cell iscell iscellstr num2cell cell2mat celldisp cellfun strsplit strjoin ' +
   'struct isstruct isfield fieldnames numfields rmfield setfield getfield orderfields struct2cell cell2struct structfun ' +
