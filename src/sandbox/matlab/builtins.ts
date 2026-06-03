@@ -7,6 +7,7 @@ import {
   ewAdd, ewSub, ewMul, ewRDiv, ewLDiv, ewEq, cmatmul, ctranspose as ctransposeFn, cmul, cdiv,
   type Cell, type StructV, isCell, isStruct, makeCell, dimsOf, numelOf,
   type Sparse, isSparse, sparseToDense, denseToSparse, sparseFromTriplets, sparseFromMap,
+  makeND, ndSize, ndimsOf,
 } from './values';
 import {
   det, inv, mldivide, diag, norm, eye,
@@ -87,10 +88,49 @@ function dimArg(args: Value[], i: number): number | undefined {
 }
 
 function sizeOf(args: Value[], nargout: number): Value[] {
-  const [rows, cols] = dimsOf(args[0]);
-  if (args.length >= 2) { const d = asScalar(args[1]); return [scalar(d === 1 ? rows : d === 2 ? cols : 1)]; }
-  if (nargout >= 2) return [scalar(rows), scalar(cols)];
-  return [rowVec([rows, cols])];
+  const v = args[0];
+  const dims = isMat(v) && v.nd ? v.nd.slice() : dimsOf(v);
+  if (args.length >= 2) { const d = Math.round(asScalar(args[1])); return [scalar(dims[d - 1] ?? 1)]; }
+  if (nargout >= 2) {
+    // [a,b,c]=size(A): last requested output absorbs the product of remaining dims.
+    const out: Value[] = [];
+    for (let i = 0; i < nargout; i++) out.push(scalar(i === nargout - 1 ? dims.slice(i).reduce((p, x) => p * x, 1) || (i < dims.length ? 0 : 1) : (dims[i] ?? 1)));
+    return out;
+  }
+  return [rowVec(dims)];
+}
+/** zeros/ones/rand argument handling extended to N-D: (), (n), (r,c,...), ([d1 d2 ...]). */
+function dimsN(args: Value[]): number[] {
+  if (args.length === 0) return [1, 1];
+  if (args.length === 1) { const a = m(args[0]); if (numel(a) >= 2) return toArray(a).map((x) => Math.round(x)); const n = Math.round(asScalar(a)); return [n, n]; }
+  return args.map((x) => Math.round(asScalar(x)));
+}
+const prodA = (a: number[]): number => a.reduce((p, x) => p * x, 1);
+/** Concatenate N-D arrays along `dim` (1-based). */
+function catND(dim: number, parts: Mat[]): Mat {
+  const d = dim - 1;
+  const outDims = ndSize(parts[0]).slice(); while (outDims.length <= d) outDims.push(1);
+  outDims[d] = parts.reduce((s, p) => { const pd = ndSize(p); return s + (pd[d] ?? 1); }, 0);
+  const ostride = [1]; for (let i = 1; i < outDims.length; i++) ostride[i] = ostride[i - 1] * outDims[i - 1];
+  const data = new Float64Array(prodA(outDims)); let offset = 0;
+  for (const p of parts) {
+    const PD = ndSize(p).slice(); while (PD.length < outDims.length) PD.push(1);
+    const pstride = [1]; for (let i = 1; i < PD.length; i++) pstride[i] = pstride[i - 1] * PD[i - 1];
+    const ptot = numel(p);
+    for (let o = 0; o < ptot; o++) { let lin = 0; for (let k = 0; k < PD.length; k++) { const idx = Math.floor(o / pstride[k]) % PD[k]; lin += (k === d ? idx + offset : idx) * ostride[k]; } data[lin] = p.data[o]; }
+    offset += PD[d];
+  }
+  return makeND(outDims, data, { isChar: parts[0].isChar });
+}
+/** Permute the dimensions of an array (1-based order). */
+function permuteND(A: Mat, order: number[]): Mat {
+  const D = ndSize(A).slice(); while (D.length < order.length) D.push(1);
+  const outDims = order.map((o) => D[o - 1]);
+  const istride = [1]; for (let i = 1; i < D.length; i++) istride[i] = istride[i - 1] * D[i - 1];
+  const ostride = [1]; for (let i = 1; i < outDims.length; i++) ostride[i] = ostride[i - 1] * outDims[i - 1];
+  const total = prodA(D); const data = new Float64Array(total); const im = A.idata ? new Float64Array(total) : null;
+  for (let o = 0; o < total; o++) { let lin = 0; for (let k = 0; k < outDims.length; k++) { const oi = Math.floor(o / ostride[k]) % outDims[k]; lin += oi * istride[order[k] - 1]; } data[o] = A.data[lin]; if (im) im[o] = A.idata![lin]; }
+  return makeND(outDims, data, { idata: im, isChar: A.isChar });
 }
 
 function dims2(args: Value[], def = 0): [number, number] {
@@ -281,13 +321,13 @@ export const BUILTINS: Record<string, Builtin> = {
   size: async (a, n) => sizeOf(a, n),
   numel: async (a) => ret(scalar(numelOf(a[0]))),
   length: async (a) => { const [r, c] = dimsOf(a[0]); return ret(scalar(r === 0 || c === 0 ? 0 : Math.max(r, c))); },
-  ndims: async () => ret(scalar(2)),
+  ndims: async (a) => ret(scalar(isMat(a[0]) ? ndimsOf(a[0]) : 2)),
   isempty: async (a) => ret(bool(numelOf(a[0]) === 0)),
   isscalar: async (a) => ret(bool(numelOf(a[0]) === 1)),
-  zeros: async (a) => { const [r, c] = dims2(a); return ret(zeros(r, c)); },
-  ones: async (a) => { const [r, c] = dims2(a); const o = zeros(r, c); o.data.fill(1); return ret(o); },
+  zeros: async (a) => { const d = dimsN(a); return ret(makeND(d, new Float64Array(d.reduce((p, x) => p * x, 1)))); },
+  ones: async (a) => { const d = dimsN(a); const data = new Float64Array(d.reduce((p, x) => p * x, 1)); data.fill(1); return ret(makeND(d, data)); },
   eye: async (a) => { const [r, c] = dims2(a); return ret(eye(r, c)); },
-  rand: async (a) => { const [r, c] = dims2(a); const o = zeros(r, c); for (let i = 0; i < o.data.length; i++) o.data[i] = Math.random(); return ret(o); },
+  rand: async (a) => { const d = dimsN(a); const data = new Float64Array(d.reduce((p, x) => p * x, 1)); for (let i = 0; i < data.length; i++) data[i] = Math.random(); return ret(makeND(d, data)); },
   linspace: async (a) => {
     const lo = asScalar(a[0]), hi = asScalar(a[1]); const n = a.length >= 3 ? Math.round(asScalar(a[2])) : 100;
     if (n < 2) return ret(rowVec([hi]));
@@ -303,10 +343,15 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(out);
   },
   reshape: async (a) => {
-    const A = m(a[0]); let r = asScalar(a[1]); let c = a.length >= 3 ? asScalar(a[2]) : 0;
-    if (!c) c = numel(A) / r; if (!r) r = numel(A) / c;
-    if (r * c !== numel(A)) throw new MatError('reshape: element count must not change');
-    const out = mat(r, c, Float64Array.from(A.data)); out.isChar = A.isChar; return ret(out);
+    const A = m(a[0]);
+    // reshape(A, d1, d2, ...) or reshape(A, [d1 d2 ...]); one [] dim is inferred.
+    let dims: number[];
+    if (a.length === 2 && numelOf(a[1]) >= 2) dims = toArray(m(a[1])).map((x) => Math.round(x));
+    else dims = a.slice(1).map((v) => (isMat(v) && numel(v) === 0 ? NaN : Math.round(asScalar(v))));
+    const known = dims.filter((d) => !Number.isNaN(d)).reduce((p, x) => p * x, 1);
+    dims = dims.map((d) => (Number.isNaN(d) ? numel(A) / (known || 1) : d));
+    if (dims.reduce((p, x) => p * x, 1) !== numel(A)) throw new MatError('reshape: element count must not change');
+    return ret(makeND(dims, Float64Array.from(A.data), { idata: A.idata ? Float64Array.from(A.idata) : null, isChar: A.isChar }));
   },
   diff: async (a) => {
     const A = m(a[0]);
@@ -379,7 +424,11 @@ export const BUILTINS: Record<string, Builtin> = {
     }
     o.isChar = A.isChar; return ret(o);
   },
-  cat: async (a) => { const dim = Math.round(asScalar(a[0])); const parts = a.slice(1).map((v) => m(v)); return ret(dim === 1 ? vertcat(parts) : horzcat(parts)); },
+  cat: async (a) => {
+    const dim = Math.round(asScalar(a[0])); const parts = a.slice(1).map((v) => m(v));
+    if (dim <= 2 && !parts.some((p) => p.nd)) return ret(dim === 1 ? vertcat(parts) : horzcat(parts));
+    return ret(catND(dim, parts));
+  },
   isvector: async (a) => { const [r, c] = dimsOf(a[0]); return ret(bool(r === 1 || c === 1)); },
   isrow: async (a) => ret(bool(dimsOf(a[0])[0] === 1)),
   iscolumn: async (a) => ret(bool(dimsOf(a[0])[1] === 1)),
@@ -1144,8 +1193,38 @@ export const BUILTINS: Record<string, Builtin> = {
     const px: number[] = [], py: number[] = []; for (const s of segs) { px.push(s[0], s[2], NaN); py.push(s[1], s[3], NaN); }
     env.graphics.addSeries(px, py); return [];
   },
-  interp3: async () => { throw new MatError('interp3 requires 3-D arrays, which this 2-D engine does not support. Use interp1/interp2, or griddata for scattered data.'); },
-  interpn: async () => { throw new MatError('interpn requires N-D arrays, which this 2-D engine does not support. Use interp1/interp2, or griddata for scattered data.'); },
+  interp3: async (a) => {
+    // interp3(V,Xq,Yq,Zq) or interp3(X,Y,Z,V,Xq,Yq,Zq) — trilinear on a regular grid.
+    let V: Mat, Xq: Mat, Yq: Mat, Zq: Mat, xv: number[], yv: number[], zv: number[];
+    const gridVec = (M: Mat, axis: 1 | 2 | 3, d: number[]): number[] => {
+      if (M.nd || M.rows > 1 && M.cols > 1) { const dd = ndSize(M); const r = dd[0], rc = r * (dd[1] ?? 1); if (axis === 1) return Array.from({ length: dd[0] }, (_, i) => M.data[i]); if (axis === 2) return Array.from({ length: dd[1] ?? 1 }, (_, j) => M.data[j * r]); return Array.from({ length: dd[2] ?? 1 }, (_, k) => M.data[k * rc]); }
+      return toArray(M); void d;
+    };
+    if (a.length >= 7) { const X = m(a[0]), Y = m(a[1]), Z = m(a[2]); V = m(a[3]); Xq = m(a[4]); Yq = m(a[5]); Zq = m(a[6]); const d = ndSize(V); xv = gridVec(X, 2, d); yv = gridVec(Y, 1, d); zv = gridVec(Z, 3, d); }
+    else { V = m(a[0]); Xq = m(a[1]); Yq = m(a[2]); Zq = m(a[3]); const d = ndSize(V); xv = Array.from({ length: d[1] ?? 1 }, (_, i) => i + 1); yv = Array.from({ length: d[0] }, (_, i) => i + 1); zv = Array.from({ length: d[2] ?? 1 }, (_, i) => i + 1); }
+    const d = ndSize(V); const d0 = d[0], d1 = d[1] ?? 1;
+    const at = (i: number, j: number, k: number) => V.data[i + j * d0 + k * d0 * d1];
+    const loc = (g: number[], q: number): [number, number] => { let i = 0; while (i < g.length - 2 && q > g[i + 1]) i++; const t = (g[i + 1] === g[i]) ? 0 : (q - g[i]) / (g[i + 1] - g[i]); return [i, t]; };
+    const out = makeND(ndSize(Xq), new Float64Array(numel(Xq)), { isChar: false });
+    for (let p = 0; p < numel(Xq); p++) {
+      const [i, ty] = loc(yv, Yq.data[p]), [j, tx] = loc(xv, Xq.data[p]), [k, tz] = loc(zv, Zq.data[p]);
+      const c000 = at(i, j, k), c100 = at(i + 1, j, k), c010 = at(i, j + 1, k), c110 = at(i + 1, j + 1, k);
+      const c001 = at(i, j, k + 1), c101 = at(i + 1, j, k + 1), c011 = at(i, j + 1, k + 1), c111 = at(i + 1, j + 1, k + 1);
+      const c00 = c000 * (1 - ty) + c100 * ty, c10 = c010 * (1 - ty) + c110 * ty, c01 = c001 * (1 - ty) + c101 * ty, c11 = c011 * (1 - ty) + c111 * ty;
+      const c0 = c00 * (1 - tx) + c10 * tx, c1 = c01 * (1 - tx) + c11 * tx;
+      out.data[p] = c0 * (1 - tz) + c1 * tz;
+    }
+    if (Xq.nd) out.nd = Xq.nd.slice();
+    return ret(out);
+  },
+  interpn: async (a, n, env) => {
+    // Simple form interpn(V, q1, q2, ...): the number of queries gives the dimensionality.
+    const V = m(a[0]); const nq = a.length - 1;
+    if (nq === 1) return BUILTINS.interp1([rowVec(Array.from({ length: numel(V) }, (_, i) => i + 1)), V, a[1]], n, env);
+    if (nq === 2) return BUILTINS.interp2(a, n, env);
+    if (nq === 3) return BUILTINS.interp3(a, n, env);
+    throw new MatError('interpn: only 1-D, 2-D and 3-D gridded interpolation are supported');
+  },
   pchip: async (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])); const d = pchipSlopes(x, y); if (a.length < 3) return ret(makePP(x, hermiteCoefs(x, y, d))); return ret(map(m(a[2]), (q) => hermiteEval(x, y, d, q))); },
   makima: async (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])); const d = akimaSlopes(x, y); if (a.length < 3) return ret(makePP(x, hermiteCoefs(x, y, d))); return ret(map(m(a[2]), (q) => hermiteEval(x, y, d, q))); },
   mkpp: async (a) => { const breaks = toArray(m(a[0])); const coefs = m(a[1]); return ret(makePP(breaks, coefs)); },
@@ -1182,7 +1261,7 @@ export const BUILTINS: Record<string, Builtin> = {
     for (let r = 0; r < y.length; r++) for (let c = 0; c < x.length; c++) { X.data[r + c * y.length] = x[c]; Y.data[r + c * y.length] = y[r]; }
     return n >= 2 ? [X, Y] : [X];
   },
-  randn: async (a) => { const [r, c] = dims2(a); const o = zeros(r, c); for (let i = 0; i < o.data.length; i++) { const u = Math.random() || 1e-12, w = Math.random(); o.data[i] = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * w); } return ret(o); },
+  randn: async (a) => { const d = dimsN(a); const data = new Float64Array(d.reduce((p, x) => p * x, 1)); for (let i = 0; i < data.length; i++) { const u = Math.random() || 1e-12, w = Math.random(); data[i] = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * w); } return ret(makeND(d, data)); },
   randi: async (a) => { const hi = Math.round(asScalar(a[0])); const r = a.length >= 2 ? Math.round(asScalar(a[1])) : 1; const c = a.length >= 3 ? Math.round(asScalar(a[2])) : r; const o = zeros(r, c); for (let i = 0; i < o.data.length; i++) o.data[i] = 1 + Math.floor(Math.random() * hi); return ret(o); },
   nnz: async (a) => ret(scalar(isSparse(a[0]) ? a[0].values.length : toArray(m(a[0])).filter((x) => x !== 0).length)),
   // ── array rearrangement ──
@@ -1198,8 +1277,8 @@ export const BUILTINS: Record<string, Builtin> = {
     for (let r = 0; r < x.length; r++) for (let c = 0; c < y.length; c++) { X.data[r + c * x.length] = x[r]; Y.data[r + c * x.length] = y[c]; }
     return n >= 2 ? [X, Y] : [X];
   },
-  permute: async (a) => { const A = m(a[0]); const o = toArray(m(a[1])).map((x) => Math.round(x)); if (o.length === 2 && o[0] === 2 && o[1] === 1) return ret(transpose(A)); if (o.length === 2 && o[0] === 1 && o[1] === 2) return ret(A); throw new MatError('permute: only 2-D permutations are supported'); },
-  ipermute: async (a) => { const A = m(a[0]); const o = toArray(m(a[1])).map((x) => Math.round(x)); return ret(o.length === 2 && o[0] === 2 && o[1] === 1 ? transpose(A) : A); },
+  permute: async (a) => ret(permuteND(m(a[0]), toArray(m(a[1])).map((x) => Math.round(x)))),
+  ipermute: async (a) => { const ord = toArray(m(a[1])).map((x) => Math.round(x)); const inv = new Array(ord.length); ord.forEach((p, i) => { inv[p - 1] = i + 1; }); return ret(permuteND(m(a[0]), inv)); },
   shiftdim: async (a) => { const A = m(a[0]); const n = a.length >= 2 ? Math.round(asScalar(a[1])) : (A.rows === 1 ? 1 : 0); return ret(n % 2 !== 0 ? transpose(A) : A); },
   rot90: async (a) => { const A = m(a[0]); const k = a.length >= 2 ? Math.round(asScalar(a[1])) : 1; return ret(rot90n(A, k)); },
   circshift: async (a) => {
@@ -1280,7 +1359,7 @@ export const BUILTINS: Record<string, Builtin> = {
     const ordered = [...cplx, ...reals];
     return ret(finishComplex(A.rows === 1 ? 1 : n, A.rows === 1 ? n : 1, Float64Array.from(ordered.map((z) => z.re)), Float64Array.from(ordered.map((z) => z.im))));
   },
-  squeeze: async (a) => ret(m(a[0])),
+  squeeze: async (a) => { const A = m(a[0]); if (!A.nd) return ret(A); const d = A.nd.filter((x) => x !== 1); while (d.length < 2) d.push(1); return ret(makeND(d, Float64Array.from(A.data), { idata: A.idata ? Float64Array.from(A.idata) : null, isChar: A.isChar })); },
   sortrows: async (a, n) => {
     const A = m(a[0]); const rows: number[][] = [];
     for (let r = 0; r < A.rows; r++) { const row: number[] = []; for (let c = 0; c < A.cols; c++) row.push(A.data[r + c * A.rows]); rows.push(row); }
@@ -1749,8 +1828,11 @@ const HELP: Record<string, HelpEntry> = {
   boundary: { summary: 'Boundary polygon around a set of 2-D points (convex hull here)', syntax: ['k = boundary(x,y)', '[k,a] = boundary(x,y)'], seealso: ['convhull', 'polyarea'] },
   voronoi: { summary: 'Voronoi diagram (line segments, or plot)', syntax: ['voronoi(x,y)', '[vx,vy] = voronoi(x,y)'], seealso: ['delaunay', 'convhull'] },
   griddata: { summary: 'Interpolate scattered 2-D data onto query points (linear or nearest)', syntax: ['vq = griddata(x,y,v,xq,yq)', "vq = griddata(x,y,v,xq,yq,'nearest')"], seealso: ['delaunay', 'interp2', 'scatteredInterpolant'] },
-  interp3: { summary: '3-D interpolation (not supported: needs N-D arrays)', syntax: ['vq = interp3(...)'], seealso: ['interp2', 'interp1', 'griddata'] },
-  interpn: { summary: 'N-D interpolation (not supported: needs N-D arrays)', syntax: ['vq = interpn(...)'], seealso: ['interp2', 'interp1', 'griddata'] },
+  interp3: { summary: 'Trilinear interpolation on a 3-D grid', syntax: ['Vq = interp3(V,Xq,Yq,Zq)', 'Vq = interp3(X,Y,Z,V,Xq,Yq,Zq)'], seealso: ['interp2', 'interp1', 'griddata'] },
+  interpn: { summary: 'Gridded interpolation (1-D/2-D/3-D)', syntax: ['Vq = interpn(...)'], seealso: ['interp3', 'interp2', 'interp1'] },
+  ndims: { summary: 'Number of array dimensions', syntax: ['n = ndims(A)'], seealso: ['size', 'numel'] },
+  squeeze: { summary: 'Remove singleton dimensions of an N-D array', syntax: ['B = squeeze(A)'], seealso: ['reshape', 'permute'] },
+  permute: { summary: 'Permute array dimensions', syntax: ['B = permute(A,order)'], seealso: ['ipermute', 'reshape', 'transpose'] },
   schur: { summary: 'Schur decomposition (real quasi-triangular, or complex with second arg)', syntax: ['T = schur(A)', '[U,T] = schur(A)', "[U,T] = schur(A,'complex')"], seealso: ['eig', 'rsf2csf', 'qz', 'hess'] },
   rsf2csf: { summary: 'Convert real Schur form to complex Schur form', syntax: ['[U,T] = rsf2csf(U,T)'], seealso: ['schur'] },
   balance: { summary: 'Diagonal scaling to improve eigenvalue conditioning', syntax: ['B = balance(A)', '[T,B] = balance(A)'], seealso: ['eig', 'schur'] },

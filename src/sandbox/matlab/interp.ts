@@ -327,15 +327,22 @@ export class Interpreter implements Env {
 
   // ── Subscripts ─────────────────────────────────────────────────────
   private evalSubs(args: Expr[], container: Mat, scope: Scope): Promise<Sub[]> {
-    return this.evalSubsN(args, container.rows, container.cols, numel(container), scope);
+    return this.evalSubsN(args, container.rows, container.cols, numel(container), scope, container.nd);
   }
-  private async evalSubsN(args: Expr[], rows: number, cols: number, total: number, scope: Scope): Promise<Sub[]> {
+  private async evalSubsN(args: Expr[], rows: number, cols: number, total: number, scope: Scope, nd?: number[]): Promise<Sub[]> {
     const n = args.length;
+    // `end` per dimension: for n subscripts, the last absorbs the product of the remaining dims.
+    const dims = nd ?? [rows, cols];
+    const endFor = (i: number): number => {
+      if (n === 1) return total;
+      if (i < n - 1) return dims[i] ?? 1;
+      return dims.slice(i).reduce((p, x) => p * x, 1) || 1;
+    };
     const subs: Sub[] = [];
     for (let i = 0; i < args.length; i++) {
       const a = args[i];
       if (a.t === 'colon') { subs.push('colon'); continue; }
-      const endVal = n === 1 ? total : (i === 0 ? rows : cols);
+      const endVal = endFor(i);
       this.endStack.push(endVal);
       let v: Value;
       try { v = await this.evalExpr(a, scope); } finally { this.endStack.pop(); }

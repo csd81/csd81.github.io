@@ -13,6 +13,7 @@ export interface Mat {
   idata?: Float64Array; // column-major imaginary part; present ⇒ complex storage
   isChar?: boolean;
   isBool?: boolean;
+  nd?: number[];        // N-D size (length ≥ 3); data is column-major over nd. rows=nd[0], cols=prod(nd[1:]).
 }
 export interface Handle {
   kind: 'handle';
@@ -178,11 +179,15 @@ export function elementwise(a: Mat, b: Mat, f: (x: number, y: number) => number)
     const bv = b.data[(b.rows === 1 ? 0 : r) + (b.cols === 1 ? 0 : c) * b.rows];
     out.data[r + c * rows] = f(av, bv);
   }
+  // carry an N-D tag when an operand is N-D and the result matches its layout
+  if (a.nd && a.rows === rows && a.cols === cols) out.nd = a.nd.slice();
+  else if (b.nd && b.rows === rows && b.cols === cols) out.nd = b.nd.slice();
   return out;
 }
 export function map(a: Mat, f: (x: number) => number): Mat {
   const out = zeros(a.rows, a.cols);
   for (let i = 0; i < a.data.length; i++) out.data[i] = f(a.data[i]);
+  if (a.nd) out.nd = a.nd.slice();
   return out;
 }
 
@@ -274,7 +279,79 @@ function subToList(s: Sub, dim: number): number[] {
   return s;
 }
 
+// ── N-D arrays (column-major; data layout = d1×(d2·d3…) 2-D matrix) ──────
+const prod = (a: number[]): number => a.reduce((p, x) => p * x, 1);
+/** Trim trailing singleton dims beyond the 2nd (MATLAB: a 2×3×1 array is 2×3). */
+function normDims(d: number[]): number[] { const out = d.slice(); while (out.length > 2 && out[out.length - 1] === 1) out.pop(); return out; }
+/** Full size vector of any matrix. */
+export function ndSize(m: Mat): number[] { return m.nd ? m.nd.slice() : [m.rows, m.cols]; }
+export function ndimsOf(m: Mat): number { return m.nd ? m.nd.length : 2; }
+/** Build a matrix from a size vector + column-major data (sets nd only when N-D). */
+export function makeND(dims: number[], data: Float64Array, opts: { idata?: Float64Array | null; isChar?: boolean; isBool?: boolean } = {}): Mat {
+  let d = normDims(dims.length ? dims : [0, 0]);
+  if (d.length === 1) d = [d[0], 1];
+  const rows = d[0], cols = prod(d.slice(1));
+  const m: Mat = { kind: 'num', rows, cols, data };
+  if (d.length > 2) m.nd = d;
+  if (opts.idata) m.idata = opts.idata; if (opts.isChar) m.isChar = true; if (opts.isBool) m.isBool = true;
+  return m;
+}
+/** Effective dimension sizes for N subscripts: collapse extra source dims into the last subscript. */
+function subDims(srcDims: number[], nsub: number): number[] {
+  if (nsub >= srcDims.length) { const D = srcDims.slice(); while (D.length < nsub) D.push(1); return D; }
+  const D = srcDims.slice(0, nsub - 1); D.push(prod(srcDims.slice(nsub - 1))); return D;
+}
+/** N-D subscripted read (subs.length ≥ 3). */
+export function indexGetND(m: Mat, subs: Sub[]): Mat {
+  const D = subDims(ndSize(m), subs.length);
+  const lists = subs.map((s, d) => subToList(s, D[d]));
+  for (let d = 0; d < D.length; d++) for (const idx of lists[d]) if (idx < 1 || idx > D[d]) throw new MatError(`index ${idx} out of bounds (dim ${d + 1} size ${D[d]})`);
+  const outDims = lists.map((l) => l.length);
+  const total = prod(outDims);
+  const stride = [1]; for (let d = 1; d < D.length; d++) stride[d] = stride[d - 1] * D[d - 1];
+  const ostride = [1]; for (let d = 1; d < outDims.length; d++) ostride[d] = ostride[d - 1] * outDims[d - 1];
+  const data = new Float64Array(total); const im = m.idata ? new Float64Array(total) : null;
+  for (let o = 0; o < total; o++) {
+    let lin = 0; for (let d = 0; d < D.length; d++) { const k = Math.floor(o / ostride[d]) % outDims[d]; lin += (lists[d][k] - 1) * stride[d]; }
+    data[o] = m.data[lin]; if (im) im[o] = m.idata![lin];
+  }
+  return makeND(outDims, data, { idata: im, isChar: m.isChar });
+}
+/** N-D subscripted assignment (subs.length ≥ 3); grows along the last dim if needed. */
+export function indexSetND(m: Mat, subs: Sub[], rhs: Mat): Mat {
+  let dims = ndSize(m);
+  const D = subDims(dims, subs.length);
+  // Determine required size; allow growth on any dim (pads with zeros).
+  const need = D.slice();
+  subs.forEach((s, d) => { if (s !== 'colon' && s.length) need[d] = Math.max(need[d], Math.max(...s)); });
+  if (need.some((v, d) => v > D[d])) {
+    const newDims = dims.slice(); while (newDims.length < subs.length) newDims.push(1);
+    for (let d = 0; d < subs.length; d++) newDims[d] = Math.max(newDims[d] ?? 1, need[d]);
+    const grown = new Float64Array(prod(newDims)); const gim = m.idata ? new Float64Array(prod(newDims)) : null;
+    // copy old data into the grown array
+    const oldStride = [1]; for (let d = 1; d < dims.length; d++) oldStride[d] = oldStride[d - 1] * dims[d - 1];
+    const nStride = [1]; for (let d = 1; d < newDims.length; d++) nStride[d] = nStride[d - 1] * newDims[d - 1];
+    const tot = numel(m);
+    for (let o = 0; o < tot; o++) { let rem = o, lin = 0; for (let d = 0; d < dims.length; d++) { const k = Math.floor(rem / oldStride[d]) % dims[d]; lin += k * nStride[d]; } grown[lin] = m.data[o]; if (gim) gim[lin] = m.idata![o]; }
+    m = makeND(newDims, grown, { idata: gim, isChar: m.isChar }); dims = newDims;
+  }
+  const D2 = subDims(dims, subs.length);
+  const lists = subs.map((s, d) => subToList(s, D2[d]));
+  const stride = [1]; for (let d = 1; d < D2.length; d++) stride[d] = stride[d - 1] * D2[d - 1];
+  const outDims = lists.map((l) => l.length); const total = prod(outDims);
+  const ostride = [1]; for (let d = 1; d < outDims.length; d++) ostride[d] = ostride[d - 1] * outDims[d - 1];
+  if (rhs.idata && !m.idata) m.idata = new Float64Array(m.data.length);
+  const scalarR = rhs.data.length === 1;
+  for (let o = 0; o < total; o++) {
+    let lin = 0; for (let d = 0; d < D2.length; d++) { const k = Math.floor(o / ostride[d]) % outDims[d]; lin += (lists[d][k] - 1) * stride[d]; }
+    m.data[lin] = scalarR ? rhs.data[0] : rhs.data[o];
+    if (m.idata) m.idata[lin] = rhs.idata ? (scalarR ? rhs.idata[0] : rhs.idata[o]) : 0;
+  }
+  return m;
+}
+
 export function indexGet(m: Mat, subs: Sub[]): Mat {
+  if (subs.length > 2) return indexGetND(m, subs);
   if (subs.length === 1) {
     const s = subs[0];
     if (s === 'colon') { const out = zeros(numel(m), 1); out.data.set(m.data); if (m.idata) out.idata = Float64Array.from(m.idata); out.isChar = m.isChar; return out; }
@@ -309,6 +386,7 @@ export function indexGet(m: Mat, subs: Sub[]): Mat {
 
 /** Assign into `m` (growing as needed); returns the (possibly new) matrix. */
 export function indexSet(m: Mat, subs: Sub[], rhs: Mat): Mat {
+  if (subs.length > 2) return indexSetND(m, subs, rhs);
   if (subs.length === 1) {
     const s = subs[0];
     const idx = s === 'colon' ? subToList('colon', numel(m)) : s;

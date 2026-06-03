@@ -84,6 +84,7 @@ export function dispValue(v: Value): string {
   if (v.kind === 'sparse') return sparseLines(v).join('\n');
   if (v.kind === 'gobj') return `<${v.gtype} handle>`;
   if (isHandle(v)) return `@${v.name ?? 'anonymous'}`;
+  if (v.kind === 'num' && v.nd) return ndLines(v).join('\n');
   if (v.isChar) return asString(v);
   if (numel(v) === 0) return '';
   if (isComplex(v)) return isScalar(v) ? fmtC(v.data[0], v.idata![0]) : complexMatrixLines(v).join('\n');
@@ -96,6 +97,7 @@ export function displayValue(name: string, v: Value): string {
   if (v.kind === 'cell') return `${name} =\n\n  ${v.rows}×${v.cols} cell array\n${cellLines(v).join('\n')}\n`;
   if (v.kind === 'struct') return `${name} =\n\n  struct with fields:\n${structLines(v).join('\n')}\n`;
   if (v.kind === 'sparse') return `${name} =\n\n${sparseLines(v).join('\n')}\n`;
+  if (v.kind === 'num' && v.nd) return `${name} =\n\n${ndLines(v).join('\n')}\n`;
   if (v.kind === 'gobj') return `${name} =\n\n  <${v.gtype} handle>\n`;
   if (isHandle(v)) return `${name} =\n\n    @${v.name ?? 'anonymous function'}\n`;
   if (v.isChar) return `${name} =\n\n    ${asString(v)}\n`;
@@ -103,6 +105,21 @@ export function displayValue(name: string, v: Value): string {
   if (isComplex(v)) return isScalar(v) ? `${name} =\n\n   ${fmtC(v.data[0], v.idata![0])}\n` : `${name} =\n\n${complexMatrixLines(v).join('\n')}\n`;
   if (isScalar(v)) return `${name} =\n\n   ${formatScalar(v.data[0])}\n`;
   return `${name} =\n\n${matrixLines(v).join('\n')}\n`;
+}
+
+/** Slice-wise display of an N-D array: each page as `(:,:,k) = <2-D slice>`. */
+function ndLines(v: Mat): string[] {
+  const dims = v.nd!; const d0 = dims[0], d1 = dims[1], pageSize = d0 * d1;
+  const higher = dims.slice(2); const nPages = higher.reduce((p, x) => p * x, 1);
+  const out: string[] = [];
+  for (let pg = 0; pg < nPages; pg++) {
+    let rem = pg; const idx: number[] = []; for (const h of higher) { idx.push((rem % h) + 1); rem = Math.floor(rem / h); }
+    const sd = new Float64Array(pageSize); const si = v.idata ? new Float64Array(pageSize) : undefined;
+    for (let i = 0; i < pageSize; i++) { sd[i] = v.data[pg * pageSize + i]; if (si) si[i] = v.idata![pg * pageSize + i]; }
+    const slice: Mat = { kind: 'num', rows: d0, cols: d1, data: sd, idata: si, isChar: v.isChar };
+    out.push(`(:,:,${idx.join(',')}) =`, '', dispValue(slice), '');
+  }
+  return out;
 }
 
 // ── printf ─────────────────────────────────────────────────────────────
