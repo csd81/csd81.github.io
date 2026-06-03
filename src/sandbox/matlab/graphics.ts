@@ -18,7 +18,7 @@ export interface Surface {
   x: number[];
   y: number[];
   z: number[][];
-  kind: 'surf' | 'mesh' | 'contour';
+  kind: 'surf' | 'mesh' | 'contour' | 'contour3';
   shading: 'faceted' | 'flat' | 'interp';
 }
 /** A constant reference line drawn across the axes (xline/yline). */
@@ -127,7 +127,7 @@ export class Graphics {
   }
 
   /** surf/mesh/contour(X,Y,Z) — also surf(Z). X/Y may be meshgrid matrices or vectors. */
-  surface(args: Value[], kind: 'surf' | 'mesh' | 'contour') {
+  surface(args: Value[], kind: Surface['kind']) {
     if (!this.holding) { this.fig.series = []; this.fig.surfaces = []; this.colorIdx = 0; }
     const mats = args.filter((a): a is Mat => isMat(a) && !(a as Mat).isChar);
     let X: Mat | null, Y: Mat | null, Z: Mat;
@@ -146,6 +146,15 @@ export class Graphics {
     for (let r = 0; r < nr; r++) { const row: number[] = []; for (let c = 0; c < nc; c++) row.push(Z.data[r + c * nr]); z.push(row); }
     this.fig.surfaces = this.fig.surfaces ?? [];
     this.fig.surfaces.push({ x: xv, y: yv, z, kind, shading: kind === 'surf' ? 'faceted' : 'faceted' });
+    this.touch();
+  }
+
+  /** quiver(x,y,u,v): a 2-D vector field drawn as line segments (NaN-separated). */
+  quiver(xs: number[], ys: number[], us: number[], vs: number[], scale = 0.9) {
+    if (!this.holding) { this.fig.series = []; this.fig.surfaces = []; this.colorIdx = 0; }
+    const X: number[] = [], Y: number[] = [];
+    for (let i = 0; i < xs.length; i++) { X.push(xs[i], xs[i] + scale * us[i], NaN); Y.push(ys[i], ys[i] + scale * vs[i], NaN); }
+    this.fig.series.push({ x: X, y: Y, mode: 'lines', color: this.nextColor() });
     this.touch();
   }
 

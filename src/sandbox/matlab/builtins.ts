@@ -1315,6 +1315,19 @@ export const BUILTINS: Record<string, Builtin> = {
     if (nargout >= 1) return nargout >= 3 ? [X, Y, Z] : nargout >= 2 ? [X, Z] : [Z];
     env.graphics.surface([X, Y, Z], 'surf'); return [];
   },
+  sphere: async (a, n, env) => { const N = a.length && isMat(a[0]) && numel(a[0]) === 1 ? Math.round(asScalar(a[0])) : 20; const { X, Y, Z } = sphereCoords(N); if (n >= 1) return [X, Y, Z].slice(0, Math.max(1, n)); env.graphics.surface([X, Y, Z], 'surf'); return []; },
+  cylinder: async (a, n, env) => { const r = a.length && isMat(a[0]) && numel(a[0]) > 1 ? toArray(m(a[0])) : a.length && isMat(a[0]) && numel(a[0]) === 1 && a.length === 1 ? [asScalar(a[0]), asScalar(a[0])] : [1, 1]; const N = a.length >= 2 ? Math.round(asScalar(a[1])) : 20; const { X, Y, Z } = cylinderCoords(r, N); if (n >= 1) return [X, Y, Z].slice(0, Math.max(1, n)); env.graphics.surface([X, Y, Z], 'surf'); return []; },
+  ellipsoid: async (a, n, env) => { const [xc, yc, zc, xr, yr, zr] = [0, 1, 2, 3, 4, 5].map((i) => asScalar(a[i])); const N = a.length >= 7 ? Math.round(asScalar(a[6])) : 20; const { X, Y, Z } = sphereCoords(N); const sx = map(X, (v) => v * xr + xc), sy = map(Y, (v) => v * yr + yc), sz = map(Z, (v) => v * zr + zc); if (n >= 1) return [sx, sy, sz].slice(0, Math.max(1, n)); env.graphics.surface([sx, sy, sz], 'surf'); return []; },
+  fsurf: async (a, _n, env) => { const { X, Y, Z } = await sampleFn2(a, env); env.graphics.surface([X, Y, Z], 'surf'); return []; },
+  fmesh: async (a, _n, env) => { const { X, Y, Z } = await sampleFn2(a, env); env.graphics.surface([X, Y, Z], 'mesh'); return []; },
+  fcontour: async (a, _n, env) => { const { X, Y, Z } = await sampleFn2(a, env); env.graphics.surface([X, Y, Z], 'contour'); return []; },
+  contour3: async (a, _n, env) => { env.graphics.surface(a, 'contour3'); return []; },
+  quiver: async (a, _n, env) => {
+    let xs: number[], ys: number[], us: number[], vs: number[];
+    if (a.length >= 4) { xs = toArray(m(a[0])); ys = toArray(m(a[1])); us = toArray(m(a[2])); vs = toArray(m(a[3])); }
+    else { us = toArray(m(a[0])); vs = toArray(m(a[1])); xs = us.map((_, i) => i + 1); ys = us.map(() => 0); }
+    env.graphics.quiver(xs, ys, us, vs); return [];
+  },
   surf: async (a, _n, env) => { env.graphics.surface(a, 'surf'); return []; },
   surfc: async (a, _n, env) => { env.graphics.surface(a, 'surf'); return []; },
   mesh: async (a, _n, env) => { env.graphics.surface(a, 'mesh'); return []; },
@@ -1436,6 +1449,14 @@ const HELP: Record<string, HelpEntry> = {
   colormap: { summary: 'Set the colour map (parula/jet/hot/cool/gray/…)', syntax: ['colormap jet', "colormap('parula')"], seealso: ['surf', 'colorbar', 'shading'] },
   zlabel: { summary: 'Label the z-axis', syntax: ["zlabel('text')"], seealso: ['xlabel', 'ylabel', 'surf'] },
   peaks: { summary: 'Sample function of two variables (classic test surface)', syntax: ['Z = peaks(n)', 'peaks(n)'], seealso: ['surf', 'mesh', 'meshgrid'] },
+  sphere: { summary: 'Generate/plot a unit sphere surface', syntax: ['[X,Y,Z] = sphere(n)', 'sphere(n)'], seealso: ['cylinder', 'ellipsoid', 'surf'] },
+  cylinder: { summary: 'Generate/plot a cylinder surface from a radius profile', syntax: ['[X,Y,Z] = cylinder(r,n)', 'cylinder(r)'], seealso: ['sphere', 'ellipsoid', 'surf'] },
+  ellipsoid: { summary: 'Generate/plot an ellipsoid surface', syntax: ['[X,Y,Z] = ellipsoid(xc,yc,zc,xr,yr,zr,n)'], seealso: ['sphere', 'cylinder', 'surf'] },
+  fsurf: { summary: 'Plot a 3-D surface from a function f(x,y)', syntax: ['fsurf(@(x,y) ...)', 'fsurf(f,[a b])'], seealso: ['surf', 'fmesh', 'fcontour', 'fplot'] },
+  fmesh: { summary: 'Plot a 3-D mesh from a function f(x,y)', syntax: ['fmesh(@(x,y) ...)'], seealso: ['mesh', 'fsurf'] },
+  fcontour: { summary: 'Contour plot of a function f(x,y)', syntax: ['fcontour(@(x,y) ...)'], seealso: ['contour', 'fsurf'] },
+  contour3: { summary: '3-D contour plot of a surface', syntax: ['contour3(X,Y,Z)'], seealso: ['contour', 'surf', 'mesh'] },
+  quiver: { summary: '2-D vector field (arrows)', syntax: ['quiver(X,Y,U,V)', 'quiver(U,V)'], seealso: ['plot', 'streamline'] },
   rms: { summary: 'Root-mean-square value', syntax: ['y = rms(X)'], seealso: ['mean', 'std', 'rmse'] },
   geomean: { summary: 'Geometric mean', syntax: ['m = geomean(X)'], seealso: ['mean', 'harmmean'] },
   harmmean: { summary: 'Harmonic mean', syntax: ['m = harmmean(X)'], seealso: ['mean', 'geomean'] },
@@ -1616,7 +1637,8 @@ const BASE_REF = new Set<string>((
   'isdiag issymmetric ishermitian istriu istril isbanded bandwidth gamma gammaln erf erfc erfinv beta filter filter2 conv2 detrend ' +
   'normalize rescale clip smoothdata isoutlier filloutliers rmoutliers islocalmax islocalmin sinpi cospi pi ' +
   'plot fplot hold title xlabel ylabel zlabel legend grid axis xlim ylim set gca gcf figure clf cla close clc format who whos clear help doc ans dot repmat ' +
-  'surf surfc mesh meshc surface contour contourf pcolor shading colorbar colormap view peaks xline yline ' +
+  'surf surfc mesh meshc surface contour contourf contour3 pcolor shading colorbar colormap view peaks xline yline ' +
+  'sphere cylinder ellipsoid fsurf fmesh fcontour quiver ' +
   'cell iscell iscellstr num2cell cell2mat celldisp cellfun strsplit strjoin ' +
   'struct isstruct isfield fieldnames numfields rmfield setfield getfield orderfields struct2cell cell2struct structfun ' +
   'horzcat vertcat isequaln corr qmr condest wilkinson spones nonzeros bartlett blackman hamming hann typecast swapbytes ' +
@@ -1860,6 +1882,31 @@ function sncndn(uu: number, emmc: number): [number, number, number] {
 }
 
 /** Magic square (Siamese for odd, doubly-even rule, Strachey for singly-even). */
+/** Unit-sphere surface coordinates, (n+1)×(n+1). */
+function sphereCoords(n: number): { X: Mat; Y: Mat; Z: Mat } {
+  const m1 = n + 1; const X = zeros(m1, m1), Y = zeros(m1, m1), Z = zeros(m1, m1);
+  for (let i = 0; i <= n; i++) { const phi = -Math.PI / 2 + Math.PI * i / n; for (let j = 0; j <= n; j++) { const th = -Math.PI + 2 * Math.PI * j / n; X.data[i + j * m1] = Math.cos(phi) * Math.cos(th); Y.data[i + j * m1] = Math.cos(phi) * Math.sin(th); Z.data[i + j * m1] = Math.sin(phi); } }
+  return { X, Y, Z };
+}
+/** Cylinder surface coordinates from a radius profile r (length m) and n facets. */
+function cylinderCoords(r: number[], n: number): { X: Mat; Y: Mat; Z: Mat } {
+  const mm = r.length, X = zeros(mm, n + 1), Y = zeros(mm, n + 1), Z = zeros(mm, n + 1);
+  for (let i = 0; i < mm; i++) for (let j = 0; j <= n; j++) { const th = 2 * Math.PI * j / n; X.data[i + j * mm] = r[i] * Math.cos(th); Y.data[i + j * mm] = r[i] * Math.sin(th); Z.data[i + j * mm] = mm > 1 ? i / (mm - 1) : 0; }
+  return { X, Y, Z };
+}
+/** Sample f(x,y) over a grid (fsurf/fmesh/fcontour). Default domain [-5,5]². */
+async function sampleFn2(a: Value[], env: Env): Promise<{ X: Mat; Y: Mat; Z: Mat }> {
+  const f = handle(a[0], 'fsurf');
+  let ax = -5, bx = 5, ay = -5, by = 5;
+  if (a.length >= 2 && isMat(a[1])) { const v = toArray(a[1] as Mat); if (v.length === 2) { ax = v[0]; bx = v[1]; ay = v[0]; by = v[1]; } else if (v.length >= 4) { ax = v[0]; bx = v[1]; ay = v[2]; by = v[3]; } }
+  const np = 41; const m1 = np;
+  const X = zeros(m1, m1), Y = zeros(m1, m1);
+  for (let i = 0; i < np; i++) for (let j = 0; j < np; j++) { X.data[i + j * m1] = ax + (bx - ax) * j / (np - 1); Y.data[i + j * m1] = ay + (by - ay) * i / (np - 1); }
+  const r = await env.callHandle(f, [X, Y], 1);
+  const Z = isMat(r[0]) && numel(r[0]) === m1 * m1 ? (r[0] as Mat) : zeros(m1, m1);
+  return { X, Y, Z };
+}
+
 /** Chebyshev spectral differentiation matrix (Trefethen), n×n with N=n-1 points. */
 function chebspecMat(n: number): Mat {
   const N = n - 1; const D = zeros(n, n); if (N < 1) return D;

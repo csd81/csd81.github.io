@@ -16,7 +16,7 @@ export default function PlotlyFigure({ fig, dark }: { fig: FigureSpec; dark: boo
     gray: 'Greys', bone: 'Greys', autumn: 'YlOrRd', winter: 'Blues', spring: 'Pinkjet', summer: 'YlGn', copper: 'Hot', turbo: 'Turbo', viridis: 'Viridis',
   };
   const colorscale = CMAP[(fig.colormap ?? 'parula').toLowerCase()] ?? 'Viridis';
-  const has3D = !!fig.surfaces?.some((s) => s.kind !== 'contour'); // contour is a 2-D trace
+  const has3D = !!fig.surfaces?.some((s) => s.kind !== 'contour'); // only plain contour is a 2-D trace
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data: any[] = fig.series.map((s, i) => ({
@@ -33,9 +33,11 @@ export default function PlotlyFigure({ fig, dark }: { fig: FigureSpec; dark: boo
         type: 'surface', x: s.x, y: s.y, z: s.z, colorscale,
         showscale: !!fig.colorbar,
         opacity: s.kind === 'mesh' ? 0.55 : 1,
-        contours: s.shading === 'faceted'
-          ? { x: { show: true, color: zero, width: 1 }, y: { show: true, color: zero, width: 1 } }
-          : undefined,
+        contours: s.kind === 'contour3'
+          ? { z: { show: true, usecolormap: true, width: 2 } }
+          : s.shading === 'faceted'
+            ? { x: { show: true, color: zero, width: 1 }, y: { show: true, color: zero, width: 1 } }
+            : undefined,
       });
     }
   }
