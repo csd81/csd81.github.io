@@ -41,22 +41,25 @@
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: var(--left-w, 220px) var(--gl, 6px) minmax(0, 1fr) var(--gr, 6px) var(--right-w, 380px);
-  grid-template-rows: var(--top-h, 1.4fr) var(--gh, 6px) minmax(0, 1fr);
+  grid-template-columns: var(--left-w, 28px) var(--gl, 0px) minmax(0, 1fr) var(--gr, 0px) var(--right-w, 28px);
+  grid-template-rows: minmax(0, 1fr);
   gap: 6px;
   padding: 6px;
 }
-.mlab__pane--hidden { display: none !important; }
+/* Columns: files | gutter | centre (editor+command) | gutter | figure+workspace */
+.mlab__files, .mlab__rail--l { grid-column: 1 / 2; }
+.mlab__gut-l                 { grid-column: 2 / 3; }
+.mlab__center                { grid-column: 3 / 4; }
+.mlab__gut-r                 { grid-column: 4 / 5; }
+.mlab__right, .mlab__rail--r { grid-column: 5 / 6; }
 
-/* Explicit placement (so a horizontal gutter can live in the centre column). */
-.mlab__files     { grid-column: 1 / 2; grid-row: 1 / 4; }
-.mlab__gut-l     { grid-column: 2 / 3; grid-row: 1 / 4; }
-.mlab__editor    { grid-column: 3 / 4; grid-row: 1 / 2; }
-.mlab__gut-h     { grid-column: 3 / 4; grid-row: 2 / 3; }
-.mlab__term      { grid-column: 3 / 4; grid-row: 3 / 4; }
-.mlab__gut-r     { grid-column: 4 / 5; grid-row: 1 / 4; }
-.mlab__figure    { grid-column: 5 / 6; grid-row: 1 / 2; }
-.mlab__workspace { grid-column: 5 / 6; grid-row: 3 / 4; }
+/* Each side column stacks its panes vertically (own splitter for the centre). */
+.mlab__center, .mlab__right { display: flex; flex-direction: column; gap: 6px; min-width: 0; min-height: 0; }
+.mlab__center > .mlab__editor   { flex: 0 0 var(--top-h, 280px); }
+.mlab__center > .mlab__term     { flex: 1 1 auto; }
+.mlab__right  > .mlab__figure   { flex: 1.3 1 0; }
+.mlab__right  > .mlab__workspace { flex: 1 1 0; }
+.mlab__gut-h { flex: 0 0 6px; }
 
 .mlab__gutter { background: transparent; border-radius: 3px; position: relative; }
 .mlab__gutter::after {
@@ -82,8 +85,8 @@
   padding: 0.5rem 0;
 }
 .mlab__rail:hover { color: var(--text); border-color: var(--brand-500); background: var(--surface); }
-.mlab__rail--l { grid-column: 1 / 2; grid-row: 1 / 4; }
-.mlab__rail--r { grid-column: 5 / 6; grid-row: 1 / 4; }
+/* Editor rail sits horizontally at the top of the centre column. */
+.mlab__rail--t { writing-mode: horizontal-tb; flex: 0 0 30px; justify-content: flex-start; padding: 0 0.7rem; gap: 0.45rem; }
 
 .mlab__files, .mlab__editor, .mlab__figure, .mlab__term, .mlab__workspace {
   display: flex;
@@ -229,8 +232,11 @@
   .mlab { height: auto; min-height: calc(100dvh - var(--nav-h, 56px)); overflow: visible; }
   .mlab__grid { display: flex; flex-direction: column; overflow: visible; }
   .mlab__gutter { display: none; }
-  .mlab__files, .mlab__editor, .mlab__figure, .mlab__term, .mlab__workspace, .mlab__rail { grid-column: auto; grid-row: auto; }
+  .mlab__center, .mlab__right { display: contents; }
+  .mlab__files, .mlab__rail { grid-column: auto; }
   .mlab__rail { writing-mode: horizontal-tb; padding: 0.5rem; }
+  .mlab__center > .mlab__editor, .mlab__center > .mlab__term,
+  .mlab__right > .mlab__figure, .mlab__right > .mlab__workspace { flex: 0 0 auto; }
   .mlab__files { max-height: 220px; }
   .mlab__editor { min-height: 280px; }
   .mlab__figure { min-height: 300px; }

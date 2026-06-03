@@ -23,19 +23,23 @@ export default function Sandbox() {
   const folderId = open?.folderId ?? FOLDERS[0]?.id ?? '';
 
   const [editor, setEditor] = useState<string>(lf(open?.source));
-  const [leftOpen, setLeftOpen] = useState(true);
-  const [rightOpen, setRightOpen] = useState(true);
+  // Everything starts collapsed → a clean command-window-first view.
+  const [leftOpen, setLeftOpen] = useState(false);
+  const [rightOpen, setRightOpen] = useState(false);
+  const [topOpen, setTopOpen] = useState(false);   // editor (top of the centre column)
   const [leftW, setLeftW] = useState(220);
   const [rightW, setRightW] = useState(380);
-  const [topH, setTopH] = useState<number | null>(null); // editor row height (px); null = default ratio
+  const [topH, setTopH] = useState(280);            // editor height (px) when open
   const [cursor, setCursor] = useState({ line: 1, col: 1 });
   const taRef = useRef<HTMLTextAreaElement>(null);
-  const gridRef = useRef<HTMLDivElement>(null);
+  const centerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLElement>(null);
 
   const { lines, workspace, fig, busy, prompt, runSource, submit, clearConsole, resetSession } = useSandbox(folderId);
 
   useEffect(() => { setEditor(lf(fileById(openId)?.source)); setCursor({ line: 1, col: 1 }); }, [openId]);
+  // Opening a file reveals the editor.
+  const openFile = (id: string) => { setOpenId(id); setTopOpen(true); };
 
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
   const toggleFolder = (id: string) =>
@@ -77,13 +81,19 @@ export default function Sandbox() {
     document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none';
   };
 
-  // Vertical splitter between the editor (top) and command window (bottom).
+  // Vertical splitter between the editor (top) and command window (bottom);
+  // dragging up past the threshold snaps the editor to a collapsed bar.
+  const SNAP_T = 90;
   const startVDrag = (e: React.PointerEvent) => {
     e.preventDefault();
     const startY = e.clientY;
-    const start = editorRef.current?.getBoundingClientRect().height ?? 320;
-    const gridH = gridRef.current?.getBoundingClientRect().height ?? 600;
-    const onMove = (ev: PointerEvent) => setTopH(clamp(start + (ev.clientY - startY), 120, gridH - 150));
+    const start = editorRef.current?.getBoundingClientRect().height ?? topH;
+    const centerH = centerRef.current?.getBoundingClientRect().height ?? 600;
+    const onMove = (ev: PointerEvent) => {
+      const h = start + (ev.clientY - startY);
+      if (h < SNAP_T) setTopOpen(false);
+      else { setTopOpen(true); setTopH(clamp(h, SNAP_T, centerH - 110)); }
+    };
     const onUp = () => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
@@ -99,8 +109,8 @@ export default function Sandbox() {
     '--right-w': rightOpen ? rightW + 'px' : '28px',
     '--gl': leftOpen ? '6px' : '0px',
     '--gr': rightOpen ? '6px' : '0px',
-    '--top-h': topH == null ? '1.4fr' : topH + 'px',
   } as React.CSSProperties;
+  const centerStyle = { '--top-h': topH + 'px' } as React.CSSProperties;
 
   return (
     <div className="mlab">
@@ -115,20 +125,21 @@ export default function Sandbox() {
         <span className="mlab__tspacer" />
         <div className="mlab__tgroup">
           <button className={'mlab__tool' + (leftOpen ? ' mlab__tool--on' : '')} onClick={() => setLeftOpen((v) => !v)} title={t('Toggle file tree', 'Fájlfa ki/be')}>▣ {t('Files', 'Fájlok')}</button>
+          <button className={'mlab__tool' + (topOpen ? ' mlab__tool--on' : '')} onClick={() => setTopOpen((v) => !v)} title={t('Toggle editor', 'Szerkesztő ki/be')}>✎ {t('Editor', 'Szerkesztő')}</button>
           <button className={'mlab__tool' + (rightOpen ? ' mlab__tool--on' : '')} onClick={() => setRightOpen((v) => !v)} title={t('Toggle figure & workspace', 'Ábra és munkaterület ki/be')}>▥ {t('Figure', 'Ábra')}</button>
         </div>
       </header>
 
       {/* Workbench */}
-      <div className="mlab__grid" style={gridStyle} ref={gridRef}>
+      <div className="mlab__grid" style={gridStyle}>
         {/* File tree (or a collapsed rail) */}
         {leftOpen ? (
           <>
             <aside className="mlab__files">
               <div className="mlab__pane-head"><span>{t('Current Folder', 'Aktuális mappa')}</span></div>
               <div className="mlab__tree">
-                <FileGroup title={t('Course examples', 'Kurzus példák')} folders={courseFolders} openId={openId} setOpenId={setOpenId} collapsed={collapsed} toggle={toggleFolder} />
-                <FileGroup title={t('Chapter algorithms', 'Fejezet-algoritmusok')} folders={chapterFolders} openId={openId} setOpenId={setOpenId} collapsed={collapsed} toggle={toggleFolder} />
+                <FileGroup title={t('Course examples', 'Kurzus példák')} folders={courseFolders} openId={openId} setOpenId={openFile} collapsed={collapsed} toggle={toggleFolder} />
+                <FileGroup title={t('Chapter algorithms', 'Fejezet-algoritmusok')} folders={chapterFolders} openId={openId} setOpenId={openFile} collapsed={collapsed} toggle={toggleFolder} />
               </div>
             </aside>
             <div className="mlab__gutter mlab__gutter--v mlab__gut-l" onPointerDown={startDrag('left')} title={t('Drag to resize', 'Húzd az átméretezéshez')} />
@@ -137,62 +148,71 @@ export default function Sandbox() {
           <button className="mlab__rail mlab__rail--l" onClick={() => setLeftOpen(true)} title={t('Show files', 'Fájlok megjelenítése')}>▸ {t('Files', 'Fájlok')}</button>
         )}
 
-        {/* Editor */}
-        <section className="mlab__editor" ref={editorRef}>
-          <div className="mlab__pane-head">
-            <span className="mlab__filetab">{open?.file ?? t('Editor', 'Szerkesztő')}</span>
-            <span className="mlab__spacer" />
-          </div>
-          <CodeEditor
-            value={editor}
-            textareaRef={taRef}
-            onChange={(e) => { setEditor(e.target.value); updateCursor(e.currentTarget); }}
-            onKeyUp={(e) => updateCursor(e.currentTarget)}
-            onClick={(e) => updateCursor(e.currentTarget)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runSource(editor); }
-              if (e.key === 'Tab') {
-                e.preventDefault();
-                const ta = e.currentTarget; const s = ta.selectionStart; const en = ta.selectionEnd;
-                const v = editor.slice(0, s) + '  ' + editor.slice(en);
-                setEditor(v);
-                requestAnimationFrame(() => { ta.selectionStart = ta.selectionEnd = s + 2; updateCursor(ta); });
-              }
-            }}
-          />
-        </section>
-
-        {/* Horizontal splitter between editor and command window */}
-        <div className="mlab__gutter mlab__gutter--h mlab__gut-h" onPointerDown={startVDrag} title={t('Drag to resize', 'Húzd az átméretezéshez')} />
-
-        {/* Command window */}
-        <CommandWindow lines={lines} busy={busy} prompt={prompt} onSubmit={submit} onClear={clearConsole} />
+        {/* Centre column: editor (or rail) over the command window */}
+        <div className="mlab__center" ref={centerRef} style={centerStyle}>
+          {topOpen ? (
+            <>
+              <section className="mlab__editor" ref={editorRef}>
+                <div className="mlab__pane-head">
+                  <span className="mlab__filetab">{open?.file ?? t('Editor', 'Szerkesztő')}</span>
+                  <span className="mlab__spacer" />
+                  <button className="mlab__mini" onClick={() => setTopOpen(false)} title={t('Collapse editor', 'Szerkesztő összecsukása')}>⌃</button>
+                </div>
+                <CodeEditor
+                  value={editor}
+                  textareaRef={taRef}
+                  onChange={(e) => { setEditor(e.target.value); updateCursor(e.currentTarget); }}
+                  onKeyUp={(e) => updateCursor(e.currentTarget)}
+                  onClick={(e) => updateCursor(e.currentTarget)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runSource(editor); }
+                    if (e.key === 'Tab') {
+                      e.preventDefault();
+                      const ta = e.currentTarget; const s = ta.selectionStart; const en = ta.selectionEnd;
+                      const v = editor.slice(0, s) + '  ' + editor.slice(en);
+                      setEditor(v);
+                      requestAnimationFrame(() => { ta.selectionStart = ta.selectionEnd = s + 2; updateCursor(ta); });
+                    }
+                  }}
+                />
+              </section>
+              <div className="mlab__gutter mlab__gutter--h mlab__gut-h" onPointerDown={startVDrag} title={t('Drag to resize', 'Húzd az átméretezéshez')} />
+            </>
+          ) : (
+            <button className="mlab__rail mlab__rail--t" onClick={() => setTopOpen(true)} title={t('Show editor', 'Szerkesztő megjelenítése')}>
+              ✎ {t('Editor', 'Szerkesztő')}{open ? ' — ' + open.file : ''} ▾
+            </button>
+          )}
+          <CommandWindow lines={lines} busy={busy} prompt={prompt} onSubmit={submit} onClear={clearConsole} />
+        </div>
 
         {/* Figure + Workspace (or a collapsed rail) */}
         {rightOpen ? (
           <>
             <div className="mlab__gutter mlab__gutter--v mlab__gut-r" onPointerDown={startDrag('right')} title={t('Drag to resize', 'Húzd az átméretezéshez')} />
-            <section className="mlab__figure">
-              <div className="mlab__pane-head"><span>{t('Figure', 'Ábra')}</span></div>
-              <div className="mlab__fig-body"><FigurePane fig={fig} /></div>
-            </section>
-            <section className="mlab__workspace">
-              <div className="mlab__pane-head"><span>{t('Workspace', 'Munkaterület')}</span></div>
-              <div className="mlab__ws-body">
-            {workspace.length === 0 ? (
-              <div className="mlab__ws-empty">{t('No variables', 'Nincs változó')}</div>
-            ) : (
-              <table className="mlab__ws">
-                <thead><tr><th>{t('Name', 'Név')}</th><th>{t('Size', 'Méret')}</th><th>{t('Value', 'Érték')}</th></tr></thead>
-                <tbody>
-                  {workspace.map((v) => (
-                    <tr key={v.name}><td className="mlab__ws-name">{v.name}</td><td>{v.size}</td><td className="mlab__ws-val">{v.preview}</td></tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-              </div>
-            </section>
+            <div className="mlab__right">
+              <section className="mlab__figure">
+                <div className="mlab__pane-head"><span>{t('Figure', 'Ábra')}</span></div>
+                <div className="mlab__fig-body"><FigurePane fig={fig} /></div>
+              </section>
+              <section className="mlab__workspace">
+                <div className="mlab__pane-head"><span>{t('Workspace', 'Munkaterület')}</span></div>
+                <div className="mlab__ws-body">
+                  {workspace.length === 0 ? (
+                    <div className="mlab__ws-empty">{t('No variables', 'Nincs változó')}</div>
+                  ) : (
+                    <table className="mlab__ws">
+                      <thead><tr><th>{t('Name', 'Név')}</th><th>{t('Size', 'Méret')}</th><th>{t('Value', 'Érték')}</th></tr></thead>
+                      <tbody>
+                        {workspace.map((v) => (
+                          <tr key={v.name}><td className="mlab__ws-name">{v.name}</td><td>{v.size}</td><td className="mlab__ws-val">{v.preview}</td></tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </section>
+            </div>
           </>
         ) : (
           <button className="mlab__rail mlab__rail--r" onClick={() => setRightOpen(true)} title={t('Show figure & workspace', 'Ábra és munkaterület')}>◂ {t('Figure', 'Ábra')}</button>
