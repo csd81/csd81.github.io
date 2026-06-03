@@ -732,6 +732,50 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret({ kind: 'struct', rows: 1, cols: 1, fields } as StructV);
   },
 
+  // ── Concatenation / equality / misc (batch A) ──
+  horzcat: async (a) => ret(horzcat(a.map((v) => m(v)))),
+  vertcat: async (a) => ret(vertcat(a.map((v) => m(v)))),
+  isequaln: async (a) => {
+    const eq = (x: Value, y: Value): boolean => {
+      if (!isMat(x) || !isMat(y)) return x === y;
+      if (x.rows !== y.rows || x.cols !== y.cols) return false;
+      for (let i = 0; i < x.data.length; i++) { const u = x.data[i], v = y.data[i]; if (u !== v && !(Number.isNaN(u) && Number.isNaN(v))) return false; }
+      return true;
+    };
+    for (let i = 1; i < a.length; i++) if (!eq(a[0], a[i])) return ret(bool(false));
+    return ret(bool(true));
+  },
+  size_equal: async (a) => {
+    if (!a.length) return ret(bool(true));
+    const [r, c] = dimsOf(a[0]);
+    for (let i = 1; i < a.length; i++) { const [ri, ci] = dimsOf(a[i]); if (ri !== r || ci !== c) return ret(bool(false)); }
+    return ret(bool(true));
+  },
+  corr: async (a) => {
+    let X = m(a[0]); if (a.length >= 2) X = horzcat([colvecOf(X), colvecOf(m(a[1]))]);
+    const C = covMatrix(X); const p = C.rows; const R = zeros(p, p);
+    for (let i = 0; i < p; i++) for (let j = 0; j < p; j++) R.data[i + j * p] = C.data[i + j * p] / Math.sqrt(C.data[i + i * p] * C.data[j + j * p]);
+    return ret(R);
+  },
+  qmr: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
+  condest1: async (a) => { const A = m(a[0]); return ret(scalar(norm(A, 1) * norm(inv(A), 1))); },
+  wilkinson: async (a) => {
+    const n = Math.round(asScalar(a[0])); const W = zeros(n, n); const mid = (n - 1) / 2;
+    for (let i = 0; i < n; i++) { W.data[i + i * n] = Math.abs(mid - i); if (i + 1 < n) { W.data[i + (i + 1) * n] = 1; W.data[(i + 1) + i * n] = 1; } }
+    return ret(W);
+  },
+  spones: async (a) => ret(map(m(a[0]), (x) => (x !== 0 ? 1 : 0))),
+  nonzeros: async (a) => ret(colVec(toArray(m(a[0])).filter((x) => x !== 0))),
+  // Window functions (column vectors, like MATLAB).
+  bartlett: async (a) => { const N = Math.round(asScalar(a[0])); const w: number[] = []; for (let n = 0; n < N; n++) w.push(N === 1 ? 1 : 1 - Math.abs((n - (N - 1) / 2) / ((N - 1) / 2))); return ret(colVec(w)); },
+  blackman: async (a) => { const N = Math.round(asScalar(a[0])); const w: number[] = []; for (let n = 0; n < N; n++) w.push(N === 1 ? 1 : 0.42 - 0.5 * Math.cos((2 * Math.PI * n) / (N - 1)) + 0.08 * Math.cos((4 * Math.PI * n) / (N - 1))); return ret(colVec(w)); },
+  hamming: async (a) => { const N = Math.round(asScalar(a[0])); const w: number[] = []; for (let n = 0; n < N; n++) w.push(N === 1 ? 1 : 0.54 - 0.46 * Math.cos((2 * Math.PI * n) / (N - 1))); return ret(colVec(w)); },
+  hanning: async (a) => { const N = Math.round(asScalar(a[0])); const w: number[] = []; for (let n = 1; n <= N; n++) w.push(0.5 * (1 - Math.cos((2 * Math.PI * n) / (N + 1)))); return ret(colVec(w)); },
+  hann: async (a) => { const N = Math.round(asScalar(a[0])); const w: number[] = []; for (let n = 0; n < N; n++) w.push(N === 1 ? 1 : 0.5 * (1 - Math.cos((2 * Math.PI * n) / (N - 1)))); return ret(colVec(w)); },
+  // Bit-reinterpretation: source storage is IEEE double (the only class this engine tracks).
+  typecast: async (a) => { const A = m(a[0]); const buf = new Float64Array(A.data).buffer; return ret(rowVec(readAs(buf, asString(a[1])))); },
+  swapbytes: async (a) => { const A = m(a[0]); const u = new Uint8Array(new Float64Array(A.data).buffer); for (let i = 0; i < u.length; i += 8) u.subarray(i, i + 8).reverse(); return ret(mat(A.rows, A.cols, new Float64Array(u.buffer))); },
+
   // ── Numerical methods (real-valued) ──
   trapz: async (a) => {
     let x: number[], y: number[];
@@ -1248,6 +1292,23 @@ const HELP: Record<string, HelpEntry> = {
   struct2cell: { summary: 'Convert a structure to a cell array', syntax: ['c = struct2cell(s)'], seealso: ['cell2struct', 'fieldnames'] },
   cell2struct: { summary: 'Convert a cell array to a structure', syntax: ['s = cell2struct(c,fields)'], seealso: ['struct2cell', 'struct'] },
   structfun: { summary: 'Apply a function to each field of a scalar structure', syntax: ['A = structfun(@f,s)', "A = structfun(@f,s,'UniformOutput',false)"], seealso: ['cellfun', 'arrayfun'] },
+  horzcat: { summary: 'Horizontal concatenation [A B] (dimension 2)', syntax: ['C = horzcat(A,B,...)'], seealso: ['vertcat', 'cat'] },
+  vertcat: { summary: 'Vertical concatenation [A; B] (dimension 1)', syntax: ['C = vertcat(A,B,...)'], seealso: ['horzcat', 'cat'] },
+  isequaln: { summary: 'Array equality treating NaN values as equal', syntax: ['tf = isequaln(A,B,...)'], seealso: ['isequal'] },
+  size_equal: { summary: 'True if all arguments share identical dimensions', syntax: ['tf = size_equal(A,B,...)'], seealso: ['size', 'isequal'] },
+  corr: { summary: 'Linear correlation coefficient(s)', syntax: ['R = corr(x,y)', 'R = corr(X)'], seealso: ['corrcoef', 'cov'] },
+  qmr: { summary: 'Quasi-minimal residual solver (here: direct solve A\\b)', syntax: ['x = qmr(A,b)'], seealso: ['gmres', 'bicg', 'pcg'] },
+  condest1: { summary: '1-norm condition number estimate', syntax: ['c = condest1(A)'], seealso: ['condest', 'cond', 'rcond'] },
+  wilkinson: { summary: "Wilkinson's eigenvalue test matrix (symmetric tridiagonal)", syntax: ['W = wilkinson(n)'], seealso: ['gallery', 'eig'] },
+  spones: { summary: 'Replace nonzero entries with 1', syntax: ['R = spones(S)'], seealso: ['nnz', 'nonzeros', 'sparse'] },
+  nonzeros: { summary: 'Nonzero matrix elements as a column vector (column-major)', syntax: ['v = nonzeros(A)'], seealso: ['nnz', 'find', 'spones'] },
+  bartlett: { summary: 'Bartlett (triangular) window', syntax: ['w = bartlett(N)'], seealso: ['hamming', 'hann', 'blackman'] },
+  blackman: { summary: 'Blackman window', syntax: ['w = blackman(N)'], seealso: ['hamming', 'hann', 'bartlett'] },
+  hamming: { summary: 'Hamming window', syntax: ['w = hamming(N)'], seealso: ['hann', 'blackman', 'bartlett'] },
+  hanning: { summary: 'Hanning window (denominator N+1)', syntax: ['w = hanning(N)'], seealso: ['hann', 'hamming'] },
+  hann: { summary: 'Hann window (denominator N-1)', syntax: ['w = hann(N)'], seealso: ['hanning', 'hamming'] },
+  typecast: { summary: 'Reinterpret the bytes of a value as another class. NOTE: this engine stores all numbers as double, so the source is treated as double — useful for inspecting IEEE-754 bytes, but it will not round-trip through integer classes.', syntax: ["y = typecast(x,'uint8')"], seealso: ['cast', 'swapbytes', 'double'] },
+  swapbytes: { summary: 'Reverse byte order of each element (assumes 8-byte double storage)', syntax: ['y = swapbytes(x)'], seealso: ['typecast', 'cast'] },
 };
 
 /** Base-MATLAB functions whose reference page is at /help/matlab/ref/<name>.html.
@@ -1270,7 +1331,8 @@ const BASE_REF = new Set<string>((
   'normalize rescale clip smoothdata isoutlier filloutliers rmoutliers islocalmax islocalmin sinpi cospi pi ' +
   'plot fplot hold title xlabel ylabel legend grid axis gca gcf figure clf cla close clc format who whos clear help doc ans dot repmat ' +
   'cell iscell iscellstr num2cell cell2mat celldisp cellfun strsplit strjoin ' +
-  'struct isstruct isfield fieldnames numfields rmfield setfield getfield orderfields struct2cell cell2struct structfun'
+  'struct isstruct isfield fieldnames numfields rmfield setfield getfield orderfields struct2cell cell2struct structfun ' +
+  'horzcat vertcat isequaln corr qmr condest wilkinson spones nonzeros bartlett blackman hamming hann typecast swapbytes'
 ).split(/\s+/));
 
 export function docUrl(name: string): string {
@@ -1307,6 +1369,23 @@ function gcd2(a: number, b: number): number { a = Math.abs(Math.round(a)); b = M
 function factorialN(n: number): number { if (n < 0) return NaN; if (n > 170) return Infinity; let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; }
 
 /** Lanczos approximation of the gamma function. */
+/** Reinterpret a raw byte buffer as the named numeric class (for typecast). */
+function readAs(buf: ArrayBuffer, ty: string): number[] {
+  switch (ty) {
+    case 'double': return Array.from(new Float64Array(buf));
+    case 'single': return Array.from(new Float32Array(buf));
+    case 'int8': return Array.from(new Int8Array(buf));
+    case 'uint8': return Array.from(new Uint8Array(buf));
+    case 'int16': return Array.from(new Int16Array(buf));
+    case 'uint16': return Array.from(new Uint16Array(buf));
+    case 'int32': return Array.from(new Int32Array(buf));
+    case 'uint32': return Array.from(new Uint32Array(buf));
+    case 'int64': return Array.from(new BigInt64Array(buf), (b) => Number(b));
+    case 'uint64': return Array.from(new BigUint64Array(buf), (b) => Number(b));
+    default: throw new MatError(`typecast: unsupported class '${ty}'`);
+  }
+}
+
 function gammaFn(x: number): number {
   const g = 7;
   const c = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313,
