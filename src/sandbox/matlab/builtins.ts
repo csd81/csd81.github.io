@@ -741,7 +741,6 @@ export const BUILTINS: Record<string, Builtin> = {
   isfinite: async (a) => ret(map(m(a[0]), (x) => (Number.isFinite(x) ? 1 : 0))),
   any: async (a) => { const A = m(a[0]); if (A.rows === 1 || A.cols === 1) return ret(scalar(toArray(A).some((x) => x !== 0) ? 1 : 0)); return ret(reduce(A, 1, 0, (s, x) => (s || x !== 0 ? 1 : 0))); },
   all: async (a) => { const A = m(a[0]); if (A.rows === 1 || A.cols === 1) return ret(scalar(toArray(A).every((x) => x !== 0) ? 1 : 0)); return ret(reduce(A, 1, 1, (s, x) => (s && x !== 0 ? 1 : 0))); },
-  mod2: async () => ret(scalar(0)),
 
   // I/O
   disp: async (a, _n, env) => { env.output(dispValue(a[0]) + '\n'); return []; },
@@ -967,7 +966,10 @@ const HELP: Record<string, HelpEntry> = {
 };
 
 export function docUrl(name: string): string {
-  return `https://www.mathworks.com/help/matlab/ref/${name.toLowerCase()}.html`;
+  // Use the documentation search rather than a guessed ref/<name>.html path:
+  // toolbox functions (prctile, quantile, …) live under other product paths and
+  // would 404, so search reliably resolves to the right page for any function.
+  return `https://www.mathworks.com/help/search.html?qdoc=${encodeURIComponent(name)}`;
 }
 
 /** MATLAB-style help block for a built-in, or null if unknown. */
