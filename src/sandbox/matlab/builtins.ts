@@ -851,7 +851,7 @@ export const BUILTINS: Record<string, Builtin> = {
     };
     return ret(map(xq, interp));
   },
-  spline: async (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])), xq = m(a[2]); return ret(map(xq, (q) => splineEval(x, y, q))); },
+  spline: async (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])); if (a.length < 3) return ret(makePP(x, splineCoefs(x, y))); const xq = m(a[2]); return ret(map(xq, (q) => splineEval(x, y, q))); },
   roots: async (a) => { const { re, im } = durandKerner(toArray(m(a[0]))); return ret(finishComplex(re.length, 1, Float64Array.from(re), Float64Array.from(im))); },
   ode45: async (a, n, env) => odeSolve(a, n, env),
   ode15s: async (a, n, env) => odeSolve(a, n, env),
@@ -895,8 +895,11 @@ export const BUILTINS: Record<string, Builtin> = {
     };
     const out = zeros(xq.rows, xq.cols); for (let k = 0; k < out.data.length; k++) out.data[k] = bilerp(xq.data[k], yq.data[k]); return ret(out);
   },
-  pchip: async (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])), xq = m(a[2]); const d = pchipSlopes(x, y); return ret(map(xq, (q) => hermiteEval(x, y, d, q))); },
-  makima: async (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])), xq = m(a[2]); const d = akimaSlopes(x, y); return ret(map(xq, (q) => hermiteEval(x, y, d, q))); },
+  pchip: async (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])); const d = pchipSlopes(x, y); if (a.length < 3) return ret(makePP(x, hermiteCoefs(x, y, d))); return ret(map(m(a[2]), (q) => hermiteEval(x, y, d, q))); },
+  makima: async (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])); const d = akimaSlopes(x, y); if (a.length < 3) return ret(makePP(x, hermiteCoefs(x, y, d))); return ret(map(m(a[2]), (q) => hermiteEval(x, y, d, q))); },
+  mkpp: async (a) => { const breaks = toArray(m(a[0])); const coefs = m(a[1]); return ret(makePP(breaks, coefs)); },
+  unmkpp: async (a, n) => { const { breaks, coefs, L, k } = readPP(a[0]); const out: Value[] = [rowVec(breaks), coefs, scalar(L), scalar(k), scalar(1)]; return out.slice(0, Math.max(1, n)); },
+  ppval: async (a) => { const pp = readPP(a[0]); const xq = m(a[1]); return ret(map(xq, (q) => ppEval(pp, q))); },
   interpft: async (a) => {
     // FFT resample x to length ny: insert zero high-frequencies, inverse transform.
     const x = toArray(m(a[0])); const ny = Math.round(asScalar(a[1])); const nx = x.length;
@@ -1309,6 +1312,9 @@ const HELP: Record<string, HelpEntry> = {
   hann: { summary: 'Hann window (denominator N-1)', syntax: ['w = hann(N)'], seealso: ['hanning', 'hamming'] },
   typecast: { summary: 'Reinterpret the bytes of a value as another class. NOTE: this engine stores all numbers as double, so the source is treated as double — useful for inspecting IEEE-754 bytes, but it will not round-trip through integer classes.', syntax: ["y = typecast(x,'uint8')"], seealso: ['cast', 'swapbytes', 'double'] },
   swapbytes: { summary: 'Reverse byte order of each element (assumes 8-byte double storage)', syntax: ['y = swapbytes(x)'], seealso: ['typecast', 'cast'] },
+  mkpp: { summary: 'Make a piecewise-polynomial (pp) structure', syntax: ['pp = mkpp(breaks,coefs)'], seealso: ['ppval', 'unmkpp', 'spline', 'pchip'] },
+  unmkpp: { summary: 'Extract the pieces of a pp structure', syntax: ['[breaks,coefs,L,k,d] = unmkpp(pp)'], seealso: ['mkpp', 'ppval'] },
+  ppval: { summary: 'Evaluate a piecewise polynomial', syntax: ['v = ppval(pp,xq)'], seealso: ['mkpp', 'unmkpp', 'spline', 'pchip'] },
 };
 
 /** Base-MATLAB functions whose reference page is at /help/matlab/ref/<name>.html.
@@ -1332,7 +1338,8 @@ const BASE_REF = new Set<string>((
   'plot fplot hold title xlabel ylabel legend grid axis gca gcf figure clf cla close clc format who whos clear help doc ans dot repmat ' +
   'cell iscell iscellstr num2cell cell2mat celldisp cellfun strsplit strjoin ' +
   'struct isstruct isfield fieldnames numfields rmfield setfield getfield orderfields struct2cell cell2struct structfun ' +
-  'horzcat vertcat isequaln corr qmr condest wilkinson spones nonzeros bartlett blackman hamming hann typecast swapbytes'
+  'horzcat vertcat isequaln corr qmr condest wilkinson spones nonzeros bartlett blackman hamming hann typecast swapbytes ' +
+  'mkpp unmkpp ppval'
 ).split(/\s+/));
 
 export function docUrl(name: string): string {
@@ -1654,6 +1661,64 @@ function splineEval(x: number[], y: number[], q: number): number {
   const dx = q - x[i], hi = h[i];
   const aa = y[i], bb = (y[i + 1] - y[i]) / hi - hi * (2 * M[i] + M[i + 1]) / 6, cc = M[i] / 2, dd = (M[i + 1] - M[i]) / (6 * hi);
   return aa + bb * dx + cc * dx * dx + dd * dx * dx * dx;
+}
+
+// ── Piecewise-polynomial (pp) form ───────────────────────────────────────
+interface PP { breaks: number[]; coefs: Mat; L: number; k: number }
+/** Build a MATLAB pp struct from breaks (length L+1) and an L×k coefficient matrix. */
+function makePP(breaks: number[], coefs: Mat): StructV {
+  const L = coefs.rows, k = coefs.cols;
+  const fields = new Map<string, Value[]>([
+    ['form', [str('pp')]], ['breaks', [rowVec(breaks)]], ['coefs', [coefs]],
+    ['pieces', [scalar(L)]], ['order', [scalar(k)]], ['dim', [scalar(1)]],
+  ]);
+  return { kind: 'struct', rows: 1, cols: 1, fields };
+}
+/** Read a pp struct back into plain data. */
+function readPP(v: Value): PP {
+  if (!isStruct(v) || asString(v.fields.get('form')?.[0] ?? str('')) !== 'pp') throw new MatError('expected a piecewise-polynomial (pp) struct from mkpp/spline/pchip');
+  const breaks = toArray(m(v.fields.get('breaks')![0]));
+  const coefs = m(v.fields.get('coefs')![0]);
+  return { breaks, coefs, L: coefs.rows, k: coefs.cols };
+}
+/** Evaluate a pp at q: locate the piece, then Horner in the local variable (q - breaks[i]). */
+function ppEval(pp: PP, q: number): number {
+  let i = 0; while (i < pp.L - 1 && q >= pp.breaks[i + 1]) i++;
+  const t = q - pp.breaks[i]; let v = 0;
+  for (let j = 0; j < pp.k; j++) v = v * t + pp.coefs.data[i + j * pp.L];
+  return v;
+}
+/** Natural cubic-spline pp coefficients (L×4, highest power first). */
+function splineCoefs(x: number[], y: number[]): Mat {
+  const n = x.length, L = n - 1;
+  const h: number[] = []; for (let i = 0; i < L; i++) h.push(x[i + 1] - x[i]);
+  const M = new Array(n).fill(0);
+  if (n > 2) {
+    const lo: number[] = [], di: number[] = [], up: number[] = [], rhs: number[] = [];
+    for (let i = 1; i < n - 1; i++) { lo.push(h[i - 1]); di.push(2 * (h[i - 1] + h[i])); up.push(h[i]); rhs.push(6 * ((y[i + 1] - y[i]) / h[i] - (y[i] - y[i - 1]) / h[i - 1])); }
+    const kk = di.length; const cp = [...up], dp = [...rhs];
+    cp[0] /= di[0]; dp[0] /= di[0];
+    for (let i = 1; i < kk; i++) { const den = di[i] - lo[i] * cp[i - 1]; cp[i] = up[i] / den; dp[i] = (rhs[i] - lo[i] * dp[i - 1]) / den; }
+    const mm = new Array(kk); mm[kk - 1] = dp[kk - 1]; for (let i = kk - 2; i >= 0; i--) mm[i] = dp[i] - cp[i] * mm[i + 1];
+    for (let i = 1; i < n - 1; i++) M[i] = mm[i - 1];
+  }
+  const C = zeros(L, 4);
+  for (let i = 0; i < L; i++) {
+    const hi = h[i];
+    const a = y[i], b = (y[i + 1] - y[i]) / hi - hi * (2 * M[i] + M[i + 1]) / 6, c = M[i] / 2, d = (M[i + 1] - M[i]) / (6 * hi);
+    C.data[i + 0 * L] = d; C.data[i + 1 * L] = c; C.data[i + 2 * L] = b; C.data[i + 3 * L] = a;
+  }
+  return C;
+}
+/** Cubic-Hermite pp coefficients (L×4) from node slopes d. */
+function hermiteCoefs(x: number[], y: number[], d: number[]): Mat {
+  const L = x.length - 1; const C = zeros(L, 4);
+  for (let i = 0; i < L; i++) {
+    const h = x[i + 1] - x[i], y0 = y[i], y1 = y[i + 1], m0 = d[i], m1 = d[i + 1];
+    const c0 = y0, c1 = m0, c2 = (3 * (y1 - y0) / h - 2 * m0 - m1) / h, c3 = (m0 + m1 - 2 * (y1 - y0) / h) / (h * h);
+    C.data[i + 0 * L] = c3; C.data[i + 1 * L] = c2; C.data[i + 2 * L] = c1; C.data[i + 3 * L] = c0;
+  }
+  return C;
 }
 
 // ── Interpolation / quadrature helpers ───────────────────────────────────
