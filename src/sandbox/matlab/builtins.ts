@@ -10,7 +10,7 @@ import {
   det, inv, mldivide, diag, norm, eye,
   qr as qrDecomp, chol as cholFn, luOutputs, jacobiEigSym, svd as svdReal,
   rankOf, cond as condFn, pinv as pinvFn, orth as orthFn, nullspace, rref as rrefFn, vecnorm as vecnormFn, isSymmetric, cDet,
-  generalEig, durandKerner,
+  generalEig, durandKerner, hess as hessFn, schur as schurFn, expm as expmFn, logm as logmFn, sqrtm as sqrtmFn, ldl as ldlFn, lsqnonneg as lsqnonnegFn,
 } from './linalg';
 import { dispValue, sprintf } from './format';
 import type { Graphics } from './graphics';
@@ -441,6 +441,33 @@ export const BUILTINS: Record<string, Builtin> = {
     for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) if (A.data[r + c * A.rows] !== 0 && (r - c > lo || c - r > up)) return ret(bool(false));
     return ret(bool(true));
   },
+  // ── more decompositions / matrix functions ──
+  expm: async (a) => ret(expmFn(m(a[0]))),
+  logm: async (a) => ret(logmFn(m(a[0]))),
+  sqrtm: async (a) => ret(sqrtmFn(m(a[0]))),
+  hess: async (a, n) => { const { P, H } = hessFn(m(a[0])); return n >= 2 ? [P, H] : [H]; },
+  schur: async (a, n) => {
+    const A = m(a[0]);
+    if (isSymmetric(A) && !isComplex(A)) { const { values, V } = jacobiEigSym(A); const D = zeros(A.rows, A.rows); values.forEach((v, i) => { D.data[i + i * A.rows] = v; }); return n >= 2 ? [V, D] : [D]; }
+    const { U, T } = schurFn(A); return n >= 2 ? [U, T] : [T];
+  },
+  ldl: async (a, n) => { const { L, D } = ldlFn(m(a[0])); return n >= 2 ? [L, D] : [L]; },
+  lsqnonneg: async (a) => ret(lsqnonnegFn(m(a[0]), m(a[1]))),
+  condest: async (a) => { const A = m(a[0]); return ret(scalar(norm(A, 1) * norm(inv(A), 1))); },
+  lscov: async (a) => { const A = m(a[0]), b = m(a[1]); if (a.length >= 3) { const W = inv(m(a[2])); const At = transpose(A); return ret(mldivide(matmul(At, matmul(W, A)), matmul(At, matmul(W, b)))); } return ret(mldivide(A, b)); },
+  subspace: async (a) => {
+    let Qa = orthFn(m(a[0])), Qb = orthFn(m(a[1])); if (Qa.cols < Qb.cols) { const t = Qa; Qa = Qb; Qb = t; }
+    const proj = matmul(Qa, matmul(transpose(Qa), Qb)); const diff = zeros(Qb.rows, Qb.cols); for (let i = 0; i < diff.data.length; i++) diff.data[i] = Qb.data[i] - proj.data[i];
+    return ret(scalar(Math.asin(Math.min(1, norm(diff, 2)))));
+  },
+  eigs: async (a) => {
+    const A = m(a[0]); const k = a.length >= 2 ? Math.round(asScalar(a[1])) : Math.min(A.rows, 6);
+    let re: number[], im: number[];
+    if (isSymmetric(A) && !isComplex(A)) { re = jacobiEigSym(A).values; im = re.map(() => 0); } else { const { D } = generalEig(A, false); re = D.re; im = D.im; }
+    const idx = re.map((_, i) => i).sort((i, j) => Math.hypot(re[j], im[j]) - Math.hypot(re[i], im[i])).slice(0, k);
+    return ret(finishComplex(idx.length, 1, Float64Array.from(idx.map((i) => re[i])), Float64Array.from(idx.map((i) => im[i]))));
+  },
+  svds: async (a) => { const A = m(a[0]); const k = a.length >= 2 ? Math.round(asScalar(a[1])) : Math.min(A.rows, A.cols, 6); const { s } = svdReal(A); return ret(colVec(s.slice(0, k))); },
 
   // ── Numerical methods (real-valued) ──
   trapz: async (a) => {

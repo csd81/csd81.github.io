@@ -1,5 +1,5 @@
 /** Dense linear algebra: det, inv, `\` (square solve + least squares), norm, diag, eye. */
-import { type Mat, MatError, mat, zeros, scalar, isScalar, numel, transpose, matmul, isComplex, cmul, cdiv, finishComplex, ctranspose, cmatmul, ewRDiv } from './values';
+import { type Mat, MatError, mat, zeros, scalar, isScalar, numel, transpose, matmul, isComplex, cmul, cdiv, finishComplex, ctranspose, cmatmul, ewRDiv, csqrt, clog, colVec } from './values';
 
 export function eye(n: number, m = n): Mat {
   const out = zeros(n, m);
@@ -185,6 +185,93 @@ function eigVec(A: Mat, lr: number, li: number): { re: number[]; im: number[] } 
     for (let i = 0; i < n; i++) { vr[i] = x.data[i] / nrm; vi[i] = (x.idata ? x.idata[i] : 0) / nrm; }
   }
   return { re: vr, im: vi };
+}
+
+// ── More decompositions / matrix functions ────────────────────────────
+/** Upper Hessenberg form via Householder: P' A P = H. */
+export function hess(A: Mat): { P: Mat; H: Mat } {
+  const n = A.rows; const H = mat(n, n, Float64Array.from(A.data)); const P = eye(n);
+  for (let k = 0; k < n - 2; k++) {
+    let alpha = 0; for (let i = k + 1; i < n; i++) alpha += H.data[i + k * n] ** 2; alpha = Math.sqrt(alpha) * (H.data[(k + 1) + k * n] >= 0 ? -1 : 1);
+    if (alpha === 0) continue;
+    const v = new Float64Array(n); v[k + 1] = H.data[(k + 1) + k * n] - alpha; for (let i = k + 2; i < n; i++) v[i] = H.data[i + k * n];
+    let vn = 0; for (let i = k + 1; i < n; i++) vn += v[i] ** 2; if (vn === 0) continue;
+    for (let c = 0; c < n; c++) { let d = 0; for (let i = k + 1; i < n; i++) d += v[i] * H.data[i + c * n]; d = (2 * d) / vn; for (let i = k + 1; i < n; i++) H.data[i + c * n] -= d * v[i]; }
+    for (let r = 0; r < n; r++) { let d = 0; for (let i = k + 1; i < n; i++) d += H.data[r + i * n] * v[i]; d = (2 * d) / vn; for (let i = k + 1; i < n; i++) H.data[r + i * n] -= d * v[i]; }
+    for (let r = 0; r < n; r++) { let d = 0; for (let i = k + 1; i < n; i++) d += P.data[r + i * n] * v[i]; d = (2 * d) / vn; for (let i = k + 1; i < n; i++) P.data[r + i * n] -= d * v[i]; }
+  }
+  return { P, H };
+}
+
+/** Real Schur form via shifted QR iteration: U' A U = T (quasi-upper-triangular). */
+export function schur(A: Mat): { U: Mat; T: Mat } {
+  const n = A.rows; const { P, H } = hess(A);
+  let T = mat(n, n, Float64Array.from(H.data)); let U = mat(n, n, Float64Array.from(P.data));
+  for (let iter = 0; iter < 2000; iter++) {
+    const mu = T.data[(n - 1) + (n - 1) * n];
+    const Ts = mat(n, n, Float64Array.from(T.data)); for (let i = 0; i < n; i++) Ts.data[i + i * n] -= mu;
+    const { Q, R } = qr(Ts); T = matmul(R, Q); for (let i = 0; i < n; i++) T.data[i + i * n] += mu; U = matmul(U, Q);
+    let off = 0; for (let i = 1; i < n; i++) off += Math.abs(T.data[i + (i - 1) * n]); if (off < 1e-13) break;
+  }
+  return { U, T };
+}
+
+/** Matrix exponential via scaling and squaring (Taylor). */
+export function expm(A: Mat): Mat {
+  const n = A.rows; const nrm = norm(A, 'inf') || 1; const sgrid = Math.max(0, Math.ceil(Math.log2(nrm)));
+  const sc = Math.pow(2, sgrid); const B = mat(n, n, A.data.map((v) => v / sc) as Float64Array);
+  let E = eye(n); let term = eye(n);
+  for (let k = 1; k <= 18; k++) { term = matmul(term, B); for (let i = 0; i < term.data.length; i++) term.data[i] /= k; for (let i = 0; i < E.data.length; i++) E.data[i] += term.data[i]; }
+  for (let t = 0; t < sgrid; t++) E = matmul(E, E);
+  return E;
+}
+
+/** f(A) for diagonalisable A via the eigendecomposition: V·f(D)·V⁻¹. */
+function funmViaEig(A: Mat, f: (re: number, im: number) => [number, number]): Mat {
+  const n = A.rows; const { D, V } = generalEig(A, true);
+  const Dre = new Float64Array(n * n), Dim = new Float64Array(n * n);
+  for (let i = 0; i < n; i++) { const [fr, fi] = f(D.re[i], D.im[i]); Dre[i + i * n] = fr; Dim[i + i * n] = fi; }
+  const Df = finishComplex(n, n, Dre, Dim);
+  return cmatmul(cmatmul(V!, Df), inv(V!));
+}
+export const sqrtm = (A: Mat): Mat => funmViaEig(A, (re, im) => csqrt(re, im));
+export const logm = (A: Mat): Mat => funmViaEig(A, (re, im) => clog(re, im));
+
+/** LDL' factorisation of a symmetric matrix → unit-lower L and diagonal D. */
+export function ldl(A: Mat): { L: Mat; D: Mat } {
+  const n = A.rows; const L = eye(n); const D = zeros(n, n);
+  for (let j = 0; j < n; j++) {
+    let dj = A.data[j + j * n]; for (let k = 0; k < j; k++) dj -= L.data[j + k * n] ** 2 * D.data[k + k * n]; D.data[j + j * n] = dj;
+    for (let i = j + 1; i < n; i++) { let s = A.data[i + j * n]; for (let k = 0; k < j; k++) s -= L.data[i + k * n] * L.data[j + k * n] * D.data[k + k * n]; L.data[i + j * n] = dj !== 0 ? s / dj : 0; }
+  }
+  return { L, D };
+}
+
+/** Nonnegative least squares (Lawson–Hanson active set): min ‖Cx−d‖, x ≥ 0. */
+export function lsqnonneg(C: Mat, d: Mat): Mat {
+  const mC = C.rows, n = C.cols; const x = new Float64Array(n);
+  const P = new Set<number>(); const Z = new Set<number>(); for (let i = 0; i < n; i++) Z.add(i);
+  const Ct = transpose(C);
+  const colFrom = (a: Float64Array) => mat(n, 1, Float64Array.from(a));
+  const subCols = (cols: number[]) => { const o = zeros(mC, cols.length); cols.forEach((c, j) => { for (let r = 0; r < mC; r++) o.data[r + j * mC] = C.data[r + c * mC]; }); return o; };
+  let outer = 0;
+  while (Z.size && outer++ < 3 * n) {
+    const Cx = matmul(C, colFrom(x)); const r = new Float64Array(mC); for (let i = 0; i < mC; i++) r[i] = d.data[i] - Cx.data[i];
+    const w = matmul(Ct, mat(mC, 1, r));
+    let jmax = -1, wmax = 1e-10; for (const j of Z) if (w.data[j] > wmax) { wmax = w.data[j]; jmax = j; }
+    if (jmax < 0) break;
+    P.add(jmax); Z.delete(jmax);
+    let inner = 0;
+    while (inner++ < 3 * n) {
+      const cols = [...P].sort((a, b) => a - b); const z = mldivide(subCols(cols), d);
+      const zfull = new Float64Array(n); cols.forEach((c, i) => { zfull[c] = z.data[i]; });
+      if (cols.every((c) => zfull[c] > 0)) { for (let i = 0; i < n; i++) x[i] = zfull[i]; break; }
+      let alpha = Infinity; for (const c of cols) if (zfull[c] <= 0) alpha = Math.min(alpha, x[c] / (x[c] - zfull[c]));
+      for (let i = 0; i < n; i++) x[i] += alpha * (zfull[i] - x[i]);
+      for (const c of [...P]) if (Math.abs(x[c]) < 1e-12) { P.delete(c); Z.add(c); }
+    }
+  }
+  return colVec(Array.from(x));
 }
 
 /** General eigenvalues (+ optional eigenvectors) via charpoly + Durand–Kerner. */
