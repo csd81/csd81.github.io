@@ -645,6 +645,16 @@ export const BUILTINS: Record<string, Builtin> = {
   intersect: async (a) => { if (isGeom(a[0]) && isGeom(a[1])) return ret(polyResultGeom(polyClip(polyVerts(a[0]), polyVerts(a[1]), 'and'))); const A = m(a[0]); const sb = new Set(toArray(m(a[1]))); const r = setUniq(toArray(A).filter((x) => sb.has(x))); return ret(A.rows === 1 ? rowVec(r) : colVec(r)); },
   union: async (a) => { if (isGeom(a[0]) && isGeom(a[1])) return ret(polyResultGeom(polyClip(polyVerts(a[0]), polyVerts(a[1]), 'or'))); const A = m(a[0]); const r = setUniq([...toArray(A), ...toArray(m(a[1]))]); return ret(A.rows === 1 ? rowVec(r) : colVec(r)); },
   subtract: async (a) => ret(polyResultGeom(polyClip(polyVerts(gGeom(a[0])), polyVerts(gGeom(a[1])), 'minus'))),
+  polybuffer: async (a) => {
+    if (isGeom(a[0])) { const d = asScalar(a[1]); return ret(polyResultGeom([bufferLoop(polyVerts(a[0]), d)])); }
+    const P = matRows(m(a[0])); const kind = asString(a[1]).toLowerCase(); const d = asScalar(a[2]);
+    if (kind === 'points') return ret(polyResultGeom(P.map((p) => discLoop(p[0], p[1], d))));
+    // 'lines': buffer a polyline into a capsule chain (round joins + end caps)
+    const segs: number[][][] = [];
+    for (let i = 0; i + 1 < P.length; i++) segs.push(bufferLoop([P[i], P[i + 1]], d));
+    P.forEach((p) => segs.push(discLoop(p[0], p[1], d)));
+    return ret(polyResultGeom(segs));
+  },
   setdiff: async (a) => { const A = m(a[0]); const sb = new Set(toArray(m(a[1]))); const r = setUniq(toArray(A).filter((x) => !sb.has(x))); return ret(A.rows === 1 ? rowVec(r) : colVec(r)); },
   setxor: async (a) => { const A = m(a[0]), B = m(a[1]); const sa = new Set(toArray(A)), sb = new Set(toArray(B)); const r = setUniq([...toArray(A).filter((x) => !sb.has(x)), ...toArray(B).filter((x) => !sa.has(x))]); return ret(A.rows === 1 ? rowVec(r) : colVec(r)); },
   // ── more statistics ──
@@ -4391,6 +4401,24 @@ function polyResultGeom(boundaries: number[][][]): Geom {
   return { kind: 'geom', gkind: 'polyshape', points: pts, dim: 2 };
 }
 function polyVerts(g: Geom): number[][] { return g.points.filter((p) => !Number.isNaN(p[0])); }
+function discLoop(cx: number, cy: number, r: number, n = 48): number[][] { const o: number[][] = []; for (let i = 0; i < n; i++) { const t = 2 * Math.PI * i / n; o.push([cx + r * Math.cos(t), cy + r * Math.sin(t)]); } return o; }
+/** Rounded offset (buffer) of a polygon loop by distance d (d>0 dilates). */
+function bufferLoop(verts0: number[][], d: number): number[][] {
+  let v = verts0.filter((p) => !Number.isNaN(p[0])); if (v.length < 2) return v;
+  if (loopSignedArea(v) < 0) v = v.slice().reverse();   // make CCW so outward normal = (dy,−dx)
+  const n = v.length; const out: number[][] = [];
+  const edgeNormal = (i: number): [number, number] => { const a = v[i], b = v[(i + 1) % n]; const dx = b[0] - a[0], dy = b[1] - a[1]; const L = Math.hypot(dx, dy) || 1; return [dy / L, -dx / L]; };
+  for (let i = 0; i < n; i++) {
+    const np = edgeNormal((i - 1 + n) % n), nn = edgeNormal(i);
+    const a0 = Math.atan2(np[1], np[0]); let da = Math.atan2(nn[1], nn[0]) - a0;
+    while (da <= -Math.PI) da += 2 * Math.PI; while (da > Math.PI) da -= 2 * Math.PI;
+    if (d > 0 && da > 1e-9) {   // convex corner → round arc of radius d
+      const steps = Math.max(1, Math.ceil(Math.abs(da) / (Math.PI / 16)));
+      for (let st = 0; st <= steps; st++) { const ang = a0 + da * st / steps; out.push([v[i][0] + d * Math.cos(ang), v[i][1] + d * Math.sin(ang)]); }
+    } else { out.push([v[i][0] + d * np[0], v[i][1] + d * np[1]], [v[i][0] + d * nn[0], v[i][1] + d * nn[1]]); }
+  }
+  return out;
+}
 /** Map a per-simplex computation over a triangulation's connectivity → rows. */
 function perSimplex(g: Geom, fn: (pts: number[][]) => number[]): Mat {
   const T = g.conn ?? []; const rows = T.map((t) => fn(t.map((v) => g.points[v]))); return fromRows(rows.length ? rows : [[]]);
