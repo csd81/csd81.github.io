@@ -1,10 +1,12 @@
+import { lazy, Suspense } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useLang } from './shared/providers/LanguageProvider';
 import { useTheme } from './shared/providers/ThemeProvider';
 import { useAuth } from './shared/providers/AuthProvider';
 import { CHAPTERS } from './chapters/registry';
-import { RustSandbox } from './shared/ui/RustSandbox';
 import { AppSectionNav } from './shared/scrolly/AppSectionNav';
+
+const ChapterSandbox = lazy(() => import('./sandbox/ChapterSandbox'));
 
 function ChapterJump() {
   const { lang } = useLang();
@@ -46,13 +48,14 @@ export default function App() {
         <span className="app-nav__spacer" />
         <AppSectionNav />
         <ChapterJump />
-        <a
+        <Link
           className="btn btn--icon"
-          href="/sandbox/"
-          title={lang === 'hu' ? 'Interaktív homokozó (Rust/WASM)' : 'Interactive sandbox (Rust/WASM)'}
+          to="/sandbox"
+          title={lang === 'hu' ? 'MATLAB homokozó' : 'MATLAB sandbox'}
+          aria-label={lang === 'hu' ? 'MATLAB homokozó' : 'MATLAB sandbox'}
         >
-          🦀
-        </a>
+          🧮
+        </Link>
         <button
           className="btn btn--icon"
           onClick={toggleLang}
@@ -94,7 +97,11 @@ export default function App() {
       </nav>
       <main className="site-main">
         <Outlet />
-        {current && <RustSandbox key={current.slug} chapter={`ch${current.num}`} />}
+        {current && (
+          <Suspense fallback={null}>
+            <ChapterSandbox key={current.slug} slug={current.slug} />
+          </Suspense>
+        )}
       </main>
     </>
   );

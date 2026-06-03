@@ -6,11 +6,6 @@ dist/
 .env
 .env.local
 
-# Rust sandbox: keep the source, but never the 3.8GB build artifacts.
-rust_app/target/
-rust_app/crates/web/dist/
-rust_app/**/*.pdf
-
 # legacy per-chapter app build artifacts (kept as migration sources, not built)
 0*/**/node_modules/
 0*/**/dist/

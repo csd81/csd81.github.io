@@ -47,19 +47,19 @@ export default function Home() {
           </Link>
         </li>
         <li>
-          <a href="/sandbox/" className="chcard chcard--sandbox">
-            <span className="chcard__num">🦀</span>
+          <Link to="/sandbox" className="chcard chcard--sandbox">
+            <span className="chcard__num">🧮</span>
             <span className="chcard__body">
               <span className="chcard__title">
-                {lang === 'hu' ? 'Interaktív homokozó' : 'Interactive Sandbox'}
+                {lang === 'hu' ? 'MATLAB homokozó' : 'MATLAB Sandbox'}
               </span>
               <span className="chcard__blurb">
                 {lang === 'hu'
-                  ? 'Rust→WebAssembly numerikus homokozó mátrixnyelv-REPL-lel, fejezetenkénti demókkal.'
-                  : 'A Rust→WebAssembly numerics playground with a matrix-language REPL and per-chapter demos.'}
+                  ? 'Böngészős MATLAB/Octave futtató — futtasd a kurzus .m fájljait, ábrákkal.'
+                  : 'A browser MATLAB/Octave runner — run the course’s .m files, with plots.'}
               </span>
             </span>
-          </a>
+          </Link>
         </li>
       </ul>
 

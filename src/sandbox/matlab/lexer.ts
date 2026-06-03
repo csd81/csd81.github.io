@@ -1,0 +1,200 @@
+/**
+ * Tokeniser for the MATLAB/Octave subset.
+ *
+ * Notable MATLAB quirks handled here:
+ *  - `'` is transpose when it follows a value (ident, number, `)`, `]`, `'`),
+ *    otherwise it opens a single-quoted char string (with `''` escape).
+ *  - Whitespace is significant inside `[ ]` matrix literals, so every token
+ *    records whether a space preceded it (`spaceBefore`); the parser uses this
+ *    to tell `[1 -2]` (two elements) from `[1 - 2]` (one).
+ *  - `...` continues a line; `%` starts a line comment; `%{`/`%}` on their own
+ *    lines bracket a block comment.
+ */
+
+export type TokKind = 'num' | 'str' | 'ident' | 'kw' | 'op' | 'punct' | 'nl' | 'eof';
+
+export interface Token {
+  kind: TokKind;
+  value: string;
+  num?: number;
+  spaceBefore: boolean;
+  pos: number;
+  line: number;
+}
+
+const KEYWORDS = new Set([
+  'function', 'end', 'endfunction', 'endif', 'endfor', 'endwhile',
+  'if', 'elseif', 'else', 'for', 'while', 'return', 'break', 'continue',
+  'switch', 'case', 'otherwise', 'global',
+]);
+
+// Multi-char operators, longest first.
+const MULTI_OPS = ['...', '.^', '.*', './', '.\\', ".'", '==', '~=', '<=', '>=', '&&', '||'];
+const SINGLE_OPS = '+-*/\\^<>=&|~:\'@.';
+const PUNCT = '()[]{},;';
+
+export function tokenize(src: string): Token[] {
+  const toks: Token[] = [];
+  let i = 0;
+  let line = 1;
+  const n = src.length;
+  let spaceBefore = false;
+
+  const prevSignificant = (): Token | undefined => toks[toks.length - 1];
+  // Does a `'` here mean transpose (vs. opening a string)?
+  const isTranspose = (): boolean => {
+    const p = prevSignificant();
+    if (!p) return false;
+    if (p.kind === 'num' || p.kind === 'ident') return true;
+    if (p.kind === 'str') return true;
+    if (p.kind === 'punct' && (p.value === ')' || p.value === ']' || p.value === '}')) return true;
+    if (p.kind === 'op' && (p.value === "'" || p.value === ".'")) return true;
+    return false;
+  };
+
+  while (i < n) {
+    const c = src[i];
+
+    // Whitespace (not newline).
+    if (c === ' ' || c === '\t' || c === '\r') { spaceBefore = true; i++; continue; }
+
+    // Newline.
+    if (c === '\n') {
+      toks.push({ kind: 'nl', value: '\n', spaceBefore, pos: i, line });
+      i++; line++; spaceBefore = false; continue;
+    }
+
+    // Block comment: a line whose trimmed content is exactly `%{` ... up to `%}`.
+    if ((c === '%' || c === '#') && atLineStartBlock(src, i, '{')) {
+      i = skipBlockComment(src, i);
+      // recount lines crudely
+      continue;
+    }
+    // Line comment.
+    if (c === '%' || (c === '#' && src[i + 1] !== '{')) {
+      while (i < n && src[i] !== '\n') i++;
+      continue;
+    }
+
+    // Line continuation `...` — swallow to end of line (and the newline).
+    if (c === '.' && src[i + 1] === '.' && src[i + 2] === '.') {
+      i += 3;
+      while (i < n && src[i] !== '\n') i++;
+      if (i < n) { i++; line++; }
+      spaceBefore = true;
+      continue;
+    }
+
+    // Number (including .5, 1e-4, 3.2E+10).
+    if (isDigit(c) || (c === '.' && isDigit(src[i + 1]))) {
+      let j = i;
+      while (j < n && isDigit(src[j])) j++;
+      if (src[j] === '.') { j++; while (j < n && isDigit(src[j])) j++; }
+      if (src[j] === 'e' || src[j] === 'E') {
+        let k = j + 1;
+        if (src[k] === '+' || src[k] === '-') k++;
+        if (isDigit(src[k])) { k++; while (k < n && isDigit(src[k])) k++; j = k; }
+      }
+      const text = src.slice(i, j);
+      toks.push({ kind: 'num', value: text, num: parseFloat(text), spaceBefore, pos: i, line });
+      i = j; spaceBefore = false; continue;
+    }
+
+    // Identifier / keyword.
+    if (isIdentStart(c)) {
+      let j = i + 1;
+      while (j < n && isIdentPart(src[j])) j++;
+      const text = src.slice(i, j);
+      toks.push({ kind: KEYWORDS.has(text) ? 'kw' : 'ident', value: text, spaceBefore, pos: i, line });
+      i = j; spaceBefore = false; continue;
+    }
+
+    // String literal (single quote, not transpose).
+    if (c === "'" && !isTranspose()) {
+      let j = i + 1; let out = '';
+      while (j < n) {
+        if (src[j] === "'") {
+          if (src[j + 1] === "'") { out += "'"; j += 2; continue; }
+          break;
+        }
+        if (src[j] === '\n') break;
+        out += src[j]; j++;
+      }
+      toks.push({ kind: 'str', value: out, spaceBefore, pos: i, line });
+      i = j + 1; spaceBefore = false; continue;
+    }
+    // Double-quoted string (Octave/newer MATLAB).
+    if (c === '"') {
+      let j = i + 1; let out = '';
+      while (j < n && src[j] !== '"') {
+        if (src[j] === '\\' && src[j + 1] === '"') { out += '"'; j += 2; continue; }
+        out += src[j]; j++;
+      }
+      toks.push({ kind: 'str', value: out, spaceBefore, pos: i, line });
+      i = j + 1; spaceBefore = false; continue;
+    }
+
+    // Multi-char operators.
+    let matched = false;
+    for (const op of MULTI_OPS) {
+      if (src.startsWith(op, i)) {
+        if (op === '...') break; // handled above; defensive
+        toks.push({ kind: 'op', value: op, spaceBefore, pos: i, line });
+        i += op.length; spaceBefore = false; matched = true; break;
+      }
+    }
+    if (matched) continue;
+
+    // Single-char operator.
+    if (SINGLE_OPS.includes(c)) {
+      toks.push({ kind: 'op', value: c, spaceBefore, pos: i, line });
+      i++; spaceBefore = false; continue;
+    }
+
+    // Punctuation.
+    if (PUNCT.includes(c)) {
+      toks.push({ kind: 'punct', value: c, spaceBefore, pos: i, line });
+      i++; spaceBefore = false; continue;
+    }
+
+    throw new SyntaxError(`Unexpected character '${c}' at line ${line}`);
+  }
+
+  toks.push({ kind: 'eof', value: '', spaceBefore, pos: n, line });
+  return toks;
+}
+
+function isDigit(c: string | undefined): boolean { return !!c && c >= '0' && c <= '9'; }
+function isIdentStart(c: string): boolean { return /[A-Za-z_]/.test(c); }
+function isIdentPart(c: string): boolean { return /[A-Za-z0-9_]/.test(c); }
+
+/** Is position `i` (a `%`/`#`) the start of a `%{` block-comment opener line? */
+function atLineStartBlock(src: string, i: number, brace: string): boolean {
+  if (src[i + 1] !== brace) return false;
+  // everything before i on this line must be whitespace
+  let k = i - 1;
+  while (k >= 0 && src[k] !== '\n') { if (src[k] !== ' ' && src[k] !== '\t' && src[k] !== '\r') return false; k--; }
+  // everything after %{ to EOL must be whitespace
+  let m = i + 2;
+  while (m < src.length && src[m] !== '\n') { if (src[m] !== ' ' && src[m] !== '\t' && src[m] !== '\r') return false; m++; }
+  return true;
+}
+
+function skipBlockComment(src: string, i: number): number {
+  // i points at `%{`; advance to after the matching `%}` line.
+  let k = i + 2;
+  while (k < src.length) {
+    if (src[k] === '\n') {
+      // check next line for `%}` / `#}`
+      let m = k + 1;
+      while (m < src.length && (src[m] === ' ' || src[m] === '\t' || src[m] === '\r')) m++;
+      if ((src[m] === '%' || src[m] === '#') && src[m + 1] === '}') {
+        let e = m + 2;
+        while (e < src.length && src[e] !== '\n') e++;
+        return e;
+      }
+    }
+    k++;
+  }
+  return src.length;
+}

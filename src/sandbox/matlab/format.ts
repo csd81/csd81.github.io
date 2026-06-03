@@ -1,0 +1,153 @@
+/** Display formatting (`format short`) and the `fprintf`/`sprintf` printf engine. */
+import { type Mat, type Value, isMat, isHandle, numel, isScalar, asString } from './values';
+
+// ── Number / matrix display ────────────────────────────────────────────
+export function formatScalar(x: number): string {
+  if (Number.isNaN(x)) return 'NaN';
+  if (x === Infinity) return 'Inf';
+  if (x === -Infinity) return '-Inf';
+  if (Number.isInteger(x) && Math.abs(x) < 1e15) return String(x);
+  const a = Math.abs(x);
+  if (a !== 0 && (a >= 1e5 || a < 1e-4)) return x.toExponential(4).replace('e', 'e');
+  return x.toFixed(4);
+}
+
+function allIntegers(m: Mat): boolean {
+  for (let i = 0; i < m.data.length; i++) if (!Number.isInteger(m.data[i])) return false;
+  return true;
+}
+
+/** Lines for a numeric matrix body (no name, no surrounding blanks). */
+export function matrixLines(m: Mat): string[] {
+  if (numel(m) === 0) return ['[]'];
+  const ints = allIntegers(m);
+  const cells: string[][] = [];
+  let width = 0;
+  for (let r = 0; r < m.rows; r++) {
+    const row: string[] = [];
+    for (let c = 0; c < m.cols; c++) {
+      const v = m.data[r + c * m.rows];
+      const s = ints && Math.abs(v) < 1e15 ? String(v) : formatScalar(v);
+      row.push(s);
+      width = Math.max(width, s.length);
+    }
+    cells.push(row);
+  }
+  return cells.map((row) => '   ' + row.map((s) => s.padStart(width)).join('   '));
+}
+
+/** `disp(x)` output. */
+export function dispValue(v: Value): string {
+  if (v.kind === 'gobj') return `<${v.gtype} handle>`;
+  if (isHandle(v)) return `@${v.name ?? 'anonymous'}`;
+  if (v.isChar) return asString(v);
+  if (numel(v) === 0) return '';
+  if (isScalar(v)) return formatScalar(v.data[0]);
+  return matrixLines(v).join('\n');
+}
+
+/** Auto-display of `name = value` (unsuppressed statements). */
+export function displayValue(name: string, v: Value): string {
+  if (v.kind === 'gobj') return `${name} =\n\n  <${v.gtype} handle>\n`;
+  if (isHandle(v)) return `${name} =\n\n    @${v.name ?? 'anonymous function'}\n`;
+  if (v.isChar) return `${name} =\n\n    ${asString(v)}\n`;
+  if (numel(v) === 0) return `${name} =\n\n     []\n`;
+  if (isScalar(v)) return `${name} =\n\n   ${formatScalar(v.data[0])}\n`;
+  return `${name} =\n\n${matrixLines(v).join('\n')}\n`;
+}
+
+// ── printf ─────────────────────────────────────────────────────────────
+/** Flatten args (column-major) into a stream; char args stay grouped for %s. */
+function buildStream(args: Value[]): Array<{ s: string } | { n: number }> {
+  const stream: Array<{ s: string } | { n: number }> = [];
+  for (const a of args) {
+    if (isHandle(a)) { stream.push({ s: a.name ?? '@fn' }); continue; }
+    if (a.kind === 'gobj') { stream.push({ s: `<${a.gtype}>` }); continue; }
+    if (a.isChar) { stream.push({ s: asString(a) }); continue; }
+    for (let i = 0; i < a.data.length; i++) stream.push({ n: a.data[i] });
+  }
+  return stream;
+}
+
+const ESCAPES: Record<string, string> = { n: '\n', t: '\t', r: '\r', '\\': '\\', '%': '%' };
+
+export function sprintf(fmt: string, args: Value[]): string {
+  const stream = buildStream(args);
+  let p = 0;
+  const nextNum = (): number => { while (p < stream.length && !('n' in stream[p])) p++; const c = stream[p++]; return c && 'n' in c ? c.n : 0; };
+  const nextStr = (): string => { const c = stream[p]; if (c && 's' in c) { p++; return c.s; } if (c && 'n' in c) { p++; return String.fromCharCode(c.n); } return ''; };
+
+  const renderOnce = (): { text: string; consumedAny: boolean } => {
+    let out = '';
+    let consumedAny = false;
+    let i = 0;
+    while (i < fmt.length) {
+      const ch = fmt[i];
+      if (ch === '\\') { const e = fmt[i + 1]; out += ESCAPES[e] ?? ('\\' + (e ?? '')); i += 2; continue; }
+      if (ch !== '%') { out += ch; i++; continue; }
+      // parse conversion
+      let j = i + 1;
+      let flags = '';
+      while ('-+ 0#'.includes(fmt[j])) { flags += fmt[j]; j++; }
+      let width = '';
+      while (fmt[j] >= '0' && fmt[j] <= '9') { width += fmt[j]; j++; }
+      let prec = '';
+      if (fmt[j] === '.') { prec += '.'; j++; while (fmt[j] >= '0' && fmt[j] <= '9') { prec += fmt[j]; j++; } }
+      const conv = fmt[j];
+      i = j + 1;
+      if (conv === '%') { out += '%'; continue; }
+      consumedAny = true;
+      out += applyConv(conv, flags, width, prec, nextNum, nextStr);
+    }
+    return { text: out, consumedAny };
+  };
+
+  // Repeat the format while values remain (MATLAB behaviour).
+  let result = '';
+  const first = renderOnce();
+  result += first.text;
+  if (first.consumedAny) {
+    while (p < stream.length) {
+      const r = renderOnce();
+      result += r.text;
+      if (!r.consumedAny) break;
+    }
+  }
+  return result;
+}
+
+function applyConv(
+  conv: string, flags: string, width: string, prec: string,
+  nextNum: () => number, nextStr: () => string,
+): string {
+  const w = width ? parseInt(width, 10) : 0;
+  const pr = prec ? parseInt(prec.slice(1), 10) : undefined;
+  let body: string;
+  switch (conv) {
+    case 'd': case 'i': case 'u': {
+      const v = nextNum();
+      body = Number.isFinite(v) ? String(Math.round(v)) : (v === Infinity ? 'Inf' : v === -Infinity ? '-Inf' : 'NaN');
+      break;
+    }
+    case 'f': { const v = nextNum(); body = Number.isFinite(v) ? v.toFixed(pr ?? 6) : (Number.isNaN(v) ? 'NaN' : (v > 0 ? 'Inf' : '-Inf')); break; }
+    case 'e': case 'E': { const v = nextNum(); body = v.toExponential(pr ?? 6); if (conv === 'E') body = body.toUpperCase(); break; }
+    case 'g': case 'G': { const v = nextNum(); body = formatG(v, pr ?? 6); if (conv === 'G') body = body.toUpperCase(); break; }
+    case 'c': { body = String.fromCharCode(nextNum()); break; }
+    case 's': { body = nextStr(); break; }
+    default: return '%' + conv;
+  }
+  if (w > body.length) {
+    if (flags.includes('-')) body = body.padEnd(w);
+    else if (flags.includes('0') && 'difeEgG'.includes(conv)) {
+      const neg = body.startsWith('-');
+      body = (neg ? '-' : '') + (neg ? body.slice(1) : body).padStart(w - (neg ? 1 : 0), '0');
+    } else body = body.padStart(w);
+  }
+  return body;
+}
+
+function formatG(v: number, sig: number): string {
+  if (v === 0) return '0';
+  const s = v.toPrecision(sig || 1);
+  return s.includes('.') && !s.includes('e') ? s.replace(/\.?0+$/, '') : s;
+}

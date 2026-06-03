@@ -7,6 +7,7 @@ import { CHAPTERS } from './chapters/registry';
 
 const Login = lazy(() => import('./pages/Login'));
 const Practice = lazy(() => import('./pages/Practice'));
+const Sandbox = lazy(() => import('./pages/Sandbox'));
 const Dimat = lazy(() => import('./subjects/dimat'));
 const Ila = lazy(() => import('./subjects/ila'));
 const Algo = lazy(() => import('./subjects/algo'));
@@ -41,6 +42,14 @@ export default function AppRoutes() {
           element={
             <Suspense fallback={<Loading />}>
               <Practice />
+            </Suspense>
+          }
+        />
+        <Route
+          path="sandbox/*"
+          element={
+            <Suspense fallback={<Loading />}>
+              <Sandbox />
             </Suspense>
           }
         />
