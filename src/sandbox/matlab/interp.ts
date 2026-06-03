@@ -9,6 +9,7 @@ import {
   isComplex, cmap, ewAdd, ewSub, ewMul, ewRDiv, ewLDiv, ewPow, ewEq, cmatmul,
   type Cell, type StructV, isCell, isStruct, makeCell, sparseToDense,
   type Str, isStr, makeStr, makeStrArr,
+  type Graph,
 } from './values';
 import { det, inv, mldivide } from './linalg';
 import { BUILTINS, CONSTANTS, builtinHelp, docUrl, type Env } from './builtins';
@@ -151,6 +152,7 @@ export class Interpreter implements Env {
       if (v.kind === 'struct') { out.push({ name, size: `${v.rows}x${v.cols}`, klass: 'struct', preview: dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) }); continue; }
       if (v.kind === 'sparse') { out.push({ name, size: `${v.rows}x${v.cols}`, klass: 'sparse double', preview: `${v.values.length} nonzeros` }); continue; }
       if (v.kind === 'str') { out.push({ name, size: `${v.rows}x${v.cols}`, klass: 'string', preview: dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) }); continue; }
+      if (v.kind === 'graph') { out.push({ name, size: '1x1', klass: v.directed ? 'digraph' : 'graph', preview: `${v.n} nodes, ${v.edges.length} edges` }); continue; }
       const klass = v.isChar ? 'char' : 'double';
       const preview = numel(v) <= 12 ? dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) : '…';
       out.push({ name, size: `${v.rows}x${v.cols}`, klass, preview });
@@ -426,6 +428,7 @@ export class Interpreter implements Env {
         const t = await this.evalExpr(e.target, scope);
         if (t.kind === 'gobj') return [scalar(0)];
         if (isStruct(t)) { const vals = t.fields.get(e.name); if (!vals) throw new MatError(`reference to non-existent field '${e.name}'`); return vals.length ? vals : []; }
+        if (t.kind === 'graph') return [graphProperty(t, e.name)];
         throw new MatError(`cannot read field '.${e.name}'`);
       }
       case 'cell': return this.evalCellContent(e.target, e.args, scope);
@@ -648,7 +651,25 @@ function asMat(v: Value): Mat {
   if (isMat(v)) return v;
   if (v.kind === 'sparse') return sparseToDense(v);   // sparse densifies on arithmetic/indexing
   if (v.kind === 'gobj') throw new MatError('expected a numeric value, got a graphics handle');
+  if (v.kind === 'graph') throw new MatError('expected a numeric value, got a graph (use adjacency(G) etc.)');
   throw new MatError('expected a numeric value, got a function handle');
+}
+/** Read a graph "property" via dot syntax (G.Edges, G.Nodes, G.numnodes, …). */
+function graphProperty(g: Graph, name: string): Value {
+  const low = name.toLowerCase();
+  if (low === 'numnodes') return scalar(g.n);
+  if (low === 'numedges') return scalar(g.edges.length);
+  if (low === 'edges') {
+    // a struct with EndNodes (m×2) and Weight (m×1) — our stand-in for the Edges table
+    const m = g.edges.length; const en = zeros(m, 2); const w = zeros(m, 1);
+    g.edges.forEach((e, i) => { en.data[i] = e.s + 1; en.data[i + m] = e.t + 1; w.data[i] = e.w; });
+    return { kind: 'struct', rows: 1, cols: 1, fields: new Map<string, Value[]>([['EndNodes', [en]], ['Weight', [w]]]) };
+  }
+  if (low === 'nodes') {
+    const names = g.names ?? Array.from({ length: g.n }, (_, i) => String(i + 1));
+    return { kind: 'struct', rows: 1, cols: 1, fields: new Map<string, Value[]>([['Name', [makeStrArr(g.n, 1, names)]]]) };
+  }
+  throw new MatError(`graph has no property '${name}'`);
 }
 function rootName(lv: LValue): string {
   let cur: LValue = lv;

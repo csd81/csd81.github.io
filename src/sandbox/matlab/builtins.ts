@@ -9,6 +9,7 @@ import {
   type Sparse, isSparse, sparseToDense, denseToSparse, sparseFromTriplets, sparseFromMap,
   makeND, ndSize, ndimsOf,
   type Str, isStr, makeStr, makeStrArr,
+  type Graph, isGraph, makeGraph,
 } from './values';
 import {
   det, inv, mldivide, diag, norm, eye,
@@ -1362,6 +1363,74 @@ export const BUILTINS: Record<string, Builtin> = {
     });
     return ret(out);
   },
+
+  // ── Graph / network ──
+  graph: async (a) => ret(buildGraph(false, a)),
+  digraph: async (a) => ret(buildGraph(true, a)),
+  numnodes: async (a) => ret(scalar(gArg(a[0]).n)),
+  numedges: async (a) => ret(scalar(gArg(a[0]).edges.length)),
+  addnode: async (a) => { const g = gArg(a[0]); const names = g.names ? g.names.slice() : undefined; let add = 0; if (isMat(a[1]) && !(a[1] as Mat).isChar) add = Math.round(asScalar(a[1])); else { const nn = nodeNameList(a[1]); add = nn.length; if (names) names.push(...nn); } return ret(makeGraph(g.directed, g.n + add, g.edges.map((e) => ({ ...e })), names)); },
+  rmnode: async (a) => {
+    const g = gArg(a[0]); const rm = new Set(nodeIds(g, a[1])); const keep: number[] = []; for (let i = 0; i < g.n; i++) if (!rm.has(i)) keep.push(i);
+    const remap = new Map(keep.map((old, ni) => [old, ni]));
+    const edges = g.edges.filter((e) => !rm.has(e.s) && !rm.has(e.t)).map((e) => ({ s: remap.get(e.s)!, t: remap.get(e.t)!, w: e.w }));
+    return ret(makeGraph(g.directed, keep.length, edges, g.names ? keep.map((i) => g.names![i]) : undefined));
+  },
+  addedge: async (a) => { const g = gArg(a[0]); const s = nodeIds(g, a[1]), t = nodeIds(g, a[2]); const wv = a.length >= 4 ? toArray(m(a[3])) : null; const ne = s.map((si, i) => ({ s: si, t: t[i], w: wv ? (wv.length === 1 ? wv[0] : wv[i]) : 1 })); const n = Math.max(g.n, ...s, ...t) + (s.length ? 0 : 0); return ret(makeGraph(g.directed, Math.max(g.n, ...s.map((x) => x + 1), ...t.map((x) => x + 1)), [...g.edges, ...ne], g.names)); void n; },
+  rmedge: async (a) => { const g = gArg(a[0]); const s = nodeIds(g, a[1]), t = nodeIds(g, a[2]); const drop = new Set(s.map((si, i) => `${Math.min(si, t[i])}_${Math.max(si, t[i])}`)); const edges = g.edges.filter((e) => !drop.has(`${Math.min(e.s, e.t)}_${Math.max(e.s, e.t)}`)); return ret(makeGraph(g.directed, g.n, edges, g.names)); },
+  neighbors: async (a) => { const g = gArg(a[0]); const i = nodeIds(g, a[1])[0]; const ns = [...new Set(adjList(g, 'out')[i].map((x) => x.to))].sort((x, y) => x - y); return ret(colVec(ns.map((x) => x + 1))); },
+  successors: async (a) => { const g = gArg(a[0]); const i = nodeIds(g, a[1])[0]; const ns = [...new Set(adjList(g, 'out')[i].map((x) => x.to))].sort((x, y) => x - y); return ret(colVec(ns.map((x) => x + 1))); },
+  predecessors: async (a) => { const g = gArg(a[0]); const i = nodeIds(g, a[1])[0]; const ns = [...new Set(adjList(g, 'in')[i].map((x) => x.to))].sort((x, y) => x - y); return ret(colVec(ns.map((x) => x + 1))); },
+  degree: async (a) => { const g = gArg(a[0]); const adj = adjList(g, 'all'); const sel = a.length >= 2 ? nodeIds(g, a[1]) : Array.from({ length: g.n }, (_, i) => i); return ret(colVec(sel.map((i) => adj[i].length))); },
+  outdegree: async (a) => { const g = gArg(a[0]); const adj = adjList(g, 'out'); const sel = a.length >= 2 ? nodeIds(g, a[1]) : Array.from({ length: g.n }, (_, i) => i); return ret(colVec(sel.map((i) => adj[i].length))); },
+  indegree: async (a) => { const g = gArg(a[0]); const adj = adjList(g, 'in'); const sel = a.length >= 2 ? nodeIds(g, a[1]) : Array.from({ length: g.n }, (_, i) => i); return ret(colVec(sel.map((i) => adj[i].length))); },
+  findnode: async (a) => { const g = gArg(a[0]); return ret(colVec(nodeIds(g, a[1]).map((i) => i + 1))); },
+  findedge: async (a, n) => {
+    const g = gArg(a[0]);
+    if (a.length === 1) { const m2 = g.edges.length; const S = zeros(m2, 1), T = zeros(m2, 1); g.edges.forEach((e, i) => { S.data[i] = e.s + 1; T.data[i] = e.t + 1; }); return n >= 2 ? [S, T] : [S]; }
+    const s = nodeIds(g, a[1]), t = nodeIds(g, a[2]); const out = s.map((si, i) => { const ti = t[i]; const idx = g.edges.findIndex((e) => (e.s === si && e.t === ti) || (!g.directed && e.s === ti && e.t === si)); return idx + 1; }); return ret(colVec(out));
+  },
+  adjacency: async (a) => ret(denseToSparse(adjacencyMat(gArg(a[0])))),
+  incidence: async (a) => { const g = gArg(a[0]); const I = zeros(g.n, g.edges.length); g.edges.forEach((e, j) => { I.data[e.s + j * g.n] += -1; I.data[e.t + j * g.n] += 1; }); return ret(denseToSparse(I)); },
+  laplacian: async (a) => { const g = gArg(a[0]); const A = adjacencyMat(g); const L = zeros(g.n, g.n); for (let i = 0; i < g.n; i++) { let d = 0; for (let j = 0; j < g.n; j++) { d += A.data[i + j * g.n]; L.data[i + j * g.n] = -A.data[i + j * g.n]; } L.data[i + i * g.n] = d - A.data[i + i * g.n]; } return ret(denseToSparse(L)); },
+  shortestpath: async (a, n) => {
+    const g = gArg(a[0]); const src = nodeIds(g, a[1])[0], dst = nodeIds(g, a[2])[0]; const { dist, prev } = dijkstra(g, src);
+    if (!isFinite(dist[dst])) return n >= 2 ? [zeros(1, 0), scalar(Infinity)] : [zeros(1, 0)];
+    const path: number[] = []; for (let u = dst; u >= 0; u = prev[u]) { path.unshift(u + 1); if (u === src) break; }
+    return n >= 2 ? [rowVec(path), scalar(dist[dst])] : [rowVec(path)];
+  },
+  distances: async (a) => {
+    const g = gArg(a[0]); const srcs = a.length >= 2 ? nodeIds(g, a[1]) : Array.from({ length: g.n }, (_, i) => i); const dsts = a.length >= 3 ? nodeIds(g, a[2]) : Array.from({ length: g.n }, (_, i) => i);
+    const D = zeros(srcs.length, dsts.length); srcs.forEach((s, i) => { const { dist } = dijkstra(g, s); dsts.forEach((t, j) => { D.data[i + j * srcs.length] = dist[t]; }); }); return ret(D);
+  },
+  bfsearch: async (a) => ret(colVec(bfsOrder(gArg(a[0]), nodeIds(gArg(a[0]), a[1])[0]).map((x) => x + 1))),
+  dfsearch: async (a) => ret(colVec(dfsOrder(gArg(a[0]), nodeIds(gArg(a[0]), a[1])[0]).map((x) => x + 1))),
+  conncomp: async (a) => ret(rowVec(connComp(gArg(a[0])))),
+  toposort: async (a) => { const o = topoSort(gArg(a[0])); if (!o) throw new MatError('toposort: graph is not acyclic'); return ret(rowVec(o.map((x) => x + 1))); },
+  isdag: async (a) => ret(bool(gArg(a[0]).directed && topoSort(gArg(a[0])) !== null)),
+  ismultigraph: async (a) => { const g = gArg(a[0]); const seen = new Set<string>(); for (const e of g.edges) { const k = g.directed ? `${e.s}_${e.t}` : `${Math.min(e.s, e.t)}_${Math.max(e.s, e.t)}`; if (seen.has(k)) return ret(bool(true)); seen.add(k); } return ret(bool(false)); },
+  minspantree: async (a) => { const g = gArg(a[0]); const tree = primMST(g); return ret(makeGraph(false, g.n, tree, g.names)); },
+  maxflow: async (a) => { const g = gArg(a[0]); return ret(scalar(maxFlow(g, nodeIds(g, a[1])[0], nodeIds(g, a[2])[0]))); },
+  subgraph: async (a) => {
+    const g = gArg(a[0]); const keep = nodeIds(g, a[1]); const remap = new Map(keep.map((old, ni) => [old, ni]));
+    const edges = g.edges.filter((e) => remap.has(e.s) && remap.has(e.t)).map((e) => ({ s: remap.get(e.s)!, t: remap.get(e.t)!, w: e.w }));
+    return ret(makeGraph(g.directed, keep.length, edges, g.names ? keep.map((i) => g.names![i]) : undefined));
+  },
+  reordernodes: async (a) => {
+    const g = gArg(a[0]); const order = nodeIds(g, a[1]); const pos = new Map(order.map((old, ni) => [old, ni]));
+    const edges = g.edges.map((e) => ({ s: pos.get(e.s)!, t: pos.get(e.t)!, w: e.w }));
+    return ret(makeGraph(g.directed, g.n, edges, g.names ? order.map((i) => g.names![i]) : undefined));
+  },
+  centrality: async (a) => {
+    const g = gArg(a[0]); const type = (a.length >= 2 ? asString(a[1]) : 'degree').toLowerCase();
+    if (type === 'degree') return ret(colVec(adjList(g, 'all').map((l) => l.length)));
+    if (type === 'outdegree') return ret(colVec(adjList(g, 'out').map((l) => l.length)));
+    if (type === 'indegree') return ret(colVec(adjList(g, 'in').map((l) => l.length)));
+    if (type === 'closeness') return ret(colVec(Array.from({ length: g.n }, (_, i) => { const { dist } = dijkstra(g, i); const reach = dist.filter((d) => isFinite(d) && d > 0); const sum = reach.reduce((s, d) => s + d, 0); return sum > 0 ? reach.length / sum * (reach.length / Math.max(1, g.n - 1)) : 0; })));
+    if (type === 'betweenness') return ret(colVec(betweenness(g)));
+    if (type === 'pagerank') return ret(colVec(pagerank(g)));
+    throw new MatError(`centrality: unsupported type '${type}'`);
+  },
   interp3: async (a) => {
     // interp3(V,Xq,Yq,Zq) or interp3(X,Y,Z,V,Xq,Yq,Zq) — trilinear on a regular grid.
     let V: Mat, Xq: Mat, Yq: Mat, Zq: Mat, xv: number[], yv: number[], zv: number[];
@@ -1596,7 +1665,7 @@ export const BUILTINS: Record<string, Builtin> = {
   },
 
   // graphics
-  plot: async (a, _n, env) => { env.graphics.plot(a); return []; },
+  plot: async (a, _n, env) => { if (a.length && isGraph(a[0])) { plotGraph(env, a[0]); return []; } env.graphics.plot(a); return []; },
   fplot: async (a, _n, env) => {
     const f = a[0];
     if (!isHandle(f)) throw new MatError('fplot: expected a function handle');
@@ -2151,6 +2220,38 @@ const HELP: Record<string, HelpEntry> = {
   voronoin: { summary: 'N-D Voronoi diagram (vertices V and cell index lists C)', syntax: ['[V,C] = voronoin(P)'], seealso: ['voronoi', 'delaunayn', 'convhulln'] },
   tsearchn: { summary: 'N-D enclosing-simplex search (index + barycentric coords)', syntax: ['t = tsearchn(P,T,PQ)', '[t,bc] = tsearchn(P,T,PQ)'], seealso: ['delaunayn', 'griddatan', 'dsearchn'] },
   griddatan: { summary: 'Interpolate scattered N-D data (linear or nearest)', syntax: ['vq = griddatan(P,v,PQ)', "vq = griddatan(P,v,PQ,'nearest')"], seealso: ['griddata', 'delaunayn', 'tsearchn'] },
+  graph: { summary: 'Create an undirected graph', syntax: ['G = graph(s,t)', 'G = graph(s,t,w)', 'G = graph(A)'], seealso: ['digraph', 'adjacency', 'shortestpath', 'plot'] },
+  digraph: { summary: 'Create a directed graph', syntax: ['G = digraph(s,t)', 'G = digraph(s,t,w)', 'G = digraph(A)'], seealso: ['graph', 'toposort', 'maxflow'] },
+  numnodes: { summary: 'Number of nodes in a graph', syntax: ['n = numnodes(G)'], seealso: ['numedges', 'graph'] },
+  numedges: { summary: 'Number of edges in a graph', syntax: ['m = numedges(G)'], seealso: ['numnodes', 'graph'] },
+  addnode: { summary: 'Add nodes to a graph', syntax: ['H = addnode(G,N)', 'H = addnode(G,names)'], seealso: ['rmnode', 'addedge'] },
+  rmnode: { summary: 'Remove nodes (and incident edges) from a graph', syntax: ['H = rmnode(G,nodes)'], seealso: ['addnode', 'rmedge'] },
+  addedge: { summary: 'Add edges to a graph', syntax: ['H = addedge(G,s,t)', 'H = addedge(G,s,t,w)'], seealso: ['rmedge', 'addnode'] },
+  rmedge: { summary: 'Remove edges from a graph', syntax: ['H = rmedge(G,s,t)'], seealso: ['addedge', 'rmnode'] },
+  neighbors: { summary: 'Neighbors of a node', syntax: ['N = neighbors(G,node)'], seealso: ['successors', 'predecessors', 'degree'] },
+  successors: { summary: 'Successor nodes in a digraph', syntax: ['N = successors(G,node)'], seealso: ['predecessors', 'neighbors'] },
+  predecessors: { summary: 'Predecessor nodes in a digraph', syntax: ['N = predecessors(G,node)'], seealso: ['successors', 'neighbors'] },
+  degree: { summary: 'Degree of graph nodes', syntax: ['d = degree(G)', 'd = degree(G,nodes)'], seealso: ['indegree', 'outdegree'] },
+  indegree: { summary: 'In-degree of digraph nodes', syntax: ['d = indegree(G)'], seealso: ['outdegree', 'degree'] },
+  outdegree: { summary: 'Out-degree of digraph nodes', syntax: ['d = outdegree(G)'], seealso: ['indegree', 'degree'] },
+  findnode: { summary: 'Locate a node by name or index', syntax: ['i = findnode(G,name)'], seealso: ['findedge'] },
+  findedge: { summary: 'Locate edges between nodes', syntax: ['idx = findedge(G,s,t)', '[s,t] = findedge(G)'], seealso: ['findnode'] },
+  adjacency: { summary: 'Adjacency matrix of a graph (sparse)', syntax: ['A = adjacency(G)'], seealso: ['incidence', 'laplacian'] },
+  incidence: { summary: 'Incidence matrix of a graph (sparse, signed)', syntax: ['I = incidence(G)'], seealso: ['adjacency', 'laplacian'] },
+  laplacian: { summary: 'Graph Laplacian (sparse, D−A)', syntax: ['L = laplacian(G)'], seealso: ['adjacency', 'incidence'] },
+  shortestpath: { summary: 'Shortest path between two nodes (Dijkstra)', syntax: ['P = shortestpath(G,s,t)', '[P,d] = shortestpath(G,s,t)'], seealso: ['distances', 'bfsearch'] },
+  distances: { summary: 'Shortest-path distances between node sets', syntax: ['D = distances(G)', 'D = distances(G,s,t)'], seealso: ['shortestpath'] },
+  bfsearch: { summary: 'Breadth-first search order from a node', syntax: ['v = bfsearch(G,s)'], seealso: ['dfsearch', 'shortestpath'] },
+  dfsearch: { summary: 'Depth-first search order from a node', syntax: ['v = dfsearch(G,s)'], seealso: ['bfsearch'] },
+  conncomp: { summary: 'Connected components of a graph', syntax: ['bins = conncomp(G)'], seealso: ['subgraph'] },
+  toposort: { summary: 'Topological order of a DAG', syntax: ['order = toposort(G)'], seealso: ['isdag', 'digraph'] },
+  isdag: { summary: 'True if a digraph is acyclic', syntax: ['tf = isdag(G)'], seealso: ['toposort'] },
+  ismultigraph: { summary: 'True if a graph has parallel edges', syntax: ['tf = ismultigraph(G)'], seealso: ['graph'] },
+  minspantree: { summary: 'Minimum spanning tree (Prim)', syntax: ['T = minspantree(G)'], seealso: ['graph', 'conncomp'] },
+  maxflow: { summary: 'Maximum flow between two nodes (Edmonds–Karp)', syntax: ['mf = maxflow(G,s,t)'], seealso: ['shortestpath'] },
+  subgraph: { summary: 'Extract a subgraph on a node subset', syntax: ['H = subgraph(G,nodes)'], seealso: ['rmnode', 'reordernodes'] },
+  reordernodes: { summary: 'Reorder graph nodes', syntax: ['H = reordernodes(G,order)'], seealso: ['subgraph'] },
+  centrality: { summary: 'Node centrality (degree/closeness/betweenness/pagerank)', syntax: ["c = centrality(G,'pagerank')"], seealso: ['degree', 'distances'] },
   griddata: { summary: 'Interpolate scattered 2-D data onto query points (linear or nearest)', syntax: ['vq = griddata(x,y,v,xq,yq)', "vq = griddata(x,y,v,xq,yq,'nearest')"], seealso: ['delaunay', 'interp2', 'scatteredInterpolant'] },
   interp3: { summary: 'Trilinear interpolation on a 3-D grid', syntax: ['Vq = interp3(V,Xq,Yq,Zq)', 'Vq = interp3(X,Y,Z,V,Xq,Yq,Zq)'], seealso: ['interp2', 'interp1', 'griddata'] },
   interpn: { summary: 'Gridded interpolation (1-D/2-D/3-D)', syntax: ['Vq = interpn(...)'], seealso: ['interp3', 'interp2', 'interp1'] },
@@ -2221,6 +2322,9 @@ const BASE_REF = new Set<string>((
   'mkpp unmkpp ppval ' +
   'psi expint sinint cosint legendre besselj bessely besseli besselk besselh airy ellipke ellipj ' +
   'delaunay griddata interp3 interpn boundary voronoi convhulln delaunayn voronoin tsearchn griddatan ' +
+  'graph digraph numnodes numedges addnode rmnode addedge rmedge neighbors successors predecessors degree indegree outdegree ' +
+  'findnode findedge adjacency incidence laplacian shortestpath distances bfsearch dfsearch conncomp toposort isdag ismultigraph ' +
+  'minspantree maxflow subgraph reordernodes centrality ' +
   'rsf2csf balance qz ordschur ordeig sylvester lsqminnorm expmv ' +
   'rms geomean harmmean movmad movprod movstd movvar mape rmse idivide polydiv betaincinv gammaincinv rosser rng convn optimset optimget quad2d ' +
   'ismissing anymissing standardizeMissing rmmissing fillmissing isbetween isuniform allunique numunique uniquetol ismembertol issortedrows paddata trimdata resize discretize ' +
@@ -2262,9 +2366,10 @@ function trimNum(x: number): string {
   return parseFloat(x.toPrecision(5)).toString();
 }
 function matToStr(A: Mat): string {
+  if (A.rows === 1 && A.cols === 1) return trimNum(A.data[0]);   // scalar → no brackets
   const rows: string[] = [];
   for (let r = 0; r < A.rows; r++) { const row: string[] = []; for (let c = 0; c < A.cols; c++) row.push(trimNum(A.data[r + c * A.rows])); rows.push(row.join(' ')); }
-  return rows.join('; ');
+  return `[${rows.join(';')}]`;   // MATLAB brackets vectors/matrices
 }
 
 // ── Math helpers for the elementary-math builtins ─────────────────────────
@@ -3151,6 +3256,167 @@ function circumcenterND(pts: number[][]): number[] {
   const A: number[][] = []; const b: number[] = [];
   for (let i = 1; i <= d; i++) { A.push(pts[i].map((v, j) => 2 * (v - v0[j]))); b.push(pts[i].reduce((s, v) => s + v * v, 0) - v0.reduce((s, v) => s + v * v, 0)); }
   return solveLin(A, b) ?? v0.map((_, j) => pts.reduce((s, p) => s + p[j], 0) / pts.length);
+}
+
+// ── Graph / network ────────────────────────────────────────────────────
+function gArg(v: Value, name = 'G'): Graph { if (!isGraph(v)) throw new MatError(`${name}: expected a graph or digraph`); return v; }
+/** Resolve a node selector (numeric indices, a name, or a cellstr/string array) to 0-based indices. */
+function nodeIds(g: Graph, v: Value): number[] {
+  if (isStr(v)) return v.items.map((nm) => resolveName(g, nm));
+  if (isMat(v) && v.isChar) return [resolveName(g, asString(v))];
+  if (isCell(v)) return v.items.map((it) => resolveName(g, asString(it)));
+  return toArray(m(v)).map((x) => Math.round(x) - 1);
+}
+function resolveName(g: Graph, nm: string): number { const i = (g.names ?? []).indexOf(nm); if (i < 0) throw new MatError(`node '${nm}' not found`); return i; }
+/** Adjacency list. For digraphs, `mode` selects out-edges, in-edges, or both. */
+function adjList(g: Graph, mode: 'out' | 'in' | 'all'): { to: number; w: number; e: number }[][] {
+  const adj: { to: number; w: number; e: number }[][] = Array.from({ length: g.n }, () => []);
+  g.edges.forEach((e, ei) => {
+    if (!g.directed) { adj[e.s].push({ to: e.t, w: e.w, e: ei }); if (e.s !== e.t) adj[e.t].push({ to: e.s, w: e.w, e: ei }); return; }
+    if (mode === 'out' || mode === 'all') adj[e.s].push({ to: e.t, w: e.w, e: ei });
+    if (mode === 'in' || mode === 'all') adj[e.t].push({ to: e.s, w: e.w, e: ei });
+  });
+  return adj;
+}
+/** Build a graph/digraph from graph(A) | graph(s,t[,w[,n|names]]). */
+function buildGraph(directed: boolean, a: Value[]): Graph {
+  // graph(A) or graph(A, names): square (weighted) adjacency matrix.
+  if (a.length >= 1 && (isMat(a[0]) || isSparse(a[0])) && !(isMat(a[0]) && (a[0] as Mat).isChar)) {
+    const A = isSparse(a[0]) ? sparseToDense(a[0]) : m(a[0]);
+    if (A.rows === A.cols && (A.rows > 1 || a.length >= 2)) {
+      const n = A.rows; const edges: { s: number; t: number; w: number }[] = [];
+      for (let i = 0; i < n; i++) for (let j = directed ? 0 : i; j < n; j++) { const w = A.data[i + j * n]; if (w !== 0 && (directed || j >= i)) edges.push({ s: i, t: j, w }); }
+      const names = a.length >= 2 ? nodeNameList(a[1]) : undefined;
+      return makeGraph(directed, n, edges, names);
+    }
+  }
+  // edge-list form: graph(s, t [, w [, n | nodenames]])
+  let names: string[] | undefined;
+  const resolveEnd = (v: Value): number[] => {
+    if (isStr(v) || (isMat(v) && (v as Mat).isChar) || isCell(v)) { const list = nodeNameList(v); names = names ?? []; return list.map((nm) => { let k = names!.indexOf(nm); if (k < 0) { k = names!.length; names!.push(nm); } return k; }); }
+    return toArray(m(v)).map((x) => Math.round(x) - 1);
+  };
+  const s = resolveEnd(a[0]), t = resolveEnd(a[1]);
+  const wv = a.length >= 3 && isMat(a[2]) && !(a[2] as Mat).isChar ? toArray(a[2] as Mat) : null;
+  const edges = s.map((si, i) => ({ s: si, t: t[i], w: wv ? (wv.length === 1 ? wv[0] : wv[i]) : 1 }));
+  let n = Math.max(0, ...s, ...t) + 1;
+  if (a.length >= 4) { if (isMat(a[3]) && !(a[3] as Mat).isChar) n = Math.max(n, Math.round(asScalar(a[3]))); else { names = nodeNameList(a[3]); n = names.length; } }
+  if (names && names.length > n) n = names.length;
+  return makeGraph(directed, n, edges, names);
+}
+function nodeNameList(v: Value): string[] {
+  if (isStr(v)) return v.items.slice();
+  if (isCell(v)) return v.items.map((it) => asString(it));
+  if (isMat(v) && v.isChar) return [asString(v)];
+  // numeric scalar = node count → default names
+  const n = Math.round(asScalar(v as Mat)); return Array.from({ length: n }, (_, i) => String(i + 1));
+}
+function adjacencyMat(g: Graph): Mat {
+  const A = zeros(g.n, g.n);
+  for (const e of g.edges) { A.data[e.s + e.t * g.n] += e.w; if (!g.directed && e.s !== e.t) A.data[e.t + e.s * g.n] += e.w; }
+  return A;
+}
+function dijkstra(g: Graph, src: number): { dist: number[]; prev: number[] } {
+  const adj = adjList(g, 'out'); const dist = new Array(g.n).fill(Infinity); const prev = new Array(g.n).fill(-1); const done = new Array(g.n).fill(false);
+  dist[src] = 0;
+  for (let it = 0; it < g.n; it++) {
+    let u = -1, bd = Infinity; for (let i = 0; i < g.n; i++) if (!done[i] && dist[i] < bd) { bd = dist[i]; u = i; }
+    if (u < 0) break; done[u] = true;
+    for (const { to, w } of adj[u]) { const nd = dist[u] + (w === 0 ? 0 : w); if (nd < dist[to]) { dist[to] = nd; prev[to] = u; } }
+  }
+  return { dist, prev };
+}
+function bfsOrder(g: Graph, src: number): number[] {
+  const adj = adjList(g, 'out'); const seen = new Array(g.n).fill(false); const order: number[] = []; const q = [src]; seen[src] = true;
+  while (q.length) { const u = q.shift()!; order.push(u); for (const { to } of adj[u].slice().sort((x, y) => x.to - y.to)) if (!seen[to]) { seen[to] = true; q.push(to); } }
+  return order;
+}
+function dfsOrder(g: Graph, src: number): number[] {
+  const adj = adjList(g, 'out'); const seen = new Array(g.n).fill(false); const order: number[] = [];
+  const stack = [src];
+  const visit = (u: number) => { seen[u] = true; order.push(u); for (const { to } of adj[u].slice().sort((x, y) => x.to - y.to)) if (!seen[to]) visit(to); };
+  visit(src); void stack;
+  return order;
+}
+/** Weakly-connected components (treat edges as undirected); returns 1-based component label per node. */
+function connComp(g: Graph): number[] {
+  const par = Array.from({ length: g.n }, (_, i) => i);
+  const find = (x: number): number => { while (par[x] !== x) { par[x] = par[par[x]]; x = par[x]; } return x; };
+  for (const e of g.edges) { par[find(e.s)] = find(e.t); }
+  const label = new Array(g.n).fill(0); let next = 0; const seen = new Map<number, number>();
+  for (let i = 0; i < g.n; i++) { const r = find(i); if (!seen.has(r)) seen.set(r, ++next); label[i] = seen.get(r)!; }
+  return label;
+}
+/** Kahn topological order (digraph); returns null if a cycle exists. */
+function topoSort(g: Graph): number[] | null {
+  const indeg = new Array(g.n).fill(0); const adj = adjList(g, 'out');
+  for (const e of g.edges) indeg[e.t]++;
+  const q: number[] = []; for (let i = 0; i < g.n; i++) if (indeg[i] === 0) q.push(i); q.sort((x, y) => x - y);
+  const order: number[] = [];
+  while (q.length) { const u = q.shift()!; order.push(u); for (const { to } of adj[u]) if (--indeg[to] === 0) { q.push(to); q.sort((x, y) => x - y); } }
+  return order.length === g.n ? order : null;
+}
+/** Prim minimum spanning tree (undirected, connected component of node 0); returns the tree edges. */
+function primMST(g: Graph): { s: number; t: number; w: number }[] {
+  const adj = adjList(g, 'all'); const inT = new Array(g.n).fill(false); const tree: { s: number; t: number; w: number }[] = [];
+  if (!g.n) return tree; inT[0] = true; let cnt = 1;
+  while (cnt < g.n) {
+    let be: { s: number; t: number; w: number } | null = null;
+    for (let u = 0; u < g.n; u++) if (inT[u]) for (const { to, w } of adj[u]) if (!inT[to] && (!be || w < be.w)) be = { s: u, t: to, w };
+    if (!be) break; inT[be.t] = true; tree.push(be); cnt++;
+  }
+  return tree;
+}
+/** Edmonds–Karp max flow from src to sink. */
+function maxFlow(g: Graph, src: number, sink: number): number {
+  const cap: number[][] = Array.from({ length: g.n }, () => new Array(g.n).fill(0));
+  for (const e of g.edges) { cap[e.s][e.t] += e.w; if (!g.directed) cap[e.t][e.s] += e.w; }
+  let flow = 0;
+  for (;;) {
+    const prev = new Array(g.n).fill(-1); prev[src] = src; const q = [src];
+    while (q.length) { const u = q.shift()!; for (let v = 0; v < g.n; v++) if (prev[v] < 0 && cap[u][v] > 1e-12) { prev[v] = u; q.push(v); } }
+    if (prev[sink] < 0) break;
+    let aug = Infinity; for (let v = sink; v !== src; v = prev[v]) aug = Math.min(aug, cap[prev[v]][v]);
+    for (let v = sink; v !== src; v = prev[v]) { cap[prev[v]][v] -= aug; cap[v][prev[v]] += aug; }
+    flow += aug;
+  }
+  return flow;
+}
+/** Brandes betweenness centrality (unweighted, BFS-based). */
+function betweenness(g: Graph): number[] {
+  const adj = adjList(g, 'out'); const CB = new Array(g.n).fill(0);
+  for (let s = 0; s < g.n; s++) {
+    const stack: number[] = []; const pred: number[][] = Array.from({ length: g.n }, () => []);
+    const sigma = new Array(g.n).fill(0); sigma[s] = 1; const dist = new Array(g.n).fill(-1); dist[s] = 0; const q = [s];
+    while (q.length) { const v = q.shift()!; stack.push(v); for (const { to: w } of adj[v]) { if (dist[w] < 0) { dist[w] = dist[v] + 1; q.push(w); } if (dist[w] === dist[v] + 1) { sigma[w] += sigma[v]; pred[w].push(v); } } }
+    const delta = new Array(g.n).fill(0);
+    while (stack.length) { const w = stack.pop()!; for (const v of pred[w]) delta[v] += (sigma[v] / sigma[w]) * (1 + delta[w]); if (w !== s) CB[w] += delta[w]; }
+  }
+  if (!g.directed) for (let i = 0; i < g.n; i++) CB[i] /= 2;
+  return CB;
+}
+/** PageRank via power iteration. */
+function pagerank(g: Graph, damp = 0.85): number[] {
+  const adj = adjList(g, 'out'); const out = adj.map((l) => l.length); let pr = new Array(g.n).fill(1 / g.n);
+  for (let it = 0; it < 200; it++) {
+    const next = new Array(g.n).fill((1 - damp) / g.n);
+    let dangling = 0; for (let i = 0; i < g.n; i++) if (out[i] === 0) dangling += damp * pr[i] / g.n;
+    for (let u = 0; u < g.n; u++) if (out[u]) for (const { to } of adj[u]) next[to] += damp * pr[u] / out[u];
+    for (let i = 0; i < g.n; i++) next[i] += dangling;
+    let diff = 0; for (let i = 0; i < g.n; i++) diff += Math.abs(next[i] - pr[i]); pr = next; if (diff < 1e-12) break;
+  }
+  return pr;
+}
+
+/** Draw a graph with a simple circular layout: edges as line segments, nodes as markers. */
+function plotGraph(env: Env, g: Graph): void {
+  const pos = Array.from({ length: g.n }, (_, i) => { const th = 2 * Math.PI * i / Math.max(1, g.n) - Math.PI / 2; return [Math.cos(th), Math.sin(th)] as [number, number]; });
+  const ex: number[] = [], ey: number[] = [];
+  for (const e of g.edges) { ex.push(pos[e.s][0], pos[e.t][0], NaN); ey.push(pos[e.s][1], pos[e.t][1], NaN); }
+  env.graphics.addSeries(ex, ey);
+  env.graphics.hold(true);
+  env.graphics.scatter([rowVec(pos.map((p) => p[0])), rowVec(pos.map((p) => p[1]))]);
+  env.graphics.hold(false);
 }
 
 // ── Piecewise-polynomial (pp) form ───────────────────────────────────────

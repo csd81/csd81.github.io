@@ -55,7 +55,15 @@ export interface Str {
   cols: number;
   items: string[];   // column-major: element (r,c) at items[r + c*rows]
 }
-export type Value = Mat | Handle | GObj | Cell | StructV | Sparse | Str;
+/** Graph / digraph object: node count (+ optional names) and a weighted edge list. */
+export interface Graph {
+  kind: 'graph';
+  directed: boolean;
+  n: number;                                   // number of nodes
+  names?: string[];                            // optional node names (length n)
+  edges: { s: number; t: number; w: number }[]; // 0-based endpoints, weight (default 1)
+}
+export type Value = Mat | Handle | GObj | Cell | StructV | Sparse | Str | Graph;
 
 export class MatError extends Error {}
 
@@ -101,13 +109,18 @@ export function isCell(v: Value): v is Cell { return v.kind === 'cell'; }
 export function isStruct(v: Value): v is StructV { return v.kind === 'struct'; }
 export function isSparse(v: Value): v is Sparse { return v.kind === 'sparse'; }
 export function isStr(v: Value): v is Str { return v.kind === 'str'; }
+export function isGraph(v: Value): v is Graph { return v.kind === 'graph'; }
+export function makeGraph(directed: boolean, n: number, edges: { s: number; t: number; w: number }[], names?: string[]): Graph {
+  return { kind: 'graph', directed, n, edges, names };
+}
 export function makeStrArr(rows: number, cols: number, items: string[]): Str { return { kind: 'str', rows, cols, items }; }
 export function makeStr(s: string): Str { return { kind: 'str', rows: 1, cols: 1, items: [s] }; }
 export function makeCell(rows: number, cols: number, items: Value[]): Cell { return { kind: 'cell', rows, cols, items }; }
 /** Dimensions of any value. */
 export function dimsOf(v: Value): [number, number] {
   if (v.kind === 'num' || v.kind === 'cell' || v.kind === 'struct' || v.kind === 'sparse' || v.kind === 'str') return [v.rows, v.cols];
-  return [1, 1];
+  return [1, 1];   // graph/handle/gobj are scalar objects
+
 }
 
 // ── Sparse (CSC) constructors / conversions ────────────────────────────
