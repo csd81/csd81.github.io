@@ -1178,6 +1178,42 @@ export const BUILTINS: Record<string, Builtin> = {
   assert: async (a) => { if (!truthy(a[0])) throw new MatError(a.length >= 2 && isMat(a[1]) && (a[1] as Mat).isChar ? asString(a[1]) : 'assert: condition failed'); return []; },
   narginchk: async () => [], nargoutchk: async () => [], nargchk: async () => ret(str('')),
   validateattributes: async () => [],
+  // ── arguments-block validators (mustBe*) — error on violation, else no output ──
+  mustBePositive: async (a) => mustBeNum(a[0], (x) => x > 0, 'must be positive'),
+  mustBeNonnegative: async (a) => mustBeNum(a[0], (x) => x >= 0, 'must be nonnegative'),
+  mustBeNegative: async (a) => mustBeNum(a[0], (x) => x < 0, 'must be negative'),
+  mustBeNonpositive: async (a) => mustBeNum(a[0], (x) => x <= 0, 'must be nonpositive'),
+  mustBeNonzero: async (a) => mustBeNum(a[0], (x) => x !== 0, 'must be nonzero'),
+  mustBeFinite: async (a) => mustBeNum(a[0], (x) => Number.isFinite(x), 'must be finite'),
+  mustBeNonNan: async (a) => mustBeNum(a[0], (x) => !Number.isNaN(x), 'must be non-NaN'),
+  mustBeInteger: async (a) => mustBeNum(a[0], (x) => Number.isInteger(x), 'must be integer'),
+  mustBeReal: async (a) => { const M = m(a[0]); if (M.idata && M.idata.some((v) => v !== 0)) throw new MatError('Value must be real.'); return []; },
+  mustBeNumeric: async (a) => { if (!isMat(a[0])) throw new MatError('Value must be numeric.'); return []; },
+  mustBeNumericOrLogical: async (a) => { if (!isMat(a[0])) throw new MatError('Value must be numeric or logical.'); return []; },
+  mustBeFloat: async (a) => { if (!isMat(a[0])) throw new MatError('Value must be a float.'); return []; },
+  mustBeNonempty: async (a) => { if (isEmpty(a[0] as Mat)) throw new MatError('Value must not be empty.'); return []; },
+  mustBeGreaterThan: async (a) => mustBeNum(a[0], (x) => x > asScalar(a[1]), `must be greater than ${asScalar(a[1])}`),
+  mustBeLessThan: async (a) => mustBeNum(a[0], (x) => x < asScalar(a[1]), `must be less than ${asScalar(a[1])}`),
+  mustBeGreaterThanOrEqual: async (a) => mustBeNum(a[0], (x) => x >= asScalar(a[1]), `must be >= ${asScalar(a[1])}`),
+  mustBeLessThanOrEqual: async (a) => mustBeNum(a[0], (x) => x <= asScalar(a[1]), `must be <= ${asScalar(a[1])}`),
+  mustBeInRange: async (a) => { const lo = asScalar(a[1]), hi = asScalar(a[2]); return mustBeNum(a[0], (x) => x >= lo && x <= hi, `must be in range [${lo}, ${hi}]`); },
+  mustBeMember: async (a) => { const set = new Set(toArray(m(a[1]))); return mustBeNum(a[0], (x) => set.has(x), 'must be a member of the allowed set'); },
+  mustBeVector: async (a) => { const M = m(a[0]); if (M.rows !== 1 && M.cols !== 1) throw new MatError('Value must be a vector.'); return []; },
+  mustBeMatrix: async (a) => { dimsOf(a[0]); return []; },
+  mustBeScalarOrEmpty: async (a) => { const M = m(a[0]); if (!isEmpty(M) && numel(M) !== 1) throw new MatError('Value must be scalar or empty.'); return []; },
+  mustBeColumn: async (a) => { const M = m(a[0]); if (M.cols !== 1) throw new MatError('Value must be a column vector.'); return []; },
+  mustBeRow: async (a) => { const M = m(a[0]); if (M.rows !== 1) throw new MatError('Value must be a row vector.'); return []; },
+  mustBeSorted: async (a) => { const v = toArray(m(a[0])); for (let i = 1; i < v.length; i++) if (v[i] < v[i - 1]) throw new MatError('Value must be sorted in ascending order.'); return []; },
+  mustBeText: async (a) => { if (!isStr(a[0]) && !isCell(a[0]) && !(isMat(a[0]) && (a[0] as Mat).isChar)) throw new MatError('Value must be text.'); return []; },
+  mustBeTextScalar: async (a) => { if (!(isStr(a[0]) || (isMat(a[0]) && (a[0] as Mat).isChar))) throw new MatError('Value must be a single piece of text.'); return []; },
+  mustBeNonzeroLengthText: async (a) => { const s = asString(a[0]); if (s.length === 0) throw new MatError('Value must be text with one or more characters.'); return []; },
+  // ── path-string utilities (no real filesystem; pure string manipulation) ──
+  filesep: async () => ret(str('/')),
+  pathsep: async () => ret(str(':')),
+  fullfile: async (a) => ret(str(a.map((x) => asString(x)).filter((s) => s.length).join('/').replace(/\/+/g, '/'))),
+  fileparts: async (a, n) => { const p = asString(a[0]); const slash = p.lastIndexOf('/'); const dir = slash >= 0 ? p.slice(0, slash) : ''; const base = slash >= 0 ? p.slice(slash + 1) : p; const dot = base.lastIndexOf('.'); const name = dot > 0 ? base.slice(0, dot) : base; const ext = dot > 0 ? base.slice(dot) : ''; return n >= 2 ? [str(dir), str(name), str(ext)] : [str(dir)]; },
+  cputime: async () => ret(scalar((typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000)),
+  beep: async () => [],
   inputname: async () => ret(str('')),
   isvarname: async (a) => { const s = isMat(a[0]) && (a[0] as Mat).isChar ? asString(a[0]) : ''; const KW = new Set(['for', 'while', 'if', 'else', 'elseif', 'end', 'switch', 'case', 'otherwise', 'function', 'return', 'break', 'continue', 'global', 'persistent', 'try', 'catch']); return ret(bool(/^[A-Za-z][A-Za-z0-9_]*$/.test(s) && s.length <= 63 && !KW.has(s))); },
   genvarname: async (a) => { let s = asString(a[0]).replace(/[^A-Za-z0-9_]/g, '_'); if (!/^[A-Za-z]/.test(s)) s = 'x' + s; return ret(str(s || 'x')); },
@@ -2956,6 +2992,13 @@ function orthoPoly(kind: string, n: number, x: number): number {
     p0 = p1; p1 = pk;
   }
   return p1;
+}
+
+/** Shared check for the mustBe* numeric validators: every element must satisfy pred. */
+function mustBeNum(v: Value, pred: (x: number) => boolean, msg: string): Value[] {
+  if (!isMat(v)) throw new MatError(`Value ${msg}.`);
+  for (const x of (v as Mat).data) if (!pred(x)) throw new MatError(`Value ${msg}.`);
+  return [];
 }
 
 /** Adjugate (classical adjoint) via cofactors — works for singular matrices too. */
