@@ -533,7 +533,8 @@ export class Interpreter implements Env {
         s.vars = new Map(snapshot);
         s.nargin = args.length; s.nargout = nargout;
         for (let i = 0; i < params.length; i++) if (params[i] !== '~' && i < args.length) s.vars.set(params[i], args[i]);
-        return [await this.evalExpr(body, s)];
+        // propagate nargout so `@(...) deal(...)` / multi-output calls work
+        return nargout > 1 ? this.evalValues(body, s, nargout) : [await this.evalExpr(body, s)];
       },
     };
   }

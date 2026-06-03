@@ -1252,6 +1252,14 @@ export const BUILTINS: Record<string, Builtin> = {
   ode23s: async (a, n, env) => odeSolveRos23(a, n, env),
   ode23t: async (a, n, env) => odeSolveNDF(a, n, env),
   ode23tb: async (a, n, env) => odeSolveRos23(a, n, env),
+  pdepe: async (a, _n, env) => pdepeSolve(a, env),
+  pdeval: async (a) => {
+    // [uout,duoutdx] = pdeval(m, xmesh, ui, xout) — piecewise-linear value + slope of one PDE component.
+    const xmesh = toArray(m(a[1])), ui = toArray(m(a[2])), xout = toArray(m(a[3]));
+    const uo: number[] = [], du: number[] = [];
+    for (const xq of xout) { let i = 0; while (i < xmesh.length - 2 && xq > xmesh[i + 1]) i++; const h = xmesh[i + 1] - xmesh[i] || 1; const t = (xq - xmesh[i]) / h; uo.push(ui[i] + t * (ui[i + 1] - ui[i])); du.push((ui[i + 1] - ui[i]) / h); }
+    return [rowVec(uo), rowVec(du)];
+  },
   cumtrapz: async (a) => {
     let x: number[], y: number[];
     if (a.length >= 2) { x = toArray(m(a[0])); y = toArray(m(a[1])); } else { y = toArray(m(a[0])); x = y.map((_, i) => i + 1); }
@@ -2483,6 +2491,8 @@ const HELP: Record<string, HelpEntry> = {
   ode45: { summary: 'Solve nonstiff ODEs (adaptive Dormand-Prince RK45)', syntax: ['[t,y] = ode45(@f,tspan,y0)', '[t,y] = ode45(@f,tspan,y0,opts)'], seealso: ['ode23', 'ode15s', 'ode23s', 'odeset'] },
   ode23: { summary: 'Solve nonstiff ODEs (adaptive Bogacki-Shampine 2,3)', syntax: ['[t,y] = ode23(@f,tspan,y0)'], seealso: ['ode45', 'ode23s', 'odeset'] },
   ode15s: { summary: 'Solve stiff ODEs (variable-order 1–5 NDF/BDF)', syntax: ['[t,y] = ode15s(@f,tspan,y0)', "opts=odeset('MaxOrder',2)"], seealso: ['ode23s', 'ode45', 'odeset'] },
+  pdepe: { summary: 'Solve 1-D parabolic/elliptic PDEs (method of lines + implicit time stepping)', syntax: ['sol = pdepe(m,@pdefun,@icfun,@bcfun,xmesh,tspan)'], seealso: ['pdeval', 'ode15s'] },
+  pdeval: { summary: 'Evaluate a pdepe solution component (value + flux)', syntax: ['[u,dudx] = pdeval(m,xmesh,ui,xq)'], seealso: ['pdepe'] },
   ode23s: { summary: 'Solve stiff ODEs (modified Rosenbrock 2,3; L-stable, numeric Jacobian)', syntax: ['[t,y] = ode23s(@f,tspan,y0)'], seealso: ['ode15s', 'ode45', 'odeset'] },
   odeset: { summary: 'Create/modify an ODE options struct (RelTol, AbsTol, InitialStep, MaxStep)', syntax: ["opts = odeset('RelTol',1e-6,'AbsTol',1e-8)"], seealso: ['ode45', 'ode15s'] },
   logspace: { summary: 'Logarithmically spaced vector', syntax: ['y = logspace(a,b)', 'y = logspace(a,b,n)'], seealso: ['linspace'] },
@@ -2658,6 +2668,7 @@ const BASE_REF = new Set<string>((
   'triangulation delaunayTriangulation polyshape alphaShape nsidedpoly freeBoundary edges incenter circumcenter faceNormal nearestNeighbor pointLocation ' +
   'convexHull voronoiDiagram barycentricToCartesian cartesianToBarycentric perimeter centroid isinterior numsides numboundaries translate scale rotate ' +
   'volume surfaceArea inShape boundaryFacets criticalAlpha alphaSpectrum numRegions isConnected triplot rgbplot ' +
+  'pdepe pdeval ' +
   'sphere cylinder ellipsoid fsurf fmesh fcontour quiver ' +
   'bar barh area stem stairs scatter scatter3 plot3 stem3 errorbar pie histogram loglog semilogx semilogy subtitle sgtitle zlim xticks yticks zticks text box ' +
   'jet parula turbo hot cool gray bone copper pink spring summer autumn winter hsv lines colorcube cellstr dsearchn brighten ' +
@@ -4286,6 +4297,70 @@ async function odeSolve(a: Value[], nargout: number, env: Env): Promise<Value[]>
 
 // ── Shared ODE helpers (Shampine–Reichelt "The MATLAB ODE Suite") ──
 /** Assemble the [t,y] (or y) output from collected times/states. */
+/** pdepe(m, pdefun, icfun, bcfun, xmesh, tspan): 1-D parabolic/elliptic PDE solver.
+ *  Skeel–Berzins control-volume method of lines + Crank–Nicolson (implicit, A-stable) in time. */
+async function pdepeSolve(a: Value[], env: Env): Promise<Value[]> {
+  const msym = Math.round(asScalar(a[0]));
+  const pdefun = handle(a[1], 'pdepe'), icfun = handle(a[2], 'pdepe'), bcfun = handle(a[3], 'pdepe');
+  const x = toArray(m(a[4])), tspan = toArray(m(a[5])); const N = x.length;
+  const xm = (v: number) => (msym === 0 ? 1 : Math.pow(Math.max(v, 0), msym));
+  // initial condition → neq, U0
+  const u0row = await env.callHandle(icfun, [scalar(x[0])], 1); const neq = numel(m(u0row[0]));
+  const M = N * neq; const U0 = new Float64Array(M);
+  for (let i = 0; i < N; i++) { const ui = toArray(m((await env.callHandle(icfun, [scalar(x[i])], 1))[0])); for (let k = 0; k < neq; k++) U0[i * neq + k] = ui[k]; }
+  const callPde = async (xx: number, t: number, u: number[], ux: number[]) => { const r = await env.callHandle(pdefun, [scalar(xx), scalar(t), colVec(u), colVec(ux)], 3); return { c: toArray(m(r[0])), f: toArray(m(r[1])), s: toArray(m(r[2])) }; };
+  /** Mass coefficients c[row], spatial RHS Rhat[row], and algebraic-BC info at (t,U). */
+  const evalState = async (t: number, U: Float64Array) => {
+    const node = (i: number) => Array.from({ length: neq }, (_, k) => U[i * neq + k]);
+    const cN = new Float64Array(M), Rhat = new Float64Array(M);
+    // interface fluxes
+    const interfaceF = async (i: number) => { const xi = (x[i] + x[i + 1]) / 2; const uL = node(i), uR = node(i + 1); const um = uL.map((v, k) => (v + uR[k]) / 2); const ux = uL.map((v, k) => (uR[k] - v) / (x[i + 1] - x[i])); return (await callPde(xi, t, um, ux)).f; };
+    const fInt: number[][] = []; for (let i = 0; i < N - 1; i++) fInt.push(await interfaceF(i));
+    // boundary conditions
+    const ul = node(0), ur = node(N - 1);
+    const bc = await env.callHandle(bcfun, [scalar(x[0]), colVec(ul), scalar(x[N - 1]), colVec(ur), scalar(t)], 4);
+    const pl = toArray(m(bc[0])), ql = toArray(m(bc[1])), pr = toArray(m(bc[2])), qr = toArray(m(bc[3]));
+    const algL: boolean[] = [], algR: boolean[] = [], algLval: number[] = [], algRval: number[] = [];
+    for (let i = 0; i < N; i++) {
+      const ui = node(i); const uxC = i === 0 ? node(1).map((v, k) => (v - ui[k]) / (x[1] - x[0])) : i === N - 1 ? ui.map((v, k) => (v - node(N - 2)[k]) / (x[N - 1] - x[N - 2])) : node(i + 1).map((v, k) => (v - node(i - 1)[k]) / (x[i + 1] - x[i - 1]));
+      const { c, s } = await callPde(x[i], t, ui, uxC);
+      for (let k = 0; k < neq; k++) cN[i * neq + k] = c[k];
+      if (i > 0 && i < N - 1) { const xiL = (x[i - 1] + x[i]) / 2, xiR = (x[i] + x[i + 1]) / 2; const w = xm(x[i]) * (xiR - xiL); for (let k = 0; k < neq; k++) Rhat[i * neq + k] = (xm(xiR) * fInt[i][k] - xm(xiL) * fInt[i - 1][k]) / w + s[k]; }
+      else if (i === 0) { const xiR = (x[0] + x[1]) / 2; const w = xm(x[0]) * (xiR - x[0]); for (let k = 0; k < neq; k++) { if (Math.abs(ql[k]) < 1e-12) { algL[k] = true; algLval[k] = pl[k]; } else { const fL = -pl[k] / ql[k]; Rhat[k] = (xm(xiR) * fInt[0][k] - xm(x[0]) * fL) / w + s[k]; } } }
+      else { const xiL = (x[N - 2] + x[N - 1]) / 2; const w = xm(x[N - 1]) * (x[N - 1] - xiL); for (let k = 0; k < neq; k++) { if (Math.abs(qr[k]) < 1e-12) { algR[k] = true; algRval[k] = pr[k]; } else { const fR = -pr[k] / qr[k]; Rhat[(N - 1) * neq + k] = (xm(x[N - 1]) * fR - xm(xiL) * fInt[N - 2][k]) / w + s[k]; } } }
+    }
+    return { cN, Rhat, algL, algR, algLval, algRval };
+  };
+  // Crank–Nicolson with Newton; output at each tspan point.
+  let U = U0.slice(); const sol: Float64Array[] = [U.slice()];
+  let st0 = await evalState(tspan[0], U);
+  for (let ti = 1; ti < tspan.length; ti++) {
+    const nsub = 10; const dt = (tspan[ti] - tspan[ti - 1]) / nsub;
+    for (let sub = 0; sub < nsub; sub++) {
+      const told = tspan[ti - 1] + sub * dt, tnew = told + dt; const Uold = U.slice(); const stOld = st0;
+      const resid = async (Un: Float64Array, st: { cN: Float64Array; Rhat: Float64Array; algL: boolean[]; algR: boolean[]; algLval: number[]; algRval: number[] }) => {
+        const Phi = new Float64Array(M);
+        for (let i = 0; i < N; i++) for (let k = 0; k < neq; k++) { const r = i * neq + k; const isAlg = (i === 0 && st.algL[k]) || (i === N - 1 && st.algR[k]); if (isAlg) Phi[r] = i === 0 ? st.algLval[k] : st.algRval[k]; else Phi[r] = st.cN[r] * (Un[r] - Uold[r]) / dt - 0.5 * (st.Rhat[r] + stOld.Rhat[r]); }
+        return Phi;
+      };
+      for (let it = 0; it < 8; it++) {
+        const stN = await evalState(tnew, U); const Phi = await resid(U, stN);
+        let nrm = 0; for (const v of Phi) nrm += v * v; if (Math.sqrt(nrm) < 1e-10) break;
+        // numerical Jacobian (dense)
+        const J = zeros(M, M);
+        for (let j = 0; j < M; j++) { const dU = U.slice(); const h = 1e-7 * Math.max(1, Math.abs(U[j])); dU[j] += h; const stJ = await evalState(tnew, dU); const Pj = await resid(dU, stJ); for (let i = 0; i < M; i++) J.data[i + j * M] = (Pj[i] - Phi[i]) / h; }
+        const delta = mldivide(J, colVec(Array.from(Phi))); for (let i = 0; i < M; i++) U[i] -= delta.data[i];
+      }
+      st0 = await evalState(tnew, U);
+    }
+    sol.push(U.slice());
+  }
+  // assemble: nt × nx (neq=1) or nt × nx × neq
+  const nt = tspan.length;
+  if (neq === 1) { const out = zeros(nt, N); for (let t = 0; t < nt; t++) for (let i = 0; i < N; i++) out.data[t + i * nt] = sol[t][i]; return [out]; }
+  const data = new Float64Array(nt * N * neq); for (let t = 0; t < nt; t++) for (let i = 0; i < N; i++) for (let k = 0; k < neq; k++) data[t + i * nt + k * nt * N] = sol[t][i * neq + k];
+  return [makeND([nt, N, neq], data)];
+}
 function odeOut(T: number[], Y: number[][], neq: number, nargout: number): Value[] {
   const Ymat = zeros(T.length, neq); for (let r = 0; r < T.length; r++) for (let c = 0; c < neq; c++) Ymat.data[r + c * T.length] = Y[r][c];
   return nargout >= 2 ? [colVec(T), Ymat] : [Ymat];
