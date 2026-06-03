@@ -521,6 +521,70 @@ export const BUILTINS: Record<string, Builtin> = {
   roots: async (a) => { const { re, im } = durandKerner(toArray(m(a[0]))); return ret(finishComplex(re.length, 1, Float64Array.from(re), Float64Array.from(im))); },
   ode45: async (a, n, env) => odeSolve(a, n, env),
   ode15s: async (a, n, env) => odeSolve(a, n, env),
+  ode23: async (a, n, env) => odeSolve(a, n, env),
+  ode113: async (a, n, env) => odeSolve(a, n, env),
+  ode23s: async (a, n, env) => odeSolve(a, n, env),
+  ode23t: async (a, n, env) => odeSolve(a, n, env),
+  cumtrapz: async (a) => {
+    let x: number[], y: number[];
+    if (a.length >= 2) { x = toArray(m(a[0])); y = toArray(m(a[1])); } else { y = toArray(m(a[0])); x = y.map((_, i) => i + 1); }
+    const out = [0]; for (let i = 1; i < y.length; i++) out.push(out[i - 1] + (x[i] - x[i - 1]) * (y[i] + y[i - 1]) / 2);
+    return ret(m(a[0]).cols === 1 && a.length < 2 ? colVec(out) : (m(a.length >= 2 ? a[1] : a[0]).cols === 1 ? colVec(out) : rowVec(out)));
+  },
+  del2: async (a) => {
+    const U = m(a[0]);
+    if (U.rows === 1 || U.cols === 1) { const v = toArray(U); const n = v.length; const o = new Array(n).fill(0); for (let i = 1; i < n - 1; i++) o[i] = (v[i + 1] - 2 * v[i] + v[i - 1]) / 4 * 2; for (let i = 1; i < n - 1; i++) o[i] = (v[i - 1] - 2 * v[i] + v[i + 1]) / 4; o[0] = o[1]; o[n - 1] = o[n - 2]; return ret(U.cols === 1 ? colVec(o) : rowVec(o)); }
+    const R = U.rows, C = U.cols; const o = zeros(R, C); const at = (r: number, c: number) => U.data[r + c * R];
+    for (let r = 1; r < R - 1; r++) for (let c = 1; c < C - 1; c++) o.data[r + c * R] = (at(r - 1, c) + at(r + 1, c) + at(r, c - 1) + at(r, c + 1) - 4 * at(r, c)) / 4;
+    for (let r = 0; r < R; r++) { o.data[r + 0 * R] = o.data[r + 1 * R]; o.data[r + (C - 1) * R] = o.data[r + (C - 2) * R]; }
+    for (let c = 0; c < C; c++) { o.data[0 + c * R] = o.data[1 + c * R]; o.data[(R - 1) + c * R] = o.data[(R - 2) + c * R]; }
+    return ret(o);
+  },
+  deconv: async (a, n) => {
+    const b = toArray(m(a[0])), aa = toArray(m(a[1]));
+    const nq = b.length - aa.length + 1;
+    if (nq <= 0) return n >= 2 ? [rowVec([0]), m(a[0])] : [rowVec([0])];
+    const r = b.slice(); const q = new Array(nq).fill(0);
+    for (let i = 0; i < nq; i++) { q[i] = r[i] / aa[0]; for (let j = 0; j < aa.length; j++) r[i + j] -= q[i] * aa[j]; }
+    return n >= 2 ? [rowVec(q), rowVec(r)] : [rowVec(q)];
+  },
+  interp2: async (a) => {
+    // interp2(V,Xq,Yq) or interp2(X,Y,V,Xq,Yq)
+    let V: Mat, xq: Mat, yq: Mat, xv: number[], yv: number[];
+    if (a.length >= 5) { const X = m(a[0]), Y = m(a[1]); V = m(a[2]); xq = m(a[3]); yq = m(a[4]); xv = []; for (let c = 0; c < X.cols; c++) xv.push(X.data[0 + c * X.rows]); yv = []; for (let r = 0; r < Y.rows; r++) yv.push(Y.data[r]); }
+    else { V = m(a[0]); xq = m(a[1]); yq = m(a[2]); xv = Array.from({ length: V.cols }, (_, i) => i + 1); yv = Array.from({ length: V.rows }, (_, i) => i + 1); }
+    const bilerp = (X: number, Y: number) => {
+      let i = 0; while (i < xv.length - 2 && X > xv[i + 1]) i++; let j = 0; while (j < yv.length - 2 && Y > yv[j + 1]) j++;
+      const tx = (X - xv[i]) / (xv[i + 1] - xv[i]), ty = (Y - yv[j]) / (yv[j + 1] - yv[j]);
+      const v00 = V.data[j + i * V.rows], v01 = V.data[j + (i + 1) * V.rows], v10 = V.data[(j + 1) + i * V.rows], v11 = V.data[(j + 1) + (i + 1) * V.rows];
+      return v00 * (1 - tx) * (1 - ty) + v01 * tx * (1 - ty) + v10 * (1 - tx) * ty + v11 * tx * ty;
+    };
+    const out = zeros(xq.rows, xq.cols); for (let k = 0; k < out.data.length; k++) out.data[k] = bilerp(xq.data[k], yq.data[k]); return ret(out);
+  },
+  pchip: async (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])), xq = m(a[2]); const d = pchipSlopes(x, y); return ret(map(xq, (q) => hermiteEval(x, y, d, q))); },
+  makima: async (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])), xq = m(a[2]); const d = akimaSlopes(x, y); return ret(map(xq, (q) => hermiteEval(x, y, d, q))); },
+  interpft: async (a) => {
+    // FFT resample x to length ny: insert zero high-frequencies, inverse transform.
+    const x = toArray(m(a[0])); const ny = Math.round(asScalar(a[1])); const nx = x.length;
+    const F = fftVec(x, new Array(nx).fill(0), -1);
+    const Re = new Array(ny).fill(0), Im = new Array(ny).fill(0);
+    const half = Math.floor(nx / 2);
+    for (let k = 0; k <= half; k++) { Re[k] = F.re[k]; Im[k] = F.im[k]; }
+    for (let k = 1; k < nx - half; k++) { Re[ny - k] = F.re[nx - k]; Im[ny - k] = F.im[nx - k]; }
+    const inv = fftVec(Re, Im, 1);          // unscaled inverse
+    const res = inv.re.map((v) => v / nx);  // = (inv/ny)*(ny/nx)
+    return ret(m(a[0]).cols === 1 ? colVec(res) : rowVec(res));
+  },
+  integral2: async (a, _n, env) => {
+    const f = handle(a[0], 'integral2'); const ax = asScalar(a[1]), bx = asScalar(a[2]), ay = asScalar(a[3]), by = asScalar(a[4]);
+    const F = async (x: number, y: number) => { const r = await env.callHandle(f, [scalar(x), scalar(y)], 1); return isMat(r[0]) ? asScalar(r[0]) : NaN; };
+    return ret(scalar(await simpson2(F, ax, bx, ay, by, 48)));
+  },
+  integral3: async (a, _n, env) => {
+    const f = handle(a[0], 'integral3'); const v = a.slice(1).map((x) => asScalar(x));
+    const F = async (x: number, y: number, z: number) => { const r = await env.callHandle(f, [scalar(x), scalar(y), scalar(z)], 1); return isMat(r[0]) ? asScalar(r[0]) : NaN; };
+    return ret(scalar(await simpson3(F, v[0], v[1], v[2], v[3], v[4], v[5], 16)));
+  },
 
   // ── supporting array constructors ──
   logspace: async (a) => { const lo = asScalar(a[0]), hi = asScalar(a[1]); const k = a.length >= 3 ? Math.round(asScalar(a[2])) : 50; const out: number[] = []; for (let i = 0; i < k; i++) out.push(Math.pow(10, lo + (hi - lo) * i / (k - 1))); return ret(rowVec(out)); },
@@ -1055,6 +1119,48 @@ function splineEval(x: number[], y: number[], q: number): number {
   const dx = q - x[i], hi = h[i];
   const aa = y[i], bb = (y[i + 1] - y[i]) / hi - hi * (2 * M[i] + M[i + 1]) / 6, cc = M[i] / 2, dd = (M[i + 1] - M[i]) / (6 * hi);
   return aa + bb * dx + cc * dx * dx + dd * dx * dx * dx;
+}
+
+// ── Interpolation / quadrature helpers ───────────────────────────────────
+/** Evaluate a piecewise cubic Hermite with given node slopes d at q. */
+function hermiteEval(x: number[], y: number[], d: number[], q: number): number {
+  const n = x.length; let i = 0; while (i < n - 2 && q > x[i + 1]) i++;
+  const h = x[i + 1] - x[i], t = (q - x[i]) / h;
+  const h00 = 2 * t ** 3 - 3 * t ** 2 + 1, h10 = t ** 3 - 2 * t ** 2 + t, h01 = -2 * t ** 3 + 3 * t ** 2, h11 = t ** 3 - t ** 2;
+  return h00 * y[i] + h10 * h * d[i] + h01 * y[i + 1] + h11 * h * d[i + 1];
+}
+/** Fritsch–Carlson monotone (pchip) slopes. */
+function pchipSlopes(x: number[], y: number[]): number[] {
+  const n = x.length; const h: number[] = [], del: number[] = [];
+  for (let i = 0; i < n - 1; i++) { h.push(x[i + 1] - x[i]); del.push((y[i + 1] - y[i]) / (x[i + 1] - x[i])); }
+  const d = new Array(n).fill(0);
+  for (let i = 1; i < n - 1; i++) { if (del[i - 1] * del[i] > 0) { const w1 = 2 * h[i] + h[i - 1], w2 = h[i] + 2 * h[i - 1]; d[i] = (w1 + w2) / (w1 / del[i - 1] + w2 / del[i]); } }
+  d[0] = del[0]; d[n - 1] = del[n - 2];
+  return d;
+}
+/** Modified Akima (makima) slopes. */
+function akimaSlopes(x: number[], y: number[]): number[] {
+  const n = x.length; const del: number[] = []; for (let i = 0; i < n - 1; i++) del.push((y[i + 1] - y[i]) / (x[i + 1] - x[i]));
+  const s = new Array(n + 3).fill(0); for (let k = 0; k < n - 1; k++) s[k + 2] = del[k];
+  s[1] = 2 * s[2] - s[3]; s[0] = 2 * s[1] - s[2]; s[n + 1] = 2 * s[n] - s[n - 1]; s[n + 2] = 2 * s[n + 1] - s[n];
+  const d = new Array(n).fill(0);
+  for (let i = 0; i < n; i++) {
+    const w1 = Math.abs(s[i + 3] - s[i + 2]) + Math.abs(s[i + 3] + s[i + 2]) / 2;
+    const w2 = Math.abs(s[i + 1] - s[i]) + Math.abs(s[i + 1] + s[i]) / 2;
+    d[i] = (w1 + w2) === 0 ? 0 : (w1 * s[i + 1] + w2 * s[i + 2]) / (w1 + w2);
+  }
+  return d;
+}
+/** Composite Simpson over a rectangle (n even per axis). */
+async function simpson2(F: (x: number, y: number) => Promise<number>, ax: number, bx: number, ay: number, by: number, nn: number): Promise<number> {
+  const n = nn % 2 ? nn + 1 : nn; const hx = (bx - ax) / n, hy = (by - ay) / n; const w = (i: number) => (i === 0 || i === n ? 1 : (i % 2 ? 4 : 2));
+  let s = 0; for (let i = 0; i <= n; i++) for (let j = 0; j <= n; j++) s += w(i) * w(j) * await F(ax + i * hx, ay + j * hy);
+  return s * hx * hy / 9;
+}
+async function simpson3(F: (x: number, y: number, z: number) => Promise<number>, ax: number, bx: number, ay: number, by: number, az: number, bz: number, nn: number): Promise<number> {
+  const n = nn % 2 ? nn + 1 : nn; const hx = (bx - ax) / n, hy = (by - ay) / n, hz = (bz - az) / n; const w = (i: number) => (i === 0 || i === n ? 1 : (i % 2 ? 4 : 2));
+  let s = 0; for (let i = 0; i <= n; i++) for (let j = 0; j <= n; j++) for (let k = 0; k <= n; k++) s += w(i) * w(j) * w(k) * await F(ax + i * hx, ay + j * hy, az + k * hz);
+  return s * hx * hy * hz / 27;
 }
 
 /** Real roots of a polynomial (coeffs high→low). Complex roots are omitted. */
