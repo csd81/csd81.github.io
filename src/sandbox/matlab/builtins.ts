@@ -1012,6 +1012,10 @@ export const BUILTINS: Record<string, Builtin> = {
     const rest = dims.slice(2);
     return ret(rest.length ? makeND([k, 1, ...rest], out) : mat(k, 1, out));
   },
+  pageinv: async (a) => ret(pageUnary(m(a[0]), (X) => inv(X))),
+  pagepinv: async (a) => ret(pageUnary(m(a[0]), (X) => pinvFn(X))),
+  pagenorm: async (a) => { const p = a.length >= 2 ? (isMat(a[1]) ? asScalar(a[1]) : (asString(a[1]) === 'fro' ? 'fro' : 2)) : 2; return ret(pageUnary(m(a[0]), (X) => mat(1, 1, new Float64Array([norm(X, p as number | 'fro')])))); },
+  pagelsqminnorm: async (a) => ret(pageBinary(m(a[0]), m(a[1]), (X, Y) => matmul(pinvFn(X), Y))),
   linkaxes: async () => [], alpha: async () => [], alphamap: async () => [],
   // string edits
   insertAfter: async (a) => ret(mapStrArr(a[0], (x) => { const p = asString(a[1]); const i = x.indexOf(p); return i < 0 ? x : x.slice(0, i + p.length) + asString(a[2]) + x.slice(i + p.length); })),
@@ -1858,6 +1862,10 @@ const HELP: Record<string, HelpEntry> = {
   pagetranspose: { summary: 'Transpose each page of an N-D array', syntax: ['B = pagetranspose(A)'], seealso: ['pagectranspose', 'pagemtimes'] },
   pagemtimes: { summary: 'Page-wise matrix multiplication', syntax: ['C = pagemtimes(A,B)'], seealso: ['pagetranspose', 'mtimes'] },
   pagesvd: { summary: 'Page-wise singular values of an N-D array', syntax: ['S = pagesvd(A)'], seealso: ['svd', 'pagemtimes'] },
+  pageinv: { summary: 'Page-wise matrix inverse', syntax: ['B = pageinv(A)'], seealso: ['inv', 'pagemtimes'] },
+  pagepinv: { summary: 'Page-wise Moore–Penrose pseudoinverse', syntax: ['B = pagepinv(A)'], seealso: ['pinv', 'pageinv'] },
+  pagenorm: { summary: 'Page-wise matrix norm', syntax: ['n = pagenorm(A)', "pagenorm(A,'fro')"], seealso: ['norm', 'pagesvd'] },
+  pagelsqminnorm: { summary: 'Page-wise minimum-norm least-squares solution', syntax: ['X = pagelsqminnorm(A,B)'], seealso: ['lsqminnorm', 'pagemldivide'] },
   insertAfter: { summary: 'Insert text after a substring', syntax: ['insertAfter(str,pat,text)'], seealso: ['insertBefore', 'replace'] },
   insertBefore: { summary: 'Insert text before a substring', syntax: ['insertBefore(str,pat,text)'], seealso: ['insertAfter', 'replace'] },
   eraseBetween: { summary: 'Delete text between two delimiters', syntax: ['eraseBetween(str,l,r)'], seealso: ['replaceBetween', 'extractBetween'] },
@@ -2136,7 +2144,7 @@ const BASE_REF = new Set<string>((
   'imagesc image pie3 piechart donutchart pareto fimplicit fplot3 ' +
   'repelem topkrows mat2cell isletter isspace isstrprop hex2num num2hex native2unicode unicode2native newline ' +
   'isobject isjava isenum istabular isgraphics underlyingType isUnderlyingType function_handle functions ' +
-  'pagetranspose pagectranspose pagemtimes pagemldivide pagemrdivide pagesvd linkaxes alpha alphamap ' +
+  'pagetranspose pagectranspose pagemtimes pagemldivide pagemrdivide pagesvd pageinv pagepinv pagenorm pagelsqminnorm linkaxes alpha alphamap ' +
   'insertAfter insertBefore eraseBetween replaceBetween compose convertStringsToChars convertCharsToStrings ' +
   'cell iscell iscellstr num2cell cell2mat celldisp cellfun strsplit strjoin ' +
   'struct isstruct isfield fieldnames numfields rmfield setfield getfield orderfields struct2cell cell2struct structfun ' +
@@ -2440,6 +2448,16 @@ function pageTranspose(A: Mat, conj: boolean): Mat {
   const ndims = dims.slice(); ndims[0] = d1; ndims[1] = d0;
   if (ndims.length > 2) return makeND(ndims, out, { idata: oi });
   const r = mat(d1, d0, out); if (oi) r.idata = oi; return r;
+}
+/** Apply a 2-D op to each page of an N-D array, stacking the (uniformly-sized) results. */
+function pageUnary(A: Mat, op: (X: Mat) => Mat): Mat {
+  const dims = ndSize(A); const d0 = dims[0], d1 = dims[1], psz = d0 * d1; const np = A.data.length / psz;
+  const pages: Mat[] = [];
+  for (let p = 0; p < np; p++) pages.push(op(mat(d0, d1, A.data.slice(p * psz, p * psz + psz))));
+  const r = pages[0].rows, c = pages[0].cols; const out = new Float64Array(r * c * np);
+  pages.forEach((pg, p) => out.set(pg.data, p * r * c));
+  const rest = dims.slice(2);
+  return rest.length ? makeND([r, c, ...rest], out) : mat(r, c, out);
 }
 /** Apply a 2-D matrix op page-by-page across two N-D arrays (broadcasting a single page). */
 function pageBinary(A: Mat, B: Mat, op: (X: Mat, Y: Mat) => Mat): Mat {
