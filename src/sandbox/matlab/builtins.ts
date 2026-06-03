@@ -1,8 +1,9 @@
 /** Built-in functions for the MATLAB subset. */
 import {
   type Value, type Mat, type Handle, MatError, isMat, isHandle,
-  mat, zeros, scalar, bool, str, rowVec, colVec, fromRows, numel, isScalar, isEmpty,
+  mat, zeros, scalar, cscalar, bool, str, rowVec, colVec, fromRows, numel, isScalar, isEmpty,
   asScalar, asString, map, elementwise, matmul, transpose, horzcat, vertcat, toArray,
+  isComplex, cmap, cmapReal, conj as conjFn, realPart, imagPart, csqrt, cexp, clog, ewPow,
 } from './values';
 import {
   det, inv, mldivide, diag, norm, eye,
@@ -103,18 +104,31 @@ function nthroot(x: number, n: number): number {
 
 export const BUILTINS: Record<string, Builtin> = {
   // elementwise math
-  sin: ew(Math.sin), cos: ew(Math.cos), tan: ew(Math.tan),
+  sin: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmap(A, (re, im) => [Math.sin(re) * Math.cosh(im), Math.cos(re) * Math.sinh(im)]) : map(A, Math.sin)); },
+  cos: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmap(A, (re, im) => [Math.cos(re) * Math.cosh(im), -Math.sin(re) * Math.sinh(im)]) : map(A, Math.cos)); },
+  tan: async (a) => { const A = m(a[0]); if (!isComplex(A)) return ret(map(A, Math.tan)); return ret(cmap(A, (re, im) => { const sr = Math.sin(re) * Math.cosh(im), si = Math.cos(re) * Math.sinh(im); const cr = Math.cos(re) * Math.cosh(im), ci = -Math.sin(re) * Math.sinh(im); const d = cr * cr + ci * ci; return [(sr * cr + si * ci) / d, (si * cr - sr * ci) / d]; })); },
   asin: ew(Math.asin), acos: ew(Math.acos), atan: ew(Math.atan),
   sinh: ew(Math.sinh), cosh: ew(Math.cosh), tanh: ew(Math.tanh),
-  cot: ew((x) => 1 / Math.tan(x)), exp: ew(Math.exp),
-  log: ew(Math.log), log2: ew(Math.log2), log10: ew(Math.log10),
-  sqrt: ew(Math.sqrt), abs: ew(Math.abs), sign: ew(Math.sign),
+  cot: ew((x) => 1 / Math.tan(x)),
+  exp: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmap(A, (re, im) => cexp(re, im)) : map(A, Math.exp)); },
+  log: async (a) => { const A = m(a[0]); return ret(isComplex(A) || toArray(A).some((x) => x < 0) ? cmap(A, (re, im) => clog(re, im)) : map(A, Math.log)); },
+  log10: async (a) => { const A = m(a[0]); return ret(isComplex(A) || toArray(A).some((x) => x < 0) ? cmap(A, (re, im) => { const [lr, li] = clog(re, im); return [lr / Math.LN10, li / Math.LN10]; }) : map(A, Math.log10)); },
+  log2: async (a) => { const A = m(a[0]); return ret(isComplex(A) || toArray(A).some((x) => x < 0) ? cmap(A, (re, im) => { const [lr, li] = clog(re, im); return [lr / Math.LN2, li / Math.LN2]; }) : map(A, Math.log2)); },
+  sqrt: async (a) => { const A = m(a[0]); return ret(isComplex(A) || toArray(A).some((x) => x < 0) ? cmap(A, (re, im) => csqrt(re, im)) : map(A, Math.sqrt)); },
+  abs: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmapReal(A, (re, im) => Math.hypot(re, im)) : map(A, Math.abs)); },
+  sign: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmap(A, (re, im) => { const mg = Math.hypot(re, im); return mg === 0 ? [0, 0] : [re / mg, im / mg]; }) : map(A, Math.sign)); },
+  conj: async (a) => ret(conjFn(m(a[0]))),
+  real: async (a) => ret(realPart(m(a[0]))),
+  imag: async (a) => ret(imagPart(m(a[0]))),
+  angle: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmapReal(A, (re, im) => Math.atan2(im, re)) : map(A, (x) => (x < 0 ? Math.PI : 0))); },
+  complex: async (a) => { const A = m(a[0]); const B = a.length >= 2 ? m(a[1]) : zeros(A.rows, A.cols); const re = new Float64Array(A.data); const im = new Float64Array(A.data.length); for (let i = 0; i < im.length; i++) im[i] = B.data.length === 1 ? B.data[0] : B.data[i]; return ret({ kind: 'num', rows: A.rows, cols: A.cols, data: re, idata: im }); },
+  iscomplex: async (a) => ret(bool(isComplex(m(a[0])))),
   floor: ew(Math.floor), ceil: ew(Math.ceil), round: ew((x) => Math.round(x)),
   fix: ew(Math.trunc),
   atan2: async (a) => ret(elementwise(m(a[0]), m(a[1]), Math.atan2)),
   mod: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, y) => (y === 0 ? x : ((x % y) + y) % y))),
   rem: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, y) => (y === 0 ? NaN : x % y))),
-  power: async (a) => ret(elementwise(m(a[0]), m(a[1]), Math.pow)),
+  power: async (a) => ret(ewPow(m(a[0]), m(a[1]))),
   nthroot: async (a) => ret(elementwise(m(a[0]), m(a[1]), nthroot)),
   hypot: async (a) => ret(elementwise(m(a[0]), m(a[1]), Math.hypot)),
 
@@ -146,7 +160,7 @@ export const BUILTINS: Record<string, Builtin> = {
   reallog: ew((x) => { if (x < 0) throw new MatError('reallog: argument must be nonnegative'); return Math.log(x); }),
   realpow: async (a) => ret(elementwise(m(a[0]), m(a[1]), Math.pow)),
   // value queries
-  isreal: async () => ret(bool(true)),
+  isreal: async (a) => ret(bool(!isComplex(m(a[0])))),
   allfinite: async (a) => ret(bool(toArray(m(a[0])).every(Number.isFinite))),
   anynan: async (a) => ret(bool(toArray(m(a[0])).some(Number.isNaN))),
   // number theory
@@ -210,7 +224,13 @@ export const BUILTINS: Record<string, Builtin> = {
   polyint: async (a) => { const p = toArray(m(a[0])); const k = a.length >= 2 ? asScalar(a[1]) : 0; const n = p.length; const out: number[] = []; for (let i = 0; i < n; i++) out.push(p[i] / (n - i)); out.push(k); return ret(rowVec(out)); },
 
   // reductions
-  sum: async (a) => ret(reduce(m(a[0]), dimArg(a, 1), 0, (s, x) => s + x)),
+  sum: async (a) => {
+    const A = m(a[0]); const dim = dimArg(a, 1);
+    if (!isComplex(A)) return ret(reduce(A, dim, 0, (s, x) => s + x));
+    const re = reduce(A, dim, 0, (s, x) => s + x);
+    const im = reduce({ kind: 'num', rows: A.rows, cols: A.cols, data: A.idata! }, dim, 0, (s, x) => s + x);
+    return ret({ kind: 'num', rows: re.rows, cols: re.cols, data: re.data, idata: im.data });
+  },
   prod: async (a) => ret(reduce(m(a[0]), dimArg(a, 1), 1, (s, x) => s * x)),
   mean: async (a) => ret(reduce(m(a[0]), dimArg(a, 1), 0, (s, x) => s + x, (s, n) => s / n)),
   cumsum: async (a) => {
@@ -901,4 +921,5 @@ export const CONSTANTS: Record<string, () => Value> = {
   NaN: () => scalar(NaN), nan: () => scalar(NaN),
   true: () => bool(true), false: () => bool(false),
   realmax: () => scalar(Number.MAX_VALUE), realmin: () => scalar(Number.MIN_VALUE),
+  i: () => cscalar(0, 1), j: () => cscalar(0, 1),
 };

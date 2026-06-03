@@ -17,6 +17,7 @@ export interface Token {
   kind: TokKind;
   value: string;
   num?: number;
+  imag?: boolean;   // numeric literal with an `i`/`j` suffix (e.g. 2i)
   spaceBefore: boolean;
   pos: number;
   line: number;
@@ -96,7 +97,10 @@ export function tokenize(src: string): Token[] {
         if (isDigit(src[k])) { k++; while (k < n && isDigit(src[k])) k++; j = k; }
       }
       const text = src.slice(i, j);
-      toks.push({ kind: 'num', value: text, num: parseFloat(text), spaceBefore, pos: i, line });
+      // imaginary suffix: 2i / 1j / 3.5i (not part of an identifier)
+      let imag = false;
+      if ((src[j] === 'i' || src[j] === 'j') && !isIdentPart(src[j + 1] ?? '')) { imag = true; j++; }
+      toks.push({ kind: 'num', value: text, num: parseFloat(text), imag, spaceBefore, pos: i, line });
       i = j; spaceBefore = false; continue;
     }
 

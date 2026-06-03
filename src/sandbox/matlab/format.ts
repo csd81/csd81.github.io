@@ -1,5 +1,16 @@
 /** Display formatting (`format short`) and the `fprintf`/`sprintf` printf engine. */
-import { type Mat, type Value, isMat, isHandle, numel, isScalar, asString } from './values';
+import { type Mat, type Value, isMat, isHandle, isComplex, numel, isScalar, asString } from './values';
+
+/** Format a complex scalar as `a + bi` / `a - bi`. */
+function fmtC(re: number, im: number): string {
+  const sign = im < 0 || Object.is(im, -0) ? '-' : '+';
+  return `${formatScalar(re)} ${sign} ${formatScalar(Math.abs(im))}i`;
+}
+function complexMatrixLines(m: Mat): string[] {
+  const cells: string[][] = []; let w = 0;
+  for (let r = 0; r < m.rows; r++) { const row: string[] = []; for (let c = 0; c < m.cols; c++) { const i = r + c * m.rows; const s = fmtC(m.data[i], m.idata ? m.idata[i] : 0); row.push(s); w = Math.max(w, s.length); } cells.push(row); }
+  return cells.map((row) => '   ' + row.map((s) => s.padStart(w)).join('   '));
+}
 
 // ── Number / matrix display ────────────────────────────────────────────
 export function formatScalar(x: number): string {
@@ -42,6 +53,7 @@ export function dispValue(v: Value): string {
   if (isHandle(v)) return `@${v.name ?? 'anonymous'}`;
   if (v.isChar) return asString(v);
   if (numel(v) === 0) return '';
+  if (isComplex(v)) return isScalar(v) ? fmtC(v.data[0], v.idata![0]) : complexMatrixLines(v).join('\n');
   if (isScalar(v)) return formatScalar(v.data[0]);
   return matrixLines(v).join('\n');
 }
@@ -52,6 +64,7 @@ export function displayValue(name: string, v: Value): string {
   if (isHandle(v)) return `${name} =\n\n    @${v.name ?? 'anonymous function'}\n`;
   if (v.isChar) return `${name} =\n\n    ${asString(v)}\n`;
   if (numel(v) === 0) return `${name} =\n\n     []\n`;
+  if (isComplex(v)) return isScalar(v) ? `${name} =\n\n   ${fmtC(v.data[0], v.idata![0])}\n` : `${name} =\n\n${complexMatrixLines(v).join('\n')}\n`;
   if (isScalar(v)) return `${name} =\n\n   ${formatScalar(v.data[0])}\n`;
   return `${name} =\n\n${matrixLines(v).join('\n')}\n`;
 }

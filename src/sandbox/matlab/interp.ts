@@ -3,9 +3,10 @@ import { parse } from './parser';
 import type { Expr, LValue, Stmt, FuncDef } from './ast';
 import {
   type Value, type Mat, type Handle, MatError,
-  isMat, isHandle, mat, zeros, scalar, bool, str, empty,
-  numel, asScalar, asString, truthy, map, elementwise, matmul, transpose,
+  isMat, isHandle, mat, zeros, scalar, cscalar, bool, str, empty,
+  numel, asScalar, asString, truthy, map, elementwise, matmul, transpose, ctranspose,
   horzcat, vertcat, range as makeRange, indexGet, indexSet, indexDelete, isEmpty, toArray, type Sub,
+  isComplex, cmap, ewAdd, ewSub, ewMul, ewRDiv, ewLDiv, ewPow, ewEq, cmatmul,
 } from './values';
 import { det, inv, mldivide } from './linalg';
 import { BUILTINS, CONSTANTS, builtinHelp, docUrl, type Env } from './builtins';
@@ -280,7 +281,7 @@ export class Interpreter implements Env {
 
   private async evalValues(e: Expr, scope: Scope, nargout: number): Promise<Value[]> {
     switch (e.t) {
-      case 'num': return [scalar(e.v)];
+      case 'num': return [e.imag ? cscalar(0, e.v) : scalar(e.v)];
       case 'str': return [str(e.v)];
       case 'end': {
         if (!this.endStack.length) throw new MatError("'end' used outside an index");
@@ -299,11 +300,14 @@ export class Interpreter implements Env {
       }
       case 'unary': {
         const v = asMat(await this.evalExpr(e.e, scope));
-        if (e.op === '-') return [map(v, (x) => -x)];
+        if (e.op === '-') return [isComplex(v) ? cmap(v, (re, im) => [-re, -im]) : map(v, (x) => -x)];
         if (e.op === '+') return [v];
-        return [{ ...map(v, (x) => (x === 0 ? 1 : 0)), isBool: true }];
+        return [{ ...map(v, (x) => (x === 0 ? 1 : 0)), isBool: true, idata: undefined }];
       }
-      case 'postfix': return [transpose(asMat(await this.evalExpr(e.e, scope)))];
+      case 'postfix': {
+        const v = asMat(await this.evalExpr(e.e, scope));
+        return [e.op === "'" ? ctranspose(v) : transpose(v)];
+      }
       case 'binary': return [await this.evalBinary(e.op, e.a, e.b, scope)];
       case 'matrix': return [await this.evalMatrix(e.rows, scope)];
       case 'anon': return [this.makeAnon(e.params, e.body, scope)];
@@ -408,18 +412,18 @@ export class Interpreter implements Env {
     const a = asMat(await this.evalExpr(ae, scope));
     const b = asMat(await this.evalExpr(be, scope));
     switch (op) {
-      case '+': return elementwise(a, b, (x, y) => x + y);
-      case '-': return elementwise(a, b, (x, y) => x - y);
-      case '.*': return elementwise(a, b, (x, y) => x * y);
-      case './': return elementwise(a, b, (x, y) => x / y);
-      case '.\\': return elementwise(a, b, (x, y) => y / x);
-      case '.^': return elementwise(a, b, Math.pow);
-      case '*': return matmul(a, b);
+      case '+': return ewAdd(a, b);
+      case '-': return ewSub(a, b);
+      case '.*': return ewMul(a, b);
+      case './': return ewRDiv(a, b);
+      case '.\\': return ewLDiv(a, b);
+      case '.^': return ewPow(a, b);
+      case '*': return cmatmul(a, b);
       case '/': return rdivide(a, b);
       case '\\': return mldivide(a, b);
       case '^': return mpower(a, b);
-      case '==': return cmp(a, b, (x, y) => x === y);
-      case '~=': return cmp(a, b, (x, y) => x !== y);
+      case '==': return ewEq(a, b, true);
+      case '~=': return ewEq(a, b, false);
       case '<': return cmp(a, b, (x, y) => x < y);
       case '>': return cmp(a, b, (x, y) => x > y);
       case '<=': return cmp(a, b, (x, y) => x <= y);
@@ -436,18 +440,18 @@ function cmp(a: Mat, b: Mat, f: (x: number, y: number) => boolean): Mat {
   return { ...elementwise(a, b, (x, y) => (f(x, y) ? 1 : 0)), isBool: true };
 }
 function rdivide(a: Mat, b: Mat): Mat {
-  if (b.rows === 1 && b.cols === 1) return map(a, (x) => x / b.data[0]);
+  if (b.rows === 1 && b.cols === 1) return ewRDiv(a, b);
   // A / B = (B' \ A')'
-  return transpose(mldivide(transpose(b), transpose(a)));
+  return ctranspose(mldivide(ctranspose(b), ctranspose(a)));
 }
 function mpower(a: Mat, b: Mat): Mat {
-  if (a.rows === 1 && a.cols === 1 && b.rows === 1 && b.cols === 1) return scalar(Math.pow(a.data[0], b.data[0]));
+  if (a.rows === 1 && a.cols === 1 && b.rows === 1 && b.cols === 1) return ewPow(a, b);
   if (b.rows === 1 && b.cols === 1) {
     let p = Math.round(b.data[0]);
     if (a.rows !== a.cols) throw new MatError('^: matrix must be square');
     if (p < 0) { return mpower(inv(a), scalar(-p)); }
     let acc = identity(a.rows); let base = a;
-    while (p > 0) { if (p & 1) acc = matmul(acc, base); base = matmul(base, base); p >>= 1; }
+    while (p > 0) { if (p & 1) acc = cmatmul(acc, base); base = cmatmul(base, base); p >>= 1; }
     return acc;
   }
   throw new MatError('^: unsupported operands');

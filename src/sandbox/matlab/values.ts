@@ -9,7 +9,8 @@ export interface Mat {
   kind: 'num';
   rows: number;
   cols: number;
-  data: Float64Array;   // column-major: element (r,c) at data[r + c*rows]
+  data: Float64Array;   // column-major real part: element (r,c) at data[r + c*rows]
+  idata?: Float64Array; // column-major imaginary part; present ⇒ complex storage
   isChar?: boolean;
   isBool?: boolean;
 }
@@ -87,7 +88,7 @@ export function asString(v: Value): string {
 export function truthy(v: Value): boolean {
   if (!isMat(v)) return true;
   if (numel(v) === 0) return false;
-  for (let i = 0; i < v.data.length; i++) if (v.data[i] === 0) return false;
+  for (let i = 0; i < v.data.length; i++) if (v.data[i] === 0 && (!v.idata || v.idata[i] === 0)) return false;
   return true;
 }
 
@@ -130,7 +131,15 @@ export function matmul(a: Mat, b: Mat): Mat {
 export function transpose(a: Mat): Mat {
   const out = zeros(a.cols, a.rows);
   for (let c = 0; c < a.cols; c++) for (let r = 0; r < a.rows; r++) out.data[c + r * out.rows] = a.data[r + c * a.rows];
+  if (a.idata) { const im = new Float64Array(a.cols * a.rows); for (let c = 0; c < a.cols; c++) for (let r = 0; r < a.rows; r++) im[c + r * out.rows] = a.idata[r + c * a.rows]; out.idata = im; }
   out.isChar = a.isChar;
+  return out;
+}
+
+/** Conjugate transpose (`'`): transpose with the imaginary part negated. */
+export function ctranspose(a: Mat): Mat {
+  const out = transpose(a);
+  if (out.idata) for (let i = 0; i < out.idata.length; i++) out.idata[i] = -out.idata[i];
   return out;
 }
 
@@ -142,11 +151,18 @@ export function horzcat(parts: Mat[]): Mat {
   let cols = 0;
   for (const p of nonEmpty) { if (p.rows !== rows) throw new MatError('horizontal dimensions mismatch'); cols += p.cols; }
   const out = zeros(rows, cols);
+  const anyImag = nonEmpty.some((p) => p.idata);
+  const im = anyImag ? new Float64Array(rows * cols) : null;
   let co = 0;
   let allChar = true, allBool = true;
-  for (const p of nonEmpty) { out.data.set(p.data.subarray(0, rows * p.cols), co * rows); co += p.cols; if (!p.isChar) allChar = false; if (!p.isBool) allBool = false; }
+  for (const p of nonEmpty) {
+    out.data.set(p.data.subarray(0, rows * p.cols), co * rows);
+    if (im && p.idata) im.set(p.idata.subarray(0, rows * p.cols), co * rows);
+    co += p.cols; if (!p.isChar) allChar = false; if (!p.isBool) allBool = false;
+  }
+  if (im) out.idata = im;
   if (allChar) out.isChar = true;
-  if (allBool && !allChar) out.isBool = true;
+  if (allBool && !allChar && !im) out.isBool = true;
   return out;
 }
 export function vertcat(parts: Mat[]): Mat {
@@ -156,14 +172,16 @@ export function vertcat(parts: Mat[]): Mat {
   let rows = 0;
   for (const p of nonEmpty) { if (p.cols !== cols) throw new MatError('vertical dimensions mismatch'); rows += p.rows; }
   const out = zeros(rows, cols);
+  const anyImag = nonEmpty.some((p) => p.idata);
+  const im = anyImag ? new Float64Array(rows * cols) : null;
   let ro = 0;
   let allBool = true;
   for (const p of nonEmpty) {
-    for (let c = 0; c < cols; c++) for (let r = 0; r < p.rows; r++) out.data[(ro + r) + c * rows] = p.data[r + c * p.rows];
+    for (let c = 0; c < cols; c++) for (let r = 0; r < p.rows; r++) { out.data[(ro + r) + c * rows] = p.data[r + c * p.rows]; if (im) im[(ro + r) + c * rows] = p.idata ? p.idata[r + c * p.rows] : 0; }
     ro += p.rows;
     if (!p.isBool) allBool = false;
   }
-  if (allBool) out.isBool = true;
+  if (im) out.idata = im; else if (allBool) out.isBool = true;
   return out;
 }
 
@@ -188,14 +206,15 @@ function subToList(s: Sub, dim: number): number[] {
 export function indexGet(m: Mat, subs: Sub[]): Mat {
   if (subs.length === 1) {
     const s = subs[0];
-    if (s === 'colon') { const out = zeros(numel(m), 1); out.data.set(m.data); out.isChar = m.isChar; return out; }
+    if (s === 'colon') { const out = zeros(numel(m), 1); out.data.set(m.data); if (m.idata) out.idata = Float64Array.from(m.idata); out.isChar = m.isChar; return out; }
     // linear indexing: result takes the index vector's own shape
-    const out = zeros(1, s.length);
+    const out = zeros(1, s.length); const im = m.idata ? new Float64Array(s.length) : null;
     for (let i = 0; i < s.length; i++) {
       const li = s[i] - 1;
       if (li < 0 || li >= numel(m)) throw new MatError(`index ${s[i]} out of bounds (numel=${numel(m)})`);
-      out.data[i] = m.data[li];
+      out.data[i] = m.data[li]; if (im) im[i] = m.idata![li];
     }
+    if (im) out.idata = im;
     out.isChar = m.isChar;
     // if both target and index are columns, keep a column
     if (m.cols === 1 && m.rows > 1) return transpose(out);
@@ -204,12 +223,13 @@ export function indexGet(m: Mat, subs: Sub[]): Mat {
   if (subs.length === 2) {
     const rs = subToList(subs[0], m.rows);
     const cs = subToList(subs[1], m.cols);
-    const out = zeros(rs.length, cs.length);
+    const out = zeros(rs.length, cs.length); const im = m.idata ? new Float64Array(rs.length * cs.length) : null;
     for (let cc = 0; cc < cs.length; cc++) for (let rr = 0; rr < rs.length; rr++) {
       const r = rs[rr] - 1, c = cs[cc] - 1;
       if (r < 0 || r >= m.rows || c < 0 || c >= m.cols) throw new MatError(`index (${rs[rr]},${cs[cc]}) out of bounds (${m.rows}×${m.cols})`);
-      out.data[rr + cc * out.rows] = m.data[r + c * m.rows];
+      out.data[rr + cc * out.rows] = m.data[r + c * m.rows]; if (im) im[rr + cc * out.rows] = m.idata![r + c * m.rows];
     }
+    if (im) out.idata = im;
     out.isChar = m.isChar;
     return out;
   }
@@ -228,9 +248,12 @@ export function indexSet(m: Mat, subs: Sub[], rhs: Mat): Mat {
       else if (m.cols === 1) m = growTo(m, Math.max(m.rows, need), 1);
       else throw new MatError('cannot grow a matrix by linear index');
     }
+    if (rhs.idata && !m.idata) m.idata = new Float64Array(m.data.length);
+    const scalarR = rhs.data.length === 1;
     for (let i = 0; i < idx.length; i++) {
       const li = idx[i] - 1;
-      m.data[li] = rhs.data.length === 1 ? rhs.data[0] : rhs.data[i];
+      m.data[li] = scalarR ? rhs.data[0] : rhs.data[i];
+      if (m.idata) m.idata[li] = rhs.idata ? (scalarR ? rhs.idata[0] : rhs.idata[i]) : 0;
     }
     if (rhs.isChar && (numel(m) === idx.length)) m.isChar = true;
     return m;
@@ -240,12 +263,14 @@ export function indexSet(m: Mat, subs: Sub[], rhs: Mat): Mat {
     const maxR = rsRaw === 'colon' ? m.rows : (rsRaw.length ? Math.max(...rsRaw) : 0);
     const maxC = csRaw === 'colon' ? m.cols : (csRaw.length ? Math.max(...csRaw) : 0);
     if (maxR > m.rows || maxC > m.cols) m = growTo(m, Math.max(m.rows, maxR), Math.max(m.cols, maxC));
+    if (rhs.idata && !m.idata) m.idata = new Float64Array(m.data.length);
     const rs = subToList(rsRaw, m.rows);
     const cs = subToList(csRaw, m.cols);
     const scalarRhs = rhs.data.length === 1;
     for (let cc = 0; cc < cs.length; cc++) for (let rr = 0; rr < rs.length; rr++) {
-      const v = scalarRhs ? rhs.data[0] : rhs.data[rr + cc * rhs.rows];
-      m.data[(rs[rr] - 1) + (cs[cc] - 1) * m.rows] = v;
+      const si = rr + cc * rhs.rows;
+      m.data[(rs[rr] - 1) + (cs[cc] - 1) * m.rows] = scalarRhs ? rhs.data[0] : rhs.data[si];
+      if (m.idata) m.idata[(rs[rr] - 1) + (cs[cc] - 1) * m.rows] = rhs.idata ? (scalarRhs ? rhs.idata[0] : rhs.idata[si]) : 0;
     }
     return m;
   }
@@ -294,9 +319,97 @@ function growTo(m: Mat, rows: number, cols: number): Mat {
   if (rows === m.rows && cols === m.cols) return m;
   const out = zeros(rows, cols);
   for (let c = 0; c < m.cols; c++) for (let r = 0; r < m.rows; r++) out.data[r + c * rows] = m.data[r + c * m.rows];
+  if (m.idata) { out.idata = new Float64Array(rows * cols); for (let c = 0; c < m.cols; c++) for (let r = 0; r < m.rows; r++) out.idata[r + c * rows] = m.idata[r + c * m.rows]; }
   out.isChar = m.isChar;
   return out;
 }
 
-/** Flatten a matrix to a number[] in column-major order. */
+/** Flatten a matrix to a number[] in column-major order (real part). */
 export function toArray(m: Mat): number[] { return Array.from(m.data); }
+
+// ── Complex numbers ────────────────────────────────────────────────────
+export function isComplex(m: Mat): boolean { return !!m.idata; }
+export function cscalar(re: number, im: number): Mat { return { kind: 'num', rows: 1, cols: 1, data: Float64Array.of(re), idata: Float64Array.of(im) }; }
+const imAt = (m: Mat, i: number): number => (m.idata ? m.idata[i] : 0);
+
+/** Build a complex matrix, dropping the imaginary store if every element is real. */
+export function finishComplex(rows: number, cols: number, re: Float64Array, im: Float64Array): Mat {
+  let anyImag = false; for (let i = 0; i < im.length; i++) if (im[i] !== 0) { anyImag = true; break; }
+  return anyImag ? { kind: 'num', rows, cols, data: re, idata: im } : { kind: 'num', rows, cols, data: re };
+}
+const anyC = (a: Mat, b: Mat): boolean => !!a.idata || !!b.idata;
+
+/** Complex element-wise op with implicit expansion. f(ar,ai,br,bi) → [re,im]. */
+function cElementwise(a: Mat, b: Mat, f: (ar: number, ai: number, br: number, bi: number) => [number, number]): Mat {
+  const rows = a.rows === b.rows ? a.rows : (a.rows === 1 ? b.rows : b.rows === 1 ? a.rows : -1);
+  const cols = a.cols === b.cols ? a.cols : (a.cols === 1 ? b.cols : b.cols === 1 ? a.cols : -1);
+  if (rows < 0 || cols < 0) throw new MatError(`matrix dimensions must agree (${a.rows}×${a.cols} vs ${b.rows}×${b.cols})`);
+  const re = new Float64Array(rows * cols), im = new Float64Array(rows * cols);
+  for (let c = 0; c < cols; c++) for (let r = 0; r < rows; r++) {
+    const ai0 = (a.rows === 1 ? 0 : r) + (a.cols === 1 ? 0 : c) * a.rows;
+    const bi0 = (b.rows === 1 ? 0 : r) + (b.cols === 1 ? 0 : c) * b.rows;
+    const [zr, zi] = f(a.data[ai0], imAt(a, ai0), b.data[bi0], imAt(b, bi0));
+    re[r + c * rows] = zr; im[r + c * rows] = zi;
+  }
+  return finishComplex(rows, cols, re, im);
+}
+
+// complex scalar helpers
+export const cmul = (ar: number, ai: number, br: number, bi: number): [number, number] => [ar * br - ai * bi, ar * bi + ai * br];
+export const cdiv = (ar: number, ai: number, br: number, bi: number): [number, number] => { const d = br * br + bi * bi; return [(ar * br + ai * bi) / d, (ai * br - ar * bi) / d]; };
+export const cexp = (ar: number, ai: number): [number, number] => { const e = Math.exp(ar); return [e * Math.cos(ai), e * Math.sin(ai)]; };
+export const clog = (ar: number, ai: number): [number, number] => [Math.log(Math.hypot(ar, ai)), Math.atan2(ai, ar)];
+export const cpow = (ar: number, ai: number, br: number, bi: number): [number, number] => {
+  if (ar === 0 && ai === 0) return [br > 0 || (br === 0 && bi === 0) ? (br === 0 && bi === 0 ? 1 : 0) : NaN, 0];
+  const [lr, li] = clog(ar, ai); const [mr, mi] = cmul(lr, li, br, bi); return cexp(mr, mi);
+};
+export const csqrt = (ar: number, ai: number): [number, number] => { const m = Math.hypot(ar, ai); const re = Math.sqrt((m + ar) / 2); const im = Math.sign(ai || 1) * Math.sqrt((m - ar) / 2); return [re, im]; };
+
+// real fast-path wrappers used by the evaluator (stay real when both operands are real)
+export const ewAdd = (a: Mat, b: Mat): Mat => anyC(a, b) ? cElementwise(a, b, (ar, ai, br, bi) => [ar + br, ai + bi]) : elementwise(a, b, (x, y) => x + y);
+export const ewSub = (a: Mat, b: Mat): Mat => anyC(a, b) ? cElementwise(a, b, (ar, ai, br, bi) => [ar - br, ai - bi]) : elementwise(a, b, (x, y) => x - y);
+export const ewMul = (a: Mat, b: Mat): Mat => anyC(a, b) ? cElementwise(a, b, cmul) : elementwise(a, b, (x, y) => x * y);
+export const ewRDiv = (a: Mat, b: Mat): Mat => anyC(a, b) ? cElementwise(a, b, cdiv) : elementwise(a, b, (x, y) => x / y);
+export const ewLDiv = (a: Mat, b: Mat): Mat => anyC(a, b) ? cElementwise(a, b, (ar, ai, br, bi) => cdiv(br, bi, ar, ai)) : elementwise(a, b, (x, y) => y / x);
+export const ewPow = (a: Mat, b: Mat): Mat => {
+  // complex if either operand complex, or a negative real raised to a non-integer power
+  let needC = anyC(a, b);
+  if (!needC) for (let i = 0; i < a.data.length; i++) { const e = b.data[b.data.length === 1 ? 0 : i]; if (a.data[i] < 0 && !Number.isInteger(e)) { needC = true; break; } }
+  return needC ? cElementwise(a, b, cpow) : elementwise(a, b, Math.pow);
+};
+
+/** Complex-aware equality (`==` / `~=`); returns a logical matrix. */
+export function ewEq(a: Mat, b: Mat, want: boolean): Mat {
+  const r = anyC(a, b)
+    ? cElementwise(a, b, (ar, ai, br, bi) => { const eq = ar === br && ai === bi; return [(want ? eq : !eq) ? 1 : 0, 0]; })
+    : elementwise(a, b, (x, y) => ((want ? x === y : x !== y) ? 1 : 0));
+  return { kind: 'num', rows: r.rows, cols: r.cols, data: r.data, isBool: true };
+}
+
+export function cmatmul(a: Mat, b: Mat): Mat {
+  if (!anyC(a, b)) return matmul(a, b);
+  if (isScalar(a) || isScalar(b)) return ewMul(a, b);
+  if (a.cols !== b.rows) throw new MatError(`inner matrix dimensions must agree (${a.rows}×${a.cols} * ${b.rows}×${b.cols})`);
+  const re = new Float64Array(a.rows * b.cols), im = new Float64Array(a.rows * b.cols);
+  for (let c = 0; c < b.cols; c++) for (let k = 0; k < a.cols; k++) {
+    const br = b.data[k + c * b.rows], bi = imAt(b, k + c * b.rows);
+    for (let r = 0; r < a.rows; r++) { const ar = a.data[r + k * a.rows], ai = imAt(a, r + k * a.rows); re[r + c * a.rows] += ar * br - ai * bi; im[r + c * a.rows] += ar * bi + ai * br; }
+  }
+  return finishComplex(a.rows, b.cols, re, im);
+}
+
+/** Element-wise unary complex map. f(re,im) → [re,im]. */
+export function cmap(a: Mat, f: (re: number, im: number) => [number, number]): Mat {
+  const re = new Float64Array(a.data.length), im = new Float64Array(a.data.length);
+  for (let i = 0; i < a.data.length; i++) { const [zr, zi] = f(a.data[i], imAt(a, i)); re[i] = zr; im[i] = zi; }
+  return finishComplex(a.rows, a.cols, re, im);
+}
+/** Real-valued unary map over a complex array (e.g. abs, angle). */
+export function cmapReal(a: Mat, f: (re: number, im: number) => number): Mat {
+  const out = zeros(a.rows, a.cols);
+  for (let i = 0; i < a.data.length; i++) out.data[i] = f(a.data[i], imAt(a, i));
+  return out;
+}
+export function conj(a: Mat): Mat { if (!a.idata) return a; const im = new Float64Array(a.idata.length); for (let i = 0; i < im.length; i++) im[i] = -a.idata[i]; return { kind: 'num', rows: a.rows, cols: a.cols, data: a.data, idata: im }; }
+export function realPart(a: Mat): Mat { return mat(a.rows, a.cols, Float64Array.from(a.data)); }
+export function imagPart(a: Mat): Mat { const o = zeros(a.rows, a.cols); if (a.idata) o.data.set(a.idata); return o; }

@@ -388,7 +388,7 @@ class Parser {
 
   private parsePrimary(): Expr {
     const t = this.peek();
-    if (t.kind === 'num') { this.next(); return { t: 'num', v: t.num! }; }
+    if (t.kind === 'num') { this.next(); return { t: 'num', v: t.num!, imag: t.imag }; }
     if (t.kind === 'str') { this.next(); return { t: 'str', v: t.value }; }
     if (t.kind === 'kw' && t.value === 'end') { this.next(); return { t: 'end' }; }
     if (t.kind === 'ident') { this.next(); return { t: 'ident', name: t.value }; }

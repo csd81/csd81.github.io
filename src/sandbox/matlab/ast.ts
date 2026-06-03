@@ -1,7 +1,7 @@
 /** AST node types for the MATLAB subset. */
 
 export type Expr =
-  | { t: 'num'; v: number }
+  | { t: 'num'; v: number; imag?: boolean }
   | { t: 'str'; v: string }
   | { t: 'ident'; name: string }
   | { t: 'end' }                                  // `end` used as an index bound
