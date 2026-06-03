@@ -827,6 +827,10 @@ export const BUILTINS: Record<string, Builtin> = {
     for (let i = 0; i < n; i++) { W.data[i + i * n] = Math.abs(mid - i); if (i + 1 < n) { W.data[i + (i + 1) * n] = 1; W.data[(i + 1) + i * n] = 1; } }
     return ret(W);
   },
+  gallery: async (a) => {
+    if (!a.length || !(isMat(a[0]) && (a[0] as Mat).isChar)) throw new MatError("gallery: first argument must be a name, e.g. gallery('minij',5)");
+    return ret(galleryMatrix(asString(a[0]).toLowerCase(), a.slice(1)));
+  },
   nonzeros: async (a) => { if (isSparse(a[0])) return ret(colVec(Array.from(a[0].values))); return ret(colVec(toArray(m(a[0])).filter((x) => x !== 0))); },
   // Window functions (column vectors, like MATLAB).
   bartlett: async (a) => { const N = Math.round(asScalar(a[0])); const w: number[] = []; for (let n = 0; n < N; n++) w.push(N === 1 ? 1 : 1 - Math.abs((n - (N - 1) / 2) / ((N - 1) / 2))); return ret(colVec(w)); },
@@ -1395,6 +1399,7 @@ const HELP: Record<string, HelpEntry> = {
   qmr: { summary: 'Quasi-minimal residual solver (here: direct solve A\\b)', syntax: ['x = qmr(A,b)'], seealso: ['gmres', 'bicg', 'pcg'] },
   condest1: { summary: '1-norm condition number estimate', syntax: ['c = condest1(A)'], seealso: ['condest', 'cond', 'rcond'] },
   wilkinson: { summary: "Wilkinson's eigenvalue test matrix (symmetric tridiagonal)", syntax: ['W = wilkinson(n)'], seealso: ['gallery', 'eig'] },
+  gallery: { summary: "Famous test matrices. Supported: minij, moler, lehmer, frank, cauchy, clement, kms, parter, fiedler, gcdmat, grcar, tridiag, riemann, chebspec, wilk, toeppen", syntax: ["A = gallery('minij',n)", "A = gallery('kms',n,rho)"], seealso: ['magic', 'hilb', 'pascal', 'wilkinson', 'toeplitz'] },
   bartlett: { summary: 'Bartlett (triangular) window', syntax: ['w = bartlett(N)'], seealso: ['hamming', 'hann', 'blackman'] },
   blackman: { summary: 'Blackman window', syntax: ['w = blackman(N)'], seealso: ['hamming', 'hann', 'bartlett'] },
   hamming: { summary: 'Hamming window', syntax: ['w = hamming(N)'], seealso: ['hann', 'blackman', 'bartlett'] },
@@ -1475,7 +1480,8 @@ const BASE_REF = new Set<string>((
   'psi expint sinint cosint legendre besselj bessely besseli besselk besselh airy ellipke ellipj ' +
   'delaunay griddata interp3 interpn ' +
   'rsf2csf balance qz ordschur ' +
-  'sparse full issparse spones nonzeros nzmax spdiags speye spalloc sprand sprandn sprandsym spy etree symrcm amd symamd colamd ichol ilu'
+  'sparse full issparse spones nonzeros nzmax spdiags speye spalloc sprand sprandn sprandsym spy etree symrcm amd symamd colamd ichol ilu ' +
+  'gallery'
 ).split(/\s+/));
 
 export function docUrl(name: string): string {
@@ -1701,6 +1707,51 @@ function sncndn(uu: number, emmc: number): [number, number, number] {
 }
 
 /** Magic square (Siamese for odd, doubly-even rule, Strachey for singly-even). */
+/** Chebyshev spectral differentiation matrix (Trefethen), n×n with N=n-1 points. */
+function chebspecMat(n: number): Mat {
+  const N = n - 1; const D = zeros(n, n); if (N < 1) return D;
+  const x: number[] = [], c: number[] = [];
+  for (let k = 0; k <= N; k++) { x.push(Math.cos(Math.PI * k / N)); c.push((k === 0 || k === N ? 2 : 1) * (k % 2 ? -1 : 1)); }
+  for (let i = 0; i < n; i++) { let sum = 0; for (let j = 0; j < n; j++) if (i !== j) { const v = c[i] / c[j] / (x[i] - x[j]); D.data[i + j * n] = v; sum += v; } D.data[i + i * n] = -sum; }
+  return D;
+}
+/** Wilkinson test matrices wilk(n) for n = 3, 4, 21 (Higham). */
+function wilkMat(n: number): Mat {
+  if (n === 21) { const W = zeros(21, 21); for (let i = 0; i < 21; i++) { W.data[i + i * 21] = Math.abs(10 - i); if (i + 1 < 21) { W.data[i + (i + 1) * 21] = 1; W.data[(i + 1) + i * 21] = 1; } } return W; }
+  if (n === 3) return mat(3, 3, Float64Array.of(1e-10, 0, 0, 0.9, 0.9, 0, -0.4, -0.4, 1e-10));
+  if (n === 4) return mat(4, 4, Float64Array.of(0.9143e-4, 0.8762, 0.7943, 0.8017, 0, 0.7156e-4, 0.8143, 0.6123, 0, 0, 0.9504e-4, 0.7165, 0, 0, 0, 0.7123e-4));
+  throw new MatError("gallery('wilk',n): only n = 3, 4, 21 are defined");
+}
+/** Famous test matrices: gallery(name, n, ...). */
+function galleryMatrix(name: string, a: Value[]): Value {
+  const n = a.length ? Math.round(asScalar(a[0])) : 0;
+  const gb = (f: (I: number, J: number) => number): Mat => { const A = zeros(n, n); for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) A.data[i + j * n] = f(i + 1, j + 1); return A; };
+  switch (name) {
+    case 'minij': return gb((I, J) => Math.min(I, J));
+    case 'moler': return gb((I, J) => (I === J ? I : Math.min(I, J) - 2));
+    case 'lehmer': return gb((I, J) => Math.min(I, J) / Math.max(I, J));
+    case 'frank': return gb((I, J) => (I <= J ? n + 1 - J : (I === J + 1 ? n - J : 0)));
+    case 'cauchy': return gb((I, J) => 1 / (I + J));
+    case 'clement': return gb((I, J) => (I === J + 1 ? n - J : (J === I + 1 ? I : 0)));
+    case 'kms': { const rho = a.length >= 2 ? asScalar(a[1]) : 0.5; return gb((I, J) => Math.pow(rho, Math.abs(I - J))); }
+    case 'parter': return gb((I, J) => 1 / (I - J + 0.5));
+    case 'fiedler': return gb((I, J) => Math.abs(I - J));
+    case 'gcdmat': return gb((I, J) => gcd2(I, J));
+    case 'grcar': { const k = a.length >= 2 ? Math.round(asScalar(a[1])) : 3; return gb((I, J) => (I === J + 1 ? -1 : (J >= I && J <= I + k ? 1 : 0))); }
+    case 'tridiag': return gb((I, J) => (I === J ? 2 : (Math.abs(I - J) === 1 ? -1 : 0)));
+    case 'riemann': return gb((I, J) => ((J + 1) % (I + 1) === 0 ? I : -1));
+    case 'chebspec': return chebspecMat(n);
+    case 'wilk': return wilkMat(n);
+    case 'toeppen': {
+      const d = [a.length >= 2 ? asScalar(a[1]) : 1, a.length >= 3 ? asScalar(a[2]) : -10, a.length >= 4 ? asScalar(a[3]) : 0, a.length >= 5 ? asScalar(a[4]) : 10, a.length >= 6 ? asScalar(a[5]) : 1];
+      const offs = [-2, -1, 0, 1, 2]; const acc = new Map<number, number>();
+      for (let o = 0; o < 5; o++) { if (d[o] === 0) continue; for (let I = 1; I <= n; I++) { const J = I + offs[o]; if (J >= 1 && J <= n) acc.set((J - 1) * n + (I - 1), d[o]); } }
+      return sparseFromMap(n, n, acc);
+    }
+    default: throw new MatError(`gallery: matrix type '${name}' is not implemented in this build`);
+  }
+}
+
 function magicFn(n: number): Mat {
   const M = zeros(n, n); const at = (r: number, c: number) => M.data[r + c * n]; const set = (r: number, c: number, v: number) => { M.data[r + c * n] = v; };
   if (n < 1) return M;
