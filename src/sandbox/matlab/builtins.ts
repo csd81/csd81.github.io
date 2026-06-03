@@ -13,7 +13,7 @@ import {
   qr as qrDecomp, chol as cholFn, luOutputs, jacobiEigSym, svd as svdReal,
   rankOf, cond as condFn, pinv as pinvFn, orth as orthFn, nullspace, rref as rrefFn, vecnorm as vecnormFn, isSymmetric, cDet,
   generalEig, durandKerner, hess as hessFn, schur as schurFn, expm as expmFn, logm as logmFn, sqrtm as sqrtmFn, ldl as ldlFn, lsqnonneg as lsqnonnegFn,
-  balance as balanceFn, rsf2csf as rsf2csfFn, qz as qzFn, ordschur as ordschurFn,
+  balance as balanceFn, rsf2csf as rsf2csfFn, qz as qzFn, ordschur as ordschurFn, schurEig as schurEigFn,
 } from './linalg';
 import { dispValue, sprintf } from './format';
 import type { Graphics } from './graphics';
@@ -842,6 +842,75 @@ export const BUILTINS: Record<string, Builtin> = {
   typecast: async (a) => { const A = m(a[0]); const buf = new Float64Array(A.data).buffer; return ret(rowVec(readAs(buf, asString(a[1])))); },
   swapbytes: async (a) => { const A = m(a[0]); const u = new Uint8Array(new Float64Array(A.data).buffer); for (let i = 0; i < u.length; i += 8) u.subarray(i, i + 8).reverse(); return ret(mat(A.rows, A.cols, new Float64Array(u.buffer))); },
 
+  // ── Batch G: stats / preprocessing / misc numeric ──
+  rms: async (a) => ret(colReduce(m(a[0]), (c) => Math.sqrt(c.reduce((s, x) => s + x * x, 0) / c.length))),
+  geomean: async (a) => ret(colReduce(m(a[0]), (c) => Math.exp(c.reduce((s, x) => s + Math.log(x), 0) / c.length))),
+  harmmean: async (a) => ret(colReduce(m(a[0]), (c) => c.length / c.reduce((s, x) => s + 1 / x, 0))),
+  movmad: async (a) => ret(movWindow(m(a[0]), Math.round(asScalar(a[1])), (w) => { const med = medianOf(w); return medianOf(w.map((x) => Math.abs(x - med))); })),
+  movprod: async (a) => ret(movWindow(m(a[0]), Math.round(asScalar(a[1])), (w) => w.reduce((s, x) => s * x, 1))),
+  movstd: async (a) => ret(movWindow(m(a[0]), Math.round(asScalar(a[1])), (w) => Math.sqrt(variance(w)))),
+  movvar: async (a) => ret(movWindow(m(a[0]), Math.round(asScalar(a[1])), variance)),
+  mape: async (a) => { const F = toArray(m(a[0])), A = toArray(m(a[1])); let s = 0; for (let i = 0; i < F.length; i++) s += Math.abs((F[i] - A[i]) / A[i]); return ret(scalar(100 * s / F.length)); },
+  rmse: async (a) => { const F = toArray(m(a[0])), A = toArray(m(a[1])); let s = 0; for (let i = 0; i < F.length; i++) s += (F[i] - A[i]) ** 2; return ret(scalar(Math.sqrt(s / F.length))); },
+
+  // missing-value handling (NaN convention)
+  ismissing: async (a) => { const A = m(a[0]); return [{ ...map(A, (x) => (Number.isNaN(x) ? 1 : 0)), isBool: true }]; },
+  anymissing: async (a) => ret(bool(toArray(m(a[0])).some((x) => Number.isNaN(x)))),
+  standardizeMissing: async (a) => { const A = m(a[0]); const vals = new Set(toArray(m(a[1]))); return ret(map(A, (x) => (vals.has(x) ? NaN : x))); },
+  rmmissing: async (a) => {
+    const A = m(a[0]);
+    if (A.rows === 1 || A.cols === 1) return ret(A.rows === 1 ? rowVec(toArray(A).filter((x) => !Number.isNaN(x))) : colVec(toArray(A).filter((x) => !Number.isNaN(x))));
+    const keep: number[] = []; for (let r = 0; r < A.rows; r++) { let ok = true; for (let c = 0; c < A.cols; c++) if (Number.isNaN(A.data[r + c * A.rows])) { ok = false; break; } if (ok) keep.push(r); }
+    const o = zeros(keep.length, A.cols); keep.forEach((r, i) => { for (let c = 0; c < A.cols; c++) o.data[i + c * keep.length] = A.data[r + c * A.rows]; }); return ret(o);
+  },
+  fillmissing: async (a) => {
+    const A = m(a[0]); const method = isMat(a[1]) && (a[1] as Mat).isChar ? asString(a[1]).toLowerCase() : 'constant';
+    const fill = method === 'constant' ? asScalar(a[a.length - 1]) : 0;
+    return ret(colMap(A, (c) => fillVec(c, method, fill)));
+  },
+  isbetween: async (a) => { const A = m(a[0]); const lo = asScalar(a[1]), hi = asScalar(a[2]); return [{ ...map(A, (x) => (x >= lo && x <= hi ? 1 : 0)), isBool: true }]; },
+  isuniform: async (a, n) => { const v = toArray(m(a[0])); if (v.length < 2) return n >= 2 ? [bool(true), scalar(0)] : [bool(true)]; const step = v[1] - v[0]; let ok = true; for (let i = 2; i < v.length; i++) if (Math.abs((v[i] - v[i - 1]) - step) > 1e-12 * (1 + Math.abs(step))) { ok = false; break; } return n >= 2 ? [bool(ok), scalar(ok ? step : NaN)] : [bool(ok)]; },
+  allunique: async (a) => { const v = toArray(m(a[0])); return ret(bool(new Set(v).size === v.length)); },
+  numunique: async (a) => ret(scalar(new Set(toArray(m(a[0]))).size)),
+  uniquetol: async (a) => {
+    const v = [...toArray(m(a[0]))].sort((x, y) => x - y); const tol = a.length >= 2 ? asScalar(a[1]) : 1e-6;
+    const scale = Math.max(1, ...v.map(Math.abs)); const out: number[] = [];
+    for (const x of v) if (!out.length || Math.abs(x - out[out.length - 1]) > tol * scale) out.push(x);
+    return ret(m(a[0]).rows === 1 ? rowVec(out) : colVec(out));
+  },
+  ismembertol: async (a) => { const A = m(a[0]); const B = toArray(m(a[1])); const tol = a.length >= 3 ? asScalar(a[2]) : 1e-6; const scale = Math.max(1, ...B.map(Math.abs), ...toArray(A).map(Math.abs)); return [{ ...map(A, (x) => (B.some((b) => Math.abs(x - b) <= tol * scale) ? 1 : 0)), isBool: true }]; },
+  issortedrows: async (a) => { const A = m(a[0]); for (let r = 1; r < A.rows; r++) { for (let c = 0; c < A.cols; c++) { const prev = A.data[(r - 1) + c * A.rows], cur = A.data[r + c * A.rows]; if (cur > prev) break; if (cur < prev) return ret(bool(false)); } } return ret(bool(true)); },
+  paddata: async (a) => { const v = toArray(m(a[0])); const nn = Math.round(asScalar(a[1])); const out = v.slice(); while (out.length < nn) out.push(0); return ret(m(a[0]).rows === 1 ? rowVec(out) : colVec(out)); },
+  trimdata: async (a) => { const v = toArray(m(a[0])); const nn = Math.round(asScalar(a[1])); return ret(m(a[0]).rows === 1 ? rowVec(v.slice(0, nn)) : colVec(v.slice(0, nn))); },
+  resize: async (a) => { const v = toArray(m(a[0])); const nn = Math.round(asScalar(a[1])); const out = v.slice(0, nn); while (out.length < nn) out.push(0); return ret(m(a[0]).rows === 1 ? rowVec(out) : colVec(out)); },
+  discretize: async (a) => { const A = m(a[0]); const edges = toArray(m(a[1])); return ret(map(A, (x) => { if (x < edges[0] || x > edges[edges.length - 1]) return NaN; for (let i = 0; i < edges.length - 1; i++) if (x >= edges[i] && (x < edges[i + 1] || (i === edges.length - 2 && x === edges[i + 1]))) return i + 1; return NaN; })); },
+
+  // linear algebra / math additions
+  sylvester: async (a) => ret(sylvesterSolve(m(a[0]), m(a[1]), m(a[2]))),
+  lsqminnorm: async (a) => ret(matmul(pinvFn(m(a[0])), m(a[1]))),
+  expmv: async (a) => ret(matmul(expmFn(m(a[0])), m(a[1]))),
+  idivide: async (a) => { const op = a.length >= 3 ? asString(a[2]).toLowerCase() : 'fix'; const rnd = op === 'floor' ? Math.floor : op === 'ceil' ? Math.ceil : op === 'round' ? Math.round : Math.trunc; return ret(elementwise(m(a[0]), m(a[1]), (x, y) => rnd(x / y))); },
+  polydiv: async (a, n) => { const [q, r] = polyDivide(toArray(m(a[0])), toArray(m(a[1]))); return n >= 2 ? [rowVec(q), rowVec(r)] : [rowVec(q)]; },
+  ordeig: async (a) => { const e = schurEigFn(m(a[0])); return ret(finishComplex(e.re.length, 1, Float64Array.from(e.re), Float64Array.from(e.im))); },
+  betaincinv: async (a) => { const p = asScalar(a[0]), aa = asScalar(a[1]), bb = asScalar(a[2]); return ret(scalar(invMonotone((x) => betainc(x, aa, bb), p, 0, 1))); },
+  gammaincinv: async (a) => { const p = asScalar(a[0]), aa = asScalar(a[1]); return ret(scalar(invMonotone((x) => gammainc(x, aa), p, 0, aa + 10 * Math.sqrt(aa) + 20))); },
+  rosser: async () => ret(rosserMat()),
+  rng: async () => [],
+  convn: async (a) => { const A = m(a[0]), B = m(a[1]); if ((A.rows === 1 || A.cols === 1) && (B.rows === 1 || B.cols === 1)) { const u = toArray(A), v = toArray(B); const w = new Array(Math.max(0, u.length + v.length - 1)).fill(0); for (let i = 0; i < u.length; i++) for (let j = 0; j < v.length; j++) w[i + j] += u[i] * v[j]; return ret(A.cols === 1 ? colVec(w) : rowVec(w)); } return ret(conv2Shape(A, B, 'full')); },
+  optimset: async (a) => { const fields = new Map<string, Value[]>(); const start = a.length && isStruct(a[0]) ? 1 : 0; if (start) for (const [k, v] of (a[0] as StructV).fields) fields.set(k, v.slice()); for (let i = start; i + 1 < a.length; i += 2) fields.set(asString(a[i]), [a[i + 1]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields } as StructV); },
+  optimget: async (a) => { const S = a[0]; if (!isStruct(S)) throw new MatError('optimget: first argument must be an options struct'); const v = S.fields.get(asString(a[1])); return ret(v && v.length ? v[0] : zeros(0, 0)); },
+  quad2d: async (a, _n, env) => BUILTINS.integral2(a, 1, env),
+
+  // sparse / iterative aliases
+  lsqr: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
+  minres: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
+  tfqmr: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
+  bicgstabl: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
+  symmlq: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
+  spfun: async (a, _n, env) => { const f = handle(a[0], 'spfun'); const S = asSparse(a[1]); const out = new Float64Array(S.values.length); for (let i = 0; i < S.values.length; i++) { const r = await env.callHandle(f, [scalar(S.values[i])], 1); out[i] = asScalar(r[0]); } return ret({ kind: 'sparse', rows: S.rows, cols: S.cols, colptr: S.colptr.slice(), rowind: S.rowind.slice(), values: out } as Sparse); },
+  sprank: async (a) => ret(scalar(rankOf(sparseToDense(asSparse(a[0]))))),
+  colperm: async (a) => { const S = asSparse(a[0]); const cnt = Array.from({ length: S.cols }, (_, j) => ({ j, n: S.colptr[j + 1] - S.colptr[j] })); cnt.sort((x, y) => x.n - y.n); return ret(rowVec(cnt.map((c) => c.j + 1))); },
+
   // ── Numerical methods (real-valued) ──
   trapz: async (a) => {
     let x: number[], y: number[];
@@ -1365,6 +1434,22 @@ const HELP: Record<string, HelpEntry> = {
   colormap: { summary: 'Set the colour map (parula/jet/hot/cool/gray/…)', syntax: ['colormap jet', "colormap('parula')"], seealso: ['surf', 'colorbar', 'shading'] },
   zlabel: { summary: 'Label the z-axis', syntax: ["zlabel('text')"], seealso: ['xlabel', 'ylabel', 'surf'] },
   peaks: { summary: 'Sample function of two variables (classic test surface)', syntax: ['Z = peaks(n)', 'peaks(n)'], seealso: ['surf', 'mesh', 'meshgrid'] },
+  rms: { summary: 'Root-mean-square value', syntax: ['y = rms(X)'], seealso: ['mean', 'std', 'rmse'] },
+  geomean: { summary: 'Geometric mean', syntax: ['m = geomean(X)'], seealso: ['mean', 'harmmean'] },
+  harmmean: { summary: 'Harmonic mean', syntax: ['m = harmmean(X)'], seealso: ['mean', 'geomean'] },
+  rmse: { summary: 'Root-mean-squared error between arrays', syntax: ['e = rmse(F,A)'], seealso: ['mape', 'rms'] },
+  mape: { summary: 'Mean absolute percentage error', syntax: ['e = mape(F,A)'], seealso: ['rmse'] },
+  sylvester: { summary: 'Solve the Sylvester equation A*X + X*B = C', syntax: ['X = sylvester(A,B,C)'], seealso: ['lyap', 'mldivide'] },
+  lsqminnorm: { summary: 'Minimum-norm least-squares solution', syntax: ['x = lsqminnorm(A,b)'], seealso: ['pinv', 'mldivide', 'lsqnonneg'] },
+  ordeig: { summary: 'Eigenvalues of a (quasi)triangular matrix in diagonal order', syntax: ['e = ordeig(T)'], seealso: ['eig', 'schur', 'ordschur'] },
+  fillmissing: { summary: 'Fill missing (NaN) entries: constant/previous/next/nearest/linear', syntax: ["y = fillmissing(x,'linear')", "y = fillmissing(x,'constant',v)"], seealso: ['ismissing', 'rmmissing', 'standardizeMissing'] },
+  rmmissing: { summary: 'Remove missing (NaN) entries or rows', syntax: ['y = rmmissing(x)'], seealso: ['fillmissing', 'ismissing'] },
+  ismissing: { summary: 'Logical mask of missing (NaN) values', syntax: ['tf = ismissing(x)'], seealso: ['anymissing', 'rmmissing'] },
+  discretize: { summary: 'Group data into bins given edges', syntax: ['bin = discretize(x,edges)'], seealso: ['histcounts', 'accumarray'] },
+  uniquetol: { summary: 'Unique values within a tolerance', syntax: ['C = uniquetol(A,tol)'], seealso: ['unique', 'ismembertol'] },
+  idivide: { summary: 'Integer division with rounding option (fix/floor/ceil/round)', syntax: ["q = idivide(a,b,'floor')"], seealso: ['mod', 'rem', 'fix'] },
+  polydiv: { summary: 'Polynomial long division → [quotient, remainder]', syntax: ['[q,r] = polydiv(u,v)'], seealso: ['deconv', 'conv'] },
+  rosser: { summary: 'Classic 8×8 symmetric eigenvalue test matrix', syntax: ['A = rosser'], seealso: ['gallery', 'wilkinson', 'eig'] },
   xline: { summary: 'Vertical reference line(s) at constant x', syntax: ['xline(x)', "xline(x,'--r')", "xline(x,'-','label')"], seealso: ['yline', 'plot', 'line'] },
   yline: { summary: 'Horizontal reference line(s) at constant y', syntax: ['yline(y)', "yline(y,'--r')", "yline(y,'-','label')"], seealso: ['xline', 'plot', 'line'] },
   disp: { summary: 'Display value without its variable name', syntax: ['disp(X)'], seealso: ['fprintf', 'sprintf'] },
@@ -1534,7 +1619,10 @@ const BASE_REF = new Set<string>((
   'mkpp unmkpp ppval ' +
   'psi expint sinint cosint legendre besselj bessely besseli besselk besselh airy ellipke ellipj ' +
   'delaunay griddata interp3 interpn ' +
-  'rsf2csf balance qz ordschur ' +
+  'rsf2csf balance qz ordschur ordeig sylvester lsqminnorm expmv ' +
+  'rms geomean harmmean movmad movprod movstd movvar mape rmse idivide polydiv betaincinv gammaincinv rosser rng convn optimset optimget quad2d ' +
+  'ismissing anymissing standardizeMissing rmmissing fillmissing isbetween isuniform allunique numunique uniquetol ismembertol issortedrows paddata trimdata resize discretize ' +
+  'lsqr minres tfqmr bicgstabl symmlq spfun sprank colperm ' +
   'sparse full issparse spones nonzeros nzmax spdiags speye spalloc sprand sprandn sprandsym spy etree symrcm amd symamd colamd ichol ilu ' +
   'gallery'
 ).split(/\s+/));
@@ -1897,6 +1985,60 @@ function convHull2D(x: number[], y: number[]): number[] {
   return [...hull, hull[0]].map((i) => i + 1);
 }
 /** Regularised lower incomplete gamma P(a,x) (Numerical Recipes gammp). */
+function medianOf(w: number[]): number { const s = [...w].sort((a, b) => a - b); const n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; }
+/** Fill NaNs in a column by the named method. */
+function fillVec(c: number[], method: string, fill: number): number[] {
+  const out = c.slice(); const n = out.length;
+  const prevFill = () => { let last = NaN; for (let i = 0; i < n; i++) { if (Number.isNaN(out[i])) out[i] = last; else last = out[i]; } };
+  const nextFill = () => { let nxt = NaN; for (let i = n - 1; i >= 0; i--) { if (Number.isNaN(out[i])) out[i] = nxt; else nxt = out[i]; } };
+  if (method === 'previous') prevFill();
+  else if (method === 'next') nextFill();
+  else if (method === 'nearest') { prevFill(); const back = c.slice(); let nxt = NaN; for (let i = n - 1; i >= 0; i--) { if (Number.isNaN(back[i])) back[i] = nxt; else nxt = back[i]; } for (let i = 0; i < n; i++) if (Number.isNaN(out[i])) out[i] = back[i]; }
+  else if (method === 'linear') { for (let i = 0; i < n; i++) if (Number.isNaN(out[i])) { let lo = i - 1; while (lo >= 0 && Number.isNaN(out[lo])) lo--; let hi = i + 1; while (hi < n && Number.isNaN(c[hi])) hi++; if (lo >= 0 && hi < n) out[i] = out[lo] + (c[hi] - out[lo]) * (i - lo) / (hi - lo); } }
+  else for (let i = 0; i < n; i++) if (Number.isNaN(out[i])) out[i] = fill; // constant
+  return out;
+}
+/** Polynomial long division u/v → [quotient, remainder] (high→low coefficients). */
+function polyDivide(u: number[], v: number[]): [number[], number[]] {
+  const r = u.slice(); const nq = u.length - v.length + 1;
+  if (nq <= 0) return [[0], u.slice()];
+  const q = new Array(nq).fill(0);
+  for (let k = 0; k < nq; k++) { const c = r[k] / v[0]; q[k] = c; for (let j = 0; j < v.length; j++) r[k + j] -= c * v[j]; }
+  return [q, r.slice(nq)];
+}
+/** Solve the Sylvester equation A X + X B = C via the Kronecker system. */
+function sylvesterSolve(A: Mat, B: Mat, C: Mat): Mat {
+  const p = A.rows, q = B.cols, pq = p * q;
+  const K = zeros(pq, pq); const rhs = zeros(pq, 1);
+  for (let k = 0; k < q; k++) for (let i = 0; i < p; i++) {
+    const row = i + k * p; rhs.data[row] = C.data[i + k * p];
+    for (let ii = 0; ii < p; ii++) K.data[row + (ii + k * p) * pq] += A.data[i + ii * p];      // (I⊗A)
+    for (let kk = 0; kk < q; kk++) K.data[row + (i + kk * p) * pq] += B.data[kk + k * q];       // (Bᵀ⊗I)
+  }
+  const x = mldivide(K, rhs); const X = zeros(p, q);
+  for (let k = 0; k < q; k++) for (let i = 0; i < p; i++) X.data[i + k * p] = x.data[i + k * p];
+  return X;
+}
+/** Invert a monotone-increasing function on [lo,hi] to value p (bisection). */
+function invMonotone(f: (x: number) => number, p: number, lo: number, hi: number): number {
+  for (let it = 0; it < 200; it++) { const mid = (lo + hi) / 2; if (f(mid) < p) lo = mid; else hi = mid; if (hi - lo < 1e-14 * (1 + Math.abs(hi))) break; }
+  return (lo + hi) / 2;
+}
+/** The 8×8 Rosser symmetric eigenvalue test matrix. */
+function rosserMat(): Mat {
+  const rows = [
+    [611, 196, -192, 407, -8, -52, -49, 29],
+    [196, 899, 113, -192, -71, -43, -8, -44],
+    [-192, 113, 899, 196, 61, 49, 8, 52],
+    [407, -192, 196, 611, 8, 44, 59, -23],
+    [-8, -71, 61, 8, 411, -599, 208, 208],
+    [-52, -43, 49, 44, -599, 411, 208, 208],
+    [-49, -8, 8, 59, 208, 208, 99, -911],
+    [29, -44, 52, -23, 208, 208, -911, 99],
+  ];
+  return fromRows(rows);
+}
+
 function gammainc(x: number, a: number): number {
   if (x < 0 || a <= 0) return NaN; if (x === 0) return 0;
   const gln = logGamma(a);
