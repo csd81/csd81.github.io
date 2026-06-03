@@ -1818,6 +1818,39 @@ export const BUILTINS: Record<string, Builtin> = {
   surfc: async (a, _n, env) => { env.graphics.surface(a, 'surf'); return []; },
   surfl: async (a, _n, env) => { env.graphics.surface(a, 'surf'); return []; },
   mesh: async (a, _n, env) => { env.graphics.surface(a, 'mesh'); return []; },
+  bar3: async (a, _n, env) => { env.graphics.bar3(matToGrid(m(a[a.length - 1])), false); return []; },
+  bar3h: async (a, _n, env) => { env.graphics.bar3(matToGrid(m(a[a.length - 1])), true); return []; },
+  quiver3: async (a, _n, env) => {
+    const ms = a.filter((x): x is Mat => isMat(x) && !(x as Mat).isChar).map((x) => toArray(x));
+    if (ms.length >= 6) env.graphics.quiver3(ms[0], ms[1], ms[2], ms[3], ms[4], ms[5]);
+    else env.graphics.quiver3(ms[0].map((_, i) => i + 1), ms[0].map(() => 0), ms[0].map(() => 0), ms[0], ms[1] ?? ms[0].map(() => 0), ms[2] ?? ms[0].map(() => 0));
+    return [];
+  },
+  histogram2: async (a, _n, env) => { const x = toArray(m(a[0])), y = toArray(m(a[1])); const nb = a.length >= 3 && isMat(a[2]) ? toArray(m(a[2])) : [10, 10]; env.graphics.histogram2(x, y, nb[0], nb[1] ?? nb[0]); return []; },
+  plotmatrix: async (a, _n, env) => {
+    const X = m(a[0]); const Y = a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar ? m(a[1]) : X;
+    const col = (M: Mat, j: number) => Array.from({ length: M.rows }, (_, r) => M.data[r + j * M.rows]);
+    const px = X.cols, py = Y.cols;
+    for (let i = 0; i < py; i++) for (let j = 0; j < px; j++) {
+      env.graphics.subplot(py, px, i * px + j + 1);
+      if (X === Y && i === j) { const v = col(X, j); const nb = 10; const lo = Math.min(...v), hi = Math.max(...v); const d = (hi - lo) / nb || 1; const cnt = new Array(nb).fill(0); for (const t of v) cnt[Math.min(nb - 1, Math.floor((t - lo) / d))]++; env.graphics.chart2d([rowVec(cnt.map((_, k) => lo + (k + 0.5) * d)), rowVec(cnt)], 'bar'); }
+      else env.graphics.scatter([colVec(col(X, j)), colVec(col(Y, i))]);
+    }
+    return [];
+  },
+  contourc: async (a) => {
+    const mats = a.filter((x): x is Mat => isMat(x) && !(x as Mat).isChar);
+    let Z: Mat, xv: number[], yv: number[]; let levelArg: Mat | null = null;
+    if (mats.length >= 3) { xv = toArray(mats[0]); yv = toArray(mats[1]); Z = mats[2]; levelArg = mats[3] ?? null; }
+    else { Z = mats[0]; xv = Array.from({ length: Z.cols }, (_, i) => i + 1); yv = Array.from({ length: Z.rows }, (_, i) => i + 1); levelArg = mats[1] ?? null; }
+    const grid = matToGrid(Z);
+    let levels: number[] | null = null;
+    if (levelArg) {
+      if (numel(levelArg) === 1) { const n = Math.round(levelArg.data[0]); let lo = Infinity, hi = -Infinity; for (const row of grid) for (const v of row) { if (v < lo) lo = v; if (v > hi) hi = v; } levels = Array.from({ length: n }, (_, i) => lo + (i + 1) * (hi - lo) / (n + 1)); }
+      else levels = toArray(levelArg);
+    }
+    return ret(marchingSquares(xv, yv, grid, levels));
+  },
   // polar plots
   polarplot: async (a, _n, env) => { env.graphics.polar(a, 'lines'); return []; },
   polarscatter: async (a, _n, env) => { env.graphics.polar(a, 'markers'); return []; },
@@ -2089,6 +2122,12 @@ const HELP: Record<string, HelpEntry> = {
   rticks: { summary: 'Set polar radial tick values', syntax: ['rticks(v)'], seealso: ['thetaticks', 'rlim'] },
   thetaticks: { summary: 'Set polar angular tick values (degrees)', syntax: ['thetaticks(v)'], seealso: ['rticks', 'thetalim'] },
   surfl: { summary: '3-D surface with lighting (rendered as surf)', syntax: ['surfl(X,Y,Z)'], seealso: ['surf', 'mesh'] },
+  bar3: { summary: '3-D bar chart', syntax: ['bar3(Z)'], seealso: ['bar', 'bar3h', 'surf'] },
+  bar3h: { summary: 'Horizontal 3-D bar chart', syntax: ['bar3h(Z)'], seealso: ['bar3', 'barh'] },
+  quiver3: { summary: '3-D vector field (arrows)', syntax: ['quiver3(X,Y,Z,U,V,W)'], seealso: ['quiver', 'streamline'] },
+  histogram2: { summary: 'Bivariate histogram (rendered as a heatmap)', syntax: ['histogram2(x,y)', 'histogram2(x,y,nbins)'], seealso: ['histogram', 'histcounts2'] },
+  plotmatrix: { summary: 'Scatter-plot matrix of column pairs (histograms on the diagonal)', syntax: ['plotmatrix(X)', 'plotmatrix(X,Y)'], seealso: ['scatter', 'subplot'] },
+  contourc: { summary: 'Compute contour-line data (contour matrix)', syntax: ['C = contourc(Z)', 'C = contourc(x,y,Z,levels)'], seealso: ['contour', 'contourf'] },
   plot3: { summary: '3-D line plot', syntax: ['plot3(x,y,z)', "plot3(x,y,z,'-r')"], seealso: ['plot', 'scatter3'] },
   errorbar: { summary: 'Line plot with error bars', syntax: ['errorbar(x,y,e)', 'errorbar(y,e)'], seealso: ['plot'] },
   pie: { summary: 'Pie chart', syntax: ['pie(x)'], seealso: ['bar', 'histogram'] },
@@ -2391,6 +2430,7 @@ const BASE_REF = new Set<string>((
   'plot fplot hold title xlabel ylabel zlabel legend grid axis xlim ylim set gca gcf figure clf cla close clc format who whos clear help doc ans dot repmat ' +
   'surf surfc surfl mesh meshc surface contour contourf contour3 pcolor shading colorbar colormap view peaks xline yline ' +
   'polarplot polarscatter polarhistogram polaraxes compass rlim thetalim rticks thetaticks rticklabels thetaticklabels rtickangle ' +
+  'bar3 bar3h quiver3 histogram2 plotmatrix contourc ' +
   'sphere cylinder ellipsoid fsurf fmesh fcontour quiver ' +
   'bar barh area stem stairs scatter scatter3 plot3 stem3 errorbar pie histogram loglog semilogx semilogy subtitle sgtitle zlim xticks yticks zticks text box ' +
   'jet parula turbo hot cool gray bone copper pink spring summer autumn winter hsv lines colorcube cellstr dsearchn brighten ' +
@@ -3274,6 +3314,37 @@ function bary(ax: number, ay: number, bx: number, by: number, cx: number, cy: nu
   const l1 = ((by - cy) * (px - cx) + (cx - bx) * (py - cy)) / d;
   const l2 = ((cy - ay) * (px - cx) + (ax - cx) * (py - cy)) / d;
   return [l1, l2, 1 - l1 - l2];
+}
+
+/** Column-major Mat → row-major number[][] grid (z[r][c]). */
+function matToGrid(Z: Mat): number[][] {
+  const g: number[][] = []; for (let r = 0; r < Z.rows; r++) { const row: number[] = []; for (let c = 0; c < Z.cols; c++) row.push(Z.data[r + c * Z.rows]); g.push(row); }
+  return g;
+}
+/** Marching-squares contour segments packed into MATLAB's contour-matrix format. */
+function marchingSquares(xv: number[], yv: number[], z: number[][], levels: number[] | null): Mat {
+  const nr = z.length, nc = z[0]?.length ?? 0;
+  let zmin = Infinity, zmax = -Infinity; for (const row of z) for (const v of row) { if (v < zmin) zmin = v; if (v > zmax) zmax = v; }
+  const lv = levels ?? Array.from({ length: 6 }, (_, i) => zmin + (i + 1) * (zmax - zmin) / 7);
+  const cols: number[][] = [];   // each entry is a 2-element column [x;y] for the contour matrix
+  const interp = (lo: number, hi: number, t: number, a: number, b: number) => a + (b - a) * (t - lo) / (hi - lo || 1);
+  for (const L of lv) {
+    for (let r = 0; r < nr - 1; r++) for (let c = 0; c < nc - 1; c++) {
+      const tl = z[r][c], tr = z[r][c + 1], br = z[r + 1][c + 1], bl = z[r + 1][c];
+      const pts: [number, number][] = [];
+      const edge = (va: number, vb: number, xa: number, ya: number, xb: number, yb: number) => { if ((va < L) !== (vb < L)) pts.push([interp(va, vb, L, xa, xb), interp(va, vb, L, ya, yb)]); };
+      edge(tl, tr, xv[c], yv[r], xv[c + 1], yv[r]);          // top
+      edge(tr, br, xv[c + 1], yv[r], xv[c + 1], yv[r + 1]);  // right
+      edge(br, bl, xv[c + 1], yv[r + 1], xv[c], yv[r + 1]);  // bottom
+      edge(bl, tl, xv[c], yv[r + 1], xv[c], yv[r]);          // left
+      for (let k = 0; k + 1 < pts.length; k += 2) {
+        cols.push([L, 2]);                                    // header: level, #points
+        cols.push([pts[k][0], pts[k][1]], [pts[k + 1][0], pts[k + 1][1]]);
+      }
+    }
+  }
+  const out = zeros(2, cols.length); cols.forEach((cc, j) => { out.data[0 + j * 2] = cc[0]; out.data[1 + j * 2] = cc[1]; });
+  return out;
 }
 
 // ── General n-dimensional geometry (convhulln / delaunayn / voronoin) ──────

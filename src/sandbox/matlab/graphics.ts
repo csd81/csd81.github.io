@@ -277,6 +277,44 @@ export class Graphics {
     cp.meshes.push({ x, y, z, i: tri.map((t) => t[0]), j: tri.map((t) => t[1]), k: tri.map((t) => t[2]), wire });
     this.touch();
   }
+  /** quiver3(x,y,z,u,v,w): 3-D vector field as NaN-separated line segments. */
+  quiver3(xs: number[], ys: number[], zs: number[], us: number[], vs: number[], ws: number[], scale = 0.9) {
+    if (!this.holding) { this.cur().series = []; this.cur().surfaces = []; this.colorIdx = 0; }
+    const X: number[] = [], Y: number[] = [], Z: number[] = [];
+    for (let i = 0; i < xs.length; i++) { X.push(xs[i], xs[i] + scale * us[i], NaN); Y.push(ys[i], ys[i] + scale * vs[i], NaN); Z.push(zs[i], zs[i] + scale * ws[i], NaN); }
+    this.cur().series.push({ x: X, y: Y, z: Z, mode: 'lines', color: this.nextColor() });
+    this.touch();
+  }
+  /** bar3(Z)/bar3h(Z): 3-D bars rendered as box meshes. horiz → value runs along x. */
+  bar3(Z: number[][], horiz: boolean) {
+    if (!this.holding) { this.cur().series = []; this.cur().surfaces = []; this.cur().meshes = []; this.colorIdx = 0; }
+    const x: number[] = [], y: number[] = [], z: number[] = []; const ti: number[] = [], tj: number[] = [], tk: number[] = [];
+    const hw = 0.4;
+    const box = (cx: number, cy: number, h: number) => {
+      const base = x.length;
+      // 8 corners: (cx±hw, cy±hw, {0,h})
+      const xs = horiz ? [0, 0, 0, 0, h, h, h, h] : [cx - hw, cx + hw, cx + hw, cx - hw, cx - hw, cx + hw, cx + hw, cx - hw];
+      const ys = [cy - hw, cy - hw, cy + hw, cy + hw, cy - hw, cy - hw, cy + hw, cy + hw];
+      const zs = horiz ? [cx - hw, cx + hw, cx + hw, cx - hw, cx - hw, cx + hw, cx + hw, cx - hw] : [0, 0, 0, 0, h, h, h, h];
+      for (let v = 0; v < 8; v++) { x.push(xs[v]); y.push(ys[v]); z.push(zs[v]); }
+      const faces = [[0, 1, 2], [0, 2, 3], [4, 5, 6], [4, 6, 7], [0, 1, 5], [0, 5, 4], [1, 2, 6], [1, 6, 5], [2, 3, 7], [2, 7, 6], [3, 0, 4], [3, 4, 7]];
+      for (const [a, b, c] of faces) { ti.push(base + a); tj.push(base + b); tk.push(base + c); }
+    };
+    for (let r = 0; r < Z.length; r++) for (let c = 0; c < Z[r].length; c++) box(c + 1, r + 1, Z[r][c]);
+    const cp = this.cur(); cp.meshes = cp.meshes ?? []; cp.meshes.push({ x, y, z, i: ti, j: tj, k: tk });
+    this.touch();
+  }
+  /** histogram2(x,y): bivariate histogram rendered as a filled-contour (heatmap) of bin counts. */
+  histogram2(xs: number[], ys: number[], nbx = 10, nby = 10) {
+    if (!this.holding) { this.cur().series = []; this.cur().surfaces = []; this.colorIdx = 0; }
+    const xmin = Math.min(...xs), xmax = Math.max(...xs), ymin = Math.min(...ys), ymax = Math.max(...ys);
+    const dx = (xmax - xmin) / nbx || 1, dy = (ymax - ymin) / nby || 1;
+    const z: number[][] = Array.from({ length: nby }, () => new Array(nbx).fill(0));
+    for (let k = 0; k < xs.length; k++) { const bi = Math.min(nbx - 1, Math.floor((xs[k] - xmin) / dx)), bj = Math.min(nby - 1, Math.floor((ys[k] - ymin) / dy)); z[bj][bi]++; }
+    const xv = Array.from({ length: nbx }, (_, i) => xmin + (i + 0.5) * dx), yv = Array.from({ length: nby }, (_, i) => ymin + (i + 0.5) * dy);
+    const cp = this.cur(); cp.surfaces = cp.surfaces ?? []; cp.surfaces.push({ x: xv, y: yv, z, kind: 'contour', shading: 'flat' }); cp.colorbar = true;
+    this.touch();
+  }
   setPolarProp(name: 'rlim' | 'thetalim' | 'rticks' | 'thetaticks', v: number[]) {
     const c = this.cur(); c.polar = true;
     if (name === 'rlim') c.rRange = [v[0], v[1]];
