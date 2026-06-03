@@ -1,5 +1,5 @@
-/** MATLAB-Online–style playground: file tree · editor · command window · figure · workspace. */
-import { useEffect, useMemo, useState } from 'react';
+/** MATLAB-Online–style playground: toolbar · file tree · editor · command window · figure · workspace · status bar. */
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLang } from '../shared/providers/LanguageProvider';
 import { FOLDERS, fileById, folderById, type MFile } from '../sandbox/library';
 import { useSandbox } from '../sandbox/useSandbox';
@@ -10,8 +10,12 @@ import './sandbox.css';
 const DEFAULT_FILE = FOLDERS.find((f) => f.id === 'course/01-fixed-point')?.files.find((x) => x.name === 'fixp')?.id
   ?? FOLDERS[0]?.files[0]?.id ?? '';
 
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+
 export default function Sandbox() {
   const { lang } = useLang();
+  const t = (en: string, hu: string) => (lang === 'hu' ? hu : en);
+
   const [openId, setOpenId] = useState<string>(DEFAULT_FILE);
   const open: MFile | undefined = fileById(openId);
   const folderId = open?.folderId ?? FOLDERS[0]?.id ?? '';
@@ -19,10 +23,14 @@ export default function Sandbox() {
   const [editor, setEditor] = useState<string>(open?.source ?? '');
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
+  const [leftW, setLeftW] = useState(220);
+  const [rightW, setRightW] = useState(380);
+  const [cursor, setCursor] = useState({ line: 1, col: 1 });
+  const taRef = useRef<HTMLTextAreaElement>(null);
+
   const { lines, workspace, fig, busy, prompt, runSource, submit, clearConsole, resetSession } = useSandbox(folderId);
 
-  // Load file contents into the editor when the open file changes.
-  useEffect(() => { setEditor(fileById(openId)?.source ?? ''); }, [openId]);
+  useEffect(() => { setEditor(fileById(openId)?.source ?? ''); setCursor({ line: 1, col: 1 }); }, [openId]);
 
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
   const toggleFolder = (id: string) =>
@@ -32,52 +40,81 @@ export default function Sandbox() {
   const chapterFolders = useMemo(() => FOLDERS.filter((f) => f.group === 'chapter'), []);
   const wdLabel = folderById(folderId)?.label ?? '';
 
-  const t = (en: string, hu: string) => (lang === 'hu' ? hu : en);
+  const updateCursor = (ta: HTMLTextAreaElement) => {
+    const pos = ta.selectionStart;
+    const upto = ta.value.slice(0, pos);
+    const nl = upto.lastIndexOf('\n');
+    setCursor({ line: upto.split('\n').length, col: pos - nl });
+  };
+
+  const startDrag = (side: 'left' | 'right') => (e: React.PointerEvent) => {
+    e.preventDefault();
+    const startX = e.clientX, sL = leftW, sR = rightW;
+    const onMove = (ev: PointerEvent) => {
+      if (side === 'left') setLeftW(clamp(sL + (ev.clientX - startX), 150, 520));
+      else setRightW(clamp(sR - (ev.clientX - startX), 180, 640));
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      document.body.style.cursor = ''; document.body.style.userSelect = '';
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none';
+  };
+
+  const gridStyle = {
+    '--left-w': (leftOpen ? leftW : 0) + 'px',
+    '--right-w': (rightOpen ? rightW : 0) + 'px',
+    '--gl': leftOpen ? '6px' : '0px',
+    '--gr': rightOpen ? '6px' : '0px',
+  } as React.CSSProperties;
 
   return (
     <div className="mlab">
-      <header className="mlab__hero">
-        <h1>{t('MATLAB Sandbox', 'MATLAB homokozó')}</h1>
-        <p className="mlab__lead">
-          {t('A browser MATLAB/Octave runner. Pick a file, edit it, press Run — or type commands below. Plots render on the right.',
-            'Böngészős MATLAB/Octave futtató. Válassz fájlt, szerkeszd, nyomd meg a Futtatás gombot — vagy írj parancsot lent. Az ábrák jobbra jelennek meg.')}
-        </p>
+      {/* Top toolbar */}
+      <header className="mlab__topbar">
+        <span className="mlab__brand">🧮 {t('MATLAB Sandbox', 'MATLAB homokozó')}</span>
+        <div className="mlab__tgroup">
+          <button className="mlab__tool mlab__tool--run" disabled={busy} onClick={() => runSource(editor)} title={t('Run the editor (Ctrl+Enter)', 'Futtatás (Ctrl+Enter)')}>▶ {t('Run', 'Futtatás')}</button>
+          <button className="mlab__tool" onClick={resetSession} title={t('Clear workspace & restart', 'Munkaterület törlése, újraindítás')}>↻ {t('Reset', 'Újra')}</button>
+          <button className="mlab__tool" onClick={clearConsole} title={t('Clear command window', 'Parancsablak törlése')}>⌫ {t('Clear', 'Törlés')}</button>
+        </div>
+        <span className="mlab__tspacer" />
+        <div className="mlab__tgroup">
+          <button className={'mlab__tool' + (leftOpen ? ' mlab__tool--on' : '')} onClick={() => setLeftOpen((v) => !v)} title={t('Toggle file tree', 'Fájlfa ki/be')}>▣ {t('Files', 'Fájlok')}</button>
+          <button className={'mlab__tool' + (rightOpen ? ' mlab__tool--on' : '')} onClick={() => setRightOpen((v) => !v)} title={t('Toggle figure & workspace', 'Ábra és munkaterület ki/be')}>▥ {t('Figure', 'Ábra')}</button>
+        </div>
       </header>
 
-      <div className={'mlab__grid' + (leftOpen ? '' : ' mlab__grid--no-left') + (rightOpen ? '' : ' mlab__grid--no-right')}>
+      {/* Workbench */}
+      <div className="mlab__grid" style={gridStyle}>
         {/* File tree */}
         <aside className={'mlab__files' + (leftOpen ? '' : ' mlab__pane--hidden')}>
-          <div className="mlab__pane-head">
-            <span>{t('Files', 'Fájlok')}</span>
-            <span className="mlab__spacer" />
-            <button className="mlab__mini" onClick={() => setLeftOpen(false)} title={t('Collapse', 'Összecsukás')} aria-label={t('Collapse file tree', 'Fájlfa összecsukása')}>⟨</button>
-          </div>
+          <div className="mlab__pane-head"><span>{t('Current Folder', 'Aktuális mappa')}</span></div>
           <div className="mlab__tree">
             <FileGroup title={t('Course examples', 'Kurzus példák')} folders={courseFolders} openId={openId} setOpenId={setOpenId} collapsed={collapsed} toggle={toggleFolder} />
             <FileGroup title={t('Chapter algorithms', 'Fejezet-algoritmusok')} folders={chapterFolders} openId={openId} setOpenId={setOpenId} collapsed={collapsed} toggle={toggleFolder} />
           </div>
         </aside>
 
+        {leftOpen && <div className="mlab__gutter" style={{ gridArea: 'gl' }} onPointerDown={startDrag('left')} title={t('Drag to resize', 'Húzd az átméretezéshez')} />}
+
         {/* Editor */}
         <section className="mlab__editor">
           <div className="mlab__pane-head">
-            {!leftOpen && (
-              <button className="mlab__mini" onClick={() => setLeftOpen(true)} title={t('Show files', 'Fájlok megjelenítése')}>⟨ {t('Files', 'Fájlok')}</button>
-            )}
-            <span className="mlab__filename">{open?.file ?? t('Editor', 'Szerkesztő')}</span>
-            <span className="mlab__wd" title={t('Working directory', 'Munkakönyvtár')}>📁 {wdLabel}</span>
+            <span className="mlab__filetab">{open?.file ?? t('Editor', 'Szerkesztő')}</span>
             <span className="mlab__spacer" />
-            {!rightOpen && (
-              <button className="mlab__mini" onClick={() => setRightOpen(true)} title={t('Show figure & workspace', 'Ábra és munkaterület')}>{t('Figure', 'Ábra')} ⟩</button>
-            )}
-            <button className="mlab__run" disabled={busy} onClick={() => runSource(editor)}>▶ {t('Run', 'Futtatás')}</button>
-            <button className="mlab__mini" onClick={resetSession} title={t('Clear workspace & restart', 'Munkaterület törlése')}>{t('Reset', 'Újra')}</button>
           </div>
           <textarea
+            ref={taRef}
             className="mlab__code"
             value={editor}
             spellCheck={false}
-            onChange={(e) => setEditor(e.target.value)}
+            onChange={(e) => { setEditor(e.target.value); updateCursor(e.currentTarget); }}
+            onKeyUp={(e) => updateCursor(e.currentTarget)}
+            onClick={(e) => updateCursor(e.currentTarget)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runSource(editor); }
               if (e.key === 'Tab') {
@@ -85,19 +122,17 @@ export default function Sandbox() {
                 const ta = e.currentTarget; const s = ta.selectionStart; const en = ta.selectionEnd;
                 const v = editor.slice(0, s) + '  ' + editor.slice(en);
                 setEditor(v);
-                requestAnimationFrame(() => { ta.selectionStart = ta.selectionEnd = s + 2; });
+                requestAnimationFrame(() => { ta.selectionStart = ta.selectionEnd = s + 2; updateCursor(ta); });
               }
             }}
           />
         </section>
 
+        {rightOpen && <div className="mlab__gutter" style={{ gridArea: 'gr' }} onPointerDown={startDrag('right')} title={t('Drag to resize', 'Húzd az átméretezéshez')} />}
+
         {/* Figure */}
         <section className={'mlab__figure' + (rightOpen ? '' : ' mlab__pane--hidden')}>
-          <div className="mlab__pane-head">
-            <span>{t('Figure', 'Ábra')}</span>
-            <span className="mlab__spacer" />
-            <button className="mlab__mini" onClick={() => setRightOpen(false)} title={t('Collapse', 'Összecsukás')} aria-label={t('Collapse figure & workspace', 'Ábra és munkaterület összecsukása')}>⟩</button>
-          </div>
+          <div className="mlab__pane-head"><span>{t('Figure', 'Ábra')}</span></div>
           <div className="mlab__fig-body"><FigurePane fig={fig} /></div>
         </section>
 
@@ -123,6 +158,16 @@ export default function Sandbox() {
           </div>
         </section>
       </div>
+
+      {/* Status bar */}
+      <footer className="mlab__status">
+        <span className={'mlab__stat-state' + (busy ? ' mlab__stat-state--busy' : '')}>{busy ? t('Busy', 'Dolgozik') : t('Ready', 'Kész')}</span>
+        <span className="mlab__tspacer" />
+        <span className="mlab__stat">📁 {wdLabel}</span>
+        <span className="mlab__stat">{open?.file ?? '—'}</span>
+        <span className="mlab__stat">UTF-8</span>
+        <span className="mlab__stat">{t('Ln', 'Sor')} {cursor.line} {t('Col', 'Oszl')} {cursor.col}</span>
+      </footer>
     </div>
   );
 }

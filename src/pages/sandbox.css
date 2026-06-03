@@ -1,27 +1,54 @@
-/* ── MATLAB sandbox: full-IDE page + chapter embed ────────────────────── */
-.mlab {
-  max-width: 1320px;
-  margin: 0 auto;
-  padding: 1.4rem clamp(12px, 3vw, 32px) 3rem;
-}
-.mlab__hero { margin-bottom: 1rem; }
-.mlab__hero h1 { margin: 0 0 0.2rem; font-size: clamp(1.4rem, 3vw, 2rem); }
-.mlab__lead { color: var(--text-muted); margin: 0; max-width: 70ch; font-size: 0.95rem; }
+/* ── MATLAB sandbox: full-screen IDE ──────────────────────────────────── */
+/* Break out of the centred .site-main container and fill the viewport. */
+.site-main:has(.mlab) { max-width: none; margin: 0; padding: 0; }
 
-.mlab__grid {
-  display: grid;
-  grid-template-columns: 220px minmax(0, 1.1fr) minmax(0, 1fr);
-  grid-template-rows: minmax(280px, 46vh) minmax(220px, 34vh);
-  grid-template-areas:
-    "files editor figure"
-    "files term   work";
-  gap: 10px;
-  min-height: 540px;
+.mlab {
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - var(--nav-h, 56px));
+  overflow: hidden;
+  background: var(--bg, var(--surface-2));
 }
-/* Collapse the side panels to give the editor + command window more room. */
-.mlab__grid--no-left { grid-template-columns: 0 minmax(0, 1.1fr) minmax(0, 1fr); }
-.mlab__grid--no-right { grid-template-columns: 220px minmax(0, 1.1fr) 0; }
-.mlab__grid--no-left.mlab__grid--no-right { grid-template-columns: 0 1fr 0; }
+
+/* Top toolbar (MATLAB-style ribbon-lite). */
+.mlab__topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0.7rem;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  flex: 0 0 auto;
+}
+.mlab__brand { font-weight: 800; letter-spacing: -0.01em; white-space: nowrap; }
+.mlab__tgroup { display: flex; align-items: center; gap: 0.3rem; padding: 0 0.4rem; border-left: 1px solid var(--border); }
+.mlab__tgroup:first-of-type { border-left: 0; }
+.mlab__tspacer { flex: 1 1 auto; }
+.mlab__tool {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  border: 1px solid transparent; background: transparent; color: var(--text);
+  border-radius: 6px; font: inherit; font-size: 0.82rem; font-weight: 600;
+  padding: 0.28rem 0.6rem; cursor: pointer; white-space: nowrap;
+}
+.mlab__tool:hover { background: var(--surface); border-color: var(--border); }
+.mlab__tool--on { background: var(--brand-100, rgba(47,111,237,0.14)); color: var(--brand-700, var(--text)); }
+.mlab__tool--run { background: var(--brand-600, #2f6fed); color: #fff; }
+.mlab__tool--run:hover { background: var(--brand-700, #2459c8); border-color: transparent; }
+.mlab__tool:disabled { opacity: 0.5; cursor: default; }
+
+/* Workbench grid with draggable gutter tracks. */
+.mlab__grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: var(--left-w, 220px) var(--gl, 6px) minmax(0, 1fr) var(--gr, 6px) var(--right-w, 380px);
+  grid-template-rows: minmax(0, 1.35fr) minmax(0, 1fr);
+  grid-template-areas:
+    "files gl editor gr figure"
+    "files gl term   gr work";
+  gap: 6px;
+  padding: 6px;
+}
 .mlab__pane--hidden { display: none !important; }
 
 .mlab__files { grid-area: files; }
@@ -30,15 +57,37 @@
 .mlab__term { grid-area: term; }
 .mlab__workspace { grid-area: work; }
 
+.mlab__gutter { background: transparent; cursor: col-resize; border-radius: 3px; position: relative; }
+.mlab__gutter::after {
+  content: ''; position: absolute; inset: 0 2px; border-radius: 3px; background: var(--border);
+  opacity: 0; transition: opacity 0.12s;
+}
+.mlab__gutter:hover::after { opacity: 1; }
+
 .mlab__files, .mlab__editor, .mlab__figure, .mlab__term, .mlab__workspace {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
   border: 1px solid var(--border);
-  border-radius: var(--radius, 10px);
+  border-radius: var(--radius-sm, 8px);
   background: var(--surface);
   overflow: hidden;
 }
+
+/* Status bar. */
+.mlab__status {
+  display: flex; align-items: center; gap: 1rem;
+  flex: 0 0 auto;
+  padding: 0.2rem 0.8rem;
+  background: var(--surface-2);
+  border-top: 1px solid var(--border);
+  font-size: 0.72rem; color: var(--text-muted);
+}
+.mlab__stat { white-space: nowrap; }
+.mlab__stat-state { font-weight: 700; color: var(--ok, #16a34a); }
+.mlab__stat-state--busy { color: var(--brand-600, #2f6fed); }
+.mlab__filetab { font-family: var(--mono, monospace); text-transform: none; letter-spacing: 0; color: var(--text); }
 
 .mlab__pane-head {
   display: flex; align-items: center; gap: 0.5rem;
@@ -77,14 +126,6 @@
 .mlab__file--active { background: var(--brand-100, rgba(47,111,237,0.14)); color: var(--brand-700, var(--text)); font-weight: 700; }
 
 /* Editor */
-.mlab__filename { font-family: var(--mono, monospace); text-transform: none; letter-spacing: 0; color: var(--text); }
-.mlab__wd { text-transform: none; letter-spacing: 0; font-weight: 600; color: var(--text-muted); font-size: 0.7rem; }
-.mlab__run {
-  background: var(--brand-600, #2f6fed); color: #fff; border: 0; border-radius: 6px;
-  font-weight: 700; font-size: 0.78rem; padding: 0.22rem 0.7rem; cursor: pointer;
-}
-.mlab__run:hover { background: var(--brand-700, #2459c8); }
-.mlab__run:disabled { opacity: 0.5; cursor: default; }
 .mlab__code {
   flex: 1 1 auto; min-height: 0; width: 100%; resize: none; border: 0; outline: none;
   padding: 0.6rem 0.7rem;
@@ -125,20 +166,25 @@
 .mlab__ws-empty { padding: 0.8rem; color: var(--text-muted); font-size: 0.82rem; }
 
 @media (max-width: 900px) {
+  /* Stack vertically and allow the whole IDE to scroll on small screens. */
+  .mlab { height: auto; min-height: calc(100dvh - var(--nav-h, 56px)); overflow: visible; }
   .mlab__grid {
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto auto auto auto;
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto;
     grid-template-areas:
-      "files files"
-      "editor editor"
-      "figure figure"
-      "term term"
-      "work work";
+      "files"
+      "editor"
+      "figure"
+      "term"
+      "work";
+    overflow: visible;
   }
-  .mlab__files { max-height: 200px; }
-  .mlab__editor { min-height: 260px; }
+  .mlab__gutter { display: none; }
+  .mlab__files { max-height: 220px; }
+  .mlab__editor { min-height: 280px; }
   .mlab__figure { min-height: 300px; }
-  .mlab__term { min-height: 260px; }
+  .mlab__term { min-height: 280px; }
+  .mlab__workspace { min-height: 180px; }
 }
 
 /* ── Chapter embed ─────────────────────────────────────────────────────── */
