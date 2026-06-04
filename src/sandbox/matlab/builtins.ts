@@ -645,10 +645,32 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(makeSym(1, cr.length, cr.map((x) => sN(Math.abs(x - Math.round(x)) < 1e-9 ? Math.round(x) : x))));
   },
   jordan: async (a, n) => {
-    const A = m(a[0]); const N = A.rows; const { D, V } = generalEig(A, n >= 2);
+    const A = m(a[0]); const N = A.rows;
+    // Cluster eigenvalues into distinct values with algebraic multiplicity. A repeated
+    // real root splits into a near-conjugate cluster (spread ~eps^(1/m)), so snap each
+    // eigenvalue to a nearby integer / merge near-equal values before clustering.
+    const { D } = generalEig(A, false); const scale = norm(A, 'inf') || 1; const snapTol = 1e-4 * scale;
+    const snap = (x: number) => { const r = Math.round(x); return Math.abs(x - r) < snapTol ? r : x; };
+    const clusters: { re: number; im: number; mult: number }[] = [];
+    for (let i = 0; i < N; i++) { const re = snap(D.re[i]); const im = Math.abs(D.im[i]) < snapTol ? 0 : snap(D.im[i]); const c = clusters.find((cc) => Math.abs(cc.re - re) < snapTol && Math.abs(cc.im - im) < snapTol); if (c) c.mult++; else clusters.push({ re, im, mult: 1 }); }
+    // Block sizes per eigenvalue from the null-space dimensions of (A−λI)^k.
+    const eye2 = (k: number) => { const I = zeros(k, k); for (let i = 0; i < k; i++) I.data[i + i * k] = 1; return I; };
+    const diag: { re: number; im: number; one: boolean }[] = [];   // diagonal entries + super-diagonal 1 flags
+    for (const cl of clusters) {
+      if (Math.abs(cl.im) > 1e-9) { for (let j = 0; j < cl.mult; j++) diag.push({ re: cl.re, im: cl.im, one: false }); continue; }
+      const Am = zeros(N, N); for (let i = 0; i < N * N; i++) Am.data[i] = A.data[i]; for (let i = 0; i < N; i++) Am.data[i + i * N] -= cl.re;
+      const tol = 1e-9 * N * (norm(A, 'inf') || 1);
+      const d: number[] = [0]; let P = eye2(N);   // P = (A−λI)^k, k from 1
+      for (let k = 1; k <= cl.mult; k++) { P = matmul(P, Am); d[k] = N - rankOf(P, tol); if (d[k] === d[k - 1]) break; }
+      const kmax = d.length - 1; d[kmax + 1] = d[kmax];
+      const blocks: number[] = [];
+      for (let s = 1; s <= kmax; s++) { const cnt = Math.round(2 * d[s] - d[s - 1] - (d[s + 1] ?? d[kmax])); for (let b = 0; b < cnt; b++) blocks.push(s); }
+      blocks.sort((x, y) => y - x);                 // larger blocks first (MATLAB convention)
+      for (const s of blocks) for (let p = 0; p < s; p++) diag.push({ re: cl.re, im: 0, one: p < s - 1 });
+    }
     const J = makeSym(N, N, Array.from({ length: N * N }, () => sN(0)));
-    for (let i = 0; i < N; i++) J.exprs[i + i * N] = Math.abs(D.im[i]) < 1e-9 ? sN(D.re[i]) : sFn('complex', sN(D.re[i]), sN(D.im[i]));
-    if (n >= 2) { const Vm = V!; return [makeSym(N, N, Array.from(Vm.data, (x) => sN(x))), J]; }
+    for (let i = 0; i < N; i++) { const e = diag[i] ?? { re: 0, im: 0, one: false }; J.exprs[i + i * N] = Math.abs(e.im) < 1e-9 ? sN(e.re) : sFn('complex', sN(e.re), sN(e.im)); if (e.one && i + 1 < N) J.exprs[i + (i + 1) * N] = sN(1); }
+    if (n >= 2) { const { V } = generalEig(A, true); return [makeSym(N, N, Array.from(V!.data, (x) => sN(x))), J]; }
     return ret(J);
   },
   resultant: async (a) => {
