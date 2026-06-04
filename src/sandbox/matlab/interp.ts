@@ -11,7 +11,7 @@ import {
   type Str, isStr, makeStr, makeStrArr,
   type Graph, type Geom, type Quantum,
   type Temporal, isTemporal, makeTemporal, numelOf,
-  isSym, makeSym,
+  isSym, makeSym, applyClass, pickClass,
 } from './values';
 import { type SymExpr, sN, sV, sAdd, sSub, sMul, sDiv, sPow, sFn, simplifyExpr, evalExpr } from './sym';
 
@@ -422,7 +422,7 @@ export class Interpreter implements Env {
       }
       case 'unary': {
         const v = asMat(await this.evalExpr(e.e, scope));
-        if (e.op === '-') return [isComplex(v) ? cmap(v, (re, im) => [-re, -im]) : map(v, (x) => -x)];
+        if (e.op === '-') { const neg = isComplex(v) ? cmap(v, (re, im) => [-re, -im]) : map(v, (x) => -x); return [v.itype ? applyClass(neg, v.itype) : neg]; }
         if (e.op === '+') return [v];
         return [{ ...map(v, (x) => (x === 0 ? 1 : 0)), isBool: true, idata: undefined }];
       }
@@ -594,27 +594,31 @@ export class Interpreter implements Env {
     if ((op === '+' || op === '==' || op === '~=') && (isStr(av) || isStr(bv))) return strBinary(op, av, bv);
     const a = asMat(av);
     const b = asMat(bv);
+    // integer/single class propagates through arithmetic (saturating); comparisons → logical.
+    const cls = (a.itype || b.itype) ? pickClass(a, b) : undefined;
+    let r: Mat; let arith = true;
     switch (op) {
-      case '+': return ewAdd(a, b);
-      case '-': return ewSub(a, b);
-      case '.*': return ewMul(a, b);
-      case './': return ewRDiv(a, b);
-      case '.\\': return ewLDiv(a, b);
-      case '.^': return ewPow(a, b);
-      case '*': return cmatmul(a, b);
-      case '/': return rdivide(a, b);
-      case '\\': return mldivide(a, b);
-      case '^': return mpower(a, b);
-      case '==': return ewEq(a, b, true);
-      case '~=': return ewEq(a, b, false);
-      case '<': return cmp(a, b, (x, y) => x < y);
-      case '>': return cmp(a, b, (x, y) => x > y);
-      case '<=': return cmp(a, b, (x, y) => x <= y);
-      case '>=': return cmp(a, b, (x, y) => x >= y);
-      case '&': return cmp(a, b, (x, y) => x !== 0 && y !== 0);
-      case '|': return cmp(a, b, (x, y) => x !== 0 || y !== 0);
+      case '+': r = ewAdd(a, b); break;
+      case '-': r = ewSub(a, b); break;
+      case '.*': r = ewMul(a, b); break;
+      case './': r = ewRDiv(a, b); break;
+      case '.\\': r = ewLDiv(a, b); break;
+      case '.^': r = ewPow(a, b); break;
+      case '*': r = cmatmul(a, b); break;
+      case '/': r = rdivide(a, b); break;
+      case '\\': r = mldivide(a, b); break;
+      case '^': r = mpower(a, b); break;
+      case '==': r = ewEq(a, b, true); arith = false; break;
+      case '~=': r = ewEq(a, b, false); arith = false; break;
+      case '<': r = cmp(a, b, (x, y) => x < y); arith = false; break;
+      case '>': r = cmp(a, b, (x, y) => x > y); arith = false; break;
+      case '<=': r = cmp(a, b, (x, y) => x <= y); arith = false; break;
+      case '>=': r = cmp(a, b, (x, y) => x >= y); arith = false; break;
+      case '&': r = cmp(a, b, (x, y) => x !== 0 && y !== 0); arith = false; break;
+      case '|': r = cmp(a, b, (x, y) => x !== 0 || y !== 0); arith = false; break;
       default: throw new MatError(`unknown operator '${op}'`);
     }
+    return cls && arith ? applyClass(r, cls) : r;
   }
 }
 

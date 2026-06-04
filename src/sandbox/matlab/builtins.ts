@@ -15,7 +15,7 @@ import {
   type Temporal, isTemporal, makeTemporal,
   type Table, isTable,
   type Sym, isSym, makeSym,
-  toMat as m, factorialN,
+  toMat as m, factorialN, INT_LIMITS, applyClass,
 } from './values';
 import { type SymExpr, sN, sV, sAdd, sSub, sMul, sPow, sFn, sNeg, sDiv, simplifyExpr, diffExpr, subsExpr, evalExpr as symEval, exprToStr, symVars } from './sym';
 import {
@@ -762,15 +762,15 @@ export const BUILTINS: Record<string, Builtin> = {
   // ── type tests / conversions ──
   isnumeric: async (a) => ret(bool(isMat(a[0]) && !(a[0] as Mat).isChar)),
   ischar: async (a) => ret(bool(isMat(a[0]) && !!(a[0] as Mat).isChar)),
-  isfloat: async (a) => ret(bool(isMat(a[0]) && !(a[0] as Mat).isChar)),
+  isfloat: async (a) => ret(bool(isMat(a[0]) && !(a[0] as Mat).isChar && !(a[0] as Mat).isBool && (!(a[0] as Mat).itype || (a[0] as Mat).itype === 'single'))),
   double: async (a) => { if (isSym(a[0])) { const s = a[0]; const M = zeros(s.rows, s.cols); s.exprs.forEach((e, i) => { M.data[i] = symEval(e, new Map()); }); return ret(M); } const A = m(a[0]); return ret({ kind: 'num', rows: A.rows, cols: A.cols, data: Float64Array.from(A.data), idata: A.idata ? Float64Array.from(A.idata) : undefined }); },
-  single: async (a) => { const A = m(a[0]); return ret(mat(A.rows, A.cols, Float64Array.from(A.data))); },
+  single: async (a) => ret(applyClass(m(a[0]), 'single')),
   char: async (a) => { const A = m(a[0]); if (A.isChar) return ret(A); return ret(str(toArray(A).map((x) => String.fromCharCode(Math.round(x))).join(''))); },
-  int8: async (a) => ret(intCast(m(a[0]), 'int8')), uint8: async (a) => ret(intCast(m(a[0]), 'uint8')),
-  int16: async (a) => ret(intCast(m(a[0]), 'int16')), uint16: async (a) => ret(intCast(m(a[0]), 'uint16')),
-  int32: async (a) => ret(intCast(m(a[0]), 'int32')), uint32: async (a) => ret(intCast(m(a[0]), 'uint32')),
-  int64: async (a) => ret(intCast(m(a[0]), 'int64')), uint64: async (a) => ret(intCast(m(a[0]), 'uint64')),
-  cast: async (a) => { const A = m(a[0]); const ty = asString(a[1]); if (ty in INT_LIMITS) return ret(intCast(A, ty)); if (ty === 'char') return ret(A.isChar ? A : str(toArray(A).map((x) => String.fromCharCode(Math.round(x))).join(''))); return ret(mat(A.rows, A.cols, Float64Array.from(A.data))); },
+  int8: async (a) => ret(applyClass(m(a[0]), 'int8')), uint8: async (a) => ret(applyClass(m(a[0]), 'uint8')),
+  int16: async (a) => ret(applyClass(m(a[0]), 'int16')), uint16: async (a) => ret(applyClass(m(a[0]), 'uint16')),
+  int32: async (a) => ret(applyClass(m(a[0]), 'int32')), uint32: async (a) => ret(applyClass(m(a[0]), 'uint32')),
+  int64: async (a) => ret(applyClass(m(a[0]), 'int64')), uint64: async (a) => ret(applyClass(m(a[0]), 'uint64')),
+  cast: async (a) => { const A = m(a[0]); const ty = asString(a[1]); if (ty in INT_LIMITS || ty === 'single') return ret(applyClass(A, ty)); if (ty === 'char') return ret(A.isChar ? A : str(toArray(A).map((x) => String.fromCharCode(Math.round(x))).join(''))); return ret(mat(A.rows, A.cols, Float64Array.from(A.data))); },
   // ── special matrices / index conversion ──
   invhilb: async (a) => { const n = Math.round(asScalar(a[0])); const H = zeros(n, n); for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) H.data[r + c * n] = 1 / (r + c + 1); return ret(map(inv(H), (x) => Math.round(x))); },
   hadamard: async (a) => { let n = Math.round(asScalar(a[0])); let H = mat(1, 1, Float64Array.of(1)); while (H.rows < n) { const k = H.rows; const o = zeros(2 * k, 2 * k); for (let r = 0; r < k; r++) for (let c = 0; c < k; c++) { const v = H.data[r + c * k]; o.data[r + c * 2 * k] = v; o.data[r + (c + k) * 2 * k] = v; o.data[(r + k) + c * 2 * k] = v; o.data[(r + k) + (c + k) * 2 * k] = -v; } H = o; } return ret(H); },
@@ -923,7 +923,7 @@ export const BUILTINS: Record<string, Builtin> = {
   normest: async (a) => ret(scalar(norm(m(a[0]), 2))),
   // ── type predicates ──
   islogical: async (a) => ret(bool(isMat(a[0]) && !!(a[0] as Mat).isBool)),
-  isinteger: async () => ret(bool(false)),
+  isinteger: async (a) => ret(bool(isMat(a[0]) && !!(a[0] as Mat).itype && (a[0] as Mat).itype !== 'single')),
   issquare: async (a) => { const A = m(a[0]); return ret(bool(A.rows === A.cols)); },
   // ── nonlinear system + iterative solvers (dense direct fallback) ──
   fsolve: async (a, _n, env) => {
@@ -964,8 +964,8 @@ export const BUILTINS: Record<string, Builtin> = {
   dec2base: async (a) => { const d = Math.round(asScalar(a[0])); const b = Math.round(asScalar(a[1])); let s2 = d.toString(b).toUpperCase(); if (a.length >= 3) s2 = s2.padStart(Math.round(asScalar(a[2])), '0'); return ret(str(s2)); },
   base2dec: async (a) => ret(scalar(parseInt(asString(a[0]).replace(/\s/g, ''), Math.round(asScalar(a[1]))))),
   // ── class / regexp / sscanf ──
-  class: async (a) => { const v = a[0]; if (isHandle(v)) return ret(str('function_handle')); if (v.kind === 'gobj') return ret(str(v.gtype)); if (isStr(v)) return ret(str('string')); if (isCell(v)) return ret(str('cell')); if (isStruct(v)) return ret(str('struct')); if ((v as Mat).isChar) return ret(str('char')); if ((v as Mat).isBool) return ret(str('logical')); return ret(str('double')); },
-  isa: async (a) => { const v = a[0]; const ty = asString(a[1]); const cls = isHandle(v) ? 'function_handle' : (v as Mat).isChar ? 'char' : (v as Mat).isBool ? 'logical' : 'double'; if (ty === cls) return ret(bool(true)); if ((ty === 'numeric' || ty === 'float') && cls === 'double') return ret(bool(true)); return ret(bool(false)); },
+  class: async (a) => { const v = a[0]; if (isHandle(v)) return ret(str('function_handle')); if (v.kind === 'gobj') return ret(str(v.gtype)); if (isStr(v)) return ret(str('string')); if (isCell(v)) return ret(str('cell')); if (isStruct(v)) return ret(str('struct')); if ((v as Mat).isChar) return ret(str('char')); if ((v as Mat).isBool) return ret(str('logical')); return ret(str((v as Mat).itype ?? 'double')); },
+  isa: async (a) => { const v = a[0]; const ty = asString(a[1]); const M = v as Mat; const cls = isHandle(v) ? 'function_handle' : M.isChar ? 'char' : M.isBool ? 'logical' : (M.itype ?? 'double'); if (ty === cls) return ret(bool(true)); const isInt = isMat(v) && !!M.itype && M.itype !== 'single'; const isFlt = isMat(v) && !M.isChar && !M.isBool && (!M.itype || M.itype === 'single'); if (ty === 'numeric' && isMat(v) && !M.isChar && !M.isBool) return ret(bool(true)); if (ty === 'float' && isFlt) return ret(bool(true)); if (ty === 'integer' && isInt) return ret(bool(true)); return ret(bool(false)); },
   regexp: async (a, n) => { const s = asString(a[0]); const opt = a.length >= 3 ? asString(a[2]) : ''; const re = new RegExp(asString(a[1]), opt === 'once' ? '' : 'g'); const idx: number[] = []; let mt: RegExpExecArray | null; if (opt === 'once') { const mm = re.exec(s); return ret(mm ? scalar(mm.index + 1) : zeros(1, 0)); } while ((mt = re.exec(s)) !== null) { idx.push(mt.index + 1); if (mt.index === re.lastIndex) re.lastIndex++; } void n; return ret(rowVec(idx)); },
   regexpi: async (a) => { const s = asString(a[0]); const re = new RegExp(asString(a[1]), 'gi'); const idx: number[] = []; let mt: RegExpExecArray | null; while ((mt = re.exec(s)) !== null) { idx.push(mt.index + 1); if (mt.index === re.lastIndex) re.lastIndex++; } return ret(rowVec(idx)); },
   sscanf: async (a) => { const s = asString(a[0]); const nums = (s.match(/-?\d+\.?\d*(e[+-]?\d+)?/gi) ?? []).map(Number); return ret(colVec(nums)); },
@@ -3403,10 +3403,6 @@ function magicFn(n: number): Mat {
 }
 
 // ── Discrete / transform helpers ──────────────────────────────────────────
-const INT_LIMITS: Record<string, [number, number]> = {
-  int8: [-128, 127], int16: [-32768, 32767], int32: [-2147483648, 2147483647], int64: [-9223372036854775808, 9223372036854775807],
-  uint8: [0, 255], uint16: [0, 65535], uint32: [0, 4294967295], uint64: [0, 18446744073709551615],
-};
 function ratApprox(x: number): [number, number] {
   if (Number.isInteger(x)) return [x, 1];
   const sgn = x < 0 ? -1 : 1; x = Math.abs(x);
@@ -3549,7 +3545,6 @@ function truthyArg(v: Value): boolean { if (isMat(v) && v.isChar) { const s = as
 
 // ── Set / conversion helpers ──────────────────────────────────────────────
 function setUniq(arr: number[]): number[] { const s = new Set<number>(); const o: number[] = []; for (const x of arr) if (!s.has(x)) { s.add(x); o.push(x); } return o.sort((a, b) => a - b); }
-function intCast(A: Mat, ty: string): Mat { const [lo, hi] = INT_LIMITS[ty]; const o = zeros(A.rows, A.cols); for (let i = 0; i < A.data.length; i++) o.data[i] = Math.min(hi, Math.max(lo, Math.round(A.data[i]))); return o; }
 /** Characteristic polynomial coefficients (monic, high→low) for poly(matrix). */
 function charpolyC(A: Mat): number[] {
   const n = A.rows; const c = [1]; let M = zeros(n, n); for (let i = 0; i < n; i++) M.data[i + i * n] = 1;

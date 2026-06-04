@@ -13,6 +13,7 @@ export interface Mat {
   idata?: Float64Array; // column-major imaginary part; present ⇒ complex storage
   isChar?: boolean;
   isBool?: boolean;
+  itype?: string;       // integer/single class tag: 'int8'…'uint64' | 'single' (absent ⇒ double)
   nd?: number[];        // N-D size (length ≥ 3); data is column-major over nd. rows=nd[0], cols=prod(nd[1:]).
 }
 export interface Handle {
@@ -656,3 +657,29 @@ export function toMat(v: Value, name = 'argument'): Mat {
 }
 /** Factorial n! (Inf beyond 170). Shared by numeric + symbolic builtins. */
 export function factorialN(n: number): number { if (n < 0) return NaN; if (n > 170) return Infinity; let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; }
+
+/** Saturation limits [min,max] for the integer classes. */
+export const INT_LIMITS: Record<string, [number, number]> = {
+  int8: [-128, 127], int16: [-32768, 32767], int32: [-2147483648, 2147483647], int64: [-9223372036854775808, 9223372036854775807],
+  uint8: [0, 255], uint16: [0, 65535], uint32: [0, 4294967295], uint64: [0, 18446744073709551615],
+};
+/** Cast a matrix to an integer/single class (saturating round for ints, fround for single). */
+export function applyClass(M: Mat, itype: string): Mat {
+  if (itype === 'single') {
+    const data = Float64Array.from(M.data, Math.fround);
+    const idata = M.idata ? Float64Array.from(M.idata, Math.fround) : undefined;
+    return { kind: 'num', rows: M.rows, cols: M.cols, data, idata, nd: M.nd, itype: 'single' };
+  }
+  const lim = INT_LIMITS[itype]; if (!lim) return M;
+  const [lo, hi] = lim;
+  const data = Float64Array.from(M.data, (x) => (Number.isNaN(x) ? 0 : Math.min(hi, Math.max(lo, Math.round(x)))));
+  return { kind: 'num', rows: M.rows, cols: M.cols, data, nd: M.nd, itype };
+}
+/** Result class of an arithmetic op on two matrices (integer wins over single over double). */
+export function pickClass(a: Mat, b: Mat): string | undefined {
+  const ta = a.itype, tb = b.itype;
+  if (ta && ta !== 'single') return ta;
+  if (tb && tb !== 'single') return tb;
+  if (ta === 'single' || tb === 'single') return 'single';
+  return undefined;
+}
