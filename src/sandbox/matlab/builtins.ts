@@ -2965,7 +2965,7 @@ export const BUILTINS: Record<string, Builtin> = {
     else env.graphics.subplot(Math.round(asScalar(a[0])), Math.round(asScalar(a[1])), Math.round(asScalar(a[2])));
     return [{ kind: 'gobj', gtype: 'axes' }];
   },
-  tiledlayout: async (a, _n, env) => { const m = a.length >= 1 ? Math.round(asScalar(a[0])) : 1; const n = a.length >= 2 ? Math.round(asScalar(a[1])) : 1; env.graphics.tiledlayout(m, n); return []; },
+  tiledlayout: async (a, _n, env) => { const numeric = (v: Value) => isMat(v) && !(v as Mat).isChar; const m = a.length >= 1 && numeric(a[0]) ? Math.round(asScalar(a[0])) : 1; const n = a.length >= 2 && numeric(a[1]) ? Math.round(asScalar(a[1])) : 1; env.graphics.tiledlayout(m, n); return [{ kind: 'gobj', gtype: 'axes' as const }]; },
   nexttile: async (a, _n, env) => { env.graphics.nexttile(a.length && isMat(a[0]) ? Math.round(asScalar(a[0])) : undefined); return [{ kind: 'gobj', gtype: 'axes' }]; },
   bar: async (a, n, env) => { env.graphics.chart2d(a, 'bar'); return gret(n); },
   barh: async (a, n, env) => { env.graphics.chart2d(a, 'barh'); return gret(n); },
@@ -3016,6 +3016,36 @@ export const BUILTINS: Record<string, Builtin> = {
   sphere: async (a, n, env) => { const N = a.length && isMat(a[0]) && numel(a[0]) === 1 ? Math.round(asScalar(a[0])) : 20; const { X, Y, Z } = sphereCoords(N); if (n >= 1) return [X, Y, Z].slice(0, Math.max(1, n)); env.graphics.surface([X, Y, Z], 'surf'); return []; },
   cylinder: async (a, n, env) => { const r = a.length && isMat(a[0]) && numel(a[0]) > 1 ? toArray(m(a[0])) : a.length && isMat(a[0]) && numel(a[0]) === 1 && a.length === 1 ? [asScalar(a[0]), asScalar(a[0])] : [1, 1]; const N = a.length >= 2 ? Math.round(asScalar(a[1])) : 20; const { X, Y, Z } = cylinderCoords(r, N); if (n >= 1) return [X, Y, Z].slice(0, Math.max(1, n)); env.graphics.surface([X, Y, Z], 'surf'); return []; },
   ellipsoid: async (a, n, env) => { const [xc, yc, zc, xr, yr, zr] = [0, 1, 2, 3, 4, 5].map((i) => asScalar(a[i])); const N = a.length >= 7 ? Math.round(asScalar(a[6])) : 20; const { X, Y, Z } = sphereCoords(N); const sx = map(X, (v) => v * xr + xc), sy = map(Y, (v) => v * yr + yc), sz = map(Z, (v) => v * zr + zc); if (n >= 1) return [sx, sy, sz].slice(0, Math.max(1, n)); env.graphics.surface([sx, sy, sz], 'surf'); return []; },
+  bucky: async (_a, n) => {
+    // Adjacency of a 60-node 3-regular graph (a stand-in for the truncated-icosahedron buckyball)
+    // so spy(bucky) renders a structured pattern; second output is placeholder 3-D coordinates.
+    const N = 60; const B = zeros(N, N);
+    const link = (i: number, j: number) => { B.data[i + j * N] = 1; B.data[j + i * N] = 1; };
+    for (let i = 0; i < N; i++) { link(i, (i + 1) % N); link(i, (i + 30) % N); }
+    if (n >= 2) { const V = zeros(N, 3); for (let i = 0; i < N; i++) { const t = 2 * Math.PI * i / N; V.data[i] = Math.cos(t); V.data[i + N] = Math.sin(t); V.data[i + 2 * N] = (i % 2) ? 1 : -1; } return [B, V]; }
+    return ret(B);
+  },
+  contourslice: async (a, n, env) => {   // contour lines on slice planes through a volume — approximated as a flat contour
+    const ms = a.filter((x): x is Mat => isMat(x) && !(x as Mat).isChar);
+    if (ms.length >= 4) { const V = ms[3]; const d = ndSize(V); const face = zeros(d[0], d[1] ?? 1); for (let i = 0; i < face.data.length; i++) face.data[i] = V.data[i]; env.graphics.surface([face], 'contour'); }
+    return gret(n);
+  },
+  fimplicit3: async (a, n, env) => {   // implicit surface f(x,y,z)=0 — approximated by an isosurface of a sampled volume
+    const f = isHandle(a[0]) ? a[0] : null;
+    if (f) {
+      const G = 24, lo = -5, hi = 5, lin = Array.from({ length: G }, (_, i) => lo + (hi - lo) * i / (G - 1));
+      const verts: [number, number, number][] = []; const faces: number[][] = [];
+      // coarse marching over the grid: emit a point wherever f changes sign along an edge (point cloud surface)
+      const fval = async (x: number, y: number, z: number) => asScalar((await env.callHandle(f, [scalar(x), scalar(y), scalar(z)], 1))[0]);
+      for (let i = 0; i < G - 1; i++) for (let j = 0; j < G; j++) for (let k = 0; k < G; k++) {
+        const a0 = await fval(lin[i], lin[j], lin[k]), a1 = await fval(lin[i + 1], lin[j], lin[k]);
+        if ((a0 < 0) !== (a1 < 0)) { const t = a0 / (a0 - a1); verts.push([lin[i] + t * (lin[i + 1] - lin[i]), lin[j], lin[k]]); }
+      }
+      if (verts.length) env.graphics.line3([colVec(verts.map((p) => p[0])), colVec(verts.map((p) => p[1])), colVec(verts.map((p) => p[2]))], 'markers');
+      void faces;
+    }
+    return gret(n);
+  },
   meshz: async (a, n, env) => { env.graphics.surface(a, 'mesh'); return gret(n); },
   waterfall: async (a, n, env) => { env.graphics.surface(a, 'mesh'); return gret(n); },
   ribbon: async (a, n, env) => { env.graphics.surface(a, 'surf'); return gret(n); },
@@ -3280,14 +3310,15 @@ export const BUILTINS: Record<string, Builtin> = {
   gca: async () => ret({ kind: 'gobj', gtype: 'axes' }),
   gcf: async () => ret({ kind: 'gobj', gtype: 'figure' }),
   set: async (a, _n, env) => {
-    // set(handle, 'Prop', val, ...) — apply to current axes.
-    for (let i = 1; i + 1 < a.length; i += 2) env.graphics.setAxesProp(asString(a[i]), a[i + 1]);
+    // set(handle, 'Prop', val, ...) — apply to current axes; skip non-string property forms
+    // like set(h,{'CData'},vals) which we don't model.
+    for (let i = 1; i + 1 < a.length; i += 2) { const name = a[i]; if (isStr(name) || (isMat(name) && (name as Mat).isChar)) env.graphics.setAxesProp(asString(name), a[i + 1]); }
     return [];
   },
   drawnow: async () => [],
   pause: async () => [],
   clc: async (_a, _n, env) => { env.clearConsole(); return []; },
-  tic: async () => [],
+  tic: async (_a, n) => (n >= 1 ? ret(scalar(Date.now())) : []),   // a = tic → opaque timer id
   toc: async () => ret(scalar(0)),
 
   // ═══════════════════════ HELP · WORKSPACE ═══════════════════════

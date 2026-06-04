@@ -28,6 +28,22 @@ function cloneForSave(v: Value): Value {
   return v;
 }
 
+/** Pragmatic HG2 property read on a graphics handle — returns a benign value of the right
+ *  shape so chained dot/index/assign (`ax.Children(1).FontSize = 14`, `c = p.Color`) don't error. */
+function gobjProperty(name: string): Value {
+  const rv = (arr: number[]): Mat => { const z = zeros(1, arr.length); arr.forEach((v, i) => { z.data[i] = v; }); return z; };
+  const n = name.toLowerCase();
+  if (n === 'children' || n === 'parent') return { kind: 'gobj', gtype: 'line' };
+  if (/color$/.test(n)) return rv([0, 0.447, 0.741]);
+  if (n === 'linewidth') return scalar(0.5);
+  if (n === 'markersize') return scalar(6);
+  if (n === 'fontsize') return scalar(10);
+  if (n === 'limits' || n === 'xlim' || n === 'ylim' || n === 'zlim' || n === 'clim') return rv([0, 1]);
+  if (n === 'ticks' || n === 'xtick' || n === 'ytick' || n === 'ztick' || n === 'xdata' || n === 'ydata' || n === 'zdata' || n === 'cdata') return zeros(0, 0);
+  if (n === 'string' || n === 'type' || n === 'tag' || n === 'linestyle' || n === 'marker' || n === 'visible' || n === 'displayname') return str('');
+  return { kind: 'gobj', gtype: 'line' };   // unknown → another handle (keeps dot-chains alive)
+}
+
 class ReturnSignal {}
 class BreakSignal {}
 class ContinueSignal {}
@@ -492,7 +508,7 @@ export class Interpreter implements Env {
       case 'handle': return [this.makeHandle(e.name)];
       case 'field': {
         const t = await this.evalExpr(e.target, scope);
-        if (t.kind === 'gobj') return [scalar(0)];
+        if (t.kind === 'gobj') return [gobjProperty(e.name)];
         if (isStruct(t)) { const vals = t.fields.get(e.name); if (!vals) throw new MatError(`reference to non-existent field '${e.name}'`); return vals.length ? vals : []; }
         if (isMap(t)) { if (e.name === 'Count') return [scalar(t.store.size)]; if (e.name === 'KeyType') return [makeStr(t.keyKind)]; if (e.name === 'ValueType') return [makeStr(t.valType)]; throw new MatError(`No appropriate method, property, or field '${e.name}' for class 'containers.Map'.`); }
         if (t.kind === 'graph') return [graphProperty(t, e.name)];
@@ -529,6 +545,11 @@ export class Interpreter implements Env {
     if (isHandle(base)) {
       const args = await this.evalArgs(e.args, scope);
       return this.callHandle(base, args, nargout);
+    }
+    if (base.kind === 'gobj') {
+      // h(i) on a graphics handle (or handle array) → another handle of the same kind.
+      await this.evalArgs(e.args, scope);
+      return [{ kind: 'gobj', gtype: base.gtype }];
     }
     if (isCell(base)) {
       // c(...) → a sub-cell
