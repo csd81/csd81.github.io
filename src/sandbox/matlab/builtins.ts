@@ -63,7 +63,50 @@ const rngNext = (): number => (rngGen ? rngGen() : Math.random());
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
 const ew = (f: (x: number) => number): Builtin => async (a) => ret(map(m(a[0]), f));
 
+const prodOf = (a: number[]): number => a.reduce((p, x) => p * x, 1);
+/** First dimension whose size is > 1 (MATLAB's default reduction dim), 1-based. */
+function firstNonSingleton(dims: number[]): number { for (let k = 0; k < dims.length; k++) if (dims[k] > 1) return k + 1; return 1; }
+/** Apply `f` to every 1-D fiber of A along `dim` (1-based), collapsing that dim to 1.
+ *  `f` returns the reduced value, or `[value, index]` (1-based) for min/max. Works for
+ *  any rank via the `nd` layout; returns both the value array and a matching index array. */
+function reduceAlongDim(A: Mat, dim: number, f: (fiber: number[]) => number | [number, number]): { v: Mat; idx: Mat } {
+  const dims = ndSize(A);
+  if (dim > dims.length || dims[dim - 1] === 1) {
+    const v = makeND(dims, Float64Array.from(A.data), { idata: A.idata ? Float64Array.from(A.idata) : null, isChar: A.isChar });
+    return { v, idx: makeND(dims, new Float64Array(A.data.length).fill(1)) };
+  }
+  const n = dims[dim - 1];
+  const outDims = dims.slice(); outDims[dim - 1] = 1;
+  const stride: number[] = []; { let s = 1; for (let k = 0; k < dims.length; k++) { stride.push(s); s *= dims[k]; } }
+  const ostride: number[] = []; { let s = 1; for (let k = 0; k < dims.length; k++) { ostride.push(s); s *= outDims[k]; } }
+  const outTotal = prodOf(outDims);
+  const vd = new Float64Array(outTotal), id = new Float64Array(outTotal);
+  for (let o = 0; o < outTotal; o++) {
+    let base = 0; for (let k = 0; k < dims.length; k++) base += (Math.floor(o / ostride[k]) % outDims[k]) * stride[k];
+    const fiber: number[] = []; for (let t = 0; t < n; t++) fiber.push(A.data[base + t * stride[dim - 1]]);
+    const r = f(fiber);
+    if (Array.isArray(r)) { vd[o] = r[0]; id[o] = r[1]; } else vd[o] = r;
+  }
+  return { v: makeND(outDims, vd), idx: makeND(outDims, id) };
+}
+/** Cumulative scan (cumsum/cumprod) along `dim`, preserving shape. */
+function scanAlongDim(A: Mat, dim: number, init: number, f: (acc: number, x: number) => number): Mat {
+  const dims = ndSize(A);
+  const out = makeND(dims, new Float64Array(A.data.length), { isChar: A.isChar });
+  if (dim > dims.length) { out.data.set(A.data); return out; }
+  const n = dims[dim - 1];
+  const stride: number[] = []; { let s = 1; for (let k = 0; k < dims.length; k++) { stride.push(s); s *= dims[k]; } }
+  const outerDims = dims.slice(); outerDims[dim - 1] = 1; const outer = prodOf(outerDims);
+  const ostride: number[] = []; { let s = 1; for (let k = 0; k < dims.length; k++) { ostride.push(s); s *= outerDims[k]; } }
+  for (let o = 0; o < outer; o++) {
+    let base = 0; for (let k = 0; k < dims.length; k++) base += (Math.floor(o / ostride[k]) % outerDims[k]) * stride[k];
+    let acc = init; for (let t = 0; t < n; t++) { const i = base + t * stride[dim - 1]; acc = f(acc, A.data[i]); out.data[i] = acc; }
+  }
+  return out;
+}
+
 function reduce(a: Mat, dim: number | undefined, init: number, f: (acc: number, x: number) => number, fin: (acc: number, count: number) => number = (x) => x): Mat {
+  if (a.nd) { const d = dim ?? firstNonSingleton(ndSize(a)); return reduceAlongDim(a, d, (fib) => fin(fib.reduce((acc, x) => f(acc, x), init), fib.length)).v; }
   const vector = a.rows === 1 || a.cols === 1;
   if (dim === undefined && vector) {
     let acc = init; for (let i = 0; i < a.data.length; i++) acc = f(acc, a.data[i]);
@@ -90,6 +133,11 @@ function minmax(args: Value[], nargout: number, pick: (a: number, b: number) => 
     let bi = 0; for (let i = 1; i < vals.length; i++) if (pick(vals[i], vals[bi])) bi = i;
     return [vals[bi], bi + 1];
   };
+  if (A.nd) {
+    const dimGiven = args.length >= 3 && isMat(args[2]) && numel(args[2]) > 0 ? Math.round(asScalar(args[2])) : undefined;
+    const { v, idx } = reduceAlongDim(A, dimGiven ?? firstNonSingleton(ndSize(A)), reduceVec);
+    return nargout >= 2 ? [v, idx] : [v];
+  }
   if (A.rows === 1 || A.cols === 1) {
     if (numel(A) === 0) return [zeros(0, 0), zeros(0, 0)];
     const [v, idx] = reduceVec(toArray(A));
@@ -224,7 +272,9 @@ export const BUILTINS: Record<string, Builtin> = {
   deg2rad: ew((x) => x * DEG), rad2deg: ew((x) => x / DEG),
   // elementary extras
   cumprod: async (a) => {
-    const A = m(a[0]); const o = zeros(A.rows, A.cols);
+    const A = m(a[0]); const dim = dimArg(a, 1);
+    if (A.nd || dim !== undefined) return ret(scanAlongDim(A, dim ?? firstNonSingleton(ndSize(A)), 1, (p, x) => p * x));
+    const o = zeros(A.rows, A.cols);
     if (A.rows === 1 || A.cols === 1) { let p = 1; for (let i = 0; i < A.data.length; i++) { p *= A.data[i]; o.data[i] = p; } }
     else for (let c = 0; c < A.cols; c++) { let p = 1; for (let r = 0; r < A.rows; r++) { p *= A.data[r + c * A.rows]; o.data[r + c * A.rows] = p; } }
     return ret(o);
@@ -388,13 +438,15 @@ export const BUILTINS: Record<string, Builtin> = {
     const A = m(a[0]); const dim = dimArg(a, 1);
     if (!isComplex(A)) return ret(reduce(A, dim, 0, (s, x) => s + x));
     const re = reduce(A, dim, 0, (s, x) => s + x);
-    const im = reduce({ kind: 'num', rows: A.rows, cols: A.cols, data: A.idata! }, dim, 0, (s, x) => s + x);
-    return ret({ kind: 'num', rows: re.rows, cols: re.cols, data: re.data, idata: im.data });
+    const im = reduce({ kind: 'num', rows: A.rows, cols: A.cols, data: A.idata!, nd: A.nd }, dim, 0, (s, x) => s + x);
+    return ret({ kind: 'num', rows: re.rows, cols: re.cols, data: re.data, idata: im.data, nd: re.nd });
   },
   prod: async (a) => ret(reduce(m(a[0]), dimArg(a, 1), 1, (s, x) => s * x)),
   mean: async (a) => ret(reduce(m(a[0]), dimArg(a, 1), 0, (s, x) => s + x, (s, n) => s / n)),
   cumsum: async (a) => {
-    const A = m(a[0]); const out = zeros(A.rows, A.cols);
+    const A = m(a[0]); const dim = dimArg(a, 1);
+    if (A.nd || dim !== undefined) return ret(scanAlongDim(A, dim ?? firstNonSingleton(ndSize(A)), 0, (s, x) => s + x));
+    const out = zeros(A.rows, A.cols);
     if (A.rows === 1 || A.cols === 1) { let s = 0; for (let i = 0; i < A.data.length; i++) { s += A.data[i]; out.data[i] = s; } }
     else for (let c = 0; c < A.cols; c++) { let s = 0; for (let r = 0; r < A.rows; r++) { s += A.data[r + c * A.rows]; out.data[r + c * A.rows] = s; } }
     return ret(out);
@@ -3802,6 +3854,7 @@ function erfinvFn(y: number): number {
 // ── Statistics helpers ────────────────────────────────────────────────────
 /** Apply f to a vector, or per-column (→ row vector) for a matrix. */
 function colReduce(A: Mat, f: (col: number[]) => number): Mat {
+  if (A.nd) return reduceAlongDim(A, firstNonSingleton(ndSize(A)), (fib) => f(fib)).v;
   if (A.rows === 1 || A.cols === 1) return scalar(f(toArray(A)));
   const out = zeros(1, A.cols);
   for (let c = 0; c < A.cols; c++) { const col: number[] = []; for (let r = 0; r < A.rows; r++) col.push(A.data[r + c * A.rows]); out.data[c] = f(col); }
