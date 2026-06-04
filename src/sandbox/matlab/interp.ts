@@ -164,7 +164,8 @@ export class Interpreter implements Env {
       if (v.kind === 'temporal') { out.push({ name, size: `${v.rows}x${v.cols}`, klass: v.tkind, preview: dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) }); continue; }
       if (v.kind === 'table') { out.push({ name, size: `${v.nrows}x${v.vars.length}`, klass: v.isTimetable ? 'timetable' : 'table', preview: v.vars.join(', ').slice(0, 40) }); continue; }
       if (v.kind === 'sym') { out.push({ name, size: `${v.rows}x${v.cols}`, klass: 'sym', preview: dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) }); continue; }
-      const klass = v.isChar ? 'char' : 'double';
+      if (v.kind === 'categorical') { out.push({ name, size: `${v.rows}x${v.cols}`, klass: 'categorical', preview: dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) }); continue; }
+      const klass = v.isChar ? 'char' : (v.itype ?? 'double');
       const preview = numel(v) <= 12 ? dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) : '…';
       out.push({ name, size: `${v.rows}x${v.cols}`, klass, preview });
     }
@@ -690,6 +691,7 @@ function asMat(v: Value): Mat {
   if (v.kind === 'quantum') throw new MatError(`expected a numeric value, got a quantum ${v.qkind}`);
   if (v.kind === 'temporal') return { kind: 'num', rows: v.rows, cols: v.cols, data: new Float64Array(v.data) };  // datetime→datenum, duration→days
   if (v.kind === 'table') throw new MatError('expected a numeric value, got a table (use table2array)');
+  if (v.kind === 'categorical') { const out = new Float64Array(v.codes.length); for (let i = 0; i < v.codes.length; i++) out[i] = v.codes[i] || NaN; return { kind: 'num', rows: v.rows, cols: v.cols, data: out }; }
   if (v.kind === 'sym') { const out = new Float64Array(v.exprs.length); for (let i = 0; i < v.exprs.length; i++) out[i] = symEvalNum(v.exprs[i]); return { kind: 'num', rows: v.rows, cols: v.cols, data: out }; }
   throw new MatError('expected a numeric value, got a function handle');
 }

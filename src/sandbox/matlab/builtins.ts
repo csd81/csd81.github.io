@@ -15,6 +15,7 @@ import {
   type Temporal, isTemporal, makeTemporal,
   type Table, isTable,
   type Sym, isSym, makeSym,
+  type Categorical, isCategorical, makeCategorical,
   toMat as m, factorialN, INT_LIMITS, applyClass,
 } from './values';
 import { type SymExpr, sN, sV, sAdd, sSub, sMul, sPow, sFn, sNeg, sDiv, simplifyExpr, diffExpr, subsExpr, evalExpr as symEval, exprToStr, symVars } from './sym';
@@ -1010,7 +1011,7 @@ export const BUILTINS: Record<string, Builtin> = {
   dec2base: async (a) => { const d = Math.round(asScalar(a[0])); const b = Math.round(asScalar(a[1])); let s2 = d.toString(b).toUpperCase(); if (a.length >= 3) s2 = s2.padStart(Math.round(asScalar(a[2])), '0'); return ret(str(s2)); },
   base2dec: async (a) => ret(scalar(parseInt(asString(a[0]).replace(/\s/g, ''), Math.round(asScalar(a[1]))))),
   // ── class / regexp / sscanf ──
-  class: async (a) => { const v = a[0]; if (isHandle(v)) return ret(str('function_handle')); if (v.kind === 'gobj') return ret(str(v.gtype)); if (isStr(v)) return ret(str('string')); if (isCell(v)) return ret(str('cell')); if (isStruct(v)) return ret(str('struct')); if ((v as Mat).isChar) return ret(str('char')); if ((v as Mat).isBool) return ret(str('logical')); return ret(str((v as Mat).itype ?? 'double')); },
+  class: async (a) => { const v = a[0]; if (isHandle(v)) return ret(str('function_handle')); if (v.kind === 'gobj') return ret(str(v.gtype)); if (isStr(v)) return ret(str('string')); if (isCell(v)) return ret(str('cell')); if (isStruct(v)) return ret(str('struct')); if (isTable(v)) return ret(str(v.isTimetable ? 'timetable' : 'table')); if (isCategorical(v)) return ret(str('categorical')); if (isSym(v)) return ret(str('sym')); if ((v as Mat).isChar) return ret(str('char')); if ((v as Mat).isBool) return ret(str('logical')); return ret(str((v as Mat).itype ?? 'double')); },
   isa: async (a) => { const v = a[0]; const ty = asString(a[1]); const M = v as Mat; const cls = isHandle(v) ? 'function_handle' : M.isChar ? 'char' : M.isBool ? 'logical' : (M.itype ?? 'double'); if (ty === cls) return ret(bool(true)); const isInt = isMat(v) && !!M.itype && M.itype !== 'single'; const isFlt = isMat(v) && !M.isChar && !M.isBool && (!M.itype || M.itype === 'single'); if (ty === 'numeric' && isMat(v) && !M.isChar && !M.isBool) return ret(bool(true)); if (ty === 'float' && isFlt) return ret(bool(true)); if (ty === 'integer' && isInt) return ret(bool(true)); return ret(bool(false)); },
   regexp: async (a, n) => { const s = asString(a[0]); const opt = a.length >= 3 ? asString(a[2]) : ''; const re = new RegExp(asString(a[1]), opt === 'once' ? '' : 'g'); const idx: number[] = []; let mt: RegExpExecArray | null; if (opt === 'once') { const mm = re.exec(s); return ret(mm ? scalar(mm.index + 1) : zeros(1, 0)); } while ((mt = re.exec(s)) !== null) { idx.push(mt.index + 1); if (mt.index === re.lastIndex) re.lastIndex++; } void n; return ret(rowVec(idx)); },
   regexpi: async (a) => { const s = asString(a[0]); const re = new RegExp(asString(a[1]), 'gi'); const idx: number[] = []; let mt: RegExpExecArray | null; while ((mt = re.exec(s)) !== null) { idx.push(mt.index + 1); if (mt.index === re.lastIndex) re.lastIndex++; } return ret(rowVec(idx)); },
@@ -1635,6 +1636,76 @@ export const BUILTINS: Record<string, Builtin> = {
   head: async (a) => { const t = gTbl(a[0]); const k = Math.min(t.nrows, a.length >= 2 ? Math.round(asScalar(a[1])) : 8); return ret(tblSlice(t, Array.from({ length: k }, (_, i) => i))); },
   tail: async (a) => { const t = gTbl(a[0]); const k = Math.min(t.nrows, a.length >= 2 ? Math.round(asScalar(a[1])) : 8); return ret(tblSlice(t, Array.from({ length: k }, (_, i) => t.nrows - k + i))); },
   summary: async (a, _n, env) => { const t = gTbl(a[0]); let s = `Table with ${t.nrows} rows and ${t.vars.length} variables:\n`; for (let j = 0; j < t.vars.length; j++) { const c = t.cols[j]; if (isMat(c) && !c.isChar) { const v = toArray(c); s += `  ${t.vars[j]}: min ${trimNum(Math.min(...v))}, median ${trimNum(median1(v))}, max ${trimNum(Math.max(...v))}, mean ${trimNum(v.reduce((x, y) => x + y, 0) / v.length)}\n`; } else s += `  ${t.vars[j]}: ${c.kind}\n`; } env.output(s); return []; },
+  // ── grouping ──
+  findgroups: async (a, n) => {
+    const gvars: Value[] = isTable(a[0]) ? (a[0] as Table).cols : a; const cols = gvars.map(colPrim); const nrows = cols[0]?.length ?? 0;
+    const { G, tuples } = makeGroups(cols, nrows);
+    if (n < 2) return [colVec(G)];
+    const outs: Value[] = [colVec(G)];
+    if (isTable(a[0])) { const t = a[0] as Table; outs.push({ kind: 'table', vars: t.vars.slice(), cols: cols.map((c, ci) => typeof tuples[0]?.[ci] === 'string' ? makeStrArr(tuples.length, 1, tuples.map((tp) => tp[ci] as string)) : colVec(tuples.map((tp) => tp[ci] as number))), nrows: tuples.length } as Table); }
+    else for (let ci = 0; ci < cols.length; ci++) { const vals = tuples.map((tp) => tp[ci]); outs.push(typeof vals[0] === 'string' ? makeStrArr(vals.length, 1, vals as string[]) : colVec(vals as number[])); }
+    return outs;
+  },
+  splitapply: async (a, _n, env) => {
+    const fn = handle(a[0], 'splitapply'); const G = toArray(m(a[a.length - 1])).map((x) => Math.round(x));
+    const datas = a.slice(1, a.length - 1); const ng = G.length ? Math.max(...G) : 0; const results: Mat[] = [];
+    for (let g = 1; g <= ng; g++) { const rows: number[] = []; for (let r = 0; r < G.length; r++) if (G[r] === g) rows.push(r); const args = datas.map((d) => sliceRows(d, rows)); const r = await env.callHandle(fn, args, 1); results.push(m(r[0])); }
+    return [results.length ? vertcat(results) : zeros(0, 1)];
+  },
+  groupcounts: async (a) => {
+    const gvars: Value[] = isTable(a[0]) ? (() => { const t = a[0] as Table; const names = a.length >= 2 ? (strList(a[1])) : t.vars; return names.map((nm) => t.cols[t.vars.indexOf(nm)]); })() : [a[0]];
+    const cols = gvars.map(colPrim); const nrows = cols[0]?.length ?? 0; const { G, tuples } = makeGroups(cols, nrows);
+    const counts = new Array(tuples.length).fill(0); for (const g of G) counts[g - 1]++;
+    const names = isTable(a[0]) ? (a.length >= 2 ? (strList(a[1])) : (a[0] as Table).vars) : ['Var1'];
+    const gcols: Value[] = cols.map((_, ci) => typeof tuples[0]?.[ci] === 'string' ? makeStrArr(tuples.length, 1, tuples.map((tp) => tp[ci] as string)) : colVec(tuples.map((tp) => tp[ci] as number)));
+    return ret({ kind: 'table', vars: [...names, 'GroupCount'], cols: [...gcols, colVec(counts)], nrows: tuples.length } as Table);
+  },
+  groupsummary: async (a) => {
+    const t = gTbl(a[0]); const gnames = strList(a[1]);
+    const method = a.length >= 3 ? asString(a[2]).toLowerCase() : 'sum'; const agg = GROUP_AGG[method] ?? GROUP_AGG.sum;
+    const gcolsSrc = gnames.map((nm) => t.cols[t.vars.indexOf(nm)]); const { G, tuples } = makeGroups(gcolsSrc.map(colPrim), t.nrows);
+    const dataVars = t.vars.filter((nm) => !gnames.includes(nm) && isMat(t.cols[t.vars.indexOf(nm)]) && !(t.cols[t.vars.indexOf(nm)] as Mat).isChar);
+    const counts = new Array(tuples.length).fill(0); for (const g of G) counts[g - 1]++;
+    const gcols: Value[] = gnames.map((_, ci) => typeof tuples[0]?.[ci] === 'string' ? makeStrArr(tuples.length, 1, tuples.map((tp) => tp[ci] as string)) : colVec(tuples.map((tp) => tp[ci] as number)));
+    const aggCols = dataVars.map((nm) => { const data = toArray(m(t.cols[t.vars.indexOf(nm)])); const out: number[] = []; for (let g = 1; g <= tuples.length; g++) { const vals: number[] = []; for (let r = 0; r < G.length; r++) if (G[r] === g) vals.push(data[r]); out.push(agg(vals)); } return colVec(out); });
+    return ret({ kind: 'table', vars: [...gnames, 'GroupCount', ...dataVars.map((nm) => `${method}_${nm}`)], cols: [...gcols, colVec(counts), ...aggCols], nrows: tuples.length } as Table);
+  },
+  // ── joins ──
+  innerjoin: async (a) => joinTables(gTbl(a[0]), gTbl(a[1]), 'inner'),
+  outerjoin: async (a) => joinTables(gTbl(a[0]), gTbl(a[1]), 'outer'),
+  // ── per-variable / per-row apply ──
+  varfun: async (a, _n, env) => { const fn = handle(a[0], 'varfun'); const t = gTbl(a[1]); const cols: Value[] = []; const vars: string[] = []; for (let j = 0; j < t.vars.length; j++) { if (!isMat(t.cols[j]) || (t.cols[j] as Mat).isChar) continue; const r = await env.callHandle(fn, [t.cols[j]], 1); cols.push(r[0]); vars.push(`Fun_${t.vars[j]}`); } return ret({ kind: 'table', vars, cols, nrows: cols.length ? tblRows(cols[0]) : 0 } as Table); },
+  rowfun: async (a, _n, env) => { const fn = handle(a[0], 'rowfun'); const t = gTbl(a[1]); const out: number[] = []; for (let r = 0; r < t.nrows; r++) { const args = t.cols.filter((c) => isMat(c) && !(c as Mat).isChar).map((c) => scalar((c as Mat).data[r])); const rr = await env.callHandle(fn, args, 1); out.push(asScalar(rr[0])); } return ret({ kind: 'table', vars: ['Var1'], cols: [colVec(out)], nrows: t.nrows } as Table); },
+  // ── column manipulation ──
+  addvars: async (a) => { const t = gTbl(a[0]); const newCols: Value[] = []; const newNames: string[] = []; let i = 1; for (; i < a.length; i++) { if ((isStr(a[i]) || (isMat(a[i]) && (a[i] as Mat).isChar)) && asString(a[i]).toLowerCase() === 'newvariablenames') break; newCols.push(a[i]); } const names = i + 1 < a.length ? (strList(a[i + 1])) : newCols.map((_, k) => `Var${t.vars.length + k + 1}`); for (let k = 0; k < newCols.length; k++) newNames.push(names[k] ?? `Var${t.vars.length + k + 1}`); return ret({ ...t, vars: [...t.vars, ...newNames], cols: [...t.cols, ...newCols] } as Table); },
+  removevars: async (a) => { const t = gTbl(a[0]); const drop = isMat(a[1]) && !(a[1] as Mat).isChar ? toArray(m(a[1])).map((i) => t.vars[i - 1]) : strList(a[1]); const keep = t.vars.map((v, j) => [v, j] as [string, number]).filter(([v]) => !drop.includes(v)); return ret({ ...t, vars: keep.map(([v]) => v), cols: keep.map(([, j]) => t.cols[j]) } as Table); },
+  renamevars: async (a) => { const t = gTbl(a[0]); const olds = strList(a[1]); const news = strList(a[2]); const vars = t.vars.map((v) => { const k = olds.indexOf(v); return k >= 0 ? news[k] : v; }); return ret({ ...t, vars } as Table); },
+  movevars: async (a) => { const t = gTbl(a[0]); const which = asString(a[1]); const j = t.vars.indexOf(which); if (j < 0) return ret(t); const order = t.vars.map((_, k) => k).filter((k) => k !== j); const where = a.length >= 3 ? asString(a[2]).toLowerCase() : 'after'; const ref = a.length >= 4 ? t.vars.indexOf(asString(a[3])) : (where === 'before' ? 0 : t.vars.length - 1); let pos = order.indexOf(ref); pos = where === 'before' ? pos : pos + 1; order.splice(pos, 0, j); return ret({ ...t, vars: order.map((k) => t.vars[k]), cols: order.map((k) => t.cols[k]) } as Table); },
+  mergevars: async (a) => { const t = gTbl(a[0]); const names = strList(a[1]); const idx = names.map((nm) => t.vars.indexOf(nm)).filter((k) => k >= 0); const merged = horzcat(idx.map((k) => m(t.cols[k]))); const newName = a.length >= 3 && (isStr(a[2]) || (isMat(a[2]) && (a[2] as Mat).isChar)) ? asString(a[a.length - 1]) : 'Var1'; const keep: { v: string; c: Value }[] = []; let inserted = false; t.vars.forEach((v, k) => { if (idx.includes(k)) { if (!inserted) { keep.push({ v: newName, c: merged }); inserted = true; } } else keep.push({ v, c: t.cols[k] }); }); return ret({ ...t, vars: keep.map((x) => x.v), cols: keep.map((x) => x.c) } as Table); },
+  // ── categorical ──
+  categorical: async (a) => {
+    let labels: string[];
+    if (isStr(a[0])) labels = (a[0] as Str).items.slice();
+    else if (isCell(a[0])) labels = (a[0] as Cell).items.map((x) => asString(x));
+    else if (isCategorical(a[0])) return ret(a[0]);
+    else { const v = m(a[0]); labels = toArray(v).map((x) => String(x)); }
+    const given = a.length >= 2 && isCell(a[1]) ? (a[1] as Cell).items.map((x) => asString(x)) : null;
+    const cats = given ?? [...new Set(labels)].sort();
+    const idx = new Map(cats.map((c, i) => [c, i + 1]));
+    const rows = isStr(a[0]) ? (a[0] as Str).rows : isCell(a[0]) ? (a[0] as Cell).rows : m(a[0]).rows;
+    const cols = isStr(a[0]) ? (a[0] as Str).cols : isCell(a[0]) ? (a[0] as Cell).cols : m(a[0]).cols;
+    const codes = Int32Array.from(labels, (l) => idx.get(l) ?? 0);
+    return ret(makeCategorical(rows * cols === labels.length ? rows : labels.length, rows * cols === labels.length ? cols : 1, codes, cats, a.length >= 3 && asString(a[a.length - 1]).toLowerCase() === 'ordinal'));
+  },
+  categories: async (a) => { const c = a[0] as Categorical; return ret(makeStrArr(c.categories.length, 1, c.categories.slice())); },
+  iscategorical: async (a) => ret(bool(isCategorical(a[0]))),
+  iscategory: async (a) => { const c = a[0] as Categorical; const q = strList(a[1]); const o = zeros(q.length, 1); o.isBool = true; q.forEach((x, i) => { o.data[i] = c.categories.includes(x) ? 1 : 0; }); return ret(o); },
+  countcats: async (a) => { const c = a[0] as Categorical; const counts = new Array(c.categories.length).fill(0); for (const code of c.codes) if (code > 0) counts[code - 1]++; return ret(colVec(counts)); },
+  addcats: async (a) => { const c = a[0] as Categorical; const add = strList(a[1]); const cats = [...c.categories, ...add.filter((x) => !c.categories.includes(x))]; return ret(makeCategorical(c.rows, c.cols, Int32Array.from(c.codes), cats, c.ordinal)); },
+  removecats: async (a) => { const c = a[0] as Categorical; if (a.length < 2) { const used = new Set(Array.from(c.codes).filter((x) => x > 0)); const keep = c.categories.filter((_, i) => used.has(i + 1)); return ret(recodeCategorical(c, keep)); } const drop = strList(a[1]); return ret(recodeCategorical(c, c.categories.filter((x) => !drop.includes(x)))); },
+  renamecats: async (a) => { const c = a[0] as Categorical; const olds = a.length >= 3 ? (strList(a[1])) : c.categories; const news = strList(a[a.length - 1]); const cats = c.categories.map((x) => { const k = olds.indexOf(x); return k >= 0 ? news[k] : x; }); return ret(makeCategorical(c.rows, c.cols, Int32Array.from(c.codes), cats, c.ordinal)); },
+  reordercats: async (a) => { const c = a[0] as Categorical; const order = a.length >= 2 ? (strList(a[1])) : c.categories.slice().sort(); return ret(recodeCategorical(c, order)); },
+  mergecats: async (a) => { const c = a[0] as Categorical; const merge = strList(a[1]); const newName = a.length >= 3 ? asString(a[2]) : merge[0]; const cats = [newName, ...c.categories.filter((x) => !merge.includes(x))]; const remap = new Map<number, number>(); c.categories.forEach((x, i) => remap.set(i + 1, merge.includes(x) ? 1 : cats.indexOf(x) + 1)); const codes = Int32Array.from(c.codes, (code) => code > 0 ? remap.get(code)! : 0); return ret(makeCategorical(c.rows, c.cols, codes, cats, c.ordinal)); },
   deval: async (a) => {
     // deval(sol, xq) | deval(xq, sol) → interpolate the solution
     const sol = (isStruct(a[0]) ? a[0] : a[1]) as StructV; const xq = toArray(m(isStruct(a[0]) ? a[1] : a[0]));
@@ -2773,6 +2844,67 @@ function tblSlice(t: Table, idx: number[]): Table {
     const M = m(col); const o = zeros(idx.length, M.cols); idx.forEach((src, dst) => { for (let c = 0; c < M.cols; c++) o.data[dst + c * idx.length] = M.data[src + c * M.rows]; }); return o;
   };
   return { kind: 'table', vars: t.vars.slice(), cols: t.cols.map(pick), nrows: idx.length, isTimetable: t.isTimetable, rowTimes: t.rowTimes ? makeTemporal(t.rowTimes.tkind, idx.length, 1, Float64Array.from(idx, (i) => t.rowTimes!.data[i])) : undefined, rowDimName: t.rowDimName };
+}
+
+// ── Grouping / join helpers (findgroups, splitapply, groupsummary, joins) ──
+/** Per-row primitive values of a grouping variable (numbers or strings). */
+function colPrim(v: Value): (number | string)[] {
+  if (isStr(v)) return v.items.slice();
+  if (isCategorical(v)) return Array.from(v.codes, (c) => (c > 0 ? v.categories[c - 1] : '<undefined>'));
+  if (isMat(v) && v.isChar) return [asString(v)];
+  if (isMat(v)) return toArray(v);
+  return [asScalar(v)];
+}
+function cmpTuple(a: (number | string)[], b: (number | string)[]): number { for (let i = 0; i < a.length; i++) { if (a[i] < b[i]) return -1; if (a[i] > b[i]) return 1; } return 0; }
+/** Coerce a value to a list of strings (string array, cellstr, or single char/string). */
+function strList(v: Value): string[] { if (isCell(v)) return v.items.map((x) => asString(x)); if (isStr(v)) return v.items.slice(); return [asString(v)]; }
+/** Assign sorted group numbers (1-based) to each row from one or more grouping columns. */
+function makeGroups(cols: (number | string)[][], nrows: number): { G: number[]; tuples: (number | string)[][] } {
+  const tupleOf = (r: number) => cols.map((c) => c[r]);
+  const seen = new Map<string, number>(); const tuples: (number | string)[][] = [];
+  for (let r = 0; r < nrows; r++) { const t = tupleOf(r); const k = t.join(''); if (!seen.has(k)) { seen.set(k, tuples.length); tuples.push(t); } }
+  const order = tuples.map((_, i) => i).sort((i, j) => cmpTuple(tuples[i], tuples[j]));
+  const keyToSorted = new Map<string, number>(); order.forEach((ti, pos) => keyToSorted.set(tuples[ti].join(''), pos + 1));
+  const G = Array.from({ length: nrows }, (_, r) => keyToSorted.get(tupleOf(r).join(''))!);
+  return { G, tuples: order.map((ti) => tuples[ti]) };
+}
+/** Slice the rows of a table column / matrix / string to the given row indices. */
+function sliceRows(v: Value, rows: number[]): Value {
+  if (isStr(v)) return makeStrArr(rows.length, 1, rows.map((i) => v.items[i]));
+  const M = m(v); const o = zeros(rows.length, M.cols); o.isChar = M.isChar; o.itype = M.itype; rows.forEach((src, dst) => { for (let c = 0; c < M.cols; c++) o.data[dst + c * rows.length] = M.data[src + c * M.rows]; }); return o;
+}
+const GROUP_AGG: Record<string, (v: number[]) => number> = {
+  mean: (v) => v.reduce((s, x) => s + x, 0) / (v.length || 1), sum: (v) => v.reduce((s, x) => s + x, 0),
+  median: (v) => median1(v), max: (v) => Math.max(...v), min: (v) => Math.min(...v),
+  std: (v) => { const mn = v.reduce((s, x) => s + x, 0) / v.length; return Math.sqrt(v.reduce((s, x) => s + (x - mn) ** 2, 0) / (v.length - 1 || 1)); },
+  var: (v) => { const mn = v.reduce((s, x) => s + x, 0) / v.length; return v.reduce((s, x) => s + (x - mn) ** 2, 0) / (v.length - 1 || 1); },
+  numel: (v) => v.length, nnz: (v) => v.filter((x) => x !== 0).length, range: (v) => Math.max(...v) - Math.min(...v),
+};
+/** Inner/full-outer join of two tables on their shared variable names. */
+function joinTables(t1: Table, t2: Table, kind: 'inner' | 'outer'): Value[] {
+  const keys = t1.vars.filter((v) => t2.vars.includes(v));
+  if (!keys.length) throw new MatError('join: the tables must share at least one variable name');
+  const kc1 = keys.map((nm) => colPrim(t1.cols[t1.vars.indexOf(nm)])), kc2 = keys.map((nm) => colPrim(t2.cols[t2.vars.indexOf(nm)]));
+  const key = (cols: (number | string)[][], r: number) => cols.map((c) => c[r]).join('');
+  const t2by = new Map<string, number[]>(); for (let r = 0; r < t2.nrows; r++) { const k = key(kc2, r); if (!t2by.has(k)) t2by.set(k, []); t2by.get(k)!.push(r); }
+  const L: number[] = [], R: number[] = [], usedT2 = new Set<number>();
+  for (let r = 0; r < t1.nrows; r++) { const mm = t2by.get(key(kc1, r)); if (mm) { for (const j of mm) { L.push(r); R.push(j); usedT2.add(j); } } else if (kind === 'outer') { L.push(r); R.push(-1); } }
+  if (kind === 'outer') for (let r = 0; r < t2.nrows; r++) if (!usedT2.has(r)) { L.push(-1); R.push(r); }
+  const t2extra = t2.vars.filter((v) => !keys.includes(v));
+  const gather = (src: Value, idx: number[]): Value => { if (isStr(src)) return makeStrArr(idx.length, 1, idx.map((i) => (i >= 0 ? src.items[i] : ''))); const M = m(src); const o = zeros(idx.length, M.cols); o.isChar = M.isChar; idx.forEach((s, d) => { for (let c = 0; c < M.cols; c++) o.data[d + c * idx.length] = s >= 0 ? M.data[s + c * M.rows] : NaN; }); return o; };
+  const outCols: Value[] = [];
+  for (const nm of t1.vars) {
+    const src = t1.cols[t1.vars.indexOf(nm)];
+    if (keys.includes(nm)) { const src2 = t2.cols[t2.vars.indexOf(nm)]; if (isStr(src)) outCols.push(makeStrArr(L.length, 1, L.map((li, k) => (li >= 0 ? src.items[li] : (src2 as Str).items[R[k]])))); else { const M = m(src), M2 = m(src2); const o = zeros(L.length, 1); L.forEach((li, k) => { o.data[k] = li >= 0 ? M.data[li] : M2.data[R[k]]; }); outCols.push(o); } }
+    else outCols.push(gather(src, L));
+  }
+  for (const nm of t2extra) outCols.push(gather(t2.cols[t2.vars.indexOf(nm)], R));
+  return [{ kind: 'table', vars: [...t1.vars, ...t2extra], cols: outCols, nrows: L.length } as Table];
+}
+/** Recode a categorical to a new ordered category list (codes outside it → <undefined>). */
+function recodeCategorical(c: Categorical, newCats: string[]): Categorical {
+  const remap = new Map<number, number>(); c.categories.forEach((x, i) => { const ni = newCats.indexOf(x); remap.set(i + 1, ni >= 0 ? ni + 1 : 0); });
+  return makeCategorical(c.rows, c.cols, Int32Array.from(c.codes, (code) => (code > 0 ? remap.get(code)! : 0)), newCats, c.ordinal);
 }
 
 // ── Serial date-number helpers (MATLAB epoch: datenum=719529 at 1970-01-01) ──

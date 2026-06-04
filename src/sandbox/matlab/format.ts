@@ -63,6 +63,7 @@ function brief(v: Value): string {
   if (v.kind === 'quantum') return `[quantum ${v.qkind}]`;
   if (v.kind === 'temporal') return v.rows * v.cols === 1 ? fmtTemporal(v.tkind, v.data[0]) : `[${v.rows}×${v.cols} ${v.tkind}]`;
   if (v.kind === 'table') return `[${v.nrows}×${v.vars.length} ${v.isTimetable ? 'timetable' : 'table'}]`;
+  if (v.kind === 'categorical') return v.rows * v.cols === 1 ? (v.codes[0] ? v.categories[v.codes[0] - 1] : '<undefined>') : `[${v.rows}×${v.cols} categorical]`;
   if (v.kind === 'sym') return v.rows * v.cols === 1 ? exprToStr(v.exprs[0]) : `[${v.rows}×${v.cols} sym]`;
   if (v.isChar) return `'${asString(v)}'`;
   if (numel(v) === 0) return '[]';
@@ -97,6 +98,7 @@ export function dispValue(v: Value): string {
   if (v.kind === 'quantum') return quantumLines(v).join('\n');
   if (v.kind === 'temporal') return temporalLines(v).join('\n');
   if (v.kind === 'table') return tableLines(v).join('\n');
+  if (v.kind === 'categorical') return categoricalLines(v).join('\n');
   if (v.kind === 'sym') return symLines(v).join('\n');
   if (v.kind === 'gobj') return `<${v.gtype} handle>`;
   if (isHandle(v)) return `@${v.name ?? 'anonymous'}`;
@@ -119,6 +121,7 @@ export function displayValue(name: string, v: Value): string {
   if (v.kind === 'quantum') return `${name} =\n\n  quantum.${v.qkind} with properties:\n${quantumLines(v).join('\n')}\n`;
   if (v.kind === 'temporal') return `${name} =\n\n${temporalLines(v).join('\n')}\n`;
   if (v.kind === 'table') return `${name} =\n\n  ${v.nrows}×${v.vars.length} ${v.isTimetable ? 'timetable' : 'table'}\n\n${tableLines(v).join('\n')}\n`;
+  if (v.kind === 'categorical') return `${name} =\n\n${categoricalLines(v).join('\n')}\n`;
   if (v.kind === 'sym') return `${name} =\n\n${symLines(v).join('\n')}\n`;
   if (v.kind === 'num' && v.nd) return `${name} =\n\n${ndLines(v).join('\n')}\n`;
   if (v.kind === 'gobj') return `${name} =\n\n  <${v.gtype} handle>\n`;
@@ -210,6 +213,15 @@ function symLines(v: { rows: number; cols: number; exprs: import('./sym').SymExp
   return cells.map((row) => '    [ ' + row.join(', ') + ' ]');
 }
 
+/** Column display of a categorical array (one label per row). */
+function categoricalLines(v: { rows: number; cols: number; codes: Int32Array; categories: string[] }): string[] {
+  const label = (i: number) => (v.codes[i] ? v.categories[v.codes[i] - 1] : '<undefined>');
+  if (v.rows * v.cols === 1) return ['     ' + label(0)];
+  const lines: string[] = [];
+  for (let r = 0; r < v.rows; r++) { const row: string[] = []; for (let c = 0; c < v.cols; c++) row.push(label(r + c * v.rows)); lines.push('     ' + row.join('      ')); }
+  return lines;
+}
+
 /** Summary display of a quantum object. */
 function quantumLines(v: { qkind: string; gate?: string; targets?: number[]; controls?: number[]; numQubits?: number; gates?: unknown[]; re?: Float64Array }): string[] {
   if (v.qkind === 'gate') return [`    Type: "${v.gate}"`, `    TargetQubits: [${(v.targets ?? []).join(' ')}]`, ...(v.controls?.length ? [`    ControlQubits: [${v.controls.join(' ')}]`] : [])];
@@ -241,6 +253,7 @@ function buildStream(args: Value[]): Array<{ s: string } | { n: number }> {
     if (a.kind === 'gobj') { stream.push({ s: `<${a.gtype}>` }); continue; }
     if (a.kind === 'temporal') { for (const x of a.data) stream.push({ s: fmtTemporal(a.tkind, x) }); continue; }
     if (a.kind === 'sym') { for (const e of a.exprs) stream.push({ s: exprToStr(e) }); continue; }
+    if (a.kind === 'categorical') { for (const c of a.codes) stream.push({ s: c ? a.categories[c - 1] : '<undefined>' }); continue; }
     if (a.kind === 'cell' || a.kind === 'struct' || a.kind === 'graph' || a.kind === 'geom' || a.kind === 'quantum' || a.kind === 'table') { stream.push({ s: brief(a) }); continue; }
     if (a.kind === 'str') { for (const s of a.items) stream.push({ s }); continue; }
     if (a.kind === 'sparse') { for (const v of a.values) stream.push({ n: v }); continue; }

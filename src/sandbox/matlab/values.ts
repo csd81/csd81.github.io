@@ -115,7 +115,16 @@ export interface Sym {
   cols: number;
   exprs: import('./sym').SymExpr[];
 }
-export type Value = Mat | Handle | GObj | Cell | StructV | Sparse | Str | Graph | Geom | Quantum | Temporal | Table | Sym;
+/** Categorical array: integer codes (1-based; 0 ⇒ <undefined>) into a category-label list. */
+export interface Categorical {
+  kind: 'categorical';
+  rows: number;
+  cols: number;
+  codes: Int32Array;     // column-major; 0 = <undefined>
+  categories: string[];  // category labels in display/sort order
+  ordinal?: boolean;
+}
+export type Value = Mat | Handle | GObj | Cell | StructV | Sparse | Str | Graph | Geom | Quantum | Temporal | Table | Sym | Categorical;
 
 export class MatError extends Error {}
 
@@ -171,6 +180,8 @@ export function isTemporal(v: Value): v is Temporal { return v.kind === 'tempora
 export function isTable(v: Value): v is Table { return v.kind === 'table'; }
 export function isSym(v: Value): v is Sym { return v.kind === 'sym'; }
 export function makeSym(rows: number, cols: number, exprs: import('./sym').SymExpr[]): Sym { return { kind: 'sym', rows, cols, exprs }; }
+export function isCategorical(v: Value): v is Categorical { return v.kind === 'categorical'; }
+export function makeCategorical(rows: number, cols: number, codes: Int32Array, categories: string[], ordinal?: boolean): Categorical { return { kind: 'categorical', rows, cols, codes, categories, ordinal }; }
 export function makeTemporal(tkind: 'datetime' | 'duration', rows: number, cols: number, data: Float64Array, fmt?: string): Temporal { return { kind: 'temporal', tkind, rows, cols, data, fmt }; }
 export function makeStrArr(rows: number, cols: number, items: string[]): Str { return { kind: 'str', rows, cols, items }; }
 export function makeStr(s: string): Str { return { kind: 'str', rows: 1, cols: 1, items: [s] }; }
@@ -179,7 +190,7 @@ export function makeCell(rows: number, cols: number, items: Value[]): Cell { ret
 export function dimsOf(v: Value): [number, number] {
   if (v.kind === 'num' || v.kind === 'cell' || v.kind === 'struct' || v.kind === 'sparse' || v.kind === 'str' || v.kind === 'temporal') return [v.rows, v.cols];
   if (v.kind === 'table') return [v.nrows, v.vars.length];
-  if (v.kind === 'sym') return [v.rows, v.cols];
+  if (v.kind === 'sym' || v.kind === 'categorical') return [v.rows, v.cols];
   return [1, 1];   // graph/handle/gobj are scalar objects
 
 }
