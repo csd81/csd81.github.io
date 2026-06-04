@@ -428,6 +428,26 @@ export function dsolveSolve(odeExprs: SymExpr[], conds: SymExpr[]): SymExpr {
   return dApplyConds(gen, conds, f, t);
 }
 
+/** Reduce a higher-order ODE to a first-order system: returns the vector field V
+ *  (in state vars Y1..Yn) and the substitution S = [y, y', …, y^(n-1)]. */
+export function odeToVectorFieldExpr(odeExpr: SymExpr): { V: SymExpr[]; S: SymExpr[]; n: number } {
+  const ode = simplifyExpr(odeExpr);
+  const names = new Set<string>(); dCollectFns(ode, names);
+  let f = '', maxOrd = -1;
+  for (const nm of names) { const dm = nm.match(/^((?:diff_)+)(\w+)$/); if (dm) { const o = dm[1].length / 5; if (o > maxOrd) { maxOrd = o; f = dm[2]; } } }
+  if (!f) throw new MatError('odeToVectorField: no derivative of the dependent function found');
+  const n = maxOrd;
+  const indep = dFindArg(ode, 'diff_'.repeat(n) + f); const t = indep && indep.t === 'v' ? indep.name : 'x';
+  let lin = dReplaceFn(ode, 'diff_'.repeat(n) + f, sV('__dn'));
+  for (let k = n - 1; k >= 0; k--) lin = dReplaceFn(lin, 'diff_'.repeat(k) + f, sV('Y' + (k + 1)));
+  lin = simplifyExpr(lin);
+  const coef = simplifyExpr(diffExpr(lin, '__dn'));               // ODE is solvable (linear) in the top derivative
+  const rest = simplifyExpr(subsExpr(lin, '__dn', sN(0)));
+  const top = simplifyExpr(sMul(sN(-1), sDiv(rest, coef)));        // y^(n) = −rest / coef
+  const V: SymExpr[] = []; for (let i = 2; i <= n; i++) V.push(sV('Y' + i)); V.push(top);
+  const S: SymExpr[] = []; for (let k = 0; k < n; k++) S.push(sFn('diff_'.repeat(k) + f, sV(t)));
+  return { V, S, n };
+}
 /** Functional (variational) derivative: Euler–Lagrange  ∂L/∂y − d/dx(∂L/∂y'). */
 export function functionalDerivativeExpr(L: SymExpr, f: string, x: string): SymExpr {
   let lin = dReplaceFn(L, 'diff_' + f, sV('__y1')); lin = dReplaceFn(lin, f, sV('__y0'));

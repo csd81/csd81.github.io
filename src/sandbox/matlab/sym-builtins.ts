@@ -18,7 +18,7 @@ import {
 import { symTexLines } from './format';
 import {
   symArg, symToExpr, symVarsOf, symNames, transformVars, integrate, limitAt,
-  solveExpr, expandExpr, polyCoeffs, numDen, parseSym, dsolveSolve, padeApprox, functionalDerivativeExpr, resultantSym,
+  solveExpr, expandExpr, polyCoeffs, numDen, parseSym, dsolveSolve, padeApprox, functionalDerivativeExpr, resultantSym, odeToVectorFieldExpr,
   symTypeName, hasSub, findByType, partfracExpr, polesOf, hilbertExpr, rewriteExpr,
   assumeVar, clearAssumptions,
   laplaceExpr, ilaplaceExpr, ztransExpr, iztransExpr, fourierExpr, ifourierExpr,
@@ -119,6 +119,7 @@ export const SYM_BUILTINS: Record<string, Builtin> = {
   dsolve: async (a) => { const ode = symArg(a[0]).exprs; const conds = a.slice(1).filter((c) => isSym(c) || isMat(c)).map((c) => symArg(c).exprs[0]); return ret(makeSym(1, 1, [dsolveSolve(ode, conds)])); },
   piecewise: async (a) => ret(makeSym(1, 1, [simplifyExpr(sFn('piecewise', ...a.map((x) => symArg(x).exprs[0])))])),
   symfun: async (a) => { const body = symArg(a[0]); const out = makeSym(body.rows, body.cols, body.exprs); out.fnArgs = symNames(a[1]); return ret(out); },
+  odeToVectorField: async (a, n) => { const r = odeToVectorFieldExpr(symArg(a[0]).exprs[0]); const V = makeSym(r.n, 1, r.V); return n >= 2 ? [V, makeSym(r.n, 1, r.S)] : ret(V); },
   symtrue: async () => ret(makeSym(1, 1, [sN(1)])),
   symfalse: async () => ret(makeSym(1, 1, [sN(0)])),
   vpasum: async (a) => { const s = symArg(a[0]); const k = isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1]); const lo = Math.round(asScalar(a[2])), hi = Math.round(asScalar(a[3])); let acc = 0; for (let i = lo; i <= hi; i++) acc += symEval(s.exprs[0], new Map([[k, i]])); return ret(scalar(acc)); },
