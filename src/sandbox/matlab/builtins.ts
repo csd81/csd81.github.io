@@ -1030,6 +1030,64 @@ export const BUILTINS: Record<string, Builtin> = {
     const xo = col ? colVec(x) : rowVec(x);
     return n >= 2 ? [xo, scalar(await F(x))] : [xo];
   },
+  fminunc: async (a, n, env) => {
+    const f = handle(a[0], 'fminunc'); const col = m(a[1]).rows !== 1; const x0 = toArray(m(a[1]));
+    const F = async (x: number[]) => asScalar((await env.callHandle(f, [col ? colVec(x) : rowVec(x)], 1))[0]);
+    const x = await bfgsMin(F, x0); const xo = col ? colVec(x) : rowVec(x);
+    return n >= 2 ? [xo, scalar(await F(x))] : [xo];
+  },
+  quadprog: async (a, n) => {
+    const H = matRows(m(a[0])); const f = toArray(m(a[1]));
+    const mat2 = (i: number) => (a.length > i && isMat(a[i]) && numel(a[i]) > 0 ? matRows(m(a[i])) : null);
+    const vec2 = (i: number) => (a.length > i && isMat(a[i]) && numel(a[i]) > 0 ? toArray(m(a[i])) : null);
+    const x = await quadprogSolve(H, f, mat2(2), vec2(3), mat2(4), vec2(5), vec2(6), vec2(7), vec2(8));
+    let fval = 0; for (let i = 0; i < f.length; i++) { fval += f[i] * x[i]; for (let j = 0; j < f.length; j++) fval += 0.5 * H[i][j] * x[i] * x[j]; }
+    const xo = colVec(x); return n >= 2 ? [xo, scalar(fval)] : [xo];
+  },
+  lsqlin: async (a, n) => {
+    const C = m(a[0]); const Cr = matRows(C); const d = toArray(m(a[1])); const nn = C.cols;
+    const H: number[][] = Array.from({ length: nn }, () => new Array(nn).fill(0)); const f = new Array(nn).fill(0);
+    for (let i = 0; i < C.rows; i++) for (let p = 0; p < nn; p++) { f[p] -= Cr[i][p] * d[i]; for (let q = 0; q < nn; q++) H[p][q] += Cr[i][p] * Cr[i][q]; }
+    const mat2 = (i: number) => (a.length > i && isMat(a[i]) && numel(a[i]) > 0 ? matRows(m(a[i])) : null);
+    const vec2 = (i: number) => (a.length > i && isMat(a[i]) && numel(a[i]) > 0 ? toArray(m(a[i])) : null);
+    const x = await quadprogSolve(H, f, mat2(2), vec2(3), mat2(4), vec2(5), vec2(6), vec2(7), vec2(8));
+    let rn = 0; for (let i = 0; i < C.rows; i++) { let r = -d[i]; for (let p = 0; p < nn; p++) r += Cr[i][p] * x[p]; rn += r * r; }
+    const xo = colVec(x); return n >= 2 ? [xo, scalar(rn)] : [xo];
+  },
+  ga: async (a, n, env) => {
+    const f = handle(a[0], 'ga'); const nv = Math.round(asScalar(a[1]));
+    const mat2 = (i: number) => (a.length > i && isMat(a[i]) && numel(a[i]) > 0 ? matRows(m(a[i])) : null);
+    const vec2 = (i: number) => (a.length > i && isMat(a[i]) && numel(a[i]) > 0 ? toArray(m(a[i])) : null);
+    const Aub = mat2(2), bub = vec2(3), Aeq = mat2(4), beq = vec2(5), lb = vec2(6), ub = vec2(7);
+    const base = async (x: number[]) => asScalar((await env.callHandle(f, [rowVec(x)], 1))[0]);
+    const F = async (x: number[]) => (await base(x)) + optLinPen(x, Aub, bub, Aeq, beq);
+    const x = await gaSolve(F, nv, lb, ub); return n >= 2 ? [rowVec(x), scalar(await base(x))] : [rowVec(x)];
+  },
+  particleswarm: async (a, n, env) => {
+    const f = handle(a[0], 'particleswarm'); const nv = Math.round(asScalar(a[1]));
+    const lb = a.length > 2 && isMat(a[2]) && numel(a[2]) > 0 ? toArray(m(a[2])) : null;
+    const ub = a.length > 3 && isMat(a[3]) && numel(a[3]) > 0 ? toArray(m(a[3])) : null;
+    const F = async (x: number[]) => asScalar((await env.callHandle(f, [rowVec(x)], 1))[0]);
+    const x = await psoSolve(F, nv, lb, ub); return n >= 2 ? [rowVec(x), scalar(await F(x))] : [rowVec(x)];
+  },
+  simulannealbnd: async (a, n, env) => {
+    const f = handle(a[0], 'simulannealbnd'); const col = m(a[1]).rows !== 1; const x0 = toArray(m(a[1]));
+    const lb = a.length > 2 && isMat(a[2]) && numel(a[2]) > 0 ? toArray(m(a[2])) : null;
+    const ub = a.length > 3 && isMat(a[3]) && numel(a[3]) > 0 ? toArray(m(a[3])) : null;
+    const F = async (x: number[]) => asScalar((await env.callHandle(f, [col ? colVec(x) : rowVec(x)], 1))[0]);
+    const x = await saSolve(F, x0, lb, ub); const xo = col ? colVec(x) : rowVec(x);
+    return n >= 2 ? [xo, scalar(await F(x))] : [xo];
+  },
+  patternsearch: async (a, n, env) => {
+    const f = handle(a[0], 'patternsearch'); const col = m(a[1]).rows !== 1; const x0 = toArray(m(a[1]));
+    const mat2 = (i: number) => (a.length > i && isMat(a[i]) && numel(a[i]) > 0 ? matRows(m(a[i])) : null);
+    const vec2 = (i: number) => (a.length > i && isMat(a[i]) && numel(a[i]) > 0 ? toArray(m(a[i])) : null);
+    const Aub = mat2(2), bub = vec2(3), Aeq = mat2(4), beq = vec2(5), lb = vec2(6), ub = vec2(7);
+    const base = async (x: number[]) => asScalar((await env.callHandle(f, [col ? colVec(x) : rowVec(x)], 1))[0]);
+    const F = async (x: number[]) => (await base(x)) + optLinPen(x, Aub, bub, Aeq, beq);
+    const x = await patternSearchSolve(F, x0, lb, ub); const xo = col ? colVec(x) : rowVec(x);
+    return n >= 2 ? [xo, scalar(await base(x))] : [xo];
+  },
   condest: async (a) => { const A = m(a[0]); return ret(scalar(norm(A, 1) * norm(inv(A), 1))); },
   lscov: async (a) => { const A = m(a[0]), b = m(a[1]); if (a.length >= 3) { const W = inv(m(a[2])); const At = transpose(A); return ret(mldivide(matmul(At, matmul(W, A)), matmul(At, matmul(W, b)))); } return ret(mldivide(A, b)); },
   subspace: async (a) => {
@@ -4249,6 +4307,90 @@ async function fminconSolve(F: (x: number[]) => Promise<number>, x0: number[], A
   };
   for (let outer = 0; outer < 14; outer++) { const obj = async (xx: number[]) => (await F(xx)) + mu * (await pen(xx)); x = await nmMin(obj, x, 200 * Math.max(1, x.length)); mu *= 8; }
   for (let j = 0; j < x.length; j++) { if (lb && x[j] < lb[j]) x[j] = lb[j]; if (ub && x[j] > ub[j]) x[j] = ub[j]; }
+  return x;
+}
+/** Unconstrained minimization: BFGS with backtracking line search (finite-diff gradient). */
+async function bfgsMin(F: (x: number[]) => Promise<number>, x0: number[]): Promise<number[]> {
+  const n = x0.length; if (n === 0) return x0.slice();
+  let x = x0.slice();
+  const grad = async (xx: number[], f0: number) => { const g: number[] = []; for (let j = 0; j < n; j++) { const h = 1e-7 * Math.max(1, Math.abs(xx[j])); const xp = xx.slice(); xp[j] += h; g.push(((await F(xp)) - f0) / h); } return g; };
+  const H: number[][] = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)));
+  let fx = await F(x); let g = await grad(x, fx);
+  for (let it = 0; it < 300; it++) {
+    let p = g.map((_, i) => -H[i].reduce((s, hij, j) => s + hij * g[j], 0));
+    let gp = g.reduce((s, gi, i) => s + gi * p[i], 0);
+    if (gp >= 0) { for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) H[i][j] = i === j ? 1 : 0; p = g.map((gi) => -gi); gp = -g.reduce((s, gi) => s + gi * gi, 0); }
+    let alpha = 1, xn = x, fn = fx;
+    for (let ls = 0; ls < 50; ls++) { xn = x.map((xi, i) => xi + alpha * p[i]); fn = await F(xn); if (Number.isFinite(fn) && fn <= fx + 1e-4 * alpha * gp) break; alpha *= 0.5; }
+    if (alpha < 1e-14) break;
+    const gn = await grad(xn, fn); const sVec = xn.map((xi, i) => xi - x[i]); const yVec = gn.map((gi, i) => gi - g[i]);
+    const sy = sVec.reduce((s, si, i) => s + si * yVec[i], 0);
+    if (sy > 1e-12) { const Hy = yVec.map((_, i) => H[i].reduce((s, hij, j) => s + hij * yVec[j], 0)); const yHy = yVec.reduce((s, yi, i) => s + yi * Hy[i], 0); for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) H[i][j] += ((sy + yHy) / (sy * sy)) * sVec[i] * sVec[j] - (Hy[i] * sVec[j] + sVec[i] * Hy[j]) / sy; }
+    const step = Math.hypot(...sVec); x = xn; g = gn; fx = fn;
+    if (Math.hypot(...g) < 1e-9 || step < 1e-13) break;
+  }
+  return x;
+}
+/** Convex QP: minimize ½xᵀHx + fᵀx s.t. A·x≤b, Aeq·x=beq, lb≤x≤ub (penalty + BFGS). */
+async function quadprogSolve(H: number[][], f: number[], Aub: number[][] | null, bub: number[] | null, Aeq: number[][] | null, beq: number[] | null, lb: number[] | null, ub: number[] | null, x0: number[] | null): Promise<number[]> {
+  const n = f.length;
+  const Q = (x: number[]) => { let v = 0; for (let i = 0; i < n; i++) { v += f[i] * x[i]; for (let j = 0; j < n; j++) v += 0.5 * H[i][j] * x[i] * x[j]; } return v; };
+  const pen = (x: number[]) => { let p = 0; if (Aub) for (let i = 0; i < Aub.length; i++) { let s = -(bub![i]); for (let j = 0; j < n; j++) s += Aub[i][j] * x[j]; if (s > 0) p += s * s; } if (Aeq) for (let i = 0; i < Aeq.length; i++) { let s = -(beq![i]); for (let j = 0; j < n; j++) s += Aeq[i][j] * x[j]; p += s * s; } for (let j = 0; j < n; j++) { if (lb && x[j] < lb[j]) p += (lb[j] - x[j]) ** 2; if (ub && x[j] > ub[j]) p += (x[j] - ub[j]) ** 2; } return p; };
+  let x = x0 ? x0.slice() : new Array(n).fill(0); let mu = 1;
+  for (let outer = 0; outer < 18; outer++) { const obj = async (xx: number[]) => Q(xx) + mu * pen(xx); x = await bfgsMin(obj, x); mu *= 10; }
+  for (let j = 0; j < n; j++) { if (lb && x[j] < lb[j]) x[j] = lb[j]; if (ub && x[j] > ub[j]) x[j] = ub[j]; }
+  return x;
+}
+const optLinPen = (x: number[], Aub: number[][] | null, bub: number[] | null, Aeq: number[][] | null, beq: number[] | null): number => { let p = 0; if (Aub) for (let i = 0; i < Aub.length; i++) { let s = -(bub![i]); for (let j = 0; j < x.length; j++) s += Aub[i][j] * x[j]; if (s > 0) p += 1e6 * s * s; } if (Aeq) for (let i = 0; i < Aeq.length; i++) { let s = -(beq![i]); for (let j = 0; j < x.length; j++) s += Aeq[i][j] * x[j]; p += 1e6 * s * s; } return p; };
+/** Genetic algorithm (real-coded, tournament selection, uniform crossover, box bounds). */
+async function gaSolve(F: (x: number[]) => Promise<number>, nv: number, lb: number[] | null, ub: number[] | null): Promise<number[]> {
+  const lo = lb ?? new Array(nv).fill(-10), hi = ub ?? new Array(nv).fill(10);
+  const pop = Math.min(200, 20 + 10 * nv); const gens = 150;
+  let P = Array.from({ length: pop }, () => lo.map((l, i) => l + rngNext() * (hi[i] - l)));
+  let fit = await Promise.all(P.map(F));
+  for (let gI = 0; gI < gens; gI++) {
+    const ord = fit.map((_, i) => i).sort((a, b) => fit[a] - fit[b]); P = ord.map((i) => P[i]); fit = ord.map((i) => fit[i]);
+    const next: number[][] = [P[0].slice(), P[1].slice()];
+    const sel = () => { const a = Math.floor(rngNext() * pop), b = Math.floor(rngNext() * pop); return fit[a] < fit[b] ? P[a] : P[b]; };
+    while (next.length < pop) { const p1 = sel(), p2 = sel(); const c = p1.map((v, i) => (rngNext() < 0.5 ? v : p2[i])); for (let i = 0; i < nv; i++) if (rngNext() < 0.12) c[i] = lo[i] + rngNext() * (hi[i] - lo[i]); next.push(c); }
+    P = next; fit = await Promise.all(P.map(F));
+  }
+  let bi = 0; for (let i = 1; i < pop; i++) if (fit[i] < fit[bi]) bi = i; return P[bi];
+}
+/** Particle swarm optimization (box bounds). */
+async function psoSolve(F: (x: number[]) => Promise<number>, nv: number, lb: number[] | null, ub: number[] | null): Promise<number[]> {
+  const lo = lb ?? new Array(nv).fill(-10), hi = ub ?? new Array(nv).fill(10);
+  const np = Math.min(120, 10 + 10 * nv); const iters = 200; const w = 0.72, c1 = 1.49, c2 = 1.49;
+  const X = Array.from({ length: np }, () => lo.map((l, i) => l + rngNext() * (hi[i] - l)));
+  const Vel = Array.from({ length: np }, () => lo.map((l, i) => (rngNext() - 0.5) * (hi[i] - l)));
+  const pbest = X.map((x) => x.slice()); const pf = await Promise.all(X.map(F));
+  let gi = 0; for (let i = 1; i < np; i++) if (pf[i] < pf[gi]) gi = i; let gbest = pbest[gi].slice();
+  for (let it = 0; it < iters; it++) for (let i = 0; i < np; i++) { for (let d = 0; d < nv; d++) { Vel[i][d] = w * Vel[i][d] + c1 * rngNext() * (pbest[i][d] - X[i][d]) + c2 * rngNext() * (gbest[d] - X[i][d]); X[i][d] = Math.max(lo[d], Math.min(hi[d], X[i][d] + Vel[i][d])); } const fi = await F(X[i]); if (fi < pf[i]) { pf[i] = fi; pbest[i] = X[i].slice(); if (fi < pf[gi]) { gi = i; gbest = X[i].slice(); } } }
+  return gbest;
+}
+/** Simulated annealing with bounds. */
+async function saSolve(F: (x: number[]) => Promise<number>, x0: number[], lb: number[] | null, ub: number[] | null): Promise<number[]> {
+  const n = x0.length; const lo = lb ?? new Array(n).fill(-Infinity), hi = ub ?? new Array(n).fill(Infinity);
+  const scale = x0.map((v, i) => (Number.isFinite(lo[i]) && Number.isFinite(hi[i]) ? (hi[i] - lo[i]) / 8 : Math.max(1, Math.abs(v))));
+  let x = x0.slice(); let fx = await F(x); let best = x.slice(), fbest = fx;
+  for (let it = 0; it < 4000; it++) {
+    const T = Math.exp(-it / 600);
+    const xn = x.map((v, i) => { let nv = v + (rngNext() - 0.5) * scale[i] * (0.2 + T); if (Number.isFinite(lo[i])) nv = Math.max(lo[i], nv); if (Number.isFinite(hi[i])) nv = Math.min(hi[i], nv); return nv; });
+    const fn = await F(xn); const d = fn - fx;
+    if (d < 0 || rngNext() < Math.exp(-d / (T + 1e-12))) { x = xn; fx = fn; if (fx < fbest) { fbest = fx; best = x.slice(); } }
+  }
+  return best;
+}
+/** Generalized pattern (direct) search with bounds. */
+async function patternSearchSolve(F: (x: number[]) => Promise<number>, x0: number[], lb: number[] | null, ub: number[] | null): Promise<number[]> {
+  const n = x0.length; const lo = lb ?? new Array(n).fill(-Infinity), hi = ub ?? new Array(n).fill(Infinity);
+  const clip = (v: number[]) => v.map((vi, i) => { let r = vi; if (Number.isFinite(lo[i])) r = Math.max(lo[i], r); if (Number.isFinite(hi[i])) r = Math.min(hi[i], r); return r; });
+  let x = clip(x0.slice()); let fx = await F(x); let mesh = 1;
+  for (let it = 0; it < 2000 && mesh > 1e-11; it++) {
+    let improved = false;
+    for (let d = 0; d < n && !improved; d++) for (const s of [1, -1]) { const xn = clip(x.map((v, i) => (i === d ? v + s * mesh : v))); const fn = await F(xn); if (fn < fx - 1e-15) { x = xn; fx = fn; improved = true; break; } }
+    mesh = improved ? mesh * 2 : mesh * 0.5;
+  }
   return x;
 }
 /** Invert a monotone-increasing function on [lo,hi] to value p (bisection). */
