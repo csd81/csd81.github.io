@@ -20,6 +20,11 @@ export interface Session {
   getFigure(): FigureSpec;
   workspace(): { name: string; size: string; klass: string; preview: string }[];
   reset(): void;
+  /** Virtual file system: move bytes in/out so the UI can import data + export saved files. */
+  putFile(name: string, bytes: Uint8Array): void;
+  getFile(name: string): Uint8Array | null;
+  listFiles(): string[];
+  deleteFile(name: string): void;
 }
 
 export function createSession(opts: SessionOptions): Session {
@@ -46,6 +51,10 @@ export function createSession(opts: SessionOptions): Session {
       interp = new Interpreter({ onOutput: opts.onOutput, requestInput: opts.requestInput, onClearConsole: opts.onClearConsole, onTick: opts.onTick });
       preload();
     },
+    putFile(name, bytes) { interp.writeFileBytes(name, bytes); },
+    getFile(name) { return interp.readFileBytes(name); },
+    listFiles() { return interp.listFiles(); },
+    deleteFile(name) { interp.deleteFile(name); },
   };
 }
 

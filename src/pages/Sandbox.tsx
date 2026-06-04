@@ -35,11 +35,19 @@ export default function Sandbox() {
   const centerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLElement>(null);
 
-  const { lines, workspace, fig, busy, prompt, runSource, submit, clearConsole, resetSession, abort } = useSandbox(folderId);
+  const { lines, workspace, fig, busy, prompt, userFiles, runSource, submit, clearConsole, resetSession, abort, importFiles, saveFile, downloadFile, deleteFile, readFileText } = useSandbox(folderId);
 
-  useEffect(() => { setEditor(lf(fileById(openId)?.source)); setCursor({ line: 1, col: 1 }); }, [openId]);
-  // Opening a file reveals the editor.
-  const openFile = (id: string) => { setOpenId(id); setTopOpen(true); };
+  // A user (VFS) file open in the editor takes precedence over the bundled library file.
+  const [userOpenName, setUserOpenName] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { if (!userOpenName) { setEditor(lf(fileById(openId)?.source)); setCursor({ line: 1, col: 1 }); } }, [openId, userOpenName]);
+  // Opening a bundled file reveals the editor.
+  const openFile = (id: string) => { setUserOpenName(null); setOpenId(id); setTopOpen(true); };
+  const openUserFile = (name: string) => { const txt = readFileText(name); if (txt == null) return; setUserOpenName(name); setEditor(lf(txt)); setTopOpen(true); setCursor({ line: 1, col: 1 }); };
+  const doImport = async (files: FileList | null) => { if (!files || !files.length) return; const opened = await importFiles(files); if (opened) { setUserOpenName(opened.name); setEditor(lf(opened.code)); setTopOpen(true); } };
+  const currentName = userOpenName ?? open?.file ?? 'untitled.m';
+  const doSave = () => saveFile(currentName, editor);
 
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
   const toggleFolder = (id: string) =>
@@ -125,6 +133,9 @@ export default function Sandbox() {
         </div>
         <span className="mlab__tspacer" />
         <div className="mlab__tgroup">
+          <input ref={fileInputRef} type="file" multiple accept=".m,.mlx,.csv,.txt,.dat,.xlsx,.tsv" style={{ display: 'none' }} onChange={(e) => { void doImport(e.target.files); e.currentTarget.value = ''; }} />
+          <button className="mlab__tool" onClick={() => fileInputRef.current?.click()} title={t('Import .m / .mlx / CSV / Excel', '.m / .mlx / CSV / Excel importálása')}>⤓ {t('Import', 'Import')}</button>
+          <button className="mlab__tool" onClick={doSave} title={t('Save the editor to a file & download', 'Szerkesztő mentése fájlba és letöltés')}>💾 {t('Save', 'Mentés')}</button>
           <button className={'mlab__tool' + (leftOpen ? ' mlab__tool--on' : '')} onClick={() => setLeftOpen((v) => !v)} title={t('Toggle file tree', 'Fájlfa ki/be')}>▣ {t('Files', 'Fájlok')}</button>
           <button className={'mlab__tool' + (topOpen ? ' mlab__tool--on' : '')} onClick={() => setTopOpen((v) => !v)} title={t('Toggle editor', 'Szerkesztő ki/be')}>✎ {t('Editor', 'Szerkesztő')}</button>
           <button className={'mlab__tool' + (rightOpen ? ' mlab__tool--on' : '')} onClick={() => setRightOpen((v) => !v)} title={t('Toggle figure & workspace', 'Ábra és munkaterület ki/be')}>▥ {t('Figure', 'Ábra')}</button>
@@ -139,6 +150,20 @@ export default function Sandbox() {
             <aside className="mlab__files">
               <div className="mlab__pane-head"><span>{t('Current Folder', 'Aktuális mappa')}</span></div>
               <div className="mlab__tree">
+                {userFiles.length > 0 && (
+                  <div className="mlab__group">
+                    <div className="mlab__group-title">{t('User files', 'Saját fájlok')}</div>
+                    <ul className="mlab__filelist">
+                      {userFiles.map((name) => (
+                        <li key={name} className="mlab__userfile">
+                          <button className={'mlab__file' + (name === userOpenName ? ' mlab__file--active' : '')} onClick={() => /\.(m|mlx|csv|txt|dat|tsv)$/i.test(name) ? openUserFile(name) : downloadFile(name)} title={name}>{name}</button>
+                          <button className="mlab__mini" onClick={() => downloadFile(name)} title={t('Download', 'Letöltés')}>⤓</button>
+                          <button className="mlab__mini" onClick={() => { if (name === userOpenName) setUserOpenName(null); deleteFile(name); }} title={t('Delete', 'Törlés')}>✕</button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 <FileGroup title={t('Course examples', 'Kurzus példák')} folders={courseFolders} openId={openId} setOpenId={openFile} collapsed={collapsed} toggle={toggleFolder} />
                 <FileGroup title={t('Chapter algorithms', 'Fejezet-algoritmusok')} folders={chapterFolders} openId={openId} setOpenId={openFile} collapsed={collapsed} toggle={toggleFolder} />
               </div>
@@ -155,7 +180,7 @@ export default function Sandbox() {
             <>
               <section className="mlab__editor" ref={editorRef}>
                 <div className="mlab__pane-head">
-                  <span className="mlab__filetab">{open?.file ?? t('Editor', 'Szerkesztő')}</span>
+                  <span className="mlab__filetab">{userOpenName ?? open?.file ?? t('Editor', 'Szerkesztő')}</span>
                   <span className="mlab__spacer" />
                   <button className="mlab__mini" onClick={() => setTopOpen(false)} title={t('Collapse editor', 'Szerkesztő összecsukása')}>⌃</button>
                 </div>

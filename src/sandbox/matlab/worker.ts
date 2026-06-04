@@ -10,7 +10,10 @@ type ToWorker =
   | { type: 'reset'; preload: string[] }
   | { type: 'run'; id: number; src: string }
   | { type: 'inputReply'; value: string }
-  | { type: 'abort' };
+  | { type: 'abort' }
+  | { type: 'putFile'; name: string; bytes: Uint8Array }
+  | { type: 'getFile'; id: number; name: string }
+  | { type: 'deleteFile'; name: string };
 
 type FromWorker =
   | { type: 'output'; text: string }
@@ -18,6 +21,8 @@ type FromWorker =
   | { type: 'input'; prompt: string }
   | { type: 'figure'; fig: unknown }
   | { type: 'workspace'; vars: unknown }
+  | { type: 'files'; names: string[] }
+  | { type: 'fileData'; id: number; name: string; bytes: Uint8Array | null }
   | { type: 'done'; id: number; error?: string };
 
 const post = (m: FromWorker) => (self as unknown as Worker).postMessage(m);
@@ -60,13 +65,28 @@ self.onmessage = async (ev: MessageEvent<ToWorker>) => {
     case 'abort':
       aborted = true;
       return;
+    case 'putFile':
+      if (!session) makeSession();
+      session!.putFile(msg.name, msg.bytes);
+      post({ type: 'files', names: session!.listFiles() });
+      return;
+    case 'getFile':
+      if (!session) makeSession();
+      post({ type: 'fileData', id: msg.id, name: msg.name, bytes: session!.getFile(msg.name) });
+      return;
+    case 'deleteFile':
+      if (!session) makeSession();
+      session!.deleteFile(msg.name);
+      post({ type: 'files', names: session!.listFiles() });
+      return;
     case 'run': {
       if (!session) makeSession();
       aborted = false;
       const res = await session!.run(msg.src);
-      // Stream the resulting figure + workspace back, then signal completion.
+      // Stream the resulting figure + workspace + file list back, then signal completion.
       post({ type: 'figure', fig: session!.getFigure() });
       post({ type: 'workspace', vars: session!.workspace() });
+      post({ type: 'files', names: session!.listFiles() });
       post({ type: 'done', id: msg.id, error: res.error });
       return;
     }

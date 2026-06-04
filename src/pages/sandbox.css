@@ -161,6 +161,10 @@
 }
 .mlab__file:hover { background: var(--surface-2); color: var(--text); }
 .mlab__file--active { background: var(--brand-100, rgba(47,111,237,0.14)); color: var(--brand-700, var(--text)); font-weight: 700; }
+.mlab__userfile { display: flex; align-items: center; gap: 2px; }
+.mlab__userfile .mlab__file { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mlab__userfile .mlab__mini { flex: 0 0 auto; opacity: 0.5; }
+.mlab__userfile:hover .mlab__mini { opacity: 1; }
 
 /* Editor — highlighted <pre> behind a transparent <textarea>. */
 .mlab__editarea { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; background: var(--surface); }
