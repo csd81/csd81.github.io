@@ -11,9 +11,9 @@ import {
   type Str, isStr, makeStr, makeStrArr,
   type Graph, type Geom, type Quantum,
   type Temporal, isTemporal, makeTemporal, numelOf,
-  isSym, makeSym, applyClass, pickClass, isMap, mapNormKey,
+  type Sym, isSym, makeSym, applyClass, pickClass, isMap, mapNormKey,
 } from './values';
-import { type SymExpr, sN, sV, sAdd, sSub, sMul, sDiv, sPow, sFn, simplifyExpr, evalExpr } from './sym';
+import { type SymExpr, sN, sV, sAdd, sSub, sMul, sDiv, sPow, sFn, simplifyExpr, subsExpr, evalExpr } from './sym';
 
 /** Elementary functions that overload to symbolic when given a sym argument. */
 const SYM_ELEMENTARY = new Set(['sin', 'cos', 'tan', 'cot', 'sec', 'csc', 'asin', 'acos', 'atan', 'acot', 'asec', 'acsc', 'sinh', 'cosh', 'tanh', 'coth', 'sech', 'csch', 'asinh', 'acosh', 'atanh', 'exp', 'log', 'log10', 'log2', 'sqrt', 'abs', 'sign', 'cbrt', 'gamma', 'gammaln', 'erf', 'erfc', 'factorial', 'conj', 'real', 'imag', 'zeta', 'psi', 'sinc', 'erfi', 'dawson', 'fresnelc', 'fresnels', 'ei', 'logint', 'sinhint', 'coshint', 'ssinint', 'dilog', 'wrightOmega']);
@@ -429,7 +429,13 @@ export class Interpreter implements Env {
         return [makeRange(from, step, to)];
       }
       case 'unary': {
-        const v = asMat(await this.evalExpr(e.e, scope));
+        const raw = await this.evalExpr(e.e, scope);
+        if (isSym(raw)) {   // symbolic unary: keep it symbolic
+          if (e.op === '+') return [raw];
+          if (e.op === '-') return [makeSym(raw.rows, raw.cols, raw.exprs.map((x) => simplifyExpr(sMul(sN(-1), x))))];
+          return [makeSym(raw.rows, raw.cols, raw.exprs.map((x) => simplifyExpr(sFn('not', x))))];
+        }
+        const v = asMat(raw);
         if (e.op === '-') { const neg = isComplex(v) ? cmap(v, (re, im) => [-re, -im]) : map(v, (x) => -x); return [v.itype ? applyClass(neg, v.itype) : neg]; }
         if (e.op === '+') return [v];
         return [{ ...map(v, (x) => (x === 0 ? 1 : 0)), isBool: true, idata: undefined }];
@@ -500,6 +506,13 @@ export class Interpreter implements Env {
       const r = subs.length === 2 && subs[0] !== 'colon' ? (subs[0] as number[]).length : (base.cols === 1 ? items.length : 1);
       return [makeStrArr(r, items.length / (r || 1), items)];
     }
+    if (isSym(base) && base.fnArgs && e.args.length === base.fnArgs.length) {
+      // symbolic-function application y(expr) → substitute the formal args (e.g. IC y(0))
+      const argVals = await this.evalArgs(e.args, scope);
+      let exprs = base.exprs;
+      base.fnArgs.forEach((fa, i) => { const av = argVals[i]; const repl = isSym(av) ? (av as Sym).exprs[0] : sN(asScalar(asMat(av))); exprs = exprs.map((ex) => subsExpr(ex, fa, repl)); });
+      return [makeSym(base.rows, base.cols, exprs.map(simplifyExpr))];
+    }
     if (isSym(base)) {
       // S(...) → a sub-sym (column-major linear-index logic, like cells)
       const subs = await this.evalSubsN(e.args, base.rows, base.cols, base.exprs.length, scope);
@@ -536,7 +549,15 @@ export class Interpreter implements Env {
     const def = this.funcs.get(name);
     if (def) return this.callUserFunc(def, args, nargout);
     // syms a b c → create symbolic variables in the base workspace
-    if (name === 'syms') { for (const arg of args) { let nm = ''; try { nm = asString(arg); } catch { nm = ''; } if (/^[A-Za-z]\w*$/.test(nm)) this.base.vars.set(nm, makeSym(1, 1, [sV(nm)])); } return []; }
+    if (name === 'syms') {
+      for (const arg of args) {
+        let nm = ''; try { nm = asString(arg); } catch { nm = ''; }
+        const fn = nm.match(/^([A-Za-z]\w*)\(([A-Za-z]\w*(?:,[A-Za-z]\w*)*)\)$/);
+        if (fn) { const fa = fn[2].split(','); const s = makeSym(1, 1, [sFn(fn[1], ...fa.map((v) => sV(v)))]); s.fnArgs = fa; this.base.vars.set(fn[1], s); for (const v of fa) if (!this.base.vars.has(v)) this.base.vars.set(v, makeSym(1, 1, [sV(v)])); }   // symfun y(t) also creates t
+        else if (/^[A-Za-z]\w*$/.test(nm)) this.base.vars.set(nm, makeSym(1, 1, [sV(nm)]));
+      }
+      return [];
+    }
     // symbolic overload of elementary functions: f(sym) → sFn(f, …)
     if (args.length === 1 && isSym(args[0]) && SYM_ELEMENTARY.has(name)) { const s = args[0]; return [makeSym(s.rows, s.cols, s.exprs.map((e) => simplifyExpr(sFn(name, e))))]; }
     if (name in BUILTINS) return BUILTINS[name](args, nargout, this);

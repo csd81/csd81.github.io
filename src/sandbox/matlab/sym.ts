@@ -61,6 +61,7 @@ export function simplifyExpr(e: SymExpr): SymExpr {
       if (isN(base, 0) && exp.t === 'n' && (exp as { v: number }).v > 0) return sN(0);
       if (isN(base, 1)) return sN(1);
       if (base.t === 'n' && exp.t === 'n') return sN(Math.pow(base.v, exp.v));
+      if (base.t === 'fn' && base.name === 'exp') return simplifyExpr(sFn('exp', sMul(base.args[0], exp)));   // exp(u)^k = e^{k·u}
       // (a^b)^c → a^(b·c) is only valid when the outer exponent c is an integer, or the
       // inner base a is a positive real (else e.g. (x^2)^(1/2) ≠ x — it is |x|).
       if (base.t === 'pow' && ((exp.t === 'n' && Number.isInteger(exp.v)) || (base.base.t === 'n' && base.base.v > 0)))
@@ -189,7 +190,7 @@ function render(e: SymExpr, prec: number): string {
   switch (e.t) {
     case 'n': return e.v < 0 ? `(${trim(e.v)})` : trim(e.v);
     case 'v': return e.name;
-    case 'fn': return `${e.name}(${e.args.map((a) => render(a, 0)).join(', ')})`;
+    case 'fn': { const dm = e.name.match(/^((?:diff_)+)(.+)$/); const args = e.args.map((a) => render(a, 0)).join(', '); if (dm) return `${dm[2]}${"'".repeat(dm[1].length / 5)}(${args})`; return `${e.name}(${args})`; }
     case 'pow': { const s = `${render(e.base, 3)}^${render(e.exp, 3)}`; return prec > 2 ? `(${s})` : s; }
     case 'add': { const s = e.args.map((a, i) => { const r = render(a, 1); return i > 0 && !r.startsWith('-') ? `+ ${r}` : i > 0 ? `- ${r.slice(1)}` : r; }).join(' '); return prec > 1 ? `(${s})` : s; }
     case 'mul': {
@@ -233,6 +234,8 @@ function tex(e: SymExpr, prec: number): string {
       if (e.name === 'sqrt') return `\\sqrt{${tex(e.args[0], 0)}}`;
       if (e.name === 'abs') return `\\left|${tex(e.args[0], 0)}\\right|`;
       const args = e.args.map((a) => tex(a, 0)).join(', ');
+      const dm = e.name.match(/^((?:diff_)+)(.+)$/);
+      if (dm) return `${dm[2]}${"'".repeat(dm[1].length / 5)}\\!\\left(${args}\\right)`;
       const f = TEXFN[e.name];
       return f ? `${f}\\!\\left(${args}\\right)` : `\\operatorname{${e.name}}\\!\\left(${args}\\right)`;
     }

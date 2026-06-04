@@ -640,7 +640,7 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(makeND(dims, Float64Array.from(A.data), { idata: A.idata ? Float64Array.from(A.idata) : null, isChar: A.isChar }));
   },
   diff: async (a) => {
-    if (isSym(a[0])) { const s = a[0]; const vr = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar)) ? asString(a[1]) : (symVarsOf(s)[0] ?? 'x'); const order = a.length >= 3 ? Math.round(asScalar(a[2])) : (a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar ? Math.round(asScalar(a[1])) : 1); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => { let d = e; for (let k = 0; k < order; k++) d = simplifyExpr(diffExpr(d, vr)); return d; }))); }
+    if (isSym(a[0])) { const s = a[0]; const vr = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar)) ? asString(a[1]) : (symVarsOf(s)[0] ?? 'x'); const order = a.length >= 3 ? Math.round(asScalar(a[2])) : (a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar ? Math.round(asScalar(a[1])) : 1); const out = makeSym(s.rows, s.cols, s.exprs.map((e) => { let d = e; for (let k = 0; k < order; k++) d = simplifyExpr(diffExpr(d, vr)); return d; })); if (s.fnArgs) out.fnArgs = s.fnArgs; return ret(out); }
     const A = m(a[0]); const di = A.idata;
     if (A.rows === 1 || A.cols === 1) {
       const v = toArray(A); const out: number[] = []; const oi: number[] = [];

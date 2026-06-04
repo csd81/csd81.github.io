@@ -18,7 +18,7 @@ import {
 import { symTexLines } from './format';
 import {
   symArg, symToExpr, symVarsOf, symNames, transformVars, integrate, limitAt,
-  solveExpr, expandExpr, polyCoeffs, numDen, parseSym,
+  solveExpr, expandExpr, polyCoeffs, numDen, parseSym, dsolveSolve,
   symTypeName, hasSub, findByType, partfracExpr, polesOf, hilbertExpr, rewriteExpr,
   assumeVar, clearAssumptions,
   laplaceExpr, ilaplaceExpr, ztransExpr, iztransExpr, fourierExpr, ifourierExpr,
@@ -116,6 +116,7 @@ export const SYM_BUILTINS: Record<string, Builtin> = {
   cell2sym: async (a) => { const C = a[0] as Cell; const exprs = C.items.map((it) => ((isStr(it) || (isMat(it) && (it as Mat).isChar)) ? parseSym(asString(it)).exprs[0] : symToExpr(it))); return ret(makeSym(C.rows, C.cols, exprs)); },
   sym2cell: async (a) => { const s = symArg(a[0]); return ret(makeCell(s.rows, s.cols, s.exprs.map((e) => makeSym(1, 1, [e]) as Value))); },
   series: async (a, n, env) => SYM_BUILTINS.taylor(a, n, env),
+  dsolve: async (a) => { const ode = symArg(a[0]).exprs; const conds = a.slice(1).filter((c) => isSym(c) || isMat(c)).map((c) => symArg(c).exprs[0]); return ret(makeSym(1, 1, [dsolveSolve(ode, conds)])); },
   pretty: async (a, _n, env) => { env.output(symTexLines(symArg(a[0])).join('\n') + '\n'); return []; },
   isAlways: async (a) => { const s = symArg(a[0]); const o = zeros(s.rows, s.cols); o.isBool = true; s.exprs.forEach((e, i) => { o.data[i] = Math.abs(symEval(e, new Map())) < 1e-12 ? 1 : 0; }); return ret(o); },
   potential: async (a) => { const F = symArg(a[0]).exprs; const v = symNames(a[1]); return ret(makeSym(1, 1, [simplifyExpr(integrate(F[0], v[0]))])); },

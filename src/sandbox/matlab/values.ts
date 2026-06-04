@@ -114,6 +114,7 @@ export interface Sym {
   rows: number;
   cols: number;
   exprs: import('./sym').SymExpr[];
+  fnArgs?: string[];   // for symbolic functions `syms y(t)` — the formal args; a call y(0) substitutes them
 }
 /** Categorical array: integer codes (1-based; 0 ⇒ <undefined>) into a category-label list. */
 export interface Categorical {

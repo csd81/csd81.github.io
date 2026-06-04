@@ -246,7 +246,10 @@ class Parser {
     const args: Expr[] = [];
     while (this.peek().kind === 'ident' || this.peek().kind === 'str') {
       const w = this.next();
-      args.push({ t: 'str', v: w.value });
+      let word = w.value;
+      // capture a symbolic-function signature like `y(t)` as one word (e.g. `syms y(t)`)
+      if (this.atPunct('(')) { let depth = 0; do { const tk = this.next(); word += tk.value; if (tk.value === '(') depth++; else if (tk.value === ')') depth--; } while (depth > 0 && this.peek().kind !== 'eof'); }
+      args.push({ t: 'str', v: word });
     }
     return { t: 'index', target: { t: 'ident', name }, args };
   }

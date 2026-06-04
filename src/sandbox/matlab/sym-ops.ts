@@ -307,6 +307,126 @@ export function solveExpr(e: SymExpr, x: string): SymExpr[] {
   const { re, im } = durandKerner(p);
   return re.map((r, i) => (Math.abs(im[i]) < 1e-9 ? sN(Math.abs(r - Math.round(r)) < 1e-9 ? Math.round(r) : r) : sFn('complex', sN(r), sN(im[i]))));
 }
+// ── Symbolic ODE solver (dsolve) ─────────────────────────────────────────
+const dsnap = (x: number): number => (Math.abs(x - Math.round(x)) < 1e-9 ? Math.round(x) : x);
+const dConst = (e: SymExpr): number => { const s = simplifyExpr(e); return symVars(s).length === 0 ? symEval(s, new Map()) : NaN; };
+const dIsZero = (e: SymExpr): boolean => { const s = simplifyExpr(e); return s.t === 'n' && Math.abs(s.v) < 1e-12; };
+/** Replace every fn node named `name` (whole subtree) with `repl`. */
+function dReplaceFn(e: SymExpr, name: string, repl: SymExpr): SymExpr {
+  switch (e.t) {
+    case 'fn': return e.name === name ? repl : sFn(e.name, ...e.args.map((a) => dReplaceFn(a, name, repl)));
+    case 'add': return sAdd(...e.args.map((a) => dReplaceFn(a, name, repl)));
+    case 'mul': return sMul(...e.args.map((a) => dReplaceFn(a, name, repl)));
+    case 'pow': return sPow(dReplaceFn(e.base, name, repl), dReplaceFn(e.exp, name, repl));
+    default: return e;
+  }
+}
+function dCollectFns(e: SymExpr, into: Set<string>): void {
+  if (e.t === 'fn') { into.add(e.name); e.args.forEach((a) => dCollectFns(a, into)); }
+  else if (e.t === 'add' || e.t === 'mul') e.args.forEach((a) => dCollectFns(a, into));
+  else if (e.t === 'pow') { dCollectFns(e.base, into); dCollectFns(e.exp, into); }
+}
+function dFindArg(e: SymExpr, name: string): SymExpr | null {
+  if (e.t === 'fn') { if (e.name === name) return e.args[0]; for (const a of e.args) { const r = dFindArg(a, name); if (r) return r; } return null; }
+  if (e.t === 'add' || e.t === 'mul') { for (const a of e.args) { const r = dFindArg(a, name); if (r) return r; } return null; }
+  if (e.t === 'pow') return dFindArg(e.base, name) ?? dFindArg(e.exp, name);
+  return null;
+}
+/** Solve a small dense linear system M·x = b (Gaussian elimination). */
+function dLinSolve(M: number[][], b: number[]): number[] | null {
+  const n = b.length; const A = M.map((r, i) => [...r, b[i]]);
+  for (let c = 0; c < n; c++) {
+    let p = c; for (let r = c + 1; r < n; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r;
+    if (Math.abs(A[p][c]) < 1e-12) return null; [A[c], A[p]] = [A[p], A[c]];
+    for (let r = 0; r < n; r++) if (r !== c) { const f = A[r][c] / A[c][c]; for (let k = c; k <= n; k++) A[r][k] -= f * A[c][k]; }
+  }
+  return A.map((r, i) => r[n] / r[i]);
+}
+const dCoefBase = (e: SymExpr): SymExpr => { if (e.t === 'n') return sN(1); if (e.t === 'mul') { const rest = e.args.filter((a) => a.t !== 'n'); return rest.length === 1 ? rest[0] : sMul(...rest); } return e; };
+/** Particular solution of a2 y''+a1 y'+a0 y = g via undetermined coefficients
+ *  (basis = closure of g under differentiation; coefficients by sampling). */
+function dParticular(a2: number, a1: number, a0: number, g: SymExpr, t: string): SymExpr | null {
+  if (dIsZero(g)) return sN(0);
+  if (symVars(g).some((v) => v !== t)) return null;             // parametric forcing → unsupported
+  const seen = new Map<string, SymExpr>(); let frontier = [simplifyExpr(g)];
+  for (let it = 0; it < 12 && frontier.length; it++) {
+    const next: SymExpr[] = [];
+    for (const e of frontier) { const terms = e.t === 'add' ? e.args : [e]; for (const term of terms) { const base = dCoefBase(simplifyExpr(term)); const k = exprToStr(base); if (!seen.has(k) && k !== '0') { seen.set(k, base); next.push(simplifyExpr(diffExpr(base, t))); } } }
+    frontier = next;
+  }
+  let basis = [...seen.values()]; if (!basis.length || basis.length > 8) return null;
+  const L = (y: SymExpr): SymExpr => simplifyExpr(sAdd(sMul(sN(a2), diffExpr(diffExpr(y, t), t)), sMul(sN(a1), diffExpr(y, t)), sMul(sN(a0), y)));
+  const samplePts = Array.from({ length: basis.length + 2 }, (_, i) => 0.37 + 0.53 * i);
+  // resonance: if L[b] ≈ 0 at the samples, bump b by t (up to twice)
+  basis = basis.map((b) => { let bb = b; for (let r = 0; r < 2; r++) { if (samplePts.every((tp) => Math.abs(symEval(L(bb), new Map([[t, tp]]))) < 1e-9)) bb = simplifyExpr(sMul(sV(t), bb)); else break; } return bb; });
+  const Lb = basis.map((b) => L(b));
+  const M = samplePts.map((tp) => Lb.map((lb) => symEval(lb, new Map([[t, tp]]))));
+  const rhs = samplePts.map((tp) => symEval(g, new Map([[t, tp]])));
+  // least-squares normal equations (overdetermined): (MᵀM) c = Mᵀ rhs
+  const n = basis.length; const N: number[][] = Array.from({ length: n }, () => new Array(n).fill(0)); const r2: number[] = new Array(n).fill(0);
+  for (let i = 0; i < n; i++) { for (let j = 0; j < n; j++) for (let s = 0; s < M.length; s++) N[i][j] += M[s][i] * M[s][j]; for (let s = 0; s < M.length; s++) r2[i] += M[s][i] * rhs[s]; }
+  const c = dLinSolve(N, r2); if (!c) return null;
+  return simplifyExpr(sAdd(...basis.map((b, i) => sMul(sN(dsnap(c[i])), b))));
+}
+/** Apply initial/boundary conditions (each `cond` is an expr = 0) to fix C1,C2. */
+function dApplyConds(gen: SymExpr, conds: SymExpr[], f: string, t: string): SymExpr {
+  const unknowns = ['C1', 'C2'].filter((c) => symVars(gen).includes(c));
+  if (!unknowns.length || !conds.length) return gen;
+  const rows: number[][] = []; const rhs: number[] = [];
+  for (const cond of conds) {
+    const names = new Set<string>(); dCollectFns(cond, names);
+    let ord = -1, pt = NaN;
+    for (const nm of names) { const dm = nm.match(/^((?:diff_)+)?(\w+)$/); if (dm && dm[2] === f) { const arg = dFindArg(cond, nm); if (arg) { ord = dm[1] ? dm[1].length / 5 : 0; pt = dConst(arg); } } }
+    if (!Number.isFinite(pt) || ord < 0) continue;
+    let base = cond; for (const nm of names) { const dm = nm.match(/^((?:diff_)+)?(\w+)$/); if (dm && dm[2] === f) base = dReplaceFn(base, nm, sN(0)); }
+    const val = -symEval(simplifyExpr(base), new Map());        // condition RHS value
+    let expr = gen; for (let k = 0; k < ord; k++) expr = diffExpr(expr, t);
+    expr = subsExpr(expr, t, sN(pt));
+    const row = unknowns.map((u) => symEval(simplifyExpr(diffExpr(expr, u)), new Map()));
+    let con = expr; for (const u of unknowns) con = subsExpr(con, u, sN(0));
+    rows.push(row); rhs.push(val - symEval(simplifyExpr(con), new Map()));
+  }
+  if (rows.length < unknowns.length) return gen;
+  const sol = dLinSolve(rows.slice(0, unknowns.length), rhs.slice(0, unknowns.length));
+  if (!sol) return gen;
+  let out = gen; unknowns.forEach((u, i) => { out = subsExpr(out, u, sN(dsnap(sol[i]))); });
+  return simplifyExpr(out);
+}
+/** dsolve: 1st-order linear (integrating factor) & 2nd-order linear constant-coefficient. */
+export function dsolveSolve(odeExprs: SymExpr[], conds: SymExpr[]): SymExpr {
+  const ode = simplifyExpr(odeExprs[0]);
+  const names = new Set<string>(); dCollectFns(ode, names);
+  let f = '', maxOrd = -1;
+  for (const nm of names) { const dm = nm.match(/^((?:diff_)+)(\w+)$/); if (dm) { const o = dm[1].length / 5; if (o > maxOrd) { maxOrd = o; f = dm[2]; } } }
+  if (!f) throw new MatError('dsolve: no derivative of the dependent function found');
+  const order = maxOrd;
+  const indepArg = dFindArg(ode, 'diff_'.repeat(order) + f); const t = indepArg && indepArg.t === 'v' ? indepArg.name : 'x';
+  let lin = ode; for (let k = order; k >= 0; k--) lin = dReplaceFn(lin, 'diff_'.repeat(k) + f, sV('__d' + k)); lin = simplifyExpr(lin);
+  const coef: SymExpr[] = []; for (let k = 0; k <= order; k++) coef[k] = simplifyExpr(diffExpr(lin, '__d' + k));
+  let c0: SymExpr = lin; for (let k = 0; k <= order; k++) c0 = subsExpr(c0, '__d' + k, sN(0)); c0 = simplifyExpr(c0);
+  // linear ⇔ every partial ∂lin/∂__dk is free of the __d markers (any nonlinearity leaves one)
+  const linOK = coef.every((a) => ![0, 1, 2].some((k) => symVars(a).includes('__d' + k)));
+  const g = simplifyExpr(sNeg(c0));                               // forcing: Σ a_k y^(k) = g
+  const C1 = sV('C1'), C2 = sV('C2');
+  let gen: SymExpr;
+  if (linOK && order === 1) {
+    const p = simplifyExpr(sDiv(coef[0], coef[1])), q = simplifyExpr(sDiv(g, coef[1]));
+    const mu = simplifyExpr(sFn('exp', integrate(p, t)));
+    gen = simplifyExpr(sMul(sPow(mu, sN(-1)), sAdd(integrate(simplifyExpr(sMul(mu, q)), t), C1)));
+  } else if (linOK && order === 2 && coef.every((a) => Number.isFinite(dConst(a)))) {
+    const a2 = dConst(coef[2]), a1 = dConst(coef[1]), a0 = dConst(coef[0]); const disc = a1 * a1 - 4 * a0 * a2;
+    let yh: SymExpr;
+    if (disc > 1e-12) { const r1 = dsnap((-a1 + Math.sqrt(disc)) / (2 * a2)), r2 = dsnap((-a1 - Math.sqrt(disc)) / (2 * a2)); yh = sAdd(sMul(C1, sFn('exp', sMul(sN(r1), sV(t)))), sMul(C2, sFn('exp', sMul(sN(r2), sV(t))))); }
+    else if (disc < -1e-12) { const al = dsnap(-a1 / (2 * a2)), be = dsnap(Math.sqrt(-disc) / (2 * a2)); const eat = sFn('exp', sMul(sN(al), sV(t))); yh = sMul(eat, sAdd(sMul(C1, sFn('cos', sMul(sN(be), sV(t)))), sMul(C2, sFn('sin', sMul(sN(be), sV(t)))))); }
+    else { const r = dsnap(-a1 / (2 * a2)); const ert = sFn('exp', sMul(sN(r), sV(t))); yh = sMul(sAdd(C1, sMul(C2, sV(t))), ert); }
+    const yp = dParticular(a2, a1, a0, g, t); if (yp === null) throw new MatError('dsolve: unsupported forcing term');
+    gen = simplifyExpr(sAdd(yh, yp));
+  } else {
+    throw new MatError('dsolve: unsupported equation (supported: 1st-order linear, 2nd-order constant-coefficient linear)');
+  }
+  return dApplyConds(gen, conds, f, t);
+}
+
 /** Distribute products over sums (expand). */
 export function expandExpr(e: SymExpr): SymExpr {
   if (e.t === 'n' || e.t === 'v') return e;
