@@ -118,6 +118,14 @@ export const SYM_BUILTINS: Record<string, Builtin> = {
   series: async (a, n, env) => SYM_BUILTINS.taylor(a, n, env),
   dsolve: async (a) => { const ode = symArg(a[0]).exprs; const conds = a.slice(1).filter((c) => isSym(c) || isMat(c)).map((c) => symArg(c).exprs[0]); return ret(makeSym(1, 1, [dsolveSolve(ode, conds)])); },
   piecewise: async (a) => ret(makeSym(1, 1, [simplifyExpr(sFn('piecewise', ...a.map((x) => symArg(x).exprs[0])))])),
+  matlabFunction: async (a, _n, env) => {
+    const s = symArg(a[0]); let vars: string[] | null = null;
+    for (let i = 1; i + 1 < a.length; i++) { if ((isStr(a[i]) || (isMat(a[i]) && (a[i] as Mat).isChar)) && asString(a[i]).toLowerCase() === 'vars') { const vv = a[i + 1]; vars = isCell(vv) ? (vv as Cell).items.map((x) => (isSym(x) ? (symVarsOf(x)[0] ?? asString(x)) : asString(x))) : isSym(vv) ? symNames(vv) : [asString(vv)]; } }
+    if (!vars) { const set = new Set<string>(); s.exprs.forEach((e) => symVars(e).forEach((v) => set.add(v))); vars = [...set].sort(); }
+    const bodyOf = (e: SymExpr) => exprToStr(e).replace(/\^/g, '.^').replace(/\*/g, '.*').replace(/\//g, './');
+    const body = s.exprs.length === 1 ? bodyOf(s.exprs[0]) : '[' + s.exprs.map(bodyOf).join(', ') + ']';
+    return ret(await env.evalInput(`@(${(vars.length ? vars : ['x']).join(',')}) ${body}`));
+  },
   pade: async (a) => {
     const s = symArg(a[0]); let v = symVarsOf(s)[0] ?? 'x'; let mm = 3, nn = 3, a0 = 0; let i = 1;
     if (a.length > 1 && (isSym(a[1]) || ((isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar)) && !['order', 'expansionpoint'].includes(asString(a[1]).toLowerCase())))) { v = isSym(a[1]) ? (symVarsOf(a[1])[0] ?? v) : asString(a[1]); i = 2; }

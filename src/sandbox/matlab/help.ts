@@ -828,7 +828,7 @@ const SYM_REF = new Set<string>((
   // str2sym + introspection + rational algebra + advanced special functions (added later)
   'str2sym has symType isSymType hasSymType findSymType mapSymType argnames poles rewrite minpoly jordan resultant ' +
   'hypergeom jacobiSN jacobiCN jacobiDN jacobiAM jacobiZeta kummerU whittakerM whittakerW ellipticPi ellipticCPi ellipticNome ' +
-  'jacobiSC jacobiSD jacobiCD jacobiCS jacobiDC jacobiDS jacobiNC jacobiND jacobiNS texlabel cell2sym sym2cell series dsolve piecewise pade'
+  'jacobiSC jacobiSD jacobiCD jacobiCS jacobiDC jacobiDS jacobiNC jacobiND jacobiNS texlabel cell2sym sym2cell series dsolve piecewise pade matlabFunction'
 ).split(/\s+/));
 
 export function docUrl(name: string): string {
