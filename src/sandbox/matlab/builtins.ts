@@ -492,6 +492,16 @@ export const BUILTINS: Record<string, Builtin> = {
   jacobiDN: async (a) => { const mm = asScalar(a[1]); return ret(map(m(a[0]), (u) => sncndn(u, 1 - mm)[2])); },
   jacobiAM: async (a) => { const mm = asScalar(a[1]); return ret(map(m(a[0]), (u) => { const [sn, cn] = sncndn(u, 1 - mm); return Math.atan2(sn, cn); })); },
   jacobiZeta: async (a) => { const mm = asScalar(a[1]); const [K, E] = ellipkeFn(mm); return ret(map(m(a[0]), (u) => { const [sn, cn] = sncndn(u, 1 - mm); const phi = Math.atan2(sn, cn); const Einc = simpsonInt((t) => Math.sqrt(1 - mm * Math.sin(t) ** 2), 0, phi, 2000); return Einc - E / K * u; })); },
+  // the 9 remaining Jacobi elliptic functions are ratios of sn/cn/dn (Glaisher notation)
+  jacobiSC: async (a) => { const mm = asScalar(a[1]); return ret(map(m(a[0]), (u) => { const [sn, cn] = sncndn(u, 1 - mm); return sn / cn; })); },
+  jacobiSD: async (a) => { const mm = asScalar(a[1]); return ret(map(m(a[0]), (u) => { const [sn, , dn] = sncndn(u, 1 - mm); return sn / dn; })); },
+  jacobiCD: async (a) => { const mm = asScalar(a[1]); return ret(map(m(a[0]), (u) => { const [, cn, dn] = sncndn(u, 1 - mm); return cn / dn; })); },
+  jacobiCS: async (a) => { const mm = asScalar(a[1]); return ret(map(m(a[0]), (u) => { const [sn, cn] = sncndn(u, 1 - mm); return cn / sn; })); },
+  jacobiDC: async (a) => { const mm = asScalar(a[1]); return ret(map(m(a[0]), (u) => { const [, cn, dn] = sncndn(u, 1 - mm); return dn / cn; })); },
+  jacobiDS: async (a) => { const mm = asScalar(a[1]); return ret(map(m(a[0]), (u) => { const [sn, , dn] = sncndn(u, 1 - mm); return dn / sn; })); },
+  jacobiNC: async (a) => { const mm = asScalar(a[1]); return ret(map(m(a[0]), (u) => 1 / sncndn(u, 1 - mm)[1])); },
+  jacobiND: async (a) => { const mm = asScalar(a[1]); return ret(map(m(a[0]), (u) => 1 / sncndn(u, 1 - mm)[2])); },
+  jacobiNS: async (a) => { const mm = asScalar(a[1]); return ret(map(m(a[0]), (u) => 1 / sncndn(u, 1 - mm)[0])); },
   kummerU: async (a) => { const aa = asScalar(a[0]), bb = asScalar(a[1]); return ret(map(m(a[2]), (z) => kummerUFn(aa, bb, z))); },
   whittakerM: async (a) => { const k = asScalar(a[0]), mu = asScalar(a[1]); return ret(map(m(a[2]), (z) => Math.exp(-z / 2) * Math.pow(z, mu + 0.5) * hyperPFQ([mu - k + 0.5], [1 + 2 * mu], z))); },
   whittakerW: async (a) => { const k = asScalar(a[0]), mu = asScalar(a[1]); return ret(map(m(a[2]), (z) => Math.exp(-z / 2) * Math.pow(z, mu + 0.5) * kummerUFn(mu - k + 0.5, 1 + 2 * mu, z))); },
@@ -1324,6 +1334,8 @@ export const BUILTINS: Record<string, Builtin> = {
     return want.slice(0, Math.max(1, n)).map(build);
   },
   regexpi: async (a) => { const s = asString(a[0]); const re = new RegExp(asString(a[1]), 'gi'); const idx: number[] = []; let mt: RegExpExecArray | null; while ((mt = re.exec(s)) !== null) { idx.push(mt.index + 1); if (mt.index === re.lastIndex) re.lastIndex++; } return ret(rowVec(idx)); },
+  regexptranslate: async (a) => { const op = asString(a[0]).toLowerCase(); const s = asString(a[1]); if (op === 'wildcard') return ret(str(s.replace(/[.+^$|()[\]{}\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.'))); return ret(str(s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))); },
+  iskeyword: async (a) => { const kw = ['break', 'case', 'catch', 'classdef', 'continue', 'else', 'elseif', 'end', 'for', 'function', 'global', 'if', 'otherwise', 'parfor', 'persistent', 'return', 'spmd', 'switch', 'try', 'while']; if (a.length === 0) return ret(makeCell(kw.length, 1, kw.map((k) => str(k)))); return ret(bool(kw.includes(asString(a[0])))); },
   sscanf: async (a) => { const s = asString(a[0]); const nums = (s.match(/-?\d+\.?\d*(e[+-]?\d+)?/gi) ?? []).map(Number); return ret(colVec(nums)); },
   // ═══════════════ CELLS · STRUCTS · STRING CLASS · MISC ═══════════════
   // ── cell arrays ──
