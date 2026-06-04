@@ -2,7 +2,7 @@
  * Collects `plot`/`fplot`/`hold`/`gca`/axis-property calls into a serialisable
  * figure spec that the React Plotly pane renders.
  */
-import { type Value, type Mat, isMat, isHandle, toArray, asString, numel, MatError } from './values';
+import { type Value, type Mat, isMat, isHandle, toArray, asString, numel, MatError, str } from './values';
 
 export interface Series {
   x: number[];
@@ -12,6 +12,10 @@ export interface Series {
   dash?: string;
   color?: string;
   name?: string;
+  width?: number;            // LineWidth
+  markerSize?: number;       // MarkerSize
+  markerFaceColor?: string;  // MarkerFaceColor
+  markerEdgeColor?: string;  // MarkerEdgeColor
   type?: 'line' | 'bar' | 'barh' | 'area' | 'stem' | 'stairs' | 'pie';
   z?: number[];        // present → 3-D line/scatter
   error?: number[];    // symmetric y error-bar half-widths
@@ -110,6 +114,56 @@ function parseLineSpec(spec: string): Partial<Series> {
   return out;
 }
 
+/** Treat a double-quoted string scalar (Str) the same as a single-quoted char row,
+ *  so `plot(x,y,"r--o")` parses its LineSpec just like `plot(x,y,'r--o')`. */
+function normSpec(args: Value[]): Value[] {
+  return args.map((a) => (a.kind === 'str' && a.rows * a.cols === 1 ? str(a.items[0]) : a));
+}
+
+const COLOR_NAMES: Record<string, string> = {
+  red: '#e2483d', green: '#2e9e4f', blue: '#2f6fed', cyan: '#16a0c0', magenta: '#c542b5',
+  yellow: '#d6b800', black: '#222222', white: '#ffffff', none: 'none',
+};
+const LINESTYLE_DASH: Record<string, string | undefined> = { '-': 'solid', '--': 'dash', ':': 'dot', '-.': 'dashdot', none: undefined };
+
+/** Resolve a Color/MarkerFaceColor value: short letter, long name, "#rrggbb", or an RGB triplet. */
+function resolveColor(v: Value): string | undefined {
+  if (isMat(v) && (v as Mat).isChar) return resolveColorStr(asString(v));
+  if (isMat(v) && !(v as Mat).isChar && numel(v) >= 3) {
+    const d = (v as Mat).data; const ch = (x: number) => Math.round((x <= 1 ? x * 255 : x));
+    return `rgb(${ch(d[0])},${ch(d[1])},${ch(d[2])})`;
+  }
+  return undefined;
+}
+function resolveColorStr(s: string): string | undefined {
+  const t = s.trim();
+  if (/^#[0-9a-fA-F]{3,8}$/.test(t)) return t;
+  if (COLOR_NAMES[t.toLowerCase()]) return COLOR_NAMES[t.toLowerCase()];
+  if (t.length === 1 && COLOR_MAP[t]) return COLOR_MAP[t];
+  return undefined;
+}
+
+/** Apply trailing Name=Value / 'Name',value pairs (R2021a+) to a Series. */
+function applyLineProps(s: Partial<Series>, name: string, val: Value): void {
+  switch (name.toLowerCase()) {
+    case 'color': { const c = resolveColor(val); if (c) s.color = c; break; }
+    case 'linewidth': s.width = asNum(val); break;
+    case 'linestyle': { const ls = asString(val).trim(); s.dash = LINESTYLE_DASH[ls]; if (ls === 'none') s.mode = s.symbol || s.markerSize ? 'markers' : 'lines'; break; }
+    case 'marker': { const mk = asString(val).trim(); s.symbol = mk === 'none' ? undefined : (MARKERS[mk] ?? mk); break; }
+    case 'markersize': s.markerSize = asNum(val); break;
+    case 'markerfacecolor': s.markerFaceColor = resolveColor(val); break;
+    case 'markeredgecolor': s.markerEdgeColor = resolveColor(val); break;
+    case 'displayname': s.name = asString(val); break;
+  }
+}
+function asNum(v: Value): number | undefined { return isMat(v) ? (v as Mat).data[0] : undefined; }
+
+/** A char/string arg that names a line property (vs. a LineSpec like "r--o"). */
+function isPropName(v: Value): boolean {
+  if (!isMat(v) || !(v as Mat).isChar) return false;
+  return ['color', 'linewidth', 'linestyle', 'marker', 'markersize', 'markerfacecolor', 'markeredgecolor', 'displayname'].includes(asString(v).toLowerCase());
+}
+
 const emptyPanel = (): Panel => ({ series: [] });
 
 export class Graphics {
@@ -148,6 +202,7 @@ export class Graphics {
 
   /** bar/barh/area/stem/stairs — single-series 2-D charts. */
   chart2d(args: Value[], type: NonNullable<Series['type']>) {
+    args = normSpec(args);
     this.startPlot(); const { x, y } = this.xyVec(args);
     const mode = type === 'stem' ? 'markers' : 'lines';
     this.cur().series.push({ x, y, mode, type, color: this.nextColor() });
@@ -171,6 +226,7 @@ export class Graphics {
   pie(args: Value[]) { this.startPlot(); const v = toArray((args.find((a) => isMat(a)) as Mat)); this.cur().series.push({ x: [], y: v, type: 'pie', mode: 'markers', color: this.nextColor() }); this.touch(); }
   /** plot3/scatter3 — a 3-D line or scatter. */
   line3(args: Value[], mode: 'lines' | 'markers') {
+    args = normSpec(args);
     this.startPlot(); const mats = args.filter((a): a is Mat => isMat(a) && !(a as Mat).isChar);
     const spec = args.find((a) => isMat(a) && (a as Mat).isChar);
     const s = spec ? parseLineSpec(asString(spec as Mat)) : {};
@@ -180,10 +236,14 @@ export class Graphics {
 
   /** plot(x, y, x2, y2, 'spec', ...) — also plot(y) and plot(x, Ymatrix). */
   plot(args: Value[]) {
+    args = normSpec(args);
     if (!this.holding) { this.cur().series = []; this.colorIdx = 0; this.cur().xScale = undefined; this.cur().yScale = undefined; }
     let i = 0;
     const nums = args.map((a) => (isMat(a) ? a : null));
+    const made: Series[] = [];
     while (i < args.length) {
+      // A property name (Color/LineWidth/…) ends the data list — the rest are Name-Value pairs.
+      if (isPropName(args[i])) break;
       const a = nums[i];
       if (!a) { i++; continue; }
       let xs: number[];
@@ -198,8 +258,9 @@ export class Graphics {
         xs = Array.from({ length: ymat.rows === 1 ? ymat.cols : ymat.rows }, (_, k) => k + 1);
         i += 1;
       }
+      // A LineSpec (e.g. "r--o") may follow the data — but not a property name.
       let spec: Partial<Series> = {};
-      if (i < args.length && isMat(args[i]) && (args[i] as Mat).isChar) { spec = parseLineSpec(asString(args[i])); i++; }
+      if (i < args.length && isMat(args[i]) && (args[i] as Mat).isChar && !isPropName(args[i])) { spec = parseLineSpec(asString(args[i])); i++; }
       // Treat a row/column vector as a single series; a true matrix → one series per column.
       const asColumns = ymat.rows > 1 && ymat.cols > 1;
       const ncols = asColumns ? ymat.cols : 1;
@@ -207,15 +268,18 @@ export class Graphics {
       for (let c = 0; c < ncols; c++) {
         const ys: number[] = [];
         for (let r = 0; r < colLen; r++) ys.push(asColumns ? ymat.data[r + c * ymat.rows] : ymat.data[r]);
-        this.cur().series.push({
+        const ser: Series = {
           x: xs.slice(0, ys.length),
           y: ys,
           mode: spec.mode ?? 'lines',
           symbol: spec.symbol, dash: spec.dash,
           color: spec.color ?? this.nextColor(),
-        });
+        };
+        this.cur().series.push(ser); made.push(ser);
       }
     }
+    // Trailing Name-Value pairs apply to every line created by this command.
+    for (; i + 1 < args.length; i += 2) { const nm = asString(args[i]); for (const s of made) applyLineProps(s, nm, args[i + 1]); }
     this.touch();
   }
 
@@ -350,6 +414,7 @@ export class Graphics {
   }
 
   setAxesProp(name: string, value: Value) {
+    if (value.kind === 'str' && value.rows * value.cols === 1) value = str(value.items[0]);
     const lower = name.toLowerCase();
     const range = (): [number, number] => {
       if (!isMat(value)) throw new MatError(`${name} expects a 2-element vector`);
@@ -381,6 +446,7 @@ export class Graphics {
   setYLim(r?: [number, number]) { this.cur().yRange = r; this.touch(); }
 
   command(name: string, args: Value[]) {
+    args = normSpec(args);
     const arg0 = args[0] && isMat(args[0]) && (args[0] as Mat).isChar ? asString(args[0]) : '';
     switch (name) {
       case 'hold': this.hold(arg0 === '' ? undefined : arg0 === 'on'); break;

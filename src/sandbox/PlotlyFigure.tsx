@@ -85,9 +85,13 @@ export default function PlotlyFigure({ fig, dark }: { fig: FigureSpec; dark: boo
       layout[sceneKey] = { domain: { x: xdom, y: ydom }, xaxis: { title: { text: p.xlabel ?? 'x' }, gridcolor: grid, color: fg }, yaxis: { title: { text: p.ylabel ?? 'y' }, gridcolor: grid, color: fg }, zaxis: { title: { text: p.zlabel ?? 'z' }, gridcolor: grid, color: fg } };
     } else {
       p.series.forEach((s, i) => {
-        const name = p.legend?.[i] ?? `data${i + 1}`;
-        const line = { color: s.color, dash: s.dash, width: 2 };
-        const marker = { color: s.color, symbol: s.symbol ?? 'circle', ...(s.sizes ? { size: s.sizes } : { size: 7 }) };
+        const name = s.name ?? p.legend?.[i] ?? `data${i + 1}`;
+        const line = { color: s.color, dash: s.dash, width: s.width ?? 2 };
+        const marker = {
+          color: s.markerFaceColor ?? s.color, symbol: s.symbol ?? 'circle',
+          ...(s.sizes ? { size: s.sizes } : { size: s.markerSize ?? 7 }),
+          ...(s.markerEdgeColor ? { line: { color: s.markerEdgeColor } } : {}),
+        };
         if (s.type === 'pie') { data.push({ type: 'pie', values: s.y, labels: s.y.map((_, j) => `${j + 1}`), domain: { x: xdom, y: ydom } }); return; }
         const ax = { xaxis: xa, yaxis: ya };
         if (s.type === 'bar') { data.push({ type: 'bar', ...ax, x: s.x, y: s.y, marker: { color: s.color }, name }); return; }
