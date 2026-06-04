@@ -266,6 +266,7 @@ export function symNames(v: Value): string[] { if (isSym(v)) return v.exprs.map(
 /** Basic symbolic integration: linearity + xⁿ, 1/x, sin/cos/exp of the variable. */
 export function integrate(e: SymExpr, x: string): SymExpr {
   e = simplifyExpr(e);
+  if (e.t === 'fn' && e.name === 'piecewise') return sFn('piecewise', ...e.args.map((a, i) => (i % 2 === 0 ? a : integrate(a, x))));
   if (e.t === 'add') return sAdd(...e.args.map((a) => integrate(a, x)));
   if (e.t === 'mul') { const consts = e.args.filter((a) => symVars(a).indexOf(x) < 0); const rest = e.args.filter((a) => symVars(a).indexOf(x) >= 0); if (consts.length && rest.length) return sMul(sMul(...consts), integrate(rest.length === 1 ? rest[0] : sMul(...rest), x)); }
   if (symVars(e).indexOf(x) < 0) return sMul(e, sV(x));                                  // constant → c·x

@@ -763,6 +763,7 @@ function symBinary(op: string, a: Value, b: Value): Value {
       case '/': case './': return sDiv(x, y);
       case '^': case '.^': return sPow(x, y);
       case '==': return sSub(x, y); case '~=': return sSub(x, y);
+      case '<': return sFn('lt', x, y); case '>': return sFn('gt', x, y); case '<=': return sFn('le', x, y); case '>=': return sFn('ge', x, y);
       default: throw new MatError(`operator '${op}' is not supported for symbolic operands`);
     }
   };

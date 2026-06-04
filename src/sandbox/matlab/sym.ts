@@ -123,6 +123,7 @@ export function diffExpr(e: SymExpr, x: string): SymExpr {
       return sMul(sPow(base, exp), sAdd(sMul(diffExpr(exp, x), sFn('log', base)), sMul(exp, sDiv(diffExpr(base, x), base))));
     }
     case 'fn': {
+      if (e.name === 'piecewise') return sFn('piecewise', ...e.args.map((a, i) => (i % 2 === 0 ? a : diffExpr(a, x))));   // differentiate value branches, keep conditions
       const u = e.args[0]; const du = diffExpr(u, x); const dd = fnDeriv(e.name, u);
       return dd ? sMul(dd, du) : sFn(`diff_${e.name}`, u);
     }
@@ -155,6 +156,15 @@ function fnDeriv(name: string, u: SymExpr): SymExpr | null {
 }
 /** Numeric value of a named function (for constant folding). */
 function evalFn(name: string, a: number[]): number | null {
+  // relational / piecewise (multi-arg)
+  switch (name) {
+    case 'lt': return a[0] < a[1] ? 1 : 0;
+    case 'gt': return a[0] > a[1] ? 1 : 0;
+    case 'le': return a[0] <= a[1] ? 1 : 0;
+    case 'ge': return a[0] >= a[1] ? 1 : 0;
+    case 'not': return a[0] === 0 ? 1 : 0;
+    case 'piecewise': { for (let i = 0; i + 1 < a.length; i += 2) if (a[i] !== 0) return a[i + 1]; return a.length % 2 ? a[a.length - 1] : NaN; }
+  }
   const gammaFn = (x: number): number => { const g = 7; const c = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7]; if (x < 0.5) return Math.PI / (Math.sin(Math.PI * x) * gammaFn(1 - x)); x -= 1; let aa = c[0]; const t = x + g + 0.5; for (let i = 1; i < g + 2; i++) aa += c[i] / (x + i); return Math.sqrt(2 * Math.PI) * Math.pow(t, x + 0.5) * Math.exp(-t) * aa; };
   const erfFn = (x: number): number => { const t = 1 / (1 + 0.3275911 * Math.abs(x)); const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x); return x >= 0 ? y : -y; };
   const f: Record<string, (x: number) => number> = { sin: Math.sin, cos: Math.cos, tan: Math.tan, exp: Math.exp, log: Math.log, log10: Math.log10, log2: Math.log2, sqrt: Math.sqrt, sinh: Math.sinh, cosh: Math.cosh, tanh: Math.tanh, asin: Math.asin, acos: Math.acos, atan: Math.atan, asinh: Math.asinh, acosh: Math.acosh, atanh: Math.atanh, abs: Math.abs, sign: Math.sign, cbrt: Math.cbrt, sec: (x) => 1 / Math.cos(x), csc: (x) => 1 / Math.sin(x), cot: (x) => 1 / Math.tan(x), sech: (x) => 1 / Math.cosh(x), csch: (x) => 1 / Math.sinh(x), coth: (x) => 1 / Math.tanh(x), gamma: gammaFn, gammaln: (x) => Math.log(Math.abs(gammaFn(x))), factorial: (x) => gammaFn(x + 1), erf: erfFn, erfc: (x) => 1 - erfFn(x), real: (x) => x, conj: (x) => x, sinc: (x) => (x === 0 ? 1 : Math.sin(Math.PI * x) / (Math.PI * x)), heaviside: (x) => (x > 0 ? 1 : x < 0 ? 0 : 0.5), imag: () => 0 };
@@ -190,7 +200,12 @@ function render(e: SymExpr, prec: number): string {
   switch (e.t) {
     case 'n': return e.v < 0 ? `(${trim(e.v)})` : trim(e.v);
     case 'v': return e.name;
-    case 'fn': { const dm = e.name.match(/^((?:diff_)+)(.+)$/); const args = e.args.map((a) => render(a, 0)).join(', '); if (dm) return `${dm[2]}${"'".repeat(dm[1].length / 5)}(${args})`; return `${e.name}(${args})`; }
+    case 'fn': {
+      const REL: Record<string, string> = { lt: '<', gt: '>', le: '<=', ge: '>=' };
+      if (REL[e.name]) return `${render(e.args[0], 0)} ${REL[e.name]} ${render(e.args[1], 0)}`;
+      if (e.name === 'piecewise') { const rows: string[] = []; for (let i = 0; i + 1 < e.args.length; i += 2) rows.push(`${render(e.args[i + 1], 0)} if ${render(e.args[i], 0)}`); if (e.args.length % 2) rows.push(`${render(e.args[e.args.length - 1], 0)} otherwise`); return `piecewise(${rows.join(', ')})`; }
+      const dm = e.name.match(/^((?:diff_)+)(.+)$/); const args = e.args.map((a) => render(a, 0)).join(', '); if (dm) return `${dm[2]}${"'".repeat(dm[1].length / 5)}(${args})`; return `${e.name}(${args})`;
+    }
     case 'pow': { const s = `${render(e.base, 3)}^${render(e.exp, 3)}`; return prec > 2 ? `(${s})` : s; }
     case 'add': { const s = e.args.map((a, i) => { const r = render(a, 1); return i > 0 && !r.startsWith('-') ? `+ ${r}` : i > 0 ? `- ${r.slice(1)}` : r; }).join(' '); return prec > 1 ? `(${s})` : s; }
     case 'mul': {
@@ -233,6 +248,9 @@ function tex(e: SymExpr, prec: number): string {
     case 'fn': {
       if (e.name === 'sqrt') return `\\sqrt{${tex(e.args[0], 0)}}`;
       if (e.name === 'abs') return `\\left|${tex(e.args[0], 0)}\\right|`;
+      const REL: Record<string, string> = { lt: '<', gt: '>', le: '\\le', ge: '\\ge' };
+      if (REL[e.name]) return `${tex(e.args[0], 0)} ${REL[e.name]} ${tex(e.args[1], 0)}`;
+      if (e.name === 'piecewise') { const rows: string[] = []; for (let i = 0; i + 1 < e.args.length; i += 2) rows.push(`${tex(e.args[i + 1], 0)} & \\text{if } ${tex(e.args[i], 0)}`); if (e.args.length % 2) rows.push(`${tex(e.args[e.args.length - 1], 0)} & \\text{otherwise}`); return `\\begin{cases}${rows.join(' \\\\ ')}\\end{cases}`; }
       const args = e.args.map((a) => tex(a, 0)).join(', ');
       const dm = e.name.match(/^((?:diff_)+)(.+)$/);
       if (dm) return `${dm[2]}${"'".repeat(dm[1].length / 5)}\\!\\left(${args}\\right)`;
