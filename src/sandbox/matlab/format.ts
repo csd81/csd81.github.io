@@ -341,7 +341,7 @@ function applyConv(
       break;
     }
     case 'f': { const v = nextNum(); body = Number.isFinite(v) ? v.toFixed(pr ?? 6) : (Number.isNaN(v) ? 'NaN' : (v > 0 ? 'Inf' : '-Inf')); break; }
-    case 'e': case 'E': { const v = nextNum(); body = v.toExponential(pr ?? 6); if (conv === 'E') body = body.toUpperCase(); break; }
+    case 'e': case 'E': { const v = nextNum(); if (!Number.isFinite(v)) { body = Number.isNaN(v) ? 'NaN' : (v > 0 ? 'Inf' : '-Inf'); } else { body = v.toExponential(pr ?? 6).replace(/e([+-])(\d)$/, 'e$10$2'); if (conv === 'E') body = body.toUpperCase(); } break; }
     case 'g': case 'G': { const v = nextNum(); body = formatG(v, pr ?? 6); if (conv === 'G') body = body.toUpperCase(); break; }
     case 'c': { body = String.fromCharCode(nextNum()); break; }
     case 's': { body = nextStr(); break; }

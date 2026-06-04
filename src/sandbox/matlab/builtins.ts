@@ -1280,7 +1280,30 @@ export const BUILTINS: Record<string, Builtin> = {
   // ── class / regexp / sscanf ──
   class: async (a) => { const v = a[0]; if (isMap(v)) return ret(str('containers.Map')); if (isHandle(v)) return ret(str('function_handle')); if (v.kind === 'gobj') return ret(str(v.gtype)); if (isStr(v)) return ret(str('string')); if (isCell(v)) return ret(str('cell')); if (isStruct(v)) return ret(str('struct')); if (isTable(v)) return ret(str(v.isTimetable ? 'timetable' : 'table')); if (isCategorical(v)) return ret(str('categorical')); if (isSym(v)) return ret(str('sym')); if ((v as Mat).isChar) return ret(str('char')); if ((v as Mat).isBool) return ret(str('logical')); return ret(str((v as Mat).itype ?? 'double')); },
   isa: async (a) => { const v = a[0]; const ty = asString(a[1]); const M = v as Mat; const cls = isHandle(v) ? 'function_handle' : M.isChar ? 'char' : M.isBool ? 'logical' : (M.itype ?? 'double'); if (ty === cls) return ret(bool(true)); const isInt = isMat(v) && !!M.itype && M.itype !== 'single'; const isFlt = isMat(v) && !M.isChar && !M.isBool && (!M.itype || M.itype === 'single'); if (ty === 'numeric' && isMat(v) && !M.isChar && !M.isBool) return ret(bool(true)); if (ty === 'float' && isFlt) return ret(bool(true)); if (ty === 'integer' && isInt) return ret(bool(true)); return ret(bool(false)); },
-  regexp: async (a, n) => { const s = asString(a[0]); const opt = a.length >= 3 ? asString(a[2]) : ''; const re = new RegExp(asString(a[1]), opt === 'once' ? '' : 'g'); const idx: number[] = []; let mt: RegExpExecArray | null; if (opt === 'once') { const mm = re.exec(s); return ret(mm ? scalar(mm.index + 1) : zeros(1, 0)); } while ((mt = re.exec(s)) !== null) { idx.push(mt.index + 1); if (mt.index === re.lastIndex) re.lastIndex++; } void n; return ret(rowVec(idx)); },
+  regexp: async (a, n) => {
+    const s = asString(a[0]); const pat = asString(a[1]); const opts = a.slice(2).map((x) => asString(x).toLowerCase());
+    const once = opts.includes('once'); const re = new RegExp(pat, 'g' + (opts.includes('ignorecase') ? 'i' : ''));
+    const ms: RegExpExecArray[] = []; let mt: RegExpExecArray | null; while ((mt = re.exec(s)) !== null) { ms.push(mt); if (mt.index === re.lastIndex) re.lastIndex++; }
+    const splitParts = () => { const parts: string[] = []; let last = 0; for (const mm of ms) { parts.push(s.slice(last, mm.index)); last = mm.index + mm[0].length; } parts.push(s.slice(last)); return parts; };
+    const build = (which: string): Value => {
+      if (which === 'end') return rowVec(ms.map((mm) => mm.index + mm[0].length));
+      if (which === 'match') return makeCell(1, ms.length, ms.map((mm) => str(mm[0])));
+      if (which === 'tokens') return makeCell(1, ms.length, ms.map((mm) => makeCell(1, Math.max(0, mm.length - 1), mm.slice(1).map((t) => str(t ?? ''))) as Value));
+      if (which === 'split') { const p = splitParts(); return makeCell(1, p.length, p.map((x) => str(x))); }
+      return rowVec(ms.map((mm) => mm.index + 1));   // 'start' (default)
+    };
+    const want = opts.filter((o) => ['start', 'end', 'match', 'tokens', 'split'].includes(o));
+    if (once) {
+      const w = want[0] ?? 'start'; const m0 = ms[0];
+      if (w === 'match') return ret(str(m0 ? m0[0] : ''));
+      if (w === 'tokens') return ret(makeCell(1, m0 ? m0.length - 1 : 0, m0 ? m0.slice(1).map((t) => str(t ?? '')) : []));
+      if (w === 'split') { const p = splitParts(); return ret(makeCell(1, p.length, p.map((x) => str(x)))); }
+      if (w === 'end') return ret(m0 ? scalar(m0.index + m0[0].length) : zeros(1, 0));
+      return ret(m0 ? scalar(m0.index + 1) : zeros(1, 0));
+    }
+    if (want.length === 0) return [build('start')];
+    return want.slice(0, Math.max(1, n)).map(build);
+  },
   regexpi: async (a) => { const s = asString(a[0]); const re = new RegExp(asString(a[1]), 'gi'); const idx: number[] = []; let mt: RegExpExecArray | null; while ((mt = re.exec(s)) !== null) { idx.push(mt.index + 1); if (mt.index === re.lastIndex) re.lastIndex++; } return ret(rowVec(idx)); },
   sscanf: async (a) => { const s = asString(a[0]); const nums = (s.match(/-?\d+\.?\d*(e[+-]?\d+)?/gi) ?? []).map(Number); return ret(colVec(nums)); },
   // ═══════════════ CELLS · STRUCTS · STRING CLASS · MISC ═══════════════
