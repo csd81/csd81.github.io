@@ -824,7 +824,10 @@ const SYM_REF = new Set<string>((
   'wrightOmega igamma pochhammer lambertw kroneckerDelta rectangularPulse triangularPulse signIm ' +
   'eulergamma catalan ellipticK ellipticE ellipticF ellipticCK ellipticCE dirac heaviside ' +
   // number theory (symbolic toolbox)
-  'fibonacci harmonic nextprime nthprime prevprime eulerPhi factorIntegerPower isPrimitiveRoot jacobiSymbol powermod'
+  'fibonacci harmonic nextprime nthprime prevprime eulerPhi factorIntegerPower isPrimitiveRoot jacobiSymbol powermod ' +
+  // str2sym + introspection + rational algebra + advanced special functions (added later)
+  'str2sym has symType isSymType hasSymType findSymType mapSymType argnames poles rewrite minpoly jordan resultant ' +
+  'hypergeom jacobiSN jacobiCN jacobiDN jacobiAM jacobiZeta kummerU whittakerM whittakerW ellipticPi ellipticCPi ellipticNome'
 ).split(/\s+/));
 
 export function docUrl(name: string): string {
@@ -832,7 +835,8 @@ export function docUrl(name: string): string {
   // Direct reference page for base functions; doc-search for toolbox/aliases
   // (prctile/quantile/iqr → Statistics; xcorr/xcov → Signal; etc. would 404 under ref/).
   if (DOUBLE_REF.has(low)) return `https://www.mathworks.com/help/matlab/ref/double.${low}.html`;
-  if (SYM_REF.has(name)) return `https://www.mathworks.com/help/symbolic/${low}.html`;
+  // Symbolic Toolbox pages live under sym.<name>.html (the sym constructor itself is sym.html).
+  if (SYM_REF.has(name)) return `https://www.mathworks.com/help/symbolic/${name === 'sym' ? 'sym' : `sym.${low}`}.html`;
   return BASE_REF.has(name)
     ? `https://www.mathworks.com/help/matlab/ref/${low}.html`
     : `https://www.mathworks.com/support/search.html?q=${encodeURIComponent(name)}`;
@@ -848,6 +852,9 @@ const EXTRA_HELP: Record<string, string> = {
   filesep: 'File separator for this platform', pathsep: 'Search-path separator', fullfile: 'Build a full file path from parts', fileparts: 'Split a path into folder, name, extension', cputime: 'Elapsed CPU time in seconds', beep: 'Produce a beep sound (no-op here)',
   ei: 'Exponential integral Ei(x)', logint: 'Logarithmic integral li(x) = Ei(ln x)', sinhint: 'Hyperbolic sine integral Shi(x)', coshint: 'Hyperbolic cosine integral Chi(x)', ssinint: 'Shifted sine integral Ssi(x) = Si(x) − π/2', hurwitzZeta: 'Hurwitz zeta function ζ(s,a)', polylog: 'Polylogarithm Li_n(x)', dilog: 'Dilogarithm dilog(x) = Li₂(1−x)', wrightOmega: 'Wright omega function ω(x): ω + ln ω = x', jacobiP: 'Jacobi polynomial P_n^{(a,b)}(x)', gegenbauerC: 'Gegenbauer (ultraspherical) polynomial C_n^{(a)}(x)', bernsteinMatrix: 'Bernstein basis matrix', ellipticK: 'Complete elliptic integral of the first kind K(m)', ellipticE: 'Complete/incomplete elliptic integral of the second kind E(m) / E(φ,m)', ellipticF: 'Incomplete elliptic integral of the first kind F(φ,m)', ellipticCK: 'Complementary complete elliptic integral of the first kind K′(m)', ellipticCE: 'Complementary complete elliptic integral of the second kind E′(m)', bernoulli: 'Bernoulli numbers and polynomials', euler: 'Euler numbers and polynomials', jacobiSymbol: 'Jacobi symbol (a/n)', factorIntegerPower: 'Factor an integer as base^exponent', isPrimitiveRoot: 'True for primitive roots modulo n', polynomialDegree: 'Degree of a polynomial', quorem: 'Quotient and remainder of division',
   laplace: 'Laplace transform of a symbolic expression', ilaplace: 'Inverse Laplace transform', ztrans: 'Z-transform of a symbolic expression', iztrans: 'Inverse Z-transform', fourier: 'Fourier transform (table-based)', ifourier: 'Inverse Fourier transform (table-based)',
+  str2sym: 'Evaluate a string as a symbolic expression', has: 'True if an expression contains a given subexpression', symType: 'Type of the top node of a symbolic expression', isSymType: 'True if a symbolic object is of a given type', hasSymType: 'True if a symbolic object contains a given type', findSymType: 'Find subexpressions of a given symbolic type', mapSymType: 'Apply a function to subexpressions of a given type', argnames: 'Input variables of a symbolic expression/function', formula: 'Body of a symbolic function or expression',
+  partfrac: 'Partial-fraction decomposition of a rational expression', poles: 'Poles of a rational expression (denominator roots)', rewrite: 'Rewrite an expression in terms of another function family', htrans: 'Hilbert transform', ihtrans: 'Inverse Hilbert transform', minpoly: 'Minimal polynomial of a matrix', jordan: 'Jordan normal form (diagonalizable case)', resultant: 'Resultant of two polynomials (Sylvester determinant)',
+  hypergeom: 'Generalized hypergeometric function pFq(a;b;z)', jacobiSN: 'Jacobi elliptic function sn(u,m)', jacobiCN: 'Jacobi elliptic function cn(u,m)', jacobiDN: 'Jacobi elliptic function dn(u,m)', jacobiAM: 'Jacobi amplitude am(u,m)', jacobiZeta: 'Jacobi zeta function Z(u,m)', kummerU: 'Confluent hypergeometric Kummer U(a,b,z)', whittakerM: 'Whittaker M function', whittakerW: 'Whittaker W function', ellipticPi: 'Elliptic integral of the third kind Pi(n;phi|m)', ellipticCPi: 'Complementary elliptic integral of the third kind', ellipticNome: 'Elliptic nome q(m)',
 };
 
 

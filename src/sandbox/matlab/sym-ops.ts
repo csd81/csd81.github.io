@@ -5,26 +5,221 @@
  * registry, so numeric and symbolic worlds stay decoupled.
  */
 import {
-  type Value, type Mat, type Sym, isSym, isStr, isMat, isCell,
+  type Value, type Mat, type Sym, MatError, isSym, isStr, isMat, isCell,
   makeSym, asString, asScalar, toMat as m, factorialN,
 } from './values';
 import {
   type SymExpr, sN, sV, sAdd, sSub, sMul, sPow, sFn, sNeg, sDiv,
-  simplifyExpr, diffExpr, subsExpr, evalExpr as symEval, symVars,
+  simplifyExpr, diffExpr, subsExpr, evalExpr as symEval, exprToStr, symVars,
 } from './sym';
 import { durandKerner } from './linalg';
+import { parse } from './parser';
+import type { Expr } from './ast';
+
+/** Convert a parsed expression AST node to a symbolic expression. */
+export function astToSym(e: Expr): SymExpr {
+  switch (e.t) {
+    case 'num': return sN(e.v);
+    case 'ident': return sV(e.name);
+    case 'str': case 'string': return sV(e.v);
+    case 'unary': return e.op === '-' ? sNeg(astToSym(e.e)) : astToSym(e.e);
+    case 'postfix': return astToSym(e.e);   // transpose of a scalar expression
+    case 'binary': {
+      const a = astToSym(e.a), b = astToSym(e.b);
+      switch (e.op) {
+        case '+': return sAdd(a, b);
+        case '-': return sSub(a, b);
+        case '*': case '.*': return sMul(a, b);
+        case '/': case './': return sDiv(a, b);
+        case '\\': case '.\\': return sDiv(b, a);
+        case '^': case '.^': return sPow(a, b);
+        case '==': return sSub(a, b);        // equation f(x)=g(x) → f−g (matches solve)
+        default: return sFn(e.op, a, b);
+      }
+    }
+    case 'index':
+      if (e.target.t === 'ident') return sFn(e.target.name, ...e.args.map(astToSym));
+      throw new MatError('str2sym: unsupported indexing in expression');
+    default:
+      throw new MatError(`str2sym: unsupported expression element '${e.t}'`);
+  }
+}
+/** Parse a string into a symbolic value (scalar or matrix). Used by `str2sym`/`sym('…')`. */
+export function parseSym(src: string): Sym {
+  const prog = parse(src.trim());
+  const st = prog.stmts[0];
+  if (!st || st.t !== 'expr') throw new MatError('str2sym: could not parse a symbolic expression');
+  const e = st.e;
+  if (e.t === 'matrix') {
+    const rows = e.rows; const nr = rows.length, nc = rows[0]?.length ?? 0; const exprs: SymExpr[] = [];
+    for (let c = 0; c < nc; c++) for (let r = 0; r < nr; r++) exprs.push(simplifyExpr(astToSym(rows[r][c])));
+    return makeSym(nr, nc, exprs);
+  }
+  return makeSym(1, 1, [simplifyExpr(astToSym(e))]);
+}
 
 export function polyCoeffs(e: SymExpr, v: string): number[] {
   const c: number[] = []; let term = e; let fact = 1; let deg = 0;
   for (let k = 0; k <= 12; k++) { const cv = symEval(term, new Map([[v, 0]])); c[k] = cv / fact; if (Math.abs(c[k]) > 1e-12) deg = k; term = simplifyExpr(diffExpr(term, v)); fact *= (k + 1); }
   return c.slice(0, deg + 1);
 }
+/** MATLAB `symType`-style classification of the top node of an expression. */
+export function symTypeName(e: SymExpr): string {
+  switch (e.t) {
+    case 'n': return Number.isInteger(e.v) ? 'integer' : 'real';
+    case 'v': return 'variable';
+    case 'add': return 'plus';
+    case 'mul': return 'times';
+    case 'pow': return 'power';
+    case 'fn': return e.name;
+  }
+}
+/** True if `target` occurs as a subexpression of `e` (canonical-string match). */
+export function hasSub(e: SymExpr, target: SymExpr): boolean {
+  const tk = exprToStr(simplifyExpr(target));
+  const walk = (x: SymExpr): boolean => {
+    if (exprToStr(simplifyExpr(x)) === tk) return true;
+    if (x.t === 'add' || x.t === 'mul' || x.t === 'fn') return x.args.some(walk);
+    if (x.t === 'pow') return walk(x.base) || walk(x.exp);
+    return false;
+  };
+  return walk(e);
+}
+/** Collect all subexpressions whose top node matches `type` (symType name). */
+export function findByType(e: SymExpr, type: string, into: SymExpr[] = []): SymExpr[] {
+  if (symTypeName(e) === type) into.push(e);
+  if (e.t === 'add' || e.t === 'mul' || e.t === 'fn') e.args.forEach((a) => findByType(a, type, into));
+  else if (e.t === 'pow') { findByType(e.base, type, into); findByType(e.exp, type, into); }
+  return into;
+}
+
 /** Split an expression into numerator / denominator (denominator = product of negative powers). */
 export function numDen(e: SymExpr): { num: SymExpr; den: SymExpr } {
   const s = simplifyExpr(e);
   if (s.t === 'mul') { const num: SymExpr[] = [], den: SymExpr[] = []; for (const f of s.args) { if (f.t === 'pow' && f.exp.t === 'n' && f.exp.v < 0) den.push(sPow(f.base, sN(-f.exp.v))); else num.push(f); } return { num: num.length ? sMul(...num) : sN(1), den: den.length ? sMul(...den) : sN(1) }; }
   if (s.t === 'pow' && s.exp.t === 'n' && s.exp.v < 0) return { num: sN(1), den: sPow(s.base, sN(-s.exp.v)) };
   return { num: s, den: sN(1) };
+}
+
+/** Polynomial long division of numeric coeff arrays (highest-first): N = q·D + r. */
+function polyDivHi(N: number[], D: number[]): { q: number[]; r: number[] } {
+  const q: number[] = []; const rem = N.slice();
+  while (rem.length >= D.length) { const c = rem[0] / D[0]; q.push(c); for (let i = 0; i < D.length; i++) rem[i] -= c * D[i]; rem.shift(); }
+  while (rem.length && Math.abs(rem[0]) < 1e-12) rem.shift();
+  return { q: q.length ? q : [0], r: rem.length ? rem : [0] };
+}
+/** Partial-fraction decomposition of a rational expression in `v` (numeric coeffs only). */
+export function partfracExpr(e: SymExpr, v: string): SymExpr {
+  const s = simplifyExpr(e);
+  const { num, den } = numDen(s);
+  if (symVars(num).some((x) => x !== v) || symVars(den).some((x) => x !== v)) return s;
+  let N = polyCoeffs(num, v).slice().reverse();          // high→low
+  const D = polyCoeffs(den, v).slice().reverse();
+  if (D.length < 2) return s;
+  const terms: SymExpr[] = [];
+  if (N.length >= D.length) {                            // improper → split off polynomial part
+    const { q, r } = polyDivHi(N, D); const qd = q.length - 1;
+    q.forEach((c, i) => { if (Math.abs(c) > 1e-12) terms.push(i === qd ? sN(round0(c)) : sMul(sN(round0(c)), sPow(sV(v), sN(qd - i)))); });
+    N = r;
+  }
+  while (N.length && Math.abs(N[0]) < 1e-14) N.shift();
+  if (!N.length) N = [0];
+  const lead = D[0];
+  const roots = durandKerner(D); const used = new Array(roots.re.length).fill(false);
+  const groups: { re: number; im: number; mult: number }[] = [];
+  for (let i = 0; i < roots.re.length; i++) { if (used[i]) continue; const g = { re: roots.re[i], im: roots.im[i], mult: 1 }; used[i] = true; for (let j = i + 1; j < roots.re.length; j++) if (!used[j] && Math.hypot(roots.re[j] - g.re, roots.im[j] - g.im) < 1e-4) { used[j] = true; g.mult++; } groups.push(g); }
+  if (groups.every((g) => g.mult === 1)) {
+    const Dp = polyDerivHi(D);
+    for (const g of groups) {
+      const [nr, ni] = cPolyval(N, g.re, g.im); const [dr, di] = cPolyval(Dp, g.re, g.im); const dd = dr * dr + di * di;
+      const p = (nr * dr + ni * di) / dd, q = (ni * dr - nr * di) / dd;
+      if (Math.abs(g.im) < 1e-7) terms.push(sDiv(sN(round0(p)), sSub(sV(v), sN(round0(g.re)))));
+      else if (g.im > 0) { const al = round0(g.re), be = g.im; const numer = sSub(sMul(sN(round0(2 * p)), sSub(sV(v), sN(al))), sN(round0(2 * q * be))); const denom = sAdd(sPow(sSub(sV(v), sN(al)), sN(2)), sN(round0(be * be))); terms.push(sDiv(numer, denom)); }
+    }
+  } else if (groups.length === 1 && Math.abs(groups[0].im) < 1e-7) {
+    const r = groups[0].re, mlt = groups[0].mult, b = taylorAtReal(N, r);
+    for (let j = 0; j < mlt; j++) { const A = (b[j] ?? 0) / lead; const pow = mlt - j; if (Math.abs(A) > 1e-12) terms.push(sDiv(sN(round0(A)), pow > 1 ? sPow(sSub(sV(v), sN(round0(r))), sN(pow)) : sSub(sV(v), sN(round0(r))))); }
+  } else return s;                                       // mixed repeated+distinct → leave as is
+  return terms.length ? simplifyExpr(sAdd(...terms)) : sN(0);
+}
+/** Poles of a rational expression in `v` (denominator roots). */
+export function polesOf(e: SymExpr, v: string): SymExpr[] {
+  const { den } = numDen(simplifyExpr(e));
+  if (symVars(den).some((x) => x !== v)) return [];
+  const D = polyCoeffs(den, v).slice().reverse();
+  if (D.length < 2) return [];
+  const r = durandKerner(D);
+  return r.re.map((re, i) => (Math.abs(r.im[i]) < 1e-9 ? sN(round0(re)) : sFn('complex', sN(round0(re)), sN(round0(r.im[i])))));
+}
+/** Hilbert transform (linearity + a small trig table). H{cos at}=sin at, H{sin at}=−cos at. */
+export function hilbertExpr(e: SymExpr, t: string): SymExpr {
+  e = simplifyExpr(expandExpr(e));
+  if (e.t === 'add') return simplifyExpr(sAdd(...e.args.map((a) => hilbertExpr(a, t))));
+  if (e.t === 'mul') { const consts = e.args.filter((f) => !symHasVar(f, t)); const rest = e.args.filter((f) => symHasVar(f, t)); if (consts.length) return simplifyExpr(sMul(sMul(...consts), hilbertExpr(rest.length ? simplifyExpr(sMul(...rest)) : sN(1), t))); }
+  if (!symHasVar(e, t)) return sN(0);
+  if (e.t === 'fn' && e.args.length === 1) { const lin = linearInT(e.args[0], t); if (lin && isZeroE(lin.b)) { if (e.name === 'cos') return sFn('sin', e.args[0]); if (e.name === 'sin') return sNeg(sFn('cos', e.args[0])); } }
+  return sFn('htrans', e, sV(t));
+}
+/** Rewrite an expression in terms of another function family (`sincos`, `exp`). */
+export function rewriteExpr(e: SymExpr, target: string): SymExpr {
+  const walk = (x: SymExpr): SymExpr => {
+    if (x.t === 'fn' && x.args.length === 1) {
+      const u = walk(x.args[0]);
+      if (target === 'sincos') {
+        if (x.name === 'tan') return sDiv(sFn('sin', u), sFn('cos', u));
+        if (x.name === 'cot') return sDiv(sFn('cos', u), sFn('sin', u));
+        if (x.name === 'sec') return sDiv(sN(1), sFn('cos', u));
+        if (x.name === 'csc') return sDiv(sN(1), sFn('sin', u));
+      }
+      if (target === 'exp') {
+        if (x.name === 'sinh') return sDiv(sSub(sFn('exp', u), sFn('exp', sNeg(u))), sN(2));
+        if (x.name === 'cosh') return sDiv(sAdd(sFn('exp', u), sFn('exp', sNeg(u))), sN(2));
+        if (x.name === 'tanh') return sDiv(sSub(sFn('exp', u), sFn('exp', sNeg(u))), sAdd(sFn('exp', u), sFn('exp', sNeg(u))));
+      }
+      return sFn(x.name, u);
+    }
+    if (x.t === 'add') return sAdd(...x.args.map(walk));
+    if (x.t === 'mul') return sMul(...x.args.map(walk));
+    if (x.t === 'pow') return sPow(walk(x.base), walk(x.exp));
+    return x;
+  };
+  return walk(e);
+}
+
+// ── Assumptions (partial: sign/realness, used by simplify & isAlways) ──
+const ASSUMPTIONS = new Map<string, { sign?: 'pos' | 'neg' | 'nonneg'; real?: boolean; integer?: boolean }>();
+export function assumeVar(name: string, kind: string): void {
+  if (kind === 'clear') { ASSUMPTIONS.delete(name); return; }
+  const cur = ASSUMPTIONS.get(name) ?? {};
+  if (kind === 'positive') cur.sign = 'pos';
+  else if (kind === 'negative') cur.sign = 'neg';
+  else if (kind === 'nonnegative') cur.sign = 'nonneg';
+  else if (kind === 'real') cur.real = true;
+  else if (kind === 'integer') cur.integer = true;
+  ASSUMPTIONS.set(name, cur);
+}
+export function clearAssumptions(name?: string): void { if (name) ASSUMPTIONS.delete(name); else ASSUMPTIONS.clear(); }
+/** Apply assumption-driven simplifications: abs/sign of signed vars, sqrt(x²)→x for x≥0. */
+export function simplifyAssume(e: SymExpr): SymExpr {
+  const walk = (x: SymExpr): SymExpr => {
+    if (x.t === 'fn') {
+      const args = x.args.map(walk);
+      if (x.name === 'abs' && args[0].t === 'v') { const as = ASSUMPTIONS.get(args[0].name); if (as?.sign === 'pos' || as?.sign === 'nonneg') return args[0]; if (as?.sign === 'neg') return sNeg(args[0]); }
+      if (x.name === 'sign' && args[0].t === 'v') { const as = ASSUMPTIONS.get(args[0].name); if (as?.sign === 'pos') return sN(1); if (as?.sign === 'neg') return sN(-1); }
+      // sqrt(x²) → x for x ≥ 0 (sqrt stored as a function node, not a ½-power)
+      if (x.name === 'sqrt' && args[0].t === 'pow' && args[0].exp.t === 'n' && args[0].exp.v === 2 && args[0].base.t === 'v') { const as = ASSUMPTIONS.get(args[0].base.name); if (as?.sign === 'pos' || as?.sign === 'nonneg') return args[0].base; }
+      return sFn(x.name, ...args);
+    }
+    if (x.t === 'add') return sAdd(...x.args.map(walk));
+    if (x.t === 'mul') return sMul(...x.args.map(walk));
+    if (x.t === 'pow') {
+      const base = walk(x.base), exp = walk(x.exp);
+      if (base.t === 'pow' && base.exp.t === 'n' && base.exp.v === 2 && exp.t === 'n' && Math.abs(exp.v - 0.5) < 1e-12 && base.base.t === 'v') { const as = ASSUMPTIONS.get(base.base.name); if (as?.sign === 'pos' || as?.sign === 'nonneg') return base.base; }
+      return sPow(base, exp);
+    }
+    return x;
+  };
+  return simplifyExpr(walk(e));
 }
 
 export function symDet(e: SymExpr[], n: number): SymExpr {

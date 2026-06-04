@@ -31,6 +31,7 @@ import {
   polyCoeffs, numDen, symDet, symInv, symCharpolyCoeffs, symArg, symToExpr, symVarsOf,
   transformVars, symNames, integrate, limitAt, solveExpr, expandExpr,
   laplaceExpr, ztransExpr, ilaplaceExpr, iztransExpr, fourierExpr, ifourierExpr,
+  simplifyAssume,
 } from './sym-ops';
 import { SYM_BUILTINS } from './sym-builtins';
 
@@ -328,6 +329,18 @@ export const BUILTINS: Record<string, Builtin> = {
   ellipticCE: ew((mm) => ellipkeFn(1 - mm)[1]),
   ellipticE: async (a) => { if (a.length >= 2) return ret(elementwise(m(a[0]), m(a[1]), (phi, mm) => simpsonInt((t) => Math.sqrt(1 - mm * Math.sin(t) ** 2), 0, phi, 2000))); return ret(map(m(a[0]), (mm) => ellipkeFn(mm)[1])); },
   ellipticF: async (a) => ret(elementwise(m(a[0]), m(a[1]), (phi, mm) => simpsonInt((t) => 1 / Math.sqrt(1 - mm * Math.sin(t) ** 2), 0, phi, 2000))),
+  hypergeom: async (a) => { const as = toArray(m(a[0])); const bs = toArray(m(a[1])); return ret(map(m(a[2]), (x) => hyperPFQ(as, bs, x))); },
+  jacobiSN: async (a) => { const mm = asScalar(a[1]); return ret(map(m(a[0]), (u) => sncndn(u, 1 - mm)[0])); },
+  jacobiCN: async (a) => { const mm = asScalar(a[1]); return ret(map(m(a[0]), (u) => sncndn(u, 1 - mm)[1])); },
+  jacobiDN: async (a) => { const mm = asScalar(a[1]); return ret(map(m(a[0]), (u) => sncndn(u, 1 - mm)[2])); },
+  jacobiAM: async (a) => { const mm = asScalar(a[1]); return ret(map(m(a[0]), (u) => { const [sn, cn] = sncndn(u, 1 - mm); return Math.atan2(sn, cn); })); },
+  jacobiZeta: async (a) => { const mm = asScalar(a[1]); const [K, E] = ellipkeFn(mm); return ret(map(m(a[0]), (u) => { const [sn, cn] = sncndn(u, 1 - mm); const phi = Math.atan2(sn, cn); const Einc = simpsonInt((t) => Math.sqrt(1 - mm * Math.sin(t) ** 2), 0, phi, 2000); return Einc - E / K * u; })); },
+  kummerU: async (a) => { const aa = asScalar(a[0]), bb = asScalar(a[1]); return ret(map(m(a[2]), (z) => kummerUFn(aa, bb, z))); },
+  whittakerM: async (a) => { const k = asScalar(a[0]), mu = asScalar(a[1]); return ret(map(m(a[2]), (z) => Math.exp(-z / 2) * Math.pow(z, mu + 0.5) * hyperPFQ([mu - k + 0.5], [1 + 2 * mu], z))); },
+  whittakerW: async (a) => { const k = asScalar(a[0]), mu = asScalar(a[1]); return ret(map(m(a[2]), (z) => Math.exp(-z / 2) * Math.pow(z, mu + 0.5) * kummerUFn(mu - k + 0.5, 1 + 2 * mu, z))); },
+  ellipticPi: async (a) => { if (a.length >= 3) return ret(elementwise(m(a[0]), m(a[2]), (nch, mm) => ellipticPiFn(nch, asScalar(a[1]), mm))); return ret(elementwise(m(a[0]), m(a[1]), (nch, mm) => ellipticPiFn(nch, Math.PI / 2, mm))); },
+  ellipticCPi: async (a) => ret(elementwise(m(a[0]), m(a[1]), (nch, mm) => ellipticPiFn(nch, Math.PI / 2, 1 - mm))),
+  ellipticNome: async (a) => ret(map(m(a[0]), (mm) => { const [K] = ellipkeFn(mm); const [Kp] = ellipkeFn(1 - mm); return Math.exp(-Math.PI * Kp / K); })),
   bernoulli: async (a) => { const nn = Math.round(asScalar(a[0])); if (a.length >= 2) return ret(map(m(a[1]), (x) => bernoulliPoly(nn, x))); return ret(scalar(bernoulliNum(nn))); },
   euler: async (a) => { const nn = Math.round(asScalar(a[0])); if (a.length >= 2) return ret(map(m(a[1]), (x) => eulerPoly(nn, x))); return ret(scalar(eulerNum(nn))); },
   jacobiSymbol: async (a) => ret(elementwise(m(a[0]), m(a[1]), jacobiSym)),
@@ -508,6 +521,32 @@ export const BUILTINS: Record<string, Builtin> = {
   det: async (a) => { if (isSym(a[0])) return ret(makeSym(1, 1, [simplifyExpr(symDet(a[0].exprs, a[0].rows))])); const A = m(a[0]); if (isComplex(A)) { const [re, im] = cDet(A); return ret(cscalar(re, im)); } return ret(scalar(det(A))); },
   inv: async (a) => { if (isSym(a[0])) return ret(symInv(a[0])); return ret(inv(m(a[0]))); },
   charpoly: async (a) => { if (isSym(a[0])) { const c = symCharpolyCoeffs(a[0].exprs, a[0].rows); return ret(makeSym(1, c.length, c)); } const A = m(a[0]); return ret(rowVec(charpolyC(A))); },
+  minpoly: async (a) => {
+    // Minimal polynomial = monic product over DISTINCT eigenvalues (exact for diagonalizable A).
+    const A = m(a[0]); const { D } = generalEig(A, false);
+    const uniq: [number, number][] = [];
+    for (let i = 0; i < D.re.length; i++) { if (!uniq.some(([r, im]) => Math.hypot(r - D.re[i], im - D.im[i]) < 1e-6)) uniq.push([D.re[i], D.im[i]]); }
+    let cr = [1], ci = [0];                       // poly coeffs (high→low) in complex
+    for (const [r, im] of uniq) { const nr = [0], ni = [0]; for (let k = 0; k < cr.length; k++) { nr[k] = (nr[k] ?? 0) + cr[k]; ni[k] = (ni[k] ?? 0) + ci[k]; nr[k + 1] = (nr[k + 1] ?? 0) - (cr[k] * r - ci[k] * im); ni[k + 1] = (ni[k + 1] ?? 0) - (cr[k] * im + ci[k] * r); } cr = nr; ci = ni; }
+    return ret(makeSym(1, cr.length, cr.map((x) => sN(Math.abs(x - Math.round(x)) < 1e-9 ? Math.round(x) : x))));
+  },
+  jordan: async (a, n) => {
+    const A = m(a[0]); const N = A.rows; const { D, V } = generalEig(A, n >= 2);
+    const J = makeSym(N, N, Array.from({ length: N * N }, () => sN(0)));
+    for (let i = 0; i < N; i++) J.exprs[i + i * N] = Math.abs(D.im[i]) < 1e-9 ? sN(D.re[i]) : sFn('complex', sN(D.re[i]), sN(D.im[i]));
+    if (n >= 2) { const Vm = V!; return [makeSym(N, N, Array.from(Vm.data, (x) => sN(x))), J]; }
+    return ret(J);
+  },
+  resultant: async (a) => {
+    const p = symArg(a[0]), q = symArg(a[1]);
+    const v = a.length >= 3 ? (isSym(a[2]) ? symVarsOf(a[2])[0] : asString(a[2])) : (symVarsOf(p)[0] ?? symVarsOf(q)[0] ?? 'x');
+    const pc = polyCoeffs(p.exprs[0], v).slice().reverse(), qc = polyCoeffs(q.exprs[0], v).slice().reverse();   // high→low
+    const dp = pc.length - 1, dq = qc.length - 1; const sz = dp + dq; if (sz <= 0) return ret(scalar(1));
+    const S = zeros(sz, sz);
+    for (let r = 0; r < dq; r++) for (let i = 0; i < pc.length; i++) S.data[r + (r + i) * sz] = pc[i];
+    for (let r = 0; r < dp; r++) for (let i = 0; i < qc.length; i++) S.data[(dq + r) + (r + i) * sz] = qc[i];
+    return ret(scalar(det(S)));
+  },
   // number theory
   nextprime: async (a) => ret(map(m(a[0]), (x) => { let n = Math.floor(x) + 1; while (!isPrimeN(n)) n++; return n; })),
   prevprime: async (a) => ret(map(m(a[0]), (x) => { let n = Math.ceil(x) - 1; while (n > 1 && !isPrimeN(n)) n--; return n >= 2 ? n : NaN; })),
@@ -1493,7 +1532,7 @@ export const BUILTINS: Record<string, Builtin> = {
   odeMassMatrix: async (a) => ret(a[0] ?? makeSym(0, 0, [])),
   odeSensitivity: async (a) => { const f = new Map<string, Value[]>(); for (let i = 0; i + 1 < a.length; i += 2) f.set(asString(a[i]), [a[i + 1]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields: f } as StructV); },
   odeDelay: async (a) => { const f = new Map<string, Value[]>(); for (let i = 0; i + 1 < a.length; i += 2) f.set(asString(a[i]), [a[i + 1]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields: f } as StructV); },
-  simplify: async (a) => { if (isGraph(a[0])) { const g = a[0]; const seen = new Set<string>(); const edges: typeof g.edges = []; for (const e of g.edges) { if (e.s === e.t) continue; const k = g.directed ? `${e.s}_${e.t}` : `${Math.min(e.s, e.t)}_${Math.max(e.s, e.t)}`; if (seen.has(k)) continue; seen.add(k); edges.push(e); } return ret(makeGraph(g.directed, g.n, edges, g.names)); } const s = symArg(a[0]); return ret(makeSym(s.rows, s.cols, s.exprs.map(simplifyExpr))); },
+  simplify: async (a) => { if (isGraph(a[0])) { const g = a[0]; const seen = new Set<string>(); const edges: typeof g.edges = []; for (const e of g.edges) { if (e.s === e.t) continue; const k = g.directed ? `${e.s}_${e.t}` : `${Math.min(e.s, e.t)}_${Math.max(e.s, e.t)}`; if (seen.has(k)) continue; seen.add(k); edges.push(e); } return ret(makeGraph(g.directed, g.n, edges, g.names)); } const s = symArg(a[0]); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => simplifyAssume(e)))); },
   logical: async (a) => { if (!isSym(a[0])) return ret({ ...map(m(a[0]), (x) => (x !== 0 ? 1 : 0)), isBool: true }); const s = a[0]; const o = zeros(s.rows, s.cols); o.isBool = true; s.exprs.forEach((e, i) => { o.data[i] = Math.abs(symEval(e, new Map())) > 1e-12 ? 1 : 0; }); return ret(o); },
   curl: async (a, n) => { if (isSym(a[0])) { const F = a[0].exprs; const v = symNames(a[1]); const c = [sAdd(diffExpr(F[2], v[1]), sNeg(diffExpr(F[1], v[2]))), sAdd(diffExpr(F[0], v[2]), sNeg(diffExpr(F[2], v[0]))), sAdd(diffExpr(F[1], v[0]), sNeg(diffExpr(F[0], v[1])))]; return ret(makeSym(3, 1, c.map(simplifyExpr))); } return curlNumeric(a, n); },
   divergence: async (a, n, env) => { if (isSym(a[0])) { const F = a[0].exprs; const v = symNames(a[1]); let d: SymExpr = sN(0); for (let i = 0; i < F.length; i++) d = sAdd(d, diffExpr(F[i], v[i])); return ret(makeSym(1, 1, [simplifyExpr(d)])); } void env; return divergenceNumeric(a, n); },
@@ -3060,6 +3099,30 @@ function simpsonInt(f: (t: number) => number, a: number, b: number, nn: number):
   if (a === b) return 0; const h = (b - a) / nn; let s = f(a) + f(b);
   for (let i = 1; i < nn; i++) s += (i % 2 ? 4 : 2) * f(a + i * h);
   return s * h / 3;
+}
+/** Generalized hypergeometric ₚFq(a;b;z) = Σ_k [∏(aᵢ)_k / ∏(bⱼ)_k] zᵏ/k!. */
+function hyperPFQ(as: number[], bs: number[], z: number): number {
+  let term = 1, sum = 1;
+  for (let k = 0; k < 500; k++) {
+    let f = z / (k + 1);
+    for (const a of as) f *= (a + k);
+    for (const b of bs) f /= (b + k);
+    term *= f; sum += term;
+    if (Math.abs(term) < 1e-16 * Math.abs(sum)) break;
+  }
+  return sum;
+}
+/** Confluent hypergeometric M(a,b,z) = ₁F₁. */
+const kummerM = (a: number, b: number, z: number): number => hyperPFQ([a], [b], z);
+/** Confluent hypergeometric U(a,b,z) (non-integer b: two-M combination; integer b → limit). */
+function kummerUFn(a: number, b: number, z: number): number {
+  if (Math.abs(b - Math.round(b)) < 1e-9) b += 1e-7;   // nudge off integer (use the limit)
+  return gammaFn(1 - b) / gammaFn(a - b + 1) * kummerM(a, b, z)
+    + gammaFn(b - 1) / gammaFn(a) * Math.pow(z, 1 - b) * kummerM(a - b + 1, 2 - b, z);
+}
+/** Complete/incomplete elliptic integral of the third kind Π(n;φ|m). */
+function ellipticPiFn(nch: number, phi: number, mm: number): number {
+  return simpsonInt((t) => 1 / ((1 - nch * Math.sin(t) ** 2) * Math.sqrt(1 - mm * Math.sin(t) ** 2)), 0, phi, 4000);
 }
 
 /** Shared check for the mustBe* numeric validators: every element must satisfy pred. */
