@@ -428,6 +428,24 @@ export function dsolveSolve(odeExprs: SymExpr[], conds: SymExpr[]): SymExpr {
   return dApplyConds(gen, conds, f, t);
 }
 
+/** Padé approximant [m/n] of e about a0 (numerator deg m, denominator deg n). */
+export function padeApprox(e: SymExpr, x: string, m: number, n: number, a0: number): SymExpr {
+  const N = m + n; const c: number[] = []; let term = e; let fact = 1;
+  for (let k = 0; k <= N; k++) { const v = symEval(term, new Map([[x, a0]])); if (!Number.isFinite(v)) throw new MatError('pade: function is not analytic at the expansion point'); c[k] = v / fact; term = simplifyExpr(diffExpr(term, x)); fact *= (k + 1); }
+  const cc = (i: number) => (i >= 0 && i <= N ? c[i] : 0);
+  let b = [1];
+  if (n > 0) {
+    const M: number[][] = [], rhs: number[] = [];
+    for (let i = 1; i <= n; i++) { const row: number[] = []; for (let j = 1; j <= n; j++) row.push(cc(m + i - j)); M.push(row); rhs.push(-cc(m + i)); }
+    const sol = dLinSolve(M, rhs); if (!sol) throw new MatError('pade: singular Padé system'); b = [1, ...sol];
+  }
+  const aN: number[] = []; for (let k = 0; k <= m; k++) { let s = 0; for (let j = 0; j <= Math.min(k, n); j++) s += b[j] * cc(k - j); aN[k] = s; }
+  const xv = a0 === 0 ? sV(x) : sSub(sV(x), sN(a0));
+  const P = sAdd(...aN.map((ak, k) => sMul(sN(dsnap(ak)), sPow(xv, sN(k)))));
+  const Q = sAdd(sN(1), ...b.slice(1).map((bj, idx) => sMul(sN(dsnap(bj)), sPow(xv, sN(idx + 1)))));
+  return simplifyExpr(sDiv(P, Q));
+}
+
 /** Distribute products over sums (expand). */
 export function expandExpr(e: SymExpr): SymExpr {
   if (e.t === 'n' || e.t === 'v') return e;
