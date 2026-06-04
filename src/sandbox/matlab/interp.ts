@@ -11,7 +11,7 @@ import {
   type Str, isStr, makeStr, makeStrArr,
   type Graph, type Geom, type Quantum,
   type Temporal, isTemporal, makeTemporal, numelOf,
-  type Sym, isSym, makeSym, applyClass, pickClass, isMap, mapNormKey,
+  type Sym, isSym, makeSym, applyClass, pickClass, isMap, mapNormKey, isDict, cloneDict,
 } from './values';
 import { type SymExpr, sN, sV, sAdd, sSub, sMul, sDiv, sPow, sFn, simplifyExpr, subsExpr, evalExpr } from './sym';
 
@@ -166,6 +166,7 @@ export class Interpreter implements Env {
       if (v.kind === 'sym') { out.push({ name, size: `${v.rows}x${v.cols}`, klass: 'sym', preview: dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) }); continue; }
       if (v.kind === 'categorical') { out.push({ name, size: `${v.rows}x${v.cols}`, klass: 'categorical', preview: dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) }); continue; }
       if (v.kind === 'map') { out.push({ name, size: '1x1', klass: 'containers.Map', preview: `${v.store.size} entries (${v.keyKind} keys)` }); continue; }
+      if (v.kind === 'dict') { out.push({ name, size: `${v.store.size}x1`, klass: 'dictionary', preview: `${v.store.size} entries (${v.keyKind} keys)` }); continue; }
       const klass = v.isChar ? 'char' : (v.itype ?? 'double');
       const preview = numel(v) <= 12 ? dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) : '…';
       out.push({ name, size: `${v.rows}x${v.cols}`, klass, preview });
@@ -315,6 +316,13 @@ export class Interpreter implements Env {
           // m(key) = val : in-place insert/update (Map is a reference object)
           const args = await this.evalArgs(lv.args, scope);
           cur.store.set(mapNormKey(cur, args[0]), val);
+          return;
+        }
+        if (cur && isDict(cur)) {
+          // d(key) = val : value semantics → rebind a fresh (cloned) dictionary
+          const args = await this.evalArgs(lv.args, scope);
+          const nd = cloneDict(cur); nd.store.set(mapNormKey(cur, args[0]), val);
+          scope.vars.set((lv.target as { name: string }).name, nd);
           return;
         }
         if (cur && isCell(cur)) {
@@ -479,8 +487,8 @@ export class Interpreter implements Env {
     }
     // subscript a value (variable or sub-expression)
     const base = await this.evalExpr(target, scope);
-    if (isMap(base)) {
-      // m(key) → stored value
+    if (isMap(base) || isDict(base)) {
+      // m(key)/d(key) → stored value
       const args = await this.evalArgs(e.args, scope); const key = mapNormKey(base, args[0]);
       if (!base.store.has(key)) throw new MatError(`The specified key is not present in this container.`);
       return [base.store.get(key)!];

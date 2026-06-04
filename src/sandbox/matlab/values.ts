@@ -127,7 +127,9 @@ export interface Categorical {
 }
 /** containers.Map: a handle (reference) object mapping char/double keys to values. */
 export interface MapV { kind: 'map'; keyKind: 'char' | 'double'; valType: string; store: Map<string | number, Value>; }
-export type Value = Mat | Handle | GObj | Cell | StructV | Sparse | Str | Graph | Geom | Quantum | Temporal | Table | Sym | Categorical | MapV;
+/** dictionary: a value (copy-on-assign) object mapping char/double keys to values. */
+export interface DictV { kind: 'dict'; keyKind: 'char' | 'double'; valType: string; store: Map<string | number, Value>; }
+export type Value = Mat | Handle | GObj | Cell | StructV | Sparse | Str | Graph | Geom | Quantum | Temporal | Table | Sym | Categorical | MapV | DictV;
 
 export class MatError extends Error {}
 
@@ -192,7 +194,10 @@ export function makeCell(rows: number, cols: number, items: Value[]): Cell { ret
 export function isMap(v: Value): v is MapV { return v.kind === 'map'; }
 export function makeMap(keyKind: 'char' | 'double', valType: string): MapV { return { kind: 'map', keyKind, valType, store: new Map() }; }
 /** Normalize a key value to the Map's internal key (string for char keys, number for double). */
-export function mapNormKey(m: MapV, k: Value): string | number { return m.keyKind === 'char' ? asString(k) : asScalar(k); }
+export function mapNormKey(m: MapV | DictV, k: Value): string | number { return m.keyKind === 'char' ? asString(k) : asScalar(k); }
+export function isDict(v: Value): v is DictV { return v.kind === 'dict'; }
+export function makeDict(keyKind: 'char' | 'double', valType: string): DictV { return { kind: 'dict', keyKind, valType, store: new Map() }; }
+export function cloneDict(d: DictV): DictV { return { kind: 'dict', keyKind: d.keyKind, valType: d.valType, store: new Map(d.store) }; }
 /** Dimensions of any value. */
 export function dimsOf(v: Value): [number, number] {
   if (v.kind === 'num' || v.kind === 'cell' || v.kind === 'struct' || v.kind === 'sparse' || v.kind === 'str' || v.kind === 'temporal') return [v.rows, v.cols];

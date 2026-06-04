@@ -16,7 +16,7 @@ import {
   type Table, isTable,
   type Sym, isSym, makeSym,
   type Categorical, isCategorical, makeCategorical,
-  type MapV, isMap, makeMap, mapNormKey,
+  type MapV, isMap, makeMap, mapNormKey, type DictV, isDict, makeDict, cloneDict,
   toMat as m, factorialN, INT_LIMITS, applyClass,
 } from './values';
 import { type SymExpr, sN, sV, sAdd, sSub, sMul, sPow, sFn, sNeg, sDiv, simplifyExpr, diffExpr, subsExpr, evalExpr as symEval, exprToStr, symVars } from './sym';
@@ -600,9 +600,9 @@ export const BUILTINS: Record<string, Builtin> = {
     return sizeOf(a, n);
   },
   numel: async (a) => ret(scalar(isMap(a[0]) ? 1 : numelOf(a[0]))),
-  length: async (a) => { if (isMap(a[0])) return ret(scalar((a[0] as MapV).store.size)); const [r, c] = dimsOf(a[0]); return ret(scalar(r === 0 || c === 0 ? 0 : Math.max(r, c))); },
+  length: async (a) => { if (isMap(a[0])) return ret(scalar((a[0] as MapV).store.size)); if (isDict(a[0])) return ret(scalar((a[0] as DictV).store.size)); const [r, c] = dimsOf(a[0]); return ret(scalar(r === 0 || c === 0 ? 0 : Math.max(r, c))); },
   ndims: async (a) => ret(scalar(isMat(a[0]) ? ndimsOf(a[0]) : 2)),
-  isempty: async (a) => ret(bool(isMap(a[0]) ? (a[0] as MapV).store.size === 0 : numelOf(a[0]) === 0)),
+  isempty: async (a) => ret(bool(isMap(a[0]) ? (a[0] as MapV).store.size === 0 : isDict(a[0]) ? (a[0] as DictV).store.size === 0 : numelOf(a[0]) === 0)),
   isscalar: async (a) => ret(bool(numelOf(a[0]) === 1)),
   zeros: async (a) => { const d = dimsN(a); return ret(makeND(d, new Float64Array(d.reduce((p, x) => p * x, 1)))); },
   ones: async (a) => { const d = dimsN(a); const data = new Float64Array(d.reduce((p, x) => p * x, 1)); data.fill(1); return ret(makeND(d, data)); },
@@ -977,10 +977,16 @@ export const BUILTINS: Record<string, Builtin> = {
   ldl: async (a, n) => { const { L, D } = ldlFn(m(a[0])); return n >= 2 ? [L, D] : [L]; },
   lsqnonneg: async (a) => ret(lsqnonnegFn(m(a[0]), m(a[1]))),
   'containers.Map': async (a) => ret(buildMap(a)),
-  keys: async (a) => { const mp = a[0] as MapV; if (!isMap(mp)) throw new MatError('keys: expected a containers.Map'); const ks = mapKeysSorted(mp); return ret(makeCell(1, ks.length, ks.map((k) => (mp.keyKind === 'char' ? str(k as string) : scalar(k as number))))); },
-  values: async (a) => { const mp = a[0] as MapV; if (!isMap(mp)) throw new MatError('values: expected a containers.Map'); const ks = mapKeysSorted(mp); return ret(makeCell(1, ks.length, ks.map((k) => mp.store.get(k)!))); },
-  isKey: async (a) => { const mp = a[0] as MapV; if (!isMap(mp)) throw new MatError('isKey: expected a containers.Map'); if (isCell(a[1])) return ret({ kind: 'num', rows: 1, cols: a[1].items.length, data: Float64Array.from(a[1].items.map((it) => (mp.store.has(mapNormKey(mp, it)) ? 1 : 0))), isBool: true }); return ret(bool(mp.store.has(mapNormKey(mp, a[1])))); },
-  remove: async (a) => { const mp = a[0] as MapV; if (!isMap(mp)) throw new MatError('remove: expected a containers.Map'); const ks = isCell(a[1]) ? a[1].items : [a[1]]; for (const k of ks) mp.store.delete(mapNormKey(mp, k)); return ret(mp); },
+  keys: async (a) => { const mp = a[0] as MapV | DictV; if (!isMap(mp) && !isDict(mp)) throw new MatError('keys: expected a containers.Map or dictionary'); const ks = mapKeysSorted(mp); return ret(makeCell(1, ks.length, ks.map((k) => (mp.keyKind === 'char' ? str(k as string) : scalar(k as number))))); },
+  values: async (a) => { const mp = a[0] as MapV | DictV; if (!isMap(mp) && !isDict(mp)) throw new MatError('values: expected a containers.Map or dictionary'); const ks = mapKeysSorted(mp); return ret(makeCell(1, ks.length, ks.map((k) => mp.store.get(k)!))); },
+  isKey: async (a) => { const mp = a[0] as MapV | DictV; if (!isMap(mp) && !isDict(mp)) throw new MatError('isKey: expected a containers.Map or dictionary'); if (isCell(a[1])) return ret({ kind: 'num', rows: 1, cols: a[1].items.length, data: Float64Array.from(a[1].items.map((it) => (mp.store.has(mapNormKey(mp, it)) ? 1 : 0))), isBool: true }); return ret(bool(mp.store.has(mapNormKey(mp, a[1])))); },
+  remove: async (a) => { const mp = a[0] as MapV | DictV; if (isDict(mp)) { const nd = cloneDict(mp); const ks = isCell(a[1]) ? a[1].items : [a[1]]; for (const k of ks) nd.store.delete(mapNormKey(mp, k)); return ret(nd); } if (!isMap(mp)) throw new MatError('remove: expected a containers.Map or dictionary'); const ks = isCell(a[1]) ? a[1].items : [a[1]]; for (const k of ks) mp.store.delete(mapNormKey(mp, k)); return ret(mp); },
+  dictionary: async (a) => ret(buildDict(a)),
+  entries: async (a) => { const d = a[0] as DictV; if (!isDict(d)) throw new MatError('entries: expected a dictionary'); const ks = mapKeysSorted(d); const n = ks.length; const items: Value[] = new Array(n * 2); for (let i = 0; i < n; i++) { items[i] = d.keyKind === 'char' ? str(ks[i] as string) : scalar(ks[i] as number); items[i + n] = d.store.get(ks[i])!; } return ret(makeCell(n, 2, items)); },
+  lookup: async (a) => { const d = a[0] as DictV; if (!isDict(d)) throw new MatError('lookup: expected a dictionary'); const k = mapNormKey(d, a[1]); if (!d.store.has(k)) throw new MatError('lookup: key not found'); return ret(d.store.get(k)!); },
+  insert: async (a) => { const d = a[0] as DictV; if (!isDict(d)) throw new MatError('insert: expected a dictionary'); const nd = cloneDict(d); nd.store.set(mapNormKey(d, a[1]), a[2]); return ret(nd); },
+  numEntries: async (a) => ret(scalar(isDict(a[0]) ? (a[0] as DictV).store.size : 0)),
+  isConfigured: async (a) => ret(bool(isDict(a[0]) && (a[0] as DictV).valType !== 'unconfigured')),
   lyap: async (a) => { const A = m(a[0]); if (a.length >= 3) return ret(sylvesterSolve(A, m(a[1]), negMat(m(a[2])))); return ret(sylvesterSolve(A, transMat(A), negMat(m(a[1])))); },
   dlyap: async (a) => ret(dlyapSolve(m(a[0]), m(a[1]))),
   optimoptions: async (a) => { const f = new Map<string, Value[]>(); for (let i = 1; i + 1 < a.length; i += 2) f.set(asString(a[i]), [a[i + 1]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields: f } as StructV); },
@@ -1317,7 +1323,7 @@ export const BUILTINS: Record<string, Builtin> = {
   dec2base: async (a) => { const d = Math.round(asScalar(a[0])); const b = Math.round(asScalar(a[1])); let s2 = d.toString(b).toUpperCase(); if (a.length >= 3) s2 = s2.padStart(Math.round(asScalar(a[2])), '0'); return ret(str(s2)); },
   base2dec: async (a) => ret(scalar(parseInt(asString(a[0]).replace(/\s/g, ''), Math.round(asScalar(a[1]))))),
   // ── class / regexp / sscanf ──
-  class: async (a) => { const v = a[0]; if (isMap(v)) return ret(str('containers.Map')); if (isHandle(v)) return ret(str('function_handle')); if (v.kind === 'gobj') return ret(str(v.gtype)); if (isStr(v)) return ret(str('string')); if (isCell(v)) return ret(str('cell')); if (isStruct(v)) return ret(str('struct')); if (isTable(v)) return ret(str(v.isTimetable ? 'timetable' : 'table')); if (isCategorical(v)) return ret(str('categorical')); if (isSym(v)) return ret(str('sym')); if ((v as Mat).isChar) return ret(str('char')); if ((v as Mat).isBool) return ret(str('logical')); return ret(str((v as Mat).itype ?? 'double')); },
+  class: async (a) => { const v = a[0]; if (isMap(v)) return ret(str('containers.Map')); if (isDict(v)) return ret(str('dictionary')); if (isHandle(v)) return ret(str('function_handle')); if (v.kind === 'gobj') return ret(str(v.gtype)); if (isStr(v)) return ret(str('string')); if (isCell(v)) return ret(str('cell')); if (isStruct(v)) return ret(str('struct')); if (isTable(v)) return ret(str(v.isTimetable ? 'timetable' : 'table')); if (isCategorical(v)) return ret(str('categorical')); if (isSym(v)) return ret(str('sym')); if ((v as Mat).isChar) return ret(str('char')); if ((v as Mat).isBool) return ret(str('logical')); return ret(str((v as Mat).itype ?? 'double')); },
   isa: async (a) => { const v = a[0]; const ty = asString(a[1]); const M = v as Mat; const cls = isHandle(v) ? 'function_handle' : M.isChar ? 'char' : M.isBool ? 'logical' : (M.itype ?? 'double'); if (ty === cls) return ret(bool(true)); const isInt = isMat(v) && !!M.itype && M.itype !== 'single'; const isFlt = isMat(v) && !M.isChar && !M.isBool && (!M.itype || M.itype === 'single'); if (ty === 'numeric' && isMat(v) && !M.isChar && !M.isBool) return ret(bool(true)); if (ty === 'float' && isFlt) return ret(bool(true)); if (ty === 'integer' && isInt) return ret(bool(true)); return ret(bool(false)); },
   regexp: async (a, n) => {
     const s = asString(a[0]); const pat = asString(a[1]); const opts = a.slice(2).map((x) => asString(x).toLowerCase());
@@ -4074,8 +4080,18 @@ function sylvesterSolve(A: Mat, B: Mat, C: Mat): Mat {
   for (let k = 0; k < q; k++) for (let i = 0; i < p; i++) X.data[i + k * p] = x.data[i + k * p];
   return X;
 }
-/** containers.Map keys in MATLAB's sorted order (ascending numbers / lexicographic chars). */
-function mapKeysSorted(mp: MapV): (string | number)[] { const ks = [...mp.store.keys()]; return mp.keyKind === 'char' ? (ks as string[]).sort() : (ks as number[]).sort((a, b) => a - b); }
+/** Map/dictionary keys in MATLAB's sorted order (ascending numbers / lexicographic chars). */
+function mapKeysSorted(mp: MapV | DictV): (string | number)[] { const ks = [...mp.store.keys()]; return mp.keyKind === 'char' ? (ks as string[]).sort() : (ks as number[]).sort((a, b) => a - b); }
+/** Construct a dictionary (value type) from () / (keys,values). */
+function buildDict(a: Value[]): DictV {
+  if (a.length < 2) return makeDict('char', 'unconfigured');
+  const expand = (v: Value): Value[] => (isCell(v) ? v.items : isStr(v) ? v.items.map((s) => str(s)) : (isMat(v) && !(v as Mat).isChar && numel(v) > 1) ? toArray(v as Mat).map((x) => scalar(x) as Value) : [v]);
+  const keyList = expand(a[0]); const valList = expand(a[1]);
+  const keyKind: 'char' | 'double' = isStr(keyList[0]) || (isMat(keyList[0]) && (keyList[0] as Mat).isChar) ? 'char' : 'double';
+  const d = makeDict(keyKind, 'any');
+  for (let i = 0; i < keyList.length; i++) d.store.set(mapNormKey(d, keyList[i]), valList[i] ?? valList[valList.length - 1] ?? scalar(0));
+  return d;
+}
 /** Construct a containers.Map from constructor args: (), (keys,values), or name/value options. */
 function buildMap(a: Value[]): MapV {
   const isText = (x: Value) => isStr(x) || (isMat(x) && (x as Mat).isChar);
