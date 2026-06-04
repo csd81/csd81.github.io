@@ -3921,8 +3921,9 @@ function sylvesterSolve(A: Mat, B: Mat, C: Mat): Mat {
 function mapKeysSorted(mp: MapV): (string | number)[] { const ks = [...mp.store.keys()]; return mp.keyKind === 'char' ? (ks as string[]).sort() : (ks as number[]).sort((a, b) => a - b); }
 /** Construct a containers.Map from constructor args: (), (keys,values), or name/value options. */
 function buildMap(a: Value[]): MapV {
+  const isText = (x: Value) => isStr(x) || (isMat(x) && (x as Mat).isChar);
   // option form: containers.Map('KeyType','char','ValueType','any', ...)
-  const isOpt = a.length >= 2 && isMat(a[0]) && (a[0] as Mat).isChar && ['keytype', 'valuetype', 'uniformvalues'].includes(asString(a[0]).toLowerCase());
+  const isOpt = a.length >= 2 && isText(a[0]) && ['keytype', 'valuetype', 'uniformvalues'].includes(asString(a[0]).toLowerCase());
   if (a.length === 0 || isOpt) {
     let kt = 'char', vt = 'any';
     for (let i = 0; i + 1 < a.length; i += 2) { const key = asString(a[i]).toLowerCase(); if (key === 'keytype') kt = asString(a[i + 1]); else if (key === 'valuetype') vt = asString(a[i + 1]); }
@@ -3931,7 +3932,7 @@ function buildMap(a: Value[]): MapV {
   // (keySet, valueSet): keys/values may be a cell or a single key/value
   const keyList = isCell(a[0]) ? a[0].items : [a[0]];
   const valList = a.length >= 2 ? (isCell(a[1]) ? a[1].items : [a[1]]) : [];
-  const keyKind: 'char' | 'double' = isMat(keyList[0]) && (keyList[0] as Mat).isChar ? 'char' : 'double';
+  const keyKind: 'char' | 'double' = isText(keyList[0]) ? 'char' : 'double';
   const mp = makeMap(keyKind, 'any');
   for (let i = 0; i < keyList.length; i++) mp.store.set(mapNormKey(mp, keyList[i]), valList[i] ?? scalar(0));
   return mp;
