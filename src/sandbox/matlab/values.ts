@@ -124,7 +124,9 @@ export interface Categorical {
   categories: string[];  // category labels in display/sort order
   ordinal?: boolean;
 }
-export type Value = Mat | Handle | GObj | Cell | StructV | Sparse | Str | Graph | Geom | Quantum | Temporal | Table | Sym | Categorical;
+/** containers.Map: a handle (reference) object mapping char/double keys to values. */
+export interface MapV { kind: 'map'; keyKind: 'char' | 'double'; valType: string; store: Map<string | number, Value>; }
+export type Value = Mat | Handle | GObj | Cell | StructV | Sparse | Str | Graph | Geom | Quantum | Temporal | Table | Sym | Categorical | MapV;
 
 export class MatError extends Error {}
 
@@ -186,6 +188,10 @@ export function makeTemporal(tkind: 'datetime' | 'duration', rows: number, cols:
 export function makeStrArr(rows: number, cols: number, items: string[]): Str { return { kind: 'str', rows, cols, items }; }
 export function makeStr(s: string): Str { return { kind: 'str', rows: 1, cols: 1, items: [s] }; }
 export function makeCell(rows: number, cols: number, items: Value[]): Cell { return { kind: 'cell', rows, cols, items }; }
+export function isMap(v: Value): v is MapV { return v.kind === 'map'; }
+export function makeMap(keyKind: 'char' | 'double', valType: string): MapV { return { kind: 'map', keyKind, valType, store: new Map() }; }
+/** Normalize a key value to the Map's internal key (string for char keys, number for double). */
+export function mapNormKey(m: MapV, k: Value): string | number { return m.keyKind === 'char' ? asString(k) : asScalar(k); }
 /** Dimensions of any value. */
 export function dimsOf(v: Value): [number, number] {
   if (v.kind === 'num' || v.kind === 'cell' || v.kind === 'struct' || v.kind === 'sparse' || v.kind === 'str' || v.kind === 'temporal') return [v.rows, v.cols];

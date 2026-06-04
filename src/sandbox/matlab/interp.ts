@@ -11,7 +11,7 @@ import {
   type Str, isStr, makeStr, makeStrArr,
   type Graph, type Geom, type Quantum,
   type Temporal, isTemporal, makeTemporal, numelOf,
-  isSym, makeSym, applyClass, pickClass,
+  isSym, makeSym, applyClass, pickClass, isMap, mapNormKey,
 } from './values';
 import { type SymExpr, sN, sV, sAdd, sSub, sMul, sDiv, sPow, sFn, simplifyExpr, evalExpr } from './sym';
 
@@ -165,6 +165,7 @@ export class Interpreter implements Env {
       if (v.kind === 'table') { out.push({ name, size: `${v.nrows}x${v.vars.length}`, klass: v.isTimetable ? 'timetable' : 'table', preview: v.vars.join(', ').slice(0, 40) }); continue; }
       if (v.kind === 'sym') { out.push({ name, size: `${v.rows}x${v.cols}`, klass: 'sym', preview: dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) }); continue; }
       if (v.kind === 'categorical') { out.push({ name, size: `${v.rows}x${v.cols}`, klass: 'categorical', preview: dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) }); continue; }
+      if (v.kind === 'map') { out.push({ name, size: '1x1', klass: 'containers.Map', preview: `${v.store.size} entries (${v.keyKind} keys)` }); continue; }
       const klass = v.isChar ? 'char' : (v.itype ?? 'double');
       const preview = numel(v) <= 12 ? dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) : '…';
       out.push({ name, size: `${v.rows}x${v.cols}`, klass, preview });
@@ -310,6 +311,12 @@ export class Interpreter implements Env {
       }
       case 'index': {
         const cur = lv.target.t === 'ident' ? scope.vars.get(lv.target.name) : undefined;
+        if (cur && isMap(cur)) {
+          // m(key) = val : in-place insert/update (Map is a reference object)
+          const args = await this.evalArgs(lv.args, scope);
+          cur.store.set(mapNormKey(cur, args[0]), val);
+          return;
+        }
         if (cur && isCell(cur)) {
           // c(subs) = rhsCell : sub-cell assignment
           const subs = await this.evalSubsN(lv.args, cur.rows, cur.cols, cur.items.length, scope);
@@ -440,6 +447,7 @@ export class Interpreter implements Env {
         const t = await this.evalExpr(e.target, scope);
         if (t.kind === 'gobj') return [scalar(0)];
         if (isStruct(t)) { const vals = t.fields.get(e.name); if (!vals) throw new MatError(`reference to non-existent field '${e.name}'`); return vals.length ? vals : []; }
+        if (isMap(t)) { if (e.name === 'Count') return [scalar(t.store.size)]; if (e.name === 'KeyType') return [makeStr(t.keyKind)]; if (e.name === 'ValueType') return [makeStr(t.valType)]; throw new MatError(`No appropriate method, property, or field '${e.name}' for class 'containers.Map'.`); }
         if (t.kind === 'graph') return [graphProperty(t, e.name)];
         if (t.kind === 'geom') return [geomProperty(t, e.name)];
         if (t.kind === 'quantum') return [quantumProperty(t, e.name)];
@@ -458,8 +466,19 @@ export class Interpreter implements Env {
       const args = await this.evalArgs(e.args, scope);
       return this.resolveCall(target.name, args, nargout);
     }
+    // namespaced builtin call, e.g. containers.Map(...)
+    if (target.t === 'field' && target.target.t === 'ident' && !scope.vars.has(target.target.name)) {
+      const dotted = `${target.target.name}.${target.name}`;
+      if (this.hasCallable(dotted)) { const args = await this.evalArgs(e.args, scope); return this.resolveCall(dotted, args, nargout); }
+    }
     // subscript a value (variable or sub-expression)
     const base = await this.evalExpr(target, scope);
+    if (isMap(base)) {
+      // m(key) → stored value
+      const args = await this.evalArgs(e.args, scope); const key = mapNormKey(base, args[0]);
+      if (!base.store.has(key)) throw new MatError(`The specified key is not present in this container.`);
+      return [base.store.get(key)!];
+    }
     if (isHandle(base)) {
       const args = await this.evalArgs(e.args, scope);
       return this.callHandle(base, args, nargout);
