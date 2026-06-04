@@ -18,7 +18,7 @@ import {
 import { symTexLines } from './format';
 import {
   symArg, symToExpr, symVarsOf, symNames, transformVars, integrate, limitAt,
-  solveExpr, expandExpr, polyCoeffs, numDen, parseSym, dsolveSolve, padeApprox,
+  solveExpr, expandExpr, polyCoeffs, numDen, parseSym, dsolveSolve, padeApprox, functionalDerivativeExpr, resultantSym,
   symTypeName, hasSub, findByType, partfracExpr, polesOf, hilbertExpr, rewriteExpr,
   assumeVar, clearAssumptions,
   laplaceExpr, ilaplaceExpr, ztransExpr, iztransExpr, fourierExpr, ifourierExpr,
@@ -125,6 +125,18 @@ export const SYM_BUILTINS: Record<string, Builtin> = {
     const bodyOf = (e: SymExpr) => exprToStr(e).replace(/\^/g, '.^').replace(/\*/g, '.*').replace(/\//g, './');
     const body = s.exprs.length === 1 ? bodyOf(s.exprs[0]) : '[' + s.exprs.map(bodyOf).join(', ') + ']';
     return ret(await env.evalInput(`@(${(vars.length ? vars : ['x']).join(',')}) ${body}`));
+  },
+  functionalDerivative: async (a) => {
+    const L = symArg(a[0]); const yarg = a[1];
+    const ye = isSym(yarg) ? (yarg as Sym).exprs[0] : sFn(symNames(yarg)[0], sV('x'));
+    const f = ye.t === 'fn' ? ye.name : (symVars(ye)[0] ?? 'y');
+    const x = ye.t === 'fn' && ye.args[0]?.t === 'v' ? (ye.args[0] as { name: string }).name : (symVarsOf(L).find((v) => v !== f) ?? 'x');
+    return ret(makeSym(L.rows, L.cols, L.exprs.map((e) => functionalDerivativeExpr(e, f, x))));
+  },
+  eliminate: async (a) => {
+    const eqs = symArg(a[0]); const vars = symNames(a[1]);
+    if (eqs.exprs.length === 2 && vars.length === 1) return ret(makeSym(1, 1, [resultantSym(eqs.exprs[0], eqs.exprs[1], vars[0])]));
+    throw new MatError('eliminate: only 2 equations in 1 eliminated variable are supported');
   },
   pade: async (a) => {
     const s = symArg(a[0]); let v = symVarsOf(s)[0] ?? 'x'; let mm = 3, nn = 3, a0 = 0; let i = 1;

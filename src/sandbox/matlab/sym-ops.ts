@@ -428,6 +428,29 @@ export function dsolveSolve(odeExprs: SymExpr[], conds: SymExpr[]): SymExpr {
   return dApplyConds(gen, conds, f, t);
 }
 
+/** Functional (variational) derivative: Euler–Lagrange  ∂L/∂y − d/dx(∂L/∂y'). */
+export function functionalDerivativeExpr(L: SymExpr, f: string, x: string): SymExpr {
+  let lin = dReplaceFn(L, 'diff_' + f, sV('__y1')); lin = dReplaceFn(lin, f, sV('__y0'));
+  const back = (e: SymExpr) => subsExpr(subsExpr(e, '__y0', sFn(f, sV(x))), '__y1', sFn('diff_' + f, sV(x)));
+  const dLdy = back(simplifyExpr(diffExpr(lin, '__y0')));
+  const dLdyp = back(simplifyExpr(diffExpr(lin, '__y1')));
+  return simplifyExpr(sSub(dLdy, diffExpr(dLdyp, x)));
+}
+/** Symbolic polynomial coefficients of e in x (ascending), coefficients may involve other vars. */
+function symPolyCoeffs(e: SymExpr, x: string): SymExpr[] {
+  const c: SymExpr[] = []; let term = e; let fact = 1; let deg = -1;
+  for (let k = 0; k <= 8; k++) { const ck = simplifyExpr(sMul(sN(1 / fact), subsExpr(term, x, sN(0)))); c[k] = ck; if (!dIsZero(ck)) deg = k; term = simplifyExpr(diffExpr(term, x)); fact *= (k + 1); }
+  return c.slice(0, deg + 1);
+}
+/** Symbolic resultant of e1,e2 w.r.t. x (Sylvester determinant) — eliminates x. */
+export function resultantSym(e1: SymExpr, e2: SymExpr, x: string): SymExpr {
+  const pc = symPolyCoeffs(e1, x).reverse(), qc = symPolyCoeffs(e2, x).reverse();   // high→low
+  const dp = pc.length - 1, dq = qc.length - 1; const sz = dp + dq; if (sz <= 0) return sN(1);
+  const S: SymExpr[] = new Array(sz * sz).fill(sN(0));
+  for (let r = 0; r < dq; r++) for (let i = 0; i < pc.length; i++) S[r + (r + i) * sz] = pc[i];
+  for (let r = 0; r < dp; r++) for (let i = 0; i < qc.length; i++) S[(dq + r) + (r + i) * sz] = qc[i];
+  return simplifyExpr(symDet(S, sz));
+}
 /** Padé approximant [m/n] of e about a0 (numerator deg m, denominator deg n). */
 export function padeApprox(e: SymExpr, x: string, m: number, n: number, a0: number): SymExpr {
   const N = m + n; const c: number[] = []; let term = e; let fact = 1;
