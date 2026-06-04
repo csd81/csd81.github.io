@@ -23,7 +23,7 @@ import { type SymExpr, sN, sV, sAdd, sSub, sMul, sPow, sFn, sNeg, sDiv, simplify
 import {
   det, inv, mldivide, diag, norm, eye,
   qr as qrDecomp, chol as cholFn, luOutputs, jacobiEigSym, svd as svdReal,
-  rankOf, cond as condFn, pinv as pinvFn, orth as orthFn, nullspace, rref as rrefFn, vecnorm as vecnormFn, isSymmetric, cDet,
+  rankOf, cond as condFn, pinv as pinvFn, orth as orthFn, nullspace, rref as rrefFn, vecnorm as vecnormFn, isSymmetric, cDet, svdC as svdCplx,
   generalEig, durandKerner, hess as hessFn, schur as schurFn, expm as expmFn, logm as logmFn, sqrtm as sqrtmFn, ldl as ldlFn, lsqnonneg as lsqnonnegFn,
   balance as balanceFn, rsf2csf as rsf2csfFn, qz as qzFn, ordschur as ordschurFn, ordqz as ordqzFn, schurEig as schurEigFn,
 } from './linalg';
@@ -529,10 +529,16 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(finishComplex(X.rows, X.cols, Rr, Ri));
   },
   polyfit: async (a) => {
-    const x = toArray(m(a[0])); const yv = toArray(m(a[1])); const deg = Math.round(asScalar(a[2]));
-    const M = x.length; const A = zeros(M, deg + 1);
-    for (let i = 0; i < M; i++) for (let j = 0; j <= deg; j++) A.data[i + j * M] = Math.pow(x[i], deg - j);
-    return ret(transpose(mldivide(A, colVec(yv))));
+    const X = m(a[0]), Y = m(a[1]); const deg = Math.round(asScalar(a[2])); const M = X.data.length;
+    const cplx = isComplex(X) || isComplex(Y); const xr = X.data, xi = X.idata ?? new Float64Array(M);
+    const A = zeros(M, deg + 1); if (cplx) A.idata = new Float64Array(M * (deg + 1));
+    for (let i = 0; i < M; i++) { // Vandermonde row: x[i]^(deg-j); build powers via complex multiply
+      const pr: number[] = [], pim: number[] = []; let ar = 1, ai = 0;
+      for (let k = 0; k <= deg; k++) { pr[k] = ar; pim[k] = ai; [ar, ai] = cmul(ar, ai, xr[i], xi[i]); }
+      for (let j = 0; j <= deg; j++) { const k = deg - j; A.data[i + j * M] = pr[k]; if (cplx) A.idata![i + j * M] = pim[k]; }
+    }
+    const yv = cplx ? finishComplex(M, 1, Float64Array.from(Y.data), Float64Array.from(Y.idata ?? new Float64Array(M))) : colVec(toArray(Y));
+    return ret(transpose(mldivide(A, yv)));
   },
   conv: async (a) => { const u = toArray(m(a[0])); const v = toArray(m(a[1])); const w = new Array(Math.max(0, u.length + v.length - 1)).fill(0); for (let i = 0; i < u.length; i++) for (let j = 0; j < v.length; j++) w[i + j] += u[i] * v[j]; return ret(rowVec(w)); },
   polyder: async (a) => { const p = toArray(m(a[0])); const n = p.length - 1; if (n <= 0) return ret(scalar(0)); const d: number[] = []; for (let i = 0; i < n; i++) d.push(p[i] * (n - i)); return ret(rowVec(d)); },
@@ -568,9 +574,13 @@ export const BUILTINS: Record<string, Builtin> = {
   max: async (a, n) => minmax(a, n, (x, y) => x > y || Number.isNaN(y)),
   min: async (a, n) => minmax(a, n, (x, y) => x < y || Number.isNaN(y)),
   norm: async (a) => {
-    const p = a.length >= 2 ? (isMat(a[1]) && (a[1] as Mat).isChar ? 'fro' : asScalar(a[1])) : 2;
-    const pp = p === Infinity ? 'inf' : p;
-    return ret(scalar(norm(m(a[0]), pp as number | 'inf' | 'fro')));
+    let pp: number | 'inf' | 'fro' = 2;
+    if (a.length >= 2) {
+      const a1 = a[1];
+      if (isStr(a1) || (isMat(a1) && (a1 as Mat).isChar)) { const sk = asString(a1).toLowerCase(); pp = sk === 'inf' ? 'inf' : 'fro'; }
+      else { const v = asScalar(a1); pp = v === Infinity ? 'inf' : v; }
+    }
+    return ret(scalar(norm(m(a[0]), pp)));
   },
 
   // shape / construction
@@ -844,7 +854,9 @@ export const BUILTINS: Record<string, Builtin> = {
     return [matmul(transpose(P), L), U]; // [L,U] with A = L*U (psychologically-lower L)
   },
   svd: async (a, n) => {
-    const A = m(a[0]); const { U, s, V } = svdReal(A);
+    const A = m(a[0]);
+    if (isComplex(A)) { const { U, s, V } = svdCplx(A); const k = s.length; if (n >= 3) { const S = zeros(k, k); for (let i = 0; i < k; i++) S.data[i + i * k] = s[i]; return [U, S, V]; } return [colVec(s)]; }
+    const { U, s, V } = svdReal(A);
     if (n >= 3) { const S = zeros(A.rows, A.cols); for (let i = 0; i < Math.min(A.rows, A.cols); i++) S.data[i + i * A.rows] = s[i] ?? 0; return [U, S, V]; }
     return [colVec(s)];
   },

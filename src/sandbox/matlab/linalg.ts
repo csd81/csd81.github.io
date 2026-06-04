@@ -553,19 +553,19 @@ export function diag(a: Mat): Mat {
 
 /** norm(v) — 2-norm for vectors; matrix norms for p∈{1,2,inf,'fro'}. */
 export function norm(a: Mat, p: number | 'inf' | 'fro' = 2): number {
-  const isVec = a.rows === 1 || a.cols === 1;
+  const ai = a.idata; const mag = (i: number) => (ai ? Math.hypot(a.data[i], ai[i]) : Math.abs(a.data[i]));   // element magnitude (complex-aware)
+  const n = a.data.length; const isVec = a.rows === 1 || a.cols === 1;
   if (isVec) {
-    if (p === 1) return a.data.reduce((s, x) => s + Math.abs(x), 0);
-    if (p === 'inf') return a.data.reduce((s, x) => Math.max(s, Math.abs(x)), 0);
-    if (p === 'fro' || p === 2) return Math.hypot(...Array.from(a.data));
-    // general vector p-norm
-    return Math.pow(a.data.reduce((s, x) => s + Math.pow(Math.abs(x), p as number), 0), 1 / (p as number));
+    if (p === 1) { let s = 0; for (let i = 0; i < n; i++) s += mag(i); return s; }
+    if (p === 'inf') { let s = 0; for (let i = 0; i < n; i++) s = Math.max(s, mag(i)); return s; }
+    if (p === 'fro' || p === 2) { let s = 0; for (let i = 0; i < n; i++) s += mag(i) ** 2; return Math.sqrt(s); }
+    let s = 0; for (let i = 0; i < n; i++) s += Math.pow(mag(i), p as number); return Math.pow(s, 1 / (p as number));
   }
-  if (p === 'fro') return Math.hypot(...Array.from(a.data));
-  if (p === 1) { let m = 0; for (let c = 0; c < a.cols; c++) { let s = 0; for (let r = 0; r < a.rows; r++) s += Math.abs(a.data[r + c * a.rows]); m = Math.max(m, s); } return m; }
-  if (p === 'inf') { let m = 0; for (let r = 0; r < a.rows; r++) { let s = 0; for (let c = 0; c < a.cols; c++) s += Math.abs(a.data[r + c * a.rows]); m = Math.max(m, s); } return m; }
+  if (p === 'fro') { let s = 0; for (let i = 0; i < n; i++) s += mag(i) ** 2; return Math.sqrt(s); }
+  if (p === 1) { let m = 0; for (let c = 0; c < a.cols; c++) { let s = 0; for (let r = 0; r < a.rows; r++) s += mag(r + c * a.rows); m = Math.max(m, s); } return m; }
+  if (p === 'inf') { let m = 0; for (let r = 0; r < a.rows; r++) { let s = 0; for (let c = 0; c < a.cols; c++) s += mag(r + c * a.rows); m = Math.max(m, s); } return m; }
   // p === 2 : largest singular value
-  return svd(a).s[0] ?? 0;
+  return (ai ? svdC(a) : svd(a)).s[0] ?? 0;
 }
 
 // ── QR (Householder), Cholesky, LU outputs ─────────────────────────────
@@ -662,6 +662,35 @@ export function isSymmetric(A: Mat, tol = 1e-10): boolean {
 }
 
 /** SVD via the symmetric eigendecomposition of AᵀA. Returns descending singular values. */
+/** Economy SVD of a complex matrix via one-sided (complex) Jacobi: A = U·diag(s)·Vᴴ,
+ *  U is m×k, V is n×k, k=min(m,n); U,V have orthonormal columns and s ≥ 0 descending. */
+export function svdC(A: Mat): { U: Mat; s: number[]; V: Mat } {
+  const mm = A.rows, nn = A.cols;
+  if (mm < nn) { const r = svdC(ctranspose(A)); return { U: r.V, s: r.s, V: r.U }; }   // A = (Aᴴ)ᴴ
+  const br = Float64Array.from(A.data), bi = A.idata ? Float64Array.from(A.idata) : new Float64Array(mm * nn);
+  const vr = new Float64Array(nn * nn), vi = new Float64Array(nn * nn); for (let i = 0; i < nn; i++) vr[i + i * nn] = 1;
+  for (let sweep = 0; sweep < 60; sweep++) {
+    let off = 0;
+    for (let p = 0; p < nn - 1; p++) for (let q = p + 1; q < nn; q++) {
+      let app = 0, aqq = 0, gr = 0, gi = 0;
+      for (let r = 0; r < mm; r++) { const pr = br[r + p * mm], pii = bi[r + p * mm], qr = br[r + q * mm], qi = bi[r + q * mm]; app += pr * pr + pii * pii; aqq += qr * qr + qi * qi; gr += pr * qr + pii * qi; gi += pr * qi - pii * qr; }  // γ = colpᴴ·colq
+      const gabs = Math.hypot(gr, gi); if (gabs < 1e-300) continue; off += gabs;
+      // rotate column q by e^{-iθ} so γ becomes real-positive, then apply a real Jacobi rotation
+      const th = Math.atan2(gi, gr), cph = Math.cos(th), sph = Math.sin(th);
+      for (let r = 0; r < mm; r++) { const qr = br[r + q * mm], qi = bi[r + q * mm]; br[r + q * mm] = qr * cph + qi * sph; bi[r + q * mm] = -qr * sph + qi * cph; }
+      for (let r = 0; r < nn; r++) { const qr = vr[r + q * nn], qi = vi[r + q * nn]; vr[r + q * nn] = qr * cph + qi * sph; vi[r + q * nn] = -qr * sph + qi * cph; }
+      const tau = (app - aqq) / (2 * gabs); const t = Math.sign(tau || 1) / (Math.abs(tau) + Math.sqrt(1 + tau * tau)); const c = 1 / Math.sqrt(1 + t * t), s2 = c * t;
+      for (let r = 0; r < mm; r++) { const pr = br[r + p * mm], pii = bi[r + p * mm], qr = br[r + q * mm], qi = bi[r + q * mm]; br[r + p * mm] = c * pr + s2 * qr; bi[r + p * mm] = c * pii + s2 * qi; br[r + q * mm] = -s2 * pr + c * qr; bi[r + q * mm] = -s2 * pii + c * qi; }
+      for (let r = 0; r < nn; r++) { const pr = vr[r + p * nn], pii = vi[r + p * nn], qr = vr[r + q * nn], qi = vi[r + q * nn]; vr[r + p * nn] = c * pr + s2 * qr; vi[r + p * nn] = c * pii + s2 * qi; vr[r + q * nn] = -s2 * pr + c * qr; vi[r + q * nn] = -s2 * pii + c * qi; }
+    }
+    if (off < 1e-15) break;
+  }
+  const sv: number[] = []; for (let j = 0; j < nn; j++) { let nr = 0; for (let r = 0; r < mm; r++) nr += br[r + j * mm] ** 2 + bi[r + j * mm] ** 2; sv[j] = Math.sqrt(nr); }
+  const order = sv.map((_, j) => j).sort((x, y) => sv[y] - sv[x]);
+  const Ur = new Float64Array(mm * nn), Ui = new Float64Array(mm * nn), Vr = new Float64Array(nn * nn), Vi = new Float64Array(nn * nn); const s: number[] = [];
+  order.forEach((j, k) => { s[k] = sv[j]; const inv = sv[j] > 1e-300 ? 1 / sv[j] : 0; for (let r = 0; r < mm; r++) { Ur[r + k * mm] = br[r + j * mm] * inv; Ui[r + k * mm] = bi[r + j * mm] * inv; } for (let r = 0; r < nn; r++) { Vr[r + k * nn] = vr[r + j * nn]; Vi[r + k * nn] = vi[r + j * nn]; } });
+  return { U: finishComplex(mm, nn, Ur, Ui), s, V: finishComplex(nn, nn, Vr, Vi) };
+}
 export function svd(A: Mat): { U: Mat; s: number[]; V: Mat } {
   const m = A.rows, n = A.cols;
   const AtA = matmul(transpose(A), A); // n×n symmetric PSD
