@@ -63,6 +63,29 @@ const rngNext = (): number => (rngGen ? rngGen() : Math.random());
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
 const ew = (f: (x: number) => number): Builtin => async (a) => ret(map(m(a[0]), f));
 
+/** Factor a univariate polynomial (ascending coeffs) over ℚ into a list of sym factors:
+ *  peel rational roots via synthetic division, leaving any irreducible part as one factor.
+ *  Mirrors MATLAB's `factor(sym)` for the common integer/rational-root cases. */
+function factorPolySym(cAsc: number[], v: string): SymExpr[] {
+  let p = cAsc.slice().reverse();                       // descending coeffs (highest first)
+  const evalP = (x: number) => p.reduce((acc, co) => acc * x + co, 0);
+  const deflate = (r: number) => { const q: number[] = []; let carry = 0; for (let i = 0; i < p.length; i++) { const t = p[i] + carry * r; q.push(t); carry = t; } q.pop(); return q; };
+  const nearRat = (x: number): number | null => { for (let q = 1; q <= 12; q++) { const pn = Math.round(x * q); if (Math.abs(x - pn / q) < 1e-7) return pn / q; } return null; };
+  const factors: SymExpr[] = []; let guard = 0;
+  while (p.length > 2 && guard++ < 64) {
+    const { re, im } = durandKerner(p); const scale = Math.max(1, ...p.map(Math.abs)); let peeled = false;
+    for (let i = 0; i < re.length; i++) {
+      if (Math.abs(im[i]) > 1e-7) continue; const r = nearRat(re[i]); if (r === null) continue;
+      if (Math.abs(evalP(r)) / scale < 1e-6) { factors.push(sAdd(sV(v), sN(-r))); p = deflate(r); peeled = true; break; }
+    }
+    if (!peeled) break;
+  }
+  if (p.length === 2) { const r = nearRat(-p[1] / p[0]); if (r !== null) { factors.push(sAdd(sV(v), sN(-r))); p = [p[0]]; } }
+  if (p.length >= 2) { const deg = p.length - 1; let e: SymExpr = sN(0); for (let i = 0; i < p.length; i++) if (Math.abs(p[i]) > 1e-12) e = sAdd(e, sMul(sN(p[i]), sPow(sV(v), sN(deg - i)))); factors.push(simplifyExpr(e)); }
+  else if (Math.abs(p[0] - 1) > 1e-9) factors.unshift(sN(p[0]));
+  return factors.length ? factors : [sN(cAsc[cAsc.length - 1] ?? 0)];
+}
+
 const prodOf = (a: number[]): number => a.reduce((p, x) => p * x, 1);
 /** First dimension whose size is > 1 (MATLAB's default reduction dim), 1-based. */
 function firstNonSingleton(dims: number[]): number { for (let k = 0; k < dims.length; k++) if (dims[k] > 1) return k + 1; return 1; }
@@ -312,6 +335,14 @@ export const BUILTINS: Record<string, Builtin> = {
     r.isBool = true; return [r];
   },
   factor: async (a) => {
+    if (isSym(a[0])) {
+      const s = a[0] as Sym; const vars = symVarsOf(s);
+      if (vars.length !== 1) return ret(s);            // multivariate / non-poly: leave as is
+      const v = vars[0]; const c = polyCoeffs(s.exprs[0], v);
+      if (c.length < 2) return ret(s);                 // constant
+      const fac = factorPolySym(c, v);
+      return ret(makeSym(1, fac.length, fac));
+    }
     let n = Math.round(asScalar(a[0])); const orig = n; const out: number[] = [];
     for (let d = 2; d * d <= n; d++) while (n % d === 0) { out.push(d); n /= d; }
     if (n > 1) out.push(n);
