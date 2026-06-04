@@ -118,6 +118,20 @@ export const SYM_BUILTINS: Record<string, Builtin> = {
   series: async (a, n, env) => SYM_BUILTINS.taylor(a, n, env),
   dsolve: async (a) => { const ode = symArg(a[0]).exprs; const conds = a.slice(1).filter((c) => isSym(c) || isMat(c)).map((c) => symArg(c).exprs[0]); return ret(makeSym(1, 1, [dsolveSolve(ode, conds)])); },
   piecewise: async (a) => ret(makeSym(1, 1, [simplifyExpr(sFn('piecewise', ...a.map((x) => symArg(x).exprs[0])))])),
+  symfun: async (a) => { const body = symArg(a[0]); const out = makeSym(body.rows, body.cols, body.exprs); out.fnArgs = symNames(a[1]); return ret(out); },
+  symtrue: async () => ret(makeSym(1, 1, [sN(1)])),
+  symfalse: async () => ret(makeSym(1, 1, [sN(0)])),
+  vpasum: async (a) => { const s = symArg(a[0]); const k = isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1]); const lo = Math.round(asScalar(a[2])), hi = Math.round(asScalar(a[3])); let acc = 0; for (let i = lo; i <= hi; i++) acc += symEval(s.exprs[0], new Map([[k, i]])); return ret(scalar(acc)); },
+  vpaintegral: async (a) => {
+    const s = symArg(a[0]); let idx = 1; let v = symVarsOf(s)[0] ?? 'x';
+    if (a.length > 1 && (isSym(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar) || isStr(a[1]))) { v = isSym(a[1]) ? (symVarsOf(a[1])[0] ?? v) : asString(a[1]); idx = 2; }
+    let lo: number, hi: number;
+    if (isMat(a[idx]) && a[idx].kind === 'num' && (a[idx] as Mat).rows * (a[idx] as Mat).cols >= 2) { const r = toArray(a[idx] as Mat); lo = r[0]; hi = r[1]; } else { lo = asScalar(a[idx]); hi = asScalar(a[idx + 1]); }
+    const f = (t: number) => symEval(s.exprs[0], new Map([[v, t]]));   // composite Simpson
+    const N = 2000; const h = (hi - lo) / N; let acc = f(lo) + f(hi);
+    for (let i = 1; i < N; i++) acc += (i % 2 ? 4 : 2) * f(lo + i * h);
+    return ret(scalar(acc * h / 3));
+  },
   matlabFunction: async (a, _n, env) => {
     const s = symArg(a[0]); let vars: string[] | null = null;
     for (let i = 1; i + 1 < a.length; i++) { if ((isStr(a[i]) || (isMat(a[i]) && (a[i] as Mat).isChar)) && asString(a[i]).toLowerCase() === 'vars') { const vv = a[i + 1]; vars = isCell(vv) ? (vv as Cell).items.map((x) => (isSym(x) ? (symVarsOf(x)[0] ?? asString(x)) : asString(x))) : isSym(vv) ? symNames(vv) : [asString(vv)]; } }
