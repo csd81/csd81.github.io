@@ -814,6 +814,49 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   ldl: async (a, n) => { const { L, D } = ldlFn(m(a[0])); return n >= 2 ? [L, D] : [L]; },
   lsqnonneg: async (a) => ret(lsqnonnegFn(m(a[0]), m(a[1]))),
+  lyap: async (a) => { const A = m(a[0]); if (a.length >= 3) return ret(sylvesterSolve(A, m(a[1]), negMat(m(a[2])))); return ret(sylvesterSolve(A, transMat(A), negMat(m(a[1])))); },
+  dlyap: async (a) => ret(dlyapSolve(m(a[0]), m(a[1]))),
+  optimoptions: async (a) => { const f = new Map<string, Value[]>(); for (let i = 1; i + 1 < a.length; i += 2) f.set(asString(a[i]), [a[i + 1]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields: f } as StructV); },
+  linprog: async (a, n) => {
+    const f = toArray(m(a[0]));
+    const mat2 = (i: number) => (a.length > i && isMat(a[i]) && numel(a[i]) > 0 ? matRows(m(a[i])) : null);
+    const vec2 = (i: number) => (a.length > i && isMat(a[i]) && numel(a[i]) > 0 ? toArray(m(a[i])) : null);
+    const r = linprogSolve(f, mat2(1), vec2(2), mat2(3), vec2(4), vec2(5), vec2(6));
+    const x = colVec(r.x);
+    return n >= 3 ? [x, scalar(r.fval), scalar(r.status)] : n >= 2 ? [x, scalar(r.fval)] : [x];
+  },
+  intlinprog: async (a, n) => {
+    const f = toArray(m(a[0])); const intcon = (a.length > 1 && isMat(a[1]) && numel(a[1]) > 0 ? toArray(m(a[1])) : []).map((v) => Math.round(v) - 1);
+    const mat2 = (i: number) => (a.length > i && isMat(a[i]) && numel(a[i]) > 0 ? matRows(m(a[i])) : null);
+    const vec2 = (i: number) => (a.length > i && isMat(a[i]) && numel(a[i]) > 0 ? toArray(m(a[i])) : null);
+    const r = intlinprogSolve(f, intcon, mat2(2), vec2(3), mat2(4), vec2(5), vec2(6), vec2(7));
+    const x = colVec(r.x);
+    return n >= 3 ? [x, scalar(r.fval), scalar(r.status)] : n >= 2 ? [x, scalar(r.fval)] : [x];
+  },
+  lsqnonlin: async (a, n, env) => {
+    const f = handle(a[0], 'lsqnonlin'); const col = m(a[1]).rows !== 1; const x0 = toArray(m(a[1]));
+    const resid = async (x: number[]) => toArray(m((await env.callHandle(f, [col ? colVec(x) : rowVec(x)], 1))[0]));
+    const x = await levMar(resid, x0); const r = await resid(x); const rn = r.reduce((s, v) => s + v * v, 0);
+    const xo = col ? colVec(x) : rowVec(x);
+    return n >= 2 ? [xo, scalar(rn)] : [xo];
+  },
+  lsqcurvefit: async (a, n, env) => {
+    const f = handle(a[0], 'lsqcurvefit'); const col = m(a[1]).rows !== 1; const x0 = toArray(m(a[1])); const xdata = a[2]; const ydata = toArray(m(a[3]));
+    const resid = async (x: number[]) => { const fx = toArray(m((await env.callHandle(f, [col ? colVec(x) : rowVec(x), xdata], 1))[0])); return fx.map((v, i) => v - (ydata[i] ?? 0)); };
+    const x = await levMar(resid, x0); const r = await resid(x); const rn = r.reduce((s, v) => s + v * v, 0);
+    const xo = col ? colVec(x) : rowVec(x);
+    return n >= 2 ? [xo, scalar(rn)] : [xo];
+  },
+  fmincon: async (a, n, env) => {
+    const f = handle(a[0], 'fmincon'); const col = m(a[1]).rows !== 1; const x0 = toArray(m(a[1]));
+    const F = async (x: number[]) => asScalar((await env.callHandle(f, [col ? colVec(x) : rowVec(x)], 1))[0]);
+    const mat2 = (i: number) => (a.length > i && isMat(a[i]) && numel(a[i]) > 0 ? matRows(m(a[i])) : null);
+    const vec2 = (i: number) => (a.length > i && isMat(a[i]) && numel(a[i]) > 0 ? toArray(m(a[i])) : null);
+    const nlc = a.length > 8 && isHandle(a[8]) ? async (x: number[]): Promise<[number[], number[]]> => { const r = await env.callHandle(a[8] as Handle, [col ? colVec(x) : rowVec(x)], 2); return [r[0] && isMat(r[0]) ? toArray(m(r[0])) : [], r[1] && isMat(r[1]) ? toArray(m(r[1])) : []]; } : null;
+    const x = await fminconSolve(F, x0, mat2(2), vec2(3), mat2(4), vec2(5), vec2(6), vec2(7), nlc);
+    const xo = col ? colVec(x) : rowVec(x);
+    return n >= 2 ? [xo, scalar(await F(x))] : [xo];
+  },
   condest: async (a) => { const A = m(a[0]); return ret(scalar(norm(A, 1) * norm(inv(A), 1))); },
   lscov: async (a) => { const A = m(a[0]), b = m(a[1]); if (a.length >= 3) { const W = inv(m(a[2])); const At = transpose(A); return ret(mldivide(matmul(At, matmul(W, A)), matmul(At, matmul(W, b)))); } return ret(mldivide(A, b)); },
   subspace: async (a) => {
@@ -3808,6 +3851,147 @@ function sylvesterSolve(A: Mat, B: Mat, C: Mat): Mat {
   const x = mldivide(K, rhs); const X = zeros(p, q);
   for (let k = 0; k < q; k++) for (let i = 0; i < p; i++) X.data[i + k * p] = x.data[i + k * p];
   return X;
+}
+function transMat(M: Mat): Mat { const T = zeros(M.cols, M.rows); for (let i = 0; i < M.rows; i++) for (let j = 0; j < M.cols; j++) T.data[j + i * M.cols] = M.data[i + j * M.rows]; return T; }
+function negMat(M: Mat): Mat { const N = zeros(M.rows, M.cols); for (let i = 0; i < M.data.length; i++) N.data[i] = -M.data[i]; return N; }
+/** Discrete Lyapunov A·X·Aᵀ − X + Q = 0  ⇔  (A⊗A − I)·vec(X) = −vec(Q). */
+function dlyapSolve(A: Mat, Q: Mat): Mat {
+  const n = A.rows, n2 = n * n; const K = zeros(n2, n2); const rhs = zeros(n2, 1);
+  for (let k = 0; k < n; k++) for (let i = 0; i < n; i++) {
+    const row = i + k * n; rhs.data[row] = -Q.data[i + k * n];
+    for (let q = 0; q < n; q++) for (let p = 0; p < n; p++) K.data[row + (p + q * n) * n2] += A.data[i + p * n] * A.data[k + q * n];
+    K.data[row + row * n2] -= 1;
+  }
+  const x = mldivide(K, rhs); const X = zeros(n, n); for (let i = 0; i < n2; i++) X.data[i] = x.data[i]; return X;
+}
+
+// ── Linear programming: two-phase primal simplex (Bland's rule) on standard form
+//    min cᵀx  s.t.  A x = b, x ≥ 0  (returns status 1 optimal, −2 infeasible, −3 unbounded). ──
+function simplexTwoPhase(A: number[][], b: number[], c: number[]): { x: number[]; status: number } {
+  const mm = A.length; const N = c.length;
+  if (mm === 0) { const x = new Array(N).fill(0); return c.every((v) => v > -1e-12) ? { x, status: 1 } : { x, status: -3 }; }
+  const total = N + mm;
+  const rows: number[][] = A.map((r, i) => { const sgn = b[i] < 0 ? -1 : 1; const row = r.map((v) => sgn * v); for (let a = 0; a < mm; a++) row.push(a === i ? 1 : 0); return row; });
+  const rhs = b.map((v) => Math.abs(v));
+  const basis = Array.from({ length: mm }, (_, i) => N + i);
+  const run = (cost: number[]) => {
+    for (let iter = 0; iter < 8000; iter++) {
+      const cB = basis.map((bi) => cost[bi]);
+      let enter = -1;
+      for (let j = 0; j < total; j++) { let rc = cost[j]; for (let i = 0; i < mm; i++) rc -= cB[i] * rows[i][j]; if (rc < -1e-9) { enter = j; break; } }
+      if (enter < 0) return 'ok';
+      let leave = -1, best = Infinity;
+      for (let i = 0; i < mm; i++) if (rows[i][enter] > 1e-9) { const ratio = rhs[i] / rows[i][enter]; if (ratio < best - 1e-12 || (Math.abs(ratio - best) < 1e-12 && (leave < 0 || basis[i] < basis[leave]))) { best = ratio; leave = i; } }
+      if (leave < 0) return 'unbounded';
+      const piv = rows[leave][enter];
+      for (let j = 0; j < total; j++) rows[leave][j] /= piv; rhs[leave] /= piv;
+      for (let i = 0; i < mm; i++) { if (i === leave) continue; const f = rows[i][enter]; if (f !== 0) { for (let j = 0; j < total; j++) rows[i][j] -= f * rows[leave][j]; rhs[i] -= f * rhs[leave]; } }
+      basis[leave] = enter;
+    }
+    return 'ok';
+  };
+  const c1 = new Array(total).fill(0); for (let a = 0; a < mm; a++) c1[N + a] = 1; run(c1);
+  let p1 = 0; for (let i = 0; i < mm; i++) p1 += c1[basis[i]] * rhs[i];
+  if (p1 > 1e-6) return { x: new Array(N).fill(0), status: -2 };
+  for (let i = 0; i < mm; i++) if (basis[i] >= N) { let pc = -1; for (let j = 0; j < N; j++) if (Math.abs(rows[i][j]) > 1e-9) { pc = j; break; } if (pc >= 0) { const piv = rows[i][pc]; for (let j = 0; j < total; j++) rows[i][j] /= piv; rhs[i] /= piv; for (let k = 0; k < mm; k++) { if (k === i) continue; const f = rows[k][pc]; if (f !== 0) { for (let j = 0; j < total; j++) rows[k][j] -= f * rows[i][j]; rhs[k] -= f * rhs[i]; } } basis[i] = pc; } }
+  const c2 = new Array(total).fill(0); for (let j = 0; j < N; j++) c2[j] = c[j]; for (let a = 0; a < mm; a++) c2[N + a] = 1e9;
+  if (run(c2) === 'unbounded') return { x: new Array(N).fill(0), status: -3 };
+  const x = new Array(N).fill(0); for (let i = 0; i < mm; i++) if (basis[i] < N) x[basis[i]] = rhs[i];
+  return { x, status: 1 };
+}
+/** linprog: min fᵀx  s.t. A·x ≤ b, Aeq·x = beq, lb ≤ x ≤ ub (default bounds ±∞). */
+function linprogSolve(f: number[], Aub: number[][] | null, bub: number[] | null, Aeq: number[][] | null, beq: number[] | null, lb: number[] | null, ub: number[] | null): { x: number[]; fval: number; status: number } {
+  const n = f.length; const lo = (j: number) => (lb && lb[j] !== undefined ? lb[j] : -Infinity); const hi = (j: number) => (ub && ub[j] !== undefined ? ub[j] : Infinity);
+  const contrib: { v: number; c: number }[][] = []; const shift: number[] = []; let nv = 0; const ubRows: { v: number; lim: number }[] = [];
+  for (let j = 0; j < n; j++) {
+    const L = lo(j), H = hi(j);
+    if (L > -Infinity) { contrib[j] = [{ v: nv, c: 1 }]; shift[j] = L; if (H < Infinity) ubRows.push({ v: nv, lim: H - L }); nv++; }
+    else if (H < Infinity) { contrib[j] = [{ v: nv, c: -1 }]; shift[j] = H; nv++; }
+    else { contrib[j] = [{ v: nv, c: 1 }, { v: nv + 1, c: -1 }]; shift[j] = 0; nv += 2; }
+  }
+  const ineq: { row: number[]; rhs: number }[] = [];
+  (Aub ?? []).forEach((rowJ, i) => { const row = new Array(nv).fill(0); let rc = 0; for (let j = 0; j < n; j++) { const aij = rowJ[j] || 0; rc += aij * shift[j]; for (const ct of contrib[j]) row[ct.v] += aij * ct.c; } ineq.push({ row, rhs: (bub![i]) - rc }); });
+  ubRows.forEach((u) => { const row = new Array(nv).fill(0); row[u.v] = 1; ineq.push({ row, rhs: u.lim }); });
+  const eqs: { row: number[]; rhs: number }[] = [];
+  (Aeq ?? []).forEach((rowJ, i) => { const row = new Array(nv).fill(0); let rc = 0; for (let j = 0; j < n; j++) { const aij = rowJ[j] || 0; rc += aij * shift[j]; for (const ct of contrib[j]) row[ct.v] += aij * ct.c; } eqs.push({ row, rhs: (beq![i]) - rc }); });
+  const nslack = ineq.length; const total = nv + nslack; const A: number[][] = []; const b: number[] = [];
+  ineq.forEach((q, si) => { const row = new Array(total).fill(0); for (let k = 0; k < nv; k++) row[k] = q.row[k]; row[nv + si] = 1; A.push(row); b.push(q.rhs); });
+  eqs.forEach((q) => { const row = new Array(total).fill(0); for (let k = 0; k < nv; k++) row[k] = q.row[k]; A.push(row); b.push(q.rhs); });
+  const c = new Array(total).fill(0); for (let j = 0; j < n; j++) for (const ct of contrib[j]) c[ct.v] += f[j] * ct.c;
+  const sol = simplexTwoPhase(A, b, c);
+  if (sol.status < 0) return { x: new Array(n).fill(NaN), fval: NaN, status: sol.status };
+  const x = new Array(n).fill(0); for (let j = 0; j < n; j++) { let v = shift[j]; for (const ct of contrib[j]) v += ct.c * (sol.x[ct.v] || 0); x[j] = v; }
+  let fval = 0; for (let j = 0; j < n; j++) fval += f[j] * x[j];
+  return { x, fval, status: 1 };
+}
+/** intlinprog: branch & bound over linprogSolve on the integer-constrained variables. */
+function intlinprogSolve(f: number[], intcon: number[], Aub: number[][] | null, bub: number[] | null, Aeq: number[][] | null, beq: number[] | null, lb: number[] | null, ub: number[] | null): { x: number[]; fval: number; status: number } {
+  const n = f.length; const baseLb = (lb ?? new Array(n).fill(-Infinity)).slice(); const baseUb = (ub ?? new Array(n).fill(Infinity)).slice();
+  let best: number[] | null = null; let bestVal = Infinity; let guard = 0;
+  const stack: { lb: number[]; ub: number[] }[] = [{ lb: baseLb, ub: baseUb }];
+  while (stack.length && guard++ < 4000) {
+    const node = stack.pop()!; const r = linprogSolve(f, Aub, bub, Aeq, beq, node.lb, node.ub);
+    if (r.status < 0 || r.fval >= bestVal - 1e-9) continue;
+    let frac = -1; for (const j of intcon) if (Math.abs(r.x[j] - Math.round(r.x[j])) > 1e-6) { frac = j; break; }
+    if (frac < 0) { if (r.fval < bestVal) { bestVal = r.fval; best = r.x.map((v, j) => (intcon.includes(j) ? Math.round(v) : v)); } continue; }
+    const fv = r.x[frac];
+    const ubL = node.ub.slice(); ubL[frac] = Math.floor(fv); stack.push({ lb: node.lb.slice(), ub: ubL });
+    const lbH = node.lb.slice(); lbH[frac] = Math.ceil(fv); stack.push({ lb: lbH, ub: node.ub.slice() });
+  }
+  return best ? { x: best, fval: bestVal, status: 1 } : { x: new Array(n).fill(NaN), fval: NaN, status: -2 };
+}
+/** Levenberg–Marquardt least-squares: minimize ‖resid(x)‖². */
+async function levMar(resid: (x: number[]) => Promise<number[]>, x0: number[]): Promise<number[]> {
+  const dot = (a: number[], b: number[]) => a.reduce((s, v, i) => s + v * b[i], 0);
+  let x = x0.slice(); let lambda = 1e-3; let r = await resid(x); let cost = dot(r, r); const n = x.length;
+  for (let it = 0; it < 200; it++) {
+    const mres = r.length; const J: number[][] = Array.from({ length: mres }, () => new Array(n).fill(0));
+    for (let j = 0; j < n; j++) { const h = 1e-7 * Math.max(1, Math.abs(x[j])); const xj = x.slice(); xj[j] += h; const rj = await resid(xj); for (let i = 0; i < mres; i++) J[i][j] = (rj[i] - r[i]) / h; }
+    const JtJ = zeros(n, n); const Jtr = new Array(n).fill(0);
+    for (let i = 0; i < mres; i++) for (let a = 0; a < n; a++) { Jtr[a] += J[i][a] * r[i]; for (let bb = 0; bb < n; bb++) JtJ.data[a + bb * n] += J[i][a] * J[i][bb]; }
+    let solved = false, xnew = x, rnew = r, costnew = cost;
+    for (let tries = 0; tries < 12; tries++) {
+      const Aug = zeros(n, n); for (let a = 0; a < n; a++) for (let bb = 0; bb < n; bb++) Aug.data[a + bb * n] = JtJ.data[a + bb * n] + (a === bb ? lambda * (JtJ.data[a + a * n] || 1) + 1e-12 : 0);
+      const dx = mldivide(Aug, colVec(Jtr.map((v) => -v)));
+      xnew = x.map((v, i) => v + dx.data[i]); rnew = await resid(xnew); costnew = dot(rnew, rnew);
+      if (costnew < cost) { lambda = Math.max(lambda * 0.4, 1e-12); solved = true; break; } else lambda = Math.min(lambda * 4, 1e12);
+    }
+    if (!solved) break; const improve = cost - costnew; x = xnew; r = rnew; cost = costnew; if (improve < 1e-14) break;
+  }
+  return x;
+}
+/** Nelder–Mead for an async scalar objective (used by fmincon's penalty wrapper). */
+async function nmMin(F: (x: number[]) => Promise<number>, x0: number[], maxIter: number): Promise<number[]> {
+  const n = x0.length; if (n === 0) return x0.slice();
+  const simplex = [x0.slice()]; for (let i = 0; i < n; i++) { const p = x0.slice(); p[i] += (p[i] !== 0 ? 0.05 * p[i] : 0.00025); simplex.push(p); }
+  let fv = await Promise.all(simplex.map(F));
+  const add = (p: number[], q: number[], s: number) => p.map((v, i) => v + s * q[i]); const sub = (p: number[], q: number[]) => p.map((v, i) => v - q[i]);
+  for (let iter = 0; iter < maxIter; iter++) {
+    const ord = fv.map((_, i) => i).sort((i, j) => fv[i] - fv[j]); const s2 = ord.map((i) => simplex[i]); const f2 = ord.map((i) => fv[i]);
+    for (let i = 0; i <= n; i++) { simplex[i] = s2[i]; fv[i] = f2[i]; }
+    if (Math.abs(fv[n] - fv[0]) < 1e-12) break;
+    const cen = new Array(n).fill(0); for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) cen[j] += simplex[i][j] / n;
+    const xr = add(cen, sub(cen, simplex[n]), 1); const fr = await F(xr);
+    if (fr < fv[0]) { const xe = add(cen, sub(cen, simplex[n]), 2); const fe = await F(xe); if (fe < fr) { simplex[n] = xe; fv[n] = fe; } else { simplex[n] = xr; fv[n] = fr; } }
+    else if (fr < fv[n - 1]) { simplex[n] = xr; fv[n] = fr; }
+    else { const xc = add(cen, sub(simplex[n], cen), 0.5); const fc = await F(xc); if (fc < fv[n]) { simplex[n] = xc; fv[n] = fc; } else { for (let i = 1; i <= n; i++) { simplex[i] = add(simplex[0], sub(simplex[i], simplex[0]), 0.5); fv[i] = await F(simplex[i]); } } }
+  }
+  let bi = 0; for (let i = 1; i <= n; i++) if (fv[i] < fv[bi]) bi = i; return simplex[bi];
+}
+/** fmincon via a quadratic-penalty wrapper around Nelder–Mead (teaching-grade). */
+async function fminconSolve(F: (x: number[]) => Promise<number>, x0: number[], Aub: number[][] | null, bub: number[] | null, Aeq: number[][] | null, beq: number[] | null, lb: number[] | null, ub: number[] | null, nlc: ((x: number[]) => Promise<[number[], number[]]>) | null): Promise<number[]> {
+  let mu = 10; let x = x0.slice();
+  const pen = async (xx: number[]) => {
+    let p = 0;
+    if (Aub) for (let i = 0; i < Aub.length; i++) { let s = -(bub![i]); for (let j = 0; j < xx.length; j++) s += Aub[i][j] * xx[j]; if (s > 0) p += s * s; }
+    if (Aeq) for (let i = 0; i < Aeq.length; i++) { let s = -(beq![i]); for (let j = 0; j < xx.length; j++) s += Aeq[i][j] * xx[j]; p += s * s; }
+    for (let j = 0; j < xx.length; j++) { if (lb && xx[j] < lb[j]) p += (lb[j] - xx[j]) ** 2; if (ub && xx[j] > ub[j]) p += (xx[j] - ub[j]) ** 2; }
+    if (nlc) { const [c, ceq] = await nlc(xx); for (const ci of c) if (ci > 0) p += ci * ci; for (const e of ceq) p += e * e; }
+    return p;
+  };
+  for (let outer = 0; outer < 14; outer++) { const obj = async (xx: number[]) => (await F(xx)) + mu * (await pen(xx)); x = await nmMin(obj, x, 200 * Math.max(1, x.length)); mu *= 8; }
+  for (let j = 0; j < x.length; j++) { if (lb && x[j] < lb[j]) x[j] = lb[j]; if (ub && x[j] > ub[j]) x[j] = ub[j]; }
+  return x;
 }
 /** Invert a monotone-increasing function on [lo,hi] to value p (bisection). */
 function invMonotone(f: (x: number) => number, p: number, lo: number, hi: number): number {
