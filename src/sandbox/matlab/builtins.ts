@@ -1759,11 +1759,24 @@ export const BUILTINS: Record<string, Builtin> = {
   reordercats: async (a) => { const c = a[0] as Categorical; const order = a.length >= 2 ? (strList(a[1])) : c.categories.slice().sort(); return ret(recodeCategorical(c, order)); },
   mergecats: async (a) => { const c = a[0] as Categorical; const merge = strList(a[1]); const newName = a.length >= 3 ? asString(a[2]) : merge[0]; const cats = [newName, ...c.categories.filter((x) => !merge.includes(x))]; const remap = new Map<number, number>(); c.categories.forEach((x, i) => remap.set(i + 1, merge.includes(x) ? 1 : cats.indexOf(x) + 1)); const codes = Int32Array.from(c.codes, (code) => code > 0 ? remap.get(code)! : 0); return ret(makeCategorical(c.rows, c.cols, codes, cats, c.ordinal)); },
   deval: async (a) => {
-    // deval(sol, xq) | deval(xq, sol) → interpolate the solution
+    // deval(sol, xq) | deval(xq, sol) → evaluate the solution. Uses the C¹ cubic-Hermite
+    // interpolant when node derivatives (sol.yp) are present (bvp4c/ode), else linear.
     const sol = (isStruct(a[0]) ? a[0] : a[1]) as StructV; const xq = toArray(m(isStruct(a[0]) ? a[1] : a[0]));
     const xs = toArray(m(sol.fields.get('x')![0])); const Y = m(sol.fields.get('y')![0]); const neq = Y.rows;
+    const ypF = sol.fields.get('yp'); const Yp = ypF && ypF.length && isMat(ypF[0]) ? (ypF[0] as Mat) : null;
     const out = zeros(neq, xq.length);
-    for (let q = 0; q < xq.length; q++) { const t = xq[q]; let i = 0; while (i < xs.length - 2 && t > xs[i + 1]) i++; const h = xs[i + 1] - xs[i] || 1; const r = (t - xs[i]) / h; for (let k = 0; k < neq; k++) out.data[k + q * neq] = Y.data[k + i * neq] + r * (Y.data[k + (i + 1) * neq] - Y.data[k + i * neq]); }
+    for (let q = 0; q < xq.length; q++) {
+      const t = xq[q]; let i = 0; while (i < xs.length - 2 && t > xs[i + 1]) i++;
+      const h = xs[i + 1] - xs[i] || 1; const s = (t - xs[i]) / h;
+      for (let k = 0; k < neq; k++) {
+        const y0 = Y.data[k + i * neq], y1 = Y.data[k + (i + 1) * neq];
+        if (Yp) {
+          // cubic Hermite basis on [0,1]
+          const h00 = 2 * s ** 3 - 3 * s ** 2 + 1, h10 = s ** 3 - 2 * s ** 2 + s, h01 = -2 * s ** 3 + 3 * s ** 2, h11 = s ** 3 - s ** 2;
+          out.data[k + q * neq] = h00 * y0 + h10 * h * Yp.data[k + i * neq] + h01 * y1 + h11 * h * Yp.data[k + (i + 1) * neq];
+        } else out.data[k + q * neq] = y0 + s * (y1 - y0);
+      }
+    }
     return ret(out);
   },
   pdeval: async (a) => {
@@ -5388,10 +5401,18 @@ async function bvp4cSolve(a: Value[], env: Env): Promise<Value[]> {
   const M = x.length; const neq = Y0.rows; const sz = M * neq;
   const U = new Float64Array(sz); for (let i = 0; i < M; i++) for (let k = 0; k < neq; k++) U[i * neq + k] = Y0.data[k + i * neq];
   const fAt = async (xi: number, y: number[]) => toArray(m((await env.callHandle(ode, [scalar(xi), colVec(y)], 1))[0]));
+  // 4th-order Lobatto IIIa (Simpson) collocation, as in MATLAB's bvp4c: on each
+  // interval the midpoint value comes from the local cubic, and the residual is the
+  // Simpson quadrature of y' = f.
   const residual = async (V: Float64Array) => {
     const F = new Float64Array(sz); const yv = (i: number) => Array.from({ length: neq }, (_, k) => V[i * neq + k]);
     const fs: number[][] = []; for (let i = 0; i < M; i++) fs.push(await fAt(x[i], yv(i)));
-    for (let i = 0; i < M - 1; i++) { const h = x[i + 1] - x[i]; for (let k = 0; k < neq; k++) F[i * neq + k] = V[(i + 1) * neq + k] - V[i * neq + k] - h / 2 * (fs[i][k] + fs[i + 1][k]); }
+    for (let i = 0; i < M - 1; i++) {
+      const h = x[i + 1] - x[i]; const xm = (x[i] + x[i + 1]) / 2;
+      const ym = Array.from({ length: neq }, (_, k) => 0.5 * (V[i * neq + k] + V[(i + 1) * neq + k]) + h / 8 * (fs[i][k] - fs[i + 1][k]));
+      const fm = await fAt(xm, ym);
+      for (let k = 0; k < neq; k++) F[i * neq + k] = V[(i + 1) * neq + k] - V[i * neq + k] - h / 6 * (fs[i][k] + 4 * fm[k] + fs[i + 1][k]);
+    }
     const res = toArray(m((await env.callHandle(bc, [colVec(yv(0)), colVec(yv(M - 1))], 1))[0]));
     for (let k = 0; k < neq; k++) F[(M - 1) * neq + k] = res[k];
     return F;
@@ -5400,10 +5421,12 @@ async function bvp4cSolve(a: Value[], env: Env): Promise<Value[]> {
     const F = await residual(U); let nrm = 0; for (const v of F) nrm += v * v; if (Math.sqrt(nrm) < 1e-10) break;
     const J = zeros(sz, sz);
     for (let j = 0; j < sz; j++) { const Up = U.slice(); const h = 1e-7 * Math.max(1, Math.abs(U[j])); Up[j] += h; const Fp = await residual(Up); for (let i = 0; i < sz; i++) J.data[i + j * sz] = (Fp[i] - F[i]) / h; }
-    const d = mldivide(J, colVec(Array.from(F))); let damp = 1; for (let i = 0; i < sz; i++) U[i] -= damp * d.data[i]; void damp;
+    const d = mldivide(J, colVec(Array.from(F))); for (let i = 0; i < sz; i++) U[i] -= d.data[i];
   }
-  const Yout = zeros(neq, M); for (let i = 0; i < M; i++) for (let k = 0; k < neq; k++) Yout.data[k + i * neq] = U[i * neq + k];
-  return [mkStruct([['solver', str('bvp4c')], ['x', rowVec(x)], ['y', Yout]])];
+  // Store the node derivatives so deval can use the C¹ cubic-Hermite interpolant.
+  const Yout = zeros(neq, M), Ypout = zeros(neq, M);
+  for (let i = 0; i < M; i++) { const yi = Array.from({ length: neq }, (_, k) => U[i * neq + k]); const fi = await fAt(x[i], yi); for (let k = 0; k < neq; k++) { Yout.data[k + i * neq] = yi[k]; Ypout.data[k + i * neq] = fi[k]; } }
+  return [mkStruct([['solver', str('bvp4c')], ['x', rowVec(x)], ['y', Yout], ['yp', Ypout]])];
 }
 /** dde23(ddefun, lags, history, tspan): delay ODEs via fixed-step RK4 with dense interpolation. */
 async function dde23Solve(a: Value[], env: Env): Promise<Value[]> {
