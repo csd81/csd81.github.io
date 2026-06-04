@@ -76,6 +76,9 @@ export function simplifyExpr(e: SymExpr): SymExpr {
         const { coef, base } = splitCoef(term); const k = key(base); const ex = terms.get(k);
         if (ex) ex.coef += coef; else terms.set(k, { coef, base });
       }
+      // Pythagorean identity: c·sin(u)² + c·cos(u)² → c (collapse matched pairs).
+      const trigPow = (b: SymExpr, fn: string): SymExpr | null => (b.t === 'pow' && b.exp.t === 'n' && b.exp.v === 2 && b.base.t === 'fn' && b.base.name === fn ? b.base.args[0] : null);
+      for (const [ks, es] of [...terms]) { const u = trigPow(es.base, 'sin'); if (!u) continue; for (const [kc, ec] of [...terms]) { const v = trigPow(ec.base, 'cos'); if (v && ec.coef === es.coef && key(u) === key(v)) { constSum += es.coef; terms.delete(ks); terms.delete(kc); break; } } }
       const out: SymExpr[] = [];
       for (const { coef, base } of terms.values()) { if (coef === 0) continue; out.push(coef === 1 ? base : sMul(sN(coef), base)); }
       if (constSum !== 0 || out.length === 0) out.push(sN(constSum));

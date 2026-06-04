@@ -1752,7 +1752,12 @@ export const BUILTINS: Record<string, Builtin> = {
     };
     return ret(map(xq, interp));
   },
-  spline: async (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])); if (a.length < 3) return ret(makePP(x, splineCoefs(x, y))); const xq = m(a[2]); return ret(map(xq, (q) => splineEval(x, y, q))); },
+  spline: async (a) => {
+    const x = toArray(m(a[0])), y = toArray(m(a[1])); const C = splineCoefs(x, y); const L = x.length - 1;
+    if (a.length < 3) return ret(makePP(x, C));
+    const at = (q: number) => { let i = 0; while (i < L - 1 && q >= x[i + 1]) i++; const t = q - x[i]; let v = 0; for (let j = 0; j < 4; j++) v = v * t + C.data[i + j * L]; return v; };
+    return ret(map(m(a[2]), at));
+  },
   roots: async (a) => { const { re, im } = durandKerner(toArray(m(a[0]))); return ret(finishComplex(re.length, 1, Float64Array.from(re), Float64Array.from(im))); },
   ode45: async (a, n, env) => odeSolve(a, n, env),
   ode78: async (a, n, env) => odeSolve(a, n, env),
@@ -4293,7 +4298,7 @@ function covMatrix(X: Mat): Mat {
 }
 /** Centred truncated moving window of length k over a vector. */
 function movWindow(A: Mat, k: number, f: (w: number[]) => number): Mat {
-  const v = toArray(A); const n = v.length; const before = Math.floor((k - 1) / 2); const out: number[] = [];
+  const v = toArray(A); const n = v.length; const before = Math.floor(k / 2); const out: number[] = [];   // MATLAB: even windows lean on current+previous
   for (let i = 0; i < n; i++) { const lo = Math.max(0, i - before), hi = Math.min(n - 1, i - before + k - 1); out.push(f(v.slice(lo, hi + 1))); }
   return A.cols === 1 ? colVec(out) : rowVec(out);
 }
@@ -4308,27 +4313,6 @@ function rot90n(A: Mat, kk: number): Mat {
 // ── Numerical-methods helpers ─────────────────────────────────────────────
 function handle(v: Value, name: string): Handle { if (!isHandle(v)) throw new MatError(`${name}: first argument must be a function handle`); return v; }
 async function callScalar(env: Env, f: Handle, x: number): Promise<number> { const r = await env.callHandle(f, [scalar(x)], 1); return r.length && isMat(r[0]) ? asScalar(r[0] as Mat) : NaN; }
-
-/** Natural cubic spline value at q (recomputes second derivatives per call). */
-function splineEval(x: number[], y: number[], q: number): number {
-  const n = x.length; if (n < 2) return y[0] ?? NaN;
-  const h: number[] = []; for (let i = 0; i < n - 1; i++) h.push(x[i + 1] - x[i]);
-  const M = new Array(n).fill(0);
-  if (n > 2) {
-    const lo: number[] = [], di: number[] = [], up: number[] = [], rhs: number[] = [];
-    for (let i = 1; i < n - 1; i++) { lo.push(h[i - 1]); di.push(2 * (h[i - 1] + h[i])); up.push(h[i]); rhs.push(6 * ((y[i + 1] - y[i]) / h[i] - (y[i] - y[i - 1]) / h[i - 1])); }
-    // Thomas algorithm
-    const k = di.length; const cp = [...up], dp = [...rhs];
-    cp[0] /= di[0]; dp[0] /= di[0];
-    for (let i = 1; i < k; i++) { const den = di[i] - lo[i] * cp[i - 1]; cp[i] = up[i] / den; dp[i] = (rhs[i] - lo[i] * dp[i - 1]) / den; }
-    const mm = new Array(k); mm[k - 1] = dp[k - 1]; for (let i = k - 2; i >= 0; i--) mm[i] = dp[i] - cp[i] * mm[i + 1];
-    for (let i = 1; i < n - 1; i++) M[i] = mm[i - 1];
-  }
-  let i = 0; while (i < n - 2 && q > x[i + 1]) i++;
-  const dx = q - x[i], hi = h[i];
-  const aa = y[i], bb = (y[i + 1] - y[i]) / hi - hi * (2 * M[i] + M[i + 1]) / 6, cc = M[i] / 2, dd = (M[i + 1] - M[i]) / (6 * hi);
-  return aa + bb * dx + cc * dx * dx + dd * dx * dx * dx;
-}
 
 // ── Sparse (CSC) helpers + structural algorithms ─────────────────────────
 const asSparse = (v: Value): Sparse => (isSparse(v) ? v : denseToSparse(m(v)));
@@ -5441,15 +5425,17 @@ function ppEval(pp: PP, q: number): number {
 function splineCoefs(x: number[], y: number[]): Mat {
   const n = x.length, L = n - 1;
   const h: number[] = []; for (let i = 0; i < L; i++) h.push(x[i + 1] - x[i]);
-  const M = new Array(n).fill(0);
-  if (n > 2) {
-    const lo: number[] = [], di: number[] = [], up: number[] = [], rhs: number[] = [];
-    for (let i = 1; i < n - 1; i++) { lo.push(h[i - 1]); di.push(2 * (h[i - 1] + h[i])); up.push(h[i]); rhs.push(6 * ((y[i + 1] - y[i]) / h[i] - (y[i] - y[i - 1]) / h[i - 1])); }
-    const kk = di.length; const cp = [...up], dp = [...rhs];
-    cp[0] /= di[0]; dp[0] /= di[0];
-    for (let i = 1; i < kk; i++) { const den = di[i] - lo[i] * cp[i - 1]; cp[i] = up[i] / den; dp[i] = (rhs[i] - lo[i] * dp[i - 1]) / den; }
-    const mm = new Array(kk); mm[kk - 1] = dp[kk - 1]; for (let i = kk - 2; i >= 0; i--) mm[i] = dp[i] - cp[i] * mm[i + 1];
-    for (let i = 1; i < n - 1; i++) M[i] = mm[i - 1];
+  let M = new Array(n).fill(0);
+  if (n >= 3) {
+    // Solve for the second derivatives M with MATLAB's not-a-knot end conditions
+    // (n≥4) — the first/last two pieces share one cubic, so cubics interpolate exactly.
+    const A = zeros(n, n); const rhs = zeros(n, 1);
+    for (let i = 1; i < n - 1; i++) { A.data[i + (i - 1) * n] = h[i - 1]; A.data[i + i * n] = 2 * (h[i - 1] + h[i]); A.data[i + (i + 1) * n] = h[i]; rhs.data[i] = 6 * ((y[i + 1] - y[i]) / h[i] - (y[i] - y[i - 1]) / h[i - 1]); }
+    if (n >= 4) {
+      A.data[0 + 0 * n] = h[1]; A.data[0 + 1 * n] = -(h[0] + h[1]); A.data[0 + 2 * n] = h[0];                            // left not-a-knot
+      A.data[(n - 1) + (n - 3) * n] = h[n - 2]; A.data[(n - 1) + (n - 2) * n] = -(h[n - 3] + h[n - 2]); A.data[(n - 1) + (n - 1) * n] = h[n - 3];   // right not-a-knot
+    } else { A.data[0] = 1; A.data[(n - 1) + (n - 1) * n] = 1; }                                                          // n=3: natural
+    M = toArray(mldivide(A, rhs));
   }
   const C = zeros(L, 4);
   for (let i = 0; i < L; i++) {
