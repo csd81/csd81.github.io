@@ -2647,7 +2647,16 @@ export const BUILTINS: Record<string, Builtin> = {
   },
 
   // strings / conversion
-  num2str: async (a) => ret(str(isScalar(m(a[0])) ? trimNum(asScalar(a[0])) : matToStr(m(a[0])))),
+  num2str: async (a) => {
+    const A = m(a[0]); const hasArg = a.length >= 2 && isMat(a[1]);
+    const fmt = hasArg && (a[1] as Mat).isChar ? asString(a[1]) : null;
+    const prec = hasArg && !(a[1] as Mat).isChar ? Math.round(asScalar(a[1])) : null;
+    const one = (x: number) => (fmt ? sprintf(fmt, [scalar(x)]) : prec !== null ? sprintf(`%.${prec}g`, [scalar(x)]) : trimNum(x));
+    if (isScalar(A)) return ret(str(one(A.data[0])));
+    if (fmt === null && prec === null) return ret(str(matToStr(A)));
+    const rows: string[] = []; for (let r = 0; r < A.rows; r++) { const cells: string[] = []; for (let c = 0; c < A.cols; c++) cells.push(one(A.data[r + c * A.rows])); rows.push(cells.join('  ')); }
+    return ret(str(rows.join('\n')));
+  },
   int2str: async (a) => ret(str(String(Math.round(asScalar(a[0]))))),
   mat2str: async (a) => ret(str(matToStr(m(a[0])))),
   str2num: async (a, _n, env) => ret(await env.evalInput(asString(a[0]))),
@@ -3267,6 +3276,14 @@ function logGamma(x: number): number { return Math.log(Math.abs(gammaFn(x))); }
 /** Error function (Abramowitz & Stegun 7.1.26). */
 function erfFn(x: number): number {
   const s = x < 0 ? -1 : 1; x = Math.abs(x);
+  if (x === 0) return 0;
+  // Maclaurin series (no cancellation for |x|≤2) → full double precision incl. erf(0)=0.
+  if (x <= 2) {
+    let term = x, sum = x;                              // n=0: x^1/0!/1
+    for (let n = 1; n < 200; n++) { term *= -(x * x) / n; const t = term / (2 * n + 1); sum += t; if (Math.abs(t) < 1e-17 * Math.abs(sum)) break; }
+    return s * (2 / Math.sqrt(Math.PI)) * sum;
+  }
+  // |x|>2: Abramowitz–Stegun 7.1.26 (≤1e-7, where erf≈±1 anyway).
   const t = 1 / (1 + 0.3275911 * x);
   const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
   return s * y;
