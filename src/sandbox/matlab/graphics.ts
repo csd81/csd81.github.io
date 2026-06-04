@@ -416,6 +416,12 @@ export class Graphics {
     this.touch();
   }
 
+  /** animatedline / addpoints / clearpoints — a growing line the caller extends point-by-point. */
+  private animLine: Series | null = null;
+  animatedline() { const s: Series = { x: [], y: [], mode: 'lines', color: this.nextColor() }; this.cur().series.push(s); this.animLine = s; this.touch(); }
+  addpoints(x: number[], y: number[]) { if (!this.animLine) this.animatedline(); for (let i = 0; i < x.length; i++) { this.animLine!.x.push(x[i]); this.animLine!.y.push(y[i]); } this.touch(); }
+  clearpoints() { if (this.animLine) { this.animLine.x = []; this.animLine.y = []; this.touch(); } }
+
   setAxesProp(name: string, value: Value) {
     if (value.kind === 'str' && value.rows * value.cols === 1) value = str(value.items[0]);
     const lower = name.toLowerCase();

@@ -3016,6 +3016,48 @@ export const BUILTINS: Record<string, Builtin> = {
   sphere: async (a, n, env) => { const N = a.length && isMat(a[0]) && numel(a[0]) === 1 ? Math.round(asScalar(a[0])) : 20; const { X, Y, Z } = sphereCoords(N); if (n >= 1) return [X, Y, Z].slice(0, Math.max(1, n)); env.graphics.surface([X, Y, Z], 'surf'); return []; },
   cylinder: async (a, n, env) => { const r = a.length && isMat(a[0]) && numel(a[0]) > 1 ? toArray(m(a[0])) : a.length && isMat(a[0]) && numel(a[0]) === 1 && a.length === 1 ? [asScalar(a[0]), asScalar(a[0])] : [1, 1]; const N = a.length >= 2 ? Math.round(asScalar(a[1])) : 20; const { X, Y, Z } = cylinderCoords(r, N); if (n >= 1) return [X, Y, Z].slice(0, Math.max(1, n)); env.graphics.surface([X, Y, Z], 'surf'); return []; },
   ellipsoid: async (a, n, env) => { const [xc, yc, zc, xr, yr, zr] = [0, 1, 2, 3, 4, 5].map((i) => asScalar(a[i])); const N = a.length >= 7 ? Math.round(asScalar(a[6])) : 20; const { X, Y, Z } = sphereCoords(N); const sx = map(X, (v) => v * xr + xc), sy = map(Y, (v) => v * yr + yc), sz = map(Z, (v) => v * zr + zc); if (n >= 1) return [sx, sy, sz].slice(0, Math.max(1, n)); env.graphics.surface([sx, sy, sz], 'surf'); return []; },
+  meshz: async (a, n, env) => { env.graphics.surface(a, 'mesh'); return gret(n); },
+  waterfall: async (a, n, env) => { env.graphics.surface(a, 'mesh'); return gret(n); },
+  ribbon: async (a, n, env) => { env.graphics.surface(a, 'surf'); return gret(n); },
+  comet: async (a, n, env) => { env.graphics.plot(a); return gret(n); },
+  comet3: async (a, n, env) => { env.graphics.line3(a, 'lines'); return gret(n); },
+  lighting: async () => [],   // surface lighting mode — no visual effect in the 2-D renderer
+  camlight: async () => [], material: async () => [], geobasemap: async () => [],
+  geolimits: async (a, n) => n >= 2 && a.length >= 2 ? [m(a[0]), m(a[1])] : [],
+  get: async (a) => {   // get(h) / get(h,'Prop') — minimal: unknown property → empty
+    if (a.length >= 2 && (isMat(a[1]) || isStr(a[1]))) return ret(zeros(0, 0));
+    return ret(mkStruct([['Type', str('line')]]));
+  },
+  feather: async (a, n, env) => { const u = toArray(m(a[0])), v = toArray(m(a[1])); env.graphics.quiver(u.map((_, i) => i + 1), u.map(() => 0), u, v); return gret(n); },
+  geoplot: async (a, n, env) => { const lat = a[0], lon = a[1]; env.graphics.plot([lon, lat, ...a.slice(2)]); return gret(n); },
+  geoscatter: async (a, n, env) => { env.graphics.scatter([a[1], a[0], ...a.slice(2)]); return gret(n); },
+  animatedline: async (a, n, env) => { env.graphics.animatedline(); return gret(n); },
+  addpoints: async (a, _n, env) => { env.graphics.addpoints(toArray(m(a[1])), toArray(m(a[2]))); return []; },
+  clearpoints: async (_a, _n, env) => { env.graphics.clearpoints(); return []; },
+  membrane: async (a, n, env) => {
+    // MathWorks L-shaped-membrane sample data: positive eigenfunction on the unit square
+    // minus its upper-right quadrant (an L). Synthesized — not the exact logo, but a valid surface.
+    const N = a.length >= 2 && isMat(a[1]) ? Math.max(2, Math.round(asScalar(a[1])) * 2 + 1) : 31;
+    const M = zeros(N, N);
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) { const x = c / (N - 1), y = r / (N - 1); M.data[r + c * N] = (x > 0.5 && y > 0.5) ? 0 : Math.sin(Math.PI * x) * Math.sin(Math.PI * y); }
+    if (n >= 1) return ret(M);
+    env.graphics.surface([M], 'surf'); return [];
+  },
+  surfnorm: async (a, n, env) => {
+    const ms = a.filter((x): x is Mat => isMat(x) && !(x as Mat).isChar);
+    let X: Mat, Y: Mat, Z: Mat;
+    if (ms.length >= 3) { X = ms[0]; Y = ms[1]; Z = ms[2]; } else { Z = ms[0]; const [mr, mc] = [Z.rows, Z.cols]; X = zeros(mr, mc); Y = zeros(mr, mc); for (let r = 0; r < mr; r++) for (let c = 0; c < mc; c++) { X.data[r + c * mr] = c + 1; Y.data[r + c * mr] = r + 1; } }
+    const R = Z.rows, C = Z.cols; const zat = (r: number, c: number) => Z.data[r + c * R];
+    const Nx = zeros(R, C), Ny = zeros(R, C), Nz = zeros(R, C);
+    for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) {
+      const dzc = (zat(r, Math.min(c + 1, C - 1)) - zat(r, Math.max(c - 1, 0))) / (c > 0 && c < C - 1 ? 2 : 1);
+      const dzr = (zat(Math.min(r + 1, R - 1), c) - zat(Math.max(r - 1, 0), c)) / (r > 0 && r < R - 1 ? 2 : 1);
+      const nx = -dzc, ny = -dzr, nz = 1; const len = Math.hypot(nx, ny, nz) || 1;
+      Nx.data[r + c * R] = nx / len; Ny.data[r + c * R] = ny / len; Nz.data[r + c * R] = nz / len;
+    }
+    if (n >= 3) return [Nx, Ny, Nz];
+    env.graphics.surface([X, Y, Z], 'surf'); return gret(n);
+  },
   fsurf: async (a, n, env) => { const { X, Y, Z } = await sampleFn2(a, env); env.graphics.surface([X, Y, Z], 'surf'); return gret(n); },
   fmesh: async (a, n, env) => { const { X, Y, Z } = await sampleFn2(a, env); env.graphics.surface([X, Y, Z], 'mesh'); return gret(n); },
   fcontour: async (a, n, env) => { const { X, Y, Z } = await sampleFn2(a, env); env.graphics.surface([X, Y, Z], 'contour'); return gret(n); },
@@ -3043,7 +3085,7 @@ export const BUILTINS: Record<string, Builtin> = {
   // classic sparse-Laplacian demo (Gilbert–Moler–Schreiber)
   numgrid: async (a) => ret(numgridOf(asString(a[0]), Math.round(asScalar(a[1])))),
   delsq: async (a) => ret(delsqOf(m(a[0]))),
-  contour3: async (a, n, env) => { env.graphics.surface(a, 'contour3'); return gret(n); },
+  contour3: async (a, n, env) => { env.graphics.surface(a, 'contour3'); return n >= 2 ? [contourMatrixFor(a), { kind: 'gobj', gtype: 'line' as const }] : gret(n); },
   quiver: async (a, n, env) => {
     let xs: number[], ys: number[], us: number[], vs: number[];
     if (a.length >= 4) { xs = toArray(m(a[0])); ys = toArray(m(a[1])); us = toArray(m(a[2])); vs = toArray(m(a[3])); }
@@ -3145,11 +3187,11 @@ export const BUILTINS: Record<string, Builtin> = {
   rticklabels: async () => [], thetaticklabels: async () => [], rtickangle: async () => [],
   meshc: async (a, n, env) => { env.graphics.surface(a, 'mesh'); return gret(n); },
   surface: async (a, n, env) => { env.graphics.surface(a, 'surf'); return gret(n); },
-  contour: async (a, n, env) => { env.graphics.surface(a, 'contour'); return gret(n); },
-  contourf: async (a, n, env) => { env.graphics.surface(a, 'contour'); return gret(n); },
+  contour: async (a, n, env) => { env.graphics.surface(a, 'contour'); return n >= 2 ? [contourMatrixFor(a), { kind: 'gobj', gtype: 'line' as const }] : gret(n); },
+  contourf: async (a, n, env) => { env.graphics.surface(a, 'contour'); return n >= 2 ? [contourMatrixFor(a), { kind: 'gobj', gtype: 'line' as const }] : gret(n); },
   pcolor: async (a, n, env) => { env.graphics.surface(a, 'contour'); return gret(n); },
   shading: async (a, _n, env) => { env.graphics.command('shading', a); return []; },
-  colorbar: async (a, _n, env) => { env.graphics.command('colorbar', a); return []; },
+  colorbar: async (a, n, env) => { env.graphics.command('colorbar', a); return n >= 1 ? [{ kind: 'gobj', gtype: 'axes' as const }] : []; },
   colormap: async (a, n, env) => { env.graphics.command('colormap', a); return n >= 1 && a.length && isMat(a[0]) && !(a[0] as Mat).isChar ? ret(m(a[0])) : []; },
   // Colormap array generators (n×3 RGB).
   parula: async (a) => ret(cmapGen(a, (t) => lerpAnchors(PARULA, t))),
@@ -4921,6 +4963,20 @@ function marchingSquares(xv: number[], yv: number[], z: number[][], levels: numb
   return out;
 }
 
+/** Build the MATLAB contour matrix C for `[C,h] = contour(...)` from (Z) or (X,Y,Z[,levels]) args. */
+function contourMatrixFor(a: Value[]): Mat {
+  const mats = a.filter((x): x is Mat => isMat(x) && !(x as Mat).isChar);
+  let X: Mat | null = null, Y: Mat | null = null, Z: Mat, lvArg: Mat | null = null;
+  if (mats.length >= 3) { X = mats[0]; Y = mats[1]; Z = mats[2]; lvArg = mats[3] ?? null; }
+  else { Z = mats[0]; lvArg = mats[1] ?? null; }
+  const z = matRows(Z);
+  const firstRow = (M: Mat) => Array.from({ length: M.cols }, (_, c) => M.data[0 + c * M.rows]);
+  const firstCol = (M: Mat) => Array.from({ length: M.rows }, (_, r) => M.data[r + 0 * M.rows]);
+  const xv = X ? (X.rows === 1 || X.cols === 1 ? toArray(X) : firstRow(X)) : ax(Z.cols);
+  const yv = Y ? (Y.rows === 1 || Y.cols === 1 ? toArray(Y) : firstCol(Y)) : ax(Z.rows);
+  const levels = lvArg && numel(lvArg) > 1 ? toArray(lvArg) : null;
+  return marchingSquares(xv, yv, z, levels);
+}
 function colOf(M: Mat, j: number): Mat { return colVec(Array.from({ length: M.rows }, (_, r) => M.data[r + j * M.rows])); }
 const ax = (n: number): number[] => Array.from({ length: n }, (_, i) => i + 1);
 /** Extract a 1-D axis vector from a meshgrid matrix or vector (cf. interp3). */

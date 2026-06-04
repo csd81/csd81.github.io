@@ -92,7 +92,9 @@ export function tokenize(src: string): Token[] {
     if (isDigit(c) || (c === '.' && isDigit(src[i + 1]))) {
       let j = i;
       while (j < n && isDigit(src[j])) j++;
-      if (src[j] === '.') { j++; while (j < n && isDigit(src[j])) j++; }
+      // A `.` here is a decimal point — unless it begins a dotted operator (`.^ .* ./ .\ .'`),
+      // so `2.^x` lexes as `2 .^ x` and `a^2./b` as `a^2 ./ b` (element-wise), matching MATLAB.
+      if (src[j] === '.' && !'^*/\\\''.includes(src[j + 1] ?? '')) { j++; while (j < n && isDigit(src[j])) j++; }
       if (src[j] === 'e' || src[j] === 'E') {
         let k = j + 1;
         if (src[k] === '+' || src[k] === '-') k++;
