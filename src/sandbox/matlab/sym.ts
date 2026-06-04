@@ -199,3 +199,76 @@ function render(e: SymExpr, prec: number): string {
   }
 }
 const trim = (x: number): string => (Number.isInteger(x) ? String(x) : parseFloat(x.toPrecision(6)).toString());
+
+// ── LaTeX rendering (for KaTeX display in the command window / fplot titles) ──
+const GREEK = new Set(['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'iota', 'kappa', 'lambda', 'mu', 'nu', 'xi', 'pi', 'rho', 'sigma', 'tau', 'phi', 'chi', 'psi', 'omega', 'Gamma', 'Delta', 'Theta', 'Lambda', 'Xi', 'Pi', 'Sigma', 'Phi', 'Psi', 'Omega']);
+const TEXFN: Record<string, string> = {
+  sin: '\\sin', cos: '\\cos', tan: '\\tan', cot: '\\cot', sec: '\\sec', csc: '\\csc',
+  sinh: '\\sinh', cosh: '\\cosh', tanh: '\\tanh', coth: '\\coth', exp: '\\exp', log: '\\ln',
+  log10: '\\log_{10}', log2: '\\log_{2}', gamma: '\\Gamma',
+};
+const isNegPow = (p: SymExpr): p is { t: 'pow'; base: SymExpr; exp: { t: 'n'; v: number } } =>
+  p.t === 'pow' && p.exp.t === 'n' && (p.exp as { v: number }).v < 0;
+/** Best small-denominator rational p/q for x (so 0.5 → ½), else [x,1]. */
+function ratOf(x: number): [number, number] {
+  if (Number.isInteger(x)) return [x, 1];
+  const neg = x < 0; let b = Math.abs(x); let h1 = 1, h0 = 0, k1 = 0, k0 = 1;
+  for (let i = 0; i < 24; i++) { const a = Math.floor(b); [h0, h1] = [h1, a * h1 + h0]; [k0, k1] = [k1, a * k1 + k0]; const f = b - a; if (f < 1e-9 || k1 > 100000) break; b = 1 / f; }
+  void h0; void k0;
+  return k1 <= 100000 && Math.abs(h1 / k1 - Math.abs(x)) < 1e-9 ? [neg ? -h1 : h1, k1] : [x, 1];
+}
+
+/** Render an expression as a KaTeX-ready LaTeX string. */
+export function exprToLatex(e: SymExpr): string { return tex(simplifyExpr(e), 0); }
+function tex(e: SymExpr, prec: number): string {
+  switch (e.t) {
+    case 'n': { const s = trim(e.v); return e.v < 0 && prec > 0 ? `\\left(${s}\\right)` : s; }
+    case 'v': return GREEK.has(e.name) ? `\\${e.name}` : e.name.length > 1 ? `\\mathrm{${e.name}}` : e.name;
+    case 'fn': {
+      if (e.name === 'sqrt') return `\\sqrt{${tex(e.args[0], 0)}}`;
+      if (e.name === 'abs') return `\\left|${tex(e.args[0], 0)}\\right|`;
+      const args = e.args.map((a) => tex(a, 0)).join(', ');
+      const f = TEXFN[e.name];
+      return f ? `${f}\\!\\left(${args}\\right)` : `\\operatorname{${e.name}}\\!\\left(${args}\\right)`;
+    }
+    case 'pow': {
+      const { base, exp } = e;
+      if (exp.t === 'n') {
+        const ev = (exp as { v: number }).v;
+        if (ev === 1) return tex(base, prec);
+        if (ev === 0) return '1';
+        if (ev === 0.5) return `\\sqrt{${tex(base, 0)}}`;
+        if (ev < 0) return `\\frac{1}{${ev === -1 ? tex(base, 2) : `${tex(base, 3)}^{${trim(-ev)}}`}}`;
+      }
+      return `${tex(base, 3)}^{${tex(exp, 0)}}`;
+    }
+    case 'add': {
+      let s = '';
+      e.args.forEach((a, i) => {
+        const neg = a.t === 'n' ? a.v < 0 : splitCoef(a).coef < 0;
+        const r = tex(neg ? simplifyExpr(negate(a)) : a, 1);
+        s += i === 0 ? (neg ? `-${r}` : r) : (neg ? ` - ${r}` : ` + ${r}`);
+      });
+      return prec > 1 ? `\\left(${s}\\right)` : s;
+    }
+    case 'mul': {
+      const { coef, base } = splitCoef(e);
+      const parts = base.t === 'mul' ? base.args : [base];
+      const num: string[] = [], den: string[] = [];
+      for (const p of parts) { if (isNegPow(p)) den.push(tex(sPow(p.base, sN(-p.exp.v)), 2)); else num.push(tex(p, 2)); }
+      const [cp0, cq] = ratOf(coef); const neg = cp0 < 0; const cp = Math.abs(cp0);
+      if (cq !== 1) den.unshift(String(cq));
+      const numTok = cp === 1 && num.length ? num : [trim(cp), ...num];
+      const numStr = numTok.join(' '); const denStr = den.join(' ');
+      let body = denStr ? `\\frac{${numStr}}{${denStr}}` : numStr;
+      if (neg) body = `-${body}`;
+      return prec > 2 && /[ +\-]|\\frac/.test(body) ? `\\left(${body}\\right)` : body;
+    }
+  }
+}
+/** Negate a term (number or coef·base), for signed display in sums. */
+function negate(e: SymExpr): SymExpr {
+  if (e.t === 'n') return sN(-e.v);
+  const { coef, base } = splitCoef(e);
+  return coef === -1 ? base : sMul(sN(-coef), base);
+}

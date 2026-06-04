@@ -1,6 +1,11 @@
 /** Display formatting (`format short`) and the `fprintf`/`sprintf` printf engine. */
 import { type Mat, type Value, isMat, isHandle, isComplex, numel, isScalar, asString } from './values';
-import { exprToStr } from './sym';
+import { exprToStr, exprToLatex } from './sym';
+
+/** Sentinel pair wrapping a LaTeX fragment in the output stream; the command
+ *  window renders the enclosed text with KaTeX (plain text everywhere else). */
+export const TEX_OPEN = '';
+export const TEX_CLOSE = '';
 
 /** Format a complex scalar as `a + bi` / `a - bi`. */
 function fmtC(re: number, im: number): string {
@@ -122,7 +127,7 @@ export function displayValue(name: string, v: Value): string {
   if (v.kind === 'temporal') return `${name} =\n\n${temporalLines(v).join('\n')}\n`;
   if (v.kind === 'table') return `${name} =\n\n  ${v.nrows}×${v.vars.length} ${v.isTimetable ? 'timetable' : 'table'}\n\n${tableLines(v).join('\n')}\n`;
   if (v.kind === 'categorical') return `${name} =\n\n${categoricalLines(v).join('\n')}\n`;
-  if (v.kind === 'sym') return `${name} =\n\n${symLines(v).join('\n')}\n`;
+  if (v.kind === 'sym') return `${name} =\n\n${symTexLines(v).join('\n')}\n`;
   if (v.kind === 'num' && v.nd) return `${name} =\n\n${ndLines(v).join('\n')}\n`;
   if (v.kind === 'gobj') return `${name} =\n\n  <${v.gtype} handle>\n`;
   if (isHandle(v)) return `${name} =\n\n    @${v.name ?? 'anonymous function'}\n`;
@@ -211,6 +216,15 @@ function symLines(v: { rows: number; cols: number; exprs: import('./sym').SymExp
   if (v.rows * v.cols === 1) return ['    ' + exprToStr(v.exprs[0])];
   const cells: string[][] = []; for (let r = 0; r < v.rows; r++) { const row: string[] = []; for (let c = 0; c < v.cols; c++) row.push(exprToStr(v.exprs[r + c * v.rows])); cells.push(row); }
   return cells.map((row) => '    [ ' + row.join(', ') + ' ]');
+}
+
+/** KaTeX-wrapped display of a symbolic value (a scalar inline, a matrix as a bmatrix). */
+export function symTexLines(v: { rows: number; cols: number; exprs: import('./sym').SymExpr[] }): string[] {
+  if (v.rows * v.cols === 0) return ['    [ ]'];
+  if (v.rows * v.cols === 1) return ['    ' + TEX_OPEN + exprToLatex(v.exprs[0]) + TEX_CLOSE];
+  const rows: string[] = [];
+  for (let r = 0; r < v.rows; r++) { const row: string[] = []; for (let c = 0; c < v.cols; c++) row.push(exprToLatex(v.exprs[r + c * v.rows])); rows.push(row.join(' & ')); }
+  return ['    ' + TEX_OPEN + `\\begin{bmatrix}${rows.join(' \\\\ ')}\\end{bmatrix}` + TEX_CLOSE];
 }
 
 /** Column display of a categorical array (one label per row). */

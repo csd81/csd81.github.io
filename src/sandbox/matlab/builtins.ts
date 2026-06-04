@@ -26,7 +26,7 @@ import {
   generalEig, durandKerner, hess as hessFn, schur as schurFn, expm as expmFn, logm as logmFn, sqrtm as sqrtmFn, ldl as ldlFn, lsqnonneg as lsqnonnegFn,
   balance as balanceFn, rsf2csf as rsf2csfFn, qz as qzFn, ordschur as ordschurFn, schurEig as schurEigFn,
 } from './linalg';
-import { dispValue, sprintf } from './format';
+import { dispValue, sprintf, symTexLines } from './format';
 import type { Graphics } from './graphics';
 import {
   polyCoeffs, numDen, symDet, symInv, symCharpolyCoeffs, symArg, symToExpr, symVarsOf,
@@ -2370,8 +2370,8 @@ export const BUILTINS: Record<string, Builtin> = {
   all: async (a) => { const A = m(a[0]); if (A.rows === 1 || A.cols === 1) return ret(scalar(toArray(A).every((x) => x !== 0) ? 1 : 0)); return ret(reduce(A, 1, 1, (s, x) => (s && x !== 0 ? 1 : 0))); },
 
   // I/O
-  disp: async (a, _n, env) => { env.output(dispValue(a[0]) + '\n'); return []; },
-  display: async (a, _n, env) => { env.output(dispValue(a[0]) + '\n'); return []; },
+  disp: async (a, _n, env) => { env.output((isSym(a[0]) ? symTexLines(a[0] as Sym).join('\n') : dispValue(a[0])) + '\n'); return []; },
+  display: async (a, _n, env) => { env.output((isSym(a[0]) ? symTexLines(a[0] as Sym).join('\n') : dispValue(a[0])) + '\n'); return []; },
   fprintf: async (a, _n, env) => {
     let fmtIdx = 0;
     if (isMat(a[0]) && !(a[0] as Mat).isChar) fmtIdx = 1; // leading fid (1=stdout, 2=stderr)
@@ -2416,7 +2416,9 @@ export const BUILTINS: Record<string, Builtin> = {
   // graphics
   plot: async (a, _n, env) => { if (a.length && isGraph(a[0])) { plotGraph(env, a[0]); return []; } if (a.length && isGeom(a[0])) { plotGeom(env, a[0]); return []; } env.graphics.plot(a); return []; },
   fplot: async (a, _n, env) => {
-    const f = a[0];
+    let label: string | undefined;
+    let f = a[0];
+    if (isSym(f)) { label = exprToStr((f as Sym).exprs[0]); f = await symToFn(f as Sym, env); }
     if (!isHandle(f)) throw new MatError('fplot: expected a function handle');
     let lo = -5, hi = 5;
     if (a.length >= 2 && isMat(a[1]) && numel(a[1]) >= 2) { const rg = toArray(a[1] as Mat); lo = rg[0]; hi = rg[1]; }
@@ -2427,6 +2429,7 @@ export const BUILTINS: Record<string, Builtin> = {
       xs.push(x); ys.push(r.length && isMat(r[0]) ? asScalar(r[0]) : NaN);
     }
     env.graphics.addSeries(xs, ys);
+    if (label) env.graphics.command('title', [str(label)]);
     return [];
   },
   hold: async (a, _n, env) => { env.graphics.command('hold', a); return []; },
@@ -3431,7 +3434,7 @@ function cylinderCoords(r: number[], n: number): { X: Mat; Y: Mat; Z: Mat } {
 }
 /** Sample f(x,y) over a grid (fsurf/fmesh/fcontour). Default domain [-5,5]². */
 async function sampleFn2(a: Value[], env: Env): Promise<{ X: Mat; Y: Mat; Z: Mat }> {
-  const f = handle(a[0], 'fsurf');
+  const f = isSym(a[0]) ? await symToFn(a[0] as Sym, env) : handle(a[0], 'fsurf');
   let ax = -5, bx = 5, ay = -5, by = 5;
   if (a.length >= 2 && isMat(a[1])) { const v = toArray(a[1] as Mat); if (v.length === 2) { ax = v[0]; bx = v[1]; ay = v[0]; by = v[1]; } else if (v.length >= 4) { ax = v[0]; bx = v[1]; ay = v[2]; by = v[3]; } }
   const np = 41; const m1 = np;
@@ -4029,7 +4032,14 @@ function bary(ax: number, ay: number, bx: number, by: number, cx: number, cy: nu
 }
 
 /** ez*-plotter argument → function handle (handle as-is, or build an anon from a string expr). */
-async function ezFn(v: Value, env: Env, vars: string): Promise<Value> { return isHandle(v) ? v : env.evalInput(`@(${vars}) ${asString(v)}`); }
+async function ezFn(v: Value, env: Env, vars: string): Promise<Value> { return isHandle(v) || isSym(v) ? v : env.evalInput(`@(${vars}) ${asString(v)}`); }
+/** Turn a scalar `sym` into a callable handle by vectorising its operators
+ *  (`^ * /` → `.^ .* ./`) and binding its free variables. */
+async function symToFn(s: Sym, env: Env): Promise<Handle> {
+  const vs = symVars(s.exprs[0]); const args = vs.length ? vs : ['x'];
+  const body = exprToStr(s.exprs[0]).replace(/\^/g, '.^').replace(/\*/g, '.*').replace(/\//g, './');
+  return (await env.evalInput(`@(${args.join(',')}) ${body}`)) as Handle;
+}
 /** symvar-like: the free variables of an expression (identifiers not followed by '(' and
  *  not builtins/constants), alphabetical. */
 function guessVars(expr: string): string[] {

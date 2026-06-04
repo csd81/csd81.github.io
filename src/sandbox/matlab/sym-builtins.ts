@@ -13,8 +13,9 @@ import {
 } from './values';
 import {
   type SymExpr, sN, sV, sAdd, sNeg, sMul, sPow, sFn,
-  simplifyExpr, diffExpr, subsExpr, evalExpr as symEval, exprToStr, symVars,
+  simplifyExpr, diffExpr, subsExpr, evalExpr as symEval, exprToStr, exprToLatex, symVars,
 } from './sym';
+import { symTexLines } from './format';
 import {
   symArg, symToExpr, symVarsOf, symNames, transformVars, integrate, limitAt,
   solveExpr, expandExpr, polyCoeffs, numDen, parseSym,
@@ -61,8 +62,8 @@ export const SYM_BUILTINS: Record<string, Builtin> = {
   expand: async (a) => { const s = symArg(a[0]); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => simplifyExpr(expandExpr(e))))); },
   subs: async (a) => { const s = symArg(a[0]); const vn = a.length >= 3 ? (isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1])) : (symVarsOf(s)[0] ?? 'x'); const repl = symToExpr(a[a.length - 1]); const exprs = s.exprs.map((e) => simplifyExpr(subsExpr(e, vn, repl))); const out = makeSym(s.rows, s.cols, exprs); if (out.exprs.every((e) => symVars(e).length === 0)) { const M = zeros(s.rows, s.cols); out.exprs.forEach((e, i) => { M.data[i] = symEval(e, new Map()); }); return ret(M); } return ret(out); },
   vpa: async (a) => { const s = symArg(a[0]); const M = zeros(s.rows, s.cols); let allNum = true; s.exprs.forEach((e, i) => { const v = symEval(e, new Map()); M.data[i] = v; if (!Number.isFinite(v)) allNum = false; }); return ret(allNum ? M : a[0]); },
-  latex: async (a) => ret(str(symArg(a[0]).exprs.map(exprToStr).join(', '))),
-  pretty: async (a, _n, env) => { env.output(symArg(a[0]).exprs.map(exprToStr).join('\n') + '\n'); return []; },
+  latex: async (a) => ret(str(symArg(a[0]).exprs.map(exprToLatex).join(', '))),
+  pretty: async (a, _n, env) => { env.output(symTexLines(symArg(a[0])).join('\n') + '\n'); return []; },
   isAlways: async (a) => { const s = symArg(a[0]); const o = zeros(s.rows, s.cols); o.isBool = true; s.exprs.forEach((e, i) => { o.data[i] = Math.abs(symEval(e, new Map())) < 1e-12 ? 1 : 0; }); return ret(o); },
   potential: async (a) => { const F = symArg(a[0]).exprs; const v = symNames(a[1]); return ret(makeSym(1, 1, [simplifyExpr(integrate(F[0], v[0]))])); },
   coeffs: async (a, n) => { const s = symArg(a[0]); const v = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar) || isSym(a[1])) ? (isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1])) : (symVarsOf(s)[0] ?? 'x'); const c = polyCoeffs(s.exprs[0], v); const nz = c.map((cc, i) => [cc, i] as [number, number]).filter(([cc]) => Math.abs(cc) > 1e-12); return n >= 2 ? [makeSym(1, nz.length, nz.map(([cc]) => sN(cc))), makeSym(1, nz.length, nz.map(([, i]) => i === 0 ? sN(1) : sPow(sV(v), sN(i))))] : [makeSym(1, nz.length, nz.map(([cc]) => sN(cc)))]; },
