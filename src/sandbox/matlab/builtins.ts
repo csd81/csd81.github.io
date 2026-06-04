@@ -24,7 +24,7 @@ import {
   qr as qrDecomp, chol as cholFn, luOutputs, jacobiEigSym, svd as svdReal,
   rankOf, cond as condFn, pinv as pinvFn, orth as orthFn, nullspace, rref as rrefFn, vecnorm as vecnormFn, isSymmetric, cDet,
   generalEig, durandKerner, hess as hessFn, schur as schurFn, expm as expmFn, logm as logmFn, sqrtm as sqrtmFn, ldl as ldlFn, lsqnonneg as lsqnonnegFn,
-  balance as balanceFn, rsf2csf as rsf2csfFn, qz as qzFn, ordschur as ordschurFn, schurEig as schurEigFn,
+  balance as balanceFn, rsf2csf as rsf2csfFn, qz as qzFn, ordschur as ordschurFn, ordqz as ordqzFn, schurEig as schurEigFn,
 } from './linalg';
 import { dispValue, sprintf, symTexLines } from './format';
 import type { Graphics } from './graphics';
@@ -758,7 +758,18 @@ export const BUILTINS: Record<string, Builtin> = {
     const ndims = [d0, 1, ...rest];
     return ret(rest.length ? makeND(ndims, re, { idata: anyC ? im : null }) : (anyC ? { kind: 'num', rows: d0, cols: np, data: re, idata: im } : mat(d0, np, re)));
   },
-  ordqz: async (a, n) => { const AA = m(a[0]), BB = m(a[1]), Q = m(a[2]), Z = m(a[3]); return n >= 4 ? [AA, BB, Q, Z] : n >= 2 ? [AA, BB] : [AA]; },
+  ordqz: async (a, n) => {
+    const AA0 = m(a[0]), BB0 = m(a[1]), Q0 = m(a[2]), Z0 = m(a[3]); const N = AA0.rows;
+    const lam = (i: number): number => { const aii = AA0.data[i + i * N], bii = BB0.data[i + i * N]; return bii !== 0 ? aii / bii : (aii >= 0 ? Infinity : -Infinity); };
+    const selArg = a[4]; let sel: boolean[];
+    if (selArg && (isStr(selArg) || (isMat(selArg) && (selArg as Mat).isChar))) {
+      const kw = asString(selArg).toLowerCase();
+      sel = Array.from({ length: N }, (_, i) => { const l = lam(i); return kw === 'lhp' ? l < 0 : kw === 'rhp' ? l > 0 : kw === 'udi' ? Math.abs(l) < 1 : kw === 'udo' ? Math.abs(l) > 1 : false; });
+    } else if (selArg && isMat(selArg)) { const sv = toArray(selArg as Mat); sel = Array.from({ length: N }, (_, i) => !!sv[i]); }
+    else sel = new Array(N).fill(false);
+    const { AA, BB, Q, Z } = ordqzFn(AA0, BB0, Q0, Z0, sel);
+    return n >= 4 ? [AA, BB, Q, Z] : n >= 2 ? [AA, BB] : [AA];
+  },
   gsvd: async (a) => { const A = m(a[0]), B = m(a[1]); const ata = matmul(transpose(A), A), btb = matmul(transpose(B), B); const { values } = jacobiEigSym(mldivide(btb, ata)); return ret(colVec(values.map((v) => Math.sqrt(Math.max(0, v))).sort((x, y) => x - y))); },
   svdsketch: async (a, n) => { const A = m(a[0]); const { U, s, V } = svdReal(A); const tol = a.length >= 2 ? asScalar(a[1]) : 1e-3; const smax = s[0] ?? 0; const k = Math.max(1, s.filter((x) => x > tol * smax).length); const Uk = subcols(U, k), Vk = subcols(V, k); const S = zeros(k, k); for (let i = 0; i < k; i++) S.data[i + i * k] = s[i]; return n >= 3 ? [Uk, S, Vk] : [colVec(s.slice(0, k))]; },
   padecoef: async (a, n) => { const T = asScalar(a[0]); const N = a.length >= 2 ? Math.round(asScalar(a[1])) : 1; const c: number[] = []; for (let k = 0; k <= N; k++) c.push(factorialN(2 * N - k) * factorialN(N) / (factorialN(2 * N) * factorialN(k) * factorialN(N - k))); const num: number[] = [], den: number[] = []; for (let k = 0; k <= N; k++) { num[N - k] = c[k] * Math.pow(-T, k); den[N - k] = c[k] * Math.pow(T, k); } return n >= 2 ? [rowVec(num), rowVec(den)] : [rowVec(num)]; },
@@ -5397,34 +5408,80 @@ async function ode15iSolve(a: Value[], nargout: number, env: Env): Promise<Value
 }
 async function bvp4cSolve(a: Value[], env: Env): Promise<Value[]> {
   const ode = handle(a[0], 'bvp4c'), bc = handle(a[1], 'bvp4c'); const init = a[2] as StructV;
-  const x = toArray(m(init.fields.get('x')![0])); const Y0 = m(init.fields.get('y')![0]);
-  const M = x.length; const neq = Y0.rows; const sz = M * neq;
-  const U = new Float64Array(sz); for (let i = 0; i < M; i++) for (let k = 0; k < neq; k++) U[i * neq + k] = Y0.data[k + i * neq];
+  const opts = a.length >= 4 && isStruct(a[3]) ? (a[3] as StructV) : null;
+  const optNum = (k: string, d: number): number => { const v = opts?.fields.get(k); return v && v.length && isMat(v[0]) ? asScalar(v[0]) : d; };
+  const reltol = optNum('RelTol', 1e-3); const Nmax = Math.max(10, optNum('NMax', 2000));
+  let x = toArray(m(init.fields.get('x')![0])); const Y0 = m(init.fields.get('y')![0]); const neq = Y0.rows;
+  let U: Float64Array = new Float64Array(x.length * neq); for (let i = 0; i < x.length; i++) for (let k = 0; k < neq; k++) U[i * neq + k] = Y0.data[k + i * neq];
   const fAt = async (xi: number, y: number[]) => toArray(m((await env.callHandle(ode, [scalar(xi), colVec(y)], 1))[0]));
-  // 4th-order Lobatto IIIa (Simpson) collocation, as in MATLAB's bvp4c: on each
-  // interval the midpoint value comes from the local cubic, and the residual is the
-  // Simpson quadrature of y' = f.
-  const residual = async (V: Float64Array) => {
-    const F = new Float64Array(sz); const yv = (i: number) => Array.from({ length: neq }, (_, k) => V[i * neq + k]);
-    const fs: number[][] = []; for (let i = 0; i < M; i++) fs.push(await fAt(x[i], yv(i)));
-    for (let i = 0; i < M - 1; i++) {
-      const h = x[i + 1] - x[i]; const xm = (x[i] + x[i + 1]) / 2;
-      const ym = Array.from({ length: neq }, (_, k) => 0.5 * (V[i * neq + k] + V[(i + 1) * neq + k]) + h / 8 * (fs[i][k] - fs[i + 1][k]));
-      const fm = await fAt(xm, ym);
-      for (let k = 0; k < neq; k++) F[i * neq + k] = V[(i + 1) * neq + k] - V[i * neq + k] - h / 6 * (fs[i][k] + 4 * fm[k] + fs[i + 1][k]);
+
+  // 4th-order Lobatto IIIa (Simpson) collocation Newton solve on a fixed mesh `xm`.
+  const newton = async (xm: number[], V0: Float64Array): Promise<Float64Array> => {
+    const M = xm.length; const sz = M * neq; const V = V0.slice();
+    const residual = async (W: Float64Array) => {
+      const F = new Float64Array(sz); const yv = (i: number) => Array.from({ length: neq }, (_, k) => W[i * neq + k]);
+      const fs: number[][] = []; for (let i = 0; i < M; i++) fs.push(await fAt(xm[i], yv(i)));
+      for (let i = 0; i < M - 1; i++) {
+        const h = xm[i + 1] - xm[i]; const xc = (xm[i] + xm[i + 1]) / 2;
+        const ym = Array.from({ length: neq }, (_, k) => 0.5 * (W[i * neq + k] + W[(i + 1) * neq + k]) + h / 8 * (fs[i][k] - fs[i + 1][k]));
+        const fm = await fAt(xc, ym);
+        for (let k = 0; k < neq; k++) F[i * neq + k] = W[(i + 1) * neq + k] - W[i * neq + k] - h / 6 * (fs[i][k] + 4 * fm[k] + fs[i + 1][k]);
+      }
+      const res = toArray(m((await env.callHandle(bc, [colVec(yv(0)), colVec(yv(M - 1))], 1))[0]));
+      for (let k = 0; k < neq; k++) F[(M - 1) * neq + k] = res[k];
+      return F;
+    };
+    for (let it = 0; it < 60; it++) {
+      const F = await residual(V); let nrm = 0; for (const v of F) nrm += v * v; if (Math.sqrt(nrm) < 1e-10) break;
+      const J = zeros(sz, sz);
+      for (let j = 0; j < sz; j++) { const Vp = V.slice(); const h = 1e-7 * Math.max(1, Math.abs(V[j])); Vp[j] += h; const Fp = await residual(Vp); for (let i = 0; i < sz; i++) J.data[i + j * sz] = (Fp[i] - F[i]) / h; }
+      const d = mldivide(J, colVec(Array.from(F))); for (let i = 0; i < sz; i++) V[i] -= d.data[i];
     }
-    const res = toArray(m((await env.callHandle(bc, [colVec(yv(0)), colVec(yv(M - 1))], 1))[0]));
-    for (let k = 0; k < neq; k++) F[(M - 1) * neq + k] = res[k];
-    return F;
+    return V;
   };
-  for (let it = 0; it < 60; it++) {
-    const F = await residual(U); let nrm = 0; for (const v of F) nrm += v * v; if (Math.sqrt(nrm) < 1e-10) break;
-    const J = zeros(sz, sz);
-    for (let j = 0; j < sz; j++) { const Up = U.slice(); const h = 1e-7 * Math.max(1, Math.abs(U[j])); Up[j] += h; const Fp = await residual(Up); for (let i = 0; i < sz; i++) J.data[i + j * sz] = (Fp[i] - F[i]) / h; }
-    const d = mldivide(J, colVec(Array.from(F))); for (let i = 0; i < sz; i++) U[i] -= d.data[i];
+  // Cubic-Hermite value of the current solution at xq (uses node derivatives fs).
+  const hermite = (xm: number[], V: Float64Array, fs: number[][], xq: number): number[] => {
+    let i = 0; while (i < xm.length - 2 && xq > xm[i + 1]) i++;
+    const h = xm[i + 1] - xm[i] || 1; const s = (xq - xm[i]) / h;
+    const h00 = 2 * s ** 3 - 3 * s ** 2 + 1, h10 = s ** 3 - 2 * s ** 2 + s, h01 = -2 * s ** 3 + 3 * s ** 2, h11 = s ** 3 - s ** 2;
+    return Array.from({ length: neq }, (_, k) => h00 * V[i * neq + k] + h10 * h * fs[i][k] + h01 * V[(i + 1) * neq + k] + h11 * h * fs[(i + 1)][k]);
+  };
+
+  // Adaptive loop: solve, estimate per-interval defect via the cubic interpolant, bisect
+  // intervals whose scaled defect exceeds RelTol, re-interpolate as the next guess.
+  for (let pass = 0; pass < 12; pass++) {
+    U = await newton(x, U);
+    const fs: number[][] = []; for (let i = 0; i < x.length; i++) fs.push(await fAt(x[i], Array.from({ length: neq }, (_, k) => U[i * neq + k])));
+    if (x.length * 2 - 1 > Nmax) break;
+    const flag: boolean[] = new Array(x.length - 1).fill(false); let any = false;
+    // Sample the collocation defect r = S' − f(x,S) at the 2-point Gauss nodes (NOT the
+    // midpoint — Simpson collocation forces the defect to zero there by construction).
+    const g = 1 / (2 * Math.sqrt(3)); const SS = [0.5 - g, 0.5 + g];
+    for (let i = 0; i < x.length - 1; i++) {
+      const h = x[i + 1] - x[i];
+      for (const s of SS) {
+        const h00 = 2 * s ** 3 - 3 * s ** 2 + 1, h10 = s ** 3 - 2 * s ** 2 + s, h01 = -2 * s ** 3 + 3 * s ** 2, h11 = s ** 3 - s ** 2;
+        const d00 = 6 * s ** 2 - 6 * s, d10 = 3 * s ** 2 - 4 * s + 1, d01 = -6 * s ** 2 + 6 * s, d11 = 3 * s ** 2 - 2 * s;
+        const yv: number[] = [], yd: number[] = [];
+        for (let k = 0; k < neq; k++) {
+          const y0 = U[i * neq + k], y1 = U[(i + 1) * neq + k], f0 = fs[i][k], f1 = fs[i + 1][k];
+          yv.push(h00 * y0 + h10 * h * f0 + h01 * y1 + h11 * h * f1);
+          yd.push((d00 * y0 + d01 * y1) / h + d10 * f0 + d11 * f1);
+        }
+        const fc = await fAt(x[i] + s * h, yv);
+        let d = 0, scale = 1; for (let k = 0; k < neq; k++) { d = Math.max(d, Math.abs(yd[k] - fc[k])); scale = Math.max(scale, Math.abs(fc[k])); }
+        if (d / scale > reltol) { flag[i] = true; any = true; }
+      }
+    }
+    if (!any) break;
+    const nx: number[] = [x[0]];
+    for (let i = 0; i < x.length - 1; i++) { if (flag[i] && nx.length < Nmax - 1) nx.push((x[i] + x[i + 1]) / 2); nx.push(x[i + 1]); }
+    const newU = new Float64Array(nx.length * neq);
+    for (let p = 0; p < nx.length; p++) { const yv = hermite(x, U, fs, nx[p]); for (let k = 0; k < neq; k++) newU[p * neq + k] = yv[k]; }
+    x = nx; U = newU;
   }
-  // Store the node derivatives so deval can use the C¹ cubic-Hermite interpolant.
-  const Yout = zeros(neq, M), Ypout = zeros(neq, M);
+
+  const M = x.length; const Yout = zeros(neq, M), Ypout = zeros(neq, M);
   for (let i = 0; i < M; i++) { const yi = Array.from({ length: neq }, (_, k) => U[i * neq + k]); const fi = await fAt(x[i], yi); for (let k = 0; k < neq; k++) { Yout.data[k + i * neq] = yi[k]; Ypout.data[k + i * neq] = fi[k]; } }
   return [mkStruct([['solver', str('bvp4c')], ['x', rowVec(x)], ['y', Yout], ['yp', Ypout]])];
 }

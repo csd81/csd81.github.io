@@ -407,6 +407,44 @@ export function ordschur(U0: Mat, T0: Mat, sel: boolean[]): { U: Mat; T: Mat } {
   return { U, T };
 }
 
+/** Reorder a real generalized Schur form (AA quasi-triangular, BB upper-triangular)
+ *  so selected eigenvalues move to the top-left, updating Q,Z (Q·A·Z=AA, Q·B·Z=BB).
+ *  Handles adjacent 1×1 blocks (real generalized eigenvalues); 2×2 (complex-pair)
+ *  blocks are left in place. `sel[i]` selects generalized eigenvalue i. */
+export function ordqz(AA0: Mat, BB0: Mat, Q0: Mat, Z0: Mat, sel: boolean[]): { AA: Mat; BB: Mat; Q: Mat; Z: Mat } {
+  const n = AA0.rows;
+  const AA = mat(n, n, Float64Array.from(AA0.data)), BB = mat(n, n, Float64Array.from(BB0.data));
+  const Q = mat(n, n, Float64Array.from(Q0.data)), Z = mat(n, n, Float64Array.from(Z0.data));
+  const A = AA.data, B = BB.data, Qd = Q.data, Zd = Z.data; const s = sel.slice();
+  const colRot = (M: Float64Array, j: number, c: number, sn: number) => { for (let i = 0; i < n; i++) { const t = M[i + j * n], u = M[i + (j + 1) * n]; M[i + j * n] = c * t + sn * u; M[i + (j + 1) * n] = -sn * t + c * u; } };
+  const rowRot = (M: Float64Array, j: number, c: number, sn: number) => { for (let k = 0; k < n; k++) { const t = M[j + k * n], u = M[(j + 1) + k * n]; M[j + k * n] = c * t + sn * u; M[(j + 1) + k * n] = -sn * t + c * u; } };
+  const is2x2 = (j: number) => j < n - 1 && Math.abs(A[(j + 1) + j * n]) > 1e-300;
+  // Swap adjacent 1×1 generalized eigenvalues at j, j+1 (move λ_{j+1} to position j).
+  const swap = (j: number) => {
+    const a11 = A[j + j * n], a12 = A[j + (j + 1) * n], a22 = A[(j + 1) + (j + 1) * n];
+    const b11 = B[j + j * n], b12 = B[j + (j + 1) * n], b22 = B[(j + 1) + (j + 1) * n];
+    // right rotation aligning the first column with the λ2-eigenvector of the 2×2 pencil
+    let v1: number, v2: number;
+    if (Math.abs(b22) > 1e-300) { const l2 = a22 / b22; v1 = -(a12 - l2 * b12); v2 = a11 - l2 * b11; }
+    else { v1 = -b12; v2 = b11; }                 // λ2 = ∞
+    let r = Math.hypot(v1, v2) || 1; const cz = v1 / r, sz = v2 / r;
+    colRot(A, j, cz, sz); colRot(B, j, cz, sz); colRot(Zd, j, cz, sz);
+    // left rotation restoring upper-triangular BB (zero its (j+1,j) entry)
+    const bj = B[j + j * n], bj1 = B[(j + 1) + j * n]; r = Math.hypot(bj, bj1) || 1; const cq = bj / r, sq = bj1 / r;
+    rowRot(A, j, cq, sq); rowRot(B, j, cq, sq); rowRot(Qd, j, cq, sq);
+    B[(j + 1) + j * n] = 0; A[(j + 1) + j * n] = 0;
+  };
+  for (let pass = 0; pass < n * n; pass++) {
+    let moved = false;
+    for (let j = 0; j + 1 < n; j++) {
+      if (is2x2(j) || is2x2(j + 1)) continue;      // skip complex-pair blocks
+      if (!s[j] && s[j + 1]) { swap(j); const tmp = s[j]; s[j] = s[j + 1]; s[j + 1] = tmp; moved = true; }
+    }
+    if (!moved) break;
+  }
+  return { AA, BB, Q, Z };
+}
+
 /** Matrix exponential via scaling and squaring (Taylor). */
 export function expm(A: Mat): Mat {
   const n = A.rows; const nrm = norm(A, 'inf') || 1; const sgrid = Math.max(0, Math.ceil(Math.log2(nrm)));
