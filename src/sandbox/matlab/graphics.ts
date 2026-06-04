@@ -96,6 +96,8 @@ const COLOR_MAP: Record<string, string> = {
 const MARKERS: Record<string, string> = {
   '*': 'star', o: 'circle', '+': 'cross', '.': 'circle', x: 'x',
   s: 'square', d: 'diamond', '^': 'triangle-up', v: 'triangle-down', p: 'pentagon',
+  '>': 'triangle-right', '<': 'triangle-left', h: 'hexagram', '_': 'line-ew', '|': 'line-ns',
+  square: 'square', diamond: 'diamond', pentagram: 'star', hexagram: 'hexagram',
 };
 
 function parseLineSpec(spec: string): Partial<Series> {
@@ -161,7 +163,8 @@ function asNum(v: Value): number | undefined { return isMat(v) ? (v as Mat).data
 /** A char/string arg that names a line property (vs. a LineSpec like "r--o"). */
 function isPropName(v: Value): boolean {
   if (!isMat(v) || !(v as Mat).isChar) return false;
-  return ['color', 'linewidth', 'linestyle', 'marker', 'markersize', 'markerfacecolor', 'markeredgecolor', 'displayname'].includes(asString(v).toLowerCase());
+  return ['color', 'linewidth', 'linestyle', 'marker', 'markersize', 'markerfacecolor', 'markeredgecolor', 'displayname',
+    'markerindices', 'durationtickformat', 'datetimetickformat', 'meshdensity', 'seriesindex', 'linejoin'].includes(asString(v).toLowerCase());
 }
 
 const emptyPanel = (): Panel => ({ series: [] });

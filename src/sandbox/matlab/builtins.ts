@@ -66,6 +66,9 @@ let rngGen: (() => number) | null = null;   // null ⇒ fall back to Math.random
 const rngNext = (): number => (rngGen ? rngGen() : Math.random());
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
+/** Chart builtins return a graphics-object handle when an output is requested (`p = plot(...)`),
+ *  and nothing otherwise (so a bare `plot(x,y)` doesn't echo to the command window). */
+const gret = (n: number): Value[] => (n >= 1 ? [{ kind: 'gobj', gtype: 'line' as const }] : []);
 const ew = (f: (x: number) => number): Builtin => async (a) => ret(map(m(a[0]), f));
 
 /** Factor a univariate polynomial (ascending coeffs) over ℚ into a list of sym factors:
@@ -2912,23 +2915,29 @@ export const BUILTINS: Record<string, Builtin> = {
   },
 
   // ═══════════════════════ GRAPHICS · I/O · STRINGS ═══════════════════════
-  plot: async (a, _n, env) => { if (a.length && isGraph(a[0])) { plotGraph(env, a[0]); return []; } if (a.length && isGeom(a[0])) { plotGeom(env, a[0]); return []; } env.graphics.plot(a); return []; },
-  fplot: async (a, _n, env) => {
+  plot: async (a, n, env) => { if (a.length && isGraph(a[0])) { plotGraph(env, a[0]); return gret(n); } if (a.length && isGeom(a[0])) { plotGeom(env, a[0]); return gret(n); } env.graphics.plot(a); return gret(n); },
+  fplot: async (a, n, env) => {
     let label: string | undefined;
     let f = a[0];
     if (isSym(f)) { label = exprToStr((f as Sym).exprs[0]); f = await symToFn(f as Sym, env); }
+    // fplot(xt, yt, ...): two parametric function handles → sample both over the same t-range.
+    const g = a.length >= 2 && isHandle(a[1]) ? a[1] : null;
     if (!isHandle(f)) throw new MatError('fplot: expected a function handle');
     let lo = -5, hi = 5;
-    if (a.length >= 2 && isMat(a[1]) && numel(a[1]) >= 2) { const rg = toArray(a[1] as Mat); lo = rg[0]; hi = rg[1]; }
+    const rgArg = a.find((v, i) => i >= (g ? 2 : 1) && isMat(v) && !(v as Mat).isChar && numel(v) >= 2);
+    if (rgArg) { const rg = toArray(rgArg as Mat); lo = rg[0]; hi = rg[1]; }
     const N = 400; const xs: number[] = []; const ys: number[] = [];
     for (let i = 0; i < N; i++) {
-      const x = lo + (hi - lo) * i / (N - 1);
-      const r = await env.callHandle(f, [scalar(x)], 1);
-      xs.push(x); ys.push(r.length && isMat(r[0]) ? asScalar(r[0]) : NaN);
+      const t = lo + (hi - lo) * i / (N - 1);
+      const rx = await env.callHandle(f, [scalar(t)], 1);
+      const ry = g ? await env.callHandle(g, [scalar(t)], 1) : null;
+      xs.push(g ? (rx.length && isMat(rx[0]) ? asScalar(rx[0]) : NaN) : t);
+      ys.push(ry ? (ry.length && isMat(ry[0]) ? asScalar(ry[0]) : NaN) : (rx.length && isMat(rx[0]) ? asScalar(rx[0]) : NaN));
     }
-    env.graphics.addSeries(xs, ys);
+    const specArg = a.find((v) => isMat(v) && (v as Mat).isChar);
+    env.graphics.plot(specArg ? [colVec(xs), colVec(ys), specArg] : [colVec(xs), colVec(ys)]);
     if (label) env.graphics.command('title', [str(label)]);
-    return [];
+    return gret(n);
   },
   hold: async (a, _n, env) => { env.graphics.command('hold', a); return []; },
   grid: async (a, _n, env) => { env.graphics.command('grid', a); return []; },
@@ -2958,21 +2967,21 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   tiledlayout: async (a, _n, env) => { const m = a.length >= 1 ? Math.round(asScalar(a[0])) : 1; const n = a.length >= 2 ? Math.round(asScalar(a[1])) : 1; env.graphics.tiledlayout(m, n); return []; },
   nexttile: async (a, _n, env) => { env.graphics.nexttile(a.length && isMat(a[0]) ? Math.round(asScalar(a[0])) : undefined); return [{ kind: 'gobj', gtype: 'axes' }]; },
-  bar: async (a, _n, env) => { env.graphics.chart2d(a, 'bar'); return []; },
-  barh: async (a, _n, env) => { env.graphics.chart2d(a, 'barh'); return []; },
-  area: async (a, _n, env) => { if (a.length && isGeom(a[0])) return ret(scalar(geomArea(a[0]))); env.graphics.chart2d(a, 'area'); return []; },
-  stem: async (a, _n, env) => { env.graphics.chart2d(a, 'stem'); return []; },
-  stairs: async (a, _n, env) => { env.graphics.chart2d(a, 'stairs'); return []; },
-  scatter: async (a, _n, env) => { env.graphics.scatter(a); return []; },
-  errorbar: async (a, _n, env) => { env.graphics.errorbar(a); return []; },
-  pie: async (a, _n, env) => { env.graphics.pie(a); return []; },
-  plot3: async (a, _n, env) => { env.graphics.line3(a, 'lines'); return []; },
-  scatter3: async (a, _n, env) => { env.graphics.line3(a, 'markers'); return []; },
-  stem3: async (a, _n, env) => { env.graphics.line3(a, 'markers'); return []; },
-  loglog: async (a, _n, env) => { env.graphics.plot(a); env.graphics.setScale('x', 'log'); env.graphics.setScale('y', 'log'); return []; },
-  semilogx: async (a, _n, env) => { env.graphics.plot(a); env.graphics.setScale('x', 'log'); return []; },
-  semilogy: async (a, _n, env) => { env.graphics.plot(a); env.graphics.setScale('y', 'log'); return []; },
-  histogram: async (a, _n, env) => {
+  bar: async (a, n, env) => { env.graphics.chart2d(a, 'bar'); return gret(n); },
+  barh: async (a, n, env) => { env.graphics.chart2d(a, 'barh'); return gret(n); },
+  area: async (a, n, env) => { if (a.length && isGeom(a[0])) return ret(scalar(geomArea(a[0]))); env.graphics.chart2d(a, 'area'); return gret(n); },
+  stem: async (a, n, env) => { env.graphics.chart2d(a, 'stem'); return gret(n); },
+  stairs: async (a, n, env) => { env.graphics.chart2d(a, 'stairs'); return gret(n); },
+  scatter: async (a, n, env) => { env.graphics.scatter(a); return gret(n); },
+  errorbar: async (a, n, env) => { env.graphics.errorbar(a); return gret(n); },
+  pie: async (a, n, env) => { env.graphics.pie(a); return gret(n); },
+  plot3: async (a, n, env) => { env.graphics.line3(a, 'lines'); return gret(n); },
+  scatter3: async (a, n, env) => { env.graphics.line3(a, 'markers'); return gret(n); },
+  stem3: async (a, n, env) => { env.graphics.line3(a, 'markers'); return gret(n); },
+  loglog: async (a, n, env) => { env.graphics.plot(a); env.graphics.setScale('x', 'log'); env.graphics.setScale('y', 'log'); return gret(n); },
+  semilogx: async (a, n, env) => { env.graphics.plot(a); env.graphics.setScale('x', 'log'); return gret(n); },
+  semilogy: async (a, n, env) => { env.graphics.plot(a); env.graphics.setScale('y', 'log'); return gret(n); },
+  histogram: async (a, hn, env) => {
     const x = toArray(m(a[0])).filter((v) => !Number.isNaN(v));
     let edges: number[];
     if (a.length >= 2 && isMat(a[1]) && numel(a[1]) > 1) edges = toArray(m(a[1]));
@@ -2980,7 +2989,7 @@ export const BUILTINS: Record<string, Builtin> = {
     const N = new Array(edges.length - 1).fill(0); const last = edges.length - 1;
     for (const v of x) { if (v < edges[0] || v > edges[last]) continue; let b = last - 1; for (let i = 0; i < last; i++) if (v < edges[i + 1]) { b = i; break; } N[b]++; }
     const centers = N.map((_, i) => (edges[i] + edges[i + 1]) / 2);
-    env.graphics.chart2d([rowVec(centers), rowVec(N)], 'bar'); return [];
+    env.graphics.chart2d([rowVec(centers), rowVec(N)], 'bar'); return gret(hn);
   },
   zlim: async (a, _n, env) => { if (a.length && isMat(a[0]) && !(a[0] as Mat).isChar) env.graphics.command('zlim', a); return []; },
   xticks: async () => [],
@@ -3007,9 +3016,9 @@ export const BUILTINS: Record<string, Builtin> = {
   sphere: async (a, n, env) => { const N = a.length && isMat(a[0]) && numel(a[0]) === 1 ? Math.round(asScalar(a[0])) : 20; const { X, Y, Z } = sphereCoords(N); if (n >= 1) return [X, Y, Z].slice(0, Math.max(1, n)); env.graphics.surface([X, Y, Z], 'surf'); return []; },
   cylinder: async (a, n, env) => { const r = a.length && isMat(a[0]) && numel(a[0]) > 1 ? toArray(m(a[0])) : a.length && isMat(a[0]) && numel(a[0]) === 1 && a.length === 1 ? [asScalar(a[0]), asScalar(a[0])] : [1, 1]; const N = a.length >= 2 ? Math.round(asScalar(a[1])) : 20; const { X, Y, Z } = cylinderCoords(r, N); if (n >= 1) return [X, Y, Z].slice(0, Math.max(1, n)); env.graphics.surface([X, Y, Z], 'surf'); return []; },
   ellipsoid: async (a, n, env) => { const [xc, yc, zc, xr, yr, zr] = [0, 1, 2, 3, 4, 5].map((i) => asScalar(a[i])); const N = a.length >= 7 ? Math.round(asScalar(a[6])) : 20; const { X, Y, Z } = sphereCoords(N); const sx = map(X, (v) => v * xr + xc), sy = map(Y, (v) => v * yr + yc), sz = map(Z, (v) => v * zr + zc); if (n >= 1) return [sx, sy, sz].slice(0, Math.max(1, n)); env.graphics.surface([sx, sy, sz], 'surf'); return []; },
-  fsurf: async (a, _n, env) => { const { X, Y, Z } = await sampleFn2(a, env); env.graphics.surface([X, Y, Z], 'surf'); return []; },
-  fmesh: async (a, _n, env) => { const { X, Y, Z } = await sampleFn2(a, env); env.graphics.surface([X, Y, Z], 'mesh'); return []; },
-  fcontour: async (a, _n, env) => { const { X, Y, Z } = await sampleFn2(a, env); env.graphics.surface([X, Y, Z], 'contour'); return []; },
+  fsurf: async (a, n, env) => { const { X, Y, Z } = await sampleFn2(a, env); env.graphics.surface([X, Y, Z], 'surf'); return gret(n); },
+  fmesh: async (a, n, env) => { const { X, Y, Z } = await sampleFn2(a, env); env.graphics.surface([X, Y, Z], 'mesh'); return gret(n); },
+  fcontour: async (a, n, env) => { const { X, Y, Z } = await sampleFn2(a, env); env.graphics.surface([X, Y, Z], 'contour'); return gret(n); },
   // ez* easy-plotters (v6 reference) → delegate to the f* samplers; accept string expressions
   ezplot: async (a, n, env) => BUILTINS.fplot([await ezFn(a[0], env, 'x'), ...a.slice(1)], n, env),
   ezsurf: async (a, n, env) => BUILTINS.fsurf([await ezFn(a[0], env, 'x,y'), ...a.slice(1)], n, env),
@@ -3019,11 +3028,11 @@ export const BUILTINS: Record<string, Builtin> = {
   ezcontour: async (a, n, env) => BUILTINS.fcontour([await ezFn(a[0], env, 'x,y'), ...a.slice(1)], n, env),
   ezcontourf: async (a, n, env) => BUILTINS.fcontour([await ezFn(a[0], env, 'x,y'), ...a.slice(1)], n, env),
   ezplot3: async (a, n, env) => BUILTINS.fplot3([await ezFn(a[0], env, 't'), await ezFn(a[1], env, 't'), await ezFn(a[2], env, 't'), ...a.slice(3)], n, env),
-  ezpolar: async (a, _n, env) => {
+  ezpolar: async (a, n, env) => {
     const f = await ezFn(a[0], env, 't'); const lo = 0, hi = 2 * Math.PI; const N = 200;
     const th: number[] = [], r: number[] = [];
     for (let i = 0; i < N; i++) { const t = lo + (hi - lo) * i / (N - 1); th.push(t); r.push(asScalar((await env.callHandle(f as Handle, [scalar(t)], 1))[0])); }
-    env.graphics.polar([rowVec(th), rowVec(r)], 'lines'); return [];
+    env.graphics.polar([rowVec(th), rowVec(r)], 'lines'); return gret(n);
   },
   // deprecated aliases (v6)
   dblquad: async (a, n, env) => BUILTINS.integral2(a, n, env),
@@ -3034,27 +3043,27 @@ export const BUILTINS: Record<string, Builtin> = {
   // classic sparse-Laplacian demo (Gilbert–Moler–Schreiber)
   numgrid: async (a) => ret(numgridOf(asString(a[0]), Math.round(asScalar(a[1])))),
   delsq: async (a) => ret(delsqOf(m(a[0]))),
-  contour3: async (a, _n, env) => { env.graphics.surface(a, 'contour3'); return []; },
-  quiver: async (a, _n, env) => {
+  contour3: async (a, n, env) => { env.graphics.surface(a, 'contour3'); return gret(n); },
+  quiver: async (a, n, env) => {
     let xs: number[], ys: number[], us: number[], vs: number[];
     if (a.length >= 4) { xs = toArray(m(a[0])); ys = toArray(m(a[1])); us = toArray(m(a[2])); vs = toArray(m(a[3])); }
     else { us = toArray(m(a[0])); vs = toArray(m(a[1])); xs = us.map((_, i) => i + 1); ys = us.map(() => 0); }
-    env.graphics.quiver(xs, ys, us, vs); return [];
+    env.graphics.quiver(xs, ys, us, vs); return gret(n);
   },
-  surf: async (a, _n, env) => { env.graphics.surface(a, 'surf'); return []; },
-  surfc: async (a, _n, env) => { env.graphics.surface(a, 'surf'); return []; },
-  surfl: async (a, _n, env) => { env.graphics.surface(a, 'surf'); return []; },
-  mesh: async (a, _n, env) => { env.graphics.surface(a, 'mesh'); return []; },
-  bar3: async (a, _n, env) => { env.graphics.bar3(matToGrid(m(a[a.length - 1])), false); return []; },
-  bar3h: async (a, _n, env) => { env.graphics.bar3(matToGrid(m(a[a.length - 1])), true); return []; },
-  quiver3: async (a, _n, env) => {
+  surf: async (a, n, env) => { env.graphics.surface(a, 'surf'); return gret(n); },
+  surfc: async (a, n, env) => { env.graphics.surface(a, 'surf'); return gret(n); },
+  surfl: async (a, n, env) => { env.graphics.surface(a, 'surf'); return gret(n); },
+  mesh: async (a, n, env) => { env.graphics.surface(a, 'mesh'); return gret(n); },
+  bar3: async (a, n, env) => { env.graphics.bar3(matToGrid(m(a[a.length - 1])), false); return gret(n); },
+  bar3h: async (a, n, env) => { env.graphics.bar3(matToGrid(m(a[a.length - 1])), true); return gret(n); },
+  quiver3: async (a, n, env) => {
     const ms = a.filter((x): x is Mat => isMat(x) && !(x as Mat).isChar).map((x) => toArray(x));
     if (ms.length >= 6) env.graphics.quiver3(ms[0], ms[1], ms[2], ms[3], ms[4], ms[5]);
     else env.graphics.quiver3(ms[0].map((_, i) => i + 1), ms[0].map(() => 0), ms[0].map(() => 0), ms[0], ms[1] ?? ms[0].map(() => 0), ms[2] ?? ms[0].map(() => 0));
-    return [];
+    return gret(n);
   },
-  histogram2: async (a, _n, env) => { const x = toArray(m(a[0])), y = toArray(m(a[1])); const nb = a.length >= 3 && isMat(a[2]) ? toArray(m(a[2])) : [10, 10]; env.graphics.histogram2(x, y, nb[0], nb[1] ?? nb[0]); return []; },
-  slice: async (a, _n, env) => {
+  histogram2: async (a, n, env) => { const x = toArray(m(a[0])), y = toArray(m(a[1])); const nb = a.length >= 3 && isMat(a[2]) ? toArray(m(a[2])) : [10, 10]; env.graphics.histogram2(x, y, nb[0], nb[1] ?? nb[0]); return gret(n); },
+  slice: async (a, sn, env) => {
     const ms = a.filter((x): x is Mat => isMat(x) && !(x as Mat).isChar);
     let V: Mat, xv: number[], yv: number[], zv: number[], sx: number[], sy: number[], sz: number[];
     if (ms.length >= 7) { V = ms[3]; const d = ndSize(V); xv = gridAxis(ms[0], 2, d); yv = gridAxis(ms[1], 1, d); zv = gridAxis(ms[2], 3, d); sx = toArray(ms[4]); sy = toArray(ms[5]); sz = toArray(ms[6]); }
@@ -3065,11 +3074,11 @@ export const BUILTINS: Record<string, Builtin> = {
     for (const xc of sx) plane(yv.map(() => zv.map(() => xc)), yv.map((y) => zv.map(() => y)), yv.map(() => zv.map((z) => z)), yv.map((y) => zv.map((z) => samp(xc, y, z))));
     for (const yc of sy) plane(xv.map((x) => zv.map(() => x)), xv.map(() => zv.map(() => yc)), xv.map(() => zv.map((z) => z)), xv.map((x) => zv.map((z) => samp(x, yc, z))));
     for (const zc of sz) plane(yv.map(() => xv.map((x) => x)), yv.map((y) => xv.map(() => y)), yv.map(() => xv.map(() => zc)), yv.map((y) => xv.map((x) => samp(x, y, zc))));
-    env.graphics.hold(false); return [];
+    env.graphics.hold(false); return gret(sn);
   },
   // 3-D triangulated surfaces
-  trisurf: async (a, _n, env) => { const T = matRows(m(a[0])).map((r) => r.map((v) => Math.round(v) - 1)); env.graphics.trimesh(T, toArray(m(a[1])), toArray(m(a[2])), toArray(m(a[3])), false); return []; },
-  trimesh: async (a, _n, env) => { const T = matRows(m(a[0])).map((r) => r.map((v) => Math.round(v) - 1)); env.graphics.trimesh(T, toArray(m(a[1])), toArray(m(a[2])), toArray(m(a[3])), true); return []; },
+  trisurf: async (a, n, env) => { const T = matRows(m(a[0])).map((r) => r.map((v) => Math.round(v) - 1)); env.graphics.trimesh(T, toArray(m(a[1])), toArray(m(a[2])), toArray(m(a[3])), false); return gret(n); },
+  trimesh: async (a, n, env) => { const T = matRows(m(a[0])).map((r) => r.map((v) => Math.round(v) - 1)); env.graphics.trimesh(T, toArray(m(a[1])), toArray(m(a[2])), toArray(m(a[3])), true); return gret(n); },
   tetramesh: async (a, _n, env) => {
     const T = matRows(m(a[0])).map((r) => r.map((v) => Math.round(v) - 1)); const X = m(a[1]);
     const faces: number[][] = []; for (const t of T) faces.push([t[0], t[1], t[2]], [t[0], t[1], t[3]], [t[0], t[2], t[3]], [t[1], t[2], t[3]]);
@@ -3099,7 +3108,7 @@ export const BUILTINS: Record<string, Builtin> = {
     if (n >= 2) { const F = zeros(faces.length, 3); faces.forEach((f, i) => f.forEach((v, j) => { F.data[i + j * faces.length] = v + 1; })); const Vm = zeros(verts.length, 3); verts.forEach((p, i) => { Vm.data[i] = p[0]; Vm.data[i + verts.length] = p[1]; Vm.data[i + 2 * verts.length] = p[2]; }); return [F, Vm]; }
     env.graphics.trimesh(faces, verts.map((p) => p[0]), verts.map((p) => p[1]), verts.map((p) => p[2]), false); return [];
   },
-  plotmatrix: async (a, _n, env) => {
+  plotmatrix: async (a, pn, env) => {
     const X = m(a[0]); const Y = a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar ? m(a[1]) : X;
     const col = (M: Mat, j: number) => Array.from({ length: M.rows }, (_, r) => M.data[r + j * M.rows]);
     const px = X.cols, py = Y.cols;
@@ -3108,7 +3117,7 @@ export const BUILTINS: Record<string, Builtin> = {
       if (X === Y && i === j) { const v = col(X, j); const nb = 10; const lo = Math.min(...v), hi = Math.max(...v); const d = (hi - lo) / nb || 1; const cnt = new Array(nb).fill(0); for (const t of v) cnt[Math.min(nb - 1, Math.floor((t - lo) / d))]++; env.graphics.chart2d([rowVec(cnt.map((_, k) => lo + (k + 0.5) * d)), rowVec(cnt)], 'bar'); }
       else env.graphics.scatter([colVec(col(X, j)), colVec(col(Y, i))]);
     }
-    return [];
+    return gret(pn);
   },
   contourc: async (a) => {
     const mats = a.filter((x): x is Mat => isMat(x) && !(x as Mat).isChar);
@@ -3124,24 +3133,24 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(marchingSquares(xv, yv, grid, levels));
   },
   // polar plots
-  polarplot: async (a, _n, env) => { env.graphics.polar(a, 'lines'); return []; },
-  polarscatter: async (a, _n, env) => { env.graphics.polar(a, 'markers'); return []; },
-  polarhistogram: async (a, _n, env) => { env.graphics.polar(a, 'bar'); return []; },
+  polarplot: async (a, n, env) => { env.graphics.polar(a, 'lines'); return gret(n); },
+  polarscatter: async (a, n, env) => { env.graphics.polar(a, 'markers'); return gret(n); },
+  polarhistogram: async (a, n, env) => { env.graphics.polar(a, 'bar'); return gret(n); },
   polaraxes: async (_a, _n, env) => { env.graphics.setPolarProp('rticks', []); return []; },
-  compass: async (a, _n, env) => { let us: number[], vs: number[]; if (a.length >= 2) { us = toArray(m(a[0])); vs = toArray(m(a[1])); } else { const z = m(a[0]); us = z.idata ? toArray(z) : toArray(z); vs = z.idata ? Array.from(z.idata) : us.map(() => 0); } env.graphics.compass(us, vs); return []; },
+  compass: async (a, n, env) => { let us: number[], vs: number[]; if (a.length >= 2) { us = toArray(m(a[0])); vs = toArray(m(a[1])); } else { const z = m(a[0]); us = z.idata ? toArray(z) : toArray(z); vs = z.idata ? Array.from(z.idata) : us.map(() => 0); } env.graphics.compass(us, vs); return gret(n); },
   rlim: async (a, _n, env) => { if (a.length && isMat(a[0]) && !(a[0] as Mat).isChar) env.graphics.setPolarProp('rlim', toArray(m(a[0]))); return []; },
   thetalim: async (a, _n, env) => { if (a.length && isMat(a[0]) && !(a[0] as Mat).isChar) env.graphics.setPolarProp('thetalim', toArray(m(a[0])).map((d) => d * Math.PI / 180)); return []; },
   rticks: async (a, _n, env) => { if (a.length && isMat(a[0]) && !(a[0] as Mat).isChar) env.graphics.setPolarProp('rticks', toArray(m(a[0]))); return []; },
   thetaticks: async (a, _n, env) => { if (a.length && isMat(a[0]) && !(a[0] as Mat).isChar) env.graphics.setPolarProp('thetaticks', toArray(m(a[0])).map((d) => d * Math.PI / 180)); return []; },
   rticklabels: async () => [], thetaticklabels: async () => [], rtickangle: async () => [],
-  meshc: async (a, _n, env) => { env.graphics.surface(a, 'mesh'); return []; },
-  surface: async (a, _n, env) => { env.graphics.surface(a, 'surf'); return []; },
-  contour: async (a, _n, env) => { env.graphics.surface(a, 'contour'); return []; },
-  contourf: async (a, _n, env) => { env.graphics.surface(a, 'contour'); return []; },
-  pcolor: async (a, _n, env) => { env.graphics.surface(a, 'contour'); return []; },
+  meshc: async (a, n, env) => { env.graphics.surface(a, 'mesh'); return gret(n); },
+  surface: async (a, n, env) => { env.graphics.surface(a, 'surf'); return gret(n); },
+  contour: async (a, n, env) => { env.graphics.surface(a, 'contour'); return gret(n); },
+  contourf: async (a, n, env) => { env.graphics.surface(a, 'contour'); return gret(n); },
+  pcolor: async (a, n, env) => { env.graphics.surface(a, 'contour'); return gret(n); },
   shading: async (a, _n, env) => { env.graphics.command('shading', a); return []; },
   colorbar: async (a, _n, env) => { env.graphics.command('colorbar', a); return []; },
-  colormap: async (a, _n, env) => { env.graphics.command('colormap', a); return []; },
+  colormap: async (a, n, env) => { env.graphics.command('colormap', a); return n >= 1 && a.length && isMat(a[0]) && !(a[0] as Mat).isChar ? ret(m(a[0])) : []; },
   // Colormap array generators (n×3 RGB).
   parula: async (a) => ret(cmapGen(a, (t) => lerpAnchors(PARULA, t))),
   turbo: async (a) => ret(cmapGen(a, (t) => lerpAnchors(TURBO, t))),
@@ -3183,19 +3192,19 @@ export const BUILTINS: Record<string, Builtin> = {
   xticklabels: async () => [], yticklabels: async () => [], zticklabels: async () => [],
   fontname: async () => [], fontsize: async () => [], gtext: async () => [], annotation: async () => [], line: async () => [], rectangle: async () => [],
   // renderable plot variants
-  imagesc: async (a, _n, env) => { env.graphics.surface([m(a[a.length - 1])], 'contour'); env.graphics.command('colorbar', []); return []; },
-  image: async (a, _n, env) => { env.graphics.surface([m(a[a.length - 1])], 'contour'); return []; },
-  pie3: async (a, _n, env) => { env.graphics.pie(a); return []; },
-  piechart: async (a, _n, env) => { env.graphics.pie(a); return []; },
+  imagesc: async (a, n, env) => { env.graphics.surface([m(a[a.length - 1])], 'contour'); env.graphics.command('colorbar', []); return gret(n); },
+  image: async (a, n, env) => { env.graphics.surface([m(a[a.length - 1])], 'contour'); return gret(n); },
+  pie3: async (a, n, env) => { env.graphics.pie(a); return gret(n); },
+  piechart: async (a, n, env) => { env.graphics.pie(a); return gret(n); },
   donutchart: async (a, _n, env) => { env.graphics.pie(a); return []; },
   pareto: async (a, _n, env) => { const v = toArray(m(a[0])).slice().sort((x, y) => y - x); env.graphics.chart2d([rowVec(v.map((_, i) => i + 1)), rowVec(v)], 'bar'); return []; },
-  fimplicit: async (a, _n, env) => { const { X, Y, Z } = await sampleFn2(a, env); env.graphics.surface([X, Y, Z], 'contour'); return []; },
-  fplot3: async (a, _n, env) => {
+  fimplicit: async (a, n, env) => { const { X, Y, Z } = await sampleFn2(a, env); env.graphics.surface([X, Y, Z], 'contour'); return gret(n); },
+  fplot3: async (a, n, env) => {
     const fx = handle(a[0], 'fplot3'), fy = handle(a[1], 'fplot3'), fz = handle(a[2], 'fplot3');
     let lo = 0, hi = 2 * Math.PI; if (a.length >= 4 && isMat(a[3])) { const r = toArray(a[3] as Mat); lo = r[0]; hi = r[1]; }
     const N = 200; const xs: number[] = [], ys: number[] = [], zs: number[] = [];
     for (let i = 0; i < N; i++) { const t = lo + (hi - lo) * i / (N - 1); const ex = await env.callHandle(fx, [scalar(t)], 1), ey = await env.callHandle(fy, [scalar(t)], 1), ez = await env.callHandle(fz, [scalar(t)], 1); xs.push(asScalar(ex[0])); ys.push(asScalar(ey[0])); zs.push(asScalar(ez[0])); }
-    env.graphics.line3([rowVec(xs), rowVec(ys), rowVec(zs)], 'lines'); return [];
+    env.graphics.line3([rowVec(xs), rowVec(ys), rowVec(zs)], 'lines'); return gret(n);
   },
   brighten: async (a) => {
     // brighten(map, beta): map.^gamma, gamma = 1-beta (beta>0 brighter).

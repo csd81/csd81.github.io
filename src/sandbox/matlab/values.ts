@@ -24,7 +24,7 @@ export interface Handle {
 /** Graphics handle (e.g. the result of `gca`). Properties live in the graphics sink. */
 export interface GObj {
   kind: 'gobj';
-  gtype: 'axes' | 'figure';
+  gtype: 'axes' | 'figure' | 'line';
 }
 /** Cell array — a rectangular container of arbitrary values (column-major). */
 export interface Cell {
