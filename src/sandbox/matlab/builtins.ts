@@ -305,7 +305,7 @@ function nthroot(x: number, n: number): number {
 
 export const BUILTINS: Record<string, Builtin> = {
   ...SYM_BUILTINS,
-  // elementwise math
+  // ═══════════════════════════ ELEMENTARY MATH ═══════════════════════════
   sin: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmap(A, (re, im) => [Math.sin(re) * Math.cosh(im), Math.cos(re) * Math.sinh(im)]) : map(A, Math.sin)); },
   cos: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmap(A, (re, im) => [Math.cos(re) * Math.cosh(im), -Math.sin(re) * Math.sinh(im)]) : map(A, Math.cos)); },
   tan: async (a) => { const A = m(a[0]); if (!isComplex(A)) return ret(map(A, Math.tan)); return ret(cmap(A, (re, im) => { const sr = Math.sin(re) * Math.cosh(im), si = Math.cos(re) * Math.sinh(im); const cr = Math.cos(re) * Math.cosh(im), ci = -Math.sin(re) * Math.sinh(im); const d = cr * cr + ci * ci; return [(sr * cr + si * ci) / d, (si * cr - sr * ci) / d]; })); },
@@ -405,7 +405,7 @@ export const BUILTINS: Record<string, Builtin> = {
     if (n > 1) out.push(n);
     return ret(rowVec(out.length ? out : [orig]));
   },
-  // special functions
+  // ═══════════════════ SPECIAL FUNCTIONS & NUMBER THEORY ═══════════════════
   gamma: ew(gammaFn), gammaln: ew(logGamma),
   erf: ew(erfFn), erfc: ew((x) => 1 - erfFn(x)),
   beta: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, y) => gammaFn(x) * gammaFn(y) / gammaFn(x + y))),
@@ -493,7 +493,7 @@ export const BUILTINS: Record<string, Builtin> = {
   jacobiSymbol: async (a) => ret(elementwise(m(a[0]), m(a[1]), jacobiSym)),
   factorIntegerPower: async (a, n) => { let N = Math.round(asScalar(a[0])); let bestB = N, bestE = 1; if (N > 1) { for (let e = Math.floor(Math.log2(N)); e >= 2; e--) { const b = Math.round(Math.pow(N, 1 / e)); for (const cand of [b - 1, b, b + 1]) { if (cand >= 2 && Math.pow(cand, e) === N) { bestB = cand; bestE = e; e = 1; break; } } } } return n >= 2 ? [scalar(bestB), scalar(bestE)] : [rowVec([bestB, bestE])]; },
   isPrimitiveRoot: async (a) => { const N = Math.round(asScalar(a[1])); const phi = N <= 1 ? 0 : (() => { let n = N, r = N; for (let p = 2; p * p <= n; p++) if (n % p === 0) { while (n % p === 0) n /= p; r -= r / p; } if (n > 1) r -= r / n; return r; })(); const pf = (() => { const s = new Set<number>(); let n = phi; for (let p = 2; p * p <= n; p++) if (n % p === 0) { s.add(p); while (n % p === 0) n /= p; } if (n > 1) s.add(n); return s; })(); const powmod = (b: number, e: number, mo: number) => { b = ((b % mo) + mo) % mo; let r = 1; while (e > 0) { if (e & 1) r = (r * b) % mo; b = (b * b) % mo; e = Math.floor(e / 2); } return r; }; return ret(map(m(a[0]), (av) => { const x = Math.round(av); if (N <= 1 || gcd2(x, N) !== 1) return 0; for (const q of pf) if (powmod(x, phi / q, N) === 1) return 0; return 1; })); },
-  // special matrices
+  // ═══════════════════ SPECIAL MATRICES & POLYNOMIALS ═══════════════════
   magic: async (a) => ret(magicFn(Math.round(asScalar(a[0])))),
   hilb: async (a) => { const n = Math.round(asScalar(a[0])); const o = zeros(n, n); for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) o.data[r + c * n] = 1 / (r + c + 1); return ret(o); },
   vander: async (a) => { const v = toArray(m(a[0])); const n = v.length; const o = zeros(n, n); for (let r = 0; r < n; r++) for (let j = 0; j < n; j++) o.data[r + j * n] = Math.pow(v[r], n - 1 - j); return ret(o); },
@@ -528,7 +528,7 @@ export const BUILTINS: Record<string, Builtin> = {
   polyder: async (a) => { const p = toArray(m(a[0])); const n = p.length - 1; if (n <= 0) return ret(scalar(0)); const d: number[] = []; for (let i = 0; i < n; i++) d.push(p[i] * (n - i)); return ret(rowVec(d)); },
   polyint: async (a) => { const p = toArray(m(a[0])); const k = a.length >= 2 ? asScalar(a[1]) : 0; const n = p.length; const out: number[] = []; for (let i = 0; i < n; i++) out.push(p[i] / (n - i)); out.push(k); return ret(rowVec(out)); },
 
-  // reductions
+  // ═══════════════════════ REDUCTIONS & SHAPE ═══════════════════════
   sum: async (a) => {
     const A = m(a[0]); const dim = dimArg(a, 1);
     if (!isComplex(A)) return ret(reduce(A, dim, 0, (s, x) => s + x));
@@ -707,7 +707,7 @@ export const BUILTINS: Record<string, Builtin> = {
   iscolumn: async (a) => ret(bool(dimsOf(a[0])[1] === 1)),
   ismatrix: async () => ret(bool(true)),
 
-  // linear algebra
+  // ═══════════════════════════ LINEAR ALGEBRA ═══════════════════════════
   det: async (a) => { if (isSym(a[0])) return ret(makeSym(1, 1, [simplifyExpr(symDet(a[0].exprs, a[0].rows))])); const A = m(a[0]); if (isComplex(A)) { const [re, im] = cDet(A); return ret(cscalar(re, im)); } return ret(scalar(det(A))); },
   inv: async (a) => { if (isSym(a[0])) return ret(symInv(a[0])); return ret(inv(m(a[0]))); },
   charpoly: async (a) => { if (isSym(a[0])) { const c = symCharpolyCoeffs(a[0].exprs, a[0].rows); return ret(makeSym(1, c.length, c)); } const A = m(a[0]); return ret(rowVec(charpolyC(A))); },
@@ -984,6 +984,7 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(finishComplex(idx.length, 1, Float64Array.from(idx.map((i) => re[i])), Float64Array.from(idx.map((i) => im[i]))));
   },
   svds: async (a) => { const A = m(a[0]); const k = a.length >= 2 ? Math.round(asScalar(a[1])) : Math.min(A.rows, A.cols, 6); const { s } = svdReal(A); return ret(colVec(s.slice(0, k))); },
+  // ═══════════════ SIGNAL · STATS · SETS · TYPE TESTS ═══════════════
   // ── digital filtering & signal math ──
   filter: async (a) => {
     const b = toArray(m(a[0])), aa = toArray(m(a[1])), x = m(a[2]); const xs = toArray(x); const a0 = aa[0]; const y = new Array(xs.length).fill(0);
@@ -1221,6 +1222,7 @@ export const BUILTINS: Record<string, Builtin> = {
   islogical: async (a) => ret(bool(isMat(a[0]) && !!(a[0] as Mat).isBool)),
   isinteger: async (a) => ret(bool(isMat(a[0]) && !!(a[0] as Mat).itype && (a[0] as Mat).itype !== 'single')),
   issquare: async (a) => { const A = m(a[0]); return ret(bool(A.rows === A.cols)); },
+  // ═══════════ SOLVERS · STRINGS · BASE CONVERSION · REGEXP ═══════════
   // ── nonlinear system + iterative solvers (dense direct fallback) ──
   fsolve: async (a, _n, env) => {
     const f = handle(a[0], 'fsolve'); let x = toArray(m(a[1])); const n = x.length;
@@ -1265,6 +1267,7 @@ export const BUILTINS: Record<string, Builtin> = {
   regexp: async (a, n) => { const s = asString(a[0]); const opt = a.length >= 3 ? asString(a[2]) : ''; const re = new RegExp(asString(a[1]), opt === 'once' ? '' : 'g'); const idx: number[] = []; let mt: RegExpExecArray | null; if (opt === 'once') { const mm = re.exec(s); return ret(mm ? scalar(mm.index + 1) : zeros(1, 0)); } while ((mt = re.exec(s)) !== null) { idx.push(mt.index + 1); if (mt.index === re.lastIndex) re.lastIndex++; } void n; return ret(rowVec(idx)); },
   regexpi: async (a) => { const s = asString(a[0]); const re = new RegExp(asString(a[1]), 'gi'); const idx: number[] = []; let mt: RegExpExecArray | null; while ((mt = re.exec(s)) !== null) { idx.push(mt.index + 1); if (mt.index === re.lastIndex) re.lastIndex++; } return ret(rowVec(idx)); },
   sscanf: async (a) => { const s = asString(a[0]); const nums = (s.match(/-?\d+\.?\d*(e[+-]?\d+)?/gi) ?? []).map(Number); return ret(colVec(nums)); },
+  // ═══════════════ CELLS · STRUCTS · STRING CLASS · MISC ═══════════════
   // ── cell arrays ──
   cell: async (a) => { const [r, c] = dims2(a); const items: Value[] = []; for (let i = 0; i < r * c; i++) items.push(zeros(0, 0)); return ret(makeCell(r, c, items)); },
   iscell: async (a) => ret(bool(isCell(a[0]))),
@@ -1673,7 +1676,7 @@ export const BUILTINS: Record<string, Builtin> = {
   sprank: async (a) => ret(scalar(rankOf(sparseToDense(asSparse(a[0]))))),
   colperm: async (a) => { const S = asSparse(a[0]); const cnt = Array.from({ length: S.cols }, (_, j) => ({ j, n: S.colptr[j + 1] - S.colptr[j] })); cnt.sort((x, y) => x.n - y.n); return ret(rowVec(cnt.map((c) => c.j + 1))); },
 
-  // ── Numerical methods (real-valued) ──
+  // ═════════ NUMERICAL METHODS — ODE · BVP · INTERP · OPTIMIZATION ═════════
   trapz: async (a) => {
     let x: number[], y: number[];
     if (a.length >= 2) { x = toArray(m(a[0])); y = toArray(m(a[1])); } else { y = toArray(m(a[0])); x = y.map((_, i) => i + 1); }
@@ -1812,7 +1815,7 @@ export const BUILTINS: Record<string, Builtin> = {
   eomday: async (a) => ret(elementwise(m(a[0]), m(a[1]), (y, mo) => [31, (y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][mo - 1] ?? NaN)),
   etime: async (a) => { const t2 = toArray(m(a[0])), t1 = toArray(m(a[1])); return ret(scalar((dnum(t2[0], t2[1], t2[2], t2[3], t2[4], t2[5]) - dnum(t1[0], t1[1], t1[2], t1[3], t1[4], t1[5])) * 86400)); },
   addtodate: async (a) => { const n = asScalar(m(a[0])), q = asScalar(m(a[1])), unit = asString(a[2]); const v = dvec(n); const idx = { year: 0, month: 1, day: 2, hour: 3, minute: 4, second: 5 }[unit] ?? 2; v[idx] += q; return ret(scalar(dnum(v[0], v[1], v[2], v[3], v[4], v[5]))); },
-  // ── Symbolic Math ──
+  // ═══════════════════ SYMBOLIC MATH (polymorphic dispatch) ═══════════════════
   solve: async (a, _n, env) => {
     if (a.length && isStruct(a[0]) && (a[0] as StructV).fields.has('Q')) return ret(quboSolveResult(a[0] as StructV));
     if (a.length && isStruct(a[0]) && (a[0] as StructV).fields.has('ODEFcn')) return solveOde(a, env);   // OO ode object
@@ -1834,6 +1837,7 @@ export const BUILTINS: Record<string, Builtin> = {
   divergence: async (a, n, env) => { if (isSym(a[0])) { const F = a[0].exprs; const v = symNames(a[1]); let d: SymExpr = sN(0); for (let i = 0; i < F.length; i++) d = sAdd(d, diffExpr(F[i], v[i])); return ret(makeSym(1, 1, [simplifyExpr(d)])); } void env; return divergenceNumeric(a, n); },
   laplacian: async (a) => { if (isGraph(a[0])) { const g = a[0]; const A = adjacencyMat(g); const L = zeros(g.n, g.n); for (let i = 0; i < g.n; i++) { let d = 0; for (let j = 0; j < g.n; j++) { d += A.data[i + j * g.n]; L.data[i + j * g.n] = -A.data[i + j * g.n]; } L.data[i + i * g.n] = d - A.data[i + i * g.n]; } return ret(denseToSparse(L)); } const s = symArg(a[0]); const v = a.length >= 2 ? symNames(a[1]) : symVarsOf(s); let L: SymExpr = sN(0); for (const vn of v) L = sAdd(L, diffExpr(diffExpr(s.exprs[0], vn), vn)); return ret(makeSym(1, 1, [simplifyExpr(L)])); },
   compose: async (a) => { if (!isSym(a[0])) return ret(makeStr(sprintf(asString(a[0]), a.slice(1)))); const f = a[0]; const g = symArg(a[1]); const v = symVarsOf(f)[0] ?? 'x'; return ret(makeSym(1, 1, [simplifyExpr(subsExpr(f.exprs[0], v, g.exprs[0]))])); },
+  // ═════════════ DATES · TABLES · GROUPING · CATEGORICAL ═════════════
   // ── datetime / duration objects ──
   datetime: async (a) => {
     if (a.length >= 1 && (isStr(a[0]) || (isMat(a[0]) && (a[0] as Mat).isChar))) { const w = asString(a[0]).toLowerCase(); const n = w === 'today' ? Math.floor(Date.now() / 86400000) + 719529 : Date.now() / 86400000 + 719529; return ret(makeTemporal('datetime', 1, 1, Float64Array.of(n))); }
@@ -2128,6 +2132,7 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(out);
   },
 
+  // ═══════════ GRAPHS · GEOMETRY · TRIANGULATION · INTERPOLANTS ═══════════
   // ── Graph / network ──
   graph: async (a) => ret(buildGraph(false, a)),
   digraph: async (a) => ret(buildGraph(true, a)),
@@ -2339,6 +2344,7 @@ export const BUILTINS: Record<string, Builtin> = {
   fftw: async () => ret(str('estimate')),
   svdappend: async (a, n) => { const A = m(a[0]); const { U, s, V } = svdReal(A); const S = zeros(s.length, s.length); s.forEach((x, i) => { S.data[i + i * s.length] = x; }); return n >= 3 ? [U, S, V] : [colVec(s)]; },
 
+  // ═══════════════════════ QUANTUM · QUBO / QAOA ═══════════════════════
   // ── Quantum computing: gates, circuits, simulation ──
   hGate: async (a) => ret(mkGate('h', qList(a[0]))),
   xGate: async (a) => ret(mkGate('x', qList(a[0]))),
@@ -2485,6 +2491,7 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(scalar(await simpson3(F, v[0], v[1], v[2], v[3], v[4], v[5], 16)));
   },
 
+  // ═══════ ARRAY OPS · OPERATOR FNS · DESCRIPTIVE STATS · TRANSFORMS ═══════
   // ── supporting array constructors ──
   logspace: async (a) => { const lo = asScalar(a[0]), hi = asScalar(a[1]); const k = a.length >= 3 ? Math.round(asScalar(a[2])) : 50; const out: number[] = []; for (let i = 0; i < k; i++) out.push(Math.pow(10, lo + (hi - lo) * i / (k - 1))); return ret(rowVec(out)); },
   meshgrid: async (a, n) => {
@@ -2697,7 +2704,7 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(out);
   },
 
-  // graphics
+  // ═══════════════════════ GRAPHICS · I/O · STRINGS ═══════════════════════
   plot: async (a, _n, env) => { if (a.length && isGraph(a[0])) { plotGraph(env, a[0]); return []; } if (a.length && isGeom(a[0])) { plotGeom(env, a[0]); return []; } env.graphics.plot(a); return []; },
   fplot: async (a, _n, env) => {
     let label: string | undefined;
@@ -3025,7 +3032,7 @@ export const BUILTINS: Record<string, Builtin> = {
   tic: async () => [],
   toc: async () => ret(scalar(0)),
 
-  // help / workspace
+  // ═══════════════════════ HELP · WORKSPACE ═══════════════════════
   help: async (a, _n, env) => { env.output((a.length ? env.help(asString(a[0])) : GENERAL_HELP) + '\n'); return []; },
   doc: async (a, _n, env) => { env.output((a.length ? env.help(asString(a[0])) : GENERAL_HELP) + '\n'); return []; },
   lookfor: async (a, _n, env) => { env.output(a.length ? env.help(asString(a[0])) + '\n' : GENERAL_HELP + '\n'); return []; },
