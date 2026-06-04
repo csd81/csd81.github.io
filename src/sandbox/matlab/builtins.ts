@@ -2634,6 +2634,15 @@ export const BUILTINS: Record<string, Builtin> = {
   mkpp: async (a) => { const breaks = toArray(m(a[0])); const coefs = m(a[1]); return ret(makePP(breaks, coefs)); },
   unmkpp: async (a, n) => { const { breaks, coefs, L, k } = readPP(a[0]); const out: Value[] = [rowVec(breaks), coefs, scalar(L), scalar(k), scalar(1)]; return out.slice(0, Math.max(1, n)); },
   ppval: async (a) => { const pp = readPP(a[0]); const xq = m(a[1]); return ret(map(xq, (q) => ppEval(pp, q))); },
+  fnval: async (a) => { const pp = readPP(a[0]); const xq = m(a[1]); return ret(map(xq, (q) => ppEval(pp, q))); },
+  fnder: async (a) => ret(ppDer(readPP(a[0]))),
+  fnint: async (a) => ret(ppInt(readPP(a[0]))),
+  fnbrk: async (a, n) => { const pp = readPP(a[0]); const part = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar)) ? asString(a[1]).toLowerCase() : ''; if (part.startsWith('c')) return ret(pp.coefs); if (part.startsWith('p') || part === 'l') return ret(scalar(pp.L)); if (part.startsWith('o') || part === 'k') return ret(scalar(pp.k)); if (part.startsWith('i')) return ret(rowVec([pp.breaks[0], pp.breaks[pp.breaks.length - 1]])); void n; return ret(rowVec(pp.breaks)); },
+  fnplt: async (a, _n, env) => { const pp = readPP(a[0]); const lo = pp.breaks[0], hi = pp.breaks[pp.breaks.length - 1]; const N = 400; const xs: number[] = [], ys: number[] = []; for (let i = 0; i < N; i++) { const x = lo + (hi - lo) * i / (N - 1); xs.push(x); ys.push(ppEval(pp, x)); } env.graphics.addSeries(xs, ys); return []; },
+  fnmin: async (a, n) => { const pp = readPP(a[0]); let lo = pp.breaks[0], hi = pp.breaks[pp.breaks.length - 1]; if (a.length >= 2 && isMat(a[1]) && numel(a[1]) >= 2) { const r = toArray(m(a[1])); lo = r[0]; hi = r[1]; } let best = Infinity, bx = lo; const N = 2000; for (let i = 0; i <= N; i++) { const x = lo + (hi - lo) * i / N; const v = ppEval(pp, x); if (v < best) { best = v; bx = x; } } return n >= 2 ? [scalar(best), scalar(bx)] : [scalar(best)]; },
+  fnzeros: async (a) => { const pp = readPP(a[0]); const roots: number[] = []; for (let i = 0; i < pp.L; i++) { const c: number[] = []; for (let j = 0; j < pp.k; j++) c.push(pp.coefs.data[i + j * pp.L]); const { re, im } = durandKerner(c); const h = pp.breaks[i + 1] - pp.breaks[i]; for (let r = 0; r < re.length; r++) if (Math.abs(im[r]) < 1e-9 && re[r] >= -1e-9 && re[r] <= h + 1e-9) { const x = pp.breaks[i] + re[r]; if (!roots.some((rr) => Math.abs(rr - x) < 1e-9)) roots.push(x); } } roots.sort((x, y) => x - y); return ret(rowVec(roots)); },
+  csapi: async (a, n, env) => BUILTINS.spline([a[0], a[1]], n, env),
+  csape: async (a, n, env) => BUILTINS.spline([a[0], a[1]], n, env),
   interpft: async (a) => {
     // FFT resample x to length ny: insert zero high-frequencies, inverse transform.
     const x = toArray(m(a[0])); const ny = Math.round(asScalar(a[1])); const nx = x.length;
@@ -5662,6 +5671,10 @@ function makePP(breaks: number[], coefs: Mat): StructV {
   ]);
   return { kind: 'struct', rows: 1, cols: 1, fields };
 }
+/** Derivative of a pp (order k → k−1). */
+function ppDer(pp: PP): StructV { const { breaks, coefs, L, k } = pp; if (k <= 1) return makePP(breaks, zeros(L, 1)); const nc = zeros(L, k - 1); for (let i = 0; i < L; i++) for (let j = 0; j < k - 1; j++) nc.data[i + j * L] = coefs.data[i + j * L] * (k - 1 - j); return makePP(breaks, nc); }
+/** Antiderivative of a pp (order k → k+1), continuous across breaks. */
+function ppInt(pp: PP): StructV { const { breaks, coefs, L, k } = pp; const nc = zeros(L, k + 1); let carry = 0; for (let i = 0; i < L; i++) { for (let j = 0; j < k; j++) nc.data[i + j * L] = coefs.data[i + j * L] / (k - j); nc.data[i + k * L] = carry; const h = breaks[i + 1] - breaks[i]; let v = 0; for (let j = 0; j <= k; j++) v = v * h + nc.data[i + j * L]; carry = v; } return makePP(breaks, nc); }
 /** Read a pp struct back into plain data. */
 function readPP(v: Value): PP {
   if (!isStruct(v) || asString(v.fields.get('form')?.[0] ?? str('')) !== 'pp') throw new MatError('expected a piecewise-polynomial (pp) struct from mkpp/spline/pchip');
