@@ -87,6 +87,41 @@ function factorPolySym(cAsc: number[], v: string): SymExpr[] {
   return factors.length ? factors : [sN(cAsc[cAsc.length - 1] ?? 0)];
 }
 
+const gcdI = (a: number, b: number): number => { a = Math.abs(a); b = Math.abs(b); while (b) { [a, b] = [b, a % b]; } return a; };
+/** Decompose an expanded polynomial into monomials {coef, var→power}; null if non-polynomial. */
+function monomialsOf(e: SymExpr): { coef: number; pow: Map<string, number> }[] | null {
+  const flatTerms: SymExpr[] = []; const flat = (n: SymExpr, op: 'add' | 'mul', acc: SymExpr[]) => { if (n.t === op) n.args.forEach((x) => flat(x, op, acc)); else acc.push(n); };
+  flat(e, 'add', flatTerms); const out: { coef: number; pow: Map<string, number> }[] = [];
+  for (const t of flatTerms) {
+    const facs: SymExpr[] = []; flat(t, 'mul', facs); let coef = 1; const pow = new Map<string, number>();
+    for (const f of facs) {
+      if (f.t === 'n') coef *= f.v;
+      else if (f.t === 'v') pow.set(f.name, (pow.get(f.name) || 0) + 1);
+      else if (f.t === 'pow' && f.base.t === 'v' && f.exp.t === 'n' && Number.isInteger(f.exp.v) && f.exp.v > 0) pow.set(f.base.name, (pow.get(f.base.name) || 0) + f.exp.v);
+      else return null;
+    }
+    out.push({ coef, pow });
+  }
+  return out;
+}
+/** Factor a (multivariate) polynomial: pull out the integer + monomial content, then
+ *  factor the remaining univariate quotient over ℚ. Returns a list of sym factors. */
+function factorSymExpr(e0: SymExpr): SymExpr[] {
+  const e = simplifyExpr(expandExpr(e0)); const monos = monomialsOf(e);
+  if (!monos || monos.length === 0) return [e0];
+  const allInt = monos.every((t) => Number.isInteger(t.coef));
+  let g = allInt ? Math.abs(monos[0].coef) : 1; if (allInt) for (const t of monos) g = gcdI(g, t.coef); if (!g) g = 1;
+  const vars = new Set<string>(); monos.forEach((t) => t.pow.forEach((_, v) => vars.add(v)));
+  const minPow = new Map<string, number>(); for (const v of vars) { let mn = Infinity; for (const t of monos) mn = Math.min(mn, t.pow.get(v) || 0); minPow.set(v, mn); }
+  const content: SymExpr[] = []; if (allInt && g !== 1) content.push(sN(g)); for (const [v, p] of minPow) if (p > 0) content.push(p === 1 ? sV(v) : sPow(sV(v), sN(p)));
+  const qTerms = monos.map((t) => { const c = allInt ? t.coef / g : t.coef; const fs: SymExpr[] = [sN(c)]; t.pow.forEach((p, v) => { const rp = p - (minPow.get(v) || 0); if (rp > 0) fs.push(rp === 1 ? sV(v) : sPow(sV(v), sN(rp))); }); return fs.length === 1 ? sN(c) : sMul(...fs); });
+  const quotient = simplifyExpr(qTerms.length === 1 ? qTerms[0] : sAdd(...qTerms));
+  const qVars = symVars(quotient);
+  const qFacs = qVars.length === 1 ? ((c) => (c.length >= 2 ? factorPolySym(c, qVars[0]) : [quotient]))(polyCoeffs(quotient, qVars[0])) : [quotient];
+  const all = [...content, ...qFacs].filter((f) => !(f.t === 'n' && f.v === 1));
+  return all.length ? all : [sN(1)];
+}
+
 const prodOf = (a: number[]): number => a.reduce((p, x) => p * x, 1);
 /** First dimension whose size is > 1 (MATLAB's default reduction dim), 1-based. */
 function firstNonSingleton(dims: number[]): number { for (let k = 0; k < dims.length; k++) if (dims[k] > 1) return k + 1; return 1; }
@@ -338,10 +373,12 @@ export const BUILTINS: Record<string, Builtin> = {
   factor: async (a) => {
     if (isSym(a[0])) {
       const s = a[0] as Sym; const vars = symVarsOf(s);
-      if (vars.length !== 1) return ret(s);            // multivariate / non-poly: leave as is
-      const v = vars[0]; const c = polyCoeffs(s.exprs[0], v);
-      if (c.length < 2) return ret(s);                 // constant
-      const fac = factorPolySym(c, v);
+      if (vars.length === 0) {                          // constant sym → integer factorization
+        const nval = Math.round(symEval(s.exprs[0], new Map())); if (!Number.isFinite(nval) || Math.abs(nval) < 2) return ret(s);
+        let nn = Math.abs(nval); const primes: number[] = []; for (let d = 2; d * d <= nn; d++) while (nn % d === 0) { primes.push(d); nn /= d; } if (nn > 1) primes.push(nn);
+        return ret(makeSym(1, primes.length, primes.map((p) => sN(p))));
+      }
+      const fac = factorSymExpr(s.exprs[0]);            // univariate + multivariate (content + quotient)
       return ret(makeSym(1, fac.length, fac));
     }
     let n = Math.round(asScalar(a[0])); const orig = n; const out: number[] = [];
