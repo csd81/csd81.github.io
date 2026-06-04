@@ -445,6 +445,66 @@ export function ordqz(AA0: Mat, BB0: Mat, Q0: Mat, Z0: Mat, sel: boolean[]): { A
   return { AA, BB, Q, Z };
 }
 
+// ── Integer matrix normal forms (Hermite / Smith) ────────────────────────
+const idMat = (n: number): number[][] => Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)));
+const matToRows = (A: Mat): number[][] => Array.from({ length: A.rows }, (_, i) => Array.from({ length: A.cols }, (_, j) => A.data[i + j * A.rows]));
+const rowsToMat = (R: number[][]): Mat => { const m = R.length, n = R[0]?.length ?? 0; const o = zeros(m, n); for (let i = 0; i < m; i++) for (let j = 0; j < n; j++) o.data[i + j * m] = R[i][j]; return o; };
+function assertInt(R: number[][], who: string): void { for (const row of R) for (const v of row) if (Math.abs(v - Math.round(v)) > 1e-9) throw new MatError(`${who}: integer matrix required`); }
+/** Hermite normal form by column operations: A·V = H, V unimodular, H lower-triangular. */
+export function hermiteFormInt(A: Mat): { H: Mat; U: Mat } {
+  const R = matToRows(A); assertInt(R, 'hermiteForm'); R.forEach((row) => row.forEach((_, j) => (row[j] = Math.round(row[j]))));
+  const m = R.length, n = R[0].length; const H = R.map((r) => r.slice()); const V = idMat(n);
+  const swapCol = (a: number, b: number) => { for (let i = 0; i < m; i++) [H[i][a], H[i][b]] = [H[i][b], H[i][a]]; for (let i = 0; i < n; i++) [V[i][a], V[i][b]] = [V[i][b], V[i][a]]; };
+  const addCol = (dst: number, src: number, k: number) => { for (let i = 0; i < m; i++) H[i][dst] += k * H[i][src]; for (let i = 0; i < n; i++) V[i][dst] += k * V[i][src]; };
+  const negCol = (a: number) => { for (let i = 0; i < m; i++) H[i][a] = -H[i][a]; for (let i = 0; i < n; i++) V[i][a] = -V[i][a]; };
+  let pc = 0;
+  for (let r = 0; r < m && pc < n; r++) {
+    let guard = 0;
+    for (; ;) {
+      const nz = []; for (let c = pc; c < n; c++) if (H[r][c] !== 0) nz.push(c);
+      if (!nz.length) break;
+      let piv = nz[0]; for (const c of nz) if (Math.abs(H[r][c]) < Math.abs(H[r][piv])) piv = c;
+      if (piv !== pc) swapCol(piv, pc);
+      let done = true; for (let c = pc + 1; c < n; c++) if (H[r][c] !== 0) { addCol(c, pc, -Math.round(H[r][c] / H[r][pc])); if (H[r][c] !== 0) done = false; }
+      if (done) break; if (++guard > 1000) break;
+    }
+    if (pc < n && H[r][pc] !== 0) { if (H[r][pc] < 0) negCol(pc); for (let c = 0; c < pc; c++) { const q = Math.floor(H[r][c] / H[r][pc]); if (q) addCol(c, pc, -q); } pc++; }
+  }
+  return { H: rowsToMat(H), U: rowsToMat(V) };
+}
+/** Smith normal form: U·A·V = S, U,V unimodular, S diagonal with s₁|s₂|… */
+export function smithFormInt(A: Mat): { U: Mat; S: Mat; V: Mat } {
+  const R = matToRows(A); assertInt(R, 'smithForm'); R.forEach((row) => row.forEach((_, j) => (row[j] = Math.round(row[j]))));
+  const m = R.length, n = R[0].length; const S = R.map((r) => r.slice()); const U = idMat(m), V = idMat(n);
+  const swapRow = (a: number, b: number) => { [S[a], S[b]] = [S[b], S[a]]; [U[a], U[b]] = [U[b], U[a]]; };
+  const addRow = (d: number, s: number, k: number) => { for (let j = 0; j < n; j++) S[d][j] += k * S[s][j]; for (let j = 0; j < m; j++) U[d][j] += k * U[s][j]; };
+  const negRow = (a: number) => { for (let j = 0; j < n; j++) S[a][j] = -S[a][j]; for (let j = 0; j < m; j++) U[a][j] = -U[a][j]; };
+  const swapCol = (a: number, b: number) => { for (let i = 0; i < m; i++) [S[i][a], S[i][b]] = [S[i][b], S[i][a]]; for (let i = 0; i < n; i++) [V[i][a], V[i][b]] = [V[i][b], V[i][a]]; };
+  const addCol = (d: number, s: number, k: number) => { for (let i = 0; i < m; i++) S[i][d] += k * S[i][s]; for (let i = 0; i < n; i++) V[i][d] += k * V[i][s]; };
+  const negCol = (a: number) => { for (let i = 0; i < m; i++) S[i][a] = -S[i][a]; for (let i = 0; i < n; i++) V[i][a] = -V[i][a]; };
+  for (let t = 0; t < Math.min(m, n); t++) {
+    let guard = 0;
+    for (; ;) {
+      // bring the smallest nonzero |entry| of the trailing submatrix to (t,t)
+      let pi = -1, pj = -1, best = Infinity;
+      for (let i = t; i < m; i++) for (let j = t; j < n; j++) if (S[i][j] !== 0 && Math.abs(S[i][j]) < best) { best = Math.abs(S[i][j]); pi = i; pj = j; }
+      if (pi < 0) break;
+      if (pi !== t) swapRow(pi, t); if (pj !== t) swapCol(pj, t);
+      let changed = false;
+      for (let i = t + 1; i < m; i++) if (S[i][t] !== 0) { addRow(i, t, -Math.round(S[i][t] / S[t][t])); if (S[i][t] !== 0) changed = true; }
+      for (let j = t + 1; j < n; j++) if (S[t][j] !== 0) { addCol(j, t, -Math.round(S[t][j] / S[t][t])); if (S[t][j] !== 0) changed = true; }
+      if (!changed) {
+        // ensure (t,t) divides the rest; if not, fold an offending row into row t
+        let bad = false; for (let i = t + 1; i < m && !bad; i++) for (let j = t + 1; j < n; j++) if (S[i][j] % S[t][t] !== 0) { addRow(t, i, 1); bad = true; break; }
+        if (!bad) break;
+      }
+      if (++guard > 2000) break;
+    }
+    if (S[t][t] < 0) negRow(t);
+  }
+  return { U: rowsToMat(U), S: rowsToMat(S), V: rowsToMat(V) };
+}
+
 /** Matrix exponential via scaling and squaring (Taylor). */
 export function expm(A: Mat): Mat {
   const n = A.rows; const nrm = norm(A, 'inf') || 1; const sgrid = Math.max(0, Math.ceil(Math.log2(nrm)));

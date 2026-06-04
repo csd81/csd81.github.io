@@ -26,6 +26,7 @@ import {
   rankOf, cond as condFn, pinv as pinvFn, orth as orthFn, nullspace, rref as rrefFn, vecnorm as vecnormFn, isSymmetric, cDet, svdC as svdCplx,
   generalEig, durandKerner, hess as hessFn, schur as schurFn, expm as expmFn, logm as logmFn, sqrtm as sqrtmFn, ldl as ldlFn, lsqnonneg as lsqnonnegFn,
   balance as balanceFn, rsf2csf as rsf2csfFn, qz as qzFn, ordschur as ordschurFn, ordqz as ordqzFn, schurEig as schurEigFn,
+  hermiteFormInt, smithFormInt,
 } from './linalg';
 import { dispValue, sprintf, symTexLines } from './format';
 import type { Graphics } from './graphics';
@@ -792,6 +793,15 @@ export const BUILTINS: Record<string, Builtin> = {
     if (n >= 2) { const { V } = generalEig(A, true); return [makeSym(N, N, Array.from(V!.data, (x) => sN(x))), J]; }
     return ret(J);
   },
+  colspace: async (a) => {
+    const A = isSym(a[0]) ? mat((a[0] as Sym).rows, (a[0] as Sym).cols, Float64Array.from((a[0] as Sym).exprs, (e) => symEval(e, new Map()))) : m(a[0]);
+    const R = rrefFn(A); const piv: number[] = []; let pr = 0;
+    for (let i = 0; i < R.rows && pr < R.cols; i++) { let c = -1; for (let j = pr; j < R.cols; j++) if (Math.abs(R.data[i + j * R.rows]) > 1e-9) { c = j; break; } if (c >= 0) { piv.push(c); pr = c + 1; } }
+    const out = zeros(A.rows, piv.length); piv.forEach((c, k) => { for (let r = 0; r < A.rows; r++) out.data[r + k * A.rows] = A.data[r + c * A.rows]; });
+    return ret(makeSym(out.rows, out.cols, Array.from(out.data, (x) => sN(x))));
+  },
+  hermiteForm: async (a, n) => { const A = isSym(a[0]) ? mat((a[0] as Sym).rows, (a[0] as Sym).cols, Float64Array.from((a[0] as Sym).exprs, (e) => symEval(e, new Map()))) : m(a[0]); const { H, U } = hermiteFormInt(A); const sm = (M: Mat) => makeSym(M.rows, M.cols, Array.from(M.data, (x) => sN(x))); return n >= 2 ? [sm(H), sm(U)] : [sm(H)]; },
+  smithForm: async (a, n) => { const A = isSym(a[0]) ? mat((a[0] as Sym).rows, (a[0] as Sym).cols, Float64Array.from((a[0] as Sym).exprs, (e) => symEval(e, new Map()))) : m(a[0]); const { U, S, V } = smithFormInt(A); const sm = (M: Mat) => makeSym(M.rows, M.cols, Array.from(M.data, (x) => sN(x))); return n >= 3 ? [sm(U), sm(V), sm(S)] : [sm(S)]; },
   resultant: async (a) => {
     const p = symArg(a[0]), q = symArg(a[1]);
     const v = a.length >= 3 ? (isSym(a[2]) ? symVarsOf(a[2])[0] : asString(a[2])) : (symVarsOf(p)[0] ?? symVarsOf(q)[0] ?? 'x');
