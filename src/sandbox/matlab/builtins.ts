@@ -1820,7 +1820,7 @@ export const BUILTINS: Record<string, Builtin> = {
     // griddata(x,y,v,xq,yq[,method]) — scattered linear (default) or nearest interpolation.
     const xs = toArray(m(a[0])), ys = toArray(m(a[1])), vs = toArray(m(a[2]));
     const XQ = m(a[3]), YQ = m(a[4]);
-    const method = a.length >= 6 && isMat(a[5]) && (a[5] as Mat).isChar ? asString(a[5]).toLowerCase() : 'linear';
+    const method = a.length >= 6 && (isStr(a[5]) || (isMat(a[5]) && (a[5] as Mat).isChar)) ? asString(a[5]).toLowerCase() : 'linear';
     const out = zeros(XQ.rows, XQ.cols);
     if (method === 'nearest') {
       for (let k = 0; k < out.data.length; k++) { const qx = XQ.data[k], qy = YQ.data[k]; let best = 0, bd = Infinity; for (let i = 0; i < xs.length; i++) { const d = (xs[i] - qx) ** 2 + (ys[i] - qy) ** 2; if (d < bd) { bd = d; best = i; } } out.data[k] = vs[best]; }
@@ -2217,13 +2217,35 @@ export const BUILTINS: Record<string, Builtin> = {
     if (Xq.nd) out.nd = Xq.nd.slice();
     return ret(out);
   },
-  interpn: async (a, n, env) => {
-    // Simple form interpn(V, q1, q2, ...): the number of queries gives the dimensionality.
-    const V = m(a[0]); const nq = a.length - 1;
-    if (nq === 1) return BUILTINS.interp1([rowVec(Array.from({ length: numel(V) }, (_, i) => i + 1)), V, a[1]], n, env);
-    if (nq === 2) return BUILTINS.interp2(a, n, env);
-    if (nq === 3) return BUILTINS.interp3(a, n, env);
-    throw new MatError('interpn: only 1-D, 2-D and 3-D gridded interpolation are supported');
+  interpn: async (a) => {
+    // ndgrid-convention multilinear interpolation (dim k ↔ query k), unlike interp2/3
+    // which use meshgrid (dims 1,2 swapped). Two layouts:
+    //   compact: interpn(V, q1…qd)        → d+1 args  (grids default to 1:n_k)
+    //   gridded: interpn(X1…Xd, V, q1…qd) → 2d+1 args
+    const L = a.length;
+    const layout: Record<number, [number, boolean]> = { 2: [1, false], 3: [2, false], 4: [3, false], 5: [2, true], 7: [3, true] };
+    if (!layout[L]) throw new MatError('interpn: only 1-D, 2-D and 3-D gridded interpolation are supported');
+    const [D, gridded] = layout[L];
+    const V = m(a[gridded ? D : 0]);
+    // For 1-D, a row/col vector reports ndSize [1,n] or [n,1]; use its length as the axis.
+    const ed = D === 1 ? [numel(V)] : ndSize(V);
+    const stride: number[] = []; { let s = 1; for (let k = 0; k < D; k++) { stride.push(s); s *= (ed[k] ?? 1); } }
+    const grids: number[][] = [];
+    for (let k = 0; k < D; k++) {
+      const nk = ed[k] ?? 1;
+      grids.push(gridded ? Array.from({ length: nk }, (_, t) => m(a[k]).data[t * stride[k]]) : Array.from({ length: nk }, (_, t) => t + 1));
+    }
+    const qStart = gridded ? D + 1 : 1; const qs = Array.from({ length: D }, (_, k) => m(a[qStart + k]));
+    const loc = (g: number[], q: number): [number, number] => { let i = 0; while (i < g.length - 2 && q > g[i + 1]) i++; const t = g[i + 1] === g[i] ? 0 : (q - g[i]) / (g[i + 1] - g[i]); return [i, t]; };
+    const out = makeND(ndSize(qs[0]), new Float64Array(numel(qs[0])));
+    for (let p = 0; p < out.data.length; p++) {
+      const idx: number[] = [], ts: number[] = [];
+      for (let k = 0; k < D; k++) { const [i, t] = loc(grids[k], qs[k].data[p]); idx.push(i); ts.push(t); }
+      let val = 0;
+      for (let c = 0; c < (1 << D); c++) { let w = 1, off = 0; for (let k = 0; k < D; k++) { const bit = (c >> k) & 1; w *= bit ? ts[k] : 1 - ts[k]; off += (idx[k] + bit) * stride[k]; } if (w !== 0) val += w * V.data[off]; }
+      out.data[p] = val;
+    }
+    return ret(out);
   },
   pchip: async (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])); const d = pchipSlopes(x, y); if (a.length < 3) return ret(makePP(x, hermiteCoefs(x, y, d))); return ret(map(m(a[2]), (q) => hermiteEval(x, y, d, q))); },
   makima: async (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])); const d = akimaSlopes(x, y); if (a.length < 3) return ret(makePP(x, hermiteCoefs(x, y, d))); return ret(map(m(a[2]), (q) => hermiteEval(x, y, d, q))); },
