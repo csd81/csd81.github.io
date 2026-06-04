@@ -358,6 +358,7 @@ function applyConv(
 }
 
 function formatG(v: number, sig: number): string {
+  if (!Number.isFinite(v)) return Number.isNaN(v) ? 'NaN' : (v > 0 ? 'Inf' : '-Inf');
   if (v === 0) return '0';
   const s = v.toPrecision(sig || 1);
   return s.includes('.') && !s.includes('e') ? s.replace(/\.?0+$/, '') : s;

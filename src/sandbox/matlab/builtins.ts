@@ -183,6 +183,7 @@ function ccum(A: Mat, dim: number | undefined, mult: boolean): Mat {
   for (let r = 0; r < A.rows; r++) { let sr = initR, si = 0; for (let c = 0; c < A.cols; c++) { const idx = r + c * A.rows; [sr, si] = step(sr, si, A.data[idx], ai[idx]); o.data[idx] = sr; o.idata![idx] = si; } } return o;
 }
 function reduce(a: Mat, dim: number | undefined, init: number, f: (acc: number, x: number) => number, fin: (acc: number, count: number) => number = (x) => x): Mat {
+  if (dim === undefined && a.rows === 0 && a.cols === 0) return scalar(fin(init, 0));   // sum([])=0, prod([])=1, mean([])=NaN
   if (a.nd) { const d = dim ?? firstNonSingleton(ndSize(a)); return reduceAlongDim(a, d, (fib) => fin(fib.reduce((acc, x) => f(acc, x), init), fib.length)).v; }
   const vector = a.rows === 1 || a.cols === 1;
   if (dim === undefined && vector) {
@@ -229,8 +230,10 @@ function minmax(args: Value[], nargout: number, pick: (a: number, b: number) => 
 }
 
 function dimArg(args: Value[], i: number): number | undefined {
-  return args.length > i && isMat(args[i]) ? asScalar(args[i]) : undefined;
+  return args.length > i && isMat(args[i]) && !(args[i] as Mat).isChar ? asScalar(args[i]) : undefined;   // a char/string arg (e.g. 'omitnan') is not a dim
 }
+/** True if any argument is the given option keyword (char or string type). */
+function hasFlag(args: Value[], flag: string): boolean { return args.some((x) => (isStr(x) || (isMat(x) && (x as Mat).isChar)) && asString(x).toLowerCase() === flag); }
 
 function sizeOf(args: Value[], nargout: number): Value[] {
   const v = args[0];
@@ -325,7 +328,8 @@ export const BUILTINS: Record<string, Builtin> = {
   angle: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmapReal(A, (re, im) => Math.atan2(im, re)) : map(A, (x) => (x < 0 ? Math.PI : 0))); },
   complex: async (a) => { const A = m(a[0]); const B = a.length >= 2 ? m(a[1]) : zeros(A.rows, A.cols); const re = new Float64Array(A.data); const im = new Float64Array(A.data.length); for (let i = 0; i < im.length; i++) im[i] = B.data.length === 1 ? B.data[0] : B.data[i]; return ret({ kind: 'num', rows: A.rows, cols: A.cols, data: re, idata: im }); },
   iscomplex: async (a) => ret(bool(isComplex(m(a[0])))),
-  floor: ew(Math.floor), ceil: ew(Math.ceil), round: ew((x) => Math.round(x)),
+  floor: ew(Math.floor), ceil: ew(Math.ceil),
+  round: async (a) => { const A = m(a[0]); const nd = a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar ? Math.round(asScalar(a[1])) : 0; const f = Math.pow(10, nd); const r = (x: number) => Math.sign(x) * Math.round(Math.abs(x) * f) / f; const o = map(A, r); if (A.idata) o.idata = A.idata.map(r); return ret(o); },
   fix: ew(Math.trunc),
   atan2: async (a) => ret(elementwise(m(a[0]), m(a[1]), Math.atan2)),
   mod: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, y) => (y === 0 ? x : ((x % y) + y) % y))),
@@ -530,14 +534,21 @@ export const BUILTINS: Record<string, Builtin> = {
 
   // ═══════════════════════ REDUCTIONS & SHAPE ═══════════════════════
   sum: async (a) => {
-    const A = m(a[0]); const dim = dimArg(a, 1);
-    if (!isComplex(A)) return ret(reduce(A, dim, 0, (s, x) => s + x));
+    const A = m(a[0]); const dim = dimArg(a, 1); const omit = hasFlag(a, 'omitnan');
+    if (!isComplex(A)) return ret(reduce(A, dim, 0, omit ? (s, x) => s + (Number.isNaN(x) ? 0 : x) : (s, x) => s + x));
     const re = reduce(A, dim, 0, (s, x) => s + x);
     const im = reduce({ kind: 'num', rows: A.rows, cols: A.cols, data: A.idata!, nd: A.nd }, dim, 0, (s, x) => s + x);
     return ret({ kind: 'num', rows: re.rows, cols: re.cols, data: re.data, idata: im.data, nd: re.nd });
   },
   prod: async (a) => { const A = m(a[0]); const dim = dimArg(a, 1); if (!isComplex(A)) return ret(reduce(A, dim, 1, (s, x) => s * x)); return ret(creduce(A, dim, 1, 0, (ar, aii, xr, xi) => cmul(ar, aii, xr, xi))); },
-  mean: async (a) => { const A = m(a[0]); const dim = dimArg(a, 1); if (!isComplex(A)) return ret(reduce(A, dim, 0, (s, x) => s + x, (s, n) => s / n)); return ret(creduce(A, dim, 0, 0, (ar, aii, xr, xi) => [ar + xr, aii + xi], (r, i, n) => [r / n, i / n])); },
+  mean: async (a) => {
+    const A = m(a[0]); const dim = dimArg(a, 1);
+    if (!isComplex(A)) {
+      if (hasFlag(a, 'omitnan')) { const s = reduce(A, dim, 0, (acc, x) => acc + (Number.isNaN(x) ? 0 : x)); const c = reduce(A, dim, 0, (acc, x) => acc + (Number.isNaN(x) ? 0 : 1)); return ret(elementwise(s, c, (sv, cv) => (cv === 0 ? NaN : sv / cv))); }
+      return ret(reduce(A, dim, 0, (s, x) => s + x, (s, n) => s / n));
+    }
+    return ret(creduce(A, dim, 0, 0, (ar, aii, xr, xi) => [ar + xr, aii + xi], (r, i, n) => [r / n, i / n]));
+  },
   cumsum: async (a) => {
     const A = m(a[0]); const dim = dimArg(a, 1);
     if (isComplex(A)) return ret(ccum(A, dim, false));
@@ -619,18 +630,23 @@ export const BUILTINS: Record<string, Builtin> = {
     for (let k = 1; k < a.length; k++) { const ak = a[k]; if (isMat(ak) && !(ak as Mat).isChar) dim = Math.round(asScalar(ak)); else { const s = asString(ak).toLowerCase(); if (s === 'descend') descend = true; else if (s === 'ascend') descend = false; } }
     const rows = A.rows, cols = A.cols; const vector = rows === 1 || cols === 1;
     const d = dim || (vector ? (rows === 1 ? 2 : 1) : 1);
-    const cmp = (x: number, y: number) => { if (Number.isNaN(x)) return Number.isNaN(y) ? 0 : 1; if (Number.isNaN(y)) return -1; return descend ? y - x : x - y; };
-    const out = zeros(rows, cols); out.isChar = A.isChar; out.isBool = A.isBool; out.itype = A.itype; const idx = zeros(rows, cols);
-    if (d === 1) { for (let c = 0; c < cols; c++) { const col = Array.from({ length: rows }, (_, r) => [A.data[r + c * rows], r + 1] as [number, number]); col.sort((x, y) => cmp(x[0], y[0])); for (let r = 0; r < rows; r++) { out.data[r + c * rows] = col[r][0]; idx.data[r + c * rows] = col[r][1]; } } }
-    else { for (let r = 0; r < rows; r++) { const row = Array.from({ length: cols }, (_, c) => [A.data[r + c * rows], c + 1] as [number, number]); row.sort((x, y) => cmp(x[0], y[0])); for (let c = 0; c < cols; c++) { out.data[r + c * rows] = row[c][0]; idx.data[r + c * rows] = row[c][1]; } } }
+    const cplx = isComplex(A); const ai = A.idata;
+    // complex sort key: magnitude, tie-broken by phase angle (MATLAB)
+    const key = cplx ? (i: number) => Math.hypot(A.data[i], ai![i]) : (i: number) => A.data[i];
+    const cmp = (i: number, j: number) => { const x = key(i), y = key(j); if (Number.isNaN(x)) return Number.isNaN(y) ? 0 : 1; if (Number.isNaN(y)) return -1; let dd = x - y; if (cplx && dd === 0) dd = Math.atan2(ai![i], A.data[i]) - Math.atan2(ai![j], A.data[j]); return descend ? -dd : dd; };
+    const out = zeros(rows, cols); out.isChar = A.isChar; out.isBool = A.isBool; out.itype = A.itype; if (cplx) out.idata = new Float64Array(out.data.length); const idx = zeros(rows, cols);
+    const place = (dst: number, src: number) => { out.data[dst] = A.data[src]; if (cplx) out.idata![dst] = ai![src]; };
+    if (d === 1) { for (let c = 0; c < cols; c++) { const ord = Array.from({ length: rows }, (_, r) => r + c * rows); ord.sort(cmp); for (let r = 0; r < rows; r++) { place(r + c * rows, ord[r]); idx.data[r + c * rows] = (ord[r] - c * rows) + 1; } } }
+    else { for (let r = 0; r < rows; r++) { const ord = Array.from({ length: cols }, (_, c) => r + c * rows); ord.sort(cmp); for (let c = 0; c < cols; c++) { place(r + c * rows, ord[c]); idx.data[r + c * rows] = Math.floor(ord[c] / rows) + 1; } } }
     return n >= 2 ? [out, idx] : [out];
   },
   find: async (a, n) => {
-    const A = m(a[0]);
+    const A = m(a[0]); const ai = A.idata;
     const all: number[] = [];
-    for (let i = 0; i < A.data.length; i++) if (A.data[i] !== 0) all.push(i); // 0-based linear
-    const k = a.length >= 2 ? Math.round(asScalar(a[1])) : all.length;
-    const sel = all.slice(0, Math.max(0, k));
+    for (let i = 0; i < A.data.length; i++) if (A.data[i] !== 0 || (ai && ai[i] !== 0)) all.push(i); // 0-based linear; nonzero incl. complex
+    const last = a.some((x) => (isStr(x) || (isMat(x) && (x as Mat).isChar)) && asString(x).toLowerCase() === 'last');
+    const k = a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar ? Math.round(asScalar(a[1])) : all.length;
+    const sel = last ? all.slice(Math.max(0, all.length - k)) : all.slice(0, Math.max(0, k));
     const orient = (arr: number[]) => (A.rows === 1 ? rowVec(arr) : colVec(arr));
     if (n >= 2) {
       const rows = sel.map((i) => (i % A.rows) + 1);
