@@ -22,6 +22,12 @@ import { BUILTINS, CONSTANTS, builtinHelp, docUrl, type Env } from './builtins';
 import { displayValue, dispValue } from './format';
 import { Graphics } from './graphics';
 
+/** Snapshot a value for save() so later in-place edits don't mutate the stored copy. */
+function cloneForSave(v: Value): Value {
+  if (isMat(v)) return { ...v, data: v.data.slice(), idata: v.idata ? v.idata.slice() : undefined };
+  return v;
+}
+
 class ReturnSignal {}
 class BreakSignal {}
 class ContinueSignal {}
@@ -96,6 +102,33 @@ export class Interpreter implements Env {
     for (const n of names) this.base.vars.delete(n);
   }
   workspaceVars() { return this.workspaceSnapshot().map(({ name, size, klass }) => ({ name, size, klass })); }
+  /** In-memory MAT-file store (no real filesystem in the browser sandbox). */
+  private matFiles = new Map<string, Map<string, Value>>();
+  private matKey(f: string) { return f.replace(/\.mat$/i, '').trim() + '.mat'; }
+  saveMat(filename: string, names: string[]) {
+    const store = new Map<string, Value>();
+    const pick = names.length ? names : [...this.base.vars.keys()];
+    for (const n of pick) {
+      const v = this.base.vars.get(n);
+      if (v === undefined) { if (names.length) throw new MatError(`Variable '${n}' not found.`); continue; }
+      store.set(n, cloneForSave(v));
+    }
+    this.matFiles.set(this.matKey(filename), store);
+  }
+  private matPairs(filename: string, names: string[]): [string, Value][] {
+    const store = this.matFiles.get(this.matKey(filename));
+    if (!store) throw new MatError(`Unable to read file '${filename}'. No such file or directory.`);
+    const pick = names.length ? names : [...store.keys()];
+    const out: [string, Value][] = [];
+    for (const n of pick) {
+      const v = store.get(n);
+      if (v === undefined) { if (names.length) throw new MatError(`Variable '${n}' not found in file '${filename}'.`); continue; }
+      out.push([n, cloneForSave(v)]);
+    }
+    return out;
+  }
+  loadMat(filename: string, names: string[]) { for (const [n, v] of this.matPairs(filename, names)) this.base.vars.set(n, v); }
+  readMatFile(filename: string, names: string[]): [string, Value][] { return this.matPairs(filename, names); }
   async evalInput(text: string): Promise<Value> {
     const prog = parse(text);
     const stmt = prog.stmts[0];

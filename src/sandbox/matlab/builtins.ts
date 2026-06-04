@@ -28,7 +28,7 @@ import {
   balance as balanceFn, rsf2csf as rsf2csfFn, qz as qzFn, ordschur as ordschurFn, ordqz as ordqzFn, schurEig as schurEigFn,
   hermiteFormInt, smithFormInt,
 } from './linalg';
-import { dispValue, sprintf, symTexLines } from './format';
+import { dispValue, sprintf, symTexLines, setFormatMode } from './format';
 import type { Graphics } from './graphics';
 import {
   polyCoeffs, numDen, symDet, symInv, symCharpolyCoeffs, symArg, symToExpr, symVarsOf,
@@ -49,6 +49,9 @@ export interface Env {
   help(name: string): string;
   clearWorkspace(names: string[]): void;
   workspaceVars(): { name: string; size: string; klass: string }[];
+  saveMat(filename: string, names: string[]): void;
+  loadMat(filename: string, names: string[]): void;
+  readMatFile(filename: string, names: string[]): [string, Value][];
   clearConsole(): void;
 }
 
@@ -3241,6 +3244,24 @@ export const BUILTINS: Record<string, Builtin> = {
   doc: async (a, _n, env) => { env.output((a.length ? env.help(asString(a[0])) : GENERAL_HELP) + '\n'); return []; },
   lookfor: async (a, _n, env) => { env.output(a.length ? env.help(asString(a[0])) + '\n' : GENERAL_HELP + '\n'); return []; },
   clear: async (a, _n, env) => { env.clearWorkspace(a.map((v) => asString(v))); return []; },
+  format: async (a) => { setFormatMode(a.map((v) => asString(v)).join('')); return []; },
+  save: async (a, _n, env) => {
+    const words = a.map((v) => asString(v)).filter((w) => !w.startsWith('-'));   // ignore -mat/-ascii/-append flags
+    const file = words[0] || 'matlab';
+    env.saveMat(file, words.slice(1));
+    return [];
+  },
+  load: async (a, n, env) => {
+    const words = a.map((v) => asString(v)).filter((w) => !w.startsWith('-'));
+    const file = words[0];
+    if (!file) throw new MatError('load: filename required');
+    if (n >= 1) {   // S = load(...) → struct of the loaded variables
+      const pairs = env.readMatFile(file, words.slice(1));
+      return ret({ kind: 'struct', rows: 1, cols: 1, fields: new Map(pairs.map(([nm, v]) => [nm, [v]])) } as StructV);
+    }
+    env.loadMat(file, words.slice(1));
+    return [];
+  },
   who: async (_a, _n, env) => {
     const names = env.workspaceVars().map((v) => v.name);
     env.output(names.length ? 'Your variables are:\n\n' + names.join('   ') + '\n' : '');
