@@ -51,6 +51,14 @@ export interface Env {
 
 export type Builtin = (args: Value[], nargout: number, env: Env) => Promise<Value[]>;
 
+// ── Seedable PRNG (mulberry32): rng(seed) makes rand/randn/… reproducible ──
+function mulberry32(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => { s = (s + 0x6d2b79f5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+let rngGen: (() => number) | null = null;   // null ⇒ fall back to Math.random
+const rngNext = (): number => (rngGen ? rngGen() : Math.random());
+
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
 const ew = (f: (x: number) => number): Builtin => async (a) => ret(map(m(a[0]), f));
 
@@ -411,7 +419,7 @@ export const BUILTINS: Record<string, Builtin> = {
   zeros: async (a) => { const d = dimsN(a); return ret(makeND(d, new Float64Array(d.reduce((p, x) => p * x, 1)))); },
   ones: async (a) => { const d = dimsN(a); const data = new Float64Array(d.reduce((p, x) => p * x, 1)); data.fill(1); return ret(makeND(d, data)); },
   eye: async (a) => { const [r, c] = dims2(a); return ret(eye(r, c)); },
-  rand: async (a) => { const d = dimsN(a); const data = new Float64Array(d.reduce((p, x) => p * x, 1)); for (let i = 0; i < data.length; i++) data[i] = Math.random(); return ret(makeND(d, data)); },
+  rand: async (a) => { const d = dimsN(a); const data = new Float64Array(d.reduce((p, x) => p * x, 1)); for (let i = 0; i < data.length; i++) data[i] = rngNext(); return ret(makeND(d, data)); },
   linspace: async (a) => {
     const lo = asScalar(a[0]), hi = asScalar(a[1]); const n = a.length >= 3 ? Math.round(asScalar(a[2])) : 100;
     if (n < 2) return ret(rowVec([hi]));
@@ -445,10 +453,16 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(out);
   },
   sort: async (a, n) => {
-    const A = m(a[0]); const vals = toArray(A).map((v, i) => [v, i + 1] as [number, number]);
-    vals.sort((x, y) => x[0] - y[0]);
-    const sorted = A.cols === 1 ? colVec(vals.map((v) => v[0])) : rowVec(vals.map((v) => v[0]));
-    return n >= 2 ? [sorted, A.cols === 1 ? colVec(vals.map((v) => v[1])) : rowVec(vals.map((v) => v[1]))] : [sorted];
+    if (isStr(a[0])) { const items = (a[0] as Str).items.slice(); const desc = a.some((x) => (isStr(x) || (isMat(x) && (x as Mat).isChar)) && asString(x).toLowerCase() === 'descend'); const idx = items.map((_, i) => i + 1); idx.sort((i, j) => items[i - 1] < items[j - 1] ? -1 : items[i - 1] > items[j - 1] ? 1 : 0); if (desc) idx.reverse(); const sorted = makeStrArr((a[0] as Str).rows, (a[0] as Str).cols, idx.map((i) => items[i - 1])); return n >= 2 ? [sorted, rowVec(idx)] : [sorted]; }
+    const A = m(a[0]); let dim = 0, descend = false;
+    for (let k = 1; k < a.length; k++) { const ak = a[k]; if (isMat(ak) && !(ak as Mat).isChar) dim = Math.round(asScalar(ak)); else { const s = asString(ak).toLowerCase(); if (s === 'descend') descend = true; else if (s === 'ascend') descend = false; } }
+    const rows = A.rows, cols = A.cols; const vector = rows === 1 || cols === 1;
+    const d = dim || (vector ? (rows === 1 ? 2 : 1) : 1);
+    const cmp = (x: number, y: number) => { if (Number.isNaN(x)) return Number.isNaN(y) ? 0 : 1; if (Number.isNaN(y)) return -1; return descend ? y - x : x - y; };
+    const out = zeros(rows, cols); out.isChar = A.isChar; out.isBool = A.isBool; out.itype = A.itype; const idx = zeros(rows, cols);
+    if (d === 1) { for (let c = 0; c < cols; c++) { const col = Array.from({ length: rows }, (_, r) => [A.data[r + c * rows], r + 1] as [number, number]); col.sort((x, y) => cmp(x[0], y[0])); for (let r = 0; r < rows; r++) { out.data[r + c * rows] = col[r][0]; idx.data[r + c * rows] = col[r][1]; } } }
+    else { for (let r = 0; r < rows; r++) { const row = Array.from({ length: cols }, (_, c) => [A.data[r + c * rows], c + 1] as [number, number]); row.sort((x, y) => cmp(x[0], y[0])); for (let c = 0; c < cols; c++) { out.data[r + c * rows] = row[c][0]; idx.data[r + c * rows] = row[c][1]; } } }
+    return n >= 2 ? [out, idx] : [out];
   },
   find: async (a, n) => {
     const A = m(a[0]);
@@ -475,11 +489,26 @@ export const BUILTINS: Record<string, Builtin> = {
     for (let i = 1; i < a.length; i++) if (!eq(a[0], a[i])) return ret(bool(false));
     return ret(bool(true));
   },
-  unique: async (a) => {
-    const A = m(a[0]); const seen = new Set<number>(); const vals: number[] = [];
-    for (const v of toArray(A)) if (!seen.has(v)) { seen.add(v); vals.push(v); }
-    vals.sort((x, y) => x - y);
-    return ret(A.rows === 1 ? rowVec(vals) : colVec(vals));
+  unique: async (a, n) => {
+    const flags = a.slice(1).filter((x) => isStr(x) || (isMat(x) && (x as Mat).isChar)).map((x) => asString(x).toLowerCase());
+    const stable = flags.includes('stable'), last = flags.includes('last'), rowsMode = flags.includes('rows');
+    if (isStr(a[0]) && !rowsMode) { const items = (a[0] as Str).items; const order: string[] = []; const firstIdx = new Map<string, number>(); items.forEach((v, i) => { if (!firstIdx.has(v)) { firstIdx.set(v, i); order.push(v); } else if (last) firstIdx.set(v, i); }); const uniq = stable ? order.slice() : order.slice().sort(); const col = (a[0] as Str).cols === 1 && (a[0] as Str).rows !== 1; const out = makeStrArr(col ? uniq.length : 1, col ? 1 : uniq.length, uniq); const pos = new Map(uniq.map((v, i) => [v, i])); const ia = uniq.map((v) => firstIdx.get(v)! + 1); const ic = items.map((v) => pos.get(v)! + 1); return n >= 3 ? [out, colVec(ia), colVec(ic)] : n >= 2 ? [out, colVec(ia)] : [out]; }
+    const A = m(a[0]);
+    if (rowsMode) {
+      const order: number[] = []; const firstIdx = new Map<string, number>(); const keyOf = (r: number) => Array.from({ length: A.cols }, (_, c) => A.data[r + c * A.rows]).join(',');
+      for (let r = 0; r < A.rows; r++) { const k = keyOf(r); if (!firstIdx.has(k)) { firstIdx.set(k, r); order.push(r); } else if (last) firstIdx.set(k, r); }
+      let rowsOut = order.slice(); if (!stable) rowsOut.sort((x, y) => { for (let c = 0; c < A.cols; c++) { const d = A.data[x + c * A.rows] - A.data[y + c * A.rows]; if (d) return d; } return 0; });
+      const out = zeros(rowsOut.length, A.cols); rowsOut.forEach((r, i) => { for (let c = 0; c < A.cols; c++) out.data[i + c * rowsOut.length] = A.data[r + c * A.rows]; });
+      const ia = rowsOut.map((r) => firstIdx.get(keyOf(r))! + 1);
+      return n >= 2 ? [out, colVec(ia)] : [out];
+    }
+    const arr = toArray(A); const order: number[] = []; const firstIdx = new Map<number, number>();
+    arr.forEach((v, i) => { if (!firstIdx.has(v)) { firstIdx.set(v, i); order.push(v); } else if (last) firstIdx.set(v, i); });
+    const uniq = stable ? order.slice() : order.slice().sort((x, y) => x - y);
+    const pos = new Map(uniq.map((v, i) => [v, i]));
+    const ia = uniq.map((v) => firstIdx.get(v)! + 1); const ic = arr.map((v) => pos.get(v)! + 1);
+    const colOut = A.rows !== 1; const wrap = (xs: number[]) => { const w = colOut ? colVec(xs) : rowVec(xs); w.isChar = A.isChar; w.itype = A.itype; return w; };
+    return n >= 3 ? [wrap(uniq), colVec(ia), colVec(ic)] : n >= 2 ? [wrap(uniq), colVec(ia)] : [wrap(uniq)];
   },
   ismember: async (a, n) => {
     const A = m(a[0]); const bArr = toArray(m(a[1]));
@@ -749,14 +778,31 @@ export const BUILTINS: Record<string, Builtin> = {
   setxor: async (a) => { const A = m(a[0]), B = m(a[1]); const sa = new Set(toArray(A)), sb = new Set(toArray(B)); const r = setUniq([...toArray(A).filter((x) => !sb.has(x)), ...toArray(B).filter((x) => !sa.has(x))]); return ret(A.rows === 1 ? rowVec(r) : colVec(r)); },
   // ── more statistics ──
   histcounts: async (a, n) => {
-    const x = toArray(m(a[0])); let edges: number[];
+    const x = toArray(m(a[0]));
+    // name-value options
+    const opt = (name: string): Value | undefined => { for (let i = 1; i + 1 < a.length; i++) if ((isStr(a[i]) || (isMat(a[i]) && (a[i] as Mat).isChar)) && asString(a[i]).toLowerCase() === name) return a[i + 1]; return undefined; };
+    const norm = opt('normalization') ? asString(opt('normalization')!).toLowerCase() : 'count';
+    const binWidth = opt('binwidth') ? asScalar(opt('binwidth')!) : undefined;
+    const binLimits = opt('binlimits') ? toArray(m(opt('binlimits')!)) : undefined;
+    let edges: number[];
     if (a.length >= 2 && isMat(a[1]) && numel(a[1]) > 1) edges = toArray(m(a[1]));
-    else { const nb = a.length >= 2 ? Math.round(asScalar(a[1])) : 10; const mn = Math.min(...x), mx = Math.max(...x); const w = (mx - mn) / nb || 1; edges = Array.from({ length: nb + 1 }, (_, i) => mn + i * w); }
+    else {
+      const mn = binLimits ? binLimits[0] : Math.min(...x), mx = binLimits ? binLimits[1] : Math.max(...x);
+      if (binWidth) { edges = []; for (let e = mn; e <= mx + binWidth / 2; e += binWidth) edges.push(e); if (edges.length < 2) edges = [mn, mn + (binWidth || 1)]; }
+      else { const nb = a.length >= 2 && isMat(a[1]) && numel(a[1]) === 1 ? Math.round(asScalar(a[1])) : 10; const w = (mx - mn) / nb || 1; edges = Array.from({ length: nb + 1 }, (_, i) => mn + i * w); }
+    }
     const counts = new Array(edges.length - 1).fill(0);
     for (const v of x) { for (let b = 0; b < counts.length; b++) { if (v >= edges[b] && (v < edges[b + 1] || (b === counts.length - 1 && v <= edges[b + 1]))) { counts[b]++; break; } } }
-    return n >= 2 ? [rowVec(counts), rowVec(edges)] : [rowVec(counts)];
+    const total = x.length || 1;
+    let vals = counts as number[];
+    if (norm === 'probability') vals = counts.map((c) => c / total);
+    else if (norm === 'pdf') vals = counts.map((c, b) => c / (total * (edges[b + 1] - edges[b])));
+    else if (norm === 'countdensity') vals = counts.map((c, b) => c / (edges[b + 1] - edges[b]));
+    else if (norm === 'cumcount') { let s = 0; vals = counts.map((c) => (s += c)); }
+    else if (norm === 'cdf') { let s = 0; vals = counts.map((c) => (s += c) / total); }
+    return n >= 2 ? [rowVec(vals), rowVec(edges)] : [rowVec(vals)];
   },
-  randperm: async (a) => { const nn = Math.round(asScalar(a[0])); const p = Array.from({ length: nn }, (_, i) => i + 1); for (let i = nn - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; } const k = a.length >= 2 ? Math.round(asScalar(a[1])) : nn; return ret(rowVec(p.slice(0, k))); },
+  randperm: async (a) => { const nn = Math.round(asScalar(a[0])); const p = Array.from({ length: nn }, (_, i) => i + 1); for (let i = nn - 1; i > 0; i--) { const j = Math.floor(rngNext() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; } const k = a.length >= 2 ? Math.round(asScalar(a[1])) : nn; return ret(rowVec(p.slice(0, k))); },
   mad: async (a) => { const flag = a.length >= 2 ? asScalar(a[1]) : 0; return ret(colReduce(m(a[0]), (c) => { if (flag === 1) { const s = [...c].sort((x, y) => x - y); const md = s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2; const d = c.map((x) => Math.abs(x - md)).sort((x, y) => x - y); return d.length % 2 ? d[(d.length - 1) / 2] : (d[d.length / 2 - 1] + d[d.length / 2]) / 2; } const mu = c.reduce((s2, x) => s2 + x, 0) / c.length; return c.reduce((s2, x) => s2 + Math.abs(x - mu), 0) / c.length; })); },
   poly: async (a) => { const A = m(a[0]); if (A.rows > 1 && A.cols > 1) return ret(rowVec(charpolyC(A))); let c = [1]; for (const r of toArray(A)) { const nc = new Array(c.length + 1).fill(0); for (let i = 0; i < c.length; i++) { nc[i] += c[i]; nc[i + 1] -= c[i] * r; } c = nc; } return ret(rowVec(c)); },
   // ── type tests / conversions ──
@@ -1361,7 +1407,7 @@ export const BUILTINS: Record<string, Builtin> = {
   betaincinv: async (a) => { const p = asScalar(a[0]), aa = asScalar(a[1]), bb = asScalar(a[2]); return ret(scalar(invMonotone((x) => betainc(x, aa, bb), p, 0, 1))); },
   gammaincinv: async (a) => { const p = asScalar(a[0]), aa = asScalar(a[1]); return ret(scalar(invMonotone((x) => gammainc(x, aa), p, 0, aa + 10 * Math.sqrt(aa) + 20))); },
   rosser: async () => ret(rosserMat()),
-  rng: async () => [],
+  rng: async (a) => { if (!a.length) { rngGen = null; return []; } const x = a[0]; if (isMat(x) && !(x as Mat).isChar) rngGen = mulberry32(Math.round(asScalar(x))); else { const s = asString(x); rngGen = s === 'shuffle' ? mulberry32(Date.now() >>> 0) : mulberry32(0); } return []; },
   convn: async (a) => { const A = m(a[0]), B = m(a[1]); if ((A.rows === 1 || A.cols === 1) && (B.rows === 1 || B.cols === 1)) { const u = toArray(A), v = toArray(B); const w = new Array(Math.max(0, u.length + v.length - 1)).fill(0); for (let i = 0; i < u.length; i++) for (let j = 0; j < v.length; j++) w[i + j] += u[i] * v[j]; return ret(A.cols === 1 ? colVec(w) : rowVec(w)); } return ret(conv2Shape(A, B, 'full')); },
   optimset: async (a) => { const fields = new Map<string, Value[]>(); const start = a.length && isStruct(a[0]) ? 1 : 0; if (start) for (const [k, v] of (a[0] as StructV).fields) fields.set(k, v.slice()); for (let i = start; i + 1 < a.length; i += 2) fields.set(asString(a[i]), [a[i + 1]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields } as StructV); },
   optimget: async (a) => { const S = a[0]; if (!isStruct(S)) throw new MatError('optimget: first argument must be an options struct'); const v = S.fields.get(asString(a[1])); return ret(v && v.length ? v[0] : zeros(0, 0)); },
@@ -2098,8 +2144,8 @@ export const BUILTINS: Record<string, Builtin> = {
     for (let r = 0; r < y.length; r++) for (let c = 0; c < x.length; c++) { X.data[r + c * y.length] = x[c]; Y.data[r + c * y.length] = y[r]; }
     return n >= 2 ? [X, Y] : [X];
   },
-  randn: async (a) => { const d = dimsN(a); const data = new Float64Array(d.reduce((p, x) => p * x, 1)); for (let i = 0; i < data.length; i++) { const u = Math.random() || 1e-12, w = Math.random(); data[i] = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * w); } return ret(makeND(d, data)); },
-  randi: async (a) => { const hi = Math.round(asScalar(a[0])); const r = a.length >= 2 ? Math.round(asScalar(a[1])) : 1; const c = a.length >= 3 ? Math.round(asScalar(a[2])) : r; const o = zeros(r, c); for (let i = 0; i < o.data.length; i++) o.data[i] = 1 + Math.floor(Math.random() * hi); return ret(o); },
+  randn: async (a) => { const d = dimsN(a); const data = new Float64Array(d.reduce((p, x) => p * x, 1)); for (let i = 0; i < data.length; i++) { const u = rngNext() || 1e-12, w = rngNext(); data[i] = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * w); } return ret(makeND(d, data)); },
+  randi: async (a) => { const hi = Math.round(asScalar(a[0])); const r = a.length >= 2 ? Math.round(asScalar(a[1])) : 1; const c = a.length >= 3 ? Math.round(asScalar(a[2])) : r; const o = zeros(r, c); for (let i = 0; i < o.data.length; i++) o.data[i] = 1 + Math.floor(rngNext() * hi); return ret(o); },
   nnz: async (a) => ret(scalar(isSparse(a[0]) ? a[0].values.length : toArray(m(a[0])).filter((x) => x !== 0).length)),
   // ── array rearrangement ──
   blkdiag: async (a) => {
@@ -2182,8 +2228,8 @@ export const BUILTINS: Record<string, Builtin> = {
     const first = m(a[0]); const pop = numel(first) === 1 ? Array.from({ length: Math.round(first.data[0]) }, (_, i) => i + 1) : toArray(first);
     const k = a.length >= 2 ? Math.round(asScalar(a[1])) : 1; const replace = a.length >= 3 && truthy(a[2]);
     const out: number[] = [];
-    if (replace) { for (let i = 0; i < k; i++) out.push(pop[Math.floor(Math.random() * pop.length)]); }
-    else { const idx = pop.map((_, i) => i); for (let i = idx.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [idx[i], idx[j]] = [idx[j], idx[i]]; } for (let i = 0; i < k; i++) out.push(pop[idx[i]]); }
+    if (replace) { for (let i = 0; i < k; i++) out.push(pop[Math.floor(rngNext() * pop.length)]); }
+    else { const idx = pop.map((_, i) => i); for (let i = idx.length - 1; i > 0; i--) { const j = Math.floor(rngNext() * (i + 1)); [idx[i], idx[j]] = [idx[j], idx[i]]; } for (let i = 0; i < k; i++) out.push(pop[idx[i]]); }
     return ret(numel(first) === 1 || first.rows === 1 ? rowVec(out) : colVec(out));
   },
   timeit: async (a, _n, env) => {
@@ -4919,6 +4965,13 @@ function odeOpts(opt: Value | undefined): { relTol: number; absTol: number; h0: 
 async function odeSolve(a: Value[], nargout: number, env: Env): Promise<Value[]> {
   const f = handle(a[0], 'ode45'); const tspan = toArray(m(a[1])); const y0 = toArray(m(a[2])); const neq = y0.length;
   const { relTol, absTol, h0, hMax } = odeOpts(a[3]);
+  // Optional event detection (odeset('Events', @(t,y) [value,isterminal,direction])).
+  const eventsH = (a[3] && isStruct(a[3]) && a[3].fields.get('Events')?.[0] && isHandle(a[3].fields.get('Events')![0])) ? a[3].fields.get('Events')![0] as Handle : undefined;
+  const TE: number[] = [], YE: number[][] = [], IE: number[] = [];
+  const evalEvents = async (t: number, y: number[]): Promise<{ value: number[]; isterminal: number[]; direction: number[] }> => {
+    const r = await env.callHandle(eventsH!, [scalar(t), colVec(y)], 3);
+    return { value: toArray(m(r[0])), isterminal: r[1] ? toArray(m(r[1])) : [], direction: r[2] ? toArray(m(r[2])) : [] };
+  };
   const evalF = async (t: number, y: number[]): Promise<number[]> => { const r = await env.callHandle(f, [scalar(t), colVec(y)], 1); return isMat(r[0]) ? toArray(r[0] as Mat) : new Array(neq).fill(0); };
   const axpy = (y: number[], terms: Array<[number, number[]]>) => y.map((v, j) => v + terms.reduce((s, [c, k]) => s + c * k[j], 0));
 
@@ -4931,6 +4984,7 @@ async function odeSolve(a: Value[], nargout: number, env: Env): Promise<Value[]>
 
   let t = t0; let y = y0.slice();
   let f0 = await evalF(t, y);
+  let gPrev = eventsH ? (await evalEvents(t, y)).value : []; let terminal = false;
   // Initial step guess (Hairer): based on scaled norms of y and f.
   let h: number;
   if (h0 > 0) h = h0 * dir;
@@ -4977,7 +5031,24 @@ async function odeSolve(a: Value[], nargout: number, env: Env): Promise<Value[]>
           T.push(tq); nextWant++;
         }
       } else { T.push(tNew); Y.push(y5.slice()); }
+      // Event detection using the step's cubic-Hermite dense output (k still in scope).
+      let termT = 0, termY: number[] | null = null;
+      if (eventsH) {
+        const denseAt = (s: number) => { const sp = [s, s * s, s * s * s, s * s * s * s]; const coeff = DP_BI.map((bi) => bi[0] * sp[0] + bi[1] * sp[1] + bi[2] * sp[2] + bi[3] * sp[3]); return y.map((yi, j) => yi + h * coeff.reduce((acc, c, st) => acc + c * k[st][j], 0)); };
+        const ev = await evalEvents(tNew, y5);
+        for (let i = 0; i < ev.value.length; i++) {
+          const ga = gPrev[i] ?? 0, gb = ev.value[i], d = ev.direction[i] ?? 0;
+          if (!(ga * gb < 0 && (d === 0 || (d > 0 && gb > ga) || (d < 0 && gb < ga)))) continue;
+          let lo = 0, hi = 1, glo = ga;
+          for (let it = 0; it < 60; it++) { const mid = (lo + hi) / 2; const gm = (await evalEvents(t + mid * h, denseAt(mid))).value[i]; if (glo * gm <= 0) hi = mid; else { lo = mid; glo = gm; } }
+          const s = (lo + hi) / 2, tc = t + s * h, yc = denseAt(s);
+          TE.push(tc); YE.push(yc); IE.push(i + 1);
+          if (ev.isterminal[i] && (termY === null || dir * (tc - termT) < 0)) { terminal = true; termT = tc; termY = yc; }
+        }
+        gPrev = ev.value;
+      }
       t = tNew; y = y5; f0 = fNew; // advance (FSAL reuse)
+      if (terminal) { if (termY) { if (!wantPoints) { T.pop(); Y.pop(); } T.push(termT); Y.push(termY); } break; }
     }
     // Step-size update (used after both accept and reject).
     const fac = errNorm === 0 ? MAXFAC : Math.min(MAXFAC, Math.max(MINFAC, SAFETY * errNorm ** -EXP));
@@ -4986,6 +5057,10 @@ async function odeSolve(a: Value[], nargout: number, env: Env): Promise<Value[]>
   }
 
   const Ymat = zeros(T.length, neq); for (let r = 0; r < T.length; r++) for (let c = 0; c < neq; c++) Ymat.data[r + c * T.length] = Y[r][c];
+  if (eventsH && nargout >= 3) {
+    const Ye = zeros(TE.length, neq); for (let r = 0; r < TE.length; r++) for (let c = 0; c < neq; c++) Ye.data[r + c * TE.length] = YE[r][c];
+    return [colVec(T), Ymat, colVec(TE), Ye, colVec(IE)];
+  }
   return nargout >= 2 ? [colVec(T), Ymat] : [Ymat];
 }
 
