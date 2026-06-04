@@ -151,15 +151,28 @@ export const SYM_BUILTINS: Record<string, Builtin> = {
     const s = symArg(a[0]); const k = isSym(a[1]) ? symVarsOf(a[1] as Sym)[0] : asString(a[1]);
     const loE = isSym(a[2]) ? (a[2] as Sym).exprs[0] : sN(asScalar(a[2]));
     const hiE = isSym(a[3]) ? (a[3] as Sym).exprs[0] : sN(asScalar(a[3]));
-    const loN = constVal(loE), hiN = constVal(hiE);
-    if (loN !== null && hiN !== null) { let acc: SymExpr = sN(0); for (let i = Math.round(loN); i <= Math.round(hiN); i++) acc = sAdd(acc, subsExpr(s.exprs[0], k, sN(i))); return ret(makeSym(1, 1, [simplifyExpr(acc)])); }
-    // Symbolic limit: Faulhaber closed form for polynomial summands in k.
-    const c = polyCoeffs(s.exprs[0], k);
-    const recon = (kv: number) => c.reduce((p, cj, j) => p + cj * kv ** j, 0);
-    const isPoly = c.length <= 6 && Math.abs(recon(2) - symEval(s.exprs[0], new Map([[k, 2]]))) < 1e-7 && Math.abs(recon(3.5) - symEval(s.exprs[0], new Map([[k, 3.5]]))) < 1e-7;
-    if (!isPoly) throw new MatError('symsum: symbolic summation supports polynomial summands (in the index) up to degree 5');
+    const loN = constVal(loE), hiN = constVal(hiE); const f = s.exprs[0];
+    if (loN !== null && hiN !== null) { let acc: SymExpr = sN(0); for (let i = Math.round(loN); i <= Math.round(hiN); i++) acc = sAdd(acc, subsExpr(f, k, sN(i))); return ret(makeSym(1, 1, [simplifyExpr(acc)])); }
+    const isZero = (e: SymExpr) => e.t === 'n' && Math.abs(e.v) < 1e-12;
+    // (1) Geometric: if the term ratio s(k+1)/s(k) is independent of k, use the closed form.
+    const ratio = simplifyExpr(sMul(subsExpr(f, k, sAdd(sV(k), sN(1))), sPow(f, sN(-1))));
+    if (!symVars(ratio).includes(k)) {
+      const sLo = subsExpr(f, k, loE), sHi = subsExpr(f, k, hiE);
+      if (ratio.t === 'n' && Math.abs(ratio.v - 1) < 1e-12) return ret(makeSym(1, 1, [simplifyExpr(sMul(f, sAdd(sSub(hiE, loE), sN(1))))]));   // constant in k
+      const sum = sMul(sSub(sLo, sMul(ratio, sHi)), sPow(sSub(sN(1), ratio), sN(-1)));   // (s(lo) − r·s(hi))/(1 − r)
+      return ret(makeSym(1, 1, [simplifyExpr(sum)]));
+    }
+    // (2) Polynomial in k with (possibly symbolic) coefficients → Faulhaber, via symbolic
+    //     Taylor coefficients  c_j = (∂ₖʲ f)|_{k=0} / j!.
+    const coefs: SymExpr[] = []; let dterm = f; let fact = 1; let ok = false;
+    for (let j = 0; j <= 6; j++) {
+      coefs[j] = simplifyExpr(sMul(sN(1 / fact), subsExpr(dterm, k, sN(0))));
+      dterm = simplifyExpr(diffExpr(dterm, k)); fact *= (j + 1);
+      if (isZero(dterm)) { ok = true; break; }
+    }
+    if (!ok) throw new MatError('symsum: only polynomial (deg ≤5) or geometric summands are supported for symbolic limits');
     let acc: SymExpr = sN(0);
-    for (let j = 0; j < c.length; j++) { if (Math.abs(c[j]) < 1e-12) continue; const up = powerSum(j, hiE)!, dn = powerSum(j, sSub(loE, sN(1)))!; acc = sAdd(acc, sMul(sN(c[j]), sSub(up, dn))); }
+    for (let j = 0; j < coefs.length; j++) { if (isZero(coefs[j])) continue; const up = powerSum(j, hiE)!, dn = powerSum(j, sSub(loE, sN(1)))!; acc = sAdd(acc, sMul(coefs[j], sSub(up, dn))); }
     return ret(makeSym(1, 1, [simplifyExpr(acc)]));
   },
   symprod: async (a) => {
