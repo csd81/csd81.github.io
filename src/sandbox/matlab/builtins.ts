@@ -87,6 +87,12 @@ function factorPolySym(cAsc: number[], v: string): SymExpr[] {
   return factors.length ? factors : [sN(cAsc[cAsc.length - 1] ?? 0)];
 }
 
+/** Fold a symbolic array along its first non-singleton dim (sum→sAdd, prod→sMul). */
+function symVecReduce(s: Sym, op: (a: SymExpr, b: SymExpr) => SymExpr, id: SymExpr): Sym {
+  if (s.rows === 1 || s.cols === 1) { let acc = id; for (const e of s.exprs) acc = op(acc, e); return makeSym(1, 1, [simplifyExpr(acc)]); }
+  const out: SymExpr[] = []; for (let c = 0; c < s.cols; c++) { let acc = id; for (let r = 0; r < s.rows; r++) acc = op(acc, s.exprs[r + c * s.rows]); out.push(simplifyExpr(acc)); }
+  return makeSym(1, s.cols, out);
+}
 const gcdI = (a: number, b: number): number => { a = Math.abs(a); b = Math.abs(b); while (b) { [a, b] = [b, a % b]; } return a; };
 /** Decompose an expanded polynomial into monomials {coef, var→power}; null if non-polynomial. */
 function monomialsOf(e: SymExpr): { coef: number; pow: Map<string, number> }[] | null {
@@ -534,13 +540,14 @@ export const BUILTINS: Record<string, Builtin> = {
 
   // ═══════════════════════ REDUCTIONS & SHAPE ═══════════════════════
   sum: async (a) => {
+    if (isSym(a[0])) return ret(symVecReduce(a[0] as Sym, (x, y) => sAdd(x, y), sN(0)));
     const A = m(a[0]); const dim = dimArg(a, 1); const omit = hasFlag(a, 'omitnan');
     if (!isComplex(A)) return ret(reduce(A, dim, 0, omit ? (s, x) => s + (Number.isNaN(x) ? 0 : x) : (s, x) => s + x));
     const re = reduce(A, dim, 0, (s, x) => s + x);
     const im = reduce({ kind: 'num', rows: A.rows, cols: A.cols, data: A.idata!, nd: A.nd }, dim, 0, (s, x) => s + x);
     return ret({ kind: 'num', rows: re.rows, cols: re.cols, data: re.data, idata: im.data, nd: re.nd });
   },
-  prod: async (a) => { const A = m(a[0]); const dim = dimArg(a, 1); if (!isComplex(A)) return ret(reduce(A, dim, 1, (s, x) => s * x)); return ret(creduce(A, dim, 1, 0, (ar, aii, xr, xi) => cmul(ar, aii, xr, xi))); },
+  prod: async (a) => { if (isSym(a[0])) return ret(symVecReduce(a[0] as Sym, (x, y) => sMul(x, y), sN(1))); const A = m(a[0]); const dim = dimArg(a, 1); if (!isComplex(A)) return ret(reduce(A, dim, 1, (s, x) => s * x)); return ret(creduce(A, dim, 1, 0, (ar, aii, xr, xi) => cmul(ar, aii, xr, xi))); },
   mean: async (a) => {
     const A = m(a[0]); const dim = dimArg(a, 1);
     if (!isComplex(A)) {

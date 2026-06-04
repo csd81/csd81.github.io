@@ -500,6 +500,14 @@ export class Interpreter implements Env {
       const r = subs.length === 2 && subs[0] !== 'colon' ? (subs[0] as number[]).length : (base.cols === 1 ? items.length : 1);
       return [makeStrArr(r, items.length / (r || 1), items)];
     }
+    if (isSym(base)) {
+      // S(...) → a sub-sym (column-major linear-index logic, like cells)
+      const subs = await this.evalSubsN(e.args, base.rows, base.cols, base.exprs.length, scope);
+      const lin = this.cellLinear(subs, base.rows, base.cols, base.exprs.length);
+      const exprs = lin.map((i) => base.exprs[i - 1]);
+      const r = subs.length === 2 && subs[0] !== 'colon' ? (subs[0] as number[]).length : (base.cols === 1 ? exprs.length : 1);
+      return [makeSym(r, exprs.length / (r || 1), exprs)];
+    }
     const mbase = asMat(base);
     const subs = await this.evalSubs(e.args, mbase, scope);
     return [indexGet(mbase, subs)];

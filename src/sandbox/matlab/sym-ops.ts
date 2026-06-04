@@ -284,6 +284,17 @@ export function limitAt(e: SymExpr, x: string, pt: SymExpr): SymExpr {
   const v = symEval(e, env); if (Number.isFinite(v)) return sN(v);
   // L'Hôpital for f/g → f'/g' if both → 0
   if (e.t === 'mul') { const inv = e.args.find((a) => a.t === 'pow' && a.exp.t === 'n' && a.exp.v < 0); const num = e.args.filter((a) => a !== inv); if (inv) { const g = (inv as { base: SymExpr }).base; const f = num.length === 1 ? num[0] : sMul(...num); const fp = symEval(f, env), gp = symEval(g, env); if (Math.abs(fp) < 1e-9 && Math.abs(gp) < 1e-9) { const lv = symEval(sMul(diffExpr(f, x), sPow(diffExpr(g, x), sN(-1))), env); if (Number.isFinite(lv)) return sN(lv); } } }
+  // numeric fallback: sample toward pt and check convergence (handles ±∞ and stubborn 0/0)
+  const snap = (val: number) => (Math.abs(val - Math.round(val)) < 1e-7 ? Math.round(val) : val);
+  const at = (xv: number) => symEval(e, new Map([[x, xv]]));
+  if (!Number.isFinite(p)) {
+    const sgn = p > 0 ? 1 : -1; let prev = NaN, conv = NaN, ok = false;
+    for (const mag of [1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8]) { const sv = at(sgn * mag); if (!Number.isFinite(sv)) { ok = false; break; } if (Number.isFinite(prev) && Math.abs(sv - prev) < 1e-6 * (1 + Math.abs(sv))) { conv = sv; ok = true; } prev = sv; }
+    if (ok) return sN(snap(conv));
+  } else {
+    let lv = NaN, rv = NaN; for (const eps of [1e-2, 1e-3, 1e-4, 1e-5, 1e-6]) { lv = at(p - eps); rv = at(p + eps); }
+    if (Number.isFinite(lv) && Number.isFinite(rv) && Math.abs(lv - rv) < 1e-4 * (1 + Math.abs(lv))) return sN(snap((lv + rv) / 2));
+  }
   return sFn('limit', e);
 }
 /** Solve p(x)=0 for polynomials up to degree 4 (numeric roots → symbolic numbers). */

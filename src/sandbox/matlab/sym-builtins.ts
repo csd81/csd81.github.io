@@ -7,7 +7,7 @@
  */
 import type { Builtin, Env } from './builtins';
 import {
-  type Value, type Mat, type Sym, type Handle, isSym, isStr, isMat, isHandle, bool,
+  type Value, type Mat, type Sym, type Handle, type Cell, isSym, isStr, isMat, isHandle, isCell, bool,
   makeSym, makeCell, str, scalar, zeros, rowVec, colVec, toArray, elementwise,
   asString, asScalar, toMat as m, MatError,
 } from './values';
@@ -71,7 +71,7 @@ export const SYM_BUILTINS: Record<string, Builtin> = {
     if (lim) { const lo = symToExpr(lim[0]), hi = symToExpr(lim[1]); return ret(makeSym(s.rows, s.cols, F.map((Fe) => { const d = simplifyExpr(sAdd(subsExpr(Fe, v, hi), sNeg(subsExpr(Fe, v, lo)))); const num = symEval(d, new Map()); return Number.isFinite(num) ? sN(num) : d; }))); }
     return ret(makeSym(s.rows, s.cols, F.map(simplifyExpr)));
   },
-  limit: async (a) => { const s = symArg(a[0]); const v = a.length >= 3 ? asString(a[1]) : (symVarsOf(s)[0] ?? 'x'); const pt = symToExpr(a[a.length - 1]); const exprs = s.exprs.map((e) => limitAt(e, v, pt)); return ret(makeSym(s.rows, s.cols, exprs)); },
+  limit: async (a) => { const s = symArg(a[0]); const v = a.length >= 3 ? (isSym(a[1]) ? symNames(a[1])[0] : asString(a[1])) : (symVarsOf(s)[0] ?? 'x'); const pt = symToExpr(a[a.length - 1]); const exprs = s.exprs.map((e) => limitAt(e, v, pt)); return ret(makeSym(s.rows, s.cols, exprs)); },
   jacobian: async (a) => { const s = symArg(a[0]); const vars = a.length >= 2 ? symNames(a[1]) : symVarsOf(s); const J: SymExpr[] = []; const nf = s.exprs.length; for (let c = 0; c < vars.length; c++) for (let r = 0; r < nf; r++) J[r + c * nf] = simplifyExpr(diffExpr(s.exprs[r], vars[c])); return ret(makeSym(nf, vars.length, J)); },
   hessian: async (a) => { const s = symArg(a[0]); const vars = a.length >= 2 ? symNames(a[1]) : symVarsOf(s); const nv = vars.length; const H: SymExpr[] = []; for (let i = 0; i < nv; i++) for (let j = 0; j < nv; j++) H[i + j * nv] = simplifyExpr(diffExpr(diffExpr(s.exprs[0], vars[i]), vars[j])); return ret(makeSym(nv, nv, H)); },
   taylor: async (a) => {
@@ -94,7 +94,22 @@ export const SYM_BUILTINS: Record<string, Builtin> = {
     return ret(makeSym(1, 1, [simplifyExpr(acc)]));
   },
   expand: async (a) => { const s = symArg(a[0]); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => simplifyExpr(expandExpr(e))))); },
-  subs: async (a) => { const s = symArg(a[0]); const vn = a.length >= 3 ? (isSym(a[1]) ? symVarsOf(a[1])[0] : asString(a[1])) : (symVarsOf(s)[0] ?? 'x'); const repl = symToExpr(a[a.length - 1]); const exprs = s.exprs.map((e) => simplifyExpr(subsExpr(e, vn, repl))); const out = makeSym(s.rows, s.cols, exprs); if (out.exprs.every((e) => symVars(e).length === 0)) { const M = zeros(s.rows, s.cols); out.exprs.forEach((e, i) => { M.data[i] = symEval(e, new Map()); }); return ret(M); } return ret(out); },
+  subs: async (a) => {
+    const s = symArg(a[0]);
+    let vars: string[]; let repls: SymExpr[];
+    if (a.length >= 3) {
+      vars = symNames(a[1]); const vv = a[2];
+      if (isSym(vv)) repls = (vv as Sym).exprs;
+      else if (isCell(vv)) repls = (vv as Cell).items.map((it) => symToExpr(it));
+      else repls = toArray(m(vv)).map((x) => sN(x));
+    } else { vars = [symVarsOf(s)[0] ?? 'x']; repls = [symToExpr(a[1])]; }
+    let exprs = s.exprs;
+    for (let k = 0; k < vars.length; k++) { const r = repls[Math.min(k, repls.length - 1)]; exprs = exprs.map((e) => subsExpr(e, vars[k], r)); }
+    exprs = exprs.map(simplifyExpr);
+    const out = makeSym(s.rows, s.cols, exprs);
+    if (out.exprs.every((e) => symVars(e).length === 0)) { const M = zeros(s.rows, s.cols); out.exprs.forEach((e, i) => { M.data[i] = symEval(e, new Map()); }); return ret(M); }
+    return ret(out);
+  },
   vpa: async (a) => { const s = symArg(a[0]); const M = zeros(s.rows, s.cols); let allNum = true; s.exprs.forEach((e, i) => { const v = symEval(e, new Map()); M.data[i] = v; if (!Number.isFinite(v)) allNum = false; }); return ret(allNum ? M : a[0]); },
   latex: async (a) => ret(str(symArg(a[0]).exprs.map(exprToLatex).join(', '))),
   pretty: async (a, _n, env) => { env.output(symTexLines(symArg(a[0])).join('\n') + '\n'); return []; },
