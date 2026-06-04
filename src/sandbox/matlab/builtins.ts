@@ -29,6 +29,7 @@ import {
   hermiteFormInt, smithFormInt,
 } from './linalg';
 import { dispValue, sprintf, symTexLines, setFormatMode } from './format';
+import { parseCsv, csvToTable, csvToMatrix, matrixToCsv, xlsxToCsv, type Csv } from './io';
 import type { Graphics } from './graphics';
 import {
   polyCoeffs, numDen, symDet, symInv, symCharpolyCoeffs, symArg, symToExpr, symVarsOf,
@@ -52,6 +53,13 @@ export interface Env {
   saveMat(filename: string, names: string[]): void;
   loadMat(filename: string, names: string[]): void;
   readMatFile(filename: string, names: string[]): [string, Value][];
+  hasFile(name: string): boolean;
+  readFileBytes(name: string): Uint8Array | null;
+  readFileText(name: string): string | null;
+  writeFileBytes(name: string, bytes: Uint8Array): void;
+  writeFileText(name: string, text: string): void;
+  listFiles(): string[];
+  deleteFile(name: string): void;
   clearConsole(): void;
 }
 
@@ -69,6 +77,27 @@ const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
 /** Chart builtins return a graphics-object handle when an output is requested (`p = plot(...)`),
  *  and nothing otherwise (so a bare `plot(x,y)` doesn't echo to the command window). */
 const gret = (n: number): Value[] => (n >= 1 ? [{ kind: 'gobj', gtype: 'line' as const }] : []);
+
+// ── VFS read/write helpers for the data-import builtins ──
+function readText(name: string, env: Env): string { const t = env.readFileText(name); if (t == null) throw new MatError(`Unable to read file '${name}'. No such file or directory.`); return t; }
+function readBytes(name: string, env: Env): Uint8Array { const b = env.readFileBytes(name); if (!b) throw new MatError(`Unable to read file '${name}'. No such file or directory.`); return b; }
+function readCsvFile(name: string, env: Env): Csv { return /\.xlsx?$/i.test(name) ? xlsxToCsv(readBytes(name, env)) : parseCsv(readText(name, env)); }
+/** One CSV cell from a Value (scalar number, char/string, else first element). */
+function csvCell(v: Value): string { if (isStr(v) || (isMat(v) && (v as Mat).isChar)) { const s = asString(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; } if (isMat(v)) return String((v as Mat).data[0]); return ''; }
+/** Serialize a Table to CSV: header row of variable names, then one row per observation. */
+function tableToCsv(t: Table): string {
+  const lines = [t.vars.map((h) => (/[",\n]/.test(h) ? `"${h.replace(/"/g, '""')}"` : h)).join(',')];
+  for (let r = 0; r < t.nrows; r++) {
+    const row = t.cols.map((col) => {
+      if (isStr(col)) return csvCell(str(col.items[r] ?? ''));
+      if (isMat(col)) return (col as Mat).isChar ? asString(col) : String((col as Mat).data[r]);
+      if (isCell(col)) return csvCell(col.items[r]);
+      return '';
+    });
+    lines.push(row.join(','));
+  }
+  return lines.join('\n') + '\n';
+}
 const ew = (f: (x: number) => number): Builtin => async (a) => ret(map(m(a[0]), f));
 
 /** Factor a univariate polynomial (ascending coeffs) over ℚ into a list of sym factors:
@@ -1603,7 +1632,7 @@ export const BUILTINS: Record<string, Builtin> = {
     env.graphics.chart2d([rowVec(centers), rowVec(counts)], 'bar'); return [];
   },
   histc: async (a) => { const x = toArray(m(a[0])); const e = toArray(m(a[1])); const counts = new Array(e.length).fill(0); for (const v of x) { for (let i = 0; i < e.length - 1; i++) if (v >= e[i] && v < e[i + 1]) { counts[i]++; break; } if (v === e[e.length - 1]) counts[e.length - 1]++; } return ret(rowVec(counts)); },
-  exist: async (a, _n, env) => { const nm = asString(a[0]); if (env.workspaceVars().some((v) => v.name === nm)) return ret(scalar(1)); if (nm in BUILTINS || nm in CONSTANTS) return ret(scalar(5)); return ret(scalar(0)); },
+  exist: async (a, _n, env) => { const nm = asString(a[0]); const kind = a.length >= 2 ? asString(a[1]).toLowerCase() : ''; if (kind === 'file' || kind === 'dir') return ret(scalar(env.hasFile(nm) ? 2 : 0)); if (env.workspaceVars().some((v) => v.name === nm)) return ret(scalar(1)); if (nm in BUILTINS || nm in CONSTANTS) return ret(scalar(5)); if (env.hasFile(nm)) return ret(scalar(2)); return ret(scalar(0)); },
   // Error/exception helpers (work with try/catch).
   MException: async (a) => { const id = a.length ? asString(a[0]) : ''; const msg = a.length >= 2 ? sprintf(asString(a[1]), a.slice(2)) : ''; const fields = new Map<string, Value[]>([['identifier', [str(id)]], ['message', [str(msg)]], ['stack', [zeros(0, 0)]]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields } as StructV); },
   rethrow: async (a) => { const e = a[0]; const msg = isStruct(e) && e.fields.get('message')?.[0] && isMat(e.fields.get('message')![0]) ? asString(e.fields.get('message')![0]) : 'rethrow: not an error struct'; throw new MatError(msg); },
@@ -3344,6 +3373,43 @@ export const BUILTINS: Record<string, Builtin> = {
     env.loadMat(file, words.slice(1));
     return [];
   },
+  // ── Data import (CSV / Excel) and file utilities, backed by the VFS ──
+  readtable: async (a, _n, env) => ret(csvToTable(readCsvFile(asString(a[0]), env))),
+  readtimetable: async (a, _n, env) => ret(csvToTable(readCsvFile(asString(a[0]), env))),
+  readmatrix: async (a, _n, env) => ret(csvToMatrix(readCsvFile(asString(a[0]), env))),
+  readcell: async (a, _n, env) => {
+    const csv = readCsvFile(asString(a[0]), env); const body = csv.headers ? [csv.headers, ...csv.rows] : csv.rows;
+    const R = body.length, C = Math.max(0, ...body.map((r) => r.length)); const items: Value[] = [];
+    for (let c = 0; c < C; c++) for (let r = 0; r < R; r++) { const v = body[r]?.[c]; items.push(typeof v === 'number' ? scalar(v) : str(v == null ? '' : String(v))); }
+    return ret(makeCell(R, C, items));
+  },
+  readvars: async (a, n, env) => { const t = csvToTable(readCsvFile(asString(a[0]), env)); return t.cols.slice(0, Math.max(1, n)); },
+  csvread: async (a, _n, env) => ret(csvToMatrix({ headers: null, rows: readCsvFile(asString(a[0]), env).rows })),
+  dlmread: async (a, _n, env) => { const delim = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar)) ? asString(a[1]) : ','; return ret(csvToMatrix({ headers: null, rows: parseCsv(readText(asString(a[0]), env), delim).rows })); },
+  importdata: async (a, _n, env) => {
+    const name = asString(a[0]); const delim = a.length >= 2 ? asString(a[1]) : ',';
+    const csv = /\.xlsx?$/i.test(name) ? xlsxToCsv(readBytes(name, env)) : parseCsv(readText(name, env), delim);
+    const M = csvToMatrix({ headers: null, rows: csv.rows });
+    if (!csv.headers) return ret(M);
+    return ret({ kind: 'struct', rows: 1, cols: 1, fields: new Map<string, Value[]>([['data', [M]], ['colheaders', [makeCell(1, csv.headers.length, csv.headers.map((h) => str(h)))]]]) } as StructV);
+  },
+  xlsread: async (a, n, env) => {
+    const csv = xlsxToCsv(readBytes(asString(a[0]), env)); const num = csvToMatrix({ headers: null, rows: csv.rows });
+    if (n <= 1) return ret(num);
+    const txt = makeCell((csv.headers ? 1 : 0) + csv.rows.length, csv.headers?.length ?? 0, []);   // headers as text
+    const hdr = csv.headers ? makeCell(1, csv.headers.length, csv.headers.map((h) => str(h))) : makeCell(0, 0, []);
+    return [num, hdr, txt];
+  },
+  writematrix: async (a, _n, env) => { const M = m(a[0]); const name = a.length >= 2 ? asString(a[1]) : 'matrix.csv'; env.writeFileText(name, matrixToCsv(M)); return []; },
+  csvwrite: async (a, _n, env) => { const name = asString(a[0]); env.writeFileText(name, matrixToCsv(m(a[1]))); return []; },
+  dlmwrite: async (a, _n, env) => { const name = asString(a[0]); const delim = a.length >= 3 && (isStr(a[2]) || (isMat(a[2]) && (a[2] as Mat).isChar)) ? asString(a[2]) : ','; env.writeFileText(name, matrixToCsv(m(a[1])).replace(/,/g, delim)); return []; },
+  writetable: async (a, _n, env) => { const name = a.length >= 2 ? asString(a[1]) : 'table.csv'; env.writeFileText(name, tableToCsv(a[0] as Table)); return []; },
+  writecell: async (a, _n, env) => { const C = a[0] as Cell; const name = a.length >= 2 ? asString(a[1]) : 'cell.csv'; const rows: string[] = []; for (let r = 0; r < C.rows; r++) { const row: string[] = []; for (let c = 0; c < C.cols; c++) { const v = C.items[r + c * C.rows]; row.push(csvCell(v)); } rows.push(row.join(',')); } env.writeFileText(name, rows.join('\n') + '\n'); return []; },
+  type: async (a, _n, env) => { const txt = env.readFileText(asString(a[0])); if (txt == null) throw new MatError(`'${asString(a[0])}' not found.`); env.output(txt.endsWith('\n') ? txt : txt + '\n'); return []; },
+  edit: async (a, _n, env) => { const name = asString(a[0]); const txt = env.readFileText(name); env.output(txt == null ? `'${name}' is a new file.\n` : txt + (txt.endsWith('\n') ? '' : '\n')); return []; },
+  dir: async (_a, _n, env) => { const f = env.listFiles(); env.output(f.length ? f.join('\n') + '\n' : ''); return []; },
+  ls: async (_a, _n, env) => { const f = env.listFiles(); env.output(f.length ? f.join('   ') + '\n' : ''); return []; },
+  delete: async (a, _n, env) => { for (const v of a) env.deleteFile(asString(v)); return []; },
   who: async (_a, _n, env) => {
     const names = env.workspaceVars().map((v) => v.name);
     env.output(names.length ? 'Your variables are:\n\n' + names.join('   ') + '\n' : '');

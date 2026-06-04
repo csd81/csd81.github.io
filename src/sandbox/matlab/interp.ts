@@ -145,6 +145,17 @@ export class Interpreter implements Env {
   }
   loadMat(filename: string, names: string[]) { for (const [n, v] of this.matPairs(filename, names)) this.base.vars.set(n, v); }
   readMatFile(filename: string, names: string[]): [string, Value][] { return this.matPairs(filename, names); }
+
+  /** Virtual file system: raw bytes keyed by (normalized) filename. Fed/drained by the worker. */
+  private files = new Map<string, Uint8Array>();
+  private fileKey(name: string) { return name.trim().replace(/^\.\//, ''); }
+  hasFile(name: string): boolean { return this.files.has(this.fileKey(name)); }
+  readFileBytes(name: string): Uint8Array | null { return this.files.get(this.fileKey(name)) ?? null; }
+  readFileText(name: string): string | null { const b = this.readFileBytes(name); return b ? new TextDecoder().decode(b) : null; }
+  writeFileBytes(name: string, bytes: Uint8Array) { this.files.set(this.fileKey(name), bytes); }
+  writeFileText(name: string, text: string) { this.files.set(this.fileKey(name), new TextEncoder().encode(text)); }
+  listFiles(): string[] { return [...this.files.keys()].sort(); }
+  deleteFile(name: string) { this.files.delete(this.fileKey(name)); }
   async evalInput(text: string): Promise<Value> {
     const prog = parse(text);
     const stmt = prog.stmts[0];
