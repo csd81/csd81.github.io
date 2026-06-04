@@ -230,7 +230,8 @@ export function parseMat(bytes: Uint8Array): { name: string; value: Value }[] {
         const v = parseMatrix(top, off, le); if (v && v.name) out.push(v);
       }
     } catch { /* skip a variable we can't parse (e.g. table/object) rather than failing the whole load */ }
-    off = tag.next;
+    // Top-level compressed elements are not 8-byte padded — the next element follows immediately.
+    off = tag.type === MI.COMPRESSED ? tag.dataOff + tag.nbytes : tag.next;
   }
   return out;
 }
