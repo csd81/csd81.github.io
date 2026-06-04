@@ -1147,6 +1147,23 @@ export const BUILTINS: Record<string, Builtin> = {
   setdiff: async (a) => { const A = m(a[0]); const sb = new Set(toArray(m(a[1]))); const r = setUniq(toArray(A).filter((x) => !sb.has(x))); return ret(A.rows === 1 ? rowVec(r) : colVec(r)); },
   setxor: async (a) => { const A = m(a[0]), B = m(a[1]); const sa = new Set(toArray(A)), sb = new Set(toArray(B)); const r = setUniq([...toArray(A).filter((x) => !sb.has(x)), ...toArray(B).filter((x) => !sa.has(x))]); return ret(A.rows === 1 ? rowVec(r) : colVec(r)); },
   // ── more statistics ──
+  missing: async () => ret(scalar(NaN)),
+  kde: async (a, n) => {
+    const x = toArray(m(a[0])).filter(Number.isFinite); const N = x.length || 1;
+    const sd = Math.sqrt(variance(x)) || 1; const h = 1.06 * sd * Math.pow(N, -0.2) || 1;
+    const lo = Math.min(...x) - 3 * h, hi = Math.max(...x) + 3 * h; const npts = 100; const xi: number[] = [], f: number[] = [];
+    for (let i = 0; i < npts; i++) { const xx = lo + (hi - lo) * i / (npts - 1); xi.push(xx); let s = 0; for (const xj of x) s += Math.exp(-0.5 * ((xx - xj) / h) ** 2); f.push(s / (N * h * Math.sqrt(2 * Math.PI))); }
+    return n >= 2 ? [colVec(f), colVec(xi)] : [colVec(f)];
+  },
+  histcounts2: async (a, n) => {
+    const x = toArray(m(a[0])), y = toArray(m(a[1])); const nbx = Math.max(1, Math.ceil(Math.sqrt(x.length))), nby = nbx;
+    const xlo = Math.min(...x), xhi = Math.max(...x), ylo = Math.min(...y), yhi = Math.max(...y);
+    const xe: number[] = [], ye: number[] = []; for (let i = 0; i <= nbx; i++) xe.push(xlo + (xhi - xlo) * i / nbx); for (let j = 0; j <= nby; j++) ye.push(ylo + (yhi - ylo) * j / nby);
+    const Nc = zeros(nbx, nby);
+    for (let k = 0; k < x.length; k++) { if (x[k] < xe[0] || x[k] > xe[nbx] || y[k] < ye[0] || y[k] > ye[nby]) continue; let bi = nbx - 1; for (let i = 0; i < nbx; i++) if (x[k] < xe[i + 1]) { bi = i; break; } let bj = nby - 1; for (let j = 0; j < nby; j++) if (y[k] < ye[j + 1]) { bj = j; break; } Nc.data[bi + bj * nbx]++; }
+    return n >= 2 ? [Nc, rowVec(xe), rowVec(ye)] : [Nc];
+  },
+  extract: async (a) => { const s = asString(a[0]); const pat = asString(a[1]); let re: RegExp; try { re = new RegExp(pat, 'g'); } catch { re = new RegExp(pat.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'); } const out: string[] = []; let mt: RegExpExecArray | null; while ((mt = re.exec(s)) !== null) { out.push(mt[0]); if (mt.index === re.lastIndex) re.lastIndex++; } return ret(makeStrArr(out.length, 1, out)); },
   histcounts: async (a, n) => {
     const x = toArray(m(a[0]));
     // name-value options
