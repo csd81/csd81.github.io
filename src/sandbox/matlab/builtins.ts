@@ -2643,6 +2643,26 @@ export const BUILTINS: Record<string, Builtin> = {
   fnzeros: async (a) => { const pp = readPP(a[0]); const roots: number[] = []; for (let i = 0; i < pp.L; i++) { const c: number[] = []; for (let j = 0; j < pp.k; j++) c.push(pp.coefs.data[i + j * pp.L]); const { re, im } = durandKerner(c); const h = pp.breaks[i + 1] - pp.breaks[i]; for (let r = 0; r < re.length; r++) if (Math.abs(im[r]) < 1e-9 && re[r] >= -1e-9 && re[r] <= h + 1e-9) { const x = pp.breaks[i] + re[r]; if (!roots.some((rr) => Math.abs(rr - x) < 1e-9)) roots.push(x); } } roots.sort((x, y) => x - y); return ret(rowVec(roots)); },
   csapi: async (a, n, env) => BUILTINS.spline([a[0], a[1]], n, env),
   csape: async (a, n, env) => BUILTINS.spline([a[0], a[1]], n, env),
+  fittype: async (a) => { const { formula, coeffs, indep } = fittypeOf(asString(a[0])); return ret(mkStruct([['type', str('fittype')], ['formula', str(formula)], ['coefficients', makeCell(coeffs.length, 1, coeffs.map((c) => str(c)))], ['independentVar', str(indep)]])); },
+  fit: async (a, n, env) => {
+    const x = toArray(m(a[0])), y = toArray(m(a[1])); const ftv = a[2];
+    let formula: string, coeffs: string[], indep: string;
+    if (isStruct(ftv) && asString(ftv.fields.get('type')?.[0] ?? str('')) === 'fittype') { formula = asString(ftv.fields.get('formula')![0]); coeffs = (ftv.fields.get('coefficients')![0] as Cell).items.map((c) => asString(c)); indep = asString(ftv.fields.get('independentVar')![0]); }
+    else ({ formula, coeffs, indep } = fittypeOf(asString(ftv)));
+    const body = formula.replace(/\^/g, '.^').replace(/\*/g, '.*').replace(/\//g, './');
+    const modelH = await env.evalInput(`@(${[...coeffs, indep].join(',')}) ${body}`) as Handle;
+    const xcol = colVec(x);
+    const resid = async (c: number[]) => { const mv = toArray(m((await env.callHandle(modelH, [...c.map((v) => scalar(v)), xcol], 1))[0])); return mv.map((v, i) => v - y[i]); };
+    const cv = await levMar(resid, coeffs.map(() => 1));
+    let fbody = body; coeffs.forEach((cn, i) => { fbody = fbody.replace(new RegExp('\\b' + cn + '\\b', 'g'), `(${cv[i]})`); });
+    const fitH = await env.evalInput(`@(${indep}) ${fbody}`) as Handle;
+    (fitH as unknown as { coeffNames: string[]; coeffValues: number[] }).coeffNames = coeffs;
+    (fitH as unknown as { coeffNames: string[]; coeffValues: number[] }).coeffValues = cv;
+    if (n >= 2) { const r = await resid(cv); const sse = r.reduce((s, v) => s + v * v, 0); const ybar = y.reduce((s, v) => s + v, 0) / (y.length || 1); const sst = y.reduce((s, v) => s + (v - ybar) ** 2, 0) || 1; const gof = mkStruct([['sse', scalar(sse)], ['rsquare', scalar(1 - sse / sst)], ['dfe', scalar(Math.max(0, y.length - coeffs.length))], ['rmse', scalar(Math.sqrt(sse / Math.max(1, y.length - coeffs.length)))]]); return [fitH, gof]; }
+    return ret(fitH);
+  },
+  coeffvalues: async (a) => ret(rowVec((a[0] as unknown as { coeffValues?: number[] }).coeffValues ?? [])),
+  coeffnames: async (a) => { const ns = (a[0] as unknown as { coeffNames?: string[] }).coeffNames ?? (isStruct(a[0]) && (a[0] as StructV).fields.get('coefficients') ? ((a[0] as StructV).fields.get('coefficients')![0] as Cell).items.map((c) => asString(c)) : []); return ret(makeCell(ns.length, 1, ns.map((c) => str(c)))); },
   interpft: async (a) => {
     // FFT resample x to length ny: insert zero high-frequencies, inverse transform.
     const x = toArray(m(a[0])); const ny = Math.round(asScalar(a[1])); const nx = x.length;
@@ -4766,6 +4786,18 @@ function guessVars(expr: string): string[] {
   while ((mm = re.exec(expr))) { const name = mm[0]; const after = expr[re.lastIndex]; if (after === '(') continue; if (name in BUILTINS || name in CONSTANTS) continue; found.add(name); }
   const vars = [...found].sort(); return vars.length ? vars : ['x'];
 }
+/** Library model specs for fittype/fit (formula + coefficient names + independent var). */
+function libraryModel(spec: string): { formula: string; coeffs: string[]; indep: string } | null {
+  const pm = spec.match(/^poly(\d)$/); if (pm) { const d = +pm[1]; const coeffs: string[] = []; const terms: string[] = []; for (let i = 0; i <= d; i++) { const c = 'p' + (i + 1); coeffs.push(c); const pw = d - i; terms.push(pw === 0 ? c : pw === 1 ? `${c}*x` : `${c}*x^${pw}`); } return { formula: terms.join('+'), coeffs, indep: 'x' }; }
+  const tbl: Record<string, [string, string[]]> = {
+    exp1: ['a*exp(b*x)', ['a', 'b']], exp2: ['a*exp(b*x)+c*exp(d*x)', ['a', 'b', 'c', 'd']],
+    power1: ['a*x^b', ['a', 'b']], power2: ['a*x^b+c', ['a', 'b', 'c']],
+    sin1: ['a1*sin(b1*x+c1)', ['a1', 'b1', 'c1']], gauss1: ['a1*exp(-((x-b1)/c1)^2)', ['a1', 'b1', 'c1']],
+    fourier1: ['a0+a1*cos(w*x)+b1*sin(w*x)', ['a0', 'a1', 'b1', 'w']],
+  };
+  return tbl[spec] ? { formula: tbl[spec][0], coeffs: tbl[spec][1], indep: 'x' } : null;
+}
+function fittypeOf(spec: string): { formula: string; coeffs: string[]; indep: string } { const lib = libraryModel(spec); if (lib) return lib; const indep = 'x'; return { formula: spec, coeffs: guessVars(spec).filter((v) => v !== indep), indep }; }
 /** Central-difference gradient of a 2-D field; fx along columns (x), fy along rows (y). */
 function grad2(F: Mat, hx: number, hy: number): { fx: Float64Array; fy: Float64Array } {
   const R = F.rows, C = F.cols; const fx = new Float64Array(R * C), fy = new Float64Array(R * C);
