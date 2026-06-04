@@ -164,6 +164,24 @@ function scanAlongDim(A: Mat, dim: number, init: number, f: (acc: number, x: num
   return out;
 }
 
+/** Complex reduction along a dim (vector / dim-1 / dim-2), carrying real+imag parts.
+ *  `fin` post-processes the accumulated (re,im) with the element count (e.g. /n for mean). */
+function creduce(a: Mat, dim: number | undefined, initR: number, initI: number, f: (ar: number, ai: number, xr: number, xi: number) => [number, number], fin: (r: number, i: number, n: number) => [number, number] = (r, i) => [r, i]): Mat {
+  const ai = a.idata ?? new Float64Array(a.data.length); const vector = a.rows === 1 || a.cols === 1;
+  if (dim === undefined && vector) { let r = initR, im = initI; for (let k = 0; k < a.data.length; k++) [r, im] = f(r, im, a.data[k], ai[k]); [r, im] = fin(r, im, numel(a)); return cscalar(r, im); }
+  const d = dim ?? 1;
+  if (d === 1) { const R = new Float64Array(a.cols), I = new Float64Array(a.cols); for (let c = 0; c < a.cols; c++) { let r = initR, im = initI; for (let row = 0; row < a.rows; row++) { const idx = row + c * a.rows; [r, im] = f(r, im, a.data[idx], ai[idx]); } [R[c], I[c]] = fin(r, im, a.rows); } return finishComplex(1, a.cols, R, I); }
+  const R = new Float64Array(a.rows), I = new Float64Array(a.rows); for (let row = 0; row < a.rows; row++) { let r = initR, im = initI; for (let c = 0; c < a.cols; c++) { const idx = row + c * a.rows; [r, im] = f(r, im, a.data[idx], ai[idx]); } [R[row], I[row]] = fin(r, im, a.cols); } return finishComplex(a.rows, 1, R, I);
+}
+/** Complex cumulative scan (cumsum/cumprod) along a dim (vector / dim-1 / dim-2). */
+function ccum(A: Mat, dim: number | undefined, mult: boolean): Mat {
+  const ai = A.idata ?? new Float64Array(A.data.length); const o = zeros(A.rows, A.cols); o.idata = new Float64Array(o.data.length);
+  const step = (sr: number, si: number, xr: number, xi: number): [number, number] => (mult ? cmul(sr, si, xr, xi) : [sr + xr, si + xi]);
+  const initR = mult ? 1 : 0; const vector = A.rows === 1 || A.cols === 1; const d = dim ?? (vector ? (A.rows === 1 ? 2 : 1) : 1);
+  if (vector && dim === undefined) { let sr = initR, si = 0; for (let i = 0; i < A.data.length; i++) { [sr, si] = step(sr, si, A.data[i], ai[i]); o.data[i] = sr; o.idata![i] = si; } return o; }
+  if (d === 1) { for (let c = 0; c < A.cols; c++) { let sr = initR, si = 0; for (let r = 0; r < A.rows; r++) { const idx = r + c * A.rows; [sr, si] = step(sr, si, A.data[idx], ai[idx]); o.data[idx] = sr; o.idata![idx] = si; } } return o; }
+  for (let r = 0; r < A.rows; r++) { let sr = initR, si = 0; for (let c = 0; c < A.cols; c++) { const idx = r + c * A.rows; [sr, si] = step(sr, si, A.data[idx], ai[idx]); o.data[idx] = sr; o.idata![idx] = si; } } return o;
+}
 function reduce(a: Mat, dim: number | undefined, init: number, f: (acc: number, x: number) => number, fin: (acc: number, count: number) => number = (x) => x): Mat {
   if (a.nd) { const d = dim ?? firstNonSingleton(ndSize(a)); return reduceAlongDim(a, d, (fib) => fin(fib.reduce((acc, x) => f(acc, x), init), fib.length)).v; }
   const vector = a.rows === 1 || a.cols === 1;
@@ -332,6 +350,7 @@ export const BUILTINS: Record<string, Builtin> = {
   // elementary extras
   cumprod: async (a) => {
     const A = m(a[0]); const dim = dimArg(a, 1);
+    if (isComplex(A)) return ret(ccum(A, dim, true));
     if (A.nd || dim !== undefined) return ret(scanAlongDim(A, dim ?? firstNonSingleton(ndSize(A)), 1, (p, x) => p * x));
     const o = zeros(A.rows, A.cols);
     if (A.rows === 1 || A.cols === 1) { let p = 1; for (let i = 0; i < A.data.length; i++) { p *= A.data[i]; o.data[i] = p; } }
@@ -491,7 +510,14 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(o);
   },
   // polynomials
-  polyval: async (a) => { const p = toArray(m(a[0])); return ret(map(m(a[1]), (x) => { let s = 0; for (const cf of p) s = s * x + cf; return s; })); },
+  polyval: async (a) => {
+    const P = m(a[0]), X = m(a[1]);
+    if (!isComplex(P) && !isComplex(X)) { const p = toArray(P); return ret(map(X, (x) => { let s = 0; for (const cf of p) s = s * x + cf; return s; })); }
+    const pr = P.data, pi = P.idata ?? new Float64Array(P.data.length), xr = X.data, xi = X.idata ?? new Float64Array(X.data.length);
+    const Rr = new Float64Array(X.data.length), Ri = new Float64Array(X.data.length);
+    for (let k = 0; k < X.data.length; k++) { let sr = 0, si = 0; for (let j = 0; j < pr.length; j++) { [sr, si] = cmul(sr, si, xr[k], xi[k]); sr += pr[j]; si += pi[j]; } Rr[k] = sr; Ri[k] = si; }
+    return ret(finishComplex(X.rows, X.cols, Rr, Ri));
+  },
   polyfit: async (a) => {
     const x = toArray(m(a[0])); const yv = toArray(m(a[1])); const deg = Math.round(asScalar(a[2]));
     const M = x.length; const A = zeros(M, deg + 1);
@@ -510,10 +536,11 @@ export const BUILTINS: Record<string, Builtin> = {
     const im = reduce({ kind: 'num', rows: A.rows, cols: A.cols, data: A.idata!, nd: A.nd }, dim, 0, (s, x) => s + x);
     return ret({ kind: 'num', rows: re.rows, cols: re.cols, data: re.data, idata: im.data, nd: re.nd });
   },
-  prod: async (a) => ret(reduce(m(a[0]), dimArg(a, 1), 1, (s, x) => s * x)),
-  mean: async (a) => ret(reduce(m(a[0]), dimArg(a, 1), 0, (s, x) => s + x, (s, n) => s / n)),
+  prod: async (a) => { const A = m(a[0]); const dim = dimArg(a, 1); if (!isComplex(A)) return ret(reduce(A, dim, 1, (s, x) => s * x)); return ret(creduce(A, dim, 1, 0, (ar, aii, xr, xi) => cmul(ar, aii, xr, xi))); },
+  mean: async (a) => { const A = m(a[0]); const dim = dimArg(a, 1); if (!isComplex(A)) return ret(reduce(A, dim, 0, (s, x) => s + x, (s, n) => s / n)); return ret(creduce(A, dim, 0, 0, (ar, aii, xr, xi) => [ar + xr, aii + xi], (r, i, n) => [r / n, i / n])); },
   cumsum: async (a) => {
     const A = m(a[0]); const dim = dimArg(a, 1);
+    if (isComplex(A)) return ret(ccum(A, dim, false));
     if (A.nd || dim !== undefined) return ret(scanAlongDim(A, dim ?? firstNonSingleton(ndSize(A)), 0, (s, x) => s + x));
     const out = zeros(A.rows, A.cols);
     if (A.rows === 1 || A.cols === 1) { let s = 0; for (let i = 0; i < A.data.length; i++) { s += A.data[i]; out.data[i] = s; } }
@@ -543,7 +570,15 @@ export const BUILTINS: Record<string, Builtin> = {
   eye: async (a) => { const [r, c] = dims2(a); return ret(eye(r, c)); },
   rand: async (a) => { const d = dimsN(a); const data = new Float64Array(d.reduce((p, x) => p * x, 1)); for (let i = 0; i < data.length; i++) data[i] = rngNext(); return ret(makeND(d, data)); },
   linspace: async (a) => {
-    const lo = asScalar(a[0]), hi = asScalar(a[1]); const n = a.length >= 3 ? Math.round(asScalar(a[2])) : 100;
+    const A = m(a[0]), Bm = m(a[1]); const n = a.length >= 3 ? Math.round(asScalar(a[2])) : 100;
+    const lo = A.data[0], hi = Bm.data[0];
+    if (isComplex(A) || isComplex(Bm)) {
+      const loi = A.idata ? A.idata[0] : 0, hii = Bm.idata ? Bm.idata[0] : 0;
+      if (n < 2) return ret(cscalar(hi, hii));
+      const re = new Float64Array(n), im = new Float64Array(n);
+      for (let i = 0; i < n; i++) { const t = i / (n - 1); re[i] = lo + (hi - lo) * t; im[i] = loi + (hii - loi) * t; }
+      return ret(finishComplex(1, n, re, im));
+    }
     if (n < 2) return ret(rowVec([hi]));
     const out: number[] = []; for (let i = 0; i < n; i++) out.push(lo + (hi - lo) * i / (n - 1));
     return ret(rowVec(out));
@@ -568,10 +603,14 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   diff: async (a) => {
     if (isSym(a[0])) { const s = a[0]; const vr = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar)) ? asString(a[1]) : (symVarsOf(s)[0] ?? 'x'); const order = a.length >= 3 ? Math.round(asScalar(a[2])) : (a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar ? Math.round(asScalar(a[1])) : 1); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => { let d = e; for (let k = 0; k < order; k++) d = simplifyExpr(diffExpr(d, vr)); return d; }))); }
-    const A = m(a[0]);
-    if (A.rows === 1 || A.cols === 1) { const v = toArray(A); const out: number[] = []; for (let i = 1; i < v.length; i++) out.push(v[i] - v[i - 1]); return ret(A.cols === 1 ? colVec(out) : rowVec(out)); }
-    const out = zeros(A.rows - 1, A.cols);
-    for (let c = 0; c < A.cols; c++) for (let r = 1; r < A.rows; r++) out.data[(r - 1) + c * out.rows] = A.data[r + c * A.rows] - A.data[(r - 1) + c * A.rows];
+    const A = m(a[0]); const di = A.idata;
+    if (A.rows === 1 || A.cols === 1) {
+      const v = toArray(A); const out: number[] = []; const oi: number[] = [];
+      for (let i = 1; i < v.length; i++) { out.push(v[i] - v[i - 1]); if (di) oi.push(di[i] - di[i - 1]); }
+      const M = A.cols === 1 ? colVec(out) : rowVec(out); if (di) M.idata = Float64Array.from(oi); return ret(M);
+    }
+    const out = zeros(A.rows - 1, A.cols); if (di) out.idata = new Float64Array(out.data.length);
+    for (let c = 0; c < A.cols; c++) for (let r = 1; r < A.rows; r++) { const d = (r - 1) + c * out.rows; out.data[d] = A.data[r + c * A.rows] - A.data[(r - 1) + c * A.rows]; if (di) out.idata![d] = di[r + c * A.rows] - di[(r - 1) + c * A.rows]; }
     return ret(out);
   },
   sort: async (a, n) => {
@@ -732,7 +771,7 @@ export const BUILTINS: Record<string, Builtin> = {
   dirac: async (a) => { if (isSym(a[0])) return ret(makeSym(a[0].rows, a[0].cols, a[0].exprs.map((e) => simplifyExpr(sFn('dirac', e))))); return ret(map(m(a[0]), (x) => (x === 0 ? Infinity : 0))); },
   mldivide: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
   diag: async (a) => ret(diag(m(a[0]))),
-  trace: async (a) => { const A = m(a[0]); let s = 0; const n = Math.min(A.rows, A.cols); for (let i = 0; i < n; i++) s += A.data[i + i * A.rows]; return ret(scalar(s)); },
+  trace: async (a) => { const A = m(a[0]); let sr = 0, si = 0; const n = Math.min(A.rows, A.cols); for (let i = 0; i < n; i++) { sr += A.data[i + i * A.rows]; if (A.idata) si += A.idata[i + i * A.rows]; } return ret(A.idata ? cscalar(sr, si) : scalar(sr)); },
   transpose: async (a) => ret(transpose(m(a[0]))),
   dot: async (a) => {
     const X = m(a[0]), Y = m(a[1]);
@@ -740,10 +779,18 @@ export const BUILTINS: Record<string, Builtin> = {
     const x = toArray(X), y = toArray(Y); let s = 0; for (let i = 0; i < x.length; i++) s += x[i] * y[i]; return ret(scalar(s));
   },
   cross: async (a) => {
-    const x = toArray(m(a[0])), y = toArray(m(a[1]));
+    const A = m(a[0]), Bv = m(a[1]); const x = toArray(A), y = toArray(Bv);
     if (x.length !== 3 || y.length !== 3) throw new MatError('cross: inputs must be 3-element vectors');
+    if (isComplex(A) || isComplex(Bv)) {
+      const xr = A.data, xi = A.idata ?? new Float64Array(3), yr = Bv.data, yi = Bv.idata ?? new Float64Array(3);
+      const sub = (p: [number, number], q: [number, number]): [number, number] => [p[0] - q[0], p[1] - q[1]];
+      const c0 = sub(cmul(xr[1], xi[1], yr[2], yi[2]), cmul(xr[2], xi[2], yr[1], yi[1]));
+      const c1 = sub(cmul(xr[2], xi[2], yr[0], yi[0]), cmul(xr[0], xi[0], yr[2], yi[2]));
+      const c2 = sub(cmul(xr[0], xi[0], yr[1], yi[1]), cmul(xr[1], xi[1], yr[0], yi[0]));
+      return ret(finishComplex(A.cols === 1 ? 3 : 1, A.cols === 1 ? 1 : 3, Float64Array.of(c0[0], c1[0], c2[0]), Float64Array.of(c0[1], c1[1], c2[1])));
+    }
     const out = [x[1] * y[2] - x[2] * y[1], x[2] * y[0] - x[0] * y[2], x[0] * y[1] - x[1] * y[0]];
-    return ret(m(a[0]).cols === 1 ? colVec(out) : rowVec(out));
+    return ret(A.cols === 1 ? colVec(out) : rowVec(out));
   },
   kron: async (a) => {
     const A = m(a[0]), B = m(a[1]); const o = zeros(A.rows * B.rows, A.cols * B.cols); const cplx = isComplex(A) || isComplex(B); if (cplx) o.idata = new Float64Array(o.data.length);
@@ -3898,6 +3945,7 @@ function fillVec(c: number[], method: string, fill: number): number[] {
 }
 /** Polynomial long division u/v → [quotient, remainder] (high→low coefficients). */
 function polyDivide(u: number[], v: number[]): [number[], number[]] {
+  v = v.slice(); while (v.length > 1 && v[0] === 0) v = v.slice(1);   // drop leading-zero coeffs
   const r = u.slice(); const nq = u.length - v.length + 1;
   if (nq <= 0) return [[0], u.slice()];
   const q = new Array(nq).fill(0);

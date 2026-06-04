@@ -56,7 +56,9 @@ export function simplifyExpr(e: SymExpr): SymExpr {
       const base = simplifyExpr(e.base), exp = simplifyExpr(e.exp);
       if (isN(exp, 0)) return sN(1);
       if (isN(exp, 1)) return base;
-      if (isN(base, 0)) return sN(0);
+      // 0^p = 0 only for a positive numeric exponent (0^0 handled above; 0^(−n) → Inf
+      // falls through to constant folding below; 0^x with symbolic x stays unevaluated).
+      if (isN(base, 0) && exp.t === 'n' && (exp as { v: number }).v > 0) return sN(0);
       if (isN(base, 1)) return sN(1);
       if (base.t === 'n' && exp.t === 'n') return sN(Math.pow(base.v, exp.v));
       // (a^b)^c → a^(b·c) is only valid when the outer exponent c is an integer, or the
