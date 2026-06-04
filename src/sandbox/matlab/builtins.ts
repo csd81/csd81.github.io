@@ -29,7 +29,7 @@ import {
   hermiteFormInt, smithFormInt,
 } from './linalg';
 import { dispValue, sprintf, symTexLines, setFormatMode } from './format';
-import { parseCsv, csvToTable, csvToMatrix, matrixToCsv, xlsxToCsv, type Csv } from './io';
+import { parseCsv, csvToTable, csvToMatrix, matrixToCsv, xlsxToCsv, parseMat, type Csv } from './io';
 import type { Graphics } from './graphics';
 import {
   polyCoeffs, numDen, symDet, symInv, symCharpolyCoeffs, symArg, symToExpr, symVarsOf,
@@ -53,6 +53,7 @@ export interface Env {
   saveMat(filename: string, names: string[]): void;
   loadMat(filename: string, names: string[]): void;
   readMatFile(filename: string, names: string[]): [string, Value][];
+  assignVars(pairs: [string, Value][]): void;
   hasFile(name: string): boolean;
   readFileBytes(name: string): Uint8Array | null;
   readFileText(name: string): string | null;
@@ -3366,11 +3367,21 @@ export const BUILTINS: Record<string, Builtin> = {
     const words = a.map((v) => asString(v)).filter((w) => !w.startsWith('-'));
     const file = words[0];
     if (!file) throw new MatError('load: filename required');
+    const wanted = words.slice(1);
+    // Prefer a real MAT-file in the VFS (binary Level-5); else fall back to the in-memory save() store.
+    const bytes = env.readFileBytes(file) ?? env.readFileBytes(/\.mat$/i.test(file) ? file : file + '.mat');
+    if (bytes && bytes.length > 4 && String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5]) === 'MATLAB') {
+      let pairs = parseMat(bytes).map(({ name, value }) => [name, value] as [string, Value]);
+      if (wanted.length) pairs = pairs.filter(([nm]) => wanted.includes(nm));
+      if (n >= 1) return ret({ kind: 'struct', rows: 1, cols: 1, fields: new Map(pairs.map(([nm, v]) => [nm, [v]])) } as StructV);
+      env.assignVars(pairs);
+      return [];
+    }
     if (n >= 1) {   // S = load(...) → struct of the loaded variables
-      const pairs = env.readMatFile(file, words.slice(1));
+      const pairs = env.readMatFile(file, wanted);
       return ret({ kind: 'struct', rows: 1, cols: 1, fields: new Map(pairs.map(([nm, v]) => [nm, [v]])) } as StructV);
     }
-    env.loadMat(file, words.slice(1));
+    env.loadMat(file, wanted);
     return [];
   },
   // ── Data import (CSV / Excel) and file utilities, backed by the VFS ──

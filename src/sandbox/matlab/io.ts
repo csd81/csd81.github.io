@@ -3,8 +3,8 @@
  * Live Scripts (.mlx) — both OPC zip+XML containers, unzipped with fflate.
  * Pure functions on bytes/text so they run in the worker and on the main thread.
  */
-import { unzipSync, strFromU8 } from 'fflate';
-import { type Table, type Mat, type Value, zeros, colVec, makeStrArr } from './values';
+import { unzipSync, unzlibSync, strFromU8 } from 'fflate';
+import { type Table, type Mat, type Value, type Cell, type StructV, type Sparse, zeros, colVec, makeStrArr, makeCell, makeND } from './values';
 
 // ── CSV ────────────────────────────────────────────────────────────────
 export interface Csv { headers: string[] | null; rows: (string | number)[][] }
@@ -119,6 +119,120 @@ export function xlsxToCsv(bytes: Uint8Array): Csv {
   const hasHeader = rows.length > 0 && rows[0].some((v) => typeof v === 'string' && v.trim() !== '');
   const headers = hasHeader ? rows[0].map((v) => String(v ?? '').trim()) : null;
   return { headers, rows: hasHeader ? rows.slice(1) : rows };
+}
+
+// ── MAT-file (Level 5) binary reader ─────────────────────────────────────
+// Element data types (miXXX) and array classes (mxXXX) per the MAT-File Format spec.
+const MI = { INT8: 1, UINT8: 2, INT16: 3, UINT16: 4, INT32: 5, UINT32: 6, SINGLE: 7, DOUBLE: 9, INT64: 12, UINT64: 13, MATRIX: 14, COMPRESSED: 15, UTF8: 16, UTF16: 17, UTF32: 18 } as const;
+const MX = { CELL: 1, STRUCT: 2, OBJECT: 3, CHAR: 4, SPARSE: 5, DOUBLE: 6, SINGLE: 7, INT8: 8, UINT8: 9, INT16: 10, UINT16: 11, INT32: 12, UINT32: 13, INT64: 14, UINT64: 15 } as const;
+const MX_ITYPE: Record<number, string> = { 7: 'single', 8: 'int8', 9: 'uint8', 10: 'int16', 11: 'uint16', 12: 'int32', 13: 'uint32', 14: 'int64', 15: 'uint64' };
+
+interface MatTag { type: number; nbytes: number; dataOff: number; next: number }
+function readTag(dv: DataView, off: number, le: boolean): MatTag {
+  const first = dv.getUint32(off, le);
+  if ((first >>> 16) !== 0) return { type: first & 0xffff, nbytes: first >>> 16, dataOff: off + 4, next: off + 8 };   // small-element format
+  const nbytes = dv.getUint32(off + 4, le);
+  return { type: first, nbytes, dataOff: off + 8, next: off + 8 + (Math.ceil(nbytes / 8) * 8) };
+}
+/** Read a numeric element's values into a plain number[] (handles every integer/float miType). */
+function readNumeric(dv: DataView, t: MatTag, le: boolean): number[] {
+  const out: number[] = []; let p = t.dataOff;
+  const step = { [MI.INT8]: 1, [MI.UINT8]: 1, [MI.INT16]: 2, [MI.UINT16]: 2, [MI.INT32]: 4, [MI.UINT32]: 4, [MI.SINGLE]: 4, [MI.DOUBLE]: 8, [MI.INT64]: 8, [MI.UINT64]: 8, [MI.UTF8]: 1, [MI.UTF16]: 2, [MI.UTF32]: 4 }[t.type] ?? 1;
+  for (let i = 0; i < t.nbytes; i += step, p += step) {
+    switch (t.type) {
+      case MI.INT8: out.push(dv.getInt8(p)); break;
+      case MI.UINT8: case MI.UTF8: out.push(dv.getUint8(p)); break;
+      case MI.INT16: out.push(dv.getInt16(p, le)); break;
+      case MI.UINT16: case MI.UTF16: out.push(dv.getUint16(p, le)); break;
+      case MI.INT32: out.push(dv.getInt32(p, le)); break;
+      case MI.UINT32: case MI.UTF32: out.push(dv.getUint32(p, le)); break;
+      case MI.SINGLE: out.push(dv.getFloat32(p, le)); break;
+      case MI.DOUBLE: out.push(dv.getFloat64(p, le)); break;
+      case MI.INT64: out.push(Number(dv.getBigInt64(p, le))); break;
+      case MI.UINT64: out.push(Number(dv.getBigUint64(p, le))); break;
+      default: out.push(dv.getUint8(p));
+    }
+  }
+  return out;
+}
+
+/** Parse one miMATRIX element at `off` (its tag is at `off`) → its variable name + Value. */
+function parseMatrix(dv: DataView, off: number, le: boolean): { name: string; value: Value } | null {
+  const tag = readTag(dv, off, le);
+  if (tag.type !== MI.MATRIX || tag.nbytes === 0) return null;
+  let p = tag.dataOff; const end = tag.dataOff + tag.nbytes;
+  const next = () => { const t = readTag(dv, p, le); p = t.next; return t; };
+  const flags = readNumeric(dv, next(), le);            // array flags (2× uint32)
+  const cls = flags[0] & 0xff; const isComplex = !!((flags[0] >> 8) & 0x08); const isLogical = !!((flags[0] >> 8) & 0x02);
+  const dims = readNumeric(dv, next(), le);             // dimensions (int32[])
+  const nameCodes = readNumeric(dv, next(), le);        // array name (int8[])
+  const name = String.fromCharCode(...nameCodes);
+  const rows = dims[0] ?? 0; const cols = dims.slice(1).reduce((a, b) => a * b, 1);
+  const total = dims.reduce((a, b) => a * b, dims.length ? 1 : 0);
+
+  const numMat = (real: number[], imag: number[] | null): Mat => {
+    const data = Float64Array.from({ length: total }, (_, i) => real[i] ?? 0);
+    const opts: { idata?: Float64Array; isChar?: boolean; isBool?: boolean } = {};
+    if (imag) opts.idata = Float64Array.from({ length: total }, (_, i) => imag[i] ?? 0);
+    if (isLogical) opts.isBool = true;
+    const m = dims.length > 2 ? makeND(dims, data, opts) : { kind: 'num' as const, rows, cols, data, ...(opts.idata ? { idata: opts.idata } : {}), ...(opts.isBool ? { isBool: true } : {}) };
+    if (MX_ITYPE[cls]) (m as Mat).itype = MX_ITYPE[cls];
+    return m as Mat;
+  };
+
+  if (cls === MX.CHAR) {
+    const t = next(); const codes = readNumeric(dv, t, le);
+    const data = Float64Array.from({ length: total }, (_, i) => codes[i] ?? 32);
+    return { name, value: { kind: 'num', rows, cols, data, isChar: true } };
+  }
+  if (cls === MX.CELL) {
+    const items: Value[] = [];
+    for (let i = 0; i < total; i++) { const t = readTag(dv, p, le); const sub = parseMatrix(dv, p, le); p = t.next; items.push(sub ? sub.value : zeros(0, 0)); }
+    return { name, value: makeCell(rows, cols, items) as Cell };
+  }
+  if (cls === MX.STRUCT) {
+    const fnLen = readNumeric(dv, next(), le)[0] ?? 32;
+    const fnCodes = readNumeric(dv, next(), le);
+    const nf = Math.floor(fnCodes.length / fnLen);
+    const names: string[] = [];
+    for (let f = 0; f < nf; f++) names.push(String.fromCharCode(...fnCodes.slice(f * fnLen, (f + 1) * fnLen)).replace(/\0.*$/, ''));
+    const fields = new Map<string, Value[]>(names.map((n) => [n, [] as Value[]]));
+    for (let i = 0; i < total; i++) for (const n of names) { const t = readTag(dv, p, le); const sub = parseMatrix(dv, p, le); p = t.next; fields.get(n)!.push(sub ? sub.value : zeros(0, 0)); }
+    return { name, value: { kind: 'struct', rows, cols, fields } as StructV };
+  }
+  if (cls === MX.SPARSE) {
+    const ir = readNumeric(dv, next(), le); const jc = readNumeric(dv, next(), le);
+    const pr = readNumeric(dv, next(), le); if (isComplex) next();   // skip imaginary part of sparse
+    return { name, value: { kind: 'sparse', rows, cols, colptr: Int32Array.from(jc), rowind: Int32Array.from(ir), values: Float64Array.from(pr) } as Sparse };
+  }
+  // numeric classes (double/single/int*); anything else (objects/tables/opaque) is unsupported → skip.
+  if (cls < MX.DOUBLE || cls > MX.UINT64 || !Number.isSafeInteger(total) || total < 0 || total > 5e7) { p = end; return null; }
+  const real = readNumeric(dv, next(), le);
+  const imag = isComplex ? readNumeric(dv, next(), le) : null;
+  return { name, value: numMat(real, imag) };
+}
+
+/** Read all variables from a Level-5 MAT-file. Compressed elements are zlib-inflated. */
+export function parseMat(bytes: Uint8Array): { name: string; value: Value }[] {
+  if (bytes.length < 132) throw new Error('not a valid MAT-file');
+  const le = bytes[126] === 0x49 && bytes[127] === 0x4d ? true : !(bytes[126] === 0x4d && bytes[127] === 0x49);   // 'IM'→LE, 'MI'→BE
+  const out: { name: string; value: Value }[] = [];
+  let off = 128;
+  const top = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  while (off + 8 <= bytes.length) {
+    const tag = readTag(top, off, le);
+    try {
+      if (tag.type === MI.COMPRESSED) {
+        const raw = unzlibSync(bytes.subarray(tag.dataOff, tag.dataOff + tag.nbytes));
+        const dv = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
+        const v = parseMatrix(dv, 0, le); if (v && v.name) out.push(v);
+      } else if (tag.type === MI.MATRIX) {
+        const v = parseMatrix(top, off, le); if (v && v.name) out.push(v);
+      }
+    } catch { /* skip a variable we can't parse (e.g. table/object) rather than failing the whole load */ }
+    off = tag.next;
+  }
+  return out;
 }
 
 // ── MLX (MATLAB Live Script: OPC zip, code in matlab/document.xml) ────────

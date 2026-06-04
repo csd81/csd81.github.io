@@ -145,6 +145,7 @@ export class Interpreter implements Env {
   }
   loadMat(filename: string, names: string[]) { for (const [n, v] of this.matPairs(filename, names)) this.base.vars.set(n, v); }
   readMatFile(filename: string, names: string[]): [string, Value][] { return this.matPairs(filename, names); }
+  assignVars(pairs: [string, Value][]) { for (const [n, v] of pairs) this.base.vars.set(n, v); }
 
   /** Virtual file system: raw bytes keyed by (normalized) filename. Fed/drained by the worker. */
   private files = new Map<string, Uint8Array>();
