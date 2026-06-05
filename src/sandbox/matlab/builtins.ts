@@ -103,6 +103,13 @@ const ew = (f: (x: number) => number): Builtin => async (a) => ret(map(m(a[0]), 
 // Like ew, but also rounds the imaginary part (floor/ceil/fix of complex applies to both parts).
 const ewRound = (f: (x: number) => number): Builtin => async (a) => { const A = m(a[0]); const o = map(A, f); if (A.idata) o.idata = A.idata.map(f); return ret(o); };
 
+/** Build a char matrix whose rows are the given strings, right-padded with spaces (MATLAB char). */
+function charMatRows(strs: string[]): Mat {
+  const w = strs.reduce((mx, s) => Math.max(mx, s.length), 0);
+  const M = zeros(strs.length, w); M.isChar = true;
+  strs.forEach((s, r) => { for (let c = 0; c < w; c++) M.data[r + c * strs.length] = c < s.length ? s.charCodeAt(c) : 32; });
+  return M;
+}
 /** Build a char matrix whose rows are the given strings, left-padded with '0' to equal width. */
 function charRowsZ(strs: string[], minW = 0): Mat {
   const w = Math.max(minW, ...strs.map((s) => s.length), 1);
@@ -1005,7 +1012,26 @@ export const BUILTINS: Record<string, Builtin> = {
     const p = a.length >= 2 ? asScalar(a[1]) : 2; const dim = a.length >= 3 ? Math.round(asScalar(a[2])) : 1;
     return ret(vecnormFn(m(a[0]), p === Infinity ? 'inf' : p, dim));
   },
-  chol: async (a) => ret(cholFn(m(a[0]))),
+  chol: async (a, n) => {
+    const A = m(a[0]);
+    const lower = a.some((v) => (isStr(v) || (isMat(v) && (v as Mat).isChar)) && asString(v).toLowerCase() === 'lower');
+    if (n >= 2) {
+      // [R,flag] = chol(A): no error on non-PD; flag = first failing pivot (0 if PD),
+      // and R is the upper factor of the leading (flag-1)×(flag-1) block.
+      const N = A.rows; const R = zeros(N, N); let flag = 0;
+      for (let j = 0; j < N && !flag; j++) {
+        let d = A.data[j + j * N]; for (let k = 0; k < j; k++) d -= R.data[k + j * N] ** 2;
+        if (d <= 0) { flag = j + 1; break; }
+        R.data[j + j * N] = Math.sqrt(d);
+        for (let i = j + 1; i < N; i++) { let s = A.data[j + i * N]; for (let k = 0; k < j; k++) s -= R.data[k + j * N] * R.data[k + i * N]; R.data[j + i * N] = s / R.data[j + j * N]; }
+      }
+      let Rout = R;
+      if (flag) { const q = flag - 1; const B = zeros(q, q); for (let c = 0; c < q; c++) for (let r = 0; r < q; r++) B.data[r + c * q] = R.data[r + c * N]; Rout = B; }
+      return [lower ? ctransposeFn(Rout) : Rout, scalar(flag)];
+    }
+    const R = cholFn(A);
+    return ret(lower ? ctransposeFn(R) : R);
+  },
   qr: async (a, n) => { const { Q, R } = qrDecomp(m(a[0])); return n >= 2 ? [Q, R] : [R]; },
   lu: async (a, n) => {
     const { L, U, P } = luOutputs(m(a[0]));
@@ -1339,7 +1365,18 @@ export const BUILTINS: Record<string, Builtin> = {
   isfloat: async (a) => ret(bool(isMat(a[0]) && !(a[0] as Mat).isChar && !(a[0] as Mat).isBool && (!(a[0] as Mat).itype || (a[0] as Mat).itype === 'single'))),
   double: async (a) => { if (isSym(a[0])) { const s = a[0]; const M = zeros(s.rows, s.cols); s.exprs.forEach((e, i) => { M.data[i] = symEval(e, new Map()); }); return ret(M); } const A = m(a[0]); return ret({ kind: 'num', rows: A.rows, cols: A.cols, data: Float64Array.from(A.data), idata: A.idata ? Float64Array.from(A.idata) : undefined }); },
   single: async (a) => ret(applyClass(m(a[0]), 'single')),
-  char: async (a) => { const A = m(a[0]); if (A.isChar) return ret(A); return ret(str(toArray(A).map((x) => String.fromCharCode(Math.round(x))).join(''))); },
+  char: async (a) => {
+    // char(string)/char(cellstr) → char; several inputs stack as rows of a char matrix.
+    const rowsOf = (v: Value): string[] => {
+      if (isStr(v)) return v.items.slice();
+      if (isCell(v)) return v.items.map(asString);
+      const A = m(v); if (A.isChar) { const out: string[] = []; for (let r = 0; r < A.rows; r++) { let s = ''; for (let c = 0; c < A.cols; c++) s += String.fromCharCode(A.data[r + c * A.rows]); out.push(s); } return out.length ? out : ['']; }
+      if (A.rows > 1) { const out: string[] = []; for (let r = 0; r < A.rows; r++) { let s = ''; for (let c = 0; c < A.cols; c++) s += String.fromCharCode(Math.round(A.data[r + c * A.rows])); out.push(s); } return out; }
+      return [toArray(A).map((x) => String.fromCharCode(Math.round(x))).join('')];
+    };
+    const all: string[] = []; for (const v of a) all.push(...rowsOf(v));
+    return ret(all.length <= 1 ? str(all[0] ?? '') : charMatRows(all));
+  },
   int8: async (a) => ret(applyClass(m(a[0]), 'int8')), uint8: async (a) => ret(applyClass(m(a[0]), 'uint8')),
   int16: async (a) => ret(applyClass(m(a[0]), 'int16')), uint16: async (a) => ret(applyClass(m(a[0]), 'uint16')),
   int32: async (a) => ret(applyClass(m(a[0]), 'int32')), uint32: async (a) => ret(applyClass(m(a[0]), 'uint32')),
@@ -3013,8 +3050,11 @@ export const BUILTINS: Record<string, Builtin> = {
   rot90: async (a) => { const A = m(a[0]); const k = a.length >= 2 ? Math.round(asScalar(a[1])) : 1; return ret(rot90n(A, k)); },
   circshift: async (a) => {
     const A = m(a[0]); const k = m(a[1]); const isVec = A.rows === 1 || A.cols === 1;
+    const dim = a.length >= 3 && isMat(a[2]) && !(a[2] as Mat).isChar ? Math.round(asScalar(a[2])) : undefined;
     let sr = 0, sc = 0;
     if (numel(k) >= 2) { sr = Math.round(k.data[0]); sc = Math.round(k.data[1]); }
+    else if (dim === 1) sr = Math.round(k.data[0]);
+    else if (dim === 2) sc = Math.round(k.data[0]);
     else if (isVec && A.rows === 1) sc = Math.round(k.data[0]); else sr = Math.round(k.data[0]);
     const o = zeros(A.rows, A.cols); o.isChar = A.isChar; const im = A.idata ? new Float64Array(A.rows * A.cols) : null;
     const mod = (x: number, n: number) => ((x % n) + n) % n;

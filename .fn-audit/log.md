@@ -69,3 +69,7 @@ Fixed: floor/ceil/fix complex (both parts); cellstr string-array input; cell 2-D
 (C(2,:)={...}); inline cell display refined (row vec inline, col/matrix -> size summary, matches MATLAB).
 39 remaining (duration type, cell->struct/table strings, graph Nodes-table assign, polyshape holes).
 Build green; 1419 builtins, 0 without help.
+## Batch 14 (fns 131-140): cgs chGate char chol cholupdate circshift circumcenter cla class clc
+Fixed: chol 'lower' factor + [R,flag] non-erroring 2-output; circshift dim argument; char string/cellstr/
+multi-arg -> char matrix. cgs/circumcenter dataset-blocked; class java/clc rand non-matchable.
+Build green; 1419 builtins, 0 without help.

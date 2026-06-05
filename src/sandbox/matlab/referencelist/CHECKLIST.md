@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **130 / 1170** audited.
+Progress: **140 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -135,3 +135,13 @@ Progress: **130 / 1170** audited.
 | 128 | `cellstr` | ✅ | string-array input fixed |
 | 129 | `centrality` | 🟡 | Nodes-table assign pending |
 | 130 | `centroid` | 🟡 | multi-boundary pending |
+| 131 | `cgs` | 🟡 | solver; random/dataset examples |
+| 132 | `chGate` | 🟡 | gate object |
+| 133 | `char` | ✅ | string/cellstr/multi-arg fixed |
+| 134 | `chol` | ✅ | lower + [R,flag] fixed |
+| 135 | `cholupdate` | ✅ | rank-1 update |
+| 136 | `circshift` | ✅ | dim argument fixed |
+| 137 | `circumcenter` | 🟡 | needs trimesh2d dataset |
+| 138 | `cla` | 🟡 | accepted; not rendered |
+| 139 | `class` | ✅ | class-name |
+| 140 | `clc` | ✅ | clear window |

@@ -329,3 +329,27 @@ All 35 batch-8 examples pass.
 - **Cell paren-assignment grows in 2-D**: `C(2,:) = {a,b}` extends the cell array (rows/cols) instead of failing.
 - **Inline cell/struct display refined**: a short *row* vector shows inline (`{[1 2 3]}`), while columns and matrices show a size summary (`{2×1 double}`, `{3×3 double}`) — matching MATLAB exactly.
 - Rich ≥10-line help added for all batch-13 functions.
+
+---
+
+## Batch 14 — functions 131–140
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `cgs` | 🟡 | Conjugate-Gradients-Squared solver present | doc examples use random matrices / `load west0479`, non-matchable |
+| `chGate` | 🟡 | controlled-Hadamard gate object | gate-matrix display detail |
+| `char` | ✅ | **fixed**: string-array / cellstr / multi-arg → char matrix | `whos` byte report; one string-vs-char doc display |
+| `chol` | ✅ | **fixed**: `'lower'` factor and `[R,flag]` non-erroring form | `load west0479` dataset example |
+| `cholupdate` | ✅ | rank-1 Cholesky update/downdate | — |
+| `circshift` | ✅ | **fixed**: dimension argument `circshift(A,K,dim)` | — |
+| `circumcenter` | 🟡 | triangulation circumcenters | doc examples need `load trimesh2d` dataset |
+| `cla` | 🟡 | clear-axes accepted | nothing rendered to verify |
+| `class` | ✅ | class-name of a value | Java-object example unsupported |
+| `clc` | ✅ | clear command window | one example shows `rand` output (non-deterministic) |
+
+### Fixes landed in this batch
+- **`chol(A,'lower')`** returns the lower factor `L` (was always returning upper `R`).
+- **`[R,flag] = chol(A)`** no longer errors on a non-positive-definite matrix — it returns the failing pivot index in `flag` and the factor of the leading positive-definite block.
+- **`circshift(A,K,dim)`** honors the dimension argument (was ignoring it and shifting dim 1).
+- **`char`** accepts string arrays, cellstr, multi-row numeric input, and multiple stacked arguments, building a space-padded char matrix.
+- Rich ≥10-line help added for all batch-14 functions.
