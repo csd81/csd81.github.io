@@ -350,6 +350,8 @@ export class Interpreter implements Env {
         if (lv.target.t === 'ident') {
           const cur = scope.vars.get(lv.target.name);
           if (cur && cur.kind === 'gobj') { this.graphics.setAxesProp(lv.name, val); return; }
+          // d.Format = "..." / d.TimeZone = "..." on a datetime: display-only, keep it a datetime.
+          if (cur && isTemporal(cur) && ['format', 'timezone'].includes(lv.name.toLowerCase())) return;
           const fields = cur && isStruct(cur) ? new Map(cur.fields) : new Map<string, Value[]>();
           fields.set(lv.name, [val]);
           scope.vars.set(lv.target.name, { kind: 'struct', rows: 1, cols: 1, fields });
@@ -569,6 +571,7 @@ export class Interpreter implements Env {
         if (t.kind === 'graph') return [graphProperty(t, e.name)];
         if (t.kind === 'geom') return [geomProperty(t, e.name)];
         if (t.kind === 'quantum') return [quantumProperty(t, e.name)];
+        if (t.kind === 'temporal') return [temporalProperty(t, e.name)];
         if (t.kind === 'table') { const i = t.vars.indexOf(e.name); if (i >= 0) return [t.cols[i]]; if (e.name === 'Properties') return [scalar(0)]; if (t.isTimetable && (e.name === 'Time' || e.name === t.rowDimName) && t.rowTimes) return [t.rowTimes]; throw new MatError(`unrecognized table variable '${e.name}'`); }
         throw new MatError(`cannot read field '.${e.name}'`);
       }
@@ -960,6 +963,21 @@ function temporalBinary(op: string, a: Value, b: Value): Value {
   throw new MatError(`operator '${op}' is not supported for ${A ? A.tkind : 'numeric'} and ${B ? B.tkind : 'numeric'} operands`);
 }
 /** Read a quantum-object property via dot syntax (c.NumQubits, g.Type, …). */
+function temporalProperty(t: Temporal, name: string): Value {
+  const low = name.toLowerCase();
+  const comp = (f: (d: Date) => number): Mat => { const o = zeros(t.rows, t.cols); for (let i = 0; i < t.data.length; i++) { if (Number.isNaN(t.data[i])) { o.data[i] = NaN; continue; } o.data[i] = f(new Date(Math.round((t.data[i] - 719529) * 86400000))); } return o; };
+  if (t.tkind === 'datetime') {
+    if (low === 'year') return comp((d) => d.getUTCFullYear());
+    if (low === 'month') return comp((d) => d.getUTCMonth() + 1);
+    if (low === 'day') return comp((d) => d.getUTCDate());
+    if (low === 'hour') return comp((d) => d.getUTCHours());
+    if (low === 'minute') return comp((d) => d.getUTCMinutes());
+    if (low === 'second') return comp((d) => d.getUTCSeconds() + d.getUTCMilliseconds() / 1000);
+  }
+  if (low === 'format') return makeStr('default');
+  if (low === 'timezone') return makeStr('');
+  throw new MatError(`unrecognized property '${name}' for a ${t.tkind}`);
+}
 function quantumProperty(q: Quantum, name: string): Value {
   const low = name.toLowerCase();
   if (low === 'numqubits') return scalar(q.numQubits ?? 0);

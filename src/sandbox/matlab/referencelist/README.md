@@ -531,3 +531,28 @@ All 35 batch-8 examples pass.
 - **`cumsum` / `cumprod` / `cummax` / `cummin`** now honor the `'reverse'` direction and the `'omitnan'` flag (in addition to the dimension argument), via a unified cumulative helper and a reverse-capable scan. `cumsum([1 2 3 4],"reverse")` → `[10 9 7 4]`; `cumsum([1 NaN 3],"omitnan")` → `[1 1 4]`. Defaults (forward, NaN-propagating) are unchanged.
 - **`randi([imin imax], ...)`** range form now works (previously only `randi(imax,...)` was accepted) — used throughout the cumulative-function examples.
 - Rich ≥10-line help added for all batch-22 functions.
+
+---
+
+## Batch 23 — functions 221–230 (mostly date/time)
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `cyGate` | 🟡 | controlled-Y gate object | `getMatrix`/vectorized gates pending |
+| `cyclebasis` | 🟡 | fundamental cycle basis | cycle *rotation* (starting node) differs from MATLAB |
+| `cylinder` | 🟡 | cylinder surface coordinates | surface rendering not verifiable |
+| `czGate` | 🟡 | controlled-Z gate object | `getMatrix`/vectorized gates pending |
+| `daspect` | 🟡 | data-aspect setter | nothing rendered to verify |
+| `date` | 🟡 | current date string | live clock (non-deterministic) |
+| `datenum` | ✅ | serial number from components / string / vector | — |
+| `datestr` | 🟡 | **improved**: date-vector and datetime input, multi-row char | many format-code / string-parse variants pending |
+| `datetime` | 🟡 | **improved**: `string(d)`, `.Year`/`.Month`/… properties, `.Format=` no longer corrupts the value | cellstr/`InputFormat` constructors, array concatenation, format strings — major gap |
+| `datevec` | 🟡 | component vector from number/datetime | string+format parsing pending |
+
+### Fixes landed in this batch (datetime-type improvements)
+- **`string(datetime)`** now returns a formatted date string (was `"[object Object]"`); `string(categorical)` returns category names.
+- **datetime field access** `d.Year` / `d.Month` / `d.Day` / `d.Hour` / `d.Minute` / `d.Second` now work.
+- **`d.Format = ...` / `d.TimeZone = ...`** no longer turn a datetime into a struct (display-only properties are accepted and ignored).
+- **`datestr`** accepts a `[Y M D H MI S]` date vector (and N×6), a datetime array, and returns a multi-row char array for several dates.
+- Noted major gap: the `datetime` type still needs constructor text-parsing (cellstr/`InputFormat`/name-value), type-preserving concatenation, and custom format strings; many of this batch's examples are also non-deterministic (`datetime("now")`, `date`, `clock`).
+- Rich ≥10-line help added for all batch-23 functions.

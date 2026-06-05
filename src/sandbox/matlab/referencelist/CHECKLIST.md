@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **220 / 1170** audited.
+Progress: **230 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -225,3 +225,13 @@ Progress: **220 / 1170** audited.
 | 218 | `cumtrapz` | ✅ | cumulative trapz |
 | 219 | `curl` | 🟡 | needs wind dataset |
 | 220 | `cxGate` | 🟡 | gate object; getMatrix n/a |
+| 221 | `cyGate` | 🟡 | gate object |
+| 222 | `cyclebasis` | 🟡 | basis; rotation differs |
+| 223 | `cylinder` | 🟡 | surface coords |
+| 224 | `czGate` | 🟡 | gate object |
+| 225 | `daspect` | 🟡 | setter; not rendered |
+| 226 | `date` | 🟡 | live clock |
+| 227 | `datenum` | ✅ | components/string/vector |
+| 228 | `datestr` | 🟡 | date-vector/datetime improved |
+| 229 | `datetime` | 🟡 | string/props improved; major gap |
+| 230 | `datevec` | 🟡 | number/datetime; string parse pending |

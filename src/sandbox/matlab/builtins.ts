@@ -28,7 +28,7 @@ import {
   balance as balanceFn, rsf2csf as rsf2csfFn, qz as qzFn, ordschur as ordschurFn, ordqz as ordqzFn, schurEig as schurEigFn,
   hermiteFormInt, smithFormInt,
 } from './linalg';
-import { dispValue, sprintf, symTexLines, setFormatMode } from './format';
+import { dispValue, sprintf, symTexLines, setFormatMode, fmtTemporal } from './format';
 import { parseCsv, csvToTable, csvToMatrix, matrixToCsv, xlsxToCsv, parseMat, type Csv } from './io';
 import type { Graphics } from './graphics';
 import {
@@ -1795,7 +1795,7 @@ export const BUILTINS: Record<string, Builtin> = {
   swapbytes: async (a) => { const A = m(a[0]); const u = new Uint8Array(new Float64Array(A.data).buffer); for (let i = 0; i < u.length; i += 8) u.subarray(i, i + 8).reverse(); return ret(mat(A.rows, A.cols, new Float64Array(u.buffer))); },
 
   // ── String class ("…") ──
-  string: async (a) => { const v = a[0]; if (isStr(v)) return ret(v); if (isCell(v)) return ret(makeStrArr(v.rows, v.cols, v.items.map((x) => asString(x)))); if (isMat(v) && v.isChar) return ret(makeStr(asString(v))); if (isMat(v)) { const f = (x: number) => (Number.isInteger(x) ? String(x) : String(+x.toPrecision(5))); return ret(makeStrArr(v.rows, v.cols, Array.from(v.data, f))); } return ret(makeStr(String(v))); },
+  string: async (a) => { const v = a[0]; if (isStr(v)) return ret(v); if (isCell(v)) return ret(makeStrArr(v.rows, v.cols, v.items.map((x) => asString(x)))); if (isTemporal(v)) return ret(makeStrArr(v.rows, v.cols, Array.from(v.data, (x) => fmtTemporal(v.tkind, x)))); if (isCategorical(v)) return ret(makeStrArr(v.rows, v.cols, Array.from(v.codes, (c) => (c ? v.categories[c - 1] : '<undefined>')))); if (isMat(v) && v.isChar) return ret(makeStr(asString(v))); if (isMat(v)) { const f = (x: number) => (Number.isInteger(x) ? String(x) : String(+x.toPrecision(5))); return ret(makeStrArr(v.rows, v.cols, Array.from(v.data, f))); } return ret(makeStr(String(v))); },
   strings: async (a) => { const [r, c] = dims2(a); return ret(makeStrArr(r, c, new Array(r * c).fill(''))); },
   isstring: async (a) => ret(bool(isStr(a[0]))),
   isStringScalar: async (a) => ret(bool(isStr(a[0]) && a[0].rows * a[0].cols === 1)),
@@ -2263,7 +2263,15 @@ export const BUILTINS: Record<string, Builtin> = {
     const o = zeros(n, 1); for (let i = 0; i < n; i++) o.data[i] = dnum(at(0, i), at(1, i), at(2, i), at(3, i), at(4, i), at(5, i)); return ret(numel(o) === 1 ? scalar(o.data[0]) : o);
   },
   datevec: async (a) => { const n = isTemporal(a[0]) ? a[0].data[0] : asScalar(m(a[0])); const v = dvec(n); return ret(rowVec(v)); },
-  datestr: async (a) => { const n = isTemporal(a[0]) ? a[0].data[0] : asScalar(m(a[0])); const fmt = a.length >= 2 && isMat(a[1]) && (a[1] as Mat).isChar ? asString(a[1]) : null; return ret(str(dstr(n, fmt))); },
+  datestr: async (a) => {
+    const fmt = a.length >= 2 && isMat(a[1]) && (a[1] as Mat).isChar ? asString(a[1]) : null;
+    if (isTemporal(a[0])) { const t = a[0]; return ret(t.data.length === 1 ? str(dstr(t.data[0], fmt)) : charMatRows(Array.from(t.data, (n) => dstr(n, fmt)))); }
+    const A = m(a[0]);
+    // A 1×6 (or N×6) numeric input is a date vector [Y M D H MI S].
+    if (!A.isChar && A.cols === 6) { const rows: string[] = []; for (let r = 0; r < A.rows; r++) { const v = Array.from({ length: 6 }, (_, c) => A.data[r + c * A.rows]); rows.push(dstr(dnum(v[0], v[1], v[2], v[3], v[4], v[5]), fmt)); } return ret(rows.length === 1 ? str(rows[0]) : charMatRows(rows)); }
+    const nums = toArray(A);
+    return ret(nums.length === 1 ? str(dstr(nums[0], fmt)) : charMatRows(nums.map((n) => dstr(n, fmt))));
+  },
   now: async () => ret(scalar(Date.now() / 86400000 + 719529)),
   today: async () => ret(scalar(Math.floor(Date.now() / 86400000) + 719529)),
   clock: async () => { const v = dvec(Date.now() / 86400000 + 719529); return ret(rowVec(v)); },

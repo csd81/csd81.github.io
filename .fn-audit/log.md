@@ -105,3 +105,8 @@ Build green; 1420 builtins, 0 without help.
 Fixed: cumsum/cumprod/cummax/cummin honor 'reverse' + 'omitnan' (unified cumulative helper, reverse-capable
 scanAlongDim); randi([imin imax],...) range form. Remaining: random-data examples, datasets (curl/wind),
 files (csvread), quantum getMatrix. Build green; 1420 builtins, 0 without help.
+## Batch 23 (fns 221-230): cyGate cyclebasis cylinder czGate daspect date datenum datestr datetime datevec
+Date/time-heavy batch. Fixed: string(datetime) formats (was [object Object]); datetime .Year/.Month/... field
+access; d.Format= no longer corrupts to struct; datestr accepts date-vector/datetime/multi-row.
+datetime TYPE still a major gap (cellstr/InputFormat ctors, concat, format strings) + non-deterministic now/date.
+Build green; 1420 builtins, 0 without help.
