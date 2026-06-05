@@ -1136,3 +1136,118 @@ All verified working; only one behavioral fix needed.
 - Rich ≥10-line help added for all 25 functions (9 new structured entries).
 
 **100-function build boundary reached at 580**: full `npm run build` (tsc + vite) green; registry invariant 0/1420 without help. Batches 43–46 committed and pushed together.
+
+## Batch 47 — functions 581–605 (25-fn batch; logs · least-squares solvers · LU · interpolation)
+
+| Function | Status | Notes |
+|---|---|---|
+| `line`/`lines`/`linkaxes`/`loglog` | 🟡 | graphics/colormap |
+| `linsolve` | ✅ | solve A*X=B (structure options) → `linsolve([2 0;0 4],[2;8])=[1;2]` |
+| `linspace` | ✅ | `linspace(0,1,5)` |
+| `load` | ✅ | load vars from MAT/VFS |
+| `log`/`log10`/`log2`/`log1p` | ✅ | logarithms (complex `log(-1)`, accurate `log1p`) |
+| `logical` | ✅ | convert to logical mask |
+| `logm` | ✅ | matrix logarithm → `logm(expm(A))=A` |
+| `logspace` | ✅ | `logspace(0,2,3)=[1 10 100]` |
+| `lookfor` | ✅ | keyword help search |
+| `lookup` | ✅ | **fixed**: dictionary lookup + `FallbackValue` + key arrays |
+| `lower` | ✅ | lowercase |
+| `ls` | ✅ | list VFS files |
+| `lscov`/`lsqminnorm`/`lsqnonneg`/`lsqr` | ✅ | least-squares family verified |
+| `lu` | ✅ | LU factorization → `P*A=L*U` |
+| `magic` | ✅ | magic square |
+| `makima` | ✅ | modified Akima interpolation |
+
+### Fixes landed in this batch
+- **`lookup`** (dictionary method) now supports the `FallbackValue` option (returning a default for missing keys instead of erroring) and arrays of keys, in addition to single-key lookup.
+- Verified the log family (incl. complex `log(-1)` and accurate `log1p`/`log2` `[F,E]`), `linsolve`, `linspace`/`logspace`, `logical`, `logm`, `lu`, `magic`, `makima`, and the least-squares solvers `lscov`/`lsqminnorm`/`lsqnonneg`/`lsqr`.
+- Rich ≥10-line help added for all 25 functions (16 new structured entries). Help verified via esbuild; full build deferred to 680.
+
+## Batch 48 — functions 606–630 (25-fn batch; stats · graph algorithms · mesh plots · QUBO)
+
+All computable functions verified correct — **no code fixes needed this batch** (standard math/stats/graph functions already implemented correctly).
+
+| Function | Status | Notes |
+|---|---|---|
+| `mape` | ✅ | mean absolute percentage error → `mape([1;10;9],[1;9;10])=7.0370` |
+| `mat2cell` | ✅ | partition matrix into cell blocks |
+| `mat2str` | ✅ | parseable matrix string (eval round-trips) |
+| `matches` | ✅ | exact whole-string match |
+| `matchpairs` | ✅ | min-cost linear assignment |
+| `material` | 🟡 | surface reflectance (graphics) |
+| `max`/`min` | ✅ | with index, dim, pairwise, all |
+| `maxcut2qubo` | ✅ | max-cut → QUBO |
+| `maxflow` | ✅ | maximum flow → 13 |
+| `maxk`/`mink` | ✅ | k largest / smallest |
+| `mcxGate` | 🟡 | multi-controlled NOT (quantum) |
+| `mean`/`median` | ✅ | central tendency |
+| `mergecats` | ✅ | merge categorical categories |
+| `mergevars` | ✅ | combine table variables |
+| `mesh`/`meshc`/`meshz` | 🟡 | wireframe plots (graphics) |
+| `meshgrid` | ✅ | 2-D/3-D grid coordinates |
+| `milliseconds` | ✅ | duration in ms |
+| `minres` | ✅ | MINRES iterative solver → identity check |
+| `minspantree` | ✅ | minimum spanning tree |
+| `minute` | ✅ | datetime minute component |
+
+### Notes
+- No implementation bugs found this batch; verified `mape`, `mat2cell`, `mat2str` (eval round-trip), `matchpairs` (optimal assignment), `max`/`min`/`maxk`/`mink`, `mean`/`median`, `maxflow` (=13), `mergecats`/`mergevars`, `meshgrid`, `milliseconds`, `minres`, `minspantree`, `minute`, and the QUBO converters.
+- `maxcut2qubo`/`mcxGate` produce usable results; `qubo` objects report class `struct` (modeling limitation, not a correctness issue).
+- Rich ≥10-line help added for all 25 functions (13 new structured entries). Help verified via esbuild; full build deferred to 680.
+
+## Batch 49 — functions 631–655 (25-fn batch; durations · moving-window stats · `mustBe*` validators)
+
+All 25 already existed. One real bug fixed; the rest verified correct.
+
+| Function | Status | Notes |
+|---|---|---|
+| `minutes` | ✅ | `minutes(90)/60` → `1.5 min` (duration/scalar, correct) |
+| `missing` | 🟡 | NaN placeholder + `ismissing` work; `string(missing)` edge errors |
+| `mkpp` | ✅ | `mkpp([0 1 2],[1 0;1 1])` → `ppval=0.5/1.5` round-trip |
+| `mod` | ✅ | result follows divisor sign |
+| `mode` | ✅ | **fixed**: `mode(A,dim)` ignored the dim argument → now honors it |
+| `month` | ✅ | numeric + `"name"` |
+| `movevars` | ✅ | `movevars(T,"C","Before","A")` reorders columns C A B |
+| `movmad`/`movmax`/`movmean`/`movmedian`/`movmin` | ✅ | sliding-window verified |
+| `movprod`/`movstd`/`movsum`/`movvar` | ✅ | sliding-window verified |
+| `mustBeColumn`/`mustBeFinite`/`mustBeFloat` | ✅ | pass/throw verified |
+| `mustBeGreaterThan`/`...OrEqual` | ✅ | pass/throw verified |
+| `mustBeInRange` | ✅ | `mustBeInRange(5,1,10)` ok, `(50,1,10)` throws |
+| `mustBeInteger` | ✅ | `1.5` throws, `[1 2 3]` ok |
+| `mustBeLessThan`/`...OrEqual` | ✅ | pass/throw verified |
+
+### Implementation note
+- **`mode` dim fix**: `mode` was hard-wired to `colReduce` (column-wise only), ignoring a `dim` argument. It now routes through `reduceAlongDim(A, dim, modeOf)` when a numeric dim is supplied, so `mode([3 3 1 4;0 0 1 1;0 1 2 4],2)` correctly returns `[3;0;0]`.
+
+### Not possible / partial
+- `string(missing)` errors ("expected a numeric value") — the string type does not yet model a `<missing>` element. `missing` itself and `ismissing` work.
+- Table `T.Properties.VariableNames` dotted access fails (pre-existing table-Properties limitation, outside this batch); `movevars` itself reorders correctly and displays right.
+
+- Rich ≥10-line help added for all 25 functions (21 new structured entries + 4 expanded in place). Help verified via esbuild; full build deferred to 680.
+
+## Batch 50 — functions 656–680 (25-fn batch; `mustBe*` validators · arg-count checks · combinatorics) — **100-boundary build at 680**
+
+All 25 already existed as stubs/builtins. **Five real fixes** plus two new implementations; rest verified.
+
+| Function | Status | Notes |
+|---|---|---|
+| `mustBeMatrix` | ✅ | **fixed**: was a no-op; now rejects arrays with >2 dims |
+| `mustBeMember` | ✅ | **fixed**: failed on text; now handles string/cellstr sets and numeric sets |
+| `mustBeNegative`/`...Nonnegative`/`...Nonpositive`/`...Positive`/`...Nonzero` | ✅ | sign validators verified |
+| `mustBeNonNan`/`...Nonempty`/`...Numeric`/`...NumericOrLogical`/`...Real` | ✅ | verified |
+| `mustBeNonzeroLengthText`/`mustBeText`/`mustBeTextScalar` | ✅ | text validators verified |
+| `mustBeRow`/`mustBeScalarOrEmpty`/`mustBeSorted`/`mustBeVector` | ✅ | shape/order validators verified |
+| `nargchk` | ✅ | **fixed**: 3-arg form now returns the proper error message |
+| `narginchk` | ✅ | **implemented**: reads caller nargin via new env hook, throws on out-of-range |
+| `nargoutchk` | ✅ | **implemented**: reads caller nargout, throws on out-of-range |
+| `native2unicode` | ✅ | `native2unicode([72 105])` → "Hi" |
+| `nchoosek` | ✅ | **fixed**: vector form `nchoosek(1:4,2)` now returns all 6 combinations as rows |
+| `ndgrid` | ✅ | N-D coordinate grid (row-major vs meshgrid) verified |
+
+### Implementation notes
+- **`mustBeMatrix`** previously just called `dimsOf` and returned — never enforced anything. Now throws when `M.nd.length > 2`.
+- **`mustBeMember`** previously coerced everything through the numeric path (`toArray`), so any text argument threw "expected a numeric value". Now detects text and compares via `strList` against a string set, falling back to the numeric set otherwise.
+- **`nchoosek` vector form**: added the combinations branch — when the first argument has more than one element, it generates all k-element combinations in lexicographic order as matrix rows (preserving char-ness). The scalar form (binomial coefficient) is unchanged.
+- **`narginchk`/`nargoutchk` dependency fulfilled**: builtins previously had no way to see the calling function's argument counts. Added a `funcScope` pointer in the interpreter (set/restored around each user-function body) plus `currentNargin()`/`currentNargout()` on the `Env` interface. `narginchk`/`nargoutchk` now read these and throw the standard "Not enough / Too many input/output arguments." errors; at base/script level they no-op (matching MATLAB, where they only apply inside functions). `nargchk` (legacy) uses the same hook for its 2-arg form and an explicit count for its 3-arg form.
+
+- Rich ≥10-line help added for all 25 functions (all new structured entries). Help verified via esbuild; **full build + push at this 680 boundary**.

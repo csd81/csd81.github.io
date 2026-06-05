@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **580 / 1170** audited.
+Progress: **680 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -589,3 +589,103 @@ Progress: **580 / 1170** audited.
 | 578 | `legendre` | ✅ | associated Legendre functions |
 | 579 | `length` | ✅ | largest-dimension length |
 | 580 | `lighting` | 🟡 | surface lighting mode (graphics) |
+| 581 | `line` | 🟡 | low-level line (graphics) |
+| 582 | `lines` | 🟡 | lines colormap (visual) |
+| 583 | `linkaxes` | 🟡 | link axes limits (graphics) |
+| 584 | `linsolve` | ✅ | solve A*X=B (with structure opts) |
+| 585 | `linspace` | ✅ | linearly spaced vector |
+| 586 | `load` | ✅ | load vars from MAT/VFS |
+| 587 | `log` | ✅ | natural log (complex aware) |
+| 588 | `log10` | ✅ | base-10 log |
+| 589 | `log1p` | ✅ | accurate log(1+x) |
+| 590 | `log2` | ✅ | base-2 log (+ [F,E]) |
+| 591 | `logical` | ✅ | convert to logical |
+| 592 | `loglog` | 🟡 | log-log plot (graphics) |
+| 593 | `logm` | ✅ | matrix logarithm |
+| 594 | `logspace` | ✅ | log-spaced vector |
+| 595 | `lookfor` | ✅ | keyword help search |
+| 596 | `lookup` | ✅ | **fixed**: dictionary lookup + FallbackValue + key arrays |
+| 597 | `lower` | ✅ | lowercase conversion |
+| 598 | `ls` | ✅ | list VFS files |
+| 599 | `lscov` | ✅ | weighted/GLS least squares |
+| 600 | `lsqminnorm` | ✅ | min-norm least squares |
+| 601 | `lsqnonneg` | ✅ | nonnegative least squares |
+| 602 | `lsqr` | ✅ | LSQR iterative solver |
+| 603 | `lu` | ✅ | LU factorization |
+| 604 | `magic` | ✅ | magic square |
+| 605 | `makima` | ✅ | modified Akima interpolation |
+| 606 | `mape` | ✅ | mean absolute percentage error |
+| 607 | `mat2cell` | ✅ | partition matrix into cell blocks |
+| 608 | `mat2str` | ✅ | matrix → parseable string |
+| 609 | `matches` | ✅ | exact string match |
+| 610 | `matchpairs` | ✅ | min-cost assignment |
+| 611 | `material` | 🟡 | surface reflectance (graphics) |
+| 612 | `max` | ✅ | maximum (+ index, dim, pairwise) |
+| 613 | `maxcut2qubo` | ✅ | max-cut → QUBO |
+| 614 | `maxflow` | ✅ | max flow → 13 |
+| 615 | `maxk` | ✅ | k largest |
+| 616 | `mcxGate` | 🟡 | multi-controlled NOT gate |
+| 617 | `mean` | ✅ | average |
+| 618 | `median` | ✅ | median |
+| 619 | `mergecats` | ✅ | merge categorical categories |
+| 620 | `mergevars` | ✅ | combine table variables |
+| 621 | `mesh` | 🟡 | wireframe mesh (graphics) |
+| 622 | `meshc` | 🟡 | mesh + contour (graphics) |
+| 623 | `meshgrid` | ✅ | 2-D/3-D grid coordinates |
+| 624 | `meshz` | 🟡 | mesh + curtain (graphics) |
+| 625 | `milliseconds` | ✅ | duration in ms |
+| 626 | `min` | ✅ | minimum (+ index, dim, pairwise) |
+| 627 | `mink` | ✅ | k smallest |
+| 628 | `minres` | ✅ | MINRES iterative solver |
+| 629 | `minspantree` | ✅ | minimum spanning tree |
+| 630 | `minute` | ✅ | datetime minute component |
+| 631 | `minutes` | ✅ | duration in minutes / extract minutes |
+| 632 | `missing` | 🟡 | NaN placeholder; `string(missing)` edge not modeled |
+| 633 | `mkpp` | ✅ | piecewise-poly struct → ppval round-trip |
+| 634 | `mod` | ✅ | remainder, sign of divisor |
+| 635 | `mode` | ✅ | most frequent value; **dim arg fixed this batch** |
+| 636 | `month` | ✅ | month number / name |
+| 637 | `movevars` | ✅ | reorder table columns (Before/After) |
+| 638 | `movmad` | ✅ | moving mean abs deviation |
+| 639 | `movmax` | ✅ | moving maximum |
+| 640 | `movmean` | ✅ | moving average |
+| 641 | `movmedian` | ✅ | moving median |
+| 642 | `movmin` | ✅ | moving minimum |
+| 643 | `movprod` | ✅ | moving product |
+| 644 | `movstd` | ✅ | moving standard deviation |
+| 645 | `movsum` | ✅ | moving sum |
+| 646 | `movvar` | ✅ | moving variance |
+| 647 | `mustBeColumn` | ✅ | validate column vector |
+| 648 | `mustBeFinite` | ✅ | validate finite |
+| 649 | `mustBeFloat` | ✅ | validate floating-point |
+| 650 | `mustBeGreaterThan` | ✅ | validate > c |
+| 651 | `mustBeGreaterThanOrEqual` | ✅ | validate >= c |
+| 652 | `mustBeInRange` | ✅ | validate within [lo,hi] |
+| 653 | `mustBeInteger` | ✅ | validate integer-valued |
+| 654 | `mustBeLessThan` | ✅ | validate < c |
+| 655 | `mustBeLessThanOrEqual` | ✅ | validate <= c |
+| 656 | `mustBeMatrix` | ✅ | **fixed**: now rejects N-D arrays |
+| 657 | `mustBeMember` | ✅ | **fixed**: now handles text/string sets |
+| 658 | `mustBeNegative` | ✅ | validate < 0 |
+| 659 | `mustBeNonNan` | ✅ | validate not NaN (Inf allowed) |
+| 660 | `mustBeNonempty` | ✅ | validate not empty |
+| 661 | `mustBeNonnegative` | ✅ | validate >= 0 |
+| 662 | `mustBeNonpositive` | ✅ | validate <= 0 |
+| 663 | `mustBeNonzero` | ✅ | validate != 0 |
+| 664 | `mustBeNonzeroLengthText` | ✅ | validate nonempty text |
+| 665 | `mustBeNumeric` | ✅ | validate numeric |
+| 666 | `mustBeNumericOrLogical` | ✅ | validate numeric/logical |
+| 667 | `mustBePositive` | ✅ | validate > 0 |
+| 668 | `mustBeReal` | ✅ | validate real |
+| 669 | `mustBeRow` | ✅ | validate row vector |
+| 670 | `mustBeScalarOrEmpty` | ✅ | validate scalar/empty |
+| 671 | `mustBeSorted` | ✅ | validate ascending |
+| 672 | `mustBeText` | ✅ | validate text |
+| 673 | `mustBeTextScalar` | ✅ | validate single text |
+| 674 | `mustBeVector` | ✅ | validate vector |
+| 675 | `nargchk` | ✅ | **fixed**: 3-arg range check returns msg |
+| 676 | `narginchk` | ✅ | **implemented**: reads caller nargin, throws |
+| 677 | `nargoutchk` | ✅ | **implemented**: reads caller nargout, throws |
+| 678 | `native2unicode` | ✅ | bytes → chars |
+| 679 | `nchoosek` | ✅ | **fixed**: vector form returns combinations |
+| 680 | `ndgrid` | ✅ | N-D coordinate grid |

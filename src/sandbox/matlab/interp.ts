@@ -71,6 +71,8 @@ export class Interpreter implements Env {
   private helpDocs = new Map<string, string>();
   graphics = new Graphics();
   private endStack: number[] = [];
+  /** Scope of the currently executing user function (null at base/script level). */
+  private funcScope: Scope | null = null;
   private onOutputCb: (text: string) => void;
   private requestInputCb: (prompt: string) => Promise<string>;
   private clearConsoleCb: () => void;
@@ -93,6 +95,8 @@ export class Interpreter implements Env {
   output(text: string) { this.onOutputCb(text); }
   requestInput(prompt: string) { return this.requestInputCb(prompt); }
   clearConsole() { this.clearConsoleCb(); }
+  currentNargin() { return this.funcScope ? this.funcScope.nargin : null; }
+  currentNargout() { return this.funcScope ? this.funcScope.nargout : null; }
   callHandle(h: Handle, args: Value[], nargout: number) { return h.call(args, nargout); }
   help(name: string): string {
     const def = this.funcs.get(name);
@@ -748,8 +752,11 @@ export class Interpreter implements Env {
     }
     scope.vars.set('nargin', scalar(args.length));
     scope.vars.set('nargout', scalar(nargout));
+    const prevFuncScope = this.funcScope;
+    this.funcScope = scope;
     try { await this.runStmts(def.body, scope); }
     catch (err) { if (!(err instanceof ReturnSignal)) throw err; }
+    finally { this.funcScope = prevFuncScope; }
     const results: Value[] = [];
     for (const o of def.outputs) {
       if (o === '~') { results.push(scalar(0)); continue; }

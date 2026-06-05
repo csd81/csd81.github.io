@@ -62,6 +62,10 @@ export interface Env {
   listFiles(): string[];
   deleteFile(name: string): void;
   clearConsole(): void;
+  /** nargin of the currently executing user function, or null at base/script level. */
+  currentNargin(): number | null;
+  /** nargout of the currently executing user function, or null at base/script level. */
+  currentNargout(): number | null;
 }
 
 export type Builtin = (args: Value[], nargout: number, env: Env) => Promise<Value[]>;
@@ -581,7 +585,23 @@ export const BUILTINS: Record<string, Builtin> = {
   lcm: async (a) => { const A = m(a[0]); const L = elementwise(A, m(a[1]), (x, y) => (x === 0 || y === 0 ? 0 : Math.abs(x * y) / gcd2(x, y))); return ret(A.itype ? applyClass(L, A.itype) : L); },
   factorial: async (a) => { const A = m(a[0]); const r = map(A, (x) => factorialN(Math.round(x))); return ret(A.itype ? applyClass(r, A.itype) : r); },
   nchoosek: async (a) => {
-    const n = Math.round(asScalar(a[0])); const k = Math.round(asScalar(a[1]));
+    const v = m(a[0]); const k = Math.round(asScalar(a[1]));
+    if (numel(v) > 1) {
+      // vector form: all k-element combinations of the elements, as rows
+      const arr = toArray(v); const nn = arr.length;
+      if (k < 0 || k > nn) return ret(zeros(0, Math.max(k, 0)));
+      const combos: number[][] = []; const idx: number[] = [];
+      const rec = (start: number) => {
+        if (idx.length === k) { combos.push(idx.map((i) => arr[i])); return; }
+        for (let i = start; i < nn; i++) { idx.push(i); rec(i + 1); idx.pop(); }
+      };
+      rec(0);
+      const rows = combos.length; const out = zeros(rows, k);
+      for (let r = 0; r < rows; r++) for (let c = 0; c < k; c++) out.data[r + c * rows] = combos[r][c];
+      if (v.isChar) out.isChar = true;
+      return ret(out);
+    }
+    const n = Math.round(asScalar(a[0]));
     if (k < 0 || k > n) return ret(scalar(0));
     let r = 1; for (let i = 1; i <= k; i++) r = (r * (n - k + i)) / i;
     return ret(scalar(Math.round(r)));
@@ -1275,7 +1295,18 @@ export const BUILTINS: Record<string, Builtin> = {
     // default → n×2 table with variables Key and Value
     return ret({ kind: 'table', vars: ['Key', 'Value'], cols: [stackColumn(keyVals), stackColumn(valVals)], nrows: n } as Table);
   },
-  lookup: async (a) => { const d = a[0] as DictV; if (!isDict(d)) throw new MatError('lookup: expected a dictionary'); const k = mapNormKey(d, a[1]); if (!d.store.has(k)) throw new MatError('lookup: key not found'); return ret(d.store.get(k)!); },
+  lookup: async (a) => {
+    const d = a[0] as DictV; if (!isDict(d)) throw new MatError('lookup: expected a dictionary');
+    // FallbackValue=... returns a default for keys not present instead of erroring
+    let fallback: Value | undefined;
+    for (let i = 2; i + 1 < a.length; i += 2) if (asString(a[i]).toLowerCase() === 'fallbackvalue') fallback = a[i + 1];
+    const lookOne = (kv: Value): Value => { const k = mapNormKey(d, kv); if (d.store.has(k)) return d.store.get(k)!; if (fallback !== undefined) return fallback; throw new MatError('lookup: key not found'); };
+    // an array/cell of keys returns one value per key
+    if (isCell(a[1])) return ret(makeCell(a[1].rows, a[1].cols, a[1].items.map(lookOne)));
+    if (isStr(a[1]) && (a[1] as Str).items.length > 1) { const vals = (a[1] as Str).items.map((s) => lookOne(makeStr(s))); return vals.every((v) => isMat(v)) ? ret(colVec(vals.map((v) => asScalar(v)))) : ret(makeCell((a[1] as Str).rows, (a[1] as Str).cols, vals)); }
+    if (isMat(a[1]) && !(a[1] as Mat).isChar && numel(a[1]) > 1) { const vals = toArray(m(a[1])).map((x) => lookOne(scalar(x))); return ret(colVec(vals.map((v) => asScalar(v)))); }
+    return ret(lookOne(a[1]));
+  },
   insert: async (a) => { const d = a[0] as DictV; if (!isDict(d)) throw new MatError('insert: expected a dictionary'); const nd = cloneDict(d); nd.store.set(mapNormKey(d, a[1]), a[2]); return ret(nd); },
   numEntries: async (a) => ret(scalar(isDict(a[0]) ? (a[0] as DictV).store.size : 0)),
   isConfigured: async (a) => ret(bool(isDict(a[0]) && (a[0] as DictV).valType !== 'unconfigured')),
@@ -2127,7 +2158,9 @@ export const BUILTINS: Record<string, Builtin> = {
     }
     throw new MatError('Assertion failed.');
   },
-  narginchk: async () => [], nargoutchk: async () => [], nargchk: async () => ret(str('')),
+  narginchk: async (a, _n, env) => { const lo = asScalar(a[0]), hi = asScalar(a[1]); const ni = env.currentNargin(); if (ni === null) return []; if (ni < lo) throw new MatError('Not enough input arguments.'); if (ni > hi) throw new MatError('Too many input arguments.'); return []; },
+  nargoutchk: async (a, _n, env) => { const lo = asScalar(a[0]), hi = asScalar(a[1]); const no = env.currentNargout(); if (no === null) return []; if (no < lo) throw new MatError('Not enough output arguments.'); if (no > hi) throw new MatError('Too many output arguments.'); return []; },
+  nargchk: async (a, _n, env) => { const lo = asScalar(a[0]), hi = asScalar(a[1]); const nn = a.length >= 3 ? asScalar(a[2]) : (env.currentNargin() ?? lo); if (nn < lo) return ret(str('Not enough input arguments.')); if (nn > hi) return ret(str('Too many input arguments.')); return ret(str('')); },
   validateattributes: async () => [],
   // ── arguments-block validators (mustBe*) — error on violation, else no output ──
   mustBePositive: async (a) => mustBeNum(a[0], (x) => x > 0, 'must be positive'),
@@ -2148,9 +2181,9 @@ export const BUILTINS: Record<string, Builtin> = {
   mustBeGreaterThanOrEqual: async (a) => mustBeNum(a[0], (x) => x >= asScalar(a[1]), `must be >= ${asScalar(a[1])}`),
   mustBeLessThanOrEqual: async (a) => mustBeNum(a[0], (x) => x <= asScalar(a[1]), `must be <= ${asScalar(a[1])}`),
   mustBeInRange: async (a) => { const lo = asScalar(a[1]), hi = asScalar(a[2]); return mustBeNum(a[0], (x) => x >= lo && x <= hi, `must be in range [${lo}, ${hi}]`); },
-  mustBeMember: async (a) => { const set = new Set(toArray(m(a[1]))); return mustBeNum(a[0], (x) => set.has(x), 'must be a member of the allowed set'); },
+  mustBeMember: async (a) => { const isText = (v: Value) => isStr(v) || isCell(v) || (isMat(v) && (v as Mat).isChar); if (isText(a[0]) || isText(a[1])) { const set = new Set(strList(a[1])); for (const s of strList(a[0])) if (!set.has(s)) throw new MatError('Value must be a member of this set: ' + [...set].join(', ') + '.'); return []; } const set = new Set(toArray(m(a[1]))); return mustBeNum(a[0], (x) => set.has(x), 'must be a member of the allowed set'); },
   mustBeVector: async (a) => { const M = m(a[0]); if (M.rows !== 1 && M.cols !== 1) throw new MatError('Value must be a vector.'); return []; },
-  mustBeMatrix: async (a) => { dimsOf(a[0]); return []; },
+  mustBeMatrix: async (a) => { const M = m(a[0]); if (M.nd && M.nd.length > 2) throw new MatError('Value must be a matrix.'); return []; },
   mustBeScalarOrEmpty: async (a) => { const M = m(a[0]); if (!isEmpty(M) && numel(M) !== 1) throw new MatError('Value must be scalar or empty.'); return []; },
   mustBeColumn: async (a) => { const M = m(a[0]); if (M.cols !== 1) throw new MatError('Value must be a column vector.'); return []; },
   mustBeRow: async (a) => { const M = m(a[0]); if (M.rows !== 1) throw new MatError('Value must be a row vector.'); return []; },
@@ -3517,7 +3550,7 @@ export const BUILTINS: Record<string, Builtin> = {
   median: async (a) => ret(colReduce(m(a[0]), (c) => { const s = [...c].sort((x, y) => x - y); const n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; })),
   std: async (a) => { const w = a.length >= 2 && isMat(a[1]) && toArray(a[1]).length === 1 ? asScalar(a[1]) : 0; return ret(colReduce(m(a[0]), (c) => Math.sqrt(variance(c, w)))); },
   var: async (a) => { const w = a.length >= 2 && isMat(a[1]) && toArray(a[1]).length === 1 ? asScalar(a[1]) : 0; return ret(colReduce(m(a[0]), (c) => variance(c, w))); },
-  mode: async (a) => ret(colReduce(m(a[0]), modeOf)),
+  mode: async (a) => { const A = m(a[0]); if (a.length >= 2 && isMat(a[1])) return ret(reduceAlongDim(A, asScalar(a[1] as Mat), (fib) => modeOf(fib)).v); return ret(colReduce(A, modeOf)); },
   iqr: async (a) => ret(colReduce(m(a[0]), (c) => { const s = [...c].sort((x, y) => x - y); return pctile(s, 75) - pctile(s, 25); })),
   bounds: async (a, n) => {
     const A = m(a[0]);
