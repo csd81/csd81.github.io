@@ -64,3 +64,8 @@ Fixed: NaN(m,n)/Inf(m,n) size args; categorical valueset/catnames constructor + 
 categorical ==/~=/ordinal </> comparison; categorical indexing C(mask); cart2pol/pol2cart 3rd output;
 zeros/ones ignore trailing class-name arg. 28 remaining (int-types, table-inputname, graphics/quantum).
 Build green; 1419 builtins, 0 without help.
+## Batch 13 (fns 121-130): ceil cell cell2mat cell2struct cell2table celldisp cellfun cellstr centrality centroid
+Fixed: floor/ceil/fix complex (both parts); cellstr string-array input; cell 2-D paren-assign grows
+(C(2,:)={...}); inline cell display refined (row vec inline, col/matrix -> size summary, matches MATLAB).
+39 remaining (duration type, cell->struct/table strings, graph Nodes-table assign, polyshape holes).
+Build green; 1419 builtins, 0 without help.

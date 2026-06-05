@@ -411,12 +411,29 @@ export class Interpreter implements Env {
           return;
         }
         if (cur && isCell(cur)) {
-          // c(subs) = rhsCell : sub-cell assignment
+          // c(subs) = rhsCell : sub-cell assignment, growing the cell as needed.
           const subs = await this.evalSubsN(lv.args, cur.rows, cur.cols, cur.items.length, scope);
+          const rhsItems = isCell(val) ? val.items : [val];
+          const name = (lv.target as { name: string }).name;
+          if (subs.length === 2) {
+            const rhsR = isCell(val) ? val.rows : 1, rhsC = isCell(val) ? val.cols : 1;
+            const rs = subs[0] === 'colon' ? Array.from({ length: Math.max(cur.rows, rhsR) }, (_, i) => i + 1) : (subs[0] as number[]);
+            const cs = subs[1] === 'colon' ? Array.from({ length: Math.max(cur.cols, rhsC) }, (_, i) => i + 1) : (subs[1] as number[]);
+            const newR = Math.max(cur.rows, rs.length ? Math.max(...rs) : 0);
+            const newC = Math.max(cur.cols, cs.length ? Math.max(...cs) : 0);
+            const items: Value[] = Array.from({ length: newR * newC }, () => empty());
+            for (let c = 0; c < cur.cols; c++) for (let r = 0; r < cur.rows; r++) items[r + c * newR] = cur.items[r + c * cur.rows];
+            let k = 0;
+            for (const c of cs) for (const r of rs) { items[(r - 1) + (c - 1) * newR] = rhsItems.length === 1 ? rhsItems[0] : rhsItems[k]; k++; }
+            scope.vars.set(name, makeCell(newR, newC, items));
+            return;
+          }
           const lin = this.cellLinear(subs, cur.rows, cur.cols, cur.items.length);
-          const items = cur.items.slice(); const rhsItems = isCell(val) ? val.items : [val];
+          const need = lin.length ? Math.max(...lin) : 0;
+          const items = cur.items.slice(); while (items.length < need) items.push(empty());
           lin.forEach((idx, k) => { items[idx - 1] = rhsItems.length === 1 ? rhsItems[0] : rhsItems[k]; });
-          scope.vars.set((lv.target as { name: string }).name, makeCell(cur.rows, cur.cols, items));
+          const grew = need > cur.rows * cur.cols;
+          scope.vars.set(name, grew ? (cur.rows > 1 ? makeCell(need, 1, items) : makeCell(1, need, items)) : makeCell(cur.rows, cur.cols, items));
           return;
         }
         const container = asMat(await this.readContainer(lv.target, scope));

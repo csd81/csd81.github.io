@@ -100,6 +100,8 @@ function tableToCsv(t: Table): string {
   return lines.join('\n') + '\n';
 }
 const ew = (f: (x: number) => number): Builtin => async (a) => ret(map(m(a[0]), f));
+// Like ew, but also rounds the imaginary part (floor/ceil/fix of complex applies to both parts).
+const ewRound = (f: (x: number) => number): Builtin => async (a) => { const A = m(a[0]); const o = map(A, f); if (A.idata) o.idata = A.idata.map(f); return ret(o); };
 
 /** Build a char matrix whose rows are the given strings, left-padded with '0' to equal width. */
 function charRowsZ(strs: string[], minW = 0): Mat {
@@ -462,9 +464,9 @@ export const BUILTINS: Record<string, Builtin> = {
   angle: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmapReal(A, (re, im) => Math.atan2(im, re)) : map(A, (x) => (x < 0 ? Math.PI : 0))); },
   complex: async (a) => { const A = m(a[0]); const B = a.length >= 2 ? m(a[1]) : zeros(A.rows, A.cols); const re = new Float64Array(A.data); const im = new Float64Array(A.data.length); for (let i = 0; i < im.length; i++) im[i] = B.data.length === 1 ? B.data[0] : B.data[i]; return ret({ kind: 'num', rows: A.rows, cols: A.cols, data: re, idata: im }); },
   iscomplex: async (a) => ret(bool(isComplex(m(a[0])))),
-  floor: ew(Math.floor), ceil: ew(Math.ceil),
+  floor: ewRound(Math.floor), ceil: ewRound(Math.ceil),
   round: async (a) => { const A = m(a[0]); const nd = a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar ? Math.round(asScalar(a[1])) : 0; const f = Math.pow(10, nd); const r = (x: number) => Math.sign(x) * Math.round(Math.abs(x) * f) / f; const o = map(A, r); if (A.idata) o.idata = A.idata.map(r); return ret(o); },
-  fix: ew(Math.trunc),
+  fix: ewRound(Math.trunc),
   atan2: async (a) => ret(elementwise(m(a[0]), m(a[1]), Math.atan2)),
   mod: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, y) => (y === 0 ? x : ((x % y) + y) % y))),
   rem: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, y) => (y === 0 ? NaN : x % y))),
@@ -3643,6 +3645,7 @@ export const BUILTINS: Record<string, Builtin> = {
   cellstr: async (a) => {
     const v = a[0];
     if (isCell(v)) return ret(v);
+    if (isStr(v)) return ret(makeCell(v.rows, v.cols, v.items.map((s) => str(s))));   // string array → cellstr
     const A = m(v);
     if (A.rows <= 1) return ret(makeCell(1, 1, [str(asString(A).replace(/\s+$/, ''))]));
     const items: Value[] = [];

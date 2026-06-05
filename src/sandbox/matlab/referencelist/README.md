@@ -305,3 +305,27 @@ All 35 batch-8 examples pass.
 - `cart2pol` / `pol2cart` return the pass-through `z` as a third output (cylindrical coordinates).
 - `zeros`/`ones`/`rand`/… ignore a trailing class-name argument (e.g. `zeros(2,3,'uint32')`) instead of erroring.
 - Rich ≥10-line help added for all batch-12 functions.
+
+---
+
+## Batch 13 — functions 121–130 (cell arrays · graph)
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `ceil` | ✅ | **fixed**: complex (both parts) | `ceil(duration,'hours')` needs duration-type support |
+| `cell` | ✅ | preallocate cell arrays; **row-grow `C(2,:)={...}`** fixed | — |
+| `cell2mat` | ✅ | assemble matrix from a cell of blocks | — |
+| `cell2struct` | 🟡 | cell→struct array | examples mixing string literals in cell rows need string-cell display |
+| `cell2table` | 🟡 | cell→table | column-name-from-variable examples need `inputname` |
+| `celldisp` | 🟡 | recursive cell dump | exact per-element label format differs |
+| `cellfun` | ✅ | apply over cells, `UniformOutput`, multi-output | — |
+| `cellstr` | ✅ | **fixed**: string-array input | — |
+| `centrality` | 🟡 | degree/closeness/betweenness/pagerank | `G.Nodes.<prop> = ...` (Nodes table column assignment) not modeled |
+| `centroid` | 🟡 | polyshape centroid | multi-boundary (holes) polyshape construction pending |
+
+### Fixes landed in this batch (two are broad display/numeric fixes)
+- **`floor` / `ceil` / `fix`** are now complex-aware (round each of the real and imaginary parts), matching `round`.
+- **`cellstr`** accepts a string array (one cell per element), not just a char matrix.
+- **Cell paren-assignment grows in 2-D**: `C(2,:) = {a,b}` extends the cell array (rows/cols) instead of failing.
+- **Inline cell/struct display refined**: a short *row* vector shows inline (`{[1 2 3]}`), while columns and matrices show a size summary (`{2×1 double}`, `{3×3 double}`) — matching MATLAB exactly.
+- Rich ≥10-line help added for all batch-13 functions.

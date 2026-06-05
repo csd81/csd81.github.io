@@ -126,8 +126,9 @@ function brief(v: Value): string {
   if (v.isChar) return `'${asString(v)}'`;
   if (numel(v) === 0) return '[]';
   if (isScalar(v)) return `[${isComplex(v) ? fmtC(v.data[0], v.idata![0]) : formatScalar(v.data[0])}]`;
-  // MATLAB shows a small real vector inline inside a cell/struct, e.g. {[1 2 3 6 5 4]}.
-  if (!isComplex(v) && !v.nd && numel(v) <= 10 && (v.rows === 1 || v.cols === 1)) {
+  // MATLAB shows a short real ROW vector inline inside a cell/struct, e.g. {[1 2 3 6 5 4]};
+  // columns and matrices are shown as a size summary like {2×1 double}.
+  if (!isComplex(v) && !v.nd && v.rows === 1 && numel(v) <= 10) {
     return `[${Array.from(v.data, (x) => formatScalar(x)).join(' ')}]`;
   }
   return `[${v.rows}×${v.cols} ${isComplex(v) ? 'complex' : 'double'}]`;

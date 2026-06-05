@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **120 / 1170** audited.
+Progress: **130 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -125,3 +125,13 @@ Progress: **120 / 1170** audited.
 | 118 | `categories` | ✅ | list categories |
 | 119 | `ccxGate` | ✅ | Toffoli gate |
 | 120 | `cdf2rdf` | 🟡 | eigvec freedom differs |
+| 121 | `ceil` | ✅ | complex fixed; duration pending |
+| 122 | `cell` | ✅ | row-grow assignment fixed |
+| 123 | `cell2mat` | ✅ | block assembly |
+| 124 | `cell2struct` | 🟡 | string-cell display pending |
+| 125 | `cell2table` | 🟡 | inputname names pending |
+| 126 | `celldisp` | 🟡 | label format differs |
+| 127 | `cellfun` | ✅ | UniformOutput/multi-out |
+| 128 | `cellstr` | ✅ | string-array input fixed |
+| 129 | `centrality` | 🟡 | Nodes-table assign pending |
+| 130 | `centroid` | 🟡 | multi-boundary pending |
