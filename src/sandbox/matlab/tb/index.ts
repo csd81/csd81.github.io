@@ -10,9 +10,12 @@ import { SYMBOLIC } from './symbolic';
 import { STATS } from './stats';
 import { SIGNAL } from './signal';
 import { SIMULINK } from './simulink';
+import { FINANCIAL } from './financial';
+import { WAVELET } from './wavelet';
+import { CURVEFIT } from './curvefit';
 
 /** All registered toolboxes, in precedence order (first wins on inter-toolbox collision). */
-export const TOOLBOXES: ToolboxModule[] = [SYMBOLIC, STATS, SIGNAL, SIMULINK];
+export const TOOLBOXES: ToolboxModule[] = [SYMBOLIC, STATS, SIGNAL, SIMULINK, FINANCIAL, WAVELET, CURVEFIT];
 
 export const TOOLBOX_BUILTINS: Record<string, Builtin> = {};
 export const TOOLBOX_CONSTANTS: Record<string, () => Value> = {};
