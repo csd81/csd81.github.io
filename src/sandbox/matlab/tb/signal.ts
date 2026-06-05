@@ -9,6 +9,10 @@ import {
 import type { ToolboxModule } from './types';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
+/** Σ bₙ·e^{-jnw} (digital, ascending powers) → [re, im]. */
+function cpoly(b: number[], w: number): [number, number] { let re = 0, im = 0; for (let n = 0; n < b.length; n++) { re += b[n] * Math.cos(n * w); im -= b[n] * Math.sin(n * w); } return [re, im]; }
+/** Σ c[i]·(jw)^(L-1-i) (analog, descending powers) → [re, im]. */
+function cpolyS(c: number[], w: number): [number, number] { let re = 0, im = 0; const L = c.length; for (let i = 0; i < L; i++) { const p = L - 1 - i, mag = c[i] * w ** p; switch (((p % 4) + 4) % 4) { case 0: re += mag; break; case 1: im += mag; break; case 2: re -= mag; break; default: im -= mag; } } return [re, im]; }
 
 /** Modified Bessel function I0(x) (series), for the Kaiser window. */
 function besselI0(x: number): number { let s = 1, t = 1; for (let k = 1; k < 60; k++) { t *= (x / (2 * k)) ** 2; s += t; if (t < s * 1e-16) break; } return s; }
@@ -62,6 +66,30 @@ export const SIGNAL: ToolboxModule = {
       const out = x.map((_, i) => { const w: number[] = []; for (let k = -half; k <= n - 1 - half; k++) { const j = i + k; w.push(j >= 0 && j < x.length ? x[j] : 0); } w.sort((p, q) => p - q); const mid = w.length / 2; return w.length % 2 ? w[(w.length - 1) / 2] : (w[mid - 1] + w[mid]) / 2; });
       return ret(m(a[0]).rows === 1 ? rowVec(out) : colVec(out));
     },
+
+    // ── filter design & analysis ──
+    /** [h,w] = freqz(b[,a][,n]) — digital filter frequency response over w∈[0,π), n points (def 512). */
+    freqz: (a, nargout) => {
+      const b = toArray(m(a[0])); const den = a.length >= 2 && isMat(a[1]) && (a[1] as Mat).rows * (a[1] as Mat).cols ? toArray(m(a[1])) : [1];
+      const N = a.length >= 3 ? Math.round(asScalar(a[2])) : 512;
+      const hre = new Float64Array(N), him = new Float64Array(N), w = new Array(N);
+      for (let k = 0; k < N; k++) { const wk = (k * Math.PI) / N; w[k] = wk; const nz = cpoly(b, wk), dz = cpoly(den, wk); const dn = dz[0] * dz[0] + dz[1] * dz[1]; hre[k] = (nz[0] * dz[0] + nz[1] * dz[1]) / dn; him[k] = (nz[1] * dz[0] - nz[0] * dz[1]) / dn; }
+      const h = colVec(Array.from(hre)); h.idata = him;
+      return nargout >= 2 ? Promise.resolve([h, colVec(w)]) : ret(h);
+    },
+    /** h = freqs(b,a,w) — analog filter frequency response H(jw) (b,a in descending powers). */
+    freqs: (a) => {
+      const b = toArray(m(a[0])), den = toArray(m(a[1])), w = toArray(m(a[2]));
+      const hre = new Float64Array(w.length), him = new Float64Array(w.length);
+      w.forEach((wk, k) => { const nz = cpolyS(b, wk), dz = cpolyS(den, wk); const dn = dz[0] * dz[0] + dz[1] * dz[1]; hre[k] = (nz[0] * dz[0] + nz[1] * dz[1]) / dn; him[k] = (nz[1] * dz[0] - nz[0] * dz[1]) / dn; });
+      const h = (m(a[2]).rows === 1 ? rowVec(Array.from(hre)) : colVec(Array.from(hre))); h.idata = him; return ret(h);
+    },
+    /** fir1(n,Wn) — windowed-sinc lowpass FIR (length n+1, Hamming window, unity DC gain). */
+    fir1: (a) => {
+      const n = Math.round(asScalar(a[0])); const Wn = asScalar(a[1]); const M = n / 2;
+      const h = new Array(n + 1); for (let k = 0; k <= n; k++) { const x = k - M; h[k] = (x === 0 ? Wn : Math.sin(Wn * Math.PI * x) / (Math.PI * x)) * (0.54 - 0.46 * Math.cos((2 * Math.PI * k) / n)); }
+      const s = h.reduce((p, q) => p + q, 0); return ret(rowVec(h.map((v) => v / s)));
+    },
   },
   help: {
     rectwin: 'Rectangular window', hann: 'Hann (Hanning) window', hanning: 'Hann window (symmetric)', hamming: 'Hamming window',
@@ -70,5 +98,6 @@ export const SIGNAL: ToolboxModule = {
     gausswin: 'Gaussian window', kaiser: 'Kaiser window', tukeywin: 'Tukey (tapered cosine) window',
     mag2db: 'Convert magnitude to decibels', db2mag: 'Convert decibels to magnitude', pow2db: 'Convert power to decibels', db2pow: 'Convert decibels to power',
     sinc: 'Normalized sinc function', chirp: 'Swept-frequency cosine', medfilt1: '1-D median filtering',
+    freqz: 'Digital filter frequency response', freqs: 'Analog filter frequency response', fir1: 'Window-based FIR filter design',
   },
 };

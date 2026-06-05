@@ -30,3 +30,16 @@ flattopwin/barthannwin) use the documented MathWorks coefficient sets.
 `pwelch`, `findpeaks`, `resample` — larger DSP pieces for a later pass. Names that are already
 base MATLAB (`corrcoef`, `cov`, `unwrap`, `ifftshift`, `filloutliers`) are intentionally left to
 base (base precedence).
+
+## Filter design & analysis (added)
+
+| Function | Test | Sandbox | Formula reference (base MATLAB) |
+|---|---|---|---|
+| `freqz` | `abs(freqz([1 1],1,4))` | `2 1.8478 1.4142 0.7654` | `|1+e^{-jw}|` ✓ |
+| `freqz` (w) | `[~,w]=freqz([1 1],1,4)` | `0 .7854 1.5708 2.3562` | `(0:3)·π/4` ✓ |
+| `fir1` | `fir1(2,0.5)` | `0.0462 0.9076 0.0462` | windowed-sinc·Hamming, DC-normalized = `0.046221 0.90756 0.046221` ✓ |
+| `fir1` (gain) | `sum(fir1(20,0.3))` | `1.0000` | unity DC gain ✓ |
+| `freqs` | `abs(freqs(1,[1 1],[0 1 10]))` | `1 0.7071 0.0995` | `|1/(jw+1)|` ✓ |
+
+`freqz`/`freqs` return complex responses (over `w∈[0,π)` for `freqz`); `fir1` is a lowpass
+windowed-sinc design (Hamming window, scaled to unity passband gain).
