@@ -426,6 +426,19 @@ export const SIGNAL: ToolboxModule = {
       const col = M.rows !== 1;
       return ret({ kind: 'num', rows: col ? N : 1, cols: col ? 1 : N, data: yr, idata: yi } as Mat);
     },
+    // ── real cepstrum: rceps(x) = real(ifft(log|fft(x)|)) ──
+    rceps: (a) => {
+      const M = m(a[0]), x = toArray(M), N = x.length, logmag = new Array(N);
+      for (let k = 0; k < N; k++) { let re = 0, im = 0; for (let n = 0; n < N; n++) { const ang = -2 * Math.PI * k * n / N; re += x[n] * Math.cos(ang); im += x[n] * Math.sin(ang); } logmag[k] = Math.log(Math.hypot(re, im)); }
+      const c = new Array(N); for (let n = 0; n < N; n++) { let re = 0; for (let k = 0; k < N; k++) re += logmag[k] * Math.cos(2 * Math.PI * k * n / N); c[n] = re / N; }
+      return ret(M.rows === 1 ? rowVec(c) : colVec(c));
+    },
+    // ── DFT matrix: dftmtx(n)[j][k] = exp(-2πi·jk/n) ──
+    dftmtx: (a) => {
+      const n = Math.round(asScalar(a[0])), re = new Float64Array(n * n), im = new Float64Array(n * n);
+      for (let j = 0; j < n; j++) for (let k = 0; k < n; k++) { const ang = -2 * Math.PI * j * k / n; re[j + k * n] = Math.cos(ang); im[j + k * n] = Math.sin(ang); }
+      return ret({ kind: 'num', rows: n, cols: n, data: re, idata: im } as Mat);
+    },
     // ── multirate: upsample/downsample/intdump/upfirdn ──
     upsample: (a) => {
       const M = m(a[0]), x = toArray(M), n = Math.round(asScalar(a[1])), ph = a.length > 2 ? Math.round(asScalar(a[2])) : 0;
@@ -610,6 +623,7 @@ export const SIGNAL: ToolboxModule = {
     rectpuls: 'Sampled aperiodic rectangle', tripuls: 'Sampled aperiodic triangle', sawtooth: 'Sawtooth or triangle wave', gauspuls: 'Gaussian-modulated sinusoidal RF pulse',
     upsample: 'Increase sample rate by integer factor', downsample: 'Decrease sample rate by integer factor', intdump: 'Integrate and dump', upfirdn: 'Upsample, FIR filter, downsample',
     fwht: 'Fast Walsh-Hadamard transform', ifwht: 'Inverse fast Walsh-Hadamard transform', hilbert: 'Discrete-time analytic signal via Hilbert transform',
+    rceps: 'Real cepstrum and minimum-phase reconstruction', dftmtx: 'Discrete Fourier transform matrix',
     meanfreq: 'Mean frequency of power spectrum', medfreq: 'Median frequency of power spectrum', bandpower: 'Band power of signal',
     powerbw: 'Power bandwidth (3 dB)', obw: 'Occupied bandwidth (99% power)',
     mag2db: 'Convert magnitude to decibels', db2mag: 'Convert decibels to magnitude', pow2db: 'Convert power to decibels', db2pow: 'Convert decibels to power',
