@@ -936,3 +936,112 @@ No code changes this batch.
 
 ### V901–V1000 commit
 Build green (tsc+vite); fix pushed (staged explicitly — `builtins.ts`, `VALIDATION.md`, `validate_progress.json` — excluding `toolboxes/`). **1 bug** caught by live-MATLAB cross-validation in functions 901–1000: **`strjoin` string-array input** (V39). V37, V38, V40 were clean. The earlier reference-list audit had already covered most of this numeric/string/sparse range well — the live-MATLAB pass is now finding far fewer regressions in the back half (1 per 100 vs ~3 earlier).
+
+## V41 — functions 1000–1024 (strncmp … surfc) — **clean (0 bugs)**
+
+Validated against MATLAB R2026a. **All values matched.**
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `strncmp`/`strncmpi` | ✅ | first-N compare (exact / case-insensitive) |
+| `strrep` | ✅ | `strrep('hello','l','L')`→`heLLo` |
+| `strsplit` | ✅ | `strsplit('a,b,c',',')`→`{'a','b','c'}` |
+| `strtok` | ✅ | `[t,r]=strtok('hello world')`→`'hello'`, `' world'` |
+| `strtrim` | ✅ | trims leading/trailing whitespace |
+| `struct` | ✅ | `struct('a',1,'b',2)` fields `a,b` |
+| `struct2cell` | ✅ | `{1;2}` from a 2-field struct |
+| `struct2table` | ✅ | struct array → table |
+| `structfun` | ✅ | `structfun(@(x)x*2,…)`→`[2;4]` |
+| `strvcat` | ✅ | vertical char concat → 2×3 padded |
+| `sub2ind` | ✅ | `sub2ind([3 3],2,3)`→8 |
+| `subgraph`/`successors` | ✅ | graph subgraph / `successors(G,1)`→`[2;3]` |
+| `subplot`/`subtitle`/`surf`/`surface`/`surfc`/`summer` | 🟡 | graphics/colormap (exist) |
+| `subspace` | ✅ | angle between `[1;0]`,`[0;1]` → π/2 (1.5708) |
+| `subtract` | ✅ | polyshape boolean subtract |
+| `sum` | ✅ | vector→10, columns→`[4 6]`, `dim=2`→`[3;7]` |
+| `summary` | 🟡 | table/categorical summary (formatted print) |
+| `surfaceArea` | ✅ | unit-cube alphaShape → 6 |
+
+No code changes this batch.
+
+## V42 — functions 1025–1049 (surfl … tensorprod) — **4 bugs fixed**
+
+Validated against MATLAB R2026a.
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `surfl`/`surfnorm` | 🟡 | surface graphics (exist) |
+| `svd` | ✅ | **fixed** (see below) — values now accurate |
+| `svdappend`/`svdsketch` | ✅ | augmented/sketched SVD |
+| `svds` | ✅ | `svds(magic(4),2)`→`[34;17.8885]` (largest k) |
+| `swapGate`/`tGate` | 🟡 | quantum gates (exist) |
+| `swapbytes` | ✅ | **fixed** (see below) |
+| `sylvester` | ✅ | solves `AX+XB=C` |
+| `symamd`/`symbfact`/`symrcm` | ✅ | sparse reorderings/symbolic factorization |
+| `symmlq` | ✅ | **fixed** (see below) |
+| `symvar` | ✅ | `symvar('a*x + b*y')`→`a,b,x,y` |
+| `table`/`table2array`/`table2cell`/`table2struct` | ✅ | table constructors/converters |
+| `tail` | ✅ | **fixed** (see below) |
+| `tan`/`tand`/`tanh` | ✅ | `tan(π/4)`→1, `tand(45)`→1, `tanh(0)`→0 |
+| `tensorprod` | ✅ | `tensorprod([1 2;3 4],[1;1],2,1)`→`[3;7]` |
+
+### Fixes
+- **`svd` smallest singular value imprecise**: the values path used the AtA-based `svdReal`, so `svd(magic(4))` returned a smallest σ of `1.97e-7` instead of MATLAB's `7.2e-17` (≈0) — the same precision loss that affected `rank` (fixed V34). Routed the **values-only** form (`s = svd(A)`) through the one-sided-Jacobi `svdCplx`, which resolves tiny σ accurately: `svd(magic(4))`→`[34 17.8885 4.4721 2.65e-16]`, and `svd(…)<1e-10` now flags the zero singular value. The `[U,S,V]` form keeps `svdReal` (real orthogonal `U`/`V`, full `m×m`/`n×n` dims — `svdCplx` can return a complex factorization for real input).
+- **`swapbytes` swapped the wrong width**: it reinterpreted every element as an 8-byte double and reversed 8-byte groups, so `swapbytes(int16(1))` produced garbage (`3.04e-319`). Rewrote it to swap bytes per the element's class width via a `DataView` (write little-endian, read big-endian): `int16`/`uint16`→2, `int32`/`uint32`/`single`→4, `int64`/`uint64`/`double`→8, char→2, `int8`/`uint8`→no-op; class preserved. `swapbytes(int16(1))`→256, `swapbytes(uint32(1))`→16777216.
+- **`symmlq` multi-output**: the last remaining Krylov solver returning only `x`; `[x,fl]=symmlq(...)` errored. Wired to the shared `krylovSolve` backend → `x=[0.0909;0.6364]`, `fl=0`.
+- **`tail` only accepted tables**: `tail((1:10)',3)` errored ("expected a table") though `head` already handled arrays. Mirrored `head`'s logic so `tail` returns the last k rows of a numeric/char/logical array too: `tail((1:10)',3)`→`[8;9;10]`; table form unchanged.
+
+## V43 — functions 1050–1074 (tetramesh … trapz) — **2 bugs fixed**
+
+Validated against MATLAB R2026a.
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `tetramesh`/`text`/`thetalim`/`thetaticklabels`/`thetaticks`/`tiledlayout`/`title` | 🟡 | graphics (exist) |
+| `texlabel` | ✅ | **fixed** (see below) |
+| `tfqmr` | ✅ | **fixed** (see below) |
+| `throw` | ✅ | throws an MException |
+| `tiGate` | 🟡 | quantum gate (exists) |
+| `tic`/`toc`/`timeit` | ✅ | stopwatch / timing |
+| `timetable` | ✅ | timetable constructor |
+| `today` | ✅ | today's date number |
+| `toeplitz` | ✅ | symmetric `toeplitz([1 2 3])` and 2-arg form match |
+| `topkrows` | ✅ | `topkrows([3 1;1 2;2 0],2)`→`[3 1;2 0]` |
+| `toposort` | ✅ | DAG topological order `[1 2 3]` |
+| `trace` | ✅ | `trace([1 2;3 4])`→5 |
+| `transclosure`/`transreduction` | ✅ | digraph transitive closure (3 edges) / reduction (2 edges) |
+| `translate` | ✅ | polyshape translate |
+| `transpose` | ✅ | `transpose([1 2;3 4])`→`[1 3;2 4]` |
+| `trapz` | ✅ | `trapz([1 2 3 4])`→7.5, `trapz([0 1 2],[0 1 4])`→3 |
+
+### Fixes
+- **`texlabel` returned character codes**: it ran the input through `symArg`, which treats a char vector as a *numeric* array of code points, so `texlabel('lambda12')`→`108, 97, 109, …`. Now parses a char/string argument as an expression (`parseSym`, as `cell2sym` does), wraps the result in braces like MATLAB, and applies texlabel's greek-prefix rule (`\mathrm{lambda12}`→`\lambda_{12}`). `texlabel('lambda12')`→`{\lambda_{12}}`, `texlabel('alpha + beta')`→`{\alpha + \beta}`, `texlabel('x^2')`→`{x^{2}}`.
+- **`tfqmr` multi-output**: another Krylov solver returning only `x`; `[x,fl]=tfqmr(...)` errored. Wired to the shared `krylovSolve` backend → `x=[0.0909;0.6364]`, `fl=0`. (This completes the Krylov family: pcg/bicg/bicgstab/cgs/gmres/qmr/symmlq/tfqmr.)
+
+## V44 — functions 1075–1099 (treelayout … unicode2native) — **1 bug fixed** — **V1100 boundary: built + pushed**
+
+Validated against MATLAB R2026a.
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `treelayout`/`treeplot`/`trimesh`/`triplot`/`trisurf`/`turbo` | 🟡 | graphics/colormap (exist) |
+| `triangulation` | ✅ | triangulation object |
+| `tril`/`triu` | ✅ | lower/upper triangular (incl. `k`-diagonal offset) |
+| `trimdata` | ✅ | `trimdata([1 2 3 4 5],3)`→`[1 2 3]` |
+| `triplequad` | ✅ | legacy triple integral (exists) |
+| `tsearchn` | ✅ | enclosing-simplex search |
+| `tsp2qubo`/`ucrxGate`/`ucryGate`/`ucrzGate` | 🟡 | quantum/Optimization-Toolbox (exist) |
+| `type` | ✅ | print file contents |
+| `typecast` | ✅ | **fixed** (see below) |
+| `uint8`/`uint16`/`uint32`/`uint64` | ✅ | saturating cast (`uint8(300)`→255, `uint8(-5)`→0, `uint8(2.7)`→3), class correct |
+| `uminus` | ✅ | `uminus([1 -2 3])`→`[-1 2 -3]` |
+| `underlyingType` | ✅ | `int8(5)`→`int8`, `5`→`double` |
+| `unicode2native` | ✅ | `'ABC'`→`[65 66 67]` |
+
+### Fix
+- **`typecast` ignored the source class width**: it always serialized the input as 8-byte doubles, so `typecast(single(1),'uint32')` reinterpreted 8 bytes and returned `[0 1072693248]` (the double bit pattern) instead of MATLAB's `1065353216` (the single bit pattern). Added a `writeAs` serializer that emits bytes per the *source* class (`single`→4, `int16`→2, `int8`→1, … `double`→8), then reinterprets via `readAs` as the target class and applies the target class to the result. `typecast(single(1),'uint32')`→`1065353216` (class `uint32`), `typecast(uint32(1065353216),'single')`→1, `typecast(int8([0 0 0 1]),'int32')`→16777216; the `double`→`uint32` two-word case still matches MATLAB.
+
+---
+
+### V1001–V1100 commit
+Build green (tsc+vite); fixes pushed (staged explicitly — `builtins.ts`, `sym-builtins.ts`, `VALIDATION.md`, `validate_progress.json` — excluding `toolboxes/`). **7 bugs** caught by live-MATLAB cross-validation in functions 1001–1100: **`svd` smallest-σ accuracy, `swapbytes` class width, `symmlq` multi-output, `tail` array support** (V42); **`texlabel` string/greek, `tfqmr` multi-output** (V43); **`typecast` source class width** (V44). V41 was clean.

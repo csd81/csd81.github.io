@@ -112,7 +112,15 @@ export const SYM_BUILTINS: Record<string, Builtin> = {
   },
   vpa: async (a) => { const s = symArg(a[0]); const M = zeros(s.rows, s.cols); let allNum = true; s.exprs.forEach((e, i) => { const v = symEval(e, new Map()); M.data[i] = v; if (!Number.isFinite(v)) allNum = false; }); return ret(allNum ? M : a[0]); },
   latex: async (a) => ret(str(symArg(a[0]).exprs.map(exprToLatex).join(', '))),
-  texlabel: async (a) => ret(str(symArg(a[0]).exprs.map(exprToLatex).join(', '))),
+  texlabel: async (a) => {
+    const s = (isStr(a[0]) || (isMat(a[0]) && (a[0] as Mat).isChar)) ? parseSym(asString(a[0])) : symArg(a[0]);
+    let tx = s.exprs.map(exprToLatex).join(', ');
+    // MATLAB texlabel splits a greek-name prefix from trailing chars and subscripts the rest:
+    // an identifier like `lambda12` → `\lambda_{12}` (the sym parser keeps it as one token → \mathrm{…}).
+    const greek = 'alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|omicron|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega|Gamma|Delta|Theta|Lambda|Xi|Pi|Sigma|Upsilon|Phi|Psi|Omega';
+    tx = tx.replace(new RegExp('\\\\mathrm\\{(' + greek + ')([0-9A-Za-z]*)\\}', 'g'), (_m, g, rest) => '\\' + g + (rest ? '_{' + rest + '}' : ''));
+    return ret(str('{' + tx + '}'));
+  },
   cell2sym: async (a) => { const C = a[0] as Cell; const exprs = C.items.map((it) => ((isStr(it) || (isMat(it) && (it as Mat).isChar)) ? parseSym(asString(it)).exprs[0] : symToExpr(it))); return ret(makeSym(C.rows, C.cols, exprs)); },
   sym2cell: async (a) => { const s = symArg(a[0]); return ret(makeCell(s.rows, s.cols, s.exprs.map((e) => makeSym(1, 1, [e]) as Value))); },
   series: async (a, n, env) => SYM_BUILTINS.taylor(a, n, env),

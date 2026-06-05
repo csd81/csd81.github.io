@@ -1246,9 +1246,13 @@ export const BUILTINS: Record<string, Builtin> = {
   svd: async (a, n) => {
     const A = m(a[0]);
     if (isComplex(A)) { const { U, s, V } = svdCplx(A); const k = s.length; if (n >= 3) { const S = zeros(k, k); for (let i = 0; i < k; i++) S.data[i + i * k] = s[i]; return [U, S, V]; } return [colVec(s)]; }
+    // singular-VALUES path: one-sided Jacobi (svdCplx) resolves tiny σ accurately; the AtA-based
+    // svdReal loses ~half the digits (e.g. svd(magic(4)) smallest σ → 1.97e-7 instead of ~0).
+    if (n < 3) { const { s } = svdCplx(A); return [colVec(s)]; }
+    // [U,S,V] form keeps svdReal: real orthogonal U/V with full m×m / n×n dimensions (svdCplx
+    // can return a complex factorization for real input, which would break realness of U/V).
     const { U, s, V } = svdReal(A);
-    if (n >= 3) { const S = zeros(A.rows, A.cols); for (let i = 0; i < Math.min(A.rows, A.cols); i++) S.data[i + i * A.rows] = s[i] ?? 0; return [U, S, V]; }
-    return [colVec(s)];
+    const S = zeros(A.rows, A.cols); for (let i = 0; i < Math.min(A.rows, A.cols); i++) S.data[i + i * A.rows] = s[i] ?? 0; return [U, S, V];
   },
   eig: async (a, n) => {
     let A = m(a[0]);
@@ -2078,8 +2082,32 @@ export const BUILTINS: Record<string, Builtin> = {
   hanning: async (a) => { const N = Math.round(asScalar(a[0])); const w: number[] = []; for (let n = 1; n <= N; n++) w.push(0.5 * (1 - Math.cos((2 * Math.PI * n) / (N + 1)))); return ret(colVec(w)); },
   hann: async (a) => { const N = Math.round(asScalar(a[0])); const w: number[] = []; for (let n = 0; n < N; n++) w.push(N === 1 ? 1 : 0.5 * (1 - Math.cos((2 * Math.PI * n) / (N - 1)))); return ret(colVec(w)); },
   // Bit-reinterpretation: source storage is IEEE double (the only class this engine tracks).
-  typecast: async (a) => { const A = m(a[0]); const buf = new Float64Array(A.data).buffer; return ret(rowVec(readAs(buf, asString(a[1])))); },
-  swapbytes: async (a) => { const A = m(a[0]); const u = new Uint8Array(new Float64Array(A.data).buffer); for (let i = 0; i < u.length; i += 8) u.subarray(i, i + 8).reverse(); return ret(mat(A.rows, A.cols, new Float64Array(u.buffer))); },
+  typecast: async (a) => {
+    const A = m(a[0]); const srcTy = A.itype ?? (A.isChar ? 'uint16' : 'double'); const target = asString(a[1]);
+    const vals = readAs(writeAs(Array.from(A.data), srcTy), target);   // reinterpret source bytes (honoring class width) as target
+    const out = A.rows > 1 && A.cols === 1 ? colVec(vals) : rowVec(vals);
+    return ret(target === 'double' ? out : applyClass(out, target));
+  },
+  swapbytes: async (a) => {
+    const A = m(a[0]); const ty = A.itype; const dv = new DataView(new ArrayBuffer(8));
+    // swap bytes per the element's class width (write LE, read BE). default double = 8 bytes.
+    const conv = (x: number): number => {
+      switch (ty) {
+        case 'int8': case 'uint8': return x;
+        case 'int16': dv.setInt16(0, x, true); return dv.getInt16(0, false);
+        case 'uint16': dv.setUint16(0, x, true); return dv.getUint16(0, false);
+        case 'int32': dv.setInt32(0, x, true); return dv.getInt32(0, false);
+        case 'uint32': dv.setUint32(0, x, true); return dv.getUint32(0, false);
+        case 'single': dv.setFloat32(0, x, true); return dv.getFloat32(0, false);
+        case 'int64': dv.setBigInt64(0, BigInt(Math.round(x)), true); return Number(dv.getBigInt64(0, false));
+        case 'uint64': dv.setBigUint64(0, BigInt(Math.round(x)), true); return Number(dv.getBigUint64(0, false));
+        default:
+          if (A.isChar) { dv.setUint16(0, x, true); return dv.getUint16(0, false); }   // char is 16-bit
+          dv.setFloat64(0, x, true); return dv.getFloat64(0, false);
+      }
+    };
+    const out = mat(A.rows, A.cols, Float64Array.from(A.data, conv)); out.itype = A.itype; out.isChar = A.isChar; out.isBool = A.isBool; return ret(out);
+  },
 
   // ── String class ("…") ──
   string: async (a) => { const v = a[0]; if (isStr(v)) return ret(v); if (isCell(v)) return ret(makeStrArr(v.rows, v.cols, v.items.map((x) => asString(x)))); if (isTemporal(v)) return ret(makeStrArr(v.rows, v.cols, Array.from(v.data, (x) => fmtTemporal(v.tkind, x)))); if (isCategorical(v)) return ret(makeStrArr(v.rows, v.cols, Array.from(v.codes, (c) => (c ? v.categories[c - 1] : '<undefined>')))); if (isMat(v) && v.isChar) return ret(makeStr(asString(v))); if (isMat(v)) { const f = (x: number) => (Number.isInteger(x) ? String(x) : String(+x.toPrecision(5))); return ret(makeStrArr(v.rows, v.cols, Array.from(v.data, f))); } return ret(makeStr(String(v))); },
@@ -2537,9 +2565,9 @@ export const BUILTINS: Record<string, Builtin> = {
   // sparse / iterative aliases
   lsqr: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
   minres: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
-  tfqmr: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
+  tfqmr: async (a, n) => krylovSolve(a, n),
   bicgstabl: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
-  symmlq: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
+  symmlq: async (a, n) => krylovSolve(a, n),
   spfun: async (a, _n, env) => { const f = handle(a[0], 'spfun'); const S = asSparse(a[1]); const out = new Float64Array(S.values.length); for (let i = 0; i < S.values.length; i++) { const r = await env.callHandle(f, [scalar(S.values[i])], 1); out[i] = asScalar(r[0]); } return ret({ kind: 'sparse', rows: S.rows, cols: S.cols, colptr: S.colptr.slice(), rowind: S.rowind.slice(), values: out } as Sparse); },
   sprank: async (a) => ret(scalar(rankOf(sparseToDense(asSparse(a[0]))))),
   colperm: async (a) => { const S = asSparse(a[0]); const cnt = Array.from({ length: S.cols }, (_, j) => ({ j, n: S.colptr[j + 1] - S.colptr[j] })); cnt.sort((x, y) => x.n - y.n); return ret(rowVec(cnt.map((c) => c.j + 1))); },
@@ -2903,7 +2931,13 @@ export const BUILTINS: Record<string, Builtin> = {
     for (let c = 0; c < M.cols; c++) for (let r = 0; r < k; r++) { o.data[r + c * k] = M.data[r + c * M.rows]; if (M.idata) o.idata![r + c * k] = M.idata[r + c * M.rows]; }
     o.isChar = M.isChar; o.isBool = M.isBool; o.itype = M.itype; return ret(o);
   },
-  tail: async (a) => { const t = gTbl(a[0]); const k = Math.min(t.nrows, a.length >= 2 ? Math.round(asScalar(a[1])) : 8); return ret(tblSlice(t, Array.from({ length: k }, (_, i) => t.nrows - k + i))); },
+  tail: async (a) => {
+    const k0 = a.length >= 2 ? Math.round(asScalar(a[1])) : 8;
+    if (isTable(a[0])) { const t = a[0] as Table; const k = Math.min(t.nrows, k0); return ret(tblSlice(t, Array.from({ length: k }, (_, i) => t.nrows - k + i))); }
+    const M = m(a[0]); const k = Math.min(M.rows, k0); const o = zeros(k, M.cols); if (M.idata) o.idata = new Float64Array(k * M.cols);
+    for (let c = 0; c < M.cols; c++) for (let r = 0; r < k; r++) { o.data[r + c * k] = M.data[(M.rows - k + r) + c * M.rows]; if (M.idata) o.idata![r + c * k] = M.idata[(M.rows - k + r) + c * M.rows]; }
+    o.isChar = M.isChar; o.isBool = M.isBool; o.itype = M.itype; return ret(o);
+  },
   summary: async (a, _n, env) => { const t = gTbl(a[0]); let s = `Table with ${t.nrows} rows and ${t.vars.length} variables:\n`; for (let j = 0; j < t.vars.length; j++) { const c = t.cols[j]; if (isMat(c) && !c.isChar) { const v = toArray(c); s += `  ${t.vars[j]}: min ${trimNum(Math.min(...v))}, median ${trimNum(median1(v))}, max ${trimNum(Math.max(...v))}, mean ${trimNum(v.reduce((x, y) => x + y, 0) / v.length)}\n`; } else s += `  ${t.vars[j]}: ${c.kind}\n`; } env.output(s); return []; },
   // ── grouping ──
   findgroups: async (a, n) => {
@@ -4736,6 +4770,21 @@ function extgcd(a: number, b: number): [number, number, number] {
 
 /** Lanczos approximation of the gamma function. */
 /** Reinterpret a raw byte buffer as the named numeric class (for typecast). */
+/** Serialize numbers to raw bytes according to the source class width (for typecast). */
+function writeAs(data: ArrayLike<number>, ty: string): ArrayBuffer {
+  switch (ty) {
+    case 'single': return Float32Array.from(data as number[]).buffer;
+    case 'int8': return Int8Array.from(data as number[]).buffer;
+    case 'uint8': return Uint8Array.from(data as number[]).buffer;
+    case 'int16': return Int16Array.from(data as number[]).buffer;
+    case 'uint16': return Uint16Array.from(data as number[]).buffer;
+    case 'int32': return Int32Array.from(data as number[]).buffer;
+    case 'uint32': return Uint32Array.from(data as number[]).buffer;
+    case 'int64': return BigInt64Array.from(data as number[], (x) => BigInt(Math.round(x))).buffer;
+    case 'uint64': return BigUint64Array.from(data as number[], (x) => BigInt(Math.round(x))).buffer;
+    default: return Float64Array.from(data as number[]).buffer;   // double
+  }
+}
 function readAs(buf: ArrayBuffer, ty: string): number[] {
   switch (ty) {
     case 'double': return Array.from(new Float64Array(buf));
