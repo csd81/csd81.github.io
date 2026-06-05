@@ -81,3 +81,7 @@ Build green; 1419 builtins, 0 without help. *** 150/1170 audited (15 batches) **
 Fixed: colon/range uses first element of a non-scalar bound (1:size(A) -> 1:size(A,1)); empty bound -> empty range.
 Remaining mostly graphics (colorbar/colormap query/colororder/comet), datastores (combine), eig order (compan), gpuArray.
 Build green; 1419 builtins, 0 without help.
+## Batch 17 (fns 161-170): compass complex compose compositeGate cond condeig condensation condest coneplot conj
+Fixed: cond(A,p) honors p-norm (norm(A,p)*norm(inv(A),p)); compose vectorized -> string array + single-matrix
+row grouping by format spec count. Remaining: graphics (compass/coneplot), quantum (compositeGate),
+compose escape nuances. Build green; 1419 builtins, 0 without help.

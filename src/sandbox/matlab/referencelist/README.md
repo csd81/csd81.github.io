@@ -396,3 +396,25 @@ All 35 batch-8 examples pass.
 ### Fixes landed in this batch
 - **`colon` / the `:` operator** now uses the first element of a non-scalar bound (matching MATLAB), so the common `1:size(A)` idiom returns `1:size(A,1)` instead of erroring; an empty bound yields an empty range. Normal scalar ranges are unchanged.
 - Rich ≥10-line help added for all batch-16 functions.
+
+---
+
+## Batch 17 — functions 161–170
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `compass` | 🟡 | polar arrows accepted | `compassplot` and rendering not modeled |
+| `complex` | ✅ | construct complex arrays | — |
+| `compose` | ✅ | **fixed**: vectorized string array; single-matrix row grouping | escape-sequence / string-array-format nuances |
+| `compositeGate` | 🟡 | composite gate object | gate-block display detail |
+| `cond` | ✅ | **fixed**: p-norm `cond(A,p)` (1/Inf/fro) | — |
+| `condeig` | ✅ | eigenvalue condition numbers | — |
+| `condensation` | ✅ | SCC condensation DAG | — |
+| `condest` | ✅ | 1-norm condition estimate | — |
+| `coneplot` | 🟡 | cone vector field accepted | not rendered |
+| `conj` | ✅ | complex conjugate | — |
+
+### Fixes landed in this batch
+- **`cond(A,p)`** honors the norm argument — for p ≠ 2 it computes `norm(A,p)·norm(inv(A),p)` (1-norm, Inf-norm, Frobenius), instead of always returning the 2-norm value.
+- **`compose`** is now vectorized: array arguments produce a string array (one string per element-tuple), and a single matrix argument with a multi-conversion format groups each row's values per format (`compose("%d:%d",[8 15 9 30])` → `["8:15" "9:30"]`).
+- Rich ≥10-line help added for all batch-17 functions.

@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **160 / 1170** audited.
+Progress: **170 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -165,3 +165,13 @@ Progress: **160 / 1170** audited.
 | 158 | `comet` | 🟡 | accepted; not rendered |
 | 159 | `comet3` | 🟡 | accepted; not rendered |
 | 160 | `compan` | ✅ | companion matrix |
+| 161 | `compass` | 🟡 | accepted; not rendered |
+| 162 | `complex` | ✅ | complex construction |
+| 163 | `compose` | ✅ | vectorized + matrix grouping |
+| 164 | `compositeGate` | 🟡 | gate object |
+| 165 | `cond` | ✅ | p-norm argument fixed |
+| 166 | `condeig` | ✅ | eigenvalue conditioning |
+| 167 | `condensation` | ✅ | SCC condensation |
+| 168 | `condest` | ✅ | 1-norm estimate |
+| 169 | `coneplot` | 🟡 | accepted; not rendered |
+| 170 | `conj` | ✅ | complex conjugate |

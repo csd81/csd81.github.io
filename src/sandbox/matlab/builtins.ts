@@ -1004,7 +1004,16 @@ export const BUILTINS: Record<string, Builtin> = {
   pinv: async (a) => ret(pinvFn(m(a[0]))),
   rank: async (a) => ret(scalar(rankOf(m(a[0]), a.length >= 2 ? asScalar(a[1]) : undefined))),
   rref: async (a) => ret(rrefFn(m(a[0]))),
-  cond: async (a) => ret(scalar(condFn(m(a[0])))),
+  cond: async (a) => {
+    const A = m(a[0]);
+    if (a.length < 2) return ret(scalar(condFn(A)));
+    let pp: number | 'inf' | 'fro' = 2;
+    const a1 = a[1];
+    if (isStr(a1) || (isMat(a1) && (a1 as Mat).isChar)) { const sk = asString(a1).toLowerCase(); pp = sk === 'inf' ? 'inf' : 'fro'; }
+    else { const v = asScalar(a1); pp = v === Infinity ? 'inf' : v; }
+    if (pp === 2) return ret(scalar(condFn(A)));                 // 2-norm uses the SVD ratio
+    return ret(scalar(norm(A, pp) * norm(inv(A), pp)));          // cond_p(A) = ||A||_p · ||A^{-1}||_p
+  },
   rcond: async (a) => { const c = condFn(m(a[0])); return ret(scalar(c === Infinity ? 0 : 1 / c)); },
   orth: async (a) => ret(orthFn(m(a[0]))),
   null: async (a) => ret(nullspace(m(a[0]))),
@@ -2246,7 +2255,31 @@ export const BUILTINS: Record<string, Builtin> = {
   curl: async (a, n) => { if (isSym(a[0])) { const F = a[0].exprs; const v = symNames(a[1]); const c = [sAdd(diffExpr(F[2], v[1]), sNeg(diffExpr(F[1], v[2]))), sAdd(diffExpr(F[0], v[2]), sNeg(diffExpr(F[2], v[0]))), sAdd(diffExpr(F[1], v[0]), sNeg(diffExpr(F[0], v[1])))]; return ret(makeSym(3, 1, c.map(simplifyExpr))); } return curlNumeric(a, n); },
   divergence: async (a, n, env) => { if (isSym(a[0])) { const F = a[0].exprs; const v = symNames(a[1]); let d: SymExpr = sN(0); for (let i = 0; i < F.length; i++) d = sAdd(d, diffExpr(F[i], v[i])); return ret(makeSym(1, 1, [simplifyExpr(d)])); } void env; return divergenceNumeric(a, n); },
   laplacian: async (a) => { if (isGraph(a[0])) { const g = a[0]; const A = adjacencyMat(g); const L = zeros(g.n, g.n); for (let i = 0; i < g.n; i++) { let d = 0; for (let j = 0; j < g.n; j++) { d += A.data[i + j * g.n]; L.data[i + j * g.n] = -A.data[i + j * g.n]; } L.data[i + i * g.n] = d - A.data[i + i * g.n]; } return ret(denseToSparse(L)); } const s = symArg(a[0]); const v = a.length >= 2 ? symNames(a[1]) : symVarsOf(s); let L: SymExpr = sN(0); for (const vn of v) L = sAdd(L, diffExpr(diffExpr(s.exprs[0], vn), vn)); return ret(makeSym(1, 1, [simplifyExpr(L)])); },
-  compose: async (a) => { if (!isSym(a[0])) return ret(makeStr(sprintf(asString(a[0]), a.slice(1)))); const f = a[0]; const g = symArg(a[1]); const v = symVarsOf(f)[0] ?? 'x'; return ret(makeSym(1, 1, [simplifyExpr(subsExpr(f.exprs[0], v, g.exprs[0]))])); },
+  compose: async (a) => {
+    if (isSym(a[0])) { const f = a[0]; const g = symArg(a[1]); const v = symVarsOf(f)[0] ?? 'x'; return ret(makeSym(1, 1, [simplifyExpr(subsExpr(f.exprs[0], v, g.exprs[0]))])); }
+    // compose(fmt, A1, A2, ...) → a string array applying the format to each element-tuple.
+    const fmt = asString(a[0]); const args = a.slice(1);
+    if (!args.length) return ret(makeStr(sprintf(fmt, [])));
+    // Single numeric matrix arg + multi-conversion format: group each row's values by the
+    // number of conversion specs, e.g. compose("%d:%d",[8 15 9 30]) → ["8:15" "9:30"].
+    const nSpecs = (fmt.match(/%[-+ 0#]*\d*\.?\d*[diouxXeEfgGcs]/g) || []).length;
+    if (args.length === 1 && isMat(args[0]) && !(args[0] as Mat).isChar && nSpecs >= 1) {
+      const M = m(args[0]);
+      if (M.cols > nSpecs && M.cols % nSpecs === 0) {
+        const groups = M.cols / nSpecs; const items: string[] = [];
+        for (let g = 0; g < groups; g++) for (let r = 0; r < M.rows; r++) { const vals: Value[] = []; for (let kk = 0; kk < nSpecs; kk++) vals.push(scalar(M.data[r + (g * nSpecs + kk) * M.rows])); items.push(sprintf(fmt, vals)); }
+        return ret(makeStrArr(M.rows, groups, items));
+      }
+    }
+    let rows = 1, cols = 1, n = 1;
+    for (const v of args) { const r = isStr(v) ? v.rows : m(v).rows, c = isStr(v) ? v.cols : m(v).cols; if (r * c > n) { n = r * c; rows = r; cols = c; } }
+    const items: string[] = [];
+    for (let i = 0; i < n; i++) {
+      const callArgs = args.map((v) => { if (isStr(v)) return str(v.items.length === 1 ? v.items[0] : v.items[i]); const M = m(v); const sc = scalar(M.data.length === 1 ? M.data[0] : M.data[i]); sc.isChar = M.isChar; return sc; });
+      items.push(sprintf(fmt, callArgs));
+    }
+    return ret(makeStrArr(rows, cols, items));
+  },
   // ═════════════ DATES · TABLES · GROUPING · CATEGORICAL ═════════════
   // ── datetime / duration objects ──
   datetime: async (a) => {
