@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **200 / 1170** audited.
+Progress: **210 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -205,3 +205,13 @@ Progress: **200 / 1170** audited.
 | 198 | `countcats` | 🟡 | counts; summary(cat) n/a |
 | 199 | `cov` | ✅ | two-matrix + w flag fixed |
 | 200 | `cplxpair` | ✅ | conjugate pairs |
+| 201 | `cputime` | 🟡 | non-deterministic timing |
+| 202 | `cr1Gate` | 🟡 | gate object; getMatrix n/a |
+| 203 | `criticalAlpha` | 🟡 | alpha-shape internal |
+| 204 | `cross` | ✅ | verified; random examples |
+| 205 | `crxGate` | 🟡 | gate object; getMatrix n/a |
+| 206 | `cryGate` | 🟡 | gate object; getMatrix n/a |
+| 207 | `crzGate` | 🟡 | gate object; getMatrix n/a |
+| 208 | `csc` | ✅ | complex fixed |
+| 209 | `cscd` | ✅ | complex + exact zeros |
+| 210 | `csch` | ✅ | complex fixed |

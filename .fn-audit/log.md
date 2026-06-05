@@ -97,3 +97,7 @@ Build green; 1419 builtins, 0 without help.
 Fixed: cot complex (cos/sin quotient); cov(A,B) two-matrix form + normalization flag w; eps(x) ulp function.
 Remaining: common-scale-factor display (cosh/cotd), pattern objects (count), summary(categorical) (countcats).
 Build green; 1420 builtins, 0 without help. *** 200/1170 audited (20 batches) ***
+## Batch 21 (fns 201-210): cputime cr1Gate criticalAlpha cross crxGate cryGate crzGate csc cscd csch
+Fixed: csc/sec/csch/sech/coth complex; cscd/secd/cotd complex + degree exact-zeros (cscd(180)=Inf,
+sind(180)=0). cross verified (random examples). Remaining: quantum gate getMatrix/vectorized, cputime timing.
+Build green; 1420 builtins, 0 without help.

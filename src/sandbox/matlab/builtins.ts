@@ -185,6 +185,14 @@ const ewc = (rf: (x: number) => number, cf: (re: number, im: number) => [number,
   async (a) => { const A = m(a[0]); return ret(isComplex(A) || (cw ? toArray(A).some(cw) : false) ? cmap(A, cf) : map(A, rf)); };
 const degOf = (cf: (re: number, im: number) => [number, number]) => (re: number, im: number): [number, number] => { const [r, i] = cf(re, im); return [r / DEG, i / DEG]; };
 const cCot = (re: number, im: number): [number, number] => { const cr = Math.cos(re) * Math.cosh(im), ci = -Math.sin(re) * Math.sinh(im); const sr = Math.sin(re) * Math.cosh(im), si = Math.cos(re) * Math.sinh(im); return cdiv(cr, ci, sr, si); };
+const cCsc = (re: number, im: number): [number, number] => cdiv(1, 0, Math.sin(re) * Math.cosh(im), Math.cos(re) * Math.sinh(im));
+const cSec = (re: number, im: number): [number, number] => cdiv(1, 0, Math.cos(re) * Math.cosh(im), -Math.sin(re) * Math.sinh(im));
+const cCsch = (re: number, im: number): [number, number] => cdiv(1, 0, Math.sinh(re) * Math.cos(im), Math.cosh(re) * Math.sin(im));
+const cSech = (re: number, im: number): [number, number] => cdiv(1, 0, Math.cosh(re) * Math.cos(im), Math.sinh(re) * Math.sin(im));
+const cCoth = (re: number, im: number): [number, number] => cdiv(Math.cosh(re) * Math.cos(im), Math.sinh(re) * Math.sin(im), Math.sinh(re) * Math.cos(im), Math.cosh(re) * Math.sin(im));
+// Degree trig with exact zeros at multiples of 90/180 (so cscd(180)=Inf, secd(90)=Inf).
+const sinDeg = (x: number): number => (x % 180 === 0 ? 0 : Math.sin(x * DEG));
+const cosDeg = (x: number): number => (Math.abs(x % 180) === 90 ? 0 : Math.cos(x * DEG));
 
 /** Factor a univariate polynomial (ascending coeffs) over ℚ into a list of sym factors:
  *  peel rational roots via synthetic division, leaving any irreducible part as one factor.
@@ -483,16 +491,18 @@ export const BUILTINS: Record<string, Builtin> = {
   hypot: async (a) => ret(elementwise(m(a[0]), m(a[1]), Math.hypot)),
 
   // trig / hyperbolic completion (radians)
-  sec: ew((x) => 1 / Math.cos(x)), csc: ew((x) => 1 / Math.sin(x)),
-  coth: ew((x) => 1 / Math.tanh(x)), sech: ew((x) => 1 / Math.cosh(x)), csch: ew((x) => 1 / Math.sinh(x)),
+  sec: ewc((x) => 1 / Math.cos(x), cSec), csc: ewc((x) => 1 / Math.sin(x), cCsc),
+  coth: ewc((x) => 1 / Math.tanh(x), cCoth), sech: ewc((x) => 1 / Math.cosh(x), cSech), csch: ewc((x) => 1 / Math.sinh(x), cCsch),
   acot: ewc((x) => Math.atan(1 / x), cAcot), asec: ewc((x) => Math.acos(1 / x), cAsec, (x) => Math.abs(x) < 1), acsc: ewc((x) => Math.asin(1 / x), cAcsc, (x) => Math.abs(x) < 1),
   asinh: ewc(Math.asinh, cAsinh), acosh: ewc(Math.acosh, cAcosh, (x) => x < 1), atanh: ewc(Math.atanh, cAtanh, (x) => Math.abs(x) > 1),
   acoth: ewc((x) => Math.atanh(1 / x), cAcoth, (x) => Math.abs(x) < 1), asech: ewc((x) => Math.acosh(1 / x), cAsech, (x) => x < 0 || x > 1), acsch: ewc((x) => Math.asinh(1 / x), cAcsch),
   // degree-valued trig
-  sind: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmap(A, (re, im) => { const r = re * DEG, i = im * DEG; return [Math.sin(r) * Math.cosh(i), Math.cos(r) * Math.sinh(i)]; }) : map(A, (x) => Math.sin(x * DEG))); },
-  cosd: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmap(A, (re, im) => { const r = re * DEG, i = im * DEG; return [Math.cos(r) * Math.cosh(i), -Math.sin(r) * Math.sinh(i)]; }) : map(A, (x) => Math.cos(x * DEG))); },
+  sind: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmap(A, (re, im) => { const r = re * DEG, i = im * DEG; return [Math.sin(r) * Math.cosh(i), Math.cos(r) * Math.sinh(i)]; }) : map(A, sinDeg)); },
+  cosd: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmap(A, (re, im) => { const r = re * DEG, i = im * DEG; return [Math.cos(r) * Math.cosh(i), -Math.sin(r) * Math.sinh(i)]; }) : map(A, cosDeg)); },
   tand: ew((x) => Math.tan(x * DEG)),
-  cotd: ew((x) => 1 / Math.tan(x * DEG)), secd: ew((x) => 1 / Math.cos(x * DEG)), cscd: ew((x) => 1 / Math.sin(x * DEG)),
+  cotd: ewc((x) => cosDeg(x) / sinDeg(x), (re, im) => cCot(re * DEG, im * DEG)),
+  secd: ewc((x) => 1 / cosDeg(x), (re, im) => cSec(re * DEG, im * DEG)),
+  cscd: ewc((x) => 1 / sinDeg(x), (re, im) => cCsc(re * DEG, im * DEG)),
   asind: async (a) => { const A = m(a[0]); return ret(isComplex(A) || toArray(A).some((x) => Math.abs(x) > 1) ? cmap(A, (re, im) => { const [r, i] = cAsin(re, im); return [r / DEG, i / DEG]; }) : map(A, (x) => Math.asin(x) / DEG)); },
   acosd: async (a) => { const A = m(a[0]); return ret(isComplex(A) || toArray(A).some((x) => Math.abs(x) > 1) ? cmap(A, (re, im) => { const [r, i] = cAcos(re, im); return [r / DEG, i / DEG]; }) : map(A, (x) => Math.acos(x) / DEG)); },
   atand: ewc((x) => Math.atan(x) / DEG, degOf(cAtan)),

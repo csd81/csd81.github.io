@@ -487,3 +487,25 @@ All 35 batch-8 examples pass.
 - **`eps(x)`** added: returns the ulp (unit in the last place) at x — `eps(90) = 1.4211e-14`, `eps("single")` — in addition to the bare `eps` constant.
 - Rich ≥10-line help added for all batch-20 functions (and `eps`).
 - Noted gap: MATLAB's common-scale-factor matrix display (`1.0e+03 *`) is not yet implemented; this is the only remaining diff for `cosh`/`cotd`.
+
+---
+
+## Batch 21 — functions 201–210
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `cputime` | 🟡 | returns CPU time | timing output is non-deterministic |
+| `cr1Gate` | 🟡 | controlled-phase gate object | `getMatrix` / vectorized construction not modeled |
+| `criticalAlpha` | 🟡 | critical alpha radius | depends on alpha-shape internals |
+| `cross` | ✅ | cross product (verified) | doc examples use random matrices |
+| `crxGate` | 🟡 | controlled-RX gate object | `getMatrix` / vectorized gates pending |
+| `cryGate` | 🟡 | controlled-RY gate object | `getMatrix` / vectorized gates pending |
+| `crzGate` | 🟡 | controlled-RZ gate object | `getMatrix` / vectorized gates pending |
+| `csc` | ✅ | **fixed**: complex cosecant | — |
+| `cscd` | ✅ | **fixed**: complex + exact `cscd(180)=Inf` | — |
+| `csch` | ✅ | **fixed**: complex hyperbolic cosecant | — |
+
+### Fixes landed in this batch (completes the reciprocal-trig family)
+- **`csc`, `sec`, `csch`, `sech`, `coth`** are now complex-aware (reciprocals of the complex `sin`/`cos`/`sinh`/`cosh`).
+- **`cscd`, `secd`, `cotd`** are complex-aware too, and the degree functions now use exact zeros at multiples of 90/180, so `cscd(180)` and `secd(90)` return `Inf` (and `sind(180)`/`cosd(90)` return exactly 0) instead of huge finite values.
+- Rich ≥10-line help added for all batch-21 functions.
