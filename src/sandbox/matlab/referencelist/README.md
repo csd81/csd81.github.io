@@ -620,3 +620,23 @@ All 35 batch-8 examples pass.
 - **`diag` k-offset**: the second argument was ignored — `diag(v,1)`/`diag(A,-1)` now place/extract the k-th super/sub-diagonal (was always the main diagonal). The core `linalg.diag` also now preserves the imaginary part, so `diag([1+2i 3-1i])` keeps its complex values.
 - **`diff` order and dimension**: `diff(X,n)` was applying only a single first difference and `diff(X,n,dim)` ignored `dim` (always worked down columns). Rewrote with a complex-aware `diffOnce(M,dim)` applied `n` times → `diff([0 5 15 30 50 75 105],2)=[5 5 5 5 5]`, `diff(X,1,2)` works across rows. Default dimension is the first non-singleton.
 - Rich ≥10-line help added for all batch-26 functions (incl. new structured `delete`/`detrend`/`dictionary` entries).
+
+## Batch 27 — functions 261–270 (directed graphs · binning · sparse orderings · delimited I/O)
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `digraph` | ✅ | directed graph; `Edges`/`Nodes` tables, `numedges`, `toposort` | — |
+| `dir` | ✅ | lists the virtual file system (struct array + printout) | no real OS filesystem (sandbox) |
+| `discretize` | ✅ | **fixed**: scalar-N uniform bins, 2nd output `E` (edges), value-label 3rd arg | datetime/`'categorical'` binning not modeled |
+| `disp` | ✅ | name-less value display | — |
+| `dissect` | 🟡 | returns a nested-dissection permutation | fill-reduction quality not compared (needs `west0479` dataset) |
+| `distances` | ✅ | `distances(G)` all-pairs; `distances(G,s)` source subset → `d(1,10)=5` | — |
+| `divergence` | ✅ | 2-D `divergence(X,Y,U,V)` and 3-D forms via gradient | `load wind` dataset example not runnable |
+| `dlmread` | ✅ | reads delimited numeric files from the VFS | — |
+| `dlmwrite` | ✅ | writes delimited matrices to the VFS (default comma) | `-append`/`roffset` options partial |
+| `dmperm` | ✅ | Dulmage-Mendelsohn / maximum-matching permutation | — |
+
+### Fixes landed in this batch
+- **`discretize`** rewritten: a scalar second argument N now builds N uniform bins over `[min(X),max(X)]`; the second output `[Y,E]` returns the bin edges; a numeric third argument relabels bins with arbitrary `values`. Previously only an explicit `edges` vector was accepted and the `E` output threw "not enough output arguments".
+- Verified `digraph`, `disp`, `distances`, `divergence`, `dlmread`, `dlmwrite`, `dmperm`, `dir` against their doc examples (graph distance `d(1,10)=5`, `dlmwrite(magic(3))` → comma rows, etc.).
+- Rich ≥10-line help added for all batch-27 functions (incl. new structured `dir`/`dlmread`/`dlmwrite` entries).

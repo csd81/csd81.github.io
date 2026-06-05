@@ -2137,7 +2137,21 @@ export const BUILTINS: Record<string, Builtin> = {
   paddata: async (a) => { const v = toArray(m(a[0])); const nn = Math.round(asScalar(a[1])); const out = v.slice(); while (out.length < nn) out.push(0); return ret(m(a[0]).rows === 1 ? rowVec(out) : colVec(out)); },
   trimdata: async (a) => { const v = toArray(m(a[0])); const nn = Math.round(asScalar(a[1])); return ret(m(a[0]).rows === 1 ? rowVec(v.slice(0, nn)) : colVec(v.slice(0, nn))); },
   resize: async (a) => { const v = toArray(m(a[0])); const nn = Math.round(asScalar(a[1])); const out = v.slice(0, nn); while (out.length < nn) out.push(0); return ret(m(a[0]).rows === 1 ? rowVec(out) : colVec(out)); },
-  discretize: async (a) => { const A = m(a[0]); const edges = toArray(m(a[1])); return ret(map(A, (x) => { if (x < edges[0] || x > edges[edges.length - 1]) return NaN; for (let i = 0; i < edges.length - 1; i++) if (x >= edges[i] && (x < edges[i + 1] || (i === edges.length - 2 && x === edges[i + 1]))) return i + 1; return NaN; })); },
+  discretize: async (a, n) => {
+    const A = m(a[0]);
+    let edges: number[];
+    if (a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar && numel(a[1]) === 1) {
+      // scalar N -> N uniform bins spanning the (finite) data range
+      const vals = toArray(A).filter((x) => Number.isFinite(x));
+      const lo = vals.length ? Math.min(...vals) : 0, hi = vals.length ? Math.max(...vals) : 1; const N = Math.round(asScalar(a[1]));
+      edges = []; for (let i = 0; i <= N; i++) edges.push(lo + (hi - lo) * i / N);
+    } else edges = toArray(m(a[1]));
+    const last = edges.length - 1;
+    const Y = map(A, (x) => { if (Number.isNaN(x) || x < edges[0] || x > edges[last]) return NaN; for (let i = 0; i < last; i++) if (x >= edges[i] && (x < edges[i + 1] || (i === last - 1 && x === edges[i + 1]))) return i + 1; return NaN; });
+    // optional bin-value labels (3rd numeric arg): map each bin index to values(idx)
+    if (a.length >= 3 && isMat(a[2]) && !(a[2] as Mat).isChar) { const vv = toArray(m(a[2])); const Yv = map(Y, (k) => (Number.isNaN(k) ? NaN : vv[k - 1])); return n >= 2 ? [Yv, rowVec(edges)] : [Yv]; }
+    return n >= 2 ? [Y, rowVec(edges)] : [Y];
+  },
 
   // linear algebra / math additions
   sylvester: async (a) => ret(sylvesterSolve(m(a[0]), m(a[1]), m(a[2]))),

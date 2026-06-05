@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **260 / 1170** audited.
+Progress: **270 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -265,3 +265,13 @@ Progress: **260 / 1170** audited.
 | 258 | `diag` | ✅ | **fixed**: `k` offset (place/extract); preserves complex |
 | 259 | `dictionary` | ✅ | key→value map, insert/lookup/numEntries |
 | 260 | `diff` | ✅ | **fixed**: order `n` and `dim` args honored |
+| 261 | `digraph` | ✅ | directed graph; Edges/Nodes tables, toposort |
+| 262 | `dir` | ✅ | VFS listing (struct array + print) |
+| 263 | `discretize` | ✅ | **fixed**: scalar-N bins + 2nd output `E` + value labels |
+| 264 | `disp` | ✅ | name-less display |
+| 265 | `dissect` | 🟡 | nested-dissection ordering (perm); needs dataset to compare fill |
+| 266 | `distances` | ✅ | all-pairs / source-subset shortest paths |
+| 267 | `divergence` | ✅ | 2-D/3-D vector-field divergence |
+| 268 | `dlmread` | ✅ | delimited numeric read from VFS |
+| 269 | `dlmwrite` | ✅ | delimited write to VFS |
+| 270 | `dmperm` | ✅ | Dulmage-Mendelsohn / max matching perm |
