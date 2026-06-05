@@ -4,8 +4,8 @@
 // and pdist/squareform/linkage/kmeans. See plan §7.
 import type { Builtin } from '../builtins';
 import {
-  type Value, type Mat, isMat, scalar, zeros, rowVec, colVec, toArray, map, numel,
-  asString, asScalar, toMat as m,
+  type Value, type Mat, isMat, isObject, makeObject, str, scalar, zeros, rowVec, colVec, toArray, map, numel,
+  asString, asScalar, toMat as m, MatError,
 } from '../values';
 import type { ToolboxModule } from './types';
 
@@ -119,6 +119,31 @@ const METRICS: Record<string, (u: number[], v: number[], p?: number) => number> 
   cosine: (u, v) => 1 - dot(u, v) / (Math.hypot(...u) * Math.hypot(...v)),
 };
 function dot(u: number[], v: number[]): number { return u.reduce((s, x, i) => s + x * v[i], 0); }
+
+// ─────────────────── distribution objects (makedist / pdf / cdf / icdf) ───────────────────
+interface DistSpec { display: string; params: string[]; defaults: number[]; pdf: (x: number, ...p: number[]) => number; cdf: (x: number, ...p: number[]) => number; inv: (p: number, ...q: number[]) => number; }
+const DISTS: Record<string, DistSpec> = {
+  normal: { display: 'Normal', params: ['mu', 'sigma'], defaults: [0, 1], pdf: (x, mu, s) => Math.exp(-0.5 * ((x - mu) / s) ** 2) / (s * Math.sqrt(2 * Math.PI)), cdf: (x, mu, s) => 0.5 * erfc(-(x - mu) / (s * Math.SQRT2)), inv: (p, mu, s) => mu + s * norminvStd(p) },
+  exponential: { display: 'Exponential', params: ['mu'], defaults: [1], pdf: (x, mu) => x < 0 ? 0 : Math.exp(-x / mu) / mu, cdf: (x, mu) => x < 0 ? 0 : 1 - Math.exp(-x / mu), inv: (p, mu) => -mu * Math.log(1 - p) },
+  poisson: { display: 'Poisson', params: ['lambda'], defaults: [1], pdf: (k, lam) => { k = Math.round(k); return k < 0 ? 0 : Math.exp(k * Math.log(lam) - lam - logGamma(k + 1)); }, cdf: (k, lam) => { k = Math.floor(k); return k < 0 ? 0 : 1 - gammainc(lam, k + 1); }, inv: (pr, lam) => { let c = 0, k = 0; for (; k < 1e6; k++) { c += Math.exp(k * Math.log(lam) - lam - logGamma(k + 1)); if (c >= pr - 1e-12) return k; } return k; } },
+  uniform: { display: 'Uniform', params: ['lower', 'upper'], defaults: [0, 1], pdf: (x, lo, hi) => x >= lo && x <= hi ? 1 / (hi - lo) : 0, cdf: (x, lo, hi) => x < lo ? 0 : x > hi ? 1 : (x - lo) / (hi - lo), inv: (p, lo, hi) => lo + p * (hi - lo) },
+  gamma: { display: 'Gamma', params: ['a', 'b'], defaults: [1, 1], pdf: (x, k, th) => x < 0 ? 0 : Math.exp((k - 1) * Math.log(x) - x / th - k * Math.log(th) - logGamma(k)), cdf: (x, k, th) => gammainc(x / th, k), inv: (p, k, th) => invCdf(p, (x) => gammainc(x / th, k), 0, Infinity) },
+  lognormal: { display: 'Lognormal', params: ['mu', 'sigma'], defaults: [0, 1], pdf: (x, mu, s) => x <= 0 ? 0 : Math.exp(-0.5 * ((Math.log(x) - mu) / s) ** 2) / (x * s * Math.sqrt(2 * Math.PI)), cdf: (x, mu, s) => x <= 0 ? 0 : 0.5 * erfc(-(Math.log(x) - mu) / (s * Math.SQRT2)), inv: (p, mu, s) => Math.exp(mu + s * norminvStd(p)) },
+};
+const normDistName = (s: string) => s.toLowerCase().replace(/\s+|distribution$/g, '');
+/** Resolve (spec, paramValues) from either a distribution object or a name string + trailing params. */
+function resolveDist(a: Value[]): { spec: DistSpec; vals: number[]; rest: Value[] } {
+  if (isObject(a[0])) {
+    const o = a[0]; const spec = DISTS[normDistName(o.className.replace(/^prob\./, ''))];
+    if (!spec) throw new MatError(`unknown distribution object '${o.className}'`);
+    const vals = spec.params.map((p, i) => { const v = o.props.get(p); return v ? asScalar(v) : spec.defaults[i]; });
+    return { spec, vals, rest: a.slice(1) };
+  }
+  const spec = DISTS[normDistName(asString(a[0]))];
+  if (!spec) throw new MatError(`unknown distribution '${asString(a[0])}'`);
+  const vals = spec.defaults.map((d, i) => (a.length > i + 2 && isMat(a[i + 2]) ? asScalar(a[i + 2]) : d));
+  return { spec, vals, rest: a.slice(1, 2) };
+}
 
 export const STATS: ToolboxModule = {
   id: 'stats',
@@ -258,7 +283,22 @@ export const STATS: ToolboxModule = {
       const sumd = colVec(Array.from({ length: k }, (_, j) => X.reduce((s, p, i) => s + (idx[i] === j ? METRICS.squaredeuclidean(p, cen[j]) : 0), 0)));
       return Promise.resolve([idxOut, C, sumd]);
     },
-    /** zscore is base MATLAB; provide normalize-by-population option here is unnecessary. */
+    // ── distribution objects (exercise the generic ClassV object type) ──
+    /** makedist('Normal','mu',0,'sigma',1) → a prob.<Name>Distribution object. */
+    makedist: (a) => {
+      const spec = DISTS[normDistName(asString(a[0]))];
+      if (!spec) throw new MatError(`makedist: unsupported distribution '${asString(a[0])}'`);
+      const props = new Map<string, Value>([['DistributionName', str(`${spec.display}Distribution`)]]);
+      spec.params.forEach((p, i) => props.set(p, scalar(spec.defaults[i])));
+      for (let i = 1; i + 1 < a.length; i += 2) { const k = asString(a[i]); if (spec.params.includes(k)) props.set(k, scalar(asScalar(a[i + 1]))); }
+      return ret(makeObject(`prob.${spec.display}Distribution`, props));
+    },
+    /** pdf(pd,x) or pdf('Name',x,p1,p2) — probability density. */
+    pdf: (a) => { const { spec, vals, rest } = resolveDist(a); return ret(map(m(rest[0]), (x) => spec.pdf(x, ...vals))); },
+    /** cdf(pd,x) or cdf('Name',x,p1,p2) — cumulative probability. */
+    cdf: (a) => { const { spec, vals, rest } = resolveDist(a); return ret(map(m(rest[0]), (x) => spec.cdf(x, ...vals))); },
+    /** icdf(pd,p) or icdf('Name',p,p1,p2) — inverse cumulative (quantile). */
+    icdf: (a) => { const { spec, vals, rest } = resolveDist(a); return ret(map(m(rest[0]), (p) => spec.inv(p, ...vals))); },
   },
   help: {
     normpdf: 'Normal probability density function', normcdf: 'Normal cumulative distribution function', norminv: 'Normal inverse cumulative distribution function',
@@ -277,6 +317,7 @@ export const STATS: ToolboxModule = {
     nanmedian: 'Median, ignoring NaN values', nanmax: 'Maximum, ignoring NaN values', nanmin: 'Minimum, ignoring NaN values',
     range: 'Range of values (max − min)', tabulate: 'Frequency table',
     pdist: 'Pairwise distance between observations', squareform: 'Format distance matrix', linkage: 'Agglomerative hierarchical cluster tree', kmeans: 'k-means clustering',
+    makedist: 'Create a probability distribution object', pdf: 'Probability density function', cdf: 'Cumulative distribution function', icdf: 'Inverse cumulative distribution function',
   },
 };
 
