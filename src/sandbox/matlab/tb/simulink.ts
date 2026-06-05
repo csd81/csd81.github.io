@@ -1,5 +1,5 @@
-// Simulink — hooks the headless execution engine (src/sandbox/matlab/simulink_engine/, built by
-// Antigravity; DO NOT modify the engine internals) into the MATLAB runtime as a ToolboxModule.
+// Simulink — hooks the headless execution engine (../simulink_engine.ts, a consolidated
+// single-file module) into the MATLAB runtime as a ToolboxModule.
 // Maps new_system/add_block/add_line/set_param/get_param/sim to builtins; sim returns a
 // Simulink.SimulationOutput object (generic ClassV) with .tout/.yout. See plan §2 / handoff.
 import type { Builtin } from '../builtins';
@@ -11,7 +11,7 @@ import type { ToolboxModule } from './types';
 import {
   new_system as engNewSystem, add_block as engAddBlock, add_line as engAddLine,
   set_param as engSetParam, get_param as engGetParam, sim as engSim,
-} from '../simulink_engine/index';
+} from '../simulink_engine';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
 

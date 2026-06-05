@@ -1,3 +1,11 @@
+// Simulink headless execution engine (consolidated single-file module).
+// Merged from the former simulink_engine/{blocks,model,solver,subsystem,api}.ts in dependency
+// order; internal sibling imports were stripped since all symbols now share this file.
+// Public surface (used by tb/simulink.ts): new_system/add_block/add_line/set_param/get_param/sim.
+
+// ════════════════════════════════════════════════════════════════════════════════════
+// blocks.ts
+// ════════════════════════════════════════════════════════════════════════════════════
 export abstract class Block {
     public name: string;
     public parameters: Record<string, any> = {};
@@ -1022,3 +1030,401 @@ export class TransferFcn extends StateSpace {
         super.setup();
     }
 }
+
+// ════════════════════════════════════════════════════════════════════════════════════
+// model.ts
+// ════════════════════════════════════════════════════════════════════════════════════
+export interface Line {
+    srcBlock: string;
+    srcPort: number; // 0-indexed
+    destBlock: string;
+    destPort: number; // 0-indexed
+}
+
+export class Model {
+    public name: string;
+    public blocks: Map<string, Block> = new Map();
+    public lines: Line[] = [];
+
+    constructor(name: string) {
+        this.name = name;
+    }
+
+    public addBlock(block: Block): void {
+        this.blocks.set(block.name, block);
+    }
+
+    public addLine(srcBlock: string, srcPort: number, destBlock: string, destPort: number): void {
+        this.lines.push({ srcBlock, srcPort, destBlock, destPort });
+    }
+
+    public getBlock(name: string): Block | undefined {
+        return this.blocks.get(name);
+    }
+
+    /**
+     * Initializes all blocks.
+     */
+    public setup(): void {
+        for (const block of this.blocks.values()) {
+            block.setup();
+        }
+    }
+
+    /**
+     * Topologically sorts blocks based on direct feedthrough dependencies.
+     * Blocks without direct feedthrough break algebraic loops.
+     */
+    public getExecutionOrder(): Block[] {
+        const order: Block[] = [];
+        const visited = new Set<string>();
+        const tempMark = new Set<string>();
+
+        // Build dependency graph
+        // A depends on B if A has direct feedthrough and there is a line B -> A.
+        const dependencies = new Map<string, string[]>();
+        for (const block of this.blocks.values()) {
+            dependencies.set(block.name, []);
+        }
+
+        for (const line of this.lines) {
+            const destBlock = this.blocks.get(line.destBlock);
+            if (destBlock && destBlock.hasDirectFeedthrough) {
+                dependencies.get(line.destBlock)?.push(line.srcBlock);
+            }
+        }
+
+        const visit = (nodeName: string) => {
+            if (visited.has(nodeName)) return;
+            if (tempMark.has(nodeName)) {
+                throw new Error(`Algebraic loop detected involving block: ${nodeName}`);
+            }
+
+            tempMark.add(nodeName);
+            const deps = dependencies.get(nodeName) || [];
+            for (const dep of deps) {
+                visit(dep);
+            }
+            tempMark.delete(nodeName);
+            visited.add(nodeName);
+            const b = this.blocks.get(nodeName);
+            if (b) order.push(b);
+        };
+
+        for (const block of this.blocks.values()) {
+            if (!visited.has(block.name)) {
+                visit(block.name);
+            }
+        }
+
+        return order;
+    }
+}
+
+// ════════════════════════════════════════════════════════════════════════════════════
+// solver.ts
+// ════════════════════════════════════════════════════════════════════════════════════
+export interface SimOptions {
+    t0?: number;
+    tf?: number;
+    stepSize?: number;
+}
+
+export interface SimResult {
+    tout: number[];
+    yout: number[][]; // N_steps x N_outports (if Outports are collected)
+}
+
+export class Solver {
+    private model: Model;
+    private options: SimOptions;
+
+    constructor(model: Model, options: SimOptions = {}) {
+        this.model = model;
+        this.options = {
+            t0: options.t0 !== undefined ? options.t0 : 0.0,
+            tf: options.tf !== undefined ? options.tf : 10.0,
+            stepSize: options.stepSize !== undefined ? options.stepSize : 0.1,
+        };
+    }
+
+    public simulate(): SimResult {
+        this.model.setup();
+        const execOrder = this.model.getExecutionOrder();
+
+        let t = this.options.t0!;
+        const tf = this.options.tf!;
+        const dt = this.options.stepSize!;
+
+        const tout: number[] = [];
+        const yout: number[][] = []; // For simplicity, we can log blocks named "Outport" or just block outputs
+        const outportBlocks = Array.from(this.model.blocks.values()).filter(b => b.constructor.name === 'Outport' || b.name.startsWith('Out'));
+
+        // Initialize states
+        const contStates = new Map<string, number[]>();
+        const discStates = new Map<string, number[]>();
+        
+        for (const block of this.model.blocks.values()) {
+            contStates.set(block.name, block.getInitialContinuousStates());
+            discStates.set(block.name, block.getInitialDiscreteStates());
+        }
+
+        // Output buffer
+        const blockOutputs = new Map<string, number[]>();
+
+        while (t <= tf + 1e-9) {
+            tout.push(t);
+
+            // Step 1: Compute outputs in execution order
+            for (const block of execOrder) {
+                // Gather inputs
+                const u = new Array(block.numInputs).fill(0);
+                
+                for (const line of this.model.lines) {
+                    if (line.destBlock === block.name) {
+                        const srcOuts = blockOutputs.get(line.srcBlock);
+                        if (srcOuts && line.srcPort < srcOuts.length) {
+                            u[line.destPort] = srcOuts[line.srcPort];
+                        }
+                    }
+                }
+
+                const x = contStates.get(block.name)!;
+                const xd = discStates.get(block.name)!;
+                const y = block.computeOutputs(t, x, xd, u);
+                blockOutputs.set(block.name, y);
+            }
+
+            // Log outputs if Outports exist
+            // If no Outports, we could log states, but let's log the first output of Outport blocks
+            const currentY: number[] = [];
+            for (const outBlock of outportBlocks) {
+                 // The Outport itself doesn't output anything, but its input is what we want to log
+                 // Let's find what is connected to its input port 0
+                 for (const line of this.model.lines) {
+                     if (line.destBlock === outBlock.name && line.destPort === 0) {
+                         const srcOuts = blockOutputs.get(line.srcBlock);
+                         if (srcOuts && line.srcPort < srcOuts.length) {
+                             currentY.push(srcOuts[line.srcPort]);
+                         }
+                     }
+                 }
+            }
+            yout.push(currentY);
+
+            // Step 2: Compute derivatives and discrete updates
+            const derivatives = new Map<string, number[]>();
+            const nextDiscStates = new Map<string, number[]>();
+
+            for (const block of this.model.blocks.values()) {
+                const u = new Array(block.numInputs).fill(0);
+                for (const line of this.model.lines) {
+                    if (line.destBlock === block.name) {
+                        const srcOuts = blockOutputs.get(line.srcBlock);
+                        if (srcOuts && line.srcPort < srcOuts.length) {
+                            u[line.destPort] = srcOuts[line.srcPort];
+                        }
+                    }
+                }
+
+                const x = contStates.get(block.name)!;
+                const xd = discStates.get(block.name)!;
+
+                derivatives.set(block.name, block.computeDerivatives(t, x, u));
+                nextDiscStates.set(block.name, block.updateDiscrete(t, xd, u));
+            }
+
+            // Step 3: Advance states (Euler Integration)
+            for (const block of this.model.blocks.values()) {
+                const x = contStates.get(block.name)!;
+                const dx = derivatives.get(block.name)!;
+                for (let i = 0; i < x.length; i++) {
+                    x[i] = x[i] + dt * dx[i];
+                }
+                
+                const xd = nextDiscStates.get(block.name)!;
+                if (xd.length > 0) {
+                    discStates.set(block.name, xd);
+                }
+            }
+
+            t += dt;
+        }
+
+        return { tout, yout };
+    }
+}
+
+// ════════════════════════════════════════════════════════════════════════════════════
+// subsystem.ts
+// ════════════════════════════════════════════════════════════════════════════════════
+export class Subsystem extends Block {
+    public internalModel: Model;
+    private execOrder: Block[] = [];
+    private contStates: Map<string, number[]> = new Map();
+    private discStates: Map<string, number[]> = new Map();
+    private blockOutputs: Map<string, number[]> = new Map();
+
+    constructor(name: string, internalModel: Model) {
+        super(name);
+        this.internalModel = internalModel;
+        this.hasDirectFeedthrough = true; // Conservative assumption
+        
+        // Count inputs and outputs based on Inport/Outport blocks
+        let inports = 0;
+        let outports = 0;
+        for (const b of this.internalModel.blocks.values()) {
+            if (b.constructor.name === 'Inport') inports++;
+            if (b.constructor.name === 'Outport') outports++;
+        }
+        this.numInputs = inports;
+        this.numOutputs = outports;
+    }
+
+    public setup() {
+        this.internalModel.setup();
+        this.execOrder = this.internalModel.getExecutionOrder();
+
+        // Calculate total states
+        this.numContinuousStates = 0;
+        this.numDiscreteStates = 0;
+        for (const b of this.internalModel.blocks.values()) {
+            this.numContinuousStates += b.numContinuousStates;
+            this.numDiscreteStates += b.numDiscreteStates;
+        }
+
+        // We don't map internal states to parent states in this simplified version.
+        // Instead, the Subsystem block keeps its own Map of states, and we just 
+        // return an empty array to the parent solver so it doesn't try to integrate them directly.
+        // Wait! If the parent solver doesn't integrate them, they won't change.
+        // So we must flatten the state arrays.
+    }
+
+    // A full non-virtual subsystem implementation requires mapping the flat state array
+    // back to the internal blocks, then calling their computeDerivatives, and mapping back.
+    // Given the complexity for a headless prototype, we will just stub this for now.
+    public computeOutputs(t: number, x: number[], xd: number[], u: number[]): number[] {
+        // Evaluate the internal model using the inputs
+        // ... omitted for brevity ...
+        return new Array(this.numOutputs).fill(0);
+    }
+}
+
+// ════════════════════════════════════════════════════════════════════════════════════
+// api.ts
+// ════════════════════════════════════════════════════════════════════════════════════
+// Global store of models in memory
+const systems = new Map<string, Model>();
+
+export function new_system(name: string): void {
+    if (systems.has(name)) {
+        throw new Error(`A system named '${name}' already exists.`);
+    }
+    systems.set(name, new Model(name));
+}
+
+// Simulink usually takes path 'model/blockname'
+function parsePath(path: string): { sysName: string, blockName: string } {
+    const parts = path.split('/');
+    if (parts.length < 2) throw new Error(`Invalid block path: ${path}`);
+    const sysName = parts[0];
+    const blockName = parts.slice(1).join('/');
+    return { sysName, blockName };
+}
+
+export function add_block(type: string, destPath: string): void {
+    const { sysName, blockName } = parsePath(destPath);
+    const sys = systems.get(sysName);
+    if (!sys) throw new Error(`System '${sysName}' not found.`);
+
+    let block: Block;
+    // For now we map some hardcoded strings to classes. In a full system this is a registry.
+    const lowerType = type.toLowerCase();
+    if (lowerType.includes('discreteintegrator')) block = new DiscreteIntegrator(blockName);
+    else if (lowerType.includes('integrator')) block = new Integrator(blockName);
+    else if (lowerType.includes('gain')) block = new Gain(blockName);
+    else if (lowerType.includes('sum')) block = new Sum(blockName);
+    else if (lowerType.includes('constant')) block = new Constant(blockName);
+    else if (lowerType.includes('sinewave') || lowerType === 'sin') block = new SineWave(blockName);
+    else if (lowerType.includes('outport')) block = new Outport(blockName);
+    else if (lowerType.includes('inport')) block = new Inport(blockName);
+    else if (lowerType.includes('product')) block = new Product(blockName);
+    else if (lowerType.includes('mathfunction')) block = new MathFunction(blockName);
+    else if (lowerType.includes('trigonometricfunction')) block = new TrigonometricFunction(blockName);
+    else if (lowerType.includes('relationaloperator')) block = new RelationalOperator(blockName);
+    else if (lowerType.includes('logicaloperator')) block = new LogicalOperator(blockName);
+    else if (lowerType.includes('switch')) block = new Switch(blockName);
+    else if (lowerType.includes('step')) block = new Step(blockName);
+    else if (lowerType.includes('clock')) block = new Clock(blockName);
+    else if (lowerType.includes('toworkspace')) block = new ToWorkspace(blockName);
+    else if (lowerType.includes('stopsimulation')) block = new StopSimulation(blockName);
+    else if (lowerType.includes('statespace')) block = new StateSpace(blockName);
+    else if (lowerType.includes('derivative')) block = new Derivative(blockName);
+    else if (lowerType.includes('unitdelay')) block = new UnitDelay(blockName);
+    else if (lowerType.includes('zeroorderhold')) block = new ZeroOrderHold(blockName);
+    else if (lowerType.includes('mux')) block = new Mux(blockName);
+    else if (lowerType.includes('demux')) block = new Demux(blockName);
+    else if (lowerType.includes('saturation')) block = new Saturation(blockName);
+    else if (lowerType.includes('deadzone')) block = new DeadZone(blockName);
+    else if (lowerType.includes('ratelimiter')) block = new RateLimiter(blockName);
+    else if (lowerType.includes('lookuptable1d')) block = new LookupTable1D(blockName);
+    else if (lowerType.includes('pulsegenerator')) block = new PulseGenerator(blockName);
+    else if (lowerType.includes('ramp')) block = new Ramp(blockName);
+    else if (lowerType.includes('abs')) block = new Abs(blockName);
+    else if (lowerType.includes('sign')) block = new Sign(blockName);
+    else if (lowerType.includes('minmax')) block = new MinMax(blockName);
+    else if (lowerType.includes('scope')) block = new Scope(blockName);
+    else if (lowerType.includes('pidcontroller')) block = new PIDController(blockName);
+    else if (lowerType.includes('transferfcn')) block = new TransferFcn(blockName);
+    else throw new Error(`Unknown block type: ${type}`);
+
+    sys.addBlock(block);
+}
+
+// add_line('model', 'srcBlock/1', 'destBlock/1')
+export function add_line(sysName: string, srcPortStr: string, destPortStr: string): void {
+    const sys = systems.get(sysName);
+    if (!sys) throw new Error(`System '${sysName}' not found.`);
+
+    const srcParts = srcPortStr.split('/');
+    const destParts = destPortStr.split('/');
+    
+    const srcBlock = srcParts.slice(0, -1).join('/');
+    const srcPort = parseInt(srcParts[srcParts.length - 1], 10) - 1; // 1-indexed in MATLAB to 0-indexed internally
+
+    const destBlock = destParts.slice(0, -1).join('/');
+    const destPort = parseInt(destParts[destParts.length - 1], 10) - 1;
+
+    sys.addLine(srcBlock, srcPort, destBlock, destPort);
+}
+
+export function set_param(path: string, param: string, value: any): void {
+    const { sysName, blockName } = parsePath(path);
+    const sys = systems.get(sysName);
+    if (!sys) throw new Error(`System '${sysName}' not found.`);
+
+    const block = sys.getBlock(blockName);
+    if (!block) throw new Error(`Block '${blockName}' not found in system '${sysName}'.`);
+
+    block.setParam(param, value);
+}
+
+export function get_param(path: string, param: string): any {
+    const { sysName, blockName } = parsePath(path);
+    const sys = systems.get(sysName);
+    if (!sys) throw new Error(`System '${sysName}' not found.`);
+
+    const block = sys.getBlock(blockName);
+    if (!block) throw new Error(`Block '${blockName}' not found in system '${sysName}'.`);
+
+    return block.getParam(param);
+}
+
+export function sim(sysName: string, options: SimOptions = {}): SimResult {
+    const sys = systems.get(sysName);
+    if (!sys) throw new Error(`System '${sysName}' not found.`);
+
+    const solver = new Solver(sys, options);
+    return solver.simulate();
+}
+
