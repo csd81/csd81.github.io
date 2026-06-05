@@ -67,6 +67,41 @@ function transitions(x: number[], t: number[]): { p: number; dur: number; slew: 
   }
   return out;
 }
+/** Post-transition over/undershoot (signal.internal.getPostshoots): peak/dip in a 3·Duration seek
+ *  window after each transition, as % of amplitude relative to the post-transition state level. */
+function postShoots(x: number[], t: number[]): { os: number; us: number }[] {
+  const [L, U] = stateLevelsOf(x), amp = U - L, a = (U - L) / 100;
+  const lwr = L + 2 * a, upr = L + 98 * a, loRef = L + 10 * a, upRef = L + 90 * a, mid = L + 50 * a;
+  const iState: number[] = []; for (let i = 0; i < x.length; i++) if (x[i] < lwr || x[i] > upr) iState.push(i);
+  const trans: { p: number; iPost: number; tPost: number; dur: number; iA: number }[] = [];
+  for (let k = 0; k + 1 < iState.length; k++) {
+    const iA = iState[k], iB = iState[k + 1];
+    if (!((x[iA] < lwr && x[iB] > upr) || (x[iA] > upr && x[iB] < lwr))) continue;
+    const p = x[iA] < lwr ? 1 : -1, preRef = p > 0 ? loRef : upRef, postRef = p > 0 ? upRef : loRef;
+    let iRMid = -1; for (let i = iA; i < iB; i++) if (p > 0 ? (x[i] <= mid && mid < x[i + 1]) : (x[i] >= mid && mid > x[i + 1])) { iRMid = i; break; }
+    if (iRMid < 0) continue;
+    let iRPre = -1; for (let i = iA; i <= iRMid; i++) if (p > 0 ? x[i] < preRef : x[i] > preRef) iRPre = i;
+    let iRPost = -1; for (let i = iRMid; i < iB; i++) if (p > 0 ? x[i + 1] > postRef : x[i + 1] < postRef) { iRPost = i; break; }
+    if (iRPre < 0 || iRPost < 0) continue;
+    const tPre = t[iRPre] + (t[iRPre + 1] - t[iRPre]) * (preRef - x[iRPre]) / (x[iRPre + 1] - x[iRPre]);
+    const tPost90 = t[iRPost] + (t[iRPost + 1] - t[iRPost]) * (postRef - x[iRPost]) / (x[iRPost + 1] - x[iRPost]);
+    const postBound = p > 0 ? upr : lwr;                          // seek starts at the 98% state-bound entry (iB)
+    const tPostB = t[iB - 1] + (t[iB] - t[iB - 1]) * (postBound - x[iB - 1]) / (x[iB] - x[iB - 1]);
+    trans.push({ p, iPost: iB, tPost: tPostB, dur: tPost90 - tPre, iA });
+  }
+  const out: { os: number; us: number }[] = [];
+  for (let i = 0; i < trans.length; i++) {
+    const tr = trans[i], tSeek = tr.tPost + 3 * tr.dur;
+    let iStop = x.length - 1; for (let j = tr.iPost; j < x.length; j++) if (t[j] > tSeek) { iStop = j; break; }
+    if (i + 1 < trans.length && iStop > trans[i + 1].iA) iStop = trans[i + 1].iA;
+    if (iStop > tr.iPost) iStop -= 1;
+    let above = -Infinity, below = Infinity;
+    for (let j = tr.iPost; j <= iStop; j++) { if (x[j] > above) above = x[j]; if (x[j] < below) below = x[j]; }
+    const postState = tr.p > 0 ? U : L;
+    out.push({ os: (above - postState) / amp * 100, us: (postState - below) / amp * 100 });
+  }
+  return out;
+}
 /** Resolve the time base: t-vector, scalar Fs, or default sample numbers 1..n. */
 function timeBase(a: Value[], n: number): number[] {
   if (a.length > 1 && isMat(a[1])) { const M = m(a[1]); if (M.rows * M.cols === 1) { const Fs = asScalar(a[1]); return Array.from({ length: n }, (_, i) => i / Fs); } return toArray(M); }
@@ -230,6 +265,8 @@ export const SIGNAL: ToolboxModule = {
     risetime: (a) => { const x = toArray(m(a[0])); return ret(colVec(transitions(x, timeBase(a, x.length)).filter((d) => d.p > 0).map((d) => d.dur))); },
     falltime: (a) => { const x = toArray(m(a[0])); return ret(colVec(transitions(x, timeBase(a, x.length)).filter((d) => d.p < 0).map((d) => d.dur))); },
     slewrate: (a) => { const x = toArray(m(a[0])); return ret(colVec(transitions(x, timeBase(a, x.length)).map((d) => d.slew))); },
+    overshoot: (a) => { const x = toArray(m(a[0])); return ret(colVec(postShoots(x, timeBase(a, x.length)).map((s) => s.os))); },
+    undershoot: (a) => { const x = toArray(m(a[0])); return ret(colVec(postShoots(x, timeBase(a, x.length)).map((s) => s.us))); },
     barthannwin: (a) => window(a, 1, (n, N) => { const r = n / N - 0.5; return 0.62 - 0.48 * Math.abs(r) + 0.38 * Math.cos(2 * Math.PI * r); }),
     gausswin: (a) => { const L = Math.round(asScalar(a[0])); const alpha = a.length >= 2 ? asScalar(a[1]) : 2.5; const N = L - 1; const w: number[] = []; for (let n = 0; n < L; n++) { const x = (n - N / 2) / (N / 2); w.push(Math.exp(-0.5 * (alpha * x) ** 2)); } return ret(colVec(L === 1 ? [1] : w)); },
     kaiser: (a) => { const L = Math.round(asScalar(a[0])); const beta = a.length >= 2 ? asScalar(a[1]) : 0.5; const N = L - 1; const i0b = besselI0(beta); const w: number[] = []; for (let n = 0; n < L; n++) { const r = (2 * n) / N - 1; w.push(besselI0(beta * Math.sqrt(1 - r * r)) / i0b); } return ret(colVec(L === 1 ? [1] : w)); },
@@ -311,6 +348,7 @@ export const SIGNAL: ToolboxModule = {
     statelevels: 'Estimate state-level histogram of bilevel waveform', midcross: 'Mid-reference level crossing of bilevel waveform',
     pulsewidth: 'Bilevel waveform pulse width', pulseperiod: 'Bilevel waveform pulse period', dutycycle: 'Duty cycle of pulse waveform',
     risetime: 'Rise time of positive-going bilevel waveform transitions', falltime: 'Fall time of negative-going bilevel waveform transitions', slewrate: 'Slew rate of bilevel waveform transitions',
+    overshoot: 'Overshoot metrics of bilevel waveform transitions', undershoot: 'Undershoot metrics of bilevel waveform transitions',
     mag2db: 'Convert magnitude to decibels', db2mag: 'Convert decibels to magnitude', pow2db: 'Convert power to decibels', db2pow: 'Convert decibels to power',
     sinc: 'Normalized sinc function', chirp: 'Swept-frequency cosine', medfilt1: '1-D median filtering',
     freqz: 'Digital filter frequency response', freqs: 'Analog filter frequency response', fir1: 'Window-based FIR filter design',
