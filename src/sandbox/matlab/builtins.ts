@@ -812,7 +812,7 @@ export const BUILTINS: Record<string, Builtin> = {
   bernoulli: async (a) => { const nn = Math.round(asScalar(a[0])); if (a.length >= 2) return ret(map(m(a[1]), (x) => bernoulliPoly(nn, x))); return ret(scalar(bernoulliNum(nn))); },
   euler: async (a) => { const nn = Math.round(asScalar(a[0])); if (a.length >= 2) return ret(map(m(a[1]), (x) => eulerPoly(nn, x))); return ret(scalar(eulerNum(nn))); },
   jacobiSymbol: async (a) => ret(elementwise(m(a[0]), m(a[1]), jacobiSym)),
-  factorIntegerPower: async (a, n) => { let N = Math.round(asScalar(a[0])); let bestB = N, bestE = 1; if (N > 1) { for (let e = Math.floor(Math.log2(N)); e >= 2; e--) { const b = Math.round(Math.pow(N, 1 / e)); for (const cand of [b - 1, b, b + 1]) { if (cand >= 2 && Math.pow(cand, e) === N) { bestB = cand; bestE = e; e = 1; break; } } } } return n >= 2 ? [scalar(bestB), scalar(bestE)] : [rowVec([bestB, bestE])]; },
+  factorIntegerPower: async (a, n) => { let N = Math.round(asScalar(a[0])); let bestB = N, bestE = 1; if (N > 1) { for (let e = Math.floor(Math.log2(N)); e >= 2; e--) { const b = Math.round(Math.pow(N, 1 / e)); for (const cand of [b - 1, b, b + 1]) { if (cand >= 2 && Math.pow(cand, e) === N) { bestB = cand; bestE = e; e = 1; break; } } } } return n >= 2 ? [scalar(bestB), scalar(bestE)] : [scalar(bestB)]; },  // single output = base only (MATLAB)
   isPrimitiveRoot: async (a) => { const N = Math.round(asScalar(a[1])); const phi = N <= 1 ? 0 : (() => { let n = N, r = N; for (let p = 2; p * p <= n; p++) if (n % p === 0) { while (n % p === 0) n /= p; r -= r / p; } if (n > 1) r -= r / n; return r; })(); const pf = (() => { const s = new Set<number>(); let n = phi; for (let p = 2; p * p <= n; p++) if (n % p === 0) { s.add(p); while (n % p === 0) n /= p; } if (n > 1) s.add(n); return s; })(); const powmod = (b: number, e: number, mo: number) => { b = ((b % mo) + mo) % mo; let r = 1; while (e > 0) { if (e & 1) r = (r * b) % mo; b = (b * b) % mo; e = Math.floor(e / 2); } return r; }; return ret(map(m(a[0]), (av) => { const x = Math.round(av); if (N <= 1 || gcd2(x, N) !== 1) return 0; for (const q of pf) if (powmod(x, phi / q, N) === 1) return 0; return 1; })); },
   // ═══════════════════ SPECIAL MATRICES & POLYNOMIALS ═══════════════════
   magic: async (a) => ret(magicFn(Math.round(asScalar(a[0])))),
@@ -1133,8 +1133,8 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(scalar(det(S)));
   },
   // number theory
-  nextprime: async (a) => ret(map(m(a[0]), (x) => { let n = Math.floor(x) + 1; while (!isPrimeN(n)) n++; return n; })),
-  prevprime: async (a) => ret(map(m(a[0]), (x) => { let n = Math.ceil(x) - 1; while (n > 1 && !isPrimeN(n)) n--; return n >= 2 ? n : NaN; })),
+  nextprime: async (a) => ret(map(m(a[0]), (x) => { let n = Math.max(2, Math.ceil(x - 1e-9)); while (!isPrimeN(n)) n++; return n; })),  // least prime ≥ x (MATLAB: nextprime(2)=2)
+  prevprime: async (a) => ret(map(m(a[0]), (x) => { let n = Math.floor(x + 1e-9); if (n < 2) return NaN; while (!isPrimeN(n)) n--; return n; })),  // greatest prime ≤ x (MATLAB: prevprime(3)=3)
   nthprime: async (a) => ret(map(m(a[0]), (x) => { let cnt = 0, n = 1; while (cnt < Math.round(x)) { n++; if (isPrimeN(n)) cnt++; } return n; })),
   fibonacci: async (a) => ret(map(m(a[0]), (x) => { const k = Math.round(x); let p = 0, q = 1; for (let i = 0; i < k; i++) { [p, q] = [q, p + q]; } return p; })),
   eulerPhi: async (a) => ret(map(m(a[0]), (x) => { let n = Math.round(x), r = n; for (let p = 2; p * p <= n; p++) if (n % p === 0) { while (n % p === 0) n /= p; r -= r / p; } if (n > 1) r -= r / n; return r; })),
