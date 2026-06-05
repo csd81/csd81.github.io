@@ -328,6 +328,29 @@ export const SIGNAL: ToolboxModule = {
       let i2 = f.length - 1; for (let k = 0; k < f.length; k++) if (f[k] >= hi) { i2 = k; break; }
       let s = 0; for (let k = i1; k <= i2; k++) s += w[k] * Pxx[k]; return ret(scalar(s));
     },
+    // powerbw: half-power (-3 dB) bandwidth around the spectral peak, log-power-interpolated edges
+    powerbw: (a) => {
+      const x = toArray(m(a[0])), fs = a.length > 1 && isMat(a[1]) ? asScalar(a[1]) : undefined;
+      const { Pxx, f } = psdWin(x, new Array(x.length).fill(1), fs);
+      const peak = Math.max(...Pxx), iC = Pxx.indexOf(peak), ref = peak * 0.5;
+      const L10 = (v: number) => Math.log10(Math.max(v, Number.MIN_VALUE));
+      const lint = (yp: number, yq: number, xp: number, xq: number, xx: number) => yp + (yq - yp) * (xx - xp) / (xq - xp);
+      let iL = -1; for (let k = 0; k <= iC; k++) if (Pxx[k] <= ref) iL = k;
+      let iR = -1; for (let k = iC; k < f.length; k++) if (Pxx[k] <= ref) { iR = k; break; }
+      const fLo = iL < 0 ? f[0] : lint(f[iL], f[iL + 1], L10(Pxx[iL]), L10(Pxx[iL + 1]), L10(ref));
+      const fHi = iR < 0 ? f[f.length - 1] : lint(f[iR], f[iR - 1], L10(Pxx[iR]), L10(Pxx[iR - 1]), L10(ref));
+      return ret(scalar(fHi - fLo));
+    },
+    // obw: 99%-occupied bandwidth via cumulative power (0.5% excluded each side), freq-interpolated
+    obw: (a) => {
+      const x = toArray(m(a[0])), fs = a.length > 1 && isMat(a[1]) ? asScalar(a[1]) : undefined;
+      const { Pxx, f } = psdWin(x, new Array(x.length).fill(1), fs), wd = specWidth(f), N = f.length;
+      const cumPwr = [0]; for (let k = 0; k < N; k++) cumPwr.push(cumPwr[k] + Pxx[k] * wd[k]);
+      const cumF = [f[0]]; for (let k = 1; k < N; k++) cumF.push((f[k - 1] + f[k]) / 2); cumF.push(f[N - 1]);
+      const tot = cumPwr[N], ploLim = tot / 200, phiLim = 199 * tot / 200;
+      const interpFreq = (thr: number) => { let i1 = cumPwr.findIndex((c) => c >= thr); if (i1 <= 0) i1 = 1; return cumF[i1 - 1] + (cumF[i1] - cumF[i1 - 1]) * (thr - cumPwr[i1 - 1]) / (cumPwr[i1] - cumPwr[i1 - 1]); };
+      return ret(scalar(interpFreq(phiLim) - interpFreq(ploLim)));
+    },
     // ── equivalent noise bandwidth of a window: enbw(w)=N*Σw²/(Σw)²; enbw(w,fs)=fs*Σw²/(Σw)² ──
     enbw: (a) => {
       const w = toArray(m(a[0])), sw = w.reduce((s, v) => s + v, 0), sw2 = w.reduce((s, v) => s + v * v, 0);
@@ -451,6 +474,7 @@ export const SIGNAL: ToolboxModule = {
     settlingtime: 'Settling time for bilevel waveform transitions', enbw: 'Equivalent noise bandwidth of a window',
     periodogram: 'Periodogram power spectral density estimate',
     meanfreq: 'Mean frequency of power spectrum', medfreq: 'Median frequency of power spectrum', bandpower: 'Band power of signal',
+    powerbw: 'Power bandwidth (3 dB)', obw: 'Occupied bandwidth (99% power)',
     mag2db: 'Convert magnitude to decibels', db2mag: 'Convert decibels to magnitude', pow2db: 'Convert power to decibels', db2pow: 'Convert decibels to power',
     sinc: 'Normalized sinc function', chirp: 'Swept-frequency cosine', medfilt1: '1-D median filtering',
     freqz: 'Digital filter frequency response', freqs: 'Analog filter frequency response', fir1: 'Window-based FIR filter design',
