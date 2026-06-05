@@ -25,3 +25,6 @@ src/subjects/linalg/content/book/*.pdf
 
 # Local lecture videos (large; served locally, not shipped to Pages)
 public/videos/
+
+# function-audit scratch harnesses
+/_audit_*.ts

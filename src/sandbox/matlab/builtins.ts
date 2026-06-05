@@ -101,6 +101,24 @@ function tableToCsv(t: Table): string {
 }
 const ew = (f: (x: number) => number): Builtin => async (a) => ret(map(m(a[0]), f));
 
+// Complex inverse trig (principal branch, MATLAB-compatible). Used when the input is
+// complex or a real argument falls outside the real domain (|x|>1 for asin/acos).
+const cAsin = (re: number, im: number): [number, number] => {
+  const [z2r, z2i] = cmul(re, im, re, im);          // z^2
+  const [sr, si] = csqrt(1 - z2r, -z2i);            // sqrt(1 - z^2)
+  const [lr, li] = clog(-im + sr, re + si);         // log(iz + sqrt(1-z^2)),  iz = (-im, re)
+  return [li, -lr];                                  // -i * log(...)
+};
+const cAcos = (re: number, im: number): [number, number] => {
+  const [ar, ai] = cAsin(re, im);
+  return [Math.PI / 2 - ar, -ai];                    // pi/2 - asin(z)
+};
+const cAtan = (re: number, im: number): [number, number] => {
+  const [l1r, l1i] = clog(1 + im, -re);              // log(1 - iz)
+  const [l2r, l2i] = clog(1 - im, re);               // log(1 + iz)
+  return [-(l1i - l2i) / 2, (l1r - l2r) / 2];        // (i/2)(log(1-iz) - log(1+iz))
+};
+
 /** Factor a univariate polynomial (ascending coeffs) over ℚ into a list of sym factors:
  *  peel rational roots via synthetic division, leaving any irreducible part as one factor.
  *  Mirrors MATLAB's `factor(sym)` for the common integer/rational-root cases. */
@@ -355,7 +373,9 @@ export const BUILTINS: Record<string, Builtin> = {
   sin: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmap(A, (re, im) => [Math.sin(re) * Math.cosh(im), Math.cos(re) * Math.sinh(im)]) : map(A, Math.sin)); },
   cos: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmap(A, (re, im) => [Math.cos(re) * Math.cosh(im), -Math.sin(re) * Math.sinh(im)]) : map(A, Math.cos)); },
   tan: async (a) => { const A = m(a[0]); if (!isComplex(A)) return ret(map(A, Math.tan)); return ret(cmap(A, (re, im) => { const sr = Math.sin(re) * Math.cosh(im), si = Math.cos(re) * Math.sinh(im); const cr = Math.cos(re) * Math.cosh(im), ci = -Math.sin(re) * Math.sinh(im); const d = cr * cr + ci * ci; return [(sr * cr + si * ci) / d, (si * cr - sr * ci) / d]; })); },
-  asin: ew(Math.asin), acos: ew(Math.acos), atan: ew(Math.atan),
+  asin: async (a) => { const A = m(a[0]); return ret(isComplex(A) || toArray(A).some((x) => Math.abs(x) > 1) ? cmap(A, (re, im) => cAsin(re, im)) : map(A, Math.asin)); },
+  acos: async (a) => { const A = m(a[0]); return ret(isComplex(A) || toArray(A).some((x) => Math.abs(x) > 1) ? cmap(A, (re, im) => cAcos(re, im)) : map(A, Math.acos)); },
+  atan: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmap(A, (re, im) => cAtan(re, im)) : map(A, Math.atan)); },
   sinh: ew(Math.sinh), cosh: ew(Math.cosh), tanh: ew(Math.tanh),
   cot: ew((x) => 1 / Math.tan(x)),
   exp: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmap(A, (re, im) => cexp(re, im)) : map(A, Math.exp)); },
@@ -388,9 +408,13 @@ export const BUILTINS: Record<string, Builtin> = {
   asinh: ew(Math.asinh), acosh: ew(Math.acosh), atanh: ew(Math.atanh),
   acoth: ew((x) => Math.atanh(1 / x)), asech: ew((x) => Math.acosh(1 / x)), acsch: ew((x) => Math.asinh(1 / x)),
   // degree-valued trig
-  sind: ew((x) => Math.sin(x * DEG)), cosd: ew((x) => Math.cos(x * DEG)), tand: ew((x) => Math.tan(x * DEG)),
+  sind: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmap(A, (re, im) => { const r = re * DEG, i = im * DEG; return [Math.sin(r) * Math.cosh(i), Math.cos(r) * Math.sinh(i)]; }) : map(A, (x) => Math.sin(x * DEG))); },
+  cosd: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmap(A, (re, im) => { const r = re * DEG, i = im * DEG; return [Math.cos(r) * Math.cosh(i), -Math.sin(r) * Math.sinh(i)]; }) : map(A, (x) => Math.cos(x * DEG))); },
+  tand: ew((x) => Math.tan(x * DEG)),
   cotd: ew((x) => 1 / Math.tan(x * DEG)), secd: ew((x) => 1 / Math.cos(x * DEG)), cscd: ew((x) => 1 / Math.sin(x * DEG)),
-  asind: ew((x) => Math.asin(x) / DEG), acosd: ew((x) => Math.acos(x) / DEG), atand: ew((x) => Math.atan(x) / DEG),
+  asind: async (a) => { const A = m(a[0]); return ret(isComplex(A) || toArray(A).some((x) => Math.abs(x) > 1) ? cmap(A, (re, im) => { const [r, i] = cAsin(re, im); return [r / DEG, i / DEG]; }) : map(A, (x) => Math.asin(x) / DEG)); },
+  acosd: async (a) => { const A = m(a[0]); return ret(isComplex(A) || toArray(A).some((x) => Math.abs(x) > 1) ? cmap(A, (re, im) => { const [r, i] = cAcos(re, im); return [r / DEG, i / DEG]; }) : map(A, (x) => Math.acos(x) / DEG)); },
+  atand: ew((x) => Math.atan(x) / DEG),
   acotd: ew((x) => Math.atan(1 / x) / DEG),
   atan2d: async (a) => ret(elementwise(m(a[0]), m(a[1]), (y, x) => Math.atan2(y, x) / DEG)),
   deg2rad: ew((x) => x * DEG), rad2deg: ew((x) => x / DEG),
@@ -2802,8 +2826,8 @@ export const BUILTINS: Record<string, Builtin> = {
   xor: async (a) => { if (isGeom(a[0]) && isGeom(a[1])) { const A = polyVerts(a[0]), B = polyVerts(a[1]); const parts = [...polyClip(A, B, 'minus'), ...polyClip(B, A, 'minus')].map((b) => (loopSignedArea(b) < 0 ? b.slice().reverse() : b)); return ret(polyResultGeom(parts)); } return ret({ ...elementwise(m(a[0]), m(a[1]), (x, y) => ((x !== 0) !== (y !== 0) ? 1 : 0)), isBool: true }); },
   // ── descriptive statistics ──
   median: async (a) => ret(colReduce(m(a[0]), (c) => { const s = [...c].sort((x, y) => x - y); const n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; })),
-  std: async (a) => ret(colReduce(m(a[0]), (c) => Math.sqrt(variance(c)))),
-  var: async (a) => ret(colReduce(m(a[0]), variance)),
+  std: async (a) => { const w = a.length >= 2 && isMat(a[1]) && toArray(a[1]).length === 1 ? asScalar(a[1]) : 0; return ret(colReduce(m(a[0]), (c) => Math.sqrt(variance(c, w)))); },
+  var: async (a) => { const w = a.length >= 2 && isMat(a[1]) && toArray(a[1]).length === 1 ? asScalar(a[1]) : 0; return ret(colReduce(m(a[0]), (c) => variance(c, w))); },
   mode: async (a) => ret(colReduce(m(a[0]), modeOf)),
   iqr: async (a) => ret(colReduce(m(a[0]), (c) => { const s = [...c].sort((x, y) => x - y); return pctile(s, 75) - pctile(s, 25); })),
   bounds: async (a, n) => { const A = m(a[0]); const lo = colReduce(A, (c) => Math.min(...c)); const hi = colReduce(A, (c) => Math.max(...c)); return n >= 2 ? [lo, hi] : [lo]; },
@@ -2839,7 +2863,40 @@ export const BUILTINS: Record<string, Builtin> = {
   movmedian: async (a) => ret(movWindow(m(a[0]), Math.round(asScalar(a[1])), (w) => { const s = [...w].sort((x, y) => x - y); const n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; })),
   movmax: async (a) => ret(movWindow(m(a[0]), Math.round(asScalar(a[1])), (w) => Math.max(...w))),
   movmin: async (a) => ret(movWindow(m(a[0]), Math.round(asScalar(a[1])), (w) => Math.min(...w))),
-  accumarray: async (a) => { const subs = toArray(m(a[0])).map((x) => Math.round(x)); const vals = m(a[1]); const n = subs.length ? Math.max(...subs) : 0; const o = zeros(n, 1); for (let i = 0; i < subs.length; i++) o.data[subs[i] - 1] += vals.data.length === 1 ? vals.data[0] : vals.data[i]; return ret(o); },
+  accumarray: async (a, _n, env) => {
+    const subsM = m(a[0]);
+    const N = subsM.rows, K = subsM.cols || 1;
+    const sub = (i: number, k: number) => Math.round(subsM.data[i + k * N]); // column-major
+    const valsM = m(a[1]);
+    const valAt = (i: number) => (valsM.data.length === 1 ? valsM.data[0] : valsM.data[i]);
+    // output size: explicit sz arg, else max along each subscript column
+    let sz: number[];
+    if (a.length >= 3 && isMat(a[2]) && toArray(a[2]).length) sz = toArray(a[2]).map((x) => Math.round(x));
+    else { sz = []; for (let k = 0; k < K; k++) { let mx = 0; for (let i = 0; i < N; i++) mx = Math.max(mx, sub(i, k)); sz.push(mx); } }
+    if (sz.length < 2) sz = [sz[0] ?? 0, 1];          // K==1 -> column vector
+    const fun = a.length >= 4 && isHandle(a[3]) ? (a[3] as Handle) : null;
+    const fillval = a.length >= 5 && isMat(a[4]) && toArray(a[4]).length ? asScalar(a[4]) : 0;
+    const wantSparse = a.length >= 6 && truthy(a[5]);
+    const total = sz.reduce((x, y) => x * y, 1);
+    const lin = (i: number) => { let idx = 0, stride = 1; for (let k = 0; k < K; k++) { idx += (sub(i, k) - 1) * stride; stride *= sz[k]; } return idx; };
+    // group value indices by output linear index
+    const groups = new Map<number, number[]>();
+    for (let i = 0; i < N; i++) { const li = lin(i); const g = groups.get(li); if (g) g.push(i); else groups.set(li, [i]); }
+    // reduce each group to a scalar (default sum) — fun receives a column vector
+    const reduceGroup = async (idxs: number[]): Promise<number> => {
+      if (!fun) { let s = 0; for (const i of idxs) s += valAt(i); return s; }
+      const col = colVec(idxs.map(valAt));
+      return asScalar((await env.callHandle(fun, [col], 1))[0]);
+    };
+    if (wantSparse) {
+      const ii: number[] = [], jj: number[] = [], vs: number[] = [];
+      for (const [li, idxs] of groups) { const v = await reduceGroup(idxs); if (v !== 0) { ii.push((li % sz[0]) + 1); jj.push(Math.floor(li / sz[0]) + 1); vs.push(v); } }
+      return ret(sparseFromTriplets(sz[0], sz[1], ii, jj, vs));
+    }
+    const data = new Float64Array(total).fill(fillval);
+    for (const [li, idxs] of groups) data[li] = await reduceGroup(idxs);
+    return ret(sz.length > 2 ? makeND(sz, data) : { kind: 'num', rows: sz[0], cols: sz[1], data });
+  },
   // ── discrete maths / float limits ──
   perms: async (a) => {
     const v = toArray(m(a[0])); const acc: number[][] = [];
@@ -4747,7 +4804,7 @@ function colReduce(A: Mat, f: (col: number[]) => number): Mat {
   for (let c = 0; c < A.cols; c++) { const col: number[] = []; for (let r = 0; r < A.rows; r++) col.push(A.data[r + c * A.rows]); out.data[c] = f(col); }
   return out;
 }
-function variance(c: number[]): number { const n = c.length; if (n < 2) return 0; const mu = c.reduce((s, x) => s + x, 0) / n; return c.reduce((s, x) => s + (x - mu) ** 2, 0) / (n - 1); }
+function variance(c: number[], w = 0): number { const n = c.length; if (n < 1) return 0; const denom = w === 1 ? n : (n - 1 || 1); const mu = c.reduce((s, x) => s + x, 0) / n; return c.reduce((s, x) => s + (x - mu) ** 2, 0) / denom; }
 function modeOf(c: number[]): number { const m = new Map<number, number>(); for (const x of c) m.set(x, (m.get(x) ?? 0) + 1); let best = NaN, bc = -1; for (const [v, k] of [...m].sort((a, b) => a[0] - b[0])) if (k > bc) { bc = k; best = v; } return best; }
 /** MATLAB-style percentile (positions at (k-0.5)/n, linear interpolation). */
 function pctile(sorted: number[], p: number): number { const n = sorted.length; if (n === 0) return NaN; if (n === 1) return sorted[0]; const pos = (p / 100) * n - 0.5; if (pos <= 0) return sorted[0]; if (pos >= n - 1) return sorted[n - 1]; const lo = Math.floor(pos), fr = pos - lo; return sorted[lo] * (1 - fr) + sorted[lo + 1] * fr; }
