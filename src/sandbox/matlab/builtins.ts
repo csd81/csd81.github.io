@@ -573,7 +573,11 @@ export const BUILTINS: Record<string, Builtin> = {
   allfinite: async (a) => ret(bool(toArray(m(a[0])).every(Number.isFinite))),
   anynan: async (a) => ret(bool(toArray(m(a[0])).some(Number.isNaN))),
   // number theory
-  gcd: async (a) => ret(elementwise(m(a[0]), m(a[1]), gcd2)),
+  gcd: async (a, n) => {
+    const A = m(a[0]), B = m(a[1]);
+    if (n >= 2) { const G = elementwise(A, B, (x, y) => extgcd(x, y)[0]); const U = elementwise(A, B, (x, y) => extgcd(x, y)[1]); const V = elementwise(A, B, (x, y) => extgcd(x, y)[2]); return [A.itype ? applyClass(G, A.itype) : G, U, V]; }
+    const G = elementwise(A, B, gcd2); return ret(A.itype ? applyClass(G, A.itype) : G);
+  },
   lcm: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, y) => (x === 0 || y === 0 ? 0 : Math.abs(x * y) / gcd2(x, y)))),
   factorial: async (a) => { const A = m(a[0]); const r = map(A, (x) => factorialN(Math.round(x))); return ret(A.itype ? applyClass(r, A.itype) : r); },
   nchoosek: async (a) => {
@@ -1419,7 +1423,15 @@ export const BUILTINS: Record<string, Builtin> = {
   isapprox: async (a) => { const tol = a.length >= 3 ? asScalar(a[2]) : 1e-6; const r = elementwise(m(a[0]), m(a[1]), (x, y) => (Math.abs(x - y) <= tol + tol * Math.max(Math.abs(x), Math.abs(y)) ? 1 : 0)); return ret({ ...r, isBool: true }); },
   erfinv: async (a) => ret(map(m(a[0]), erfinvFn)),
   // ── set operations ──
-  intersect: async (a) => { if (isGeom(a[0]) && isGeom(a[1])) return ret(polyResultGeom(polyClip(polyVerts(a[0]), polyVerts(a[1]), 'and'))); const A = m(a[0]); const sb = new Set(toArray(m(a[1]))); const r = setUniq(toArray(A).filter((x) => sb.has(x))); return ret(A.rows === 1 ? rowVec(r) : colVec(r)); },
+  intersect: async (a, n) => {
+    if (isGeom(a[0]) && isGeom(a[1])) return ret(polyResultGeom(polyClip(polyVerts(a[0]), polyVerts(a[1]), 'and')));
+    const A = m(a[0]), B = m(a[1]); const av = toArray(A), bv = toArray(B);
+    const bset = new Set(bv); const c = setUniq(av.filter((x) => bset.has(x)));   // sorted unique common values
+    const C = A.rows === 1 && A.cols !== 1 ? rowVec(c) : colVec(c);
+    if (n < 2) return ret(C);
+    const ia = c.map((v) => av.indexOf(v) + 1); const ib = c.map((v) => bv.indexOf(v) + 1);   // first occurrence in each
+    return [C, colVec(ia), colVec(ib)];
+  },
   union: async (a) => { if (isGeom(a[0]) && isGeom(a[1])) return ret(polyResultGeom(polyClip(polyVerts(a[0]), polyVerts(a[1]), 'or'))); const A = m(a[0]); const r = setUniq([...toArray(A), ...toArray(m(a[1]))]); return ret(A.rows === 1 ? rowVec(r) : colVec(r)); },
   subtract: async (a) => ret(polyResultGeom(polyClip(polyVerts(gGeom(a[0])), polyVerts(gGeom(a[1])), 'minus'))),
   polybuffer: async (a) => {
@@ -1509,7 +1521,15 @@ export const BUILTINS: Record<string, Builtin> = {
   hankel: async (a) => { const c = toArray(m(a[0])); const r = a.length >= 2 ? toArray(m(a[1])) : c.map((_, i) => (i === 0 ? c[c.length - 1] : 0)); const nr = c.length, nc = r.length; const o = zeros(nr, nc); for (let i = 0; i < nr; i++) for (let j = 0; j < nc; j++) { const k = i + j; o.data[i + j * nr] = k < nr ? c[k] : (k - nr + 1 < nc ? r[k - nr + 1] : 0); } return ret(o); },
   compan: async (a) => { const p = toArray(m(a[0])); const n = p.length - 1; if (n < 1) return ret(zeros(0, 0)); const o = zeros(n, n); for (let j = 0; j < n; j++) o.data[0 + j * n] = -p[j + 1] / p[0]; for (let i = 1; i < n; i++) o.data[i + (i - 1) * n] = 1; return ret(o); },
   sub2ind: async (a) => { const sz = toArray(m(a[0])); const rows = sz[0]; const R = m(a[1]), C = a.length >= 3 ? m(a[2]) : null; return ret(C ? elementwise(R, C, (r, c) => (c - 1) * rows + r) : R); },
-  ind2sub: async (a, n) => { const sz = toArray(m(a[0])); const rows = sz[0]; const I = m(a[1]); const rr = map(I, (k) => ((k - 1) % rows) + 1); const cc = map(I, (k) => Math.floor((k - 1) / rows) + 1); return n >= 2 ? [rr, cc] : [rr]; },
+  ind2sub: async (a, n) => {
+    const sz = toArray(m(a[0])); const I = m(a[1]); const nOut = Math.max(1, n);
+    // dims for the requested outputs; the last output absorbs any remaining dimensions
+    const dims = sz.slice(0, nOut); while (dims.length < nOut) dims.push(1);
+    if (nOut < sz.length) dims[nOut - 1] = sz.slice(nOut - 1).reduce((p, x) => p * x, 1);
+    const outs = dims.map(() => { const o = zeros(I.rows, I.cols); o.nd = I.nd ? I.nd.slice() : undefined; return o; });
+    for (let idx = 0; idx < I.data.length; idx++) { let rem = Math.round(I.data[idx]) - 1; for (let d = 0; d < dims.length; d++) { outs[d].data[idx] = (rem % dims[d]) + 1; rem = Math.floor(rem / dims[d]); } }
+    return outs;
+  },
   rats: async (a) => { const [n2, d] = ratApprox(asScalar(a[0])); return ret(str(d === 1 ? `${n2}` : `${n2}/${d}`)); },
   acscd: ewc((x) => Math.asin(1 / x) / DEG, degOf(cAcsc), (x) => Math.abs(x) < 1), asecd: ewc((x) => Math.acos(1 / x) / DEG, degOf(cAsec), (x) => Math.abs(x) < 1),
   cummax: async (a) => ret(cumulative(a, -Infinity, Math.max)),
@@ -1552,7 +1572,7 @@ export const BUILTINS: Record<string, Builtin> = {
   // ── special functions ──
   erfcx: async (a) => ret(map(m(a[0]), erfcxFn)),
   erfcinv: async (a) => ret(map(m(a[0]), (y) => erfinvFn(1 - y))),
-  gammainc: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, p) => gammainc(x, p))),
+  gammainc: async (a) => { const upper = a.length >= 3 && asString(a[2]).toLowerCase() === 'upper'; return ret(elementwise(m(a[0]), m(a[1]), (x, p) => (upper ? 1 - gammainc(x, p) : gammainc(x, p)))); },
   betainc: async (a) => {
     // Vectorize over all three arguments (scalars broadcast); optional 'upper'/'lower' tail.
     const tail = a.length >= 4 && (isStr(a[3]) || (isMat(a[3]) && (a[3] as Mat).isChar)) ? asString(a[3]).toLowerCase() : 'lower';
@@ -1717,7 +1737,13 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(scalar(conv(asString(a[0]))));
   },
   dec2hex: async (a) => { const vals = toArray(m(a[0])).map((x) => Math.round(x)); const minW = a.length >= 2 ? Math.round(asScalar(a[1])) : 0; return ret(charRowsZ(vals.map((d) => baseStr(d, 16)), minW)); },
-  hex2dec: async (a) => ret(scalar(parseInt(asString(a[0]).replace(/\s/g, ''), 16))),
+  hex2dec: async (a) => {
+    const conv = (s: string) => parseInt(s.replace(/\s/g, ''), 16);
+    if (isStr(a[0])) { const s = a[0] as Str; return ret(mat(s.rows, s.cols, Float64Array.from(s.items, conv))); }
+    const M = m(a[0]);
+    if (M.isChar && M.rows > 1) { const out = new Float64Array(M.rows); for (let r = 0; r < M.rows; r++) { let str = ''; for (let c = 0; c < M.cols; c++) str += String.fromCharCode(M.data[r + c * M.rows]); out[r] = conv(str); } return ret(mat(M.rows, 1, out)); }
+    return ret(scalar(conv(asString(a[0]))));
+  },
   dec2base: async (a) => { const vals = toArray(m(a[0])).map((x) => Math.round(x)); const b = Math.round(asScalar(a[1])); const minW = a.length >= 3 ? Math.round(asScalar(a[2])) : 0; return ret(charRowsZ(vals.map((d) => baseStr(d, b)), minW)); },
   base2dec: async (a) => {
     const base = Math.round(asScalar(a[1]));
@@ -1819,7 +1845,12 @@ export const BUILTINS: Record<string, Builtin> = {
     const fields = new Map(S.fields); fields.set(asString(a[1]), [a[2]]);
     return ret({ kind: 'struct', rows: S.rows, cols: S.cols, fields } as StructV);
   },
-  getfield: async (a) => { const S = a[0]; if (!isStruct(S)) throw new MatError('getfield: first argument must be a struct'); const nm = asString(a[1]); const v = S.fields.get(nm); if (!v) throw new MatError(`getfield: field '${nm}' not found`); return ret(v[0] ?? zeros(0, 0)); },
+  getfield: async (a) => {
+    // getfield(S,'f1','f2',...) traverses nested struct fields.
+    let cur: Value = a[0];
+    for (let i = 1; i < a.length; i++) { if (!isStruct(cur)) throw new MatError('getfield: first argument must be a struct'); const nm = asString(a[i]); const v = cur.fields.get(nm); if (!v) throw new MatError(`getfield: field '${nm}' not found`); cur = v[0] ?? zeros(0, 0); }
+    return ret(cur);
+  },
   orderfields: async (a) => { const S = a[0]; if (!isStruct(S)) throw new MatError('orderfields: argument must be a struct'); const fields = new Map<string, Value[]>(); for (const k of [...S.fields.keys()].sort()) fields.set(k, S.fields.get(k)!); return ret({ kind: 'struct', rows: S.rows, cols: S.cols, fields } as StructV); },
   struct2cell: async (a) => { const S = a[0]; if (!isStruct(S)) throw new MatError('struct2cell: argument must be a struct'); const vals = [...S.fields.values()].map((v) => v[0] ?? zeros(0, 0)); return ret(makeCell(vals.length, 1, vals)); },
   cell2struct: async (a) => {
@@ -2028,8 +2059,8 @@ export const BUILTINS: Record<string, Builtin> = {
   pagelsqminnorm: async (a) => ret(pageBinary(m(a[0]), m(a[1]), (X, Y) => matmul(pinvFn(X), Y))),
   linkaxes: async () => [], alpha: async () => [], alphamap: async () => [],
   // string edits
-  insertAfter: async (a) => ret(mapStrArr(a[0], (x) => { const p = asString(a[1]); const i = x.indexOf(p); return i < 0 ? x : x.slice(0, i + p.length) + asString(a[2]) + x.slice(i + p.length); })),
-  insertBefore: async (a) => ret(mapStrArr(a[0], (x) => { const i = x.indexOf(asString(a[1])); return i < 0 ? x : x.slice(0, i) + asString(a[2]) + x.slice(i); })),
+  insertAfter: async (a) => { const p = asString(a[1]), ins = asString(a[2]); return ret(mapStrArr(a[0], (x) => (p === '' ? x : x.split(p).join(p + ins)))); },
+  insertBefore: async (a) => { const p = asString(a[1]), ins = asString(a[2]); return ret(mapStrArr(a[0], (x) => (p === '' ? x : x.split(p).join(ins + p)))); },
   eraseBetween: async (a) => {
     // Numeric positions eraseBetween(str,startPos,endPos): delete characters startPos..endPos inclusive.
     if (isMat(a[1]) && !(a[1] as Mat).isChar && isMat(a[2]) && !(a[2] as Mat).isChar) {
@@ -2128,7 +2159,17 @@ export const BUILTINS: Record<string, Builtin> = {
   beep: async () => [],
   inputname: async () => ret(str('')),
   isvarname: async (a) => { const s = isMat(a[0]) && (a[0] as Mat).isChar ? asString(a[0]) : ''; const KW = new Set(['for', 'while', 'if', 'else', 'elseif', 'end', 'switch', 'case', 'otherwise', 'function', 'return', 'break', 'continue', 'global', 'persistent', 'try', 'catch']); return ret(bool(/^[A-Za-z][A-Za-z0-9_]*$/.test(s) && s.length <= 63 && !KW.has(s))); },
-  genvarname: async (a) => { let s = asString(a[0]).replace(/[^A-Za-z0-9_]/g, '_'); if (!/^[A-Za-z]/.test(s)) s = 'x' + s; return ret(str(s || 'x')); },
+  genvarname: async (a) => {
+    const clean = (s: string) => { let r = s.replace(/[^A-Za-z0-9_]/g, '_'); if (!/^[A-Za-z]/.test(r)) r = 'x' + r; return r || 'x'; };
+    // cell/string array → valid AND unique names (appending 1, 2, ... to duplicates)
+    if (isCell(a[0]) || (isStr(a[0]) && (a[0] as Str).items.length > 1)) {
+      const items = isCell(a[0]) ? (a[0] as Cell).items.map((it) => asString(it)) : (a[0] as Str).items;
+      const seen = new Set<string>(); const out = items.map((s) => { const base = clean(s); let nm = base, k = 0; while (seen.has(nm)) { k++; nm = base + k; } seen.add(nm); return nm; });
+      const rows = isCell(a[0]) ? (a[0] as Cell).rows : (a[0] as Str).rows;
+      return ret(makeCell(rows, out.length / (rows || 1), out.map((s) => str(s))));
+    }
+    return ret(str(clean(asString(a[0]))));
+  },
   colon: async (a) => { const from = asScalar(a[0]); const step = a.length >= 3 ? asScalar(a[1]) : 1; const to = a.length >= 3 ? asScalar(a[2]) : asScalar(a[1]); const out: number[] = []; if (step > 0) for (let v = from; v <= to + 1e-12; v += step) out.push(v); else if (step < 0) for (let v = from; v >= to - 1e-12; v += step) out.push(v); return ret(rowVec(out)); },
   flipdim: async (a) => { const A = m(a[0]); const dim = a.length >= 2 ? Math.round(asScalar(a[1])) : 1; const o = zeros(A.rows, A.cols); for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) o.data[r + c * A.rows] = dim === 1 ? A.data[(A.rows - 1 - r) + c * A.rows] : A.data[r + (A.cols - 1 - c) * A.rows]; if (A.isChar) o.isChar = true; return ret(o); },
   condeig: async (a) => {
@@ -2287,8 +2328,14 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(m(a[0]).cols === 1 ? colVec(g) : rowVec(g));
   },
   integral: async (a, _n, env) => {
-    const f = handle(a[0], 'integral'); const lo = asScalar(a[1]), hi = asScalar(a[2]);
-    const F = async (x: number) => callScalar(env, f, x);
+    const f = handle(a[0], 'integral'); let lo = asScalar(a[1]), hi = asScalar(a[2]);
+    const ff = (x: number) => callScalar(env, f, x);
+    // Map infinite limits to a finite interval by substitution (the integrand must vanish at infinity).
+    let G: (t: number) => Promise<number> = ff;
+    if (!isFinite(lo) && !isFinite(hi)) { G = async (t) => { const d = 1 - t * t; const v = await ff(t / d); return v * (1 + t * t) / (d * d); }; lo = -1; hi = 1; }
+    else if (!isFinite(hi)) { const a0 = lo; G = async (t) => { const v = await ff(a0 + t / (1 - t)); return v / ((1 - t) * (1 - t)); }; lo = 0; hi = 1; }
+    else if (!isFinite(lo)) { const b0 = hi; G = async (t) => { const v = await ff(b0 - t / (1 - t)); return v / ((1 - t) * (1 - t)); }; lo = 0; hi = 1; }
+    const F = async (x: number) => { const v = await G(x); return Number.isFinite(v) ? v : 0; };   // integrand vanishes at the transformed endpoints
     const simpson = async (x0: number, x2: number, f0: number, f1: number, f2: number, whole: number, depth: number): Promise<number> => {
       const x1 = (x0 + x2) / 2; const xa = (x0 + x1) / 2, xb = (x1 + x2) / 2;
       const fa = await F(xa), fb = await F(xb);
@@ -2300,16 +2347,18 @@ export const BUILTINS: Record<string, Builtin> = {
     const whole = (hi - lo) / 6 * (f0 + 4 * fm + f2);
     return ret(scalar(await simpson(lo, hi, f0, fm, f2, whole, 50)));
   },
-  fzero: async (a, _n, env) => {
+  fzero: async (a, n, env) => {
     const f = handle(a[0], 'fzero'); const F = (x: number) => callScalar(env, f, x);
+    // [x,fval,exitflag,output] = fzero(...): build the requested outputs from the root.
+    const result = async (root: number) => { if (n < 2) return [scalar(root)]; const fv = await F(root); const out = mkStruct([['intervaliterations', scalar(0)], ['iterations', scalar(0)], ['funcCount', scalar(0)], ['algorithm', str('bisection, interpolation')], ['message', str('Zero found in the interval')]]); return [scalar(root), scalar(fv), scalar(1), out]; };
     let alo: number, ahi: number;
     const x0 = m(a[1]);
     if (numel(x0) >= 2) { alo = x0.data[0]; ahi = x0.data[1]; }
-    else { const x = x0.data[0]; const f0 = await F(x); if (f0 === 0) return ret(scalar(x)); let dx = Math.abs(x) * 0.02 || 0.02; alo = x; ahi = x; let found = false; for (let i = 0; i < 60; i++) { dx *= 1.6; if (await F(x - dx) * f0 < 0) { alo = x - dx; ahi = x; found = true; break; } if (await F(x + dx) * f0 < 0) { alo = x; ahi = x + dx; found = true; break; } } if (!found) throw new MatError('fzero: could not bracket a sign change'); }
+    else { const x = x0.data[0]; const f0 = await F(x); if (f0 === 0) return result(x); let dx = Math.abs(x) * 0.02 || 0.02; alo = x; ahi = x; let found = false; for (let i = 0; i < 60; i++) { dx *= 1.6; if (await F(x - dx) * f0 < 0) { alo = x - dx; ahi = x; found = true; break; } if (await F(x + dx) * f0 < 0) { alo = x; ahi = x + dx; found = true; break; } } if (!found) throw new MatError('fzero: could not bracket a sign change'); }
     let flo = await F(alo), fhi = await F(ahi);
     if (flo * fhi > 0) throw new MatError('fzero: function values at interval endpoints must differ in sign');
-    for (let i = 0; i < 200; i++) { const mid = (alo + ahi) / 2; const fm = await F(mid); if (Math.abs(fm) < 1e-14 || (ahi - alo) / 2 < 1e-14) return ret(scalar(mid)); if (flo * fm < 0) { ahi = mid; fhi = fm; } else { alo = mid; flo = fm; } }
-    return ret(scalar((alo + ahi) / 2));
+    for (let i = 0; i < 200; i++) { const mid = (alo + ahi) / 2; const fm = await F(mid); if (Math.abs(fm) < 1e-14 || (ahi - alo) / 2 < 1e-14) return result(mid); if (flo * fm < 0) { ahi = mid; fhi = fm; } else { alo = mid; flo = fm; } }
+    return result((alo + ahi) / 2);
   },
   fminbnd: async (a, n, env) => {
     const f = handle(a[0], 'fminbnd'); const F = (x: number) => callScalar(env, f, x);
@@ -2597,7 +2646,13 @@ export const BUILTINS: Record<string, Builtin> = {
   istabular: async (a) => ret(bool(isTable(a[0]))),
   height: async (a) => ret(scalar(isTable(a[0]) ? a[0].nrows : m(a[0]).rows)),
   width: async (a) => ret(scalar(isTable(a[0]) ? a[0].vars.length : m(a[0]).cols)),
-  head: async (a) => { const t = gTbl(a[0]); const k = Math.min(t.nrows, a.length >= 2 ? Math.round(asScalar(a[1])) : 8); return ret(tblSlice(t, Array.from({ length: k }, (_, i) => i))); },
+  head: async (a) => {
+    const k0 = a.length >= 2 ? Math.round(asScalar(a[1])) : 8;
+    if (isTable(a[0])) { const t = a[0] as Table; const k = Math.min(t.nrows, k0); return ret(tblSlice(t, Array.from({ length: k }, (_, i) => i))); }
+    const M = m(a[0]); const k = Math.min(M.rows, k0); const o = zeros(k, M.cols); if (M.idata) o.idata = new Float64Array(k * M.cols);
+    for (let c = 0; c < M.cols; c++) for (let r = 0; r < k; r++) { o.data[r + c * k] = M.data[r + c * M.rows]; if (M.idata) o.idata![r + c * k] = M.idata[r + c * M.rows]; }
+    o.isChar = M.isChar; o.isBool = M.isBool; o.itype = M.itype; return ret(o);
+  },
   tail: async (a) => { const t = gTbl(a[0]); const k = Math.min(t.nrows, a.length >= 2 ? Math.round(asScalar(a[1])) : 8); return ret(tblSlice(t, Array.from({ length: k }, (_, i) => t.nrows - k + i))); },
   summary: async (a, _n, env) => { const t = gTbl(a[0]); let s = `Table with ${t.nrows} rows and ${t.vars.length} variables:\n`; for (let j = 0; j < t.vars.length; j++) { const c = t.cols[j]; if (isMat(c) && !c.isChar) { const v = toArray(c); s += `  ${t.vars[j]}: min ${trimNum(Math.min(...v))}, median ${trimNum(median1(v))}, max ${trimNum(Math.max(...v))}, mean ${trimNum(v.reduce((x, y) => x + y, 0) / v.length)}\n`; } else s += `  ${t.vars[j]}: ${c.kind}\n`; } env.output(s); return []; },
   // ── grouping ──
@@ -2616,7 +2671,14 @@ export const BUILTINS: Record<string, Builtin> = {
     for (let g = 1; g <= ng; g++) { const rows: number[] = []; for (let r = 0; r < G.length; r++) if (G[r] === g) rows.push(r); const args = datas.map((d) => sliceRows(d, rows)); const r = await env.callHandle(fn, args, 1); results.push(m(r[0])); }
     return [results.length ? vertcat(results) : zeros(0, 1)];
   },
-  groupcounts: async (a) => {
+  groupcounts: async (a, n) => {
+    // Array input: return the counts vector (and the group values as a 2nd output).
+    if (!isTable(a[0])) {
+      const col = colPrim(a[0]); const { G, tuples } = makeGroups([col], col.length);
+      const counts = new Array(tuples.length).fill(0); for (const g of G) counts[g - 1]++;
+      const groups = typeof tuples[0]?.[0] === 'string' ? makeStrArr(tuples.length, 1, tuples.map((tp) => tp[0] as string)) : colVec(tuples.map((tp) => tp[0] as number));
+      return n >= 2 ? [colVec(counts), groups] : [colVec(counts)];
+    }
     const gvars: Value[] = isTable(a[0]) ? (() => { const t = a[0] as Table; const names = a.length >= 2 ? (strList(a[1])) : t.vars; return names.map((nm) => t.cols[t.vars.indexOf(nm)]); })() : [a[0]];
     const cols = gvars.map(colPrim); const nrows = cols[0]?.length ?? 0; const { G, tuples } = makeGroups(cols, nrows);
     const counts = new Array(tuples.length).fill(0); for (const g of G) counts[g - 1]++;
@@ -3045,7 +3107,19 @@ export const BUILTINS: Record<string, Builtin> = {
   // triangulation methods
   freeBoundary: async (a) => { const g = gGeom(a[0]); const fb = freeBoundaryOf(g); const out = zeros(fb.length, g.dim); fb.forEach((e, i) => e.forEach((v, j) => { out.data[i + j * fb.length] = v + 1; })); return ret(out); },
   edges: async (a) => { const g = gGeom(a[0]); const set = new Map<string, [number, number]>(); for (const t of g.conn ?? []) for (let i = 0; i < t.length; i++) for (let j = i + 1; j < t.length; j++) { const u = Math.min(t[i], t[j]), v = Math.max(t[i], t[j]); set.set(`${u}_${v}`, [u, v]); } const E = [...set.values()]; const out = zeros(E.length, 2); E.forEach((e, i) => { out.data[i] = e[0] + 1; out.data[i + E.length] = e[1] + 1; }); return ret(out); },
-  incenter: async (a) => ret(perSimplex(gGeom(a[0]), (pts) => pts[0].map((_, j) => pts.reduce((s, p) => s + p[j], 0) / pts.length))),
+  incenter: async (a) => ret(perSimplex(gGeom(a[0]), (pts) => {
+    const dist = (p: number[], q: number[]) => Math.hypot(...p.map((x, j) => x - q[j]));
+    if (pts.length === 3) {   // triangle: weight each vertex by the length of the opposite side
+      const w = [dist(pts[1], pts[2]), dist(pts[2], pts[0]), dist(pts[0], pts[1])]; const sw = w[0] + w[1] + w[2] || 1;
+      return pts[0].map((_, j) => (w[0] * pts[0][j] + w[1] * pts[1][j] + w[2] * pts[2][j]) / sw);
+    }
+    if (pts.length === 4) {   // tetrahedron: weight each vertex by the area of the opposite face
+      const triArea = (A: number[], B: number[], C: number[]) => { const u = B.map((x, j) => x - A[j]), v = C.map((x, j) => x - A[j]); return 0.5 * Math.hypot(u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]); };
+      const w = [triArea(pts[1], pts[2], pts[3]), triArea(pts[0], pts[2], pts[3]), triArea(pts[0], pts[1], pts[3]), triArea(pts[0], pts[1], pts[2])]; const sw = w[0] + w[1] + w[2] + w[3] || 1;
+      return pts[0].map((_, j) => (w[0] * pts[0][j] + w[1] * pts[1][j] + w[2] * pts[2][j] + w[3] * pts[3][j]) / sw);
+    }
+    return pts[0].map((_, j) => pts.reduce((s, p) => s + p[j], 0) / pts.length);
+  })),
   circumcenter: async (a) => { if (isGeom(a[0])) return ret(perSimplex(a[0], (pts) => pts.length === 3 && pts[0].length === 2 ? circumcenter(pts[0][0], pts[0][1], pts[1][0], pts[1][1], pts[2][0], pts[2][1]) : circumcenterND(pts))); const [ax, ay, bx, by, cx, cy] = [0, 1, 2, 3, 4, 5].map((i) => asScalar(a[i])); const cc = circumcenter(ax, ay, bx, by, cx, cy); return ret(rowVec(cc)); },
   faceNormal: async (a) => { const g = gGeom(a[0]); return ret(perSimplex(g, (pts) => { const u = pts[1].map((v, j) => v - pts[0][j]), v2 = pts[2].map((v, j) => v - pts[0][j]); const n = [u[1] * v2[2] - u[2] * v2[1], u[2] * v2[0] - u[0] * v2[2], u[0] * v2[1] - u[1] * v2[0]]; const L = Math.hypot(...n) || 1; return n.map((x) => x / L); })); },
   nearestNeighbor: async (a) => { const g = gGeom(a[0]); const Q = matRows(m(a[1])); const out = Q.map((q) => { let best = 0, bd = Infinity; g.points.forEach((p, i) => { const d = p.reduce((s, x, j) => s + (x - q[j]) ** 2, 0); if (d < bd) { bd = d; best = i; } }); return best + 1; }); return ret(colVec(out)); },
@@ -3097,10 +3171,17 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret({ kind: 'handle', name: 'scatteredInterpolant', call } as Handle);
   },
   griddedInterpolant: async (a, _n, env) => {
-    const call = async (args: Value[]): Promise<Value[]> => {
-      if (a.length >= 3) return BUILTINS.interp2([a[0], a[1], a[2], ...args], 1, env);
-      return BUILTINS.interp1([Array.from({ length: numel(m(a[0])) }, (_, i) => i + 1) as unknown as Value, a[0], ...args].map((x, i) => (i === 0 ? rowVec(toArray(m(a[0])).map((_, k) => k + 1)) : x)), 1, env);
-    };
+    const nums = a.filter((x) => isMat(x) && !(x as Mat).isChar);
+    const methodArg = a.find((x) => isStr(x) || (isMat(x) && (x as Mat).isChar));
+    // 2-D: griddedInterpolant(X,Y,V) where V is a matrix → interp2
+    if (nums.length >= 3 && isMat(nums[2]) && (nums[2] as Mat).rows > 1 && (nums[2] as Mat).cols > 1) {
+      const call = async (args: Value[]): Promise<Value[]> => BUILTINS.interp2([nums[0], nums[1], nums[2], ...args], 1, env);
+      return ret({ kind: 'handle', name: 'griddedInterpolant', call } as Handle);
+    }
+    // 1-D: griddedInterpolant(x,v) or griddedInterpolant(v) (grid defaults to 1:n)
+    let x: Value, v: Value;
+    if (nums.length >= 2) { x = nums[0]; v = nums[1]; } else { v = nums[0]; x = rowVec(toArray(m(v)).map((_, k) => k + 1)); }
+    const call = async (args: Value[]): Promise<Value[]> => BUILTINS.interp1(methodArg ? [x, v, ...args, methodArg] : [x, v, ...args], 1, env);
     return ret({ kind: 'handle', name: 'griddedInterpolant', call } as Handle);
   },
   // triangulation incidence / normals
@@ -3222,9 +3303,12 @@ export const BUILTINS: Record<string, Builtin> = {
     //   compact: interpn(V, q1…qd)        → d+1 args  (grids default to 1:n_k)
     //   gridded: interpn(X1…Xd, V, q1…qd) → 2d+1 args
     const L = a.length;
+    const isVec = (v: Value) => isMat(v) && (m(v).rows === 1 || m(v).cols === 1);
     const layout: Record<number, [number, boolean]> = { 2: [1, false], 3: [2, false], 4: [3, false], 5: [2, true], 7: [3, true] };
-    if (!layout[L]) throw new MatError('interpn: only 1-D, 2-D and 3-D gridded interpolation are supported');
-    const [D, gridded] = layout[L];
+    let D: number, gridded: boolean;
+    // interpn(x, v, xq): 1-D gridded (3 args, all vectors) — 2-D compact needs a matrix V
+    if (L === 3 && isVec(a[0]) && isVec(a[1])) { D = 1; gridded = true; }
+    else { if (!layout[L]) throw new MatError('interpn: only 1-D, 2-D and 3-D gridded interpolation are supported'); [D, gridded] = layout[L]; }
     const V = m(a[gridded ? D : 0]);
     // For 1-D, a row/col vector reports ndSize [1,n] or [n,1]; use its length as the axis.
     const ed = D === 1 ? [numel(V)] : ndSize(V);
@@ -3293,9 +3377,17 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(m(a[0]).cols === 1 ? colVec(res) : rowVec(res));
   },
   integral2: async (a, _n, env) => {
-    const f = handle(a[0], 'integral2'); const ax = asScalar(a[1]), bx = asScalar(a[2]), ay = asScalar(a[3]), by = asScalar(a[4]);
-    const F = async (x: number, y: number) => { const r = await env.callHandle(f, [scalar(x), scalar(y)], 1); return isMat(r[0]) ? asScalar(r[0]) : NaN; };
-    return ret(scalar(await simpson2(F, ax, bx, ay, by, 48)));
+    const f = handle(a[0], 'integral2'); const ax = asScalar(a[1]), bx = asScalar(a[2]);
+    const fin = (r: number) => (Number.isFinite(r) ? r : 0);   // ignore measure-zero singular points
+    const F = async (x: number, y: number) => { const r = await env.callHandle(f, [scalar(x), scalar(y)], 1); return fin(isMat(r[0]) ? asScalar(r[0]) : NaN); };
+    // y-limits may be function handles of x (non-rectangular region): map y to [0,1] per x.
+    if (isHandle(a[3]) || isHandle(a[4])) {
+      const ayF = async (x: number) => (isHandle(a[3]) ? asScalar((await env.callHandle(a[3] as Handle, [scalar(x)], 1))[0]) : asScalar(a[3]));
+      const byF = async (x: number) => (isHandle(a[4]) ? asScalar((await env.callHandle(a[4] as Handle, [scalar(x)], 1))[0]) : asScalar(a[4]));
+      const G = async (x: number, s: number) => { const lo = await ayF(x), hi = await byF(x); const v = await F(x, lo + s * (hi - lo)); return fin(v * (hi - lo)); };
+      return ret(scalar(await simpson2(G, ax, bx, 0, 1, 48)));
+    }
+    return ret(scalar(await simpson2(F, ax, bx, asScalar(a[3]), asScalar(a[4]), 48)));
   },
   integral3: async (a, _n, env) => {
     const f = handle(a[0], 'integral3'); const v = a.slice(1).map((x) => asScalar(x));
@@ -3535,7 +3627,14 @@ export const BUILTINS: Record<string, Builtin> = {
     const rows: string[] = []; for (let r = 0; r < A.rows; r++) { const cells: string[] = []; for (let c = 0; c < A.cols; c++) cells.push(one(A.data[r + c * A.rows])); rows.push(cells.join('  ')); }
     return ret(str(rows.join('\n')));
   },
-  int2str: async (a) => ret(str(String(Math.round(asScalar(a[0]))))),
+  int2str: async (a) => {
+    const M = m(a[0]);
+    if (numel(M) === 1) return ret(str(String(Math.round(M.data[0]))));
+    // matrix: round each element and right-align the columns into a char matrix
+    const rows = M.rows, cols = M.cols; const cells: string[][] = []; let w = 0;
+    for (let r = 0; r < rows; r++) { const row: string[] = []; for (let c = 0; c < cols; c++) { const s = String(Math.round(M.data[r + c * rows])); row.push(s); w = Math.max(w, s.length); } cells.push(row); }
+    return ret(charMatRows(cells.map((row) => row.map((s) => s.padStart(w)).join('  '))));
+  },
   mat2str: async (a) => ret(str(matToStr(m(a[0])))),
   str2num: async (a, _n, env) => ret(await env.evalInput(asString(a[0]))),
   str2double: async (a) => ret(scalar(parseFloat(asString(a[0])))),
@@ -3949,7 +4048,11 @@ export const BUILTINS: Record<string, Builtin> = {
   rgb2gray: async (a) => { const M = m(a[0]); const o = zeros(M.rows, M.cols); for (let r = 0; r < M.rows; r++) { const g = 0.2989 * M.data[r] + 0.587 * M.data[r + M.rows] + 0.114 * M.data[r + 2 * M.rows]; o.data[r] = g; o.data[r + M.rows] = g; o.data[r + 2 * M.rows] = g; } return ret(o); },
   cmap2gray: async (a, n, env) => BUILTINS.rgb2gray(a, n, env),
   im2gray: async (a, n, env) => BUILTINS.rgb2gray(a, n, env),
-  hex2rgb: async (a) => { const h = asString(a[0]).replace(/^#/, ''); return ret(rowVec([parseInt(h.slice(0, 2), 16) / 255, parseInt(h.slice(2, 4), 16) / 255, parseInt(h.slice(4, 6), 16) / 255])); },
+  hex2rgb: async (a) => {
+    const conv = (raw: string) => { let h = raw.replace(/^#/, ''); if (h.length === 3) h = h.split('').map((c) => c + c).join(''); return [parseInt(h.slice(0, 2), 16) / 255, parseInt(h.slice(2, 4), 16) / 255, parseInt(h.slice(4, 6), 16) / 255]; };
+    if (isStr(a[0]) && (a[0] as Str).items.length > 1) { const items = (a[0] as Str).items; const o = zeros(items.length, 3); items.forEach((s, r) => { const c = conv(s); for (let j = 0; j < 3; j++) o.data[r + j * items.length] = c[j]; }); return ret(o); }
+    return ret(rowVec(conv(asString(a[0]))));
+  },
   rgb2hex: async (a) => {
     const M = m(a[0]); const rows = M.rows;
     const hx = (r: number) => '#' + [0, 1, 2].map((c) => Math.round(Math.max(0, Math.min(1, M.data[r + c * rows])) * 255).toString(16).padStart(2, '0')).join('').toUpperCase();
@@ -4302,6 +4405,14 @@ function dstr(n: number, fmt: string | null): string {
 // ── Math helpers for the elementary-math builtins ─────────────────────────
 const DEG = Math.PI / 180;
 function gcd2(a: number, b: number): number { a = Math.abs(Math.round(a)); b = Math.abs(Math.round(b)); while (b) { [a, b] = [b, a % b]; } return a; }
+/** Extended Euclidean: returns [g,u,v] with g = u*a + v*b and g >= 0 (Bezout coefficients). */
+function extgcd(a: number, b: number): [number, number, number] {
+  a = Math.round(a); b = Math.round(b);
+  let oldR = a, r = b, oldS = 1, s = 0, oldT = 0, t = 1;
+  while (r !== 0) { const q = Math.floor(oldR / r); [oldR, r] = [r, oldR - q * r]; [oldS, s] = [s, oldS - q * s]; [oldT, t] = [t, oldT - q * t]; }
+  if (oldR < 0) { oldR = -oldR; oldS = -oldS; oldT = -oldT; }
+  return [oldR, oldS, oldT];
+}
 
 /** Lanczos approximation of the gamma function. */
 /** Reinterpret a raw byte buffer as the named numeric class (for typecast). */

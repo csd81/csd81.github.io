@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **380 / 1170** audited.
+Progress: **480 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -385,3 +385,105 @@ Progress: **380 / 1170** audited.
 | 378 | `func2str` | ✅ | **fixed**: anonymous source via parser-captured text |
 | 379 | `function_handle` | ✅ | handle class (doc/intro) |
 | 380 | `functions` | ✅ | **fixed**: anon `function` field shows source |
+| 381 | `funm` | ✅ | general matrix function (Schur-Parlett) |
+| 382 | `fzero` | ✅ | **fixed**: `[x,fval,exitflag]` outputs |
+| 383 | `gallery` | 🟡 | subset of named test matrices |
+| 384 | `gamma` | ✅ | gamma function |
+| 385 | `gammainc` | ✅ | **fixed**: `'upper'` tail option |
+| 386 | `gammaincinv` | ✅ | inverse incomplete gamma |
+| 387 | `gammaln` | ✅ | log gamma |
+| 388 | `gca` | 🟡 | current axes handle (graphics) |
+| 389 | `gcd` | ✅ | **fixed**: integer-class preserve + `[g,u,v]` Bézout |
+| 390 | `gcf` | 🟡 | current figure handle (graphics) |
+| 391 | `genvarname` | ✅ | **fixed**: cell/string-array → unique names |
+| 392 | `geobasemap` | 🟡 | basemap setter (graphics) |
+| 393 | `geolimits` | 🟡 | geo limits (graphics) |
+| 394 | `geoplot` | 🟡 | geographic line plot (graphics) |
+| 395 | `geoscatter` | 🟡 | geographic scatter (graphics) |
+| 396 | `get` | 🟡 | graphics property query |
+| 397 | `getfield` | ✅ | **fixed**: nested field traversal `getfield(s,'x','y')` |
+| 398 | `gmres` | ✅ | GMRES iterative solver |
+| 399 | `gplot` | ✅ | adjacency+coords plot |
+| 400 | `gradient` | ✅ | numerical gradient (1-D/2-D) |
+| 401 | `graph` | ✅ | undirected graph constructor |
+| 402 | `gray` | 🟡 | grayscale colormap (visual) |
+| 403 | `grid` | ✅ | axes grid on/off/minor |
+| 404 | `griddata` | ✅ | scattered 2-D interpolation |
+| 405 | `griddatan` | ✅ | scattered N-D interpolation |
+
+**Bonus interpreter fix:** nested struct assignment `S.x.y = 5` (auto-vivification at any depth) now works — previously threw "undefined variable" / "non-existent field".
+| 406 | `griddedInterpolant` | ✅ | **fixed**: `(x,v)` form interpolated values (was returning query pt) |
+| 407 | `groupcounts` | ✅ | **fixed**: array input → counts (+ `[C,grps]`) |
+| 408 | `groupsummary` | ✅ | grouped table summaries |
+| 409 | `gsvd` | 🟡 | generalized singular values; full 5-output partial |
+| 410 | `gtext` | 🟡 | interactive text (no cursor in sandbox) |
+| 411 | `hGate` | 🟡 | Hadamard gate object |
+| 412 | `hadamard` | ✅ | Hadamard matrix |
+| 413 | `hankel` | ✅ | Hankel matrix (c / c,r) |
+| 414 | `hascycles` | ✅ | graph cycle test |
+| 415 | `head` | ✅ | **fixed**: works on arrays (not just tables) |
+| 416 | `height` | ✅ | row count |
+| 417 | `help` | ✅ | in-REPL help text |
+| 418 | `hess` | ✅ | Hessenberg form |
+| 419 | `hex2dec` | ✅ | **fixed**: multi-row char/string array |
+| 420 | `hex2num` | ✅ | IEEE hex → double |
+| 421 | `hex2rgb` | ✅ | **fixed**: 3-char shorthand (#F00) + string-array |
+| 422 | `highlight` | 🟡 | graph-plot highlight (graphics) |
+| 423 | `hilb` | ✅ | Hilbert matrix |
+| 424 | `hist` | 🟡 | legacy histogram (counts ok; plot visual) |
+| 425 | `histc` | ✅ | legacy edge bin counts |
+| 426 | `histcounts` | ✅ | bin counts (+ edges) |
+| 427 | `histcounts2` | ✅ | bivariate bin counts |
+| 428 | `histogram` | 🟡 | histogram plot (visual) |
+| 429 | `histogram2` | 🟡 | bivariate histogram (visual) |
+| 430 | `hold` | ✅ | retain/clear plots |
+| 431 | `holes` | 🟡 | polyshape hole boundaries |
+| 432 | `horzcat` | ✅ | horizontal concatenation |
+| 433 | `hot` | 🟡 | hot colormap (visual) |
+| 434 | `hour` | ✅ | datetime hour component |
+| 435 | `hours` | ✅ | duration in hours |
+| 436 | `hsv` | 🟡 | HSV colormap (visual) |
+| 437 | `hsv2rgb` | ✅ | HSV→RGB conversion |
+| 438 | `hypot` | ✅ | hypotenuse √(a²+b²) |
+| 439 | `ichol` | 🟡 | incomplete Cholesky preconditioner |
+| 440 | `idGate` | 🟡 | identity gate object |
+| 441 | `idivide` | ✅ | integer division (fix/floor/ceil/round) |
+| 442 | `ifft` | ✅ | inverse 1-D FFT |
+| 443 | `ifft2` | ✅ | inverse 2-D FFT |
+| 444 | `ifftn` | ✅ | inverse N-D FFT |
+| 445 | `ifftshift` | ✅ | inverse fft shift (odd-length correct) |
+| 446 | `ilu` | 🟡 | incomplete LU preconditioner |
+| 447 | `im2gray` | ✅ | RGB→grayscale |
+| 448 | `imag` | ✅ | imaginary part |
+| 449 | `image` | 🟡 | display image (visual) |
+| 450 | `imagesc` | 🟡 | scaled-color image (visual) |
+| 451 | `importdata` | ✅ | general file loader (VFS) |
+| 452 | `inShape` | ✅ | point-in-alphaShape test |
+| 453 | `incenter` | ✅ | **fixed**: real incenter (was centroid) |
+| 454 | `incidence` | ✅ | signed incidence matrix |
+| 455 | `ind2sub` | ✅ | **fixed**: N-D subscripts (>2 outputs) |
+| 456 | `indegree` | ✅ | digraph in-degree |
+| 457 | `inedges` | ✅ | incoming edges to a node |
+| 458 | `initGate` | 🟡 | qubit init gate object |
+| 459 | `inline` | ✅ | inline function (deprecated→@) |
+| 460 | `innerjoin` | ✅ | inner table join |
+| 461 | `inpolygon` | ✅ | point-in-polygon test |
+| 462 | `input` | 🟡 | user input (stream in sandbox) |
+| 463 | `inputname` | 🟡 | caller variable name |
+| 464 | `insert` | 🟡 | insert table rows |
+| 465 | `insertAfter` | ✅ | **fixed**: insert after ALL occurrences |
+| 466 | `insertBefore` | ✅ | **fixed**: insert before ALL occurrences |
+| 467 | `int16` | ✅ | 16-bit signed convert (saturating) |
+| 468 | `int2str` | ✅ | **fixed**: matrix → aligned char array |
+| 469 | `int32` | ✅ | 32-bit signed convert |
+| 470 | `int64` | ✅ | 64-bit signed convert |
+| 471 | `int8` | ✅ | 8-bit signed convert |
+| 472 | `integral` | ✅ | **fixed**: infinite bounds (was hanging) |
+| 473 | `integral2` | ✅ | **fixed**: function-handle y-limits |
+| 474 | `integral3` | ✅ | triple integral over a box |
+| 475 | `interp1` | ✅ | 1-D interpolation |
+| 476 | `interp2` | ✅ | 2-D gridded interpolation |
+| 477 | `interp3` | ✅ | 3-D gridded interpolation |
+| 478 | `interpft` | ✅ | FFT-based periodic interpolation |
+| 479 | `interpn` | ✅ | **fixed**: 1-D gridded `interpn(x,v,xq)` |
+| 480 | `intersect` | ✅ | **fixed**: `[C,ia,ib]` index outputs |

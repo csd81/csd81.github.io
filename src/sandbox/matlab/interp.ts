@@ -405,9 +405,16 @@ export class Interpreter implements Env {
           scope.vars.set(sname, st);
           return;
         }
-        const t = await this.evalExpr(lv.target, scope);
-        if (t.kind === 'gobj') { this.graphics.setAxesProp(lv.name, val); return; }
-        throw new MatError(`cannot assign field '.${lv.name}'`);
+        // Nested field assignment (S.x.y = val, S.a.b.c = val): read the current container at
+        // lv.target (or treat a missing path as a new struct), set the field, write it back.
+        let container: Value | undefined;
+        try { container = await this.evalExpr(lv.target as unknown as Expr, scope); } catch { container = undefined; }
+        if (container && container.kind === 'gobj') { this.graphics.setAxesProp(lv.name, val); return; }
+        const nfields = container && isStruct(container) ? new Map(container.fields) : new Map<string, Value[]>();
+        nfields.set(lv.name, [val]);
+        const nrows = container && isStruct(container) ? container.rows : 1, ncols = container && isStruct(container) ? container.cols : 1;
+        await this.assignLValue(lv.target, { kind: 'struct', rows: nrows || 1, cols: ncols || 1, fields: nfields } as StructV, scope);
+        return;
       }
       case 'cell': {
         // c{subs} = val : content assignment (grows the cell as needed)

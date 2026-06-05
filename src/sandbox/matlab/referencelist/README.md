@@ -877,3 +877,148 @@ All 35 batch-8 examples pass.
 - **`fullfile` with a list argument**: a cell/string-array part now yields a cell array with one full path per name (was "expected a string"); separators are still normalized.
 - Verified `fprintf` (format cycling), `freeBoundary`, `full`; `fplot`/`fplot3`/`fsurf` are graphics-only.
 - Rich ≥10-line help added for all batch-38 functions (incl. new structured `fullfile`/`function_handle`/`functions`).
+
+## Batch 39 — functions 381–405 (25-fn batch; special functions · gcd · graph/geo · interpolation)
+
+Per updated loop instructions, batches are now **25 functions** and the full `npm run build` + commit + push happen only every **100 functions** (next boundary 480). Per-batch fixes are still verified with the esbuild→node harness.
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `funm` | ✅ | general matrix function via Schur-Parlett → `funm(A,@exp)=expm(A)` | — |
+| `fzero` | ✅ | **fixed**: `[x,fval,exitflag]` outputs → `fzero(@sin,3)=3.1416` | — |
+| `gallery` | 🟡 | representative subset of named test matrices | full gallery catalog not all implemented |
+| `gamma` | ✅ | `gamma(0.5)=1.7725` | — |
+| `gammainc` | ✅ | **fixed**: `'upper'` tail → `gammainc(1,2,'upper')=0.7358` | — |
+| `gammaincinv` | ✅ | inverse incomplete gamma | — |
+| `gammaln` | ✅ | log gamma | — |
+| `gca` | 🟡 | current-axes handle | graphics |
+| `gcd` | ✅ | **fixed**: preserves integer class + `[g,u,v]` Bézout → `[2,-13,7]` | — |
+| `gcf` | 🟡 | current-figure handle | graphics |
+| `genvarname` | ✅ | **fixed**: cell/string-array → unique valid names | — |
+| `geobasemap`/`geolimits`/`geoplot`/`geoscatter` | 🟡 | geographic plotting | graphics |
+| `get` | 🟡 | graphics property query | graphics |
+| `getfield` | ✅ | **fixed**: nested traversal `getfield(s,'x','y')` | — |
+| `gmres` | ✅ | GMRES iterative solver | — |
+| `gplot` | ✅ | adjacency + node-coordinate plot | — |
+| `gradient` | ✅ | numerical gradient (1-D and 2-D) → `gradient([1 4 9 16])=[3 4 6 7]` | — |
+| `graph` | ✅ | undirected graph constructor | — |
+| `gray` | 🟡 | grayscale colormap | visual |
+| `grid` | ✅ | axes grid on/off/minor | — |
+| `griddata` | ✅ | scattered 2-D interpolation | — |
+| `griddatan` | ✅ | scattered N-D interpolation | — |
+
+### Fixes landed in this batch
+- **Nested struct assignment (interpreter)**: `S.x.y = 5` (and deeper, `S.a.b.c.d = 9`) threw "undefined variable" / "non-existent field". `assignLValue` now handles a nested field target recursively, auto-creating intermediate structs — a general fix beyond `getfield`.
+- **`fzero`** returns `[x,fval,exitflag,output]` (was single-output only).
+- **`gcd`** preserves the integer class of its input and supports the three-output Bézout form `[g,u,v]` with `g = u*a + v*b` (added an `extgcd` helper).
+- **`gammainc(...,'upper')`** returns the complementary upper tail (was ignoring the option).
+- **`genvarname`** handles cell/string arrays, returning valid AND unique names.
+- **`getfield`** follows a chain of nested field names.
+- Verified `funm`, `gamma`/`gammaln`/`gammaincinv`, `gmres`, `gplot`, `gradient`, `graph`, `grid`, `griddata`/`griddatan`; the `geo*`/`gca`/`gcf`/`get`/`gray` set is graphics-only.
+- Rich ≥10-line help added for all 25 functions (14 new structured entries). Help verified via esbuild (0 builtins without help); full `npm run build` deferred to the 480 boundary.
+
+## Batch 40 — functions 406–430 (25-fn batch; interpolation · groups · hist family · structured matrices)
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `griddedInterpolant` | ✅ | **fixed**: `(x,v)` interpolates values → `F(2.5)=25` | full N-D grid-vector cell form partial |
+| `groupcounts` | ✅ | **fixed**: array input → counts vector (+ `[C,grps]`) | — |
+| `groupsummary` | ✅ | grouped table summaries (mean/sum/…) | — |
+| `gsvd` | 🟡 | generalized singular values | full `[U,V,X,C,S]` decomposition partial |
+| `gtext` | 🟡 | interactive text placement | no cursor in sandbox |
+| `hGate` | 🟡 | Hadamard gate object | quantum |
+| `hadamard` | ✅ | Hadamard matrix → `hadamard(4)` | — |
+| `hankel` | ✅ | Hankel matrix `hankel(c)` / `hankel(c,r)` | — |
+| `hascycles` | ✅ | graph cycle test | — |
+| `head` | ✅ | **fixed**: works on arrays, not just tables | — |
+| `height` | ✅ | row count | — |
+| `help` | ✅ | in-REPL help text | — |
+| `hess` | ✅ | Hessenberg form | — |
+| `hex2dec` | ✅ | **fixed**: multi-row char / string array → column | — |
+| `hex2num` | ✅ | IEEE hex bytes → double (pi) | — |
+| `hex2rgb` | ✅ | **fixed**: 3-char shorthand `#F00`→`[1 0 0]` + string-array | `OutputType=uint16` partial |
+| `highlight` | 🟡 | graph-plot highlight | graphics |
+| `hilb` | ✅ | Hilbert matrix | — |
+| `hist` | 🟡 | legacy histogram (counts OK; plot visual) | — |
+| `histc` | ✅ | legacy edge bin counts | — |
+| `histcounts` | ✅ | bin counts (+ edges) | — |
+| `histcounts2` | ✅ | bivariate bin counts | — |
+| `histogram` | 🟡 | histogram plot | visual |
+| `histogram2` | 🟡 | bivariate histogram | visual |
+| `hold` | ✅ | retain/clear plots | — |
+
+### Fixes landed in this batch
+- **`griddedInterpolant(x,v)`**: it ignored the values argument and used the sample points as the values (returning the query coordinate back). Rewrote it to detect the `(x,v)`, single-`v`, and 2-D `(X,Y,V)` forms; `F=griddedInterpolant([1 2 3 4],[10 20 30 40]); F(2.5)` now returns 25.
+- **`groupcounts` on arrays** returns the counts vector (and group values as a 2nd output) instead of erroring; the table form is unchanged.
+- **`head` on arrays**: works on plain matrices/vectors (first k rows), not only tables.
+- **`hex2dec`** handles a multi-row char matrix or string array, returning one value per row.
+- **`hex2rgb`** expands the 3-character shorthand (`#F00`→`#FF0000`) and accepts a string array of colors.
+- Verified `hadamard`, `hankel`, `hilb`, `hess`, `hascycles`, `height`, `histc`/`histcounts`/`histcounts2`, `groupsummary`; the `histogram*`/`hist`/`gtext`/`highlight`/`hGate`/`gsvd` set is graphics/partial.
+- Rich ≥10-line help added for all 25 functions (11 new structured entries). Help verified via esbuild; full build deferred to 480.
+
+## Batch 41 — functions 431–455 (25-fn batch; durations · inverse FFT · triangulation · ind2sub)
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `holes` | 🟡 | polyshape hole boundaries | partial polyshape model |
+| `horzcat` | ✅ | horizontal concatenation | — |
+| `hot`/`hsv` | 🟡 | colormaps | visual |
+| `hour` | ✅ | datetime hour component → `hour(...16,30)=16` | — |
+| `hours` | ✅ | duration in hours; `hours(2)+minutes(30)=2.5 hr` | — |
+| `hsv2rgb` | ✅ | HSV→RGB → `hsv2rgb([0.6 1 1])=[0 0.4 1]` | — |
+| `hypot` | ✅ | `hypot(3,4)=5`, overflow-safe | — |
+| `ichol`/`ilu` | 🟡 | incomplete factorization preconditioners | drop-tolerance variants partial |
+| `idGate` | 🟡 | identity gate object | quantum |
+| `idivide` | ✅ | integer division, all rounding modes | — |
+| `ifft`/`ifft2`/`ifftn` | ✅ | inverse FFTs; round-trip verified | — |
+| `ifftshift` | ✅ | inverse shift (odd-length correct, identity with fftshift) | — |
+| `im2gray` | ✅ | RGB→grayscale (passthrough for gray input) | — |
+| `imag` | ✅ | imaginary part → `imag([0.5i 1+3i -2.2])=[0.5 3 0]` | — |
+| `image`/`imagesc` | 🟡 | image display | visual |
+| `importdata` | ✅ | general file loader (VFS) | format guessing limited |
+| `inShape` | ✅ | point-in-alphaShape test | — |
+| `incenter` | ✅ | **fixed**: real incenter (was centroid) → triangle `0.2929`, tetra `0.2113` | — |
+| `incidence` | ✅ | signed node-edge incidence matrix | — |
+| `ind2sub` | ✅ | **fixed**: N-D subscripts (>2 outputs) | — |
+
+### Fixes landed in this batch
+- **`incenter`**: it returned the centroid (plain vertex average) instead of the incenter. Now weights each triangle vertex by the opposite-side length (and each tetra vertex by the opposite-face area), so a right triangle `(0,0)(1,0)(0,1)` gives `[0.2929 0.2929]` and the standard tetrahedron gives `[0.2113 0.2113 0.2113]`.
+- **`ind2sub` N-D**: it only handled 2-D (row/col). Rewrote it to unravel a column-major linear index into any number of subscripts, with the last output absorbing extra dimensions; `[i1,i2,i3]=ind2sub([2 2 2],[3 4 5 6])` now matches MATLAB.
+- Verified `idivide` (all rounding modes), `ifft`/`ifft2`/`ifftn` round-trips, `ifftshift` identity, `hours`/`hour`, `hypot`, `hsv2rgb`, `imag`, `incidence`, `inShape`.
+- Rich ≥10-line help added for all 25 functions (12 new structured entries). Help verified via esbuild; full build deferred to 480.
+
+## Batch 42 — functions 456–480 (25-fn batch; graph edges · integers · integration · interpolation) — **100-fn build boundary (480)**
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `indegree` | ✅ | digraph in-degree | — |
+| `inedges` | ✅ | incoming edges to a node | — |
+| `initGate` | 🟡 | qubit init gate | quantum |
+| `inline` | ✅ | deprecated inline function | — |
+| `innerjoin` | ✅ | inner table join | — |
+| `inpolygon` | ✅ | point-in-polygon → `inpolygon(0.5,0.5,...)=1` | — |
+| `input` | 🟡 | reads from input stream | no live keyboard |
+| `inputname` | 🟡 | caller variable name | best-effort |
+| `insert` | 🟡 | insert table rows | partial table model |
+| `insertAfter` | ✅ | **fixed**: inserts after ALL occurrences → `insertAfter("hello","l","X")="helXlXo"` | — |
+| `insertBefore` | ✅ | **fixed**: inserts before ALL occurrences | — |
+| `int8`/`int16`/`int32`/`int64` | ✅ | signed-integer conversion, saturating | — |
+| `int2str` | ✅ | **fixed**: matrix → right-aligned char array | — |
+| `integral` | ✅ | **fixed**: infinite bounds → `integral(@(x)exp(-x.^2),-Inf,Inf)=1.7725` | — |
+| `integral2` | ✅ | **fixed**: function-handle y-limits (non-rectangular region) | mild error from singularity clamping |
+| `integral3` | ✅ | triple integral → `2.0000` | — |
+| `interp1` | ✅ | 1-D interpolation → `25` | — |
+| `interp2`/`interp3` | ✅ | 2-D/3-D gridded interpolation | — |
+| `interpft` | ✅ | FFT-based periodic interpolation | — |
+| `interpn` | ✅ | **fixed**: 1-D gridded `interpn(x,v,xq)=23.5` (was read as 2-D) | — |
+| `intersect` | ✅ | **fixed**: `[C,ia,ib]` index outputs | — |
+
+### Fixes landed in this batch
+- **`integral` infinite bounds**: a `-Inf`/`Inf` limit caused the adaptive Simpson recursion to spin on NaN coordinates (effective hang). Added a substitution that maps the infinite interval to a finite one and clamps the integrand to 0 at the transformed endpoints; `integral(@(x)exp(-x.^2),-Inf,Inf)` now returns √π = 1.7725.
+- **`integral2` curved regions**: the y-limits can be function handles of x; previously they were forced through `asScalar` and errored. Now a function limit remaps y to [0,1] per x (singular integrand values clamped), so triangular/curved regions integrate.
+- **`interpn(x,v,xq)`**: the 3-argument 1-D gridded form was misread as 2-D compact and returned NaN. Added detection of all-vector arguments → 1-D gridded.
+- **`intersect`** returns the `[C,ia,ib]` index outputs; **`int2str`** formats a matrix into a right-aligned char array; **`insertAfter`/`insertBefore`** now insert at every occurrence of the pattern, not just the first.
+- Verified `indegree`/`inedges`, the `int*` conversions (saturating), `integral3`, `interp1`/`interp2`/`interp3`/`interpft`, `inpolygon`, `innerjoin`, `inline`.
+- Rich ≥10-line help added for all 25 functions (14 new structured entries).
+
+**100-function build boundary reached at 480**: full `npm run build` (tsc + vite) green; registry invariant 0/1420 without help. Batches 39–42 committed and pushed together.
