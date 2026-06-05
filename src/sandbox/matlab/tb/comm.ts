@@ -163,6 +163,32 @@ export const COMM: ToolboxModule = {
       const yre = toArray(y), yim = y.idata ? Array.from(y.idata) : new Array(yre.length).fill(0);
       return ret(sameShape(y, yre.map((r, i) => { let best = 0, bd = Infinity; for (let s = 0; s < M; s++) { const d = (r - cre[s]) ** 2 + (yim[i] - cim[s]) ** 2; if (d < bd) { bd = d; best = s; } } return best; })));
     },
+    /** dpskmod(x,M[,phaserot]) — differential PSK modulation (cumulative phase). */
+    dpskmod: (a) => {
+      const x = toArray(m(a[0])).map((v) => Math.round(v));
+      const M = Math.round(asScalar(a[1]));
+      const phaserot = a.length >= 3 && isMat(a[2]) && !(a[2] as Mat).isChar ? asScalar(a[2]) : 0;
+      // yPhase = cumsum(phaserot + 2*pi*x/M); y = exp(1i*yPhase)
+      const re: number[] = [], im: number[] = []; let acc = 0;
+      for (const s of x) { acc += phaserot + (2 * Math.PI * s) / M; re.push(Math.cos(acc)); im.push(Math.sin(acc)); }
+      return ret(cplx(m(a[0]), re, im));
+    },
+    /** dpskdemod(y,M[,phaserot]) — differential PSK demodulation (inverts dpskmod). */
+    dpskdemod: (a) => {
+      const y = m(a[0]); const M = Math.round(asScalar(a[1]));
+      const phaserot = a.length >= 3 && isMat(a[2]) && !(a[2] as Mat).isChar ? asScalar(a[2]) : 0;
+      const yre = toArray(y), yim = y.idata ? Array.from(y.idata) : new Array(yre.length).fill(0);
+      // unwrap([0; angle(y)]): prepend a 0 reference, unwrap, then diff.
+      const ph = [0, ...yre.map((r, i) => Math.atan2(yim[i], r))];
+      for (let i = 1; i < ph.length; i++) { let d = ph[i] - ph[i - 1]; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; ph[i] = ph[i - 1] + d; }
+      const out = yre.map((_, i) => {
+        const zPi = (ph[i + 1] - ph[i]) - phaserot;        // phase difference minus rotation
+        let z = Math.ceil((zPi * M) / (2 * Math.PI) - 0.5); // round-half-down to nearest integer
+        if (z < 0) z += M;                                  // remap to 0:M-1
+        return z;
+      });
+      return ret(sameShape(y, out));
+    },
     /** marcumq(a,b[,m]) — generalized Marcum Q-function (numerical integration). */
     marcumq: (a) => {
       const A = asScalar(a[0]), B = asScalar(a[1]); const mm = a.length >= 3 && isMat(a[2]) ? Math.round(asScalar(a[2])) : 1;
@@ -241,6 +267,7 @@ export const COMM: ToolboxModule = {
     bin2gray: 'Convert positive integers to Gray-encoded integers', gray2bin: 'Convert Gray-encoded integers to positive integers',
     qammod: 'Quadrature amplitude modulation', qamdemod: 'Quadrature amplitude demodulation', pskmod: 'Phase shift keying modulation', pskdemod: 'Phase shift keying demodulation',
     marcumq: 'Generalized Marcum Q-function', finddelay: 'Estimate delay between signals',
+    dpskmod: 'Differential phase shift keying modulation', dpskdemod: 'Differential phase shift keying demodulation',
     poly2trellis: 'Convert convolutional code polynomials to trellis description', convenc: 'Convolutionally encode binary data',
     istrellis: 'Check if input is a valid trellis structure', hammgen: 'Produce parity-check and generator matrices for Hamming code',
   },

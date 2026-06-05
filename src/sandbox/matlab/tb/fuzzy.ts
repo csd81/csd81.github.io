@@ -1,10 +1,40 @@
 // Fuzzy Logic Toolbox — membership functions. These are MEX-backed in MATLAB (apply*/evaluate*
 // cores), so the closed-form definitions are authored from the documented algorithm (type trimf …)
 // and validated exactly against the live oracle. See fuzzy.VALIDATION.md.
-import { type Value, map, toMat as m, toArray } from '../values';
+import { type Value, map, toMat as m, toArray, scalar, asString, MatError } from '../values';
 import type { ToolboxModule } from './types';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
+
+/** Defuzzify a sampled membership function `mf` over universe `x` (centroid/bisector/mom/som/lom).
+ *  Mirrors MATLAB's defuzz.m exactly (discrete sums; som/lom break ties by |x|). */
+function defuzzScalar(x: number[], mf: number[], type: string): number {
+  if (x.length !== mf.length) throw new MatError('Sizes mismatch in defuzzification.', 'fuzzy:general:errDefuzz_SizeMismatch');
+  const n = x.length;
+  if (type === 'centroid') {
+    let area = 0, mom = 0;
+    for (let k = 0; k < n; k++) { area += mf[k]; mom += mf[k] * x[k]; }
+    if (area === 0) throw new MatError('Total area is zero in centroid defuzzification.', 'fuzzy:general:errDefuzz_ZeroAreaInCentroidMethod');
+    return mom / area;
+  }
+  if (type === 'bisector') {
+    let area = 0;
+    for (let k = 0; k < n; k++) area += mf[k];
+    if (area === 0) throw new MatError('Total area is zero in bisector defuzzification.', 'fuzzy:general:errDefuzz_ZeroAreaInBisectorMethod');
+    let tmp = 0, k = 0;
+    for (; k < n; k++) { tmp += mf[k]; if (tmp >= area / 2) break; }
+    return x[k < n ? k : n - 1];
+  }
+  // max-based methods
+  let mx = -Infinity;
+  for (let k = 0; k < n; k++) if (mf[k] > mx) mx = mf[k];
+  const atMax: number[] = [];
+  for (let k = 0; k < n; k++) if (mf[k] === mx) atMax.push(x[k]);
+  if (type === 'mom') return atMax.reduce((s, v) => s + v, 0) / atMax.length;
+  if (type === 'som') { let best = atMax[0]; for (const v of atMax) if (Math.abs(v) < Math.abs(best)) best = v; return best; }
+  if (type === 'lom') { let best = atMax[0]; for (const v of atMax) if (Math.abs(v) > Math.abs(best)) best = v; return best; }
+  throw new MatError(`Unknown defuzzification method '${type}'.`, 'fuzzy:general:errDefuzz');
+}
 const sigScalar = (x: number, a: number, c: number) => 1 / (1 + Math.exp(-a * (x - c)));
 const gaussScalar = (x: number, sig: number, c: number) => Math.exp(-((x - c) ** 2) / (2 * sig * sig));
 /** S-shaped spline membership on [a,b]. */
@@ -42,6 +72,7 @@ export const FUZZY: ToolboxModule = {
     zmf: (a) => { const [p, q] = toArray(m(a[1])); return ret(map(m(a[0]), (x) => zmfScalar(x, p, q))); },
     smf: (a) => { const [p, q] = toArray(m(a[1])); return ret(map(m(a[0]), (x) => smfScalar(x, p, q))); },
     pimf: (a) => { const [p, q, r, s] = toArray(m(a[1])); return ret(map(m(a[0]), (x) => smfScalar(x, p, q) * zmfScalar(x, r, s))); },
+    defuzz: (a) => ret(scalar(defuzzScalar(toArray(m(a[0])), toArray(m(a[1])), asString(a[2]).toLowerCase()))),
   },
   help: {
     trimf: 'Triangular membership function', trapmf: 'Trapezoidal membership function',
@@ -49,5 +80,6 @@ export const FUZZY: ToolboxModule = {
     gbellmf: 'Generalized bell-shaped membership function', sigmf: 'Sigmoidal membership function',
     dsigmf: 'Difference of two sigmoidal membership functions', psigmf: 'Product of two sigmoidal membership functions',
     zmf: 'Z-shaped membership function', smf: 'S-shaped membership function', pimf: 'Pi-shaped membership function',
+    defuzz: 'Defuzzify membership function (centroid, bisector, mom, som, lom)',
   },
 };

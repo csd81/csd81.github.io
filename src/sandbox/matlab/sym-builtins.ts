@@ -351,6 +351,66 @@ export const SYM_BUILTINS: Record<string, Builtin> = {
     return n >= 2 ? [rSym, qSym] : [rSym];
   },
 
+  // Generalized hypergeometric function pFq([a...],[b...],z) via its defining
+  // power series  Σ_{k≥0} (∏ rf(a_i,k) / ∏ rf(b_j,k)) · z^k/k!,  where the
+  // rising factorial rf(x,k)=x(x+1)…(x+k-1) (Pochhammer symbol). The ratio of
+  // consecutive terms is  t_{k+1}/t_k = z·∏(a_i+k)/(∏(b_j+k)·(k+1)),  so we
+  // accumulate term-by-term and stop once the running term is negligible.
+  // For a NUMERIC z (and numeric a,b parameters) the result is returned numeric.
+  hypergeom: async (a) => {
+    const toNumList = (v: Value): number[] => {
+      if (isSym(v)) { const s = v as Sym; return s.exprs.map((e) => symEval(e, new Map())); }
+      const M = m(v); return Array.from(M.data);
+    };
+    const A = toNumList(a[0]);
+    const B = toNumList(a[1]);
+    const zArg = a[2];
+
+    // Evaluate the pFq series at a single numeric point z.
+    const series = (z: number): number => {
+      // A non-positive-integer numerator parameter terminates the series early.
+      let termCount = Infinity;
+      for (const ai of A) { if (Number.isInteger(ai) && ai <= 0) termCount = Math.min(termCount, -ai); }
+      let term = 1;          // t_0 = 1
+      let sum = 1;
+      const maxK = Number.isFinite(termCount) ? termCount : 10000;
+      for (let k = 0; k < maxK; k++) {
+        let num = 1, den = 1;
+        for (const ai of A) num *= (ai + k);
+        for (const bj of B) den *= (bj + k);
+        den *= (k + 1);
+        if (den === 0) break;     // b_j hit a non-positive integer pole
+        term *= (z * num) / den;
+        if (!Number.isFinite(term)) break;
+        sum += term;
+        if (Math.abs(term) <= 1e-16 * Math.abs(sum) && k > Math.max(...A.map(Math.abs), ...B.map(Math.abs), 1)) break;
+      }
+      return sum;
+    };
+
+    // Numeric z (scalar or array) and numeric parameters → numeric result.
+    const paramsNumeric = A.every(Number.isFinite) && B.every(Number.isFinite);
+    if (paramsNumeric && (isMat(zArg) && !(zArg as Mat).isChar)) {
+      const Z = zArg as Mat;
+      const out = zeros(Z.rows, Z.cols);
+      for (let i = 0; i < Z.data.length; i++) out.data[i] = series(Z.data[i]);
+      return ret(out);
+    }
+    // Symbolic z but numeric parameters: if z evaluates to a constant, go numeric;
+    // otherwise leave the call unevaluated (sandbox CAS has no closed forms here).
+    if (paramsNumeric && isSym(zArg)) {
+      const s = zArg as Sym;
+      const out = zeros(s.rows, s.cols); let allNum = true;
+      s.exprs.forEach((e, i) => { const zv = symEval(e, new Map()); if (symVars(e).length === 0 && Number.isFinite(zv)) out.data[i] = series(zv); else allNum = false; });
+      if (allNum) return ret(out);
+    }
+    // Fallback: unevaluated symbolic hypergeom(a,b,z).
+    const aSym = isSym(a[0]) ? (a[0] as Sym).exprs : A.map(sN);
+    const bSym = isSym(a[1]) ? (a[1] as Sym).exprs : B.map(sN);
+    const zSym = symToExpr(zArg);
+    return ret(makeSym(1, 1, [sFn('hypergeom', sFn('list', ...aSym), sFn('list', ...bSym), zSym)]));
+  },
+
   isVariable: async (a) => ret(bool(symArg(a[0]).exprs[0].t === 'v')),
   isCondition: async (a) => { const e = symArg(a[0]).exprs[0]; return ret(bool(e.t === 'fn' && ['lt', 'le', 'gt', 'ge', 'eq', 'ne'].includes(e.name))); },
   isDistinctVariable: async (a) => { const s = symArg(a[0]); const allV = s.exprs.every((e) => e.t === 'v'); const names = s.exprs.map((e) => (e as { name?: string }).name ?? ''); return ret(bool(allV && new Set(names).size === names.length)); },
