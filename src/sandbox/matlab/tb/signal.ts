@@ -382,6 +382,18 @@ export const SIGNAL: ToolboxModule = {
       const P = Pxx.map((v) => v / Math.max(1, nseg)), f = P.map((_, k) => (fs ? k * fs / nfft : k * 2 * Math.PI / nfft));
       return Promise.resolve(nargout >= 2 ? [colVec(P), colVec(f)] : [colVec(P)]);
     },
+    // ── pulse/waveform generators ──
+    rectpuls: (a) => { const w = a.length > 1 ? asScalar(a[1]) : 1; return ret(map(m(a[0]), (t) => (t >= -w / 2 && t < w / 2 ? 1 : 0))); },
+    tripuls: (a) => {
+      const w = a.length > 1 && isMat(a[1]) ? asScalar(a[1]) : 1, s = a.length > 2 ? asScalar(a[2]) : 0, tp = w * s / 2;
+      return ret(map(m(a[0]), (t) => { if (t < -w / 2 || t > w / 2) return 0; return t <= tp ? (tp + w / 2 === 0 ? 0 : (t + w / 2) / (tp + w / 2)) : (w / 2 - tp === 0 ? 0 : (w / 2 - t) / (w / 2 - tp)); }));
+    },
+    sawtooth: (a) => { const width = a.length > 1 ? asScalar(a[1]) : 1; return ret(map(m(a[0]), (t) => { const ph = (((t % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)) / (2 * Math.PI); return ph < width ? 2 * ph / width - 1 : 2 * (1 - ph) / (1 - width) - 1; })); },
+    gauspuls: (a) => {
+      const fc = a.length > 1 ? asScalar(a[1]) : 1000, bw = a.length > 2 ? asScalar(a[2]) : 0.5;
+      const lr = Math.log(10 ** (-6 / 20)), av = -((Math.PI * fc * bw) ** 2) / (4 * lr);   // bwr = -6 dB
+      return ret(map(m(a[0]), (t) => Math.exp(-av * t * t) * Math.cos(2 * Math.PI * fc * t)));
+    },
     // ── equivalent noise bandwidth of a window: enbw(w)=N*Σw²/(Σw)²; enbw(w,fs)=fs*Σw²/(Σw)² ──
     enbw: (a) => {
       const w = toArray(m(a[0])), sw = w.reduce((s, v) => s + v, 0), sw2 = w.reduce((s, v) => s + v * v, 0);
@@ -540,6 +552,7 @@ export const SIGNAL: ToolboxModule = {
     overshoot: 'Overshoot metrics of bilevel waveform transitions', undershoot: 'Undershoot metrics of bilevel waveform transitions',
     settlingtime: 'Settling time for bilevel waveform transitions', enbw: 'Equivalent noise bandwidth of a window',
     periodogram: 'Periodogram power spectral density estimate', dctmtx: 'Discrete cosine transform matrix', pwelch: "Welch's power spectral density estimate",
+    rectpuls: 'Sampled aperiodic rectangle', tripuls: 'Sampled aperiodic triangle', sawtooth: 'Sawtooth or triangle wave', gauspuls: 'Gaussian-modulated sinusoidal RF pulse',
     meanfreq: 'Mean frequency of power spectrum', medfreq: 'Median frequency of power spectrum', bandpower: 'Band power of signal',
     powerbw: 'Power bandwidth (3 dB)', obw: 'Occupied bandwidth (99% power)',
     mag2db: 'Convert magnitude to decibels', db2mag: 'Convert decibels to magnitude', pow2db: 'Convert power to decibels', db2pow: 'Convert decibels to power',

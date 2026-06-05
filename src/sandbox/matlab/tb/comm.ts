@@ -82,6 +82,13 @@ export const COMM: ToolboxModule = {
     qfuncinv: (a) => ret(map(m(a[0]), (p) => SQRT2 * erfinv(1 - 2 * p))),
     // ── oct2dec: interpret each value's decimal digits as octal ──
     oct2dec: (a) => ret(map(m(a[0]), (x) => parseInt(Math.round(x).toString(), 8))),
+    // ── quantiz(sig,partition[,codebook]): index of each sample's partition interval (+ quantized values) ──
+    quantiz: (a, nargout) => {
+      const sig = toArray(m(a[0])), part = toArray(m(a[1]));
+      const idx = sig.map((s) => part.filter((p) => p < s).length);
+      if (nargout >= 2 && a.length > 2) { const cb = toArray(m(a[2])); return Promise.resolve([colVec(idx), colVec(idx.map((i) => cb[i]))]); }
+      return ret(colVec(idx));
+    },
     // ── vec2mat(v,c[,pad]): row-major reshape into ceil(n/c)×c, padding the last row ──
     vec2mat: (a) => {
       const v = toArray(m(a[0])), c = Math.round(asScalar(a[1])), n = v.length, rows = Math.max(1, Math.ceil(n / c));
@@ -226,7 +233,7 @@ export const COMM: ToolboxModule = {
     },
   },
   help: {
-    qfunc: 'Q function (Gaussian tail probability)', qfuncinv: 'Inverse Q function',
+    qfunc: 'Q function (Gaussian tail probability)', quantiz: 'Produce a quantization index and quantized output value', qfuncinv: 'Inverse Q function',
     oct2dec: 'Convert octal to decimal numbers', vec2mat: 'Convert vector into matrix (row-major, padded)',
     compand: 'Source code mu-law or A-law compressor or expander',
     de2bi: 'Convert decimal numbers to binary digits', bi2de: 'Convert binary digits to decimal numbers',
