@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **350 / 1170** audited.
+Progress: **360 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -355,3 +355,13 @@ Progress: **350 / 1170** audited.
 | 348 | `fimplicit` | 🟡 | renders implicit curve |
 | 349 | `fimplicit3` | 🟡 | renders implicit surface |
 | 350 | `find` | ✅ | nonzero indices; `[r,c,v]`; first-n |
+| 351 | `findedge` | ✅ | **fixed via** edge sorting → correct edge index |
+| 352 | `findgroups` | ✅ | group numbers + unique values |
+| 353 | `findnode` | ✅ | node index by name |
+| 354 | `findstr` | ✅ | legacy substring search |
+| 355 | `fix` | ✅ | round toward zero (real+complex) |
+| 356 | `flag` | 🟡 | flag colormap (visual) |
+| 357 | `flintmax` | ✅ | **fixed**: `flintmax("single")`=2^24 |
+| 358 | `flip` | ✅ | reverse along dim (incl. char) |
+| 359 | `flipdim` | ✅ | legacy flip along dim |
+| 360 | `flipedge` | ✅ | reverse digraph edges |

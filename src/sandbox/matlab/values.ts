@@ -177,7 +177,11 @@ export function isSparse(v: Value): v is Sparse { return v.kind === 'sparse'; }
 export function isStr(v: Value): v is Str { return v.kind === 'str'; }
 export function isGraph(v: Value): v is Graph { return v.kind === 'graph'; }
 export function makeGraph(directed: boolean, n: number, edges: { s: number; t: number; w: number }[], names?: string[]): Graph {
-  return { kind: 'graph', directed, n, edges, names };
+  // MATLAB stores edges sorted by endpoints (undirected edges normalized to s<=t), which
+  // determines edge indices for findedge/G.Edges. Sort here so indexing matches.
+  const norm = edges.map((e) => (!directed && e.s > e.t ? { s: e.t, t: e.s, w: e.w } : { s: e.s, t: e.t, w: e.w }));
+  norm.sort((a, b) => a.s - b.s || a.t - b.t);
+  return { kind: 'graph', directed, n, edges: norm, names };
 }
 export function isGeom(v: Value): v is Geom { return v.kind === 'geom'; }
 export function isQuantum(v: Value): v is Quantum { return v.kind === 'quantum'; }

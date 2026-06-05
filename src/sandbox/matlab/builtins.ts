@@ -3475,7 +3475,7 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(fromRows(acc));
   },
   rat: async (a) => { const [n, d] = ratApprox(asScalar(a[0])); return ret(str(d === 1 ? `${n}` : `${n}/${d}`)); },
-  flintmax: async () => ret(scalar(2 ** 53)),
+  flintmax: async (a) => { const ty = a.length >= 1 ? asString(a[0]).toLowerCase() : 'double'; return ret(applyClass(scalar(ty === 'single' ? 2 ** 24 : 2 ** 53), ty === 'single' ? 'single' : 'double')); },
   intmax: async (a) => ret(scalar(INT_LIMITS[a.length ? asString(a[0]) : 'int32']?.[1] ?? 2147483647)),
   intmin: async (a) => ret(scalar(INT_LIMITS[a.length ? asString(a[0]) : 'int32']?.[0] ?? -2147483648)),
   // ── transforms ──

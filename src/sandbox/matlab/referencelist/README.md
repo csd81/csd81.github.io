@@ -812,3 +812,24 @@ All 35 batch-8 examples pass.
 - **`fillmissing` per-column constant**: `fillmissing(A,"constant",[100 1000])` errored ("expected a scalar"). It now accepts a vector of one fill value per column (and still handles a scalar constant).
 - Verified `filter`, `filter2`, `find` (incl. `[r,c,v]` and first-n), `filesep`; `figure`/`fimplicit`/`fimplicit3`/`filloutliers` are graphics or approximate.
 - Rich ≥10-line help added for all batch-35 functions (incl. new structured `figure`/`fileparts`/`filesep`/`filloutliers`/`filter`/`filter2`/`fimplicit3`).
+
+## Batch 36 — functions 351–360 (graph edge/node lookup · fix/flip · flintmax)
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `findedge` | ✅ | **fixed** (via edge sorting): `findedge(G,[1 3],[2 5])=[1;6]` | — |
+| `findgroups` | ✅ | group numbers + `[G,id]` unique values | — |
+| `findnode` | ✅ | node index by name → `findnode(G,{"AB" "BC"})` | — |
+| `findstr` | ✅ | legacy shorter-in-longer substring search | — |
+| `fix` | ✅ | round toward zero (real + complex parts) | — |
+| `flag` | 🟡 | flag colormap | visual only |
+| `flintmax` | ✅ | **fixed**: `flintmax("single")`=16777216 (class single) | — |
+| `flip` | ✅ | reverse along first non-singleton / given dim; chars too | — |
+| `flipdim` | ✅ | legacy flip along a dimension | — |
+| `flipedge` | ✅ | reverse directed-graph edge directions | — |
+
+### Fixes landed in this batch
+- **Graph edges are now stored sorted by endpoints** (undirected edges normalized to `s≤t`), matching MATLAB's `G.Edges` ordering. `makeGraph` sorts at construction, carrying weights along. This fixed `findedge` returning the wrong index (`findedge(G,[1 3],[2 5])` gave `[1;8]` instead of `[1;6]`) and aligns `G.Edges`/`[s,t]=findedge(G)` order with MATLAB. Verified no regression in `shortestpath`, `degree`, `minspantree`, weighted edges, or digraph edge order.
+- **`flintmax("single")`** now returns `2^24 = 16777216` with class `single`; it had ignored the class argument and always returned the double value `2^53`.
+- Verified `findgroups`, `findnode`, `findstr`, `fix` (real+complex), `flip`/`flipdim` (incl. character vectors), `flipedge`.
+- Rich ≥10-line help added for all batch-36 functions (incl. new structured `findgroups`/`flag`/`flintmax`).
