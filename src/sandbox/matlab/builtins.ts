@@ -1855,7 +1855,7 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(scalar(conv(asString(a[0]))));
   },
   // ── class / regexp / sscanf ──
-  class: async (a) => { const v = a[0]; if (isMap(v)) return ret(str('containers.Map')); if (isDict(v)) return ret(str('dictionary')); if (isHandle(v)) return ret(str('function_handle')); if (v.kind === 'gobj') return ret(str(v.gtype)); if (v.kind === 'quantum') return ret(str(v.qkind === 'circuit' ? 'quantumCircuit' : v.qkind === 'state' ? 'quantum.gate.QuantumState' : 'quantum.gate.SimpleGate')); if (isStr(v)) return ret(str('string')); if (isCell(v)) return ret(str('cell')); if (isStruct(v)) return ret(str('struct')); if (isTable(v)) return ret(str(v.isTimetable ? 'timetable' : 'table')); if (isCategorical(v)) return ret(str('categorical')); if (isSym(v)) return ret(str('sym')); if ((v as Mat).isChar) return ret(str('char')); if ((v as Mat).isBool) return ret(str('logical')); return ret(str((v as Mat).itype ?? 'double')); },
+  class: async (a) => { const v = a[0]; if (isMap(v)) return ret(str('containers.Map')); if (isDict(v)) return ret(str('dictionary')); if (isHandle(v)) return ret(str('function_handle')); if (v.kind === 'gobj') return ret(str(v.gtype)); if (isGraph(v)) return ret(str((v as Graph).directed ? 'digraph' : 'graph')); if (isGeom(v)) return ret(str((v as Geom).gkind)); if (v.kind === 'quantum') return ret(str(v.qkind === 'circuit' ? 'quantumCircuit' : v.qkind === 'state' ? 'quantum.gate.QuantumState' : 'quantum.gate.SimpleGate')); if (isStr(v)) return ret(str('string')); if (isCell(v)) return ret(str('cell')); if (isStruct(v)) return ret(str('struct')); if (isTable(v)) return ret(str(v.isTimetable ? 'timetable' : 'table')); if (isCategorical(v)) return ret(str('categorical')); if (isSym(v)) return ret(str('sym')); if ((v as Mat).isChar) return ret(str('char')); if ((v as Mat).isBool) return ret(str('logical')); return ret(str((v as Mat).itype ?? 'double')); },
   isa: async (a) => { const v = a[0]; const ty = asString(a[1]); const M = v as Mat; const cls = isHandle(v) ? 'function_handle' : M.isChar ? 'char' : M.isBool ? 'logical' : (M.itype ?? 'double'); if (ty === cls) return ret(bool(true)); const isInt = isMat(v) && !!M.itype && M.itype !== 'single'; const isFlt = isMat(v) && !M.isChar && !M.isBool && (!M.itype || M.itype === 'single'); if (ty === 'numeric' && isMat(v) && !M.isChar && !M.isBool) return ret(bool(true)); if (ty === 'float' && isFlt) return ret(bool(true)); if (ty === 'integer' && isInt) return ret(bool(true)); return ret(bool(false)); },
   regexp: async (a, n) => {
     const s = asString(a[0]); const pat = asString(a[1]); const opts = a.slice(2).map((x) => asString(x).toLowerCase());
@@ -2082,7 +2082,7 @@ export const BUILTINS: Record<string, Builtin> = {
     const f = (x: number, p: number, v: number) => { const b = BigInt(Math.round(x)), bit = 1n << BigInt(Math.round(p) - 1); const r = Number(v ? (b | bit) : (b & ~bit)); return t ? intMask(r, t) : r; };
     return ret(broadcast3(m(a[0]), m(a[1]), V, f));
   },
-  bitcmp: async (a) => { const ty = a.length >= 2 && isMat(a[1]) && (a[1] as Mat).isChar ? asString(a[1]) : 'uint64'; const bits = { uint8: 8, int8: 8, uint16: 16, int16: 16, uint32: 32, int32: 32, uint64: 64, int64: 64 }[ty] ?? 64; const mask = (1n << BigInt(bits)) - 1n; return ret(map(m(a[0]), (x) => Number((~BigInt(Math.round(x))) & mask))); },
+  bitcmp: async (a) => { const A = m(a[0]); const inTy = A.itype && A.itype !== 'single' ? A.itype : undefined; const argTy = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar)) ? asString(a[1]) : undefined; const ty = inTy ?? argTy ?? 'uint64'; const bits = { uint8: 8, int8: 8, uint16: 16, int16: 16, uint32: 32, int32: 32, uint64: 64, int64: 64 }[ty] ?? 64; const mask = (1n << BigInt(bits)) - 1n; const out = map(A, (x) => Number((~BigInt(Math.round(x))) & mask)); return ret(inTy ? applyClass(out, inTy) : argTy && argTy in INT_LIMITS ? applyClass(out, argTy) : out); },
   blanks: async (a) => ret(str(' '.repeat(Math.max(0, Math.round(asScalar(a[0])))))),
   findstr: async (a) => { const s1 = asString(a[0]), s2 = asString(a[1]); const [hay, ndl] = s1.length >= s2.length ? [s1, s2] : [s2, s1]; const out: number[] = []; if (ndl.length) { let i = hay.indexOf(ndl); while (i >= 0) { out.push(i + 1); i = hay.indexOf(ndl, i + 1); } } return ret(rowVec(out)); },
   strjust: async (a) => { const s = asString(a[0]); const mode = a.length >= 2 ? asString(a[1]).toLowerCase() : 'right'; const t = s.trim(); const pad = s.length - t.length; if (pad <= 0) return ret(str(t)); if (mode === 'left') return ret(str(t + ' '.repeat(pad))); if (mode === 'center') { const l = Math.floor(pad / 2); return ret(str(' '.repeat(l) + t + ' '.repeat(pad - l))); } return ret(str(' '.repeat(pad) + t)); },
@@ -2721,7 +2721,7 @@ export const BUILTINS: Record<string, Builtin> = {
     const out = new Float64Array(n); for (let i = 0; i < n; i++) out[i] = dnum(at(0, i), at(1, i), at(2, i), at(3, i), at(4, i), at(5, i));
     return ret(makeTemporal('datetime', n, 1, out));
   },
-  NaT: async () => ret(makeTemporal('datetime', 1, 1, Float64Array.of(NaN))),
+  NaT: async (a) => { const [r, c] = dims2(a); return ret(makeTemporal('datetime', r, c, new Float64Array(r * c).fill(NaN))); },
   duration: async (a) => {
     // duration(H,MI,S) or duration(H,MI,S,MS): component form; each part may be an array (broadcast).
     if (a.length >= 3 && isMat(a[0]) && isMat(a[1]) && isMat(a[2])) {
@@ -3378,7 +3378,7 @@ export const BUILTINS: Record<string, Builtin> = {
   addboundary: async (a) => { const g = gGeom(a[0]); const x = a.length >= 3 ? toArray(m(a[1])) : matRows(m(a[1])).map((p) => p[0]); const y = a.length >= 3 ? toArray(m(a[2])) : matRows(m(a[1])).map((p) => p[1]); const pts = g.points.slice(); if (pts.length) pts.push([NaN, NaN]); x.forEach((xi, i) => pts.push([xi, y[i]])); return ret({ ...g, points: pts } as Geom); },
   rmboundary: async (a) => { const g = gGeom(a[0]); const k = Math.round(asScalar(a[1])); const bnds: number[][][] = [[]]; for (const p of g.points) { if (Number.isNaN(p[0])) bnds.push([]); else bnds[bnds.length - 1].push(p); } bnds.splice(k - 1, 1); const pts: number[][] = []; bnds.forEach((b, i) => { if (i > 0) pts.push([NaN, NaN]); pts.push(...b); }); return ret({ ...g, points: pts } as Geom); },
   nearestvertex: async (a) => { const g = gGeom(a[0]); const qx = asScalar(a[1]), qy = a.length >= 3 ? asScalar(a[2]) : 0; let best = 0, bd = Infinity; g.points.forEach((p, i) => { if (Number.isNaN(p[0])) return; const d = (p[0] - qx) ** 2 + (p[1] - qy) ** 2; if (d < bd) { bd = d; best = i; } }); return ret(scalar(best + 1)); },
-  boundingbox: async (a) => { const g = gGeom(a[0]); const v = g.points.filter((p) => !Number.isNaN(p[0])); const xs = v.map((p) => p[0]), ys = v.map((p) => p[1]); return ret(fromRows([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]])); },
+  boundingbox: async (a, nargout) => { const g = gGeom(a[0]); const v = g.points.filter((p) => !Number.isNaN(p[0])); const xs = v.map((p) => p[0]), ys = v.map((p) => p[1]); const xlim = rowVec([Math.min(...xs), Math.max(...xs)]); const ylim = rowVec([Math.min(...ys), Math.max(...ys)]); return nargout >= 2 ? [xlim, ylim] : [xlim]; },
   alphaTriangulation: async (a) => { const g = gGeom(a[0]); const tris = alphaSimplices(g); const T = zeros(tris.length, g.dim + 1); tris.forEach((s, i) => s.forEach((v, j) => { T.data[i + j * tris.length] = v + 1; })); return ret(T); },
   cr1Gate: async (a) => ret(mkGate('r1', qList(a[1]), qList(a[0]), [asScalar(a[2])])),
   initGate: async (a) => ret(mkGate('id', qList(a[0]))),
@@ -6620,6 +6620,7 @@ function adjList(g: Graph, mode: 'out' | 'in' | 'all'): { to: number; w: number;
 }
 /** Build a graph/digraph from graph(A) | graph(s,t[,w[,n|names]]). */
 function buildGraph(directed: boolean, a: Value[]): Graph {
+  if (a.length === 0) return makeGraph(directed, 0, []);   // graph() / digraph(): empty graph
   // graph(A) or graph(A, names): square (weighted) adjacency matrix.
   if (a.length >= 1 && (isMat(a[0]) || isSparse(a[0])) && !(isMat(a[0]) && (a[0] as Mat).isChar)) {
     const A = isSparse(a[0]) ? sparseToDense(a[0]) : m(a[0]);
@@ -6804,15 +6805,24 @@ function enumeratePaths(g: Graph, s: number, t: number, cap = 2000): number[][] 
   dfs(s, [s]); return paths;
 }
 /** All simple cycles (bounded), each listed once with its smallest start node. */
+/** Canonical key for an undirected cycle: rotate to start at the min node, take the smaller
+ *  of the two traversal directions. Distinguishes cycles sharing the same node set. */
+function canonCycleKey(c: number[]): string {
+  const n = c.length; let mi = 0; for (let i = 1; i < n; i++) if (c[i] < c[mi]) mi = i;
+  const fwd: number[] = [], bwd: number[] = [];
+  for (let i = 0; i < n; i++) { fwd.push(c[(mi + i) % n]); bwd.push(c[(mi - i + n) % n]); }
+  const fk = fwd.join(','), bk = bwd.join(','); return fk < bk ? fk : bk;
+}
 function enumerateCycles(g: Graph, cap = 2000): number[][] {
   const adj = adjList(g, 'out'); const cycles: number[][] = [];
+  const minLen = g.directed ? 1 : 3;   // undirected simple cycles need >= 3 distinct nodes
   for (let start = 0; start < g.n && cycles.length < cap; start++) {
     const onPath = new Array(g.n).fill(false);
-    const dfs = (u: number, path: number[]) => { if (cycles.length >= cap) return; onPath[u] = true; for (const { to } of adj[u]) { if (to === start && path.length >= (g.directed ? 1 : 2)) cycles.push(path.slice()); else if (to > start && !onPath[to]) { path.push(to); dfs(to, path); path.pop(); } } onPath[u] = false; };
+    const dfs = (u: number, path: number[]) => { if (cycles.length >= cap) return; onPath[u] = true; for (const { to } of adj[u]) { if (to === start && path.length >= minLen) cycles.push(path.slice()); else if (to > start && !onPath[to]) { path.push(to); dfs(to, path); path.pop(); } } onPath[u] = false; };
     dfs(start, [start]);
   }
-  // de-dup undirected cycles (each found in 2 directions)
-  if (!g.directed) { const seen = new Set<string>(); return cycles.filter((c) => { const k = [...c].sort((a, b) => a - b).join(','); if (seen.has(k)) return false; seen.add(k); return true; }); }
+  // de-dup undirected cycles (each is found in both traversal directions)
+  if (!g.directed) { const seen = new Set<string>(); return cycles.filter((c) => { const k = canonCycleKey(c); if (seen.has(k)) return false; seen.add(k); return true; }); }
   return cycles;
 }
 /** Fundamental cycle basis (undirected): non-tree edge + its tree path. */
