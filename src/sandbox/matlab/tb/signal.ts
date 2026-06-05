@@ -9,6 +9,13 @@ import {
 import type { ToolboxModule } from './types';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
+/** Reduce a vector to a scalar, or a matrix column-wise to a row vector (MATLAB dim convention). */
+function reduceCols(M: Mat, f: (x: number[]) => number): Value {
+  if (M.rows === 1 || M.cols === 1) return scalar(f(toArray(M)));
+  const out: number[] = [];
+  for (let c = 0; c < M.cols; c++) { const col: number[] = []; for (let r = 0; r < M.rows; r++) col.push(M.data[r + c * M.rows]); out.push(f(col)); }
+  return rowVec(out);
+}
 /** Σ bₙ·e^{-jnw} (digital, ascending powers) → [re, im]. */
 function cpoly(b: number[], w: number): [number, number] { let re = 0, im = 0; for (let n = 0; n < b.length; n++) { re += b[n] * Math.cos(n * w); im -= b[n] * Math.sin(n * w); } return [re, im]; }
 /** Σ c[i]·(jw)^(L-1-i) (analog, descending powers) → [re, im]. */
@@ -83,6 +90,66 @@ export const SIGNAL: ToolboxModule = {
     flattopwin: (a) => window(a, 1, (n, N) => { const x = (2 * Math.PI * n) / N; return 0.21557895 - 0.41663158 * Math.cos(x) + 0.277263158 * Math.cos(2 * x) - 0.083578947 * Math.cos(3 * x) + 0.006947368 * Math.cos(4 * x); }),
     bartlett: (a) => window(a, 1, (n, N) => 1 - Math.abs((n - N / 2) / (N / 2))),
     triang: (a) => { const L = Math.round(asScalar(a[0])); const w: number[] = []; for (let n = 1; n <= L; n++) w.push(L % 2 ? 1 - Math.abs((2 * n - L - 1) / (L + 1)) : 1 - Math.abs((2 * n - L - 1) / L)); return ret(colVec(w)); },
+    // ── windows ported from the pure .m sources (parzen/bohman/taylor) ──
+    parzenwin: (a) => {
+      const L = Math.round(asScalar(a[0])); if (L <= 0) return ret(zeros(0, 1)); if (L === 1) return ret(colVec([1]));
+      const w: number[] = [], h = (L - 1) / 2, q = (L - 1) / 4;
+      for (let k = 0; k < L; k++) { const t = Math.abs(k - h) / L; w.push(Math.abs(k - h) <= q ? 1 - 24 * t * t + 48 * t * t * t : 2 * (1 - 2 * t) ** 3); }
+      return ret(colVec(w));
+    },
+    bohmanwin: (a) => {
+      const L = Math.round(asScalar(a[0])); if (L <= 0) return ret(zeros(0, 1)); if (L === 1) return ret(colVec([1]));
+      const w: number[] = [];
+      for (let k = 0; k < L; k++) { if (k === 0 || k === L - 1) { w.push(0); continue; } const ax = Math.abs(-1 + (2 * k) / (L - 1)); w.push((1 - ax) * Math.cos(Math.PI * ax) + Math.sin(Math.PI * ax) / Math.PI); }
+      return ret(colVec(w));
+    },
+    taylorwin: (a) => {
+      const L = Math.round(asScalar(a[0])); if (L <= 0) return ret(zeros(0, 1)); if (L === 1) return ret(colVec([1]));
+      const nbar = a.length > 1 && isMat(a[1]) ? Math.round(asScalar(a[1])) : 4;
+      const sll = a.length > 2 && isMat(a[2]) ? asScalar(a[2]) : -30;
+      const A = Math.acosh(Math.pow(10, -sll / 20)) / Math.PI, A2 = A * A;
+      const sp2 = (nbar * nbar) / (A2 + (nbar - 0.5) ** 2);
+      const Fm: number[] = [0];
+      for (let mm = 1; mm <= nbar - 1; mm++) {
+        let num = 1; for (let i = 1; i <= nbar - 1; i++) num *= 1 - (mm * mm / sp2) / (A2 + (i - 0.5) ** 2);
+        let den = 1; for (let j = 1; j <= nbar - 1; j++) if (j !== mm) den *= 1 - (mm * mm) / (j * j);
+        Fm[mm] = ((mm % 2 === 1 ? 1 : -1) * num) / den;
+      }
+      const w: number[] = [];
+      for (let k = 0; k < L; k++) { const twoX = (2 * k - L + 1) / L; let s = 1; for (let mm = 1; mm <= nbar - 1; mm++) s += Fm[mm] * Math.cos(Math.PI * mm * twoX); w.push(s); }
+      return ret(colVec(w));
+    },
+    // ── Dolph-Chebyshev window (MEX chebwinx → documented algorithm; at = sidelobe dB, default 100) ──
+    chebwin: (a) => {
+      const N = Math.round(asScalar(a[0])); if (N <= 0) return ret(zeros(0, 1)); if (N === 1) return ret(colVec([1]));
+      const at = a.length > 1 && isMat(a[1]) ? Math.abs(asScalar(a[1])) : 100;
+      const order = N - 1, beta = Math.cosh(Math.acosh(Math.pow(10, at / 20)) / order);
+      const pre: number[] = [], pim: number[] = [];
+      for (let k = 0; k < N; k++) { const x = beta * Math.cos((Math.PI * k) / N); pim.push(0); pre.push(x > 1 ? Math.cosh(order * Math.acosh(x)) : x < -1 ? (2 * (N % 2) - 1) * Math.cosh(order * Math.acosh(-x)) : Math.cos(order * Math.acos(x))); }
+      const reFft = (re: number[], im: number[]) => { const out: number[] = []; for (let n = 0; n < N; n++) { let s = 0; for (let k = 0; k < N; k++) { const ang = (2 * Math.PI * k * n) / N; s += re[k] * Math.cos(ang) + im[k] * Math.sin(ang); } out.push(s); } return out; };
+      let w: number[];
+      if (N % 2 === 1) { const fr = reFft(pre, pim), n = (N + 1) >> 1, half = fr.slice(0, n); w = [...half.slice(1, n).reverse(), ...half]; }
+      else { const re: number[] = [], im: number[] = []; for (let k = 0; k < N; k++) { const ph = (Math.PI / N) * k; re.push(pre[k] * Math.cos(ph)); im.push(pre[k] * Math.sin(ph)); } const fr = reFft(re, im), n = (N >> 1) + 1; w = [...fr.slice(1, n).reverse(), ...fr.slice(1, n)]; }
+      const mx = Math.max(...w); return ret(colVec(w.map((v) => v / mx)));
+    },
+    // ── distances (MEX dtwmex/edrmex → documented dynamic-programming algorithms) ──
+    dtw: (a) => {
+      const x = toArray(m(a[0])), y = toArray(m(a[1])), nx = x.length, ny = y.length;
+      const D = Array.from({ length: nx + 1 }, () => new Array(ny + 1).fill(Infinity)); D[0][0] = 0;
+      for (let i = 1; i <= nx; i++) for (let j = 1; j <= ny; j++) D[i][j] = Math.abs(x[i - 1] - y[j - 1]) + Math.min(D[i - 1][j], D[i][j - 1], D[i - 1][j - 1]);
+      return ret(scalar(D[nx][ny]));
+    },
+    edr: (a) => {
+      const x = toArray(m(a[0])), y = toArray(m(a[1])), tol = a.length > 2 ? asScalar(a[2]) : 0, nx = x.length, ny = y.length;
+      const D = Array.from({ length: nx + 1 }, () => new Array(ny + 1).fill(0));
+      for (let i = 0; i <= nx; i++) D[i][0] = i; for (let j = 0; j <= ny; j++) D[0][j] = j;
+      for (let i = 1; i <= nx; i++) for (let j = 1; j <= ny; j++) { const sub = Math.abs(x[i - 1] - y[j - 1]) <= tol ? 0 : 1; D[i][j] = Math.min(D[i - 1][j - 1] + sub, D[i - 1][j] + 1, D[i][j - 1] + 1); }
+      return ret(scalar(D[nx][ny]));
+    },
+    // ── signal measures (pure .m), column-wise like MATLAB ──
+    peak2peak: (a) => ret(reduceCols(m(a[0]), (x) => Math.max(...x) - Math.min(...x))),
+    peak2rms: (a) => ret(reduceCols(m(a[0]), (x) => Math.max(...x.map(Math.abs)) / Math.sqrt(x.reduce((s, v) => s + v * v, 0) / x.length))),
+    rssq: (a) => ret(reduceCols(m(a[0]), (x) => Math.sqrt(x.reduce((s, v) => s + v * v, 0)))),
     barthannwin: (a) => window(a, 1, (n, N) => { const r = n / N - 0.5; return 0.62 - 0.48 * Math.abs(r) + 0.38 * Math.cos(2 * Math.PI * r); }),
     gausswin: (a) => { const L = Math.round(asScalar(a[0])); const alpha = a.length >= 2 ? asScalar(a[1]) : 2.5; const N = L - 1; const w: number[] = []; for (let n = 0; n < L; n++) { const x = (n - N / 2) / (N / 2); w.push(Math.exp(-0.5 * (alpha * x) ** 2)); } return ret(colVec(L === 1 ? [1] : w)); },
     kaiser: (a) => { const L = Math.round(asScalar(a[0])); const beta = a.length >= 2 ? asScalar(a[1]) : 0.5; const N = L - 1; const i0b = besselI0(beta); const w: number[] = []; for (let n = 0; n < L; n++) { const r = (2 * n) / N - 1; w.push(besselI0(beta * Math.sqrt(1 - r * r)) / i0b); } return ret(colVec(L === 1 ? [1] : w)); },
@@ -158,6 +225,9 @@ export const SIGNAL: ToolboxModule = {
     blackman: 'Blackman window', blackmanharris: 'Minimum 4-term Blackman-Harris window', nuttallwin: 'Nuttall-defined 4-term Blackman-Harris window',
     flattopwin: 'Flat top weighted window', bartlett: 'Bartlett (triangular, zero endpoints) window', triang: 'Triangular window', barthannwin: 'Modified Bartlett-Hann window',
     gausswin: 'Gaussian window', kaiser: 'Kaiser window', tukeywin: 'Tukey (tapered cosine) window',
+    parzenwin: 'Parzen (de la Vallée Poussin) window', bohmanwin: 'Bohman window', taylorwin: 'Taylor window',
+    chebwin: 'Chebyshev (Dolph-Chebyshev) window', dtw: 'Distance between signals using dynamic time warping',
+    edr: 'Edit distance on real signals', peak2peak: 'Maximum-to-minimum difference', peak2rms: 'Peak-magnitude-to-RMS ratio', rssq: 'Root-sum-of-squares level',
     mag2db: 'Convert magnitude to decibels', db2mag: 'Convert decibels to magnitude', pow2db: 'Convert power to decibels', db2pow: 'Convert decibels to power',
     sinc: 'Normalized sinc function', chirp: 'Swept-frequency cosine', medfilt1: '1-D median filtering',
     freqz: 'Digital filter frequency response', freqs: 'Analog filter frequency response', fir1: 'Window-based FIR filter design',
