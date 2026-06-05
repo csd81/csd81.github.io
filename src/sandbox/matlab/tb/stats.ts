@@ -80,6 +80,26 @@ function ncfcdfS(x: number, v1: number, v2: number, d: number): number {
   for (let j = 0; j < 500; j++) { const w = Math.exp(poisLogW(j, lh)); s += w * betainc(arg, v1 / 2 + j, v2 / 2); if (j > lh && w < 1e-15) break; }
   return Math.min(1, s);
 }
+/** Noncentral t cdf via the Lenth (1989) Poisson-series; reflect for x<0. */
+function nctcdfS(x: number, v: number, d: number): number {
+  if (x < 0) return 1 - nctcdfS(-x, v, -d);
+  const y = (x * x) / (x * x + v), lh = d * d / 2, phi = 0.5 * (1 + erf(-d / Math.SQRT2));
+  let s = 0;
+  for (let j = 0; j < 500; j++) {
+    const lj = -lh + j * Math.log(lh <= 0 ? 1e-300 : lh);
+    const pj = Math.exp(lj - logGamma(j + 1)), qj = Math.exp(lj - logGamma(j + 1.5)) * d / Math.SQRT2;
+    s += pj * betainc(y, j + 0.5, v / 2) + qj * betainc(y, j + 1, v / 2);
+    if (j > lh && pj < 1e-15 && Math.abs(qj) < 1e-15) break;
+  }
+  return phi + 0.5 * s;
+}
+/** Noncentral t pdf via the cdf recurrence f(t)=(v/t)(F_{v+2}(t√((v+2)/v))−F_v(t)). */
+function nctpdfS(x: number, v: number, d: number): number {
+  if (x === 0) return Math.exp(logGamma((v + 1) / 2) - 0.5 * Math.log(Math.PI * v) - logGamma(v / 2) - d * d / 2);
+  const f = Math.sqrt((v + 2) / v);
+  return x < 0 ? (v / x) * (nctcdfS(x * f, v + 2, d) - nctcdfS(x, v, d))
+               : (-v / x) * (nctcdfS(-x * f, v + 2, -d) - nctcdfS(-x, v, -d));
+}
 /** Standard-normal inverse CDF (Acklam) + one Halley refinement. */
 function norminvStd(p: number): number {
   if (p <= 0) return -Infinity; if (p >= 1) return Infinity;
@@ -332,6 +352,17 @@ export const STATS: ToolboxModule = {
       return statRet(n, mean, varr);
     },
 
+    // ── noncentral t: nctpdf(x,v,delta) — Lenth Poisson-series ──
+    nctpdf: (a) => dist(a, [1, 0], (x, v, d) => nctpdfS(x, v, d)),
+    nctcdf: (a) => dist(a, [1, 0], (x, v, d) => nctcdfS(x, v, d)),
+    nctinv: (a) => dist(a, [1, 0], (p, v, d) => invCdf(p, (x) => nctcdfS(x, v, d), -Infinity, Infinity)),
+    nctstat: (a, n) => {
+      const v = asScalar(a[0]), d = asScalar(a[1]);
+      const mean = v > 1 ? d * Math.sqrt(v / 2) * Math.exp(logGamma((v - 1) / 2) - logGamma(v / 2)) : NaN;
+      const varr = v > 2 ? v * (1 + d * d) / (v - 2) - mean * mean : NaN;
+      return statRet(n, mean, varr);
+    },
+
     // ── moments ──
     /** moment(X,order) — central moment of the given order (along columns / vector). */
     moment: (a) => ret(colReduceNan(m(a[0]), (c) => { const k = Math.round(asScalar(a[1])); const mu = mean_(c); return c.reduce((s, x) => s + (x - mu) ** k, 0) / c.length; })),
@@ -466,6 +497,7 @@ export const STATS: ToolboxModule = {
     hygepdf: 'Hypergeometric probability density function', hygecdf: 'Hypergeometric cumulative distribution function', hygeinv: 'Hypergeometric inverse cumulative distribution function', hygestat: 'Hypergeometric mean and variance',
     ncx2pdf: 'Noncentral chi-square probability density function', ncx2cdf: 'Noncentral chi-square cumulative distribution function', ncx2inv: 'Noncentral chi-square inverse cumulative distribution function', ncx2stat: 'Noncentral chi-square mean and variance',
     ncfpdf: 'Noncentral F probability density function', ncfcdf: 'Noncentral F cumulative distribution function', ncfinv: 'Noncentral F inverse cumulative distribution function', ncfstat: 'Noncentral F mean and variance',
+    nctpdf: 'Noncentral t probability density function', nctcdf: 'Noncentral t cumulative distribution function', nctinv: 'Noncentral t inverse cumulative distribution function', nctstat: 'Noncentral t mean and variance',
     nanmean: 'Mean, ignoring NaN values', nansum: 'Sum, ignoring NaN values', nanstd: 'Standard deviation, ignoring NaN values', nanvar: 'Variance, ignoring NaN values',
     nanmedian: 'Median, ignoring NaN values', nanmax: 'Maximum, ignoring NaN values', nanmin: 'Minimum, ignoring NaN values',
     range: 'Range of values (max − min)', tabulate: 'Frequency table',
