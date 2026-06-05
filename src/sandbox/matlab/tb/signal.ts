@@ -433,6 +433,17 @@ export const SIGNAL: ToolboxModule = {
       const c = new Array(N); for (let n = 0; n < N; n++) { let re = 0; for (let k = 0; k < N; k++) re += logmag[k] * Math.cos(2 * Math.PI * k * n / N); c[n] = re / N; }
       return ret(M.rows === 1 ? rowVec(c) : colVec(c));
     },
+    // ── complex cepstrum: cceps(x) = real(ifft(log|H| + i·rcunwrap(angle(H)))) ──
+    cceps: (a) => {
+      const M = m(a[0]), x = toArray(M), N = x.length, Hr = new Array(N), Hi = new Array(N);
+      for (let k = 0; k < N; k++) { let re = 0, im = 0; for (let n = 0; n < N; n++) { const ang = -2 * Math.PI * k * n / N; re += x[n] * Math.cos(ang); im += x[n] * Math.sin(ang); } Hr[k] = re; Hi[k] = im; }
+      const ph = new Array(N); ph[0] = Math.atan2(Hi[0], Hr[0]);
+      for (let k = 1; k < N; k++) { let d = Math.atan2(Hi[k], Hr[k]) - Math.atan2(Hi[k - 1], Hr[k - 1]); d -= 2 * Math.PI * Math.round(d / (2 * Math.PI)); ph[k] = ph[k - 1] + d; }
+      const nh = Math.floor((N + 1) / 2), nd = Math.round(ph[nh] / Math.PI);
+      for (let k = 0; k < N; k++) ph[k] -= Math.PI * nd * k / nh;
+      const c = new Array(N); for (let n = 0; n < N; n++) { let re = 0; for (let k = 0; k < N; k++) { const ang = 2 * Math.PI * k * n / N; re += Math.log(Math.hypot(Hr[k], Hi[k])) * Math.cos(ang) - ph[k] * Math.sin(ang); } c[n] = re / N; }
+      return ret(M.rows === 1 ? rowVec(c) : colVec(c));
+    },
     // ── DFT matrix: dftmtx(n)[j][k] = exp(-2πi·jk/n) ──
     dftmtx: (a) => {
       const n = Math.round(asScalar(a[0])), re = new Float64Array(n * n), im = new Float64Array(n * n);
@@ -623,7 +634,7 @@ export const SIGNAL: ToolboxModule = {
     rectpuls: 'Sampled aperiodic rectangle', tripuls: 'Sampled aperiodic triangle', sawtooth: 'Sawtooth or triangle wave', gauspuls: 'Gaussian-modulated sinusoidal RF pulse',
     upsample: 'Increase sample rate by integer factor', downsample: 'Decrease sample rate by integer factor', intdump: 'Integrate and dump', upfirdn: 'Upsample, FIR filter, downsample',
     fwht: 'Fast Walsh-Hadamard transform', ifwht: 'Inverse fast Walsh-Hadamard transform', hilbert: 'Discrete-time analytic signal via Hilbert transform',
-    rceps: 'Real cepstrum and minimum-phase reconstruction', dftmtx: 'Discrete Fourier transform matrix',
+    rceps: 'Real cepstrum and minimum-phase reconstruction', cceps: 'Complex cepstrum', dftmtx: 'Discrete Fourier transform matrix',
     meanfreq: 'Mean frequency of power spectrum', medfreq: 'Median frequency of power spectrum', bandpower: 'Band power of signal',
     powerbw: 'Power bandwidth (3 dB)', obw: 'Occupied bandwidth (99% power)',
     mag2db: 'Convert magnitude to decibels', db2mag: 'Convert decibels to magnitude', pow2db: 'Convert power to decibels', db2pow: 'Convert decibels to power',

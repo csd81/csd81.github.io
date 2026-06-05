@@ -419,6 +419,13 @@ export const STATS: ToolboxModule = {
       for (let i = 2; i + 1 < a.length; i++) if (isMat(a[i]) && (a[i] as Mat).isChar && asString(a[i]).toLowerCase() === 'type') type = asString(a[i + 1]).toLowerCase();
       return ret(scalar(type === 'spearman' ? (6 / Math.PI) * Math.asin(rho / 2) : (2 / Math.PI) * Math.asin(rho)));
     },
+    // ── ecdf: empirical (Kaplan-Meier) CDF, no censoring. Returns [f,x] with f(1)=0, x(1)=x(2). ──
+    ecdf: (a) => {
+      const x = toArray(m(a[0])).slice().sort((p, q) => p - q), N = x.length;
+      const fv: number[] = [0], xv: number[] = [x[0]];
+      for (let i = 0; i < N; i++) { if (i > 0 && x[i] === x[i - 1]) continue; xv.push(x[i]); let cnt = 0; for (let j = 0; j < N; j++) if (x[j] <= x[i]) cnt++; fv.push(cnt / N); }
+      return Promise.resolve([colVec(fv), colVec(xv)]);
+    },
     // ── descriptive: skewness/kurtosis (population, flag=1 default; flag=0 bias-corrected) ──
     skewness: (a) => {
       const x = toArray(m(a[0])), flag = a.length > 1 && isMat(a[1]) && m(a[1]).rows * m(a[1]).cols > 0 ? asScalar(a[1]) : 1, N = x.length;
@@ -572,6 +579,7 @@ export const STATS: ToolboxModule = {
     binofit: 'Binomial proportion estimate', wblfit: 'Weibull parameter estimates (MLE)', skewness: 'Sample skewness', kurtosis: 'Sample kurtosis',
     lognfit: 'Lognormal parameter estimates (MLE)', gamfit: 'Gamma parameter estimates (MLE)',
     mvnpdf: 'Multivariate normal probability density function', copulastat: 'Copula rank correlation',
+    ecdf: 'Empirical cumulative distribution function',
     nanmean: 'Mean, ignoring NaN values', nansum: 'Sum, ignoring NaN values', nanstd: 'Standard deviation, ignoring NaN values', nanvar: 'Variance, ignoring NaN values',
     nanmedian: 'Median, ignoring NaN values', nanmax: 'Maximum, ignoring NaN values', nanmin: 'Minimum, ignoring NaN values',
     range: 'Range of values (max − min)', tabulate: 'Frequency table',
