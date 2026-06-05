@@ -61,3 +61,29 @@ Status legend: ✅ converged · 🟡 partial (core works, some variants unsuppor
 - `addedge` auto-adds missing named endpoints (MATLAB semantics).
 - polyshape display gained the `NumHoles` line.
 - **Help:** `HelpEntry` extended with `description`/`examples`; rendered help is now ≥10 lines. Rich entries added for all batch-2 functions and for batch-1 `abs`/`acos`/`acosd`/`accumarray`.
+
+---
+
+## Batch 3 — functions 21–30
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `addnode` | 🟡 | add nodes by count/name | setting `G.Nodes.<prop>` (Nodes as a table) not modeled |
+| `addpoints` | 🟡 | append points to an animatedline | datetime/duration-valued animated lines unsupported |
+| `addtodate` | ✅ | serial-date field arithmetic (needed `datenum` string parsing — fixed) | the two datetime+duration display examples differ cosmetically |
+| `addvars` | ⛔(data) | builtin works | every doc example needs the `patients` sample dataset (not bundled) |
+| `adjacency` | ✅ | sparse adjacency, `'weighted'`; now prints the `m×n sparse … (k nonzeros)` header | `G.Edges` as a displayed table not modeled |
+| `airy` | ✅ | Airy Ai/Bi and derivatives | — |
+| `all` | ✅ | **fixed**: dimension arg, vector-of-dims, `'all'`, N-D; returns logical | — |
+| `allcycles` | ✅ | all cycles; **added** `[cycles,edgecycles]`, `MaxNumCycles`/Min/Max length | exact cycle *ordering* and `highlight`/plot examples differ |
+| `allfinite` | ✅ | finite-test scalar over any-dim array | one example uses a common-scale-factor display (`1.0e+23 *`) |
+| `allpaths` | ✅ | all paths; **added** `[paths,edgepaths]`, `MaxNumPaths`/Min/Max length | exact path *ordering* and `highlight`/plot examples differ |
+
+### Fixes landed in this batch (several are cross-cutting)
+- **N-D slice assignment** `A(:,:,k)=M` on a new/empty array now sizes the colon dims from the right-hand side (was producing 0×0×k garbage). Root-caused several N-D failures.
+- `all`/`any` rewritten to honor a dimension scalar, a vector of dimensions, and the `'all'` option, with N-D support, returning a logical.
+- `datenum("yyyy-mm-dd")` now parses date strings; `datetime(x,'ConvertFrom',type)` supports datenum/excel/posixtime/juliandate.
+- **Sparse display** now prints the MATLAB header `m×n sparse double matrix (k nonzeros)` (also fixes accumarray's sparse output).
+- **Cell/struct display** shows a small real vector inline, e.g. `{[1 2 3 6 5 4]}` (converged allcycles/allpaths).
+- `allpaths`/`allcycles` gained second (edge-index) outputs and the MaxNum*/Min/MaxLength options.
+- Rich ≥10-line help added for all batch-3 functions.

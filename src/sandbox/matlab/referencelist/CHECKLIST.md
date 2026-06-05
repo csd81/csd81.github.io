@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **20 / 1170** audited.
+Progress: **30 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -25,3 +25,13 @@ Progress: **20 / 1170** audited.
 | 18 | `addboundary` | 🟡 | NumHoles added; multi-region + array-plot pending |
 | 19 | `addcats` | 🟡 | append OK; 2-D categorical pending |
 | 20 | `addedge` | 🟡 | named-node auto-add fixed; edge-table pending |
+| 21 | `addnode` | 🟡 | add by count/name; Nodes-as-table pending |
+| 22 | `addpoints` | 🟡 | numeric OK; datetime animated lines pending |
+| 23 | `addtodate` | ✅ | needed datenum string parsing (fixed) |
+| 24 | `addvars` | ⛔ | builtin works; examples need `patients` dataset |
+| 25 | `adjacency` | ✅ | sparse header added |
+| 26 | `airy` | ✅ | Ai/Bi + derivatives |
+| 27 | `all` | ✅ | dim/vecdim/'all'/N-D fixed |
+| 28 | `allcycles` | ✅ | edge output + MaxNum/length options |
+| 29 | `allfinite` | ✅ | any-dim finite test |
+| 30 | `allpaths` | ✅ | edge output + MaxNum/length options |

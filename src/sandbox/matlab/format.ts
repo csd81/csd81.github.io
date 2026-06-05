@@ -101,6 +101,10 @@ function brief(v: Value): string {
   if (v.isChar) return `'${asString(v)}'`;
   if (numel(v) === 0) return '[]';
   if (isScalar(v)) return `[${isComplex(v) ? fmtC(v.data[0], v.idata![0]) : formatScalar(v.data[0])}]`;
+  // MATLAB shows a small real vector inline inside a cell/struct, e.g. {[1 2 3 6 5 4]}.
+  if (!isComplex(v) && !v.nd && numel(v) <= 10 && (v.rows === 1 || v.cols === 1)) {
+    return `[${Array.from(v.data, (x) => formatScalar(x)).join(' ')}]`;
+  }
   return `[${v.rows}×${v.cols} ${isComplex(v) ? 'complex' : 'double'}]`;
 }
 function cellLines(v: { rows: number; cols: number; items: Value[] }): string[] {
@@ -149,7 +153,7 @@ export function dispValue(v: Value): string {
 export function displayValue(name: string, v: Value): string {
   if (v.kind === 'cell') return `${name} =\n\n  ${v.rows}×${v.cols} cell array\n${cellLines(v).join('\n')}\n`;
   if (v.kind === 'struct') return `${name} =\n\n  struct with fields:\n${structLines(v).join('\n')}\n`;
-  if (v.kind === 'sparse') return `${name} =\n\n${sparseLines(v).join('\n')}\n`;
+  if (v.kind === 'sparse') return `${name} = ${v.rows}×${v.cols} sparse double matrix (${v.values.length} nonzeros)\n\n${sparseLines(v).join('\n')}\n`;
   if (v.kind === 'str') return `${name} =\n\n${strLines(v).join('\n')}\n`;
   if (v.kind === 'graph') return `${name} =\n\n  ${v.directed ? 'digraph' : 'graph'} with properties:\n${graphLines(v).join('\n')}\n`;
   if (v.kind === 'geom') return `${name} =\n\n  ${v.gkind} with properties:\n${geomLines(v).join('\n')}\n`;

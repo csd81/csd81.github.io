@@ -320,6 +320,18 @@ function minmax(args: Value[], nargout: number, pick: (a: number, b: number) => 
 function dimArg(args: Value[], i: number): number | undefined {
   return args.length > i && isMat(args[i]) && !(args[i] as Mat).isChar ? asScalar(args[i]) : undefined;   // a char/string arg (e.g. 'omitnan') is not a dim
 }
+/** all/any: honor a dimension scalar, a vector of dimensions, or the 'all' option; returns logical. */
+function boolReduce(args: Value[], init: number, f: (acc: number, x: number) => number): Value[] {
+  const A = m(args[0]);
+  const opt = args.length >= 2 && (isStr(args[1]) || (isMat(args[1]) && (args[1] as Mat).isChar)) ? asString(args[1]).toLowerCase() : null;
+  let out: Mat;
+  if (opt === 'all') out = scalar(toArray(A).reduce((s, x) => f(s, x), init));
+  else if (args.length >= 2 && isMat(args[1]) && !(args[1] as Mat).isChar && numel(args[1]) > 0) {
+    out = toArray(args[1]).map((x) => Math.round(x)).reduce((acc, d) => reduce(acc, d, init, f), A);
+  } else out = reduce(A, undefined, init, f);
+  out.isBool = true;
+  return [out];
+}
 /** True if any argument is the given option keyword (char or string type). */
 function hasFlag(args: Value[], flag: string): boolean { return args.some((x) => (isStr(x) || (isMat(x) && (x as Mat).isChar)) && asString(x).toLowerCase() === flag); }
 
@@ -2054,6 +2066,12 @@ export const BUILTINS: Record<string, Builtin> = {
   // ── Dates & times (serial date numbers) ──
   datenum: async (a) => {
     if (isTemporal(a[0])) { const t = a[0]; return ret(mat(t.rows, t.cols, new Float64Array(t.data))); }
+    // datenum("2022-01-01") / datenum('01-Jan-2022 12:00:00'): parse a date string.
+    if ((isStr(a[0]) || (isMat(a[0]) && (a[0] as Mat).isChar)) && a.length <= 2) {
+      const parse1 = (s: string) => { const d = new Date(s.trim()); if (Number.isNaN(+d)) throw new MatError(`datenum: could not parse date "${s}"`); return d.getTime() / 86400000 + 719529; };
+      if (isStr(a[0]) && a[0].items.length > 1) return ret(colVec(a[0].items.map(parse1)));
+      return ret(scalar(parse1(asString(a[0]))));
+    }
     if (a.length === 1) { const M = m(a[0]); if (M.cols >= 3 && M.rows >= 1) { const o = zeros(M.rows, 1); for (let r = 0; r < M.rows; r++) { const v = Array.from({ length: M.cols }, (_, c) => M.data[r + c * M.rows]); o.data[r] = dnum(v[0], v[1], v[2], v[3] ?? 0, v[4] ?? 0, v[5] ?? 0); } return ret(o); } const v = toArray(M); return ret(scalar(dnum(v[0], v[1], v[2], v[3] ?? 0, v[4] ?? 0, v[5] ?? 0))); }
     const g = a.map((x) => toArray(m(x))); const n = Math.max(...g.map((x) => x.length)); const at = (gi: number, i: number) => g[gi] ? (g[gi].length === 1 ? g[gi][0] : g[gi][i]) : 0;
     const o = zeros(n, 1); for (let i = 0; i < n; i++) o.data[i] = dnum(at(0, i), at(1, i), at(2, i), at(3, i), at(4, i), at(5, i)); return ret(numel(o) === 1 ? scalar(o.data[0]) : o);
@@ -2093,7 +2111,24 @@ export const BUILTINS: Record<string, Builtin> = {
   // ═════════════ DATES · TABLES · GROUPING · CATEGORICAL ═════════════
   // ── datetime / duration objects ──
   datetime: async (a) => {
-    if (a.length >= 1 && (isStr(a[0]) || (isMat(a[0]) && (a[0] as Mat).isChar))) { const w = asString(a[0]).toLowerCase(); const n = w === 'today' ? Math.floor(Date.now() / 86400000) + 719529 : Date.now() / 86400000 + 719529; return ret(makeTemporal('datetime', 1, 1, Float64Array.of(n))); }
+    // datetime(X,'ConvertFrom',type): X is a numeric serial date in some epoch.
+    const cfIdx = a.findIndex((x) => (isStr(x) || (isMat(x) && (x as Mat).isChar)) && asString(x).toLowerCase() === 'convertfrom');
+    if (cfIdx >= 0 && a.length > cfIdx + 1 && isMat(a[0])) {
+      const kind = asString(a[cfIdx + 1]).toLowerCase();
+      const X = m(a[0]);
+      // offset added to the source value to reach datenum (days since year 0).
+      const conv = (x: number): number => {
+        if (kind === 'datenum') return x;
+        if (kind === 'excel' || kind === 'excel1904') return x + (kind === 'excel1904' ? 695422 : 693960);
+        if (kind === 'posixtime') return x / 86400 + 719529;
+        if (kind === 'epochtime') return x / 86400 + 719529;
+        if (kind === 'juliandate') return x - 1721058.5 + 0;
+        if (kind === 'modifiedjuliandate') return x + 678941 + 0;
+        return x;
+      };
+      return ret(makeTemporal('datetime', X.rows, X.cols, Float64Array.from(X.data, conv)));
+    }
+    if (a.length >= 1 && (isStr(a[0]) || (isMat(a[0]) && (a[0] as Mat).isChar))) { const w = asString(a[0]).toLowerCase(); const s = asString(a[0]); let n: number; if (w === 'today') n = Math.floor(Date.now() / 86400000) + 719529; else if (w === 'now') n = Date.now() / 86400000 + 719529; else { const d = new Date(s.trim()); n = Number.isNaN(+d) ? Date.now() / 86400000 + 719529 : d.getTime() / 86400000 + 719529; } return ret(makeTemporal('datetime', 1, 1, Float64Array.of(n))); }
     if (a.length === 1 && isMat(a[0])) { const M = m(a[0]); if (M.cols >= 3) { const out = new Float64Array(M.rows); for (let r = 0; r < M.rows; r++) { const v = Array.from({ length: M.cols }, (_, c) => M.data[r + c * M.rows]); out[r] = dnum(v[0], v[1], v[2], v[3] ?? 0, v[4] ?? 0, v[5] ?? 0); } return ret(makeTemporal('datetime', M.rows, 1, out)); } }
     const g = a.map((x) => toArray(m(x))); const n = Math.max(1, ...g.map((x) => x.length)); const at = (gi: number, i: number) => g[gi] ? (g[gi].length === 1 ? g[gi][0] : g[gi][i]) : 0;
     const out = new Float64Array(n); for (let i = 0; i < n; i++) out[i] = dnum(at(0, i), at(1, i), at(2, i), at(3, i), at(4, i), at(5, i));
@@ -2498,8 +2533,27 @@ export const BUILTINS: Record<string, Builtin> = {
     for (const [v, node] of cutNode) for (const b of inBlocks.get(v)!) edges.push({ s: node - 1, t: b - 1, w: 1 });
     return ret(makeGraph(false, nbc + cut.length, edges));
   },
-  allpaths: async (a) => { const g = gArg(a[0]); const s = nodeIds(g, a[1])[0], t = nodeIds(g, a[2])[0]; const paths = enumeratePaths(g, s, t); return ret(makeCell(paths.length, 1, paths.map((p) => rowVec(p.map((x) => x + 1))))); },
-  allcycles: async (a) => { const g = gArg(a[0]); const cyc = enumerateCycles(g); return ret(makeCell(cyc.length, 1, cyc.map((p) => rowVec(p.map((x) => x + 1))))); },
+  allpaths: async (a, nargout) => {
+    const g = gArg(a[0]); const s = nodeIds(g, a[1])[0], t = nodeIds(g, a[2])[0];
+    const opt = graphLimitOpts(a, 3, 'Path');
+    let paths = enumeratePaths(g, s, t).filter((p) => p.length - 1 >= opt.minLen && p.length - 1 <= opt.maxLen);
+    if (opt.maxNum < paths.length) paths = paths.slice(0, opt.maxNum);
+    const nodes = makeCell(paths.length, 1, paths.map((p) => rowVec(p.map((x) => x + 1))));
+    if (nargout < 2) return [nodes];
+    const find = edgeFinder(g);
+    const edges = makeCell(paths.length, 1, paths.map((p) => rowVec(p.slice(1).map((v, i) => find(p[i], v)))));
+    return [nodes, edges];
+  },
+  allcycles: async (a, nargout) => {
+    const g = gArg(a[0]); const opt = graphLimitOpts(a, 1, 'Cycle');
+    let cyc = enumerateCycles(g).filter((c) => c.length >= opt.minLen && c.length <= opt.maxLen);
+    if (opt.maxNum < cyc.length) cyc = cyc.slice(0, opt.maxNum);
+    const nodes = makeCell(cyc.length, 1, cyc.map((p) => rowVec(p.map((x) => x + 1))));
+    if (nargout < 2) return [nodes];
+    const find = edgeFinder(g);
+    const edges = makeCell(cyc.length, 1, cyc.map((p) => rowVec(p.map((v, i) => find(p[i], p[(i + 1) % p.length])))));
+    return [nodes, edges];
+  },
   cyclebasis: async (a) => { const g = gArg(a[0]); const cyc = cycleBasisOf(g); return ret(makeCell(cyc.length, 1, cyc.map((p) => rowVec(p.map((x) => x + 1))))); },
   isisomorphic: async (a) => ret(bool(graphIsomorphism(gArg(a[0]), gArg(a[1])) !== null)),
   isomorphism: async (a) => { const p = graphIsomorphism(gArg(a[0]), gArg(a[1])); return ret(p ? colVec(p.map((x) => x + 1)) : zeros(0, 1)); },
@@ -2999,8 +3053,8 @@ export const BUILTINS: Record<string, Builtin> = {
   isnan: async (a) => ret(map(m(a[0]), (x) => (Number.isNaN(x) ? 1 : 0))),
   isinf: async (a) => ret(map(m(a[0]), (x) => (!Number.isFinite(x) && !Number.isNaN(x) ? 1 : 0))),
   isfinite: async (a) => ret(map(m(a[0]), (x) => (Number.isFinite(x) ? 1 : 0))),
-  any: async (a) => { const A = m(a[0]); if (A.rows === 1 || A.cols === 1) return ret(scalar(toArray(A).some((x) => x !== 0) ? 1 : 0)); return ret(reduce(A, 1, 0, (s, x) => (s || x !== 0 ? 1 : 0))); },
-  all: async (a) => { const A = m(a[0]); if (A.rows === 1 || A.cols === 1) return ret(scalar(toArray(A).every((x) => x !== 0) ? 1 : 0)); return ret(reduce(A, 1, 1, (s, x) => (s && x !== 0 ? 1 : 0))); },
+  any: async (a) => boolReduce(a, 0, (s, x) => (s || x !== 0 ? 1 : 0)),
+  all: async (a) => boolReduce(a, 1, (s, x) => (s && x !== 0 ? 1 : 0)),
 
   // I/O
   disp: async (a, _n, env) => { env.output((isSym(a[0]) ? symTexLines(a[0] as Sym).join('\n') : dispValue(a[0])) + '\n'); return []; },
@@ -5756,6 +5810,24 @@ function biconnected(g: Graph): number[] {
   return bin;
 }
 /** All simple paths s→t (bounded to avoid blow-up). */
+/** Parse MaxNum<X>/Min<X>Length/Max<X>Length name-value options for allpaths/allcycles. */
+function graphLimitOpts(args: Value[], from: number, kind: 'Path' | 'Cycle'): { maxNum: number; minLen: number; maxLen: number } {
+  const o = { maxNum: Infinity, minLen: 0, maxLen: Infinity };
+  for (let i = from; i + 1 < args.length; i += 2) {
+    const key = (isStr(args[i]) || (isMat(args[i]) && (args[i] as Mat).isChar)) ? asString(args[i]).toLowerCase() : '';
+    const val = asScalar(m(args[i + 1]));
+    if (key === `maxnum${kind.toLowerCase()}s`) o.maxNum = val;
+    else if (key === `min${kind.toLowerCase()}length`) o.minLen = val;
+    else if (key === `max${kind.toLowerCase()}length`) o.maxLen = val;
+  }
+  return o;
+}
+/** Map a node pair to a 1-based edge index in g.edges (first matching edge). */
+function edgeFinder(g: Graph): (u: number, v: number) => number {
+  const map = new Map<string, number>();
+  g.edges.forEach((e, i) => { const k = g.directed ? `${e.s}>${e.t}` : `${Math.min(e.s, e.t)}_${Math.max(e.s, e.t)}`; if (!map.has(k)) map.set(k, i + 1); });
+  return (u, v) => map.get(g.directed ? `${u}>${v}` : `${Math.min(u, v)}_${Math.max(u, v)}`) ?? 0;
+}
 function enumeratePaths(g: Graph, s: number, t: number, cap = 2000): number[][] {
   const adj = adjList(g, 'out'); const paths: number[][] = []; const onPath = new Array(g.n).fill(false);
   const dfs = (u: number, path: number[]) => { if (paths.length >= cap) return; if (u === t) { paths.push(path.slice()); return; } onPath[u] = true; for (const { to } of adj[u]) if (!onPath[to]) { path.push(to); dfs(to, path); path.pop(); } onPath[u] = false; };

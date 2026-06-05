@@ -431,8 +431,14 @@ export function indexSetND(m: Mat, subs: Sub[], rhs: Mat): Mat {
   let dims = ndSize(m);
   const D = subDims(dims, subs.length);
   // Determine required size; allow growth on any dim (pads with zeros).
+  // A colon on a still-empty (size-0) dimension adopts the rhs's size, so
+  // `A(:,:,1) = [2 1;3 5]` on an undefined A grows A to 2×2×1 (not 0×0×1).
+  const rdims = ndSize(rhs);
   const need = D.slice();
-  subs.forEach((s, d) => { if (s !== 'colon' && s.length) need[d] = Math.max(need[d], Math.max(...s)); });
+  subs.forEach((s, d) => {
+    if (s === 'colon') need[d] = Math.max(need[d], D[d] || rdims[d] || 1);
+    else if (s.length) need[d] = Math.max(need[d], Math.max(...s));
+  });
   if (need.some((v, d) => v > D[d])) {
     const newDims = dims.slice(); while (newDims.length < subs.length) newDims.push(1);
     for (let d = 0; d < subs.length; d++) newDims[d] = Math.max(newDims[d] ?? 1, need[d]);
