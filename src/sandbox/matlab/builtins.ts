@@ -379,9 +379,11 @@ function sizeOf(args: Value[], nargout: number): Value[] {
 }
 /** zeros/ones/rand argument handling extended to N-D: (), (n), (r,c,...), ([d1 d2 ...]). */
 function dimsN(args: Value[]): number[] {
-  if (args.length === 0) return [1, 1];
-  if (args.length === 1) { const a = m(args[0]); if (numel(a) >= 2) return toArray(a).map((x) => Math.round(x)); const n = Math.round(asScalar(a)); return [n, n]; }
-  return args.map((x) => Math.round(asScalar(x)));
+  // Drop a trailing class-name argument like zeros(2,3,'uint32') / ones(2,'single').
+  const dims = args.filter((a) => isMat(a) && !(a as Mat).isChar);
+  if (dims.length === 0) return [1, 1];
+  if (dims.length === 1) { const a = m(dims[0]); if (numel(a) >= 2) return toArray(a).map((x) => Math.round(x)); const n = Math.round(asScalar(a)); return [n, n]; }
+  return dims.map((x) => Math.round(asScalar(x)));
 }
 /** Coerce char/string/cellstr/numeric to a string-array view (dims + items). */
 function asStrArr(v: Value): { rows: number; cols: number; items: string[] } {
@@ -737,6 +739,10 @@ export const BUILTINS: Record<string, Builtin> = {
   ones: async (a) => { const d = dimsN(a); const data = new Float64Array(d.reduce((p, x) => p * x, 1)); data.fill(1); return ret(makeND(d, data)); },
   true: async (a) => { const d = dimsN(a); const M = makeND(d, new Float64Array(d.reduce((p, x) => p * x, 1)).fill(1)); M.isBool = true; return ret(M); },
   false: async (a) => { const d = dimsN(a); const M = makeND(d, new Float64Array(d.reduce((p, x) => p * x, 1))); M.isBool = true; return ret(M); },
+  NaN: async (a) => ret(makeND(dimsN(a), new Float64Array(dimsN(a).reduce((p, x) => p * x, 1)).fill(NaN))),
+  nan: async (a) => ret(makeND(dimsN(a), new Float64Array(dimsN(a).reduce((p, x) => p * x, 1)).fill(NaN))),
+  Inf: async (a) => ret(makeND(dimsN(a), new Float64Array(dimsN(a).reduce((p, x) => p * x, 1)).fill(Infinity))),
+  inf: async (a) => ret(makeND(dimsN(a), new Float64Array(dimsN(a).reduce((p, x) => p * x, 1)).fill(Infinity))),
   eye: async (a) => { const [r, c] = dims2(a); return ret(eye(r, c)); },
   rand: async (a) => { const d = dimsN(a); const data = new Float64Array(d.reduce((p, x) => p * x, 1)); for (let i = 0; i < data.length; i++) data[i] = rngNext(); return ret(makeND(d, data)); },
   linspace: async (a) => {
@@ -1394,8 +1400,8 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(broadcast3(m(a[0]), m(a[1]), m(a[2]), f));
   },
   // ── coordinate transforms ──
-  cart2pol: async (a, n) => { const X = m(a[0]), Y = m(a[1]); const th = elementwise(Y, X, (y, x) => Math.atan2(y, x)); const r = elementwise(X, Y, (x, y) => Math.hypot(x, y)); return n >= 2 ? [th, r] : [th]; },
-  pol2cart: async (a, n) => { const TH = m(a[0]), R = m(a[1]); const x = elementwise(R, TH, (r, t) => r * Math.cos(t)); const y = elementwise(R, TH, (r, t) => r * Math.sin(t)); return n >= 2 ? [x, y] : [x]; },
+  cart2pol: async (a, n) => { const X = m(a[0]), Y = m(a[1]); const th = elementwise(Y, X, (y, x) => Math.atan2(y, x)); const r = elementwise(X, Y, (x, y) => Math.hypot(x, y)); if (a.length >= 3 && n >= 3) return [th, r, m(a[2])]; return n >= 2 ? [th, r] : [th]; },
+  pol2cart: async (a, n) => { const TH = m(a[0]), R = m(a[1]); const x = elementwise(R, TH, (r, t) => r * Math.cos(t)); const y = elementwise(R, TH, (r, t) => r * Math.sin(t)); if (a.length >= 3 && n >= 3) return [x, y, m(a[2])]; return n >= 2 ? [x, y] : [x]; },
   cart2sph: async (a, n) => { const X = m(a[0]), Y = m(a[1]), Z = m(a[2]); const az = elementwise(Y, X, (y, x) => Math.atan2(y, x)); const el = zeros(X.rows, X.cols), r = zeros(X.rows, X.cols); for (let i = 0; i < el.data.length; i++) { el.data[i] = Math.atan2(Z.data[i], Math.hypot(X.data[i], Y.data[i])); r.data[i] = Math.sqrt(X.data[i] ** 2 + Y.data[i] ** 2 + Z.data[i] ** 2); } return n >= 3 ? [az, el, r] : n >= 2 ? [az, el] : [az]; },
   sph2cart: async (a, n) => { const AZ = m(a[0]), EL = m(a[1]), R = m(a[2]); const x = zeros(AZ.rows, AZ.cols), y = zeros(AZ.rows, AZ.cols), z = zeros(AZ.rows, AZ.cols); for (let i = 0; i < x.data.length; i++) { const az = AZ.data[i], el = EL.data[i], r = R.data[i]; x.data[i] = r * Math.cos(el) * Math.cos(az); y.data[i] = r * Math.cos(el) * Math.sin(az); z.data[i] = r * Math.sin(el); } return n >= 3 ? [x, y, z] : n >= 2 ? [x, y] : [x]; },
   // ── geometry ──
@@ -2319,18 +2325,26 @@ export const BUILTINS: Record<string, Builtin> = {
   mergevars: async (a) => { const t = gTbl(a[0]); const names = strList(a[1]); const idx = names.map((nm) => t.vars.indexOf(nm)).filter((k) => k >= 0); const merged = horzcat(idx.map((k) => m(t.cols[k]))); const newName = a.length >= 3 && (isStr(a[2]) || (isMat(a[2]) && (a[2] as Mat).isChar)) ? asString(a[a.length - 1]) : 'Var1'; const keep: { v: string; c: Value }[] = []; let inserted = false; t.vars.forEach((v, k) => { if (idx.includes(k)) { if (!inserted) { keep.push({ v: newName, c: merged }); inserted = true; } } else keep.push({ v, c: t.cols[k] }); }); return ret({ ...t, vars: keep.map((x) => x.v), cols: keep.map((x) => x.c) } as Table); },
   // ── categorical ──
   categorical: async (a) => {
-    let labels: string[];
-    if (isStr(a[0])) labels = (a[0] as Str).items.slice();
-    else if (isCell(a[0])) labels = (a[0] as Cell).items.map((x) => asString(x));
-    else if (isCategorical(a[0])) return ret(a[0]);
-    else { const v = m(a[0]); labels = toArray(v).map((x) => String(x)); }
-    const given = a.length >= 2 && isCell(a[1]) ? (a[1] as Cell).items.map((x) => asString(x)) : null;
-    const cats = given ?? [...new Set(labels)].sort();
-    const idx = new Map(cats.map((c, i) => [c, i + 1]));
-    const rows = isStr(a[0]) ? (a[0] as Str).rows : isCell(a[0]) ? (a[0] as Cell).rows : m(a[0]).rows;
-    const cols = isStr(a[0]) ? (a[0] as Str).cols : isCell(a[0]) ? (a[0] as Cell).cols : m(a[0]).cols;
-    const codes = Int32Array.from(labels, (l) => idx.get(l) ?? 0);
-    return ret(makeCategorical(rows * cols === labels.length ? rows : labels.length, rows * cols === labels.length ? cols : 1, codes, cats, a.length >= 3 && asString(a[a.length - 1]).toLowerCase() === 'ordinal'));
+    if (isCategorical(a[0])) return ret(a[0]);
+    // data labels (as strings) + shape
+    let labels: string[], rows: number, cols: number;
+    if (isStr(a[0])) { labels = (a[0] as Str).items.slice(); rows = (a[0] as Str).rows; cols = (a[0] as Str).cols; }
+    else if (isCell(a[0])) { labels = (a[0] as Cell).items.map((x) => asString(x)); rows = (a[0] as Cell).rows; cols = (a[0] as Cell).cols; }
+    else { const v = m(a[0]); labels = toArray(v).map((x) => (Number.isNaN(x) ? '<undefined>' : String(x))); rows = v.rows; cols = v.cols; }
+    const asList = (v: Value): string[] | null => (isStr(v) ? (v as Str).items.slice() : isCell(v) ? (v as Cell).items.map(asString) : isMat(v) && !(v as Mat).isChar ? toArray(v).map(String) : null);
+    const isFlag = (v: Value, w: string) => (isStr(v) || (isMat(v) && (v as Mat).isChar)) && asString(v).toLowerCase() === w;
+    // 'Ordinal',true name-value
+    let ordinal = false;
+    for (let i = 1; i + 1 < a.length; i++) if (isFlag(a[i], 'ordinal')) ordinal = truthy(a[i + 1]);
+    // valueset (a[1]) and catnames (a[2]) — but not the 'Ordinal' keyword
+    const valueset = a.length >= 2 && !isFlag(a[1], 'ordinal') ? asList(a[1]) : null;
+    const catnames = a.length >= 3 && !isFlag(a[2], 'ordinal') ? asList(a[2]) : null;
+    const cats = catnames ?? valueset ?? [...new Set(labels.filter((l) => l !== '<undefined>'))].sort();
+    const valToCat = new Map<string, string>();
+    if (valueset) valueset.forEach((v, i) => valToCat.set(v, catnames?.[i] ?? v));
+    const codeOf = new Map(cats.map((c, i) => [c, i + 1]));
+    const codes = Int32Array.from(labels, (l) => { if (l === '<undefined>') return 0; const cn = valueset ? valToCat.get(l) : l; return cn !== undefined ? (codeOf.get(cn) ?? 0) : 0; });
+    return ret(makeCategorical(rows, cols, codes, cats, ordinal));
   },
   categories: async (a) => { const c = a[0] as Categorical; return ret(makeStrArr(c.categories.length, 1, c.categories.slice())); },
   iscategorical: async (a) => ret(bool(isCategorical(a[0]))),

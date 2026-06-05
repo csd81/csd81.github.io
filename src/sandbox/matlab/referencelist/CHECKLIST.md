@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **110 / 1170** audited.
+Progress: **120 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -115,3 +115,13 @@ Progress: **110 / 1170** audited.
 | 108 | `bvpinit` | 🟡 | guess struct; chains to bvp4c |
 | 109 | `bvpset` | ✅ | BVP options struct |
 | 110 | `bvpxtend` | ✅ | extend BVP solution |
+| 111 | `camlight` | 🟡 | accepted; not rendered |
+| 112 | `cart2pol` | ✅ | 3-output cylindrical fixed |
+| 113 | `cart2sph` | ✅ | spherical |
+| 114 | `cartesianToBarycentric` | ✅ | triangulation coords |
+| 115 | `cast` | 🟡 | value ok; int-type partial |
+| 116 | `cat` | ✅ | concat any dim |
+| 117 | `categorical` | ✅ | constructor/compare/index fixed |
+| 118 | `categories` | ✅ | list categories |
+| 119 | `ccxGate` | ✅ | Toffoli gate |
+| 120 | `cdf2rdf` | 🟡 | eigvec freedom differs |

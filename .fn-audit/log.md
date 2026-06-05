@@ -59,3 +59,8 @@ Build green; 1415 builtins, 0 without help. *** 100/1170 functions audited (10 b
 Fixed: bounds dim/vecdim/'all'/N-D (mirrors all/any). box/brighten/bsxfun/bvpget/bvpset/bvpxtend pass.
 bvp4c/bvp5c/bvpinit examples blocked by page-local functions (@guess/@bvpfcn) harness can't resolve.
 bounds N-D "failures" are cross-example leaks (work in isolation). Build green; 1415 builtins, 0 without help.
+## Batch 12 (fns 111-120): camlight cart2pol cart2sph cartesianToBarycentric cast cat categorical categories ccxGate cdf2rdf
+Fixed: NaN(m,n)/Inf(m,n) size args; categorical valueset/catnames constructor + Ordinal flag;
+categorical ==/~=/ordinal </> comparison; categorical indexing C(mask); cart2pol/pol2cart 3rd output;
+zeros/ones ignore trailing class-name arg. 28 remaining (int-types, table-inputname, graphics/quantum).
+Build green; 1419 builtins, 0 without help.

@@ -279,3 +279,29 @@ All 35 batch-8 examples pass.
 - **`bounds`** now honors a dimension argument, a vector of dimensions, and the `'all'` option, with N-D support — `[s,l] = bounds(A,2)`, `bounds(A,[1 2 3])`, `bounds(A,"all")` (mirrors the earlier `all`/`any` fix).
 - The remaining `bounds` "failures" are harness cross-example leaks (the doc reuses the variable `A` across independent example sections); each works correctly in isolation.
 - Rich ≥10-line help added for all batch-11 functions.
+
+---
+
+## Batch 12 — functions 111–120
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `camlight` | 🟡 | light-at-camera accepted | lighting/shading not rendered (graphics) |
+| `cart2pol` | ✅ | **fixed**: 3-output cylindrical `[theta,rho,z]` | — |
+| `cart2sph` | ✅ | spherical coordinates | — |
+| `cartesianToBarycentric` | ✅ | Cartesian→barycentric over a triangulation | — |
+| `cast` | 🟡 | cast to a numeric class | integer-type metadata only partly tracked; `cast(A,like=p)` complex/sparse and `whos` byte report |
+| `cat` | ✅ | concatenate along any dimension | table-name-from-variable-name examples need `inputname` |
+| `categorical` | ✅ | **fixed**: valueset/catnames constructor, ==/~=/ordinal </>, indexing | table-backed examples and cell-vs-string category display |
+| `categories` | ✅ | list a categorical's categories | — |
+| `ccxGate` | ✅ | Toffoli gate object | — |
+| `cdf2rdf` | 🟡 | complex→real block-diagonal | eigenvector sign/scaling freedom differs from MATLAB |
+
+### Fixes landed in this batch (several are general)
+- **`NaN(m,n)` / `Inf(m,n)`** now accept size arguments and return arrays (were constants only), mirroring the earlier `true`/`false` fix.
+- **`categorical` constructor** supports the `categorical(A,valueset,catnames)` form and the `"Ordinal",true` flag, so categories get their intended names/order.
+- **Categorical comparison operators** `==`, `~=`, and ordinal `<`/`>`/`<=`/`>=` now work element-wise (by label, or by category order for ordinal arrays).
+- **Categorical indexing** `C(idx)` / `C(mask)` returns a categorical subset preserving the category list.
+- `cart2pol` / `pol2cart` return the pass-through `z` as a third output (cylindrical coordinates).
+- `zeros`/`ones`/`rand`/… ignore a trailing class-name argument (e.g. `zeros(2,3,'uint32')`) instead of erroring.
+- Rich ≥10-line help added for all batch-12 functions.

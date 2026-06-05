@@ -7,7 +7,7 @@ import {
   numel, asScalar, asString, truthy, map, elementwise, matmul, transpose, ctranspose,
   horzcat, vertcat, range as makeRange, indexGet, indexSet, indexDelete, isEmpty, toArray, type Sub,
   isComplex, cmap, ewAdd, ewSub, ewMul, ewRDiv, ewLDiv, ewPow, ewEq, cmatmul,
-  type Cell, type StructV, isCell, isStruct, makeCell, sparseToDense,
+  type Cell, type StructV, type Categorical, isCell, isStruct, makeCell, makeCategorical, sparseToDense,
   type Str, isStr, makeStr, makeStrArr,
   type Graph, type Geom, type Quantum,
   type Temporal, isTemporal, makeTemporal, numelOf,
@@ -619,6 +619,14 @@ export class Interpreter implements Env {
       const r = subs.length === 2 && subs[0] !== 'colon' ? (subs[0] as number[]).length : (base.cols === 1 ? exprs.length : 1);
       return [makeSym(r, exprs.length / (r || 1), exprs)];
     }
+    if (base.kind === 'categorical') {
+      // C(...) → a sub-categorical (same column-major linear-index logic), preserving categories.
+      const subs = await this.evalSubsN(e.args, base.rows, base.cols, base.codes.length, scope);
+      const lin = this.cellLinear(subs, base.rows, base.cols, base.codes.length);
+      const codes = Int32Array.from(lin, (i) => base.codes[i - 1]);
+      const r = subs.length === 2 && subs[0] !== 'colon' ? (subs[0] as number[]).length : (base.cols === 1 ? codes.length : 1);
+      return [makeCategorical(r, codes.length / (r || 1), codes, base.categories, base.ordinal)];
+    }
     const mbase = asMat(base);
     const subs = await this.evalSubs(e.args, mbase, scope);
     return [indexGet(mbase, subs)];
@@ -738,6 +746,7 @@ export class Interpreter implements Env {
     // datetime/duration arithmetic and comparison.
     if (isTemporal(av) || isTemporal(bv)) return temporalBinary(op, av, bv);
     // String-class operators: `+` concatenates, `==`/`~=` compare element-wise.
+    if ((av.kind === 'categorical' || bv.kind === 'categorical') && ['==', '~=', '<', '>', '<=', '>='].includes(op)) return categoricalBinary(op, av, bv);
     if ((op === '+' || op === '==' || op === '~=') && (isStr(av) || isStr(bv))) return strBinary(op, av, bv);
     const a = asMat(av);
     const b = asMat(bv);
@@ -816,6 +825,30 @@ function toStrArr(v: Value): Str {
   return makeStr(String(v));
 }
 /** `+` (concat), `==`/`~=` (element-wise compare) for the string class. */
+/** Element-wise comparison of a categorical array: == / ~= by label, ordinal </> by category order. */
+function categoricalBinary(op: string, av: Value, bv: Value): Value {
+  const cat = (av.kind === 'categorical' ? av : bv) as Categorical;
+  const other = av === cat ? bv : av;
+  const labelsOf = (v: Value): string[] => {
+    if (v.kind === 'categorical') return Array.from(v.codes, (c) => (c ? v.categories[c - 1] : '<undefined>'));
+    if (isStr(v)) return v.items.slice();
+    if (isMat(v) && v.isChar) return [asString(v)];
+    return toArray(asMat(v)).map((x) => String(x));
+  };
+  const ol = labelsOf(other);
+  const out = zeros(cat.rows, cat.cols); out.isBool = true;
+  const idxOf = new Map(cat.categories.map((c, i) => [c, i + 1]));
+  for (let i = 0; i < cat.codes.length; i++) {
+    const code = cat.codes[i];
+    const myLabel = code ? cat.categories[code - 1] : '<undefined>';
+    const o = ol.length === 1 ? ol[0] : ol[i];
+    let res: boolean;
+    if (op === '==' || op === '~=') { res = myLabel === o; if (op === '~=') res = !res; }
+    else { const oi = idxOf.get(o) ?? 0; res = op === '<' ? code < oi : op === '>' ? code > oi : op === '<=' ? code <= oi : code >= oi; }
+    out.data[i] = res ? 1 : 0;
+  }
+  return out;
+}
 function strBinary(op: string, av: Value, bv: Value): Value {
   const a = toStrArr(av), b = toStrArr(bv);
   const scalarA = a.rows * a.cols === 1, scalarB = b.rows * b.cols === 1;
