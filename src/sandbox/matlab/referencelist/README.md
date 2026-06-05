@@ -578,3 +578,25 @@ All 35 batch-8 examples pass.
 - **`[C{:}] = deal(...)`**: the multiassign handler expands a `C{:}` LHS into the cell's elements so several outputs land in one cell.
 - **`deblank`** handles cell arrays and string arrays element-wise.
 - Rich ≥10-line help added for all batch-24 functions (incl. new structured entries for `ddensd` and `deblank`).
+
+## Batch 25 — functions 241–250 (radix conversion · implicit/DDE ICs · deconv/del2 · graph degree)
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `dec2base` | ✅ | bases 2–36, width padding; two's-complement negatives | — |
+| `dec2bin` | ✅ | **fixed**: `dec2bin(-1)="11111111"`, `dec2bin(-16)="11110000"` (was 32-bit) | — |
+| `dec2hex` | ✅ | **fixed**: `dec2hex(-1)="FF"`, `dec2hex(-16)="F0"` (was signed `-1`) | — |
+| `decic` | ✅ | **fixed**: honors `fixed_y0`/`fixed_yp0`, Newton-solves free components → `[1;-1],[-0.5;0]` | — |
+| `decomposition` | 🟡 | factor-and-reuse solve `dA\b` works numerically | returns plain matrix — `class(dA)` is `double`, no object/property model |
+| `deconv` | ✅ | `[q,r]=deconv(u,v)` polynomial long division | — |
+| `deg2rad` | ✅ | `deg2rad(90)=1.5708` | — |
+| `degree` | ✅ | node degrees; `degree(G,nodeIDs)` incl. cell node-name lists | — |
+| `del2` | ✅ | **fixed**: boundary linear extrapolation → `4*del2([1 3 6 10 16 18 29])=[1 1 1 2 -4 9 22]` | nonuniform-spacing `h` args accepted but not scaled |
+| `delaunay` | 🟡 | builds a valid Delaunay triangulation (vertex-index triples) | exact triangle set depends on RNG-seeded points / insertion order |
+
+### Fixes landed in this batch
+- **Two's-complement radix output**: a new `baseStr(d,base)` helper renders negative integers in the smallest byte-multiple two's-complement width for `dec2bin`/`dec2hex`/`dec2base` (was emitting 32-bit or signed-`-` strings).
+- **`decic`**: rewritten to read the `fixed_y0`/`fixed_yp0` masks and Newton-solve only the *free* components of both `y0` and `yp0` (min-norm step when under-determined); previously it ignored the masks and only perturbed `yp0`, returning `NaN`.
+- **`del2` boundaries**: interior uses the central second difference; borders now use MATLAB's linear extrapolation `L(1)=2*L(2)-L(3)` (both 1-D and 2-D), fixing the wrong last element.
+- **Cell / string-array transpose** (`{...}'`, `S'`): the postfix `'`/`.'` operators now rearrange cell and string arrays instead of throwing "expected a numeric value" — this is what unblocked `degree(G,{'a','c','e'}')`.
+- Rich ≥10-line help added for all batch-25 functions.

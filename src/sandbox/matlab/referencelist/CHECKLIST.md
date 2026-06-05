@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **240 / 1170** audited.
+Progress: **250 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -245,3 +245,13 @@ Progress: **240 / 1170** audited.
 | 238 | `ddeset` | ✅ | DDE options struct |
 | 239 | `deal` | ✅ | **fixed**: `[C{:}]=deal(...)` cell-content expansion |
 | 240 | `deblank` | ✅ | **fixed**: cell/string-array trimming |
+| 241 | `dec2base` | ✅ | any base 2–36; two's-comp negatives |
+| 242 | `dec2bin` | ✅ | **fixed**: negative → 8-bit two's complement |
+| 243 | `dec2hex` | ✅ | **fixed**: negative → two's complement (FF/F0) |
+| 244 | `decic` | ✅ | **fixed**: honors fixed_y0/fixed_yp0, solves free comps |
+| 245 | `decomposition` | 🟡 | solve reuse works; `class` returns double (no object type) |
+| 246 | `deconv` | ✅ | polynomial division / deconvolution |
+| 247 | `deg2rad` | ✅ | degrees → radians |
+| 248 | `degree` | ✅ | **fixed via** cell-transpose: node-name lookup `degree(G,{...}')` |
+| 249 | `del2` | ✅ | **fixed**: boundary linear-extrapolation (last elt was wrong) |
+| 250 | `delaunay` | 🟡 | triangulation built; exact triangles depend on RNG/order |

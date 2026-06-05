@@ -575,7 +575,11 @@ export class Interpreter implements Env {
         return [{ ...map(v, (x) => (x === 0 ? 1 : 0)), isBool: true, idata: undefined }];
       }
       case 'postfix': {
-        const v = asMat(await this.evalExpr(e.e, scope));
+        const raw = await this.evalExpr(e.e, scope);
+        // Transpose of a cell or string array rearranges elements (no conjugation).
+        if (isCell(raw)) { const R = raw.rows, C = raw.cols, it = new Array(R * C); for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) it[c + r * C] = raw.items[r + c * R]; return [makeCell(C, R, it)]; }
+        if (isStr(raw)) { const R = raw.rows, C = raw.cols, it = new Array(R * C); for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) it[c + r * C] = raw.items[r + c * R]; return [makeStrArr(C, R, it)]; }
+        const v = asMat(raw);
         return [e.op === "'" ? ctranspose(v) : transpose(v)];
       }
       case 'binary': return [await this.evalBinary(e.op, e.a, e.b, scope)];

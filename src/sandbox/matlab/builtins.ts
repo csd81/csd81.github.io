@@ -111,6 +111,17 @@ function charMatRows(strs: string[]): Mat {
   return M;
 }
 /** Build a char matrix whose rows are the given strings, left-padded with '0' to equal width. */
+/** Convert an integer to a base-`base` digit string. Negative inputs use a two's-complement
+ *  representation in the smallest byte-multiple width that holds the value (matching MATLAB
+ *  dec2bin/dec2hex: dec2bin(-1)='11111111', dec2hex(-16)='F0'). */
+function baseStr(d: number, base: number): string {
+  if (d >= 0) return d.toString(base).toUpperCase();
+  let nbits = 8; while (d < -(2 ** (nbits - 1))) nbits += 8;
+  const u = d + 2 ** nbits; let s = u.toString(base).toUpperCase();
+  if (base === 2) s = s.padStart(nbits, '0');
+  else if (base === 16) s = s.padStart(nbits / 4, '0');
+  return s;
+}
 function charRowsZ(strs: string[], minW = 0): Mat {
   const w = Math.max(minW, ...strs.map((s) => s.length), 1);
   const padded = strs.map((s) => s.padStart(w, '0'));
@@ -1627,7 +1638,7 @@ export const BUILTINS: Record<string, Builtin> = {
   strtok: async (a, n) => { const s = asString(a[0]); const delim = a.length >= 2 ? asString(a[1]) : ' \t\n'; let i = 0; while (i < s.length && delim.includes(s[i])) i++; let j = i; while (j < s.length && !delim.includes(s[j])) j++; return n >= 2 ? [str(s.slice(i, j)), str(s.slice(j))] : [str(s.slice(i, j))]; },
   regexprep: async (a) => { try { return ret(str(asString(a[0]).replace(new RegExp(asString(a[1]), 'g'), asString(a[2]).replace(/\$(\d)/g, '$$$1')))); } catch { return ret(a[0]); } },
   // ── base conversions ──
-  dec2bin: async (a) => { const vals = toArray(m(a[0])).map((x) => Math.round(x)); const minW = a.length >= 2 ? Math.round(asScalar(a[1])) : 0; return ret(charRowsZ(vals.map((d) => (d >>> 0).toString(2)), minW)); },
+  dec2bin: async (a) => { const vals = toArray(m(a[0])).map((x) => Math.round(x)); const minW = a.length >= 2 ? Math.round(asScalar(a[1])) : 0; return ret(charRowsZ(vals.map((d) => baseStr(d, 2)), minW)); },
   bin2dec: async (a) => {
     const conv = (s: string) => parseInt(s.replace(/\s/g, ''), 2);
     if (isStr(a[0])) { const s = a[0]; return ret(mat(s.rows, s.cols, Float64Array.from(s.items, conv))); }
@@ -1635,9 +1646,9 @@ export const BUILTINS: Record<string, Builtin> = {
     if (M.isChar && M.rows > 1) { const out = new Float64Array(M.rows); for (let r = 0; r < M.rows; r++) { let str = ''; for (let c = 0; c < M.cols; c++) str += String.fromCharCode(M.data[r + c * M.rows]); out[r] = conv(str); } return ret(mat(M.rows, 1, out)); }
     return ret(scalar(conv(asString(a[0]))));
   },
-  dec2hex: async (a) => { const vals = toArray(m(a[0])).map((x) => Math.round(x)); const minW = a.length >= 2 ? Math.round(asScalar(a[1])) : 0; return ret(charRowsZ(vals.map((d) => d.toString(16).toUpperCase()), minW)); },
+  dec2hex: async (a) => { const vals = toArray(m(a[0])).map((x) => Math.round(x)); const minW = a.length >= 2 ? Math.round(asScalar(a[1])) : 0; return ret(charRowsZ(vals.map((d) => baseStr(d, 16)), minW)); },
   hex2dec: async (a) => ret(scalar(parseInt(asString(a[0]).replace(/\s/g, ''), 16))),
-  dec2base: async (a) => { const vals = toArray(m(a[0])).map((x) => Math.round(x)); const b = Math.round(asScalar(a[1])); const minW = a.length >= 3 ? Math.round(asScalar(a[2])) : 0; return ret(charRowsZ(vals.map((d) => d.toString(b).toUpperCase()), minW)); },
+  dec2base: async (a) => { const vals = toArray(m(a[0])).map((x) => Math.round(x)); const b = Math.round(asScalar(a[1])); const minW = a.length >= 3 ? Math.round(asScalar(a[2])) : 0; return ret(charRowsZ(vals.map((d) => baseStr(d, b)), minW)); },
   base2dec: async (a) => {
     const base = Math.round(asScalar(a[1]));
     const conv = (s: string) => parseInt(s.replace(/\s/g, ''), base);
@@ -2234,11 +2245,32 @@ export const BUILTINS: Record<string, Builtin> = {
   bvpget: async (a) => { const s = a[0] as StructV; const v = isStruct(s) ? s.fields.get(asString(a[1])) : undefined; return ret(v && v.length ? v[0] : zeros(0, 0)); },
   ode15i: async (a, n, env) => ode15iSolve(a, n, env),
   decic: async (a, n, env) => {
-    const odefun = handle(a[0], 'decic'); const t0 = asScalar(a[1]); const y0 = toArray(m(a[2])); const yp0 = a.length >= 5 ? toArray(m(a[4])) : new Array(y0.length).fill(0);
-    const neq = y0.length; const yp = yp0.slice();
-    const F = async (p: number[]) => toArray(m((await env.callHandle(odefun, [scalar(t0), colVec(y0), colVec(p)], 1))[0]));
-    for (let it = 0; it < 20; it++) { const G = await F(yp); let nrm = 0; for (const v of G) nrm += v * v; if (Math.sqrt(nrm) < 1e-12) break; const J = zeros(neq, neq); for (let j = 0; j < neq; j++) { const pp = yp.slice(); const dd = 1e-7 * Math.max(1, Math.abs(yp[j])); pp[j] += dd; const Gp = await F(pp); for (let i = 0; i < neq; i++) J.data[i + j * neq] = (Gp[i] - G[i]) / dd; } const dq = mldivide(J, colVec(G)); for (let i = 0; i < neq; i++) yp[i] -= dq.data[i]; }
-    return n >= 2 ? [colVec(y0), colVec(yp)] : [colVec(y0)];
+    // [y0,yp0] = decic(odefun,t0,y0,fixed_y0,yp0,fixed_yp0): adjust the FREE components of
+    // y0 and yp0 (those flagged 0 in fixed_y0/fixed_yp0) so that f(t0,y0,yp0)=0.
+    const odefun = handle(a[0], 'decic'); const t0 = asScalar(a[1]);
+    const y0 = toArray(m(a[2])); const neq = y0.length;
+    const fixY = a.length >= 4 && !isEmpty(m(a[3])) ? toArray(m(a[3])) : new Array(neq).fill(0);
+    const yp0 = a.length >= 5 && !isEmpty(m(a[4])) ? toArray(m(a[4])) : new Array(neq).fill(0);
+    const fixYp = a.length >= 6 && !isEmpty(m(a[5])) ? toArray(m(a[5])) : new Array(neq).fill(0);
+    // free-unknown index list: ('y',i) for each free y0(i), then ('p',i) for each free yp0(i)
+    const free: ['y' | 'p', number][] = [];
+    for (let i = 0; i < neq; i++) if (!fixY[i]) free.push(['y', i]);
+    for (let i = 0; i < neq; i++) if (!fixYp[i]) free.push(['p', i]);
+    const y = y0.slice(), yp = yp0.slice();
+    const F = async () => toArray(m((await env.callHandle(odefun, [scalar(t0), colVec(y), colVec(yp)], 1))[0]));
+    const nu = free.length;
+    for (let it = 0; it < 30 && nu > 0; it++) {
+      const G = await F(); let nrm = 0; for (const v of G) nrm += v * v; if (Math.sqrt(nrm) < 1e-13) break;
+      // Jacobian J (neq × nu) of the residual wrt the free unknowns, by finite differences.
+      const J = zeros(neq, nu);
+      for (let k = 0; k < nu; k++) { const [w, idx] = free[k]; const tgt = w === 'y' ? y : yp; const old = tgt[idx]; const dd = 1e-7 * Math.max(1, Math.abs(old)); tgt[idx] = old + dd; const Gk = await F(); tgt[idx] = old; for (let i = 0; i < neq; i++) J.data[i + k * neq] = (Gk[i] - G[i]) / dd; }
+      // Newton step: square -> J\G; underdetermined -> min-norm J'(JJ')\G; over -> least squares.
+      let dq: Mat;
+      if (nu > neq) { const Jt = transpose(J) as Mat; const JJt = matmul(J, Jt) as Mat; dq = matmul(Jt, mldivide(JJt, colVec(G)) as Mat) as Mat; }
+      else dq = mldivide(J, colVec(G)) as Mat;
+      for (let k = 0; k < nu; k++) { const [w, idx] = free[k]; if (w === 'y') y[idx] -= dq.data[k]; else yp[idx] -= dq.data[k]; }
+    }
+    return n >= 2 ? [colVec(y), colVec(yp)] : [colVec(y)];
   },
   odextend: async (a) => ret(a[0]),
   bvpxtend: async (a) => { const sol = a[0] as StructV; const xnew = asScalar(a[1]); const xs = toArray(m(sol.fields.get('x')![0])); const Y = m(sol.fields.get('y')![0]); const neq = Y.rows; const ynew = a.length >= 3 ? toArray(m(a[2])) : Array.from({ length: neq }, (_, k) => Y.data[k + (Y.cols - 1) * neq]); const nx = [...xs, xnew]; const Y2 = zeros(neq, nx.length); for (let c = 0; c < Y.cols; c++) for (let r = 0; r < neq; r++) Y2.data[r + c * neq] = Y.data[r + c * neq]; for (let r = 0; r < neq; r++) Y2.data[r + (nx.length - 1) * neq] = ynew[r]; return ret(mkStruct([['x', rowVec(nx)], ['y', Y2]])); },
@@ -2534,11 +2566,18 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   del2: async (a) => {
     const U = m(a[0]);
-    if (U.rows === 1 || U.cols === 1) { const v = toArray(U); const n = v.length; const o = new Array(n).fill(0); for (let i = 1; i < n - 1; i++) o[i] = (v[i + 1] - 2 * v[i] + v[i - 1]) / 4 * 2; for (let i = 1; i < n - 1; i++) o[i] = (v[i - 1] - 2 * v[i] + v[i + 1]) / 4; o[0] = o[1]; o[n - 1] = o[n - 2]; return ret(U.cols === 1 ? colVec(o) : rowVec(o)); }
+    // Boundary values use linear extrapolation of the interior Laplacian (MATLAB's rule):
+    // L(1) = 2*L(2) - L(3), matching 4*del2([1 3 6 10 16 18 29]) = [1 1 1 2 -4 9 22].
+    if (U.rows === 1 || U.cols === 1) {
+      const v = toArray(U); const n = v.length; const o = new Array(n).fill(0);
+      for (let i = 1; i < n - 1; i++) o[i] = (v[i - 1] - 2 * v[i] + v[i + 1]) / 4;
+      if (n >= 3) { o[0] = 2 * o[1] - o[2]; o[n - 1] = 2 * o[n - 2] - o[n - 3]; }
+      return ret(U.cols === 1 ? colVec(o) : rowVec(o));
+    }
     const R = U.rows, C = U.cols; const o = zeros(R, C); const at = (r: number, c: number) => U.data[r + c * R];
     for (let r = 1; r < R - 1; r++) for (let c = 1; c < C - 1; c++) o.data[r + c * R] = (at(r - 1, c) + at(r + 1, c) + at(r, c - 1) + at(r, c + 1) - 4 * at(r, c)) / 4;
-    for (let r = 0; r < R; r++) { o.data[r + 0 * R] = o.data[r + 1 * R]; o.data[r + (C - 1) * R] = o.data[r + (C - 2) * R]; }
-    for (let c = 0; c < C; c++) { o.data[0 + c * R] = o.data[1 + c * R]; o.data[(R - 1) + c * R] = o.data[(R - 2) + c * R]; }
+    if (C >= 3) for (let r = 0; r < R; r++) { o.data[r + 0 * R] = 2 * o.data[r + 1 * R] - o.data[r + 2 * R]; o.data[r + (C - 1) * R] = 2 * o.data[r + (C - 2) * R] - o.data[r + (C - 3) * R]; }
+    if (R >= 3) for (let c = 0; c < C; c++) { o.data[0 + c * R] = 2 * o.data[1 + c * R] - o.data[2 + c * R]; o.data[(R - 1) + c * R] = 2 * o.data[(R - 2) + c * R] - o.data[(R - 3) + c * R]; }
     return ret(o);
   },
   deconv: async (a, n) => {
