@@ -16,7 +16,7 @@ export type Expr =
   | { t: 'index'; target: Expr; args: Expr[] }    // f(...) — call OR subscript
   | { t: 'cell'; target: Expr; args: Expr[] }     // c{...}
   | { t: 'field'; target: Expr; name: string }    // s.name
-  | { t: 'anon'; params: string[]; body: Expr }   // @(x) expr
+  | { t: 'anon'; params: string[]; body: Expr; src?: string }   // @(x) expr
   | { t: 'handle'; name: string };                // @name
 
 export type LValue =

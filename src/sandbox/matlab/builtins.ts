@@ -2008,7 +2008,7 @@ export const BUILTINS: Record<string, Builtin> = {
   underlyingType: async (a, n, env) => BUILTINS.class(a, n, env),
   isUnderlyingType: async (a, _n, env) => { const c = await BUILTINS.class([a[0]], 1, env); return ret(bool(asString(c[0]) === asString(a[1]))); },
   function_handle: async (a) => ret(a[0]),
-  functions: async (a) => { const h = handle(a[0], 'functions'); const fields = new Map<string, Value[]>([['function', [str(h.name ?? 'anonymous')]], ['type', [str(h.name === 'anonymous' ? 'anonymous' : 'simple')]], ['file', [str('')]]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields } as StructV); },
+  functions: async (a) => { const h = handle(a[0], 'functions'); const isAnon = h.name === 'anonymous'; const fields = new Map<string, Value[]>([['function', [str(h.src ?? h.name ?? 'anonymous')]], ['type', [str(isAnon ? 'anonymous' : 'simple')]], ['file', [str(isAnon ? '' : 'MATLAB built-in function')]]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields } as StructV); },
   // page-wise ops (each 2-D page of an N-D array)
   pagetranspose: async (a) => ret(pageTranspose(m(a[0]), false)),
   pagectranspose: async (a) => ret(pageTranspose(m(a[0]), true)),
@@ -2045,7 +2045,7 @@ export const BUILTINS: Record<string, Builtin> = {
 
   // ── Batch I: language utilities (MATLAB v7 reference) ──
   deal: async (a, n) => { const k = Math.max(1, n); if (a.length === 1) return new Array(k).fill(a[0]); return a.slice(0, k); },
-  func2str: async (a) => { const h = handle(a[0], 'func2str'); return ret(str(h.name && h.name !== 'anonymous' ? h.name : '@anonymous')); },
+  func2str: async (a) => { const h = handle(a[0], 'func2str'); return ret(str(h.src ?? (h.name && h.name !== 'anonymous' ? h.name : '@anonymous'))); },
   str2func: async (a, _n, env) => { const sstr = asString(a[0]).trim(); return sstr.startsWith('@') ? ret(await env.evalInput(sstr)) : ret(env.makeHandle(sstr.replace(/^@/, ''))); },
   eval: async (a, n, env) => { const v = await env.evalInput(asString(a[0]), n >= 1); return n >= 1 ? ret(v) : []; },
   evalc: async (a, _n, env) => { let buf = ''; const orig = env.output; (env as { output: (t: string) => void }).output = (t) => { buf += t; }; try { await env.evalInput(asString(a[0]), false); } finally { (env as { output: (t: string) => void }).output = orig; } return ret(str(buf)); },
@@ -2110,7 +2110,19 @@ export const BUILTINS: Record<string, Builtin> = {
   // ── path-string utilities (no real filesystem; pure string manipulation) ──
   filesep: async () => ret(str('/')),
   pathsep: async () => ret(str(':')),
-  fullfile: async (a) => ret(str(a.map((x) => asString(x)).filter((s) => s.length).join('/').replace(/\/+/g, '/'))),
+  fullfile: async (a) => {
+    // A cell/string-array argument produces a cell of paths, one per element.
+    const cellIdx = a.findIndex((x) => isCell(x) || (isStr(x) && (x as Str).items.length > 1));
+    const joinParts = (parts: string[]) => parts.filter((s) => s.length).join('/').replace(/[\\/]+/g, '/');
+    if (cellIdx >= 0) {
+      const arr = a[cellIdx]; const items = isCell(arr) ? (arr as Cell).items.map((it) => asString(it)) : (arr as Str).items;
+      const before = a.slice(0, cellIdx).map((x) => asString(x)); const after = a.slice(cellIdx + 1).map((x) => asString(x));
+      const out = items.map((it) => joinParts([...before, it, ...after]));
+      const rows = isCell(arr) ? (arr as Cell).rows : (arr as Str).rows; const cols = isCell(arr) ? (arr as Cell).cols : (arr as Str).cols;
+      return ret(makeCell(rows, cols, out.map((s) => str(s))));
+    }
+    return ret(str(joinParts(a.map((x) => asString(x)))));
+  },
   fileparts: async (a, n) => { const p = asString(a[0]); const slash = Math.max(p.lastIndexOf('/'), p.lastIndexOf('\\')); const dir = slash >= 0 ? p.slice(0, slash) : ''; const base = slash >= 0 ? p.slice(slash + 1) : p; const dot = base.lastIndexOf('.'); const name = dot >= 0 ? base.slice(0, dot) : base; const ext = dot >= 0 ? base.slice(dot) : ''; return n >= 2 ? [str(dir), str(name), str(ext)] : [str(dir)]; },
   cputime: async () => ret(scalar((typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000)),
   beep: async () => [],

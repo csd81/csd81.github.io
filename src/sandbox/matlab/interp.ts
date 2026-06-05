@@ -589,7 +589,7 @@ export class Interpreter implements Env {
       case 'binary': return [await this.evalBinary(e.op, e.a, e.b, scope)];
       case 'matrix': return [await this.evalMatrix(e.rows, scope)];
       case 'celllit': return [await this.evalCellLit(e.rows, scope)];
-      case 'anon': return [this.makeAnon(e.params, e.body, scope)];
+      case 'anon': return [this.makeAnon(e.params, e.body, scope, e.src)];
       case 'handle': return [this.makeHandle(e.name)];
       case 'field': {
         const t = await this.evalExpr(e.target, scope);
@@ -755,10 +755,10 @@ export class Interpreter implements Env {
   makeHandle(name: string): Handle {
     return { kind: 'handle', name, call: (args, nargout) => this.resolveCall(name, args, nargout) };
   }
-  private makeAnon(params: string[], body: Expr, scope: Scope): Handle {
+  private makeAnon(params: string[], body: Expr, scope: Scope, src?: string): Handle {
     const snapshot = new Map(scope.vars);
     return {
-      kind: 'handle', name: 'anonymous',
+      kind: 'handle', name: 'anonymous', src,
       call: async (args, nargout) => {
         const s = new Scope();
         s.vars = new Map(snapshot);

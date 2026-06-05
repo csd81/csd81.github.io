@@ -12,15 +12,16 @@ const COMMAND_FNS = new Set(['hold', 'format', 'grid', 'box', 'axis', 'clc', 'cl
 const BLOCK_END = new Set(['end', 'endfunction', 'endif', 'endfor', 'endwhile', 'endswitch']);
 
 export function parse(src: string): Program {
-  return new Parser(tokenize(src)).parseProgram();
+  return new Parser(tokenize(src), src).parseProgram();
 }
 
 class Parser {
   private toks: Token[];
   private i = 0;
   private inMatrix = false;
+  private src: string;
 
-  constructor(toks: Token[]) { this.toks = toks; }
+  constructor(toks: Token[], src = '') { this.toks = toks; this.src = src; }
 
   private peek(o = 0): Token { return this.toks[Math.min(this.i + o, this.toks.length - 1)]; }
   private next(): Token { return this.toks[this.i++]; }
@@ -382,7 +383,7 @@ class Parser {
       if (this.atOp("'") || this.atOp(".'")) { const op = this.next().value as "'" | ".'"; e = { t: 'postfix', op, e }; continue; }
       if (this.atPunct('(')) { e = { t: 'index', target: e, args: this.parseArgList('(', ')') }; continue; }
       if (this.atPunct('{')) { e = { t: 'cell', target: e, args: this.parseArgList('{', '}') }; continue; }
-      if (this.atOp('.') && this.peek(1).kind === 'ident') { this.next(); const name = this.next().value; e = { t: 'field', target: e, name }; continue; }
+      if (this.atOp('.') && (this.peek(1).kind === 'ident' || this.peek(1).kind === 'kw')) { this.next(); const name = this.next().value; e = { t: 'field', target: e, name }; continue; }   // reserved words (e.g. s.function) are valid field names
       break;
     }
     return e;
@@ -428,6 +429,7 @@ class Parser {
   }
 
   private parseHandle(): Expr {
+    const atPos = this.peek().pos;   // position of '@' for capturing the anon source text
     this.next(); // @
     if (this.atPunct('(')) {
       this.next();
@@ -439,7 +441,9 @@ class Parser {
       }
       this.expectPunct(')');
       const body = this.parseExpr();
-      return { t: 'anon', params, body };
+      const endPos = this.peek().pos;
+      const src = this.src ? this.src.slice(atPos, endPos).replace(/\s+$/, '') : undefined;
+      return { t: 'anon', params, body, src };
     }
     if (this.peek().kind !== 'ident') this.err('expected function name after @');
     let name = this.next().value;

@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **370 / 1170** audited.
+Progress: **380 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -375,3 +375,13 @@ Progress: **370 / 1170** audited.
 | 368 | `fontsize` | 🟡 | bulk font-size setter (graphics) |
 | 369 | `format` | ✅ | display style (short/long/rat/hex…) |
 | 370 | `formula` | 🟡 | quantum-state ket formula; depends on simulate |
+| 371 | `fplot` | 🟡 | renders function plot |
+| 372 | `fplot3` | 🟡 | renders 3-D parametric curve |
+| 373 | `fprintf` | ✅ | formatted output; format cycling |
+| 374 | `freeBoundary` | ✅ | boundary facets of triangulation |
+| 375 | `fsurf` | 🟡 | renders function surface |
+| 376 | `full` | ✅ | sparse→dense |
+| 377 | `fullfile` | ✅ | **fixed**: cell/string-array arg → cell of paths |
+| 378 | `func2str` | ✅ | **fixed**: anonymous source via parser-captured text |
+| 379 | `function_handle` | ✅ | handle class (doc/intro) |
+| 380 | `functions` | ✅ | **fixed**: anon `function` field shows source |

@@ -855,3 +855,25 @@ All 35 batch-8 examples pass.
 - **`fminbnd`/`fminsearch` extra outputs**: both now return `[x,fval]` (and an exitflag), which a `[xm,fv]=fminbnd(...)` call needs — previously it errored "not enough output arguments".
 - Verified `format`, `floor` numeric/complex; `fmesh`/`fontname`/`fontsize` are graphics-only; `formula` reads the quantum state (its value depends on the simulator).
 - Rich ≥10-line help added for all batch-37 functions (incl. new structured `fontname`/`fontsize`/`format`).
+
+## Batch 38 — functions 371–380 (function plotters · fprintf · func2str/functions · fullfile)
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `fplot` | 🟡 | renders a function plot | visual only |
+| `fplot3` | 🟡 | renders a 3-D parametric curve | visual only |
+| `fprintf` | ✅ | C-style formatted output; format cycling over arrays | — |
+| `freeBoundary` | ✅ | boundary facets of a triangulation | — |
+| `fsurf` | 🟡 | renders a function surface | visual only |
+| `full` | ✅ | sparse → dense conversion | — |
+| `fullfile` | ✅ | **fixed**: cell/string-array argument → cell of paths | — |
+| `func2str` | ✅ | **fixed**: anonymous functions now return their source text | — |
+| `function_handle` | ✅ | function-handle class (doc/intro entry) | — |
+| `functions` | ✅ | **fixed**: `function` field shows anon source; reserved-word field access now parses | — |
+
+### Fixes landed in this batch
+- **`func2str` / `functions` reconstruct anonymous source**: anonymous functions previously stringified to `@anonymous`. The parser now captures the raw source span of an `@(...)...` expression (via token positions) and stores it on the handle (`Handle.src`), so `func2str(@(x,y) sqrt(x.^2+y.^2))` returns the real text and `functions(fh).function` shows it.
+- **Parser: reserved words as field names**: `s.function` (and any keyword after `.`) failed to parse. Field access now accepts keyword tokens as field names, so `functions(fh).function` and similar work for read and write.
+- **`fullfile` with a list argument**: a cell/string-array part now yields a cell array with one full path per name (was "expected a string"); separators are still normalized.
+- Verified `fprintf` (format cycling), `freeBoundary`, `full`; `fplot`/`fplot3`/`fsurf` are graphics-only.
+- Rich ≥10-line help added for all batch-38 functions (incl. new structured `fullfile`/`function_handle`/`functions`).

@@ -20,6 +20,7 @@ export interface Handle {
   kind: 'handle';
   call: (args: Value[], nargout: number) => Promise<Value[]>;
   name?: string;
+  src?: string;   // original source text for anonymous functions (func2str)
 }
 /** Graphics handle (e.g. the result of `gca`). Properties live in the graphics sink. */
 export interface GObj {
