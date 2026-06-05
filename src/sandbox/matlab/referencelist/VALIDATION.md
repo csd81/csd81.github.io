@@ -288,3 +288,91 @@ Validated against MATLAB R2026a. **1 bug found and fixed:**
 
 ### V201–V300 commit
 Build green (tsc+vite); fixes pushed (staged explicitly to exclude the unrelated untracked `toolboxes/` dir). Bugs caught by live-MATLAB cross-validation in functions 201–300: **`datestr` format string, `double(string)`, `deval`/single-output ODE struct, `edgeAttachments` edge-pair form**. (V9 was clean.)
+
+## V13 — functions 301–325 (etime … ezpolar)
+
+Validated against MATLAB R2026a. **1 bug found and fixed:**
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `exp`/`expm1`/`expint` | ✅ | exponential family |
+| `expm` | ✅ | matrix exponential (nilpotent + rotation) |
+| `eye` | ✅ | `eye(2,3)` rectangular identity |
+| `eval`/`evalc` | ✅ | string eval, captured output |
+| `exist` | ✅ | `exist("sin")`→5 (builtin) |
+| `extract` | ✅ | **fixed** (see below) |
+| `extractAfter`/`extractBefore`/`extractBetween` | ✅ | substring extraction |
+| `etime` | ✅ | elapsed seconds → 10 |
+| `etree` | ✅ | elimination tree |
+| `expand` | ✅* | value correct; symbolic display uses `x^{2}` vs MATLAB `x^2` (cosmetic) |
+| `expmv`/`evaluateObjective`/`etreeplot`/`ez*` | 🟡 | not numerically comparable / graphics |
+
+### Fix
+- **`extract` literal vs regex semantics**: the sandbox treated the text pattern as a regular expression, so `extract("a1b2c3","\d")` returned `["1";"2";"3"]`. MATLAB treats a plain text pattern as a **literal** match (you'd use `digitsPattern` or `regexpPattern("\d")` for patterns), so `extract("a1b2c3","\d")` finds the literal "\d" → empty. Now `extract` escapes the pattern for a literal match. Verified `"\d"`→empty, `"b"`→"b", `"["`→"[", `"foo"`→["foo";"foo"] all match MATLAB. _(Pattern objects like `digitsPattern` remain unimplemented — a separate cross-cutting subsystem.)_
+
+## V14 — functions 326–350 (ezsurf … find)
+
+Validated against MATLAB R2026a. **4 bugs found and fixed:**
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `factor`/`factorial` | ✅ | `factor(60)`→[2 2 3 5] |
+| `fft`/`ifft` | ✅ | **fixed** (see below) |
+| `fft2`/`fftn`/`fftshift` | ✅ | 2-D / N-D transforms (regression-checked) |
+| `fieldnames` | ✅ | struct field list |
+| `fileparts`/`filesep` | ✅ | path split |
+| `fillmissing` | ✅ | **fixed** (see below) |
+| `filloutliers` | ✅ | **fixed** (see below) |
+| `filter`/`filter2` | ✅ | 1-D digital filter, 2-D correlation |
+| `find` | ✅ | incl. `find(x,n)` first-n form |
+| `feval` | ✅ | `feval(@sin,pi/2)`→1 |
+| `faceNormal`/`featureEdges`/`ezsurf`/`fcontour`/`fimplicit` etc. | 🟡 | geometry / graphics |
+
+### Fixes
+- **`fft(x,n[,dim])` length argument**: `fft`/`ifft` ignored the `n` (pad/truncate) and `dim` arguments, so `fft([1 2 3],4)` did a 3-point transform (`[6 -1.5 …]`) instead of zero-padding to 4 points (`[6 -2 2 -2]`). Added `fftWithN` (pad/truncate along the operating dimension, then transpose for `dim=2`). Verified pad, truncate, and `dim` forms; fft2/fftn unaffected.
+- **`fillmissing(x,method)` method name**: the method was only recognized as a char array, not a string scalar (the 4th instance of this recurring pattern this pass), so `fillmissing([1 NaN 3],"linear")` threw "expected a numeric value". Now accepts string method names.
+- **`fillmissing(...,"nearest")` logic**: forward-filled first, which destroyed the NaN markers so the back-fill never ran (`[1 NaN NaN 4]`→`[1 1 1 4]`). Rewrote to pick the genuinely nearest non-missing neighbor, breaking ties toward the **next** value (MATLAB convention): `[1 NaN NaN 4]`→`[1 1 4 4]`, `[5 NaN 9]`→`[5 9 9]`.
+- **`filloutliers(x,fill[,method])`**: ignored the fill argument entirely (always replaced outliers with the median). Now detects outliers (via the shared method/percentiles mask) and fills them by the requested method — numeric value, `"center"` (median), or interpolation (`"linear"`/`"nearest"`/`"previous"`/`"next"`). `filloutliers([1 2 100 3 4],"linear")`→[1 2 2.5 3 4] matches MATLAB.
+
+## V15 — functions 351–375 (findedge … fsurf)
+
+Validated against MATLAB R2026a. **No bugs — all functions matched.**
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `fix`/`floor` | ✅ | toward-zero / toward-minus-infinity rounding |
+| `flintmax` | ✅ | 9.0072e15 |
+| `flip`/`fliplr`/`flipud`/`flipdim` | ✅ | with dim argument |
+| `fminbnd`/`fminsearch` | ✅ | 1-D + Nelder-Mead optimizers → minima |
+| `findgroups` | ✅ | group indices → [1;2;1;3] |
+| `findstr` | ✅ | substring positions |
+| `findedge`/`findnode`/`flipedge` | ✅ | graph queries (named nodes too) |
+| `freeBoundary` | ✅ | triangulation boundary edge count |
+| `fprintf` | ✅ | formatted output |
+| `flag`/`fmesh`/`fontname`/`fontsize`/`fplot`/`fsurf`/`format`/`formula` | 🟡 | graphics / display / symbolic |
+
+## V16 — functions 376–400 (full … gradient) — **V400 boundary: built + pushed**
+
+Validated against MATLAB R2026a. **2 bugs found and fixed:**
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `gamma`/`gammaln`/`gammainc`/`gammaincinv` | ✅ | gamma family to 4 digits |
+| `gcd` | ✅ | scalar + elementwise |
+| `fzero` | ✅ | root finding → √2, π/2 |
+| `funm` | ✅ | matrix function `cos([0 -1;1 0])`→cosh(1)·I |
+| `full`/`fullfile`/`func2str` | ✅ | densify / path join / handle text |
+| `gmres` | ✅ | GMRES iterative solver → A\\b |
+| `getfield` | ✅ | nested field access |
+| `gradient` | ✅ | **fixed** (see below) |
+| `gallery` | ✅ | **fixed** (see below) |
+| `gca`/`gcf`/`geoplot`/`geoscatter`/`gplot`/`get`/`genvarname` | 🟡 | graphics / handles |
+
+### Fixes
+- **`gradient` 2-D form**: only handled vectors (flattening matrices), and lacked the `[FX,FY]` two-output form. Added the matrix case: `FX` = central differences along columns (x), `FY` along rows (y), with optional spacings `hx,hy`. Verified `[gx,gy]=gradient([1 2;3 4])` → `gx=[1 1;1 1]`, `gy=[2 2;2 2]` matches MATLAB.
+- **`gallery("name",...)` string detection**: the matrix-name argument was only recognized as a char array, not a string scalar (the 5th instance of the recurring pattern this pass), so `gallery("moler",3)` threw "first argument must be a name". The matrix generators themselves were already implemented — fixed the detection. Verified `gallery("moler",3)` and `gallery("minij",3)` match MATLAB.
+
+---
+
+### V301–V400 commit
+Build green (tsc+vite); fixes pushed (staged explicitly to exclude `toolboxes/`). Bugs caught by live-MATLAB cross-validation in functions 301–400: **`extract` literal semantics, `fft(x,n[,dim])`, `fillmissing` method name + `nearest` logic, `filloutliers` fill method, `gradient` 2-D, `gallery` string name**. (V15 was clean.) The recurring char-array-vs-string option/name issue has now appeared in `bitcmp`, `cellfun`, `datestr`, `fillmissing`, `gallery`.

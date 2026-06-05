@@ -1476,7 +1476,20 @@ export const BUILTINS: Record<string, Builtin> = {
   rescale: async (a) => { const A = m(a[0]); const lo = a.length >= 2 ? asScalar(a[1]) : 0, hi = a.length >= 3 ? asScalar(a[2]) : 1; const mn = Math.min(...toArray(A)), mx = Math.max(...toArray(A)); const d = mx - mn || 1; return ret(map(A, (x) => lo + (hi - lo) * (x - mn) / d)); },
   clip: async (a) => ret(broadcast3(m(a[0]), m(a[1]), m(a[2]), (x, lo, hi) => Math.min(hi, Math.max(lo, x)))),
   isoutlier: async (a) => { const A = m(a[0]); const r = colMap(A, (c) => outlierMask(c)); r.isBool = true; return [r]; },
-  filloutliers: async (a) => { const A = m(a[0]); const fillNum = a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar ? asScalar(a[1]) : null; return ret(colMap(A, (c) => fillOutliersVec(c, fillNum))); },
+  filloutliers: async (a) => {
+    const isText = (v: Value) => v != null && (isStr(v) || (isMat(v) && (v as Mat).isChar));
+    const fillMethod = isText(a[1]) ? asString(a[1]).toLowerCase() : null;
+    const fillNum = !fillMethod && a.length >= 2 && isMat(a[1]) ? asScalar(a[1]) : null;
+    const detectArgs = [a[0], ...a.slice(2)];   // detection method/options follow the fill argument
+    const A = m(a[0]);
+    return ret(colMap(A, (c) => {
+      const mask = outlierMaskWith(c, detectArgs);
+      if (fillNum != null) return c.map((x, i) => (mask[i] ? fillNum : x));
+      if (!fillMethod || fillMethod === 'center') { const s = [...c].sort((x, y) => x - y); const med = s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2; return c.map((x, i) => (mask[i] ? med : x)); }
+      const withNaN = c.map((x, i) => (mask[i] ? NaN : x));
+      return fillVec(withNaN, fillMethod, NaN);
+    }));
+  },
   rmoutliers: async (a) => { const c = toArray(m(a[0])); const mask = outlierMaskWith(c, a); const kept = c.filter((_, i) => mask[i] === 0); return ret(m(a[0]).cols === 1 ? colVec(kept) : rowVec(kept)); },
   islocalmax: async (a) => { const A = m(a[0]); const v = toArray(A); const o = v.map((_, i) => (i > 0 && i < v.length - 1 && v[i] > v[i - 1] && v[i] > v[i + 1] ? 1 : 0)); const out = A.cols === 1 ? colVec(o) : rowVec(o); out.isBool = true; return [out]; },
   islocalmin: async (a) => { const A = m(a[0]); const v = toArray(A); const o = v.map((_, i) => (i > 0 && i < v.length - 1 && v[i] < v[i - 1] && v[i] < v[i + 1] ? 1 : 0)); const out = A.cols === 1 ? colVec(o) : rowVec(o); out.isBool = true; return [out]; },
@@ -1545,7 +1558,7 @@ export const BUILTINS: Record<string, Builtin> = {
     for (let k = 0; k < x.length; k++) { if (x[k] < xe[0] || x[k] > xe[nbx] || y[k] < ye[0] || y[k] > ye[nby]) continue; let bi = nbx - 1; for (let i = 0; i < nbx; i++) if (x[k] < xe[i + 1]) { bi = i; break; } let bj = nby - 1; for (let j = 0; j < nby; j++) if (y[k] < ye[j + 1]) { bj = j; break; } Nc.data[bi + bj * nbx]++; }
     return n >= 2 ? [Nc, rowVec(xe), rowVec(ye)] : [Nc];
   },
-  extract: async (a) => { const s = asString(a[0]); const pat = asString(a[1]); let re: RegExp; try { re = new RegExp(pat, 'g'); } catch { re = new RegExp(pat.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'); } const out: string[] = []; let mt: RegExpExecArray | null; while ((mt = re.exec(s)) !== null) { out.push(mt[0]); if (mt.index === re.lastIndex) re.lastIndex++; } return ret(makeStrArr(out.length, 1, out)); },
+  extract: async (a) => { const s = asString(a[0]); const pat = asString(a[1]); const re = new RegExp(pat.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'); const out: string[] = []; let mt: RegExpExecArray | null; while ((mt = re.exec(s)) !== null) { out.push(mt[0]); if (mt.index === re.lastIndex) re.lastIndex++; } return ret(makeStrArr(out.length, 1, out)); },
   histcounts: async (a, n) => {
     const x = toArray(m(a[0]));
     // name-value options
@@ -2008,7 +2021,7 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(W);
   },
   gallery: async (a) => {
-    if (!a.length || !(isMat(a[0]) && (a[0] as Mat).isChar)) throw new MatError("gallery: first argument must be a name, e.g. gallery('minij',5)");
+    if (!a.length || !(isStr(a[0]) || (isMat(a[0]) && (a[0] as Mat).isChar))) throw new MatError("gallery: first argument must be a name, e.g. gallery('minij',5)");
     return ret(galleryMatrix(asString(a[0]).toLowerCase(), a.slice(1)));
   },
   nonzeros: async (a) => { if (isSparse(a[0])) return ret(colVec(Array.from(a[0].values))); return ret(colVec(toArray(m(a[0])).filter((x) => x !== 0))); },
@@ -2363,7 +2376,7 @@ export const BUILTINS: Record<string, Builtin> = {
     const o = zeros(keep.length, A.cols); keep.forEach((r, i) => { for (let c = 0; c < A.cols; c++) o.data[i + c * keep.length] = A.data[r + c * A.rows]; }); return ret(o);
   },
   fillmissing: async (a) => {
-    const A = m(a[0]); const method = isMat(a[1]) && (a[1] as Mat).isChar ? asString(a[1]).toLowerCase() : 'constant';
+    const A = m(a[0]); const method = isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar) ? asString(a[1]).toLowerCase() : 'constant';
     if (method === 'constant') {
       const fv = toArray(m(a[a.length - 1]));   // scalar, or one fill value per column
       if (A.rows !== 1 && A.cols !== 1 && fv.length === A.cols) {
@@ -2462,11 +2475,17 @@ export const BUILTINS: Record<string, Builtin> = {
     let s = 0; for (let i = 1; i < y.length; i++) s += (x[i] - x[i - 1]) * (y[i] + y[i - 1]) / 2;
     return ret(scalar(s));
   },
-  gradient: async (a) => {
+  gradient: async (a, nargout) => {
     if (isSym(a[0])) { const s = a[0]; const vars = a.length >= 2 ? symNames(a[1]) : symVarsOf(s); return ret(makeSym(vars.length, 1, vars.map((vn) => simplifyExpr(diffExpr(s.exprs[0], vn))))); }
-    const y = toArray(m(a[0])); const h = a.length >= 2 ? asScalar(a[1]) : 1; const n = y.length; const g: number[] = [];
-    for (let i = 0; i < n; i++) { if (i === 0) g.push((y[1] - y[0]) / h); else if (i === n - 1) g.push((y[n - 1] - y[n - 2]) / h); else g.push((y[i + 1] - y[i - 1]) / (2 * h)); }
-    return ret(m(a[0]).cols === 1 ? colVec(g) : rowVec(g));
+    const A = m(a[0]);
+    const grad1 = (v: number[], h: number): number[] => { const n = v.length; const g: number[] = []; for (let i = 0; i < n; i++) { if (n === 1) g.push(0); else if (i === 0) g.push((v[1] - v[0]) / h); else if (i === n - 1) g.push((v[n - 1] - v[n - 2]) / h); else g.push((v[i + 1] - v[i - 1]) / (2 * h)); } return g; };
+    if (A.rows === 1 || A.cols === 1) { const y = toArray(A); const g = grad1(y, a.length >= 2 ? asScalar(a[1]) : 1); return ret(A.cols === 1 ? colVec(g) : rowVec(g)); }
+    // matrix: FX along columns (x, dim 2), FY along rows (y, dim 1)
+    const hx = a.length >= 2 ? asScalar(a[1]) : 1; const hy = a.length >= 3 ? asScalar(a[2]) : hx;
+    const FX = zeros(A.rows, A.cols), FY = zeros(A.rows, A.cols);
+    for (let r = 0; r < A.rows; r++) { const row: number[] = []; for (let c = 0; c < A.cols; c++) row.push(A.data[r + c * A.rows]); const g = grad1(row, hx); for (let c = 0; c < A.cols; c++) FX.data[r + c * A.rows] = g[c]; }
+    for (let c = 0; c < A.cols; c++) { const col: number[] = []; for (let r = 0; r < A.rows; r++) col.push(A.data[r + c * A.rows]); const g = grad1(col, hy); for (let r = 0; r < A.rows; r++) FY.data[r + c * A.rows] = g[r]; }
+    return nargout >= 2 ? [FX, FY] : [FX];
   },
   integral: async (a, _n, env) => {
     const f = handle(a[0], 'integral'); let lo = asScalar(a[1]), hi = asScalar(a[2]);
@@ -3794,8 +3813,8 @@ export const BUILTINS: Record<string, Builtin> = {
   intmax: async (a) => { const ty = a.length ? asString(a[0]).toLowerCase() : 'int32'; return ret(applyClass(scalar(INT_LIMITS[ty]?.[1] ?? 2147483647), ty)); },
   intmin: async (a) => { const ty = a.length ? asString(a[0]).toLowerCase() : 'int32'; return ret(applyClass(scalar(INT_LIMITS[ty]?.[0] ?? -2147483648), ty)); },
   // ── transforms ──
-  fft: async (a) => ret(fftApply(m(a[0]), -1)),
-  ifft: async (a) => ret(fftApply(m(a[0]), 1)),
+  fft: async (a) => { const n = a.length >= 2 && isMat(a[1]) && numel(a[1]) >= 1 ? Math.round(asScalar(a[1])) : null; const dim = a.length >= 3 && isMat(a[2]) && numel(a[2]) >= 1 ? Math.round(asScalar(a[2])) : null; return ret(fftWithN(m(a[0]), n, dim, -1)); },
+  ifft: async (a) => { const n = a.length >= 2 && isMat(a[1]) && numel(a[1]) >= 1 ? Math.round(asScalar(a[1])) : null; const dim = a.length >= 3 && isMat(a[2]) && numel(a[2]) >= 1 ? Math.round(asScalar(a[2])) : null; return ret(fftWithN(m(a[0]), n, dim, 1)); },
   fft2: async (a) => ret(transpose(fftApply(transpose(fftApply(m(a[0]), -1)), -1))),
   ifft2: async (a) => ret(transpose(fftApply(transpose(fftApply(m(a[0]), 1)), 1))),
   fftshift: async (a) => ret(fftShift(m(a[0]), false)),
@@ -5368,6 +5387,26 @@ function fftVec(re: number[], im: number[], sign: number): { re: number[]; im: n
   return { re: R, im: I };
 }
 /** Apply 1-D FFT to a vector (whole) or each column of a matrix. sign=-1 fft, +1 ifft. */
+/** Pad with zeros or truncate a matrix along dim 1 (rows) or dim 2 (cols) to length n — used by fft(x,n). */
+function padTruncMat(A: Mat, n: number, dim: number): Mat {
+  if (dim === 1) {
+    if (n === A.rows) return A;
+    const out = new Float64Array(n * A.cols); const oi = A.idata ? new Float64Array(n * A.cols) : null;
+    for (let c = 0; c < A.cols; c++) for (let r = 0; r < Math.min(n, A.rows); r++) { out[r + c * n] = A.data[r + c * A.rows]; if (oi && A.idata) oi[r + c * n] = A.idata[r + c * A.rows]; }
+    const M = mat(n, A.cols, out); if (oi) M.idata = oi; return M;
+  }
+  if (n === A.cols) return A;
+  const out = new Float64Array(A.rows * n); const oi = A.idata ? new Float64Array(A.rows * n) : null;
+  for (let c = 0; c < Math.min(n, A.cols); c++) for (let r = 0; r < A.rows; r++) { out[r + c * A.rows] = A.data[r + c * A.rows]; if (oi && A.idata) oi[r + c * A.rows] = A.idata[r + c * A.rows]; }
+  const M = mat(A.rows, n, out); if (oi) M.idata = oi; return M;
+}
+/** fft/ifft with optional length n and dimension dim. */
+function fftWithN(A: Mat, n: number | null, dim: number | null, sign: number): Mat {
+  const isRow = A.rows === 1; const opDim = dim ?? (isRow ? 2 : 1);
+  const X = n != null ? padTruncMat(A, n, opDim) : A;
+  if (opDim === 2 && X.rows > 1) return transpose(fftApply(transpose(X), sign));
+  return fftApply(X, sign);
+}
 function fftApply(A: Mat, sign: number): Mat {
   const inv = sign > 0;
   if (A.rows === 1 || A.cols === 1) {
@@ -5436,7 +5475,7 @@ function fillVec(c: number[], method: string, fill: number): number[] {
   const nextFill = () => { let nxt = NaN; for (let i = n - 1; i >= 0; i--) { if (Number.isNaN(out[i])) out[i] = nxt; else nxt = out[i]; } };
   if (method === 'previous') prevFill();
   else if (method === 'next') nextFill();
-  else if (method === 'nearest') { prevFill(); const back = c.slice(); let nxt = NaN; for (let i = n - 1; i >= 0; i--) { if (Number.isNaN(back[i])) back[i] = nxt; else nxt = back[i]; } for (let i = 0; i < n; i++) if (Number.isNaN(out[i])) out[i] = back[i]; }
+  else if (method === 'nearest') { for (let i = 0; i < n; i++) if (Number.isNaN(c[i])) { let lo = i; while (lo >= 0 && Number.isNaN(c[lo])) lo--; let hi = i; while (hi < n && Number.isNaN(c[hi])) hi++; if (lo < 0) out[i] = hi < n ? c[hi] : NaN; else if (hi >= n) out[i] = c[lo]; else out[i] = (i - lo) < (hi - i) ? c[lo] : c[hi]; } }
   else if (method === 'linear') { for (let i = 0; i < n; i++) if (Number.isNaN(out[i])) { let lo = i - 1; while (lo >= 0 && Number.isNaN(out[lo])) lo--; let hi = i + 1; while (hi < n && Number.isNaN(c[hi])) hi++; if (lo >= 0 && hi < n) out[i] = out[lo] + (c[hi] - out[lo]) * (i - lo) / (hi - lo); } }
   else for (let i = 0; i < n; i++) if (Number.isNaN(out[i])) out[i] = fill; // constant
   return out;
