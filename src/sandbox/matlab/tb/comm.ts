@@ -4,7 +4,7 @@
 // match without the toolbox. See plan §7.
 import type { Builtin } from '../builtins';
 import {
-  type Value, type Mat, isMat, scalar, colVec, zeros, toArray, asScalar, asString, toMat as m, map, mat,
+  type Value, type Mat, type StructV, isMat, scalar, colVec, zeros, toArray, asScalar, asString, toMat as m, map, mat,
 } from '../values';
 import type { ToolboxModule } from './types';
 
@@ -38,6 +38,39 @@ function qamPoint(s: number, side: number, kHalf: number): [number, number] { co
 function besselI0(x: number): number { let s = 1, t = 1; for (let k = 1; k < 80; k++) { t *= (x / (2 * k)) ** 2; s += t; if (t < s * 1e-16) break; } return s; }
 /** Modified Bessel I_n (series, integer n≥0). */
 function besselIn(n: number, x: number): number { if (n === 0) return besselI0(x); let nf = 1; for (let i = 2; i <= n; i++) nf *= i; let t = (x / 2) ** n / nf, s = t; for (let k = 1; k < 100; k++) { t *= (x * x / 4) / (k * (n + k)); s += t; if (Math.abs(t) < Math.abs(s) * 1e-16) break; } return s; }
+
+// ── convolutional-code (trellis) helpers ──
+const octDigitsToDec = (o: number) => parseInt(String(Math.round(o)), 8);
+const bitParity = (x: number) => { let p = 0; while (x) { p ^= x & 1; x >>>= 1; } return p; };
+/** Build a rate-1/n trellis struct from constraint length K and octal code generators. */
+function buildTrellis(K: number, codeGen: number[]): { numIn: number; numOut: number; numStates: number; outputs: number[][]; nextStates: number[][] } {
+  const n = codeGen.length, g = codeGen.map(octDigitsToDec), nStates = 1 << (K - 1);
+  const outputs: number[][] = [], nextStates: number[][] = [];
+  for (let s = 0; s < nStates; s++) {
+    const orow: number[] = [], nrow: number[] = [];
+    for (let u = 0; u < 2; u++) {
+      const reg = (u << (K - 1)) | s;                  // current input (MSB) + previous K-1 inputs
+      let outv = 0; for (let i = 0; i < n; i++) outv = (outv << 1) | bitParity(reg & g[i]); // MSB = first generator
+      orow.push(outv); nrow.push((reg >> 1) & (nStates - 1));
+    }
+    outputs.push(orow); nextStates.push(nrow);
+  }
+  return { numIn: 2, numOut: 1 << n, numStates: nStates, outputs, nextStates };
+}
+/** Pack a numStates×2 number matrix (column-major) as a Mat. */
+function intMat(M: number[][]): Mat { const r = M.length, c = M[0].length, d = new Float64Array(r * c); for (let i = 0; i < r; i++) for (let j = 0; j < c; j++) d[i + j * r] = M[i][j]; return mat(r, c, d); }
+/** Read a numStates×2 matrix from a Mat (column-major). */
+function readMat(M: Mat): number[][] { const out: number[][] = []; for (let i = 0; i < M.rows; i++) { const row: number[] = []; for (let j = 0; j < M.cols; j++) row.push(Math.round(M.data[i + j * M.rows])); out.push(row); } return out; }
+/** GF(2) Hamming generator: H=[I_m|P], G=[P'|I_k]. */
+const HAMM_PRIM: Record<number, number[]> = { 2: [0, 1, 2], 3: [0, 1, 3], 4: [0, 1, 4], 5: [0, 2, 5], 6: [0, 1, 6], 7: [0, 3, 7], 8: [0, 2, 3, 4, 8], 9: [0, 4, 9], 10: [0, 3, 10], 11: [0, 2, 11], 12: [0, 1, 4, 6, 12], 13: [0, 1, 3, 4, 13], 14: [0, 1, 6, 10, 14], 15: [0, 1, 15], 16: [0, 1, 3, 12, 16] };
+function hammHG(mm: number): { H: number[][]; G: number[][]; n: number; k: number } {
+  const n = (1 << mm) - 1, k = n - mm, primMask = HAMM_PRIM[mm].reduce((a, e) => a | (1 << e), 0);
+  const cols: number[] = []; let poly = 1;
+  for (let j = 0; j < n; j++) { cols.push(poly); poly <<= 1; if (poly & (1 << mm)) poly ^= primMask; }
+  const H: number[][] = []; for (let i = 0; i < mm; i++) { const row: number[] = []; for (let j = 0; j < n; j++) row.push((cols[j] >> i) & 1); H.push(row); }
+  const G: number[][] = []; for (let r = 0; r < k; r++) { const row: number[] = []; for (let cc = 0; cc < mm; cc++) row.push(H[cc][mm + r]); for (let cc = 0; cc < k; cc++) row.push(cc === r ? 1 : 0); G.push(row); }
+  return { H, G, n, k };
+}
 
 export const COMM: ToolboxModule = {
   id: 'comm',
@@ -139,6 +172,58 @@ export const COMM: ToolboxModule = {
       for (let lag = -(n - 1); lag <= n - 1; lag++) { let c = 0; for (let i = 0; i < x.length; i++) { const j = i - lag; if (j >= 0 && j < y.length) c += x[i] * y[j]; } if (c > bestC + 1e-12 || (Math.abs(c - bestC) <= 1e-12 && Math.abs(lag) < Math.abs(bestLag))) { bestC = c; bestLag = lag; } }
       return ret(scalar(-bestLag));   // MATLAB convention: delay of y relative to x
     },
+
+    // ── convolutional codes ──
+    /** poly2trellis(K, codeGen) — convert constraint length + octal generators to a trellis struct. */
+    poly2trellis: (a) => {
+      const K = Math.round(asScalar(a[0])); const codeGen = toArray(m(a[1]));
+      const t = buildTrellis(K, codeGen);
+      const fields = new Map<string, Value[]>([
+        ['numInputSymbols', [scalar(t.numIn)]],
+        ['numOutputSymbols', [scalar(t.numOut)]],
+        ['numStates', [scalar(t.numStates)]],
+        ['nextStates', [intMat(t.nextStates)]],
+        ['outputs', [intMat(t.outputs)]],
+      ]);
+      return ret({ kind: 'struct', rows: 1, cols: 1, fields } as StructV);
+    },
+    /** convenc(msg, trellis) — encode a binary message through a convolutional trellis. */
+    convenc: (a) => {
+      const msg = toArray(m(a[0])).map((v) => Math.round(v));
+      const tr = a[1] as StructV;
+      const outputs = readMat(m(tr.fields.get('outputs')![0]));
+      const nextStates = readMat(m(tr.fields.get('nextStates')![0]));
+      const numOut = Math.round(asScalar(tr.fields.get('numOutputSymbols')![0]));
+      const n = Math.round(Math.log2(numOut));
+      let state = 0; const out: number[] = [];
+      for (const b of msg) { const ov = outputs[state][b]; for (let i = n - 1; i >= 0; i--) out.push((ov >> i) & 1); state = nextStates[state][b]; }
+      return ret(m(a[0]).rows === 1 ? mat(1, out.length, Float64Array.from(out)) : colVec(out));
+    },
+    /** [ok,msg] = istrellis(t) — verify a struct is a valid trellis. */
+    istrellis: (a, nargout) => {
+      const v = a[0]; let ok = false;
+      if (v && (v as StructV).kind === 'struct') {
+        const f = (v as StructV).fields;
+        const has = ['numInputSymbols', 'numOutputSymbols', 'numStates', 'nextStates', 'outputs'].every((k) => f.has(k));
+        if (has) {
+          const ns = Math.round(asScalar(f.get('numStates')![0]));
+          const ni = Math.round(asScalar(f.get('numInputSymbols')![0]));
+          const nx = m(f.get('nextStates')![0]), ou = m(f.get('outputs')![0]);
+          ok = nx.rows === ns && nx.cols === ni && ou.rows === ns && ou.cols === ni;
+        }
+      }
+      const b = { kind: 'num' as const, rows: 1, cols: 1, data: Float64Array.from([ok ? 1 : 0]), isBool: true } as Mat;
+      return nargout >= 2 ? Promise.resolve([b, { kind: 'num', rows: ok ? 0 : 1, cols: 0, data: new Float64Array(0), isChar: true } as Mat]) : ret(b);
+    },
+    /** [H,G,n,k] = hammgen(m) — parity-check and generator matrices of a Hamming code over GF(2). */
+    hammgen: (a, nargout) => {
+      const mm = Math.round(asScalar(a[0])); const { H, G, n, k } = hammHG(mm);
+      const HM = intMat(H), GM = intMat(G);
+      if (nargout >= 4) return Promise.resolve([HM, GM, scalar(n), scalar(k)]);
+      if (nargout === 3) return Promise.resolve([HM, GM, scalar(n)]);
+      if (nargout === 2) return Promise.resolve([HM, GM]);
+      return ret(HM);
+    },
   },
   help: {
     qfunc: 'Q function (Gaussian tail probability)', qfuncinv: 'Inverse Q function',
@@ -149,6 +234,8 @@ export const COMM: ToolboxModule = {
     bin2gray: 'Convert positive integers to Gray-encoded integers', gray2bin: 'Convert Gray-encoded integers to positive integers',
     qammod: 'Quadrature amplitude modulation', qamdemod: 'Quadrature amplitude demodulation', pskmod: 'Phase shift keying modulation', pskdemod: 'Phase shift keying demodulation',
     marcumq: 'Generalized Marcum Q-function', finddelay: 'Estimate delay between signals',
+    poly2trellis: 'Convert convolutional code polynomials to trellis description', convenc: 'Convolutionally encode binary data',
+    istrellis: 'Check if input is a valid trellis structure', hammgen: 'Produce parity-check and generator matrices for Hamming code',
   },
 };
 

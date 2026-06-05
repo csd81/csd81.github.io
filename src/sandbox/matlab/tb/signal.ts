@@ -428,6 +428,42 @@ export const SIGNAL: ToolboxModule = {
       w.forEach((wk, k) => { const nz = cpolyS(b, wk), dz = cpolyS(den, wk); const dn = dz[0] * dz[0] + dz[1] * dz[1]; hre[k] = (nz[0] * dz[0] + nz[1] * dz[1]) / dn; him[k] = (nz[1] * dz[0] - nz[0] * dz[1]) / dn; });
       const h = (m(a[2]).rows === 1 ? rowVec(Array.from(hre)) : colVec(Array.from(hre))); h.idata = him; return ret(h);
     },
+    /** goertzel(x[,freqIndices][,dim]) — DFT of x at 1-based bin indices (default all → fft(x)). */
+    goertzel: (a) => {
+      const X = m(a[0]); const isCol = X.cols === 1 && X.rows !== 1;
+      const xre = toArray(X), xim = X.idata ? Array.from(X.idata) : new Array(xre.length).fill(0);
+      const N = xre.length;
+      let idx: number[];
+      if (a.length >= 2 && isMat(a[1]) && (a[1] as Mat).rows * (a[1] as Mat).cols > 0) idx = toArray(m(a[1])).map((v) => Math.round(v));
+      else { idx = []; for (let k = 1; k <= N; k++) idx.push(k); }
+      const re = new Float64Array(idx.length), im = new Float64Array(idx.length);
+      idx.forEach((ix, j) => { const k = ix - 1; let sr = 0, si = 0; for (let n = 0; n < N; n++) { const th = (-2 * Math.PI * k * n) / N, c = Math.cos(th), s = Math.sin(th); sr += xre[n] * c - xim[n] * s; si += xre[n] * s + xim[n] * c; } re[j] = sr; im[j] = si; });
+      const out = (isCol ? colVec(Array.from(re)) : rowVec(Array.from(re))); out.idata = im; return ret(out);
+    },
+    /** czt(x[,m][,w][,a]) — chirp-Z transform; defaults m=N, w=exp(-2πi/m), a=1 → fft(x). */
+    czt: (a) => {
+      const X = m(a[0]); const isCol = X.cols === 1 && X.rows !== 1;
+      const xre = toArray(X), xim = X.idata ? Array.from(X.idata) : new Array(xre.length).fill(0);
+      const N = xre.length;
+      const M = a.length >= 2 && isMat(a[1]) && (a[1] as Mat).rows * (a[1] as Mat).cols > 0 ? Math.round(asScalar(a[1])) : N;
+      const cs = (v: Value): [number, number] => { const W = m(v); return [W.data[0], W.idata ? W.idata[0] : 0]; };
+      const [wr, wi] = a.length >= 3 && isMat(a[2]) ? cs(a[2]) : [Math.cos(-2 * Math.PI / M), Math.sin(-2 * Math.PI / M)];
+      const [ar, ai] = a.length >= 4 && isMat(a[3]) ? cs(a[3]) : [1, 0];
+      const cpow = (re: number, ie: number, p: number): [number, number] => { const r = Math.hypot(re, ie), ph = Math.atan2(ie, re); const rp = r ** p, pp = ph * p; return [rp * Math.cos(pp), rp * Math.sin(pp)]; };
+      const re = new Float64Array(M), im = new Float64Array(M);
+      for (let k = 0; k < M; k++) {
+        let sr = 0, si = 0;
+        for (let n = 0; n < N; n++) {
+          const [anr, ani] = cpow(ar, ai, -n);        // a^(-n)
+          const [wnr, wni] = cpow(wr, wi, n * k);      // w^(n*k)
+          let tr = xre[n] * anr - xim[n] * ani, ti = xre[n] * ani + xim[n] * anr;
+          const ntr = tr * wnr - ti * wni, nti = tr * wni + ti * wnr; tr = ntr; ti = nti;
+          sr += tr; si += ti;
+        }
+        re[k] = sr; im[k] = si;
+      }
+      const out = (isCol ? colVec(Array.from(re)) : rowVec(Array.from(re))); out.idata = im; return ret(out);
+    },
     /** fir1(n,Wn) — windowed-sinc lowpass FIR (length n+1, Hamming window, unity DC gain). */
     fir1: (a) => {
       const n = Math.round(asScalar(a[0])); const Wn = asScalar(a[1]); const M = n / 2;
@@ -478,6 +514,7 @@ export const SIGNAL: ToolboxModule = {
     mag2db: 'Convert magnitude to decibels', db2mag: 'Convert decibels to magnitude', pow2db: 'Convert power to decibels', db2pow: 'Convert decibels to power',
     sinc: 'Normalized sinc function', chirp: 'Swept-frequency cosine', medfilt1: '1-D median filtering',
     freqz: 'Digital filter frequency response', freqs: 'Analog filter frequency response', fir1: 'Window-based FIR filter design',
+    goertzel: 'Discrete Fourier transform with second-order Goertzel algorithm', czt: 'Chirp Z-transform',
     levinson: 'Levinson-Durbin recursion', ac2poly: 'Autocorrelation to prediction polynomial', poly2ac: 'Prediction polynomial to autocorrelation',
     poly2rc: 'Prediction polynomial to reflection coefficients', rc2poly: 'Reflection coefficients to prediction polynomial',
     sgolay: 'Savitzky-Golay FIR smoothing matrix', sgolayfilt: 'Savitzky-Golay filtering',
