@@ -129,6 +129,25 @@ function settling(x: number[], t: number[], d: number, tol = 2): number[] {
   }
   return out;
 }
+// ── spectral-measure engine (signal.internal.specfreqwidth + nfft=N periodogram) ──
+/** Frequency-bin widths (signal.internal.specfreqwidth): uniform one-sided grid → all df. */
+function specWidth(F: number[]): number[] {
+  const N = F.length, d: number[] = []; for (let i = 1; i < N; i++) d.push(F[i] - F[i - 1]);
+  const mw = (F[N - 1] - F[0]) / (N - 1); return F[0] === 0 ? [...d, mw] : [mw, ...d];
+}
+/** Windowed one-sided periodogram with nfft = N (the measure functions' convention). */
+function psdWin(x: number[], w: number[], fs?: number): { Pxx: number[]; f: number[] } {
+  const N = x.length, nfft = N, half = Math.floor(nfft / 2), Fs = fs ?? 2 * Math.PI;
+  const sw2 = w.reduce((s, v) => s + v * v, 0), Pxx: number[] = [], f: number[] = [];
+  for (let k = 0; k <= half; k++) {
+    let re = 0, im = 0;
+    for (let n = 0; n < N; n++) { const ang = -2 * Math.PI * k * n / nfft, xw = x[n] * w[n]; re += xw * Math.cos(ang); im += xw * Math.sin(ang); }
+    let p = (re * re + im * im) / (Fs * sw2); if (k > 0 && k < half) p *= 2;
+    Pxx.push(p); f.push(fs ? k * fs / nfft : k * 2 * Math.PI / nfft);
+  }
+  return { Pxx, f };
+}
+const hammingWin = (N: number): number[] => (N === 1 ? [1] : Array.from({ length: N }, (_, n) => 0.54 - 0.46 * Math.cos(2 * Math.PI * n / (N - 1))));
 /** Resolve the time base: t-vector, scalar Fs, or default sample numbers 1..n. */
 function timeBase(a: Value[], n: number): number[] {
   if (a.length > 1 && isMat(a[1])) { const M = m(a[1]); if (M.rows * M.cols === 1) { const Fs = asScalar(a[1]); return Array.from({ length: n }, (_, i) => i / Fs); } return toArray(M); }
@@ -285,6 +304,30 @@ export const SIGNAL: ToolboxModule = {
       }
       return Promise.resolve(nargout >= 2 ? [colVec(Pxx), colVec(f)] : [colVec(Pxx)]);
     },
+    // ── spectral measures (rectangular/kaiser0 window, nfft=N, specfreqwidth width-method) ──
+    meanfreq: (a) => {
+      const x = toArray(m(a[0])), fs = a.length > 1 && isMat(a[1]) ? asScalar(a[1]) : undefined;
+      const { Pxx, f } = psdWin(x, new Array(x.length).fill(1), fs), w = specWidth(f);
+      let num = 0, den = 0; for (let k = 0; k < f.length; k++) { num += w[k] * f[k] * Pxx[k]; den += w[k] * Pxx[k]; }
+      return ret(scalar(num / den));
+    },
+    medfreq: (a) => {
+      const x = toArray(m(a[0])), fs = a.length > 1 && isMat(a[1]) ? asScalar(a[1]) : undefined;
+      const { Pxx, f } = psdWin(x, new Array(x.length).fill(1), fs), w = specWidth(f);
+      let tot = 0; for (let k = 0; k < f.length; k++) tot += w[k] * Pxx[k];
+      let c = 0; for (let k = 0; k < f.length; k++) { const seg = w[k] * Pxx[k]; if (c + seg >= tot / 2) return ret(scalar(f[k] - w[k] / 2 + (tot / 2 - c) / seg * w[k])); c += seg; }
+      return ret(scalar(f[f.length - 1]));
+    },
+    // bandpower(x): mean square; bandpower(x,fs,[f1 f2]): hamming-window nfft=N PSD over the band
+    bandpower: (a) => {
+      const x = toArray(m(a[0]));
+      if (!(a.length > 2 && isMat(a[2]))) return ret(scalar(x.reduce((s, v) => s + v * v, 0) / x.length));
+      const fs = isMat(a[1]) ? asScalar(a[1]) : undefined, range = toArray(m(a[2]));
+      const { Pxx, f } = psdWin(x, hammingWin(x.length), fs), w = specWidth(f), lo = range[0], hi = range[1];
+      let i1 = 0; for (let k = 0; k < f.length; k++) if (f[k] <= lo) i1 = k;
+      let i2 = f.length - 1; for (let k = 0; k < f.length; k++) if (f[k] >= hi) { i2 = k; break; }
+      let s = 0; for (let k = i1; k <= i2; k++) s += w[k] * Pxx[k]; return ret(scalar(s));
+    },
     // ── equivalent noise bandwidth of a window: enbw(w)=N*Σw²/(Σw)²; enbw(w,fs)=fs*Σw²/(Σw)² ──
     enbw: (a) => {
       const w = toArray(m(a[0])), sw = w.reduce((s, v) => s + v, 0), sw2 = w.reduce((s, v) => s + v * v, 0);
@@ -407,6 +450,7 @@ export const SIGNAL: ToolboxModule = {
     overshoot: 'Overshoot metrics of bilevel waveform transitions', undershoot: 'Undershoot metrics of bilevel waveform transitions',
     settlingtime: 'Settling time for bilevel waveform transitions', enbw: 'Equivalent noise bandwidth of a window',
     periodogram: 'Periodogram power spectral density estimate',
+    meanfreq: 'Mean frequency of power spectrum', medfreq: 'Median frequency of power spectrum', bandpower: 'Band power of signal',
     mag2db: 'Convert magnitude to decibels', db2mag: 'Convert decibels to magnitude', pow2db: 'Convert power to decibels', db2pow: 'Convert decibels to power',
     sinc: 'Normalized sinc function', chirp: 'Swept-frequency cosine', medfilt1: '1-D median filtering',
     freqz: 'Digital filter frequency response', freqs: 'Analog filter frequency response', fir1: 'Window-based FIR filter design',
