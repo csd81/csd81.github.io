@@ -65,6 +65,21 @@ function erfc(x: number): number { return 1 - erf(x); }
 function nCk(n: number, k: number): number { if (k < 0 || k > n) return 0; return Math.exp(logGamma(n + 1) - logGamma(k + 1) - logGamma(n - k + 1)); }
 /** log of n-choose-k (log-domain, safe for large populations). */
 function lchoose(n: number, k: number): number { return logGamma(n + 1) - logGamma(k + 1) - logGamma(n - k + 1); }
+const logBeta = (p: number, q: number) => logGamma(p) + logGamma(q) - logGamma(p + q);
+/** log of Poisson(j; λ) weight = -λ + j·ln λ - ln(j!). */
+const poisLogW = (j: number, lam: number) => -lam + j * Math.log(lam <= 0 ? 1e-300 : lam) - logGamma(j + 1);
+/** Noncentral χ² cdf = Poisson(λ=δ/2)-mixture of central χ² cdfs. */
+function ncx2cdfS(x: number, v: number, d: number): number {
+  if (x <= 0) return 0; let s = 0; const lh = d / 2;
+  for (let j = 0; j < 500; j++) { const w = Math.exp(poisLogW(j, lh)); s += w * gammainc(x / 2, v / 2 + j); if (j > lh && w < 1e-15) break; }
+  return Math.min(1, s);
+}
+/** Noncentral F cdf = Poisson(λ=δ/2)-mixture of regularized incomplete betas. */
+function ncfcdfS(x: number, v1: number, v2: number, d: number): number {
+  if (x <= 0) return 0; let s = 0; const lh = d / 2, arg = v1 * x / (v1 * x + v2);
+  for (let j = 0; j < 500; j++) { const w = Math.exp(poisLogW(j, lh)); s += w * betainc(arg, v1 / 2 + j, v2 / 2); if (j > lh && w < 1e-15) break; }
+  return Math.min(1, s);
+}
 /** Standard-normal inverse CDF (Acklam) + one Halley refinement. */
 function norminvStd(p: number): number {
   if (p <= 0) return -Infinity; if (p >= 1) return Infinity;
@@ -292,6 +307,31 @@ export const STATS: ToolboxModule = {
     hygeinv: (a) => dist(a, [10, 5, 5], (pr, M, K, N) => { const lo = Math.max(0, N - (M - K)), hi = Math.min(K, N); if (pr <= 0) return lo; let s = 0; for (let x = lo; x <= hi; x++) { s += Math.exp(lchoose(K, x) + lchoose(M - K, N - x) - lchoose(M, N)); if (s >= pr - 1e-12) return x; } return hi; }),
     hygestat: (a, n) => { const M = asScalar(a[0]), K = asScalar(a[1]), N = asScalar(a[2]); return statRet(n, N * K / M, N * (K / M) * ((M - K) / M) * ((M - N) / (M - 1))); },
 
+    // ── noncentral chi-square: ncx2pdf(x,v,delta) — Poisson(delta/2)-mixture of central chi2 ──
+    ncx2pdf: (a) => dist(a, [1, 0], (x, v, d) => {
+      if (x < 0) return 0; let s = 0; const lh = d / 2;
+      for (let j = 0; j < 500; j++) { const w = Math.exp(poisLogW(j, lh)); const k = v + 2 * j; s += w * Math.exp((k / 2 - 1) * Math.log(x) - x / 2 - (k / 2) * Math.LN2 - logGamma(k / 2)); if (j > lh && w < 1e-15) break; }
+      return s;
+    }),
+    ncx2cdf: (a) => dist(a, [1, 0], (x, v, d) => ncx2cdfS(x, v, d)),
+    ncx2inv: (a) => dist(a, [1, 0], (p, v, d) => invCdf(p, (x) => ncx2cdfS(x, v, d), 0, Infinity)),
+    ncx2stat: (a, n) => { const v = asScalar(a[0]), d = asScalar(a[1]); return statRet(n, v + d, 2 * (v + 2 * d)); },
+
+    // ── noncentral F: ncfpdf(x,v1,v2,delta) — Poisson(delta/2)-mixture of central F ──
+    ncfpdf: (a) => dist(a, [1, 1, 0], (x, v1, v2, d) => {
+      if (x <= 0) return 0; let s = 0; const lh = d / 2;
+      for (let j = 0; j < 500; j++) { const w = Math.exp(poisLogW(j, lh)); const a1 = v1 + 2 * j, y = x * v1 / a1; s += w * (v1 / a1) * Math.exp((a1 / 2) * Math.log(a1 / v2) + (a1 / 2 - 1) * Math.log(y) - ((a1 + v2) / 2) * Math.log(1 + a1 * y / v2) - logBeta(a1 / 2, v2 / 2)); if (j > lh && w < 1e-15) break; }
+      return s;
+    }),
+    ncfcdf: (a) => dist(a, [1, 1, 0], (x, v1, v2, d) => ncfcdfS(x, v1, v2, d)),
+    ncfinv: (a) => dist(a, [1, 1, 0], (p, v1, v2, d) => invCdf(p, (x) => ncfcdfS(x, v1, v2, d), 0, Infinity)),
+    ncfstat: (a, n) => {
+      const v1 = asScalar(a[0]), v2 = asScalar(a[1]), d = asScalar(a[2]);
+      const mean = v2 > 2 ? v2 * (v1 + d) / (v1 * (v2 - 2)) : NaN;
+      const varr = v2 > 4 ? 2 * ((v1 + d) ** 2 + (v1 + 2 * d) * (v2 - 2)) / ((v2 - 2) ** 2 * (v2 - 4)) * (v2 / v1) ** 2 : NaN;
+      return statRet(n, mean, varr);
+    },
+
     // ── moments ──
     /** moment(X,order) — central moment of the given order (along columns / vector). */
     moment: (a) => ret(colReduceNan(m(a[0]), (c) => { const k = Math.round(asScalar(a[1])); const mu = mean_(c); return c.reduce((s, x) => s + (x - mu) ** k, 0) / c.length; })),
@@ -424,6 +464,8 @@ export const STATS: ToolboxModule = {
     gppdf: 'Generalized Pareto probability density function', gpcdf: 'Generalized Pareto cumulative distribution function', gpinv: 'Generalized Pareto inverse cumulative distribution function', gpstat: 'Generalized Pareto mean and variance',
     nbinpdf: 'Negative binomial probability density function', nbincdf: 'Negative binomial cumulative distribution function', nbininv: 'Negative binomial inverse cumulative distribution function', nbinstat: 'Negative binomial mean and variance',
     hygepdf: 'Hypergeometric probability density function', hygecdf: 'Hypergeometric cumulative distribution function', hygeinv: 'Hypergeometric inverse cumulative distribution function', hygestat: 'Hypergeometric mean and variance',
+    ncx2pdf: 'Noncentral chi-square probability density function', ncx2cdf: 'Noncentral chi-square cumulative distribution function', ncx2inv: 'Noncentral chi-square inverse cumulative distribution function', ncx2stat: 'Noncentral chi-square mean and variance',
+    ncfpdf: 'Noncentral F probability density function', ncfcdf: 'Noncentral F cumulative distribution function', ncfinv: 'Noncentral F inverse cumulative distribution function', ncfstat: 'Noncentral F mean and variance',
     nanmean: 'Mean, ignoring NaN values', nansum: 'Sum, ignoring NaN values', nanstd: 'Standard deviation, ignoring NaN values', nanvar: 'Variance, ignoring NaN values',
     nanmedian: 'Median, ignoring NaN values', nanmax: 'Maximum, ignoring NaN values', nanmin: 'Minimum, ignoring NaN values',
     range: 'Range of values (max − min)', tabulate: 'Frequency table',
