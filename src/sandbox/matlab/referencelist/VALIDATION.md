@@ -198,3 +198,93 @@ Validated against MATLAB R2026a. **1 bug found and fixed:**
 
 ### V101–V200 commit
 Build green (tsc+vite); fixes pushed. Bugs caught by live-MATLAB cross-validation in functions 101–200: **`cdf2rdf` block convention, `cellfun` UniformOutput + multi-cell, `centroid` two-output, `compose` row grouping, `cospi`/`sinpi` exactness**.
+
+## V9 — functions 201–225 (cputime … daspect)
+
+Validated against MATLAB R2026a. **No bugs — all functions matched.**
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `cross` | ✅ | `cross([1 0 0],[0 1 0])`→[0 0 1] |
+| `csc`/`cscd`/`csch` | ✅ | cosecant family to 4 digits |
+| `ctranspose` | ✅ | conjugate transpose (signed-zero imag is cosmetic) |
+| `cummax`/`cummin`/`cumprod`/`cumsum` | ✅ | incl. dim and `"reverse"` |
+| `cumtrapz` | ✅ | cumulative trapezoidal integral (with/without x) |
+| `curl` | ✅ | z-curl of [-y,x] field → 2 |
+| `criticalAlpha` | ✅ | alpha-shape critical radius |
+| `cyclebasis` | ✅ | fundamental cycle basis count |
+| `cylinder` | ✅ | surface coords size [2 5] |
+| `cr1Gate`/`crxGate`/`cryGate`/`crzGate`/`cxGate`/`cyGate`/`czGate` | ✅ | controlled-rotation gates (class correct) |
+| `cputime`/`csvread`/`csvwrite`/`daspect` | 🟡 | timing / file I/O / graphics |
+
+## V10 — functions 226–250 (date … delaunay)
+
+Validated against MATLAB R2026a. **1 bug found and fixed:**
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `datenum`/`datevec` | ✅ | serial↔vector round-trip |
+| `datestr` | ✅ | **fixed** (see below) |
+| `day`/`days` | ✅ | datetime/duration accessors |
+| `deal` | ✅ | `[a,b,c]=deal(1,2,3)` and single-arg broadcast |
+| `deblank` | ✅ | trailing-blank removal |
+| `dec2base`/`dec2bin`/`dec2hex` | ✅ | base conversions |
+| `deconv` | ✅ | polynomial deconvolution → [1 -1] |
+| `deg2rad` | ✅ | `deg2rad(180)`→π |
+| `del2` | ✅ | discrete Laplacian → 0.5 (matches MATLAB) |
+| `delaunay` | ✅ | triangle count |
+| `decomposition` | ✅ | `dA\b` solve → A\\b |
+| `degree` | ✅ | graph node degrees → [2 2 2] |
+| `dde23`/`ddesd`/`ddensd` | ✅ | DDE solver: `y'=-y(t-1)` → deval(2)=-0.5 (matches MATLAB) |
+| `dblquad`/`decic`/`ddeget`/`ddeset` | 🟡 | legacy quadrature / options structs |
+
+### Fix
+- **`datestr(n, fmt)` format string**: the format argument was only recognized as a char array, not a string scalar, so `datestr(737791,"yyyy-mm-dd")` ignored the format and returned the default `"01-Jan-2020"` instead of `"2020-01-01"`. Now accepts string-scalar formats. Verified `"yyyy-mm-dd"`, `"HH:MM"`, and `"dd-mmm-yyyy"` all match MATLAB. _(Another instance of the recurring char-Mat-vs-string option-name issue — also fixed this pass in `bitcmp`, `cellfun`.)_
+
+## V11 — functions 251–275 (delaunayTriangulation … drawnow)
+
+Validated against MATLAB R2026a. **2 bugs found and fixed:**
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `det`/`detrend`/`diag`/`diff` | ✅ | incl. `diff(...,2)` second difference |
+| `discretize` | ✅ | bin indices → [1 2 2] |
+| `distances` | ✅ | graph shortest-path distance matrix |
+| `divergence` | ✅ | `divergence(X,Y,X,Y)`→2 |
+| `dot` | ✅ | vector + column-wise matrix |
+| `double` | ✅ | **fixed** (see below) |
+| `deval` | ✅ | **fixed** (see below); ode45/23/15s → exp(-0.5)=0.6063 |
+| `dfsearch` | ✅ | DFS order |
+| `dmperm`/`delaunayn`/`delaunayTriangulation` | ✅ | matching / triangulation |
+| `dictionary`/`digraph` | ✅ | container / directed graph |
+| `delete`/`dir`/`disp`/`doc`/`donutchart`/`drawnow`/`dissect`/`dlmread`/`dlmwrite` | 🟡 | commands / I/O / graphics |
+
+### Fixes
+- **`double(string)`**: threw "expected a numeric value" on a string argument; MATLAB applies str2double-style parsing — `double("3.14")`→3.14, `double("AB")`→NaN, `double(["1" "2" "x"])`→[1 2 NaN]. Added a string branch (char arrays still return their char codes). 
+- **`deval` / single-output ODE solution struct**: `sol = ode45(...)` (one output) returned the plain Y matrix instead of MATLAB's deval-compatible solution struct, so `deval(sol,xq)` crashed ("Cannot read properties of undefined"). Now the explicit/stiff solvers (ode45/78/89, ode23/23s, ode15s) return a struct `{solver, x, y, yp}`. The stored node derivatives `yp` let `deval` use the cubic-Hermite interpolant, so intermediate-point evaluation matches MATLAB's dense output: `deval(sol,0.5)`→0.6063 vs MATLAB 0.6065 (was 0.6328 with linear interpolation). The two-output `[t,y]=ode45(...)` form and the `ode` object interface are unchanged (regression-checked).
+
+## V12 — functions 276–300 (dsearchn … errorbar) — **V300 boundary: built + pushed**
+
+Validated against MATLAB R2026a. **1 bug found and fixed:**
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `erf`/`erfc`/`erfinv`/`erfcinv`/`erfcx` | ✅ | full error-function family to 4 digits |
+| `eig`/`eigs` | ✅ | eigenvalues, k-largest |
+| `ellipke`/`ellipj` | ✅ | complete + Jacobi elliptic functions |
+| `endsWith` | ✅ | suffix test |
+| `eomday` | ✅ | leap-year Feb → 29 |
+| `eq` | ✅ | equality |
+| `erase`/`eraseBetween` | ✅ | substring/delimiter removal |
+| `dsearchn`/`duration`/`edgecount`/`entries` | ✅ | nearest point / time span / multigraph / dictionary |
+| `error`/`equilibrate` | ✅ | exception w/ identifier; matrix equilibration |
+| `edgeAttachments` | ✅ | **fixed** (see below) |
+| `ellipsoid`/`errorbar`/`edit`/`edges` | 🟡 | graphics / object methods |
+
+### Fix
+- **`edgeAttachments` edge-pair form**: only the `edgeAttachments(TR,v1,v2)` signature worked; the documented `edgeAttachments(TR,EDGES)` form (an n×2 matrix of vertex pairs, or a single `[v1 v2]` row) threw "expected a scalar". Now accepts both: an n×2 edge matrix returns an n×1 cell of attached-triangle lists; the `(TR,v1,v2)` column-vector form still works. Verified `edgeAttachments(TR,[2 3])`→2 and the multi-edge matrix form against MATLAB.
+
+---
+
+### V201–V300 commit
+Build green (tsc+vite); fixes pushed (staged explicitly to exclude the unrelated untracked `toolboxes/` dir). Bugs caught by live-MATLAB cross-validation in functions 201–300: **`datestr` format string, `double(string)`, `deval`/single-output ODE struct, `edgeAttachments` edge-pair form**. (V9 was clean.)

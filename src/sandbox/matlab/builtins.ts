@@ -1578,7 +1578,7 @@ export const BUILTINS: Record<string, Builtin> = {
   isnumeric: async (a) => ret(bool(isMat(a[0]) && !(a[0] as Mat).isChar)),
   ischar: async (a) => ret(bool(isMat(a[0]) && !!(a[0] as Mat).isChar)),
   isfloat: async (a) => ret(bool(isMat(a[0]) && !(a[0] as Mat).isChar && !(a[0] as Mat).isBool && (!(a[0] as Mat).itype || (a[0] as Mat).itype === 'single'))),
-  double: async (a) => { if (isSym(a[0])) { const s = a[0]; const M = zeros(s.rows, s.cols); s.exprs.forEach((e, i) => { M.data[i] = symEval(e, new Map()); }); return ret(M); } const A = m(a[0]); return ret({ kind: 'num', rows: A.rows, cols: A.cols, data: Float64Array.from(A.data), idata: A.idata ? Float64Array.from(A.idata) : undefined }); },
+  double: async (a) => { if (isSym(a[0])) { const s = a[0]; const M = zeros(s.rows, s.cols); s.exprs.forEach((e, i) => { M.data[i] = symEval(e, new Map()); }); return ret(M); } if (isStr(a[0])) { const s = a[0]; const data = Float64Array.from(s.items, (x) => { const t = x.trim(); return t === '' ? NaN : Number(t); }); return ret({ kind: 'num', rows: s.rows, cols: s.cols, data }); } const A = m(a[0]); return ret({ kind: 'num', rows: A.rows, cols: A.cols, data: Float64Array.from(A.data), idata: A.idata ? Float64Array.from(A.idata) : undefined }); },
   single: async (a) => ret(applyClass(m(a[0]), 'single')),
   char: async (a) => {
     // char(string)/char(cellstr) → char; several inputs stack as rows of a char matrix.
@@ -2638,7 +2638,7 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   datevec: async (a) => { const n = isTemporal(a[0]) ? a[0].data[0] : asScalar(m(a[0])); const v = dvec(n); return ret(rowVec(v)); },
   datestr: async (a) => {
-    const fmt = a.length >= 2 && isMat(a[1]) && (a[1] as Mat).isChar ? asString(a[1]) : null;
+    const fmt = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar)) ? asString(a[1]) : null;
     if (isTemporal(a[0])) { const t = a[0]; return ret(t.data.length === 1 ? str(dstr(t.data[0], fmt)) : charMatRows(Array.from(t.data, (n) => dstr(n, fmt)))); }
     const A = m(a[0]);
     // A 1×6 (or N×6) numeric input is a date vector [Y M D H MI S].
@@ -3352,7 +3352,15 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret({ kind: 'handle', name: 'griddedInterpolant', call } as Handle);
   },
   // triangulation incidence / normals
-  edgeAttachments: async (a) => { const g = gGeom(a[0]); const u = Math.round(asScalar(a[1])) - 1, v = Math.round(asScalar(a[2])) - 1; const idx: number[] = []; (g.conn ?? []).forEach((t, i) => { if (t.includes(u) && t.includes(v)) idx.push(i + 1); }); return ret(makeCell(1, 1, [rowVec(idx)])); },
+  edgeAttachments: async (a) => {
+    const g = gGeom(a[0]); const conn = g.conn ?? [];
+    // edgeAttachments(TR,V1,V2) with column vectors, or edgeAttachments(TR,EDGES) with an n×2 matrix
+    let edges: [number, number][];
+    if (a.length >= 3) { const us = toArray(m(a[1])), vs = toArray(m(a[2])); edges = us.map((u, i) => [Math.round(u) - 1, Math.round(vs[i % vs.length]) - 1]); }
+    else { const E = m(a[1]); const n = E.rows; edges = []; for (let r = 0; r < n; r++) edges.push([Math.round(E.data[r]) - 1, Math.round(E.data[r + n]) - 1]); }
+    const cells: Value[] = edges.map(([u, v]) => { const idx: number[] = []; conn.forEach((t, i) => { if (t.includes(u) && t.includes(v)) idx.push(i + 1); }); return rowVec(idx); });
+    return ret(makeCell(cells.length, 1, cells));
+  },
   vertexAttachments: async (a) => { const g = gGeom(a[0]); const v = a.length >= 2 ? toArray(m(a[1])).map((x) => Math.round(x) - 1) : g.points.map((_, i) => i); const cells = v.map((vi) => { const idx: number[] = []; (g.conn ?? []).forEach((t, i) => { if (t.includes(vi)) idx.push(i + 1); }); return rowVec(idx) as Value; }); return ret(makeCell(cells.length, 1, cells)); },
   vertexNormal: async (a) => { const g = gGeom(a[0]); const acc = g.points.map(() => [0, 0, 0]); for (const t of g.conn ?? []) { const p = t.map((vi) => g.points[vi]); const u = p[1].map((x, j) => x - p[0][j]), w = p[2].map((x, j) => x - p[0][j]); const nrm = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]]; for (const vi of t) for (let j = 0; j < 3; j++) acc[vi][j] += nrm[j]; } return ret(fromRows(acc.map((n) => { const L = Math.hypot(...n) || 1; return n.map((x) => x / L); }))); },
   featureEdges: async (a) => { const g = gGeom(a[0]); const thr = a.length >= 2 ? asScalar(a[1]) : Math.PI / 6; const faceN = (t: number[]) => { const p = t.map((vi) => g.points[vi]); const u = p[1].map((x, j) => x - p[0][j]), w = p[2].map((x, j) => x - p[0][j]); const nn = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]]; const L = Math.hypot(...nn) || 1; return nn.map((x) => x / L); }; const edgeFaces = new Map<string, { e: number[]; faces: number[] }>(); (g.conn ?? []).forEach((t, ti) => { for (let k = 0; k < t.length; k++) { const e = [t[k], t[(k + 1) % t.length]].sort((x, y) => x - y); const key = e.join('_'); const en = edgeFaces.get(key) ?? edgeFaces.set(key, { e, faces: [] }).get(key)!; en.faces.push(ti); } }); const feat: number[][] = []; for (const { e, faces } of edgeFaces.values()) { if (faces.length === 1) { feat.push(e); continue; } if (faces.length === 2) { const n1 = faceN(g.conn![faces[0]]), n2 = faceN(g.conn![faces[1]]); const dot = Math.max(-1, Math.min(1, n1[0] * n2[0] + n1[1] * n2[1] + n1[2] * n2[2])); if (Math.acos(Math.abs(dot)) > thr) feat.push(e); } } const out = zeros(feat.length, 2); feat.forEach((e, i) => { out.data[i] = e[0] + 1; out.data[i + feat.length] = e[1] + 1; }); return ret(out); },
@@ -7325,7 +7333,7 @@ async function odeSolve(a: Value[], nargout: number, env: Env): Promise<Value[]>
     const Ye = zeros(TE.length, neq); for (let r = 0; r < TE.length; r++) for (let c = 0; c < neq; c++) Ye.data[r + c * TE.length] = YE[r][c];
     return [colVec(T), Ymat, colVec(TE), Ye, colVec(IE)];
   }
-  return nargout >= 2 ? [colVec(T), Ymat] : [Ymat];
+  return nargout >= 2 ? [colVec(T), Ymat] : [await odeSolStruct(T, Y, neq, evalF)];
 }
 
 // ── Shared ODE helpers (Shampine–Reichelt "The MATLAB ODE Suite") ──
@@ -7395,6 +7403,16 @@ async function pdepeSolve(a: Value[], env: Env): Promise<Value[]> {
   return [makeND([nt, N, neq], data)];
 }
 function mkStruct(fields: [string, Value][]): StructV { return { kind: 'struct', rows: 1, cols: 1, fields: new Map(fields.map(([k, v]) => [k, [v]])) }; }
+/** Single-output ODE solution struct (deval-compatible): x = times row, y = neq×nt states.
+ *  When an evaluator is supplied, also store yp = f(t,y) at each node so deval uses the cubic
+ *  Hermite interpolant (matching MATLAB's continuous extension far better than linear). */
+async function odeSolStruct(T: number[], Y: number[][], neq: number, evalF?: (t: number, y: number[]) => Promise<number[]>, solver = 'ode45'): Promise<StructV> {
+  const ySol = zeros(neq, T.length);
+  for (let ti = 0; ti < T.length; ti++) for (let k = 0; k < neq; k++) ySol.data[k + ti * neq] = Y[ti][k];
+  const fields: [string, Value][] = [['solver', str(solver)], ['x', rowVec(T)], ['y', ySol]];
+  if (evalF) { const yp = zeros(neq, T.length); for (let ti = 0; ti < T.length; ti++) { const d = await evalF(T[ti], Y[ti]); for (let k = 0; k < neq; k++) yp.data[k + ti * neq] = d[k]; } fields.push(['yp', yp]); }
+  return mkStruct(fields);
+}
 /** Object-oriented ode solve: solve(F, t0, tf) | solve(F, tspan) → ODEResults {Time, Solution}. */
 async function solveOde(a: Value[], env: Env): Promise<Value[]> {
   const F = a[0] as StructV; const fcn = F.fields.get('ODEFcn')![0]; const y0 = F.fields.get('InitialValue')![0];
@@ -7534,9 +7552,9 @@ async function dde23Solve(a: Value[], env: Env): Promise<Value[]> {
   const Yout = zeros(neq, ts.length); for (let i = 0; i < ts.length; i++) for (let k = 0; k < neq; k++) Yout.data[k + i * neq] = ys[i][k];
   return [mkStruct([['solver', str('dde23')], ['x', rowVec(ts)], ['y', Yout]])];
 }
-function odeOut(T: number[], Y: number[][], neq: number, nargout: number): Value[] {
+async function odeOut(T: number[], Y: number[][], neq: number, nargout: number, evalF?: (t: number, y: number[]) => Promise<number[]>): Promise<Value[]> {
   const Ymat = zeros(T.length, neq); for (let r = 0; r < T.length; r++) for (let c = 0; c < neq; c++) Ymat.data[r + c * T.length] = Y[r][c];
-  return nargout >= 2 ? [colVec(T), Ymat] : [Ymat];
+  return nargout >= 2 ? [colVec(T), Ymat] : [await odeSolStruct(T, Y, neq, evalF)];
 }
 /** Numerical Jacobian ∂f/∂y by forward differences. */
 async function numJac(evalF: (t: number, y: number[]) => Promise<number[]>, t: number, y: number[], f0: number[], neq: number): Promise<Mat> {
@@ -7583,7 +7601,7 @@ async function odeSolveBS23(a: Value[], nargout: number, env: Env): Promise<Valu
     h = dir * Math.min(Math.abs(h * fac), hMax, span);
     if (Math.abs(h) < 1e-14 * Math.max(1, Math.abs(t))) throw new MatError('ode23: step size underflow (problem may be stiff — try ode15s/ode23s)');
   }
-  return odeOut(T, Y, neq, nargout);
+  return odeOut(T, Y, neq, nargout, evalF);
 }
 
 /** ode23s — modified Rosenbrock (2,3) pair, L-stable, for stiff problems. */
@@ -7625,7 +7643,7 @@ async function odeSolveRos23(a: Value[], nargout: number, env: Env): Promise<Val
     h = dir * Math.min(Math.abs(h * fac), hMax, span);
     if (Math.abs(h) < 1e-14 * Math.max(1, Math.abs(t))) throw new MatError('ode23s: step size underflow');
   }
-  return odeOut(T, Y, neq, nargout);
+  return odeOut(T, Y, neq, nargout, evalF);
 }
 
 const NDF_KAPPA = [0, -0.1850, -1 / 9, -0.0823, -0.0415, 0];
@@ -7702,7 +7720,7 @@ async function odeSolveNDF(a: Value[], nargout: number, env: Env): Promise<Value
       if (Math.abs(h) < 1e-13 * Math.max(1, Math.abs(t))) throw new MatError('ode15s: step size underflow');
     }
   }
-  return odeOut(T, Y, neq, nargout);
+  return odeOut(T, Y, neq, nargout, evalF);
 }
 /** Rescale the backward-difference table for a step-size ratio rho = hnew/h (D* = D·R·U). */
 function rescaleDif(dif: number[][], k: number, rho: number, neq: number): void {
