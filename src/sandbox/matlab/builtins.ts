@@ -712,6 +712,8 @@ export const BUILTINS: Record<string, Builtin> = {
   isscalar: async (a) => ret(bool(numelOf(a[0]) === 1)),
   zeros: async (a) => { const d = dimsN(a); return ret(makeND(d, new Float64Array(d.reduce((p, x) => p * x, 1)))); },
   ones: async (a) => { const d = dimsN(a); const data = new Float64Array(d.reduce((p, x) => p * x, 1)); data.fill(1); return ret(makeND(d, data)); },
+  true: async (a) => { const d = dimsN(a); const M = makeND(d, new Float64Array(d.reduce((p, x) => p * x, 1)).fill(1)); M.isBool = true; return ret(M); },
+  false: async (a) => { const d = dimsN(a); const M = makeND(d, new Float64Array(d.reduce((p, x) => p * x, 1))); M.isBool = true; return ret(M); },
   eye: async (a) => { const [r, c] = dims2(a); return ret(eye(r, c)); },
   rand: async (a) => { const d = dimsN(a); const data = new Float64Array(d.reduce((p, x) => p * x, 1)); for (let i = 0; i < data.length; i++) data[i] = rngNext(); return ret(makeND(d, data)); },
   linspace: async (a) => {
@@ -1505,7 +1507,13 @@ export const BUILTINS: Record<string, Builtin> = {
   regexprep: async (a) => { try { return ret(str(asString(a[0]).replace(new RegExp(asString(a[1]), 'g'), asString(a[2]).replace(/\$(\d)/g, '$$$1')))); } catch { return ret(a[0]); } },
   // ── base conversions ──
   dec2bin: async (a) => { const d = Math.round(asScalar(a[0])); let s2 = (d >>> 0).toString(2); if (a.length >= 2) s2 = s2.padStart(Math.round(asScalar(a[1])), '0'); return ret(str(s2)); },
-  bin2dec: async (a) => ret(scalar(parseInt(asString(a[0]).replace(/\s/g, ''), 2))),
+  bin2dec: async (a) => {
+    const conv = (s: string) => parseInt(s.replace(/\s/g, ''), 2);
+    if (isStr(a[0])) { const s = a[0]; return ret(mat(s.rows, s.cols, Float64Array.from(s.items, conv))); }
+    const M = m(a[0]);
+    if (M.isChar && M.rows > 1) { const out = new Float64Array(M.rows); for (let r = 0; r < M.rows; r++) { let str = ''; for (let c = 0; c < M.cols; c++) str += String.fromCharCode(M.data[r + c * M.rows]); out[r] = conv(str); } return ret(mat(M.rows, 1, out)); }
+    return ret(scalar(conv(asString(a[0]))));
+  },
   dec2hex: async (a) => { const d = Math.round(asScalar(a[0])); let s2 = d.toString(16).toUpperCase(); if (a.length >= 2) s2 = s2.padStart(Math.round(asScalar(a[1])), '0'); return ret(str(s2)); },
   hex2dec: async (a) => ret(scalar(parseInt(asString(a[0]).replace(/\s/g, ''), 16))),
   dec2base: async (a) => { const d = Math.round(asScalar(a[0])); const b = Math.round(asScalar(a[1])); let s2 = d.toString(b).toUpperCase(); if (a.length >= 3) s2 = s2.padStart(Math.round(asScalar(a[2])), '0'); return ret(str(s2)); },

@@ -208,3 +208,27 @@ Status legend: ✅ converged · 🟡 partial (core works, some variants unsuppor
 - Rich ≥10-line help added for all batch-8 functions.
 
 All 35 batch-8 examples pass.
+
+---
+
+## Batch 9 — functions 81–90 (graph search · iterative solvers · bit ops)
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `bfsearch` | 🟡 | BFS node order | the events/`'allevents'` search-event **table** mode not modeled |
+| `bicg` | 🟡 | Biconjugate Gradients solver | doc examples use random matrices/`load west0479`, so convergence messages can't match MATLAB's RNG/datasets |
+| `bicgstab` | 🟡 | BiCGSTAB solver | same: random/dataset-dependent output |
+| `bicgstabl` | 🟡 | BiCGSTAB(l) solver | same: random/dataset-dependent output |
+| `biconncomp` | 🟡 | biconnected components per edge (1st output matches) | `'OutputForm','cell'` and the 2nd output not modeled |
+| `bin2dec` | ✅ | **fixed**: string arrays (element-wise); `0b` literals | — |
+| `bitand` | ✅ | bit-wise AND | — |
+| `bitcmp` | ✅ | type-width complement | — |
+| `bitget` | ✅ | bit at position(s) | — |
+| `bitor` | ✅ | bit-wise OR; byte-packing via bitshift | `format hex` display mode not modeled (values are correct) |
+
+### Fixes landed in this batch (the literal/lexer fix is broad)
+- **Binary and hexadecimal literals**: the lexer now parses `0b1011` / `0x1F` (with optional `u8`/`s16`/… type suffixes), so bit-op and integer-packing examples across the docs work.
+- `bin2dec` handles string arrays / multi-row char arrays (one value per element).
+- **`true(m,n)` / `false(m,n)`** now accept size arguments and return logical arrays (were constants only) — `false(1,numnodes(g))` etc.
+- `rng` added to command syntax so `rng default` / `rng shuffle` parse.
+- Rich ≥10-line help added for all batch-9 functions.

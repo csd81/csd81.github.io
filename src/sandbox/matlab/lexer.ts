@@ -88,6 +88,21 @@ export function tokenize(src: string): Token[] {
       continue;
     }
 
+    // Hexadecimal (0x1F) and binary (0b1011) literals, with an optional u8/u16/u32/u64/
+    // s8/s16/s32/s64 type suffix (which we accept but treat as plain doubles).
+    if (c === '0' && (src[i + 1] === 'x' || src[i + 1] === 'X' || src[i + 1] === 'b' || src[i + 1] === 'B')) {
+      const hex = src[i + 1] === 'x' || src[i + 1] === 'X';
+      let j = i + 2;
+      const isDig = hex ? (ch: string) => /[0-9a-fA-F]/.test(ch) : (ch: string) => ch === '0' || ch === '1';
+      while (j < n && isDig(src[j])) j++;
+      if (j > i + 2) {
+        const val = parseInt(src.slice(i + 2, j), hex ? 16 : 2);
+        if (src[j] === 'u' || src[j] === 's') { j++; while (j < n && isDigit(src[j])) j++; }   // type suffix
+        toks.push({ kind: 'num', value: String(val), num: val, imag: false, spaceBefore, pos: i, line });
+        i = j; spaceBefore = false; continue;
+      }
+    }
+
     // Number (including .5, 1e-4, 3.2E+10).
     if (isDigit(c) || (c === '.' && isDigit(src[i + 1]))) {
       let j = i;

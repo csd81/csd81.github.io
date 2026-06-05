@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **80 / 1170** audited.
+Progress: **90 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -85,3 +85,13 @@ Progress: **80 / 1170** audited.
 | 78 | `betainc` | ✅ | vectorized + upper tail |
 | 79 | `betaincinv` | ✅ | inverse incomplete beta |
 | 80 | `betaln` | ✅ | large-arg overflow fixed |
+| 81 | `bfsearch` | 🟡 | BFS order; event-table mode pending |
+| 82 | `bicg` | 🟡 | solver; random/dataset examples |
+| 83 | `bicgstab` | 🟡 | solver; random/dataset examples |
+| 84 | `bicgstabl` | 🟡 | solver; random/dataset examples |
+| 85 | `biconncomp` | 🟡 | 1st output ok; cell/2nd output pending |
+| 86 | `bin2dec` | ✅ | string arrays + 0b literals |
+| 87 | `bitand` | ✅ | bit-wise AND |
+| 88 | `bitcmp` | ✅ | type-width complement |
+| 89 | `bitget` | ✅ | bit at position(s) |
+| 90 | `bitor` | ✅ | OR; format hex display pending |

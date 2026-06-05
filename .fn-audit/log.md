@@ -45,3 +45,8 @@ Build green; 1413 builtins, 0 without help.
 Fixed: logGamma/gammaln OVERFLOW for x>=171 (was log(abs(gamma(x)))->Inf/NaN; now Lanczos direct) —
 broad fix for betaln & stats; betainc vectorized over (X,Z,W) + 'upper' tail; format rat (p/q display).
 All 35 examples pass. Build green; 1413 builtins, 0 without help.
+## Batch 9 (fns 81-90): bfsearch bicg bicgstab bicgstabl biconncomp bin2dec bitand bitcmp bitget bitor
+Fixed: lexer 0b/0x literals (+u8/s16 type suffix); bin2dec string arrays; true(m,n)/false(m,n) size
+args (logical arrays); rng command syntax. Solvers (bicg/bicgstab/bicgstabl) non-matchable (random
+matrices + datasets). bfsearch event-table + biconncomp cell/2nd-output = graph-table gaps.
+Build green; 1415 builtins, 0 without help.
