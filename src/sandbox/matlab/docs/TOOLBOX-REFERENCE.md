@@ -4,7 +4,7 @@ Consolidated coverage tables for 47 toolboxes. The **Implemented** column (✅) 
 functions available in the TypeScript sandbox interpreter. Generated from the former per-toolbox
 docs/*.md files.
 
-**Overall: 462 / 16830 functions implemented across 47 toolboxes.**
+**Overall: 2030 / 16830 functions implemented across 47 toolboxes.**
 
 Also see [Base MATLAB reference-list validation](#base-validation) — 705 converged / 905 audited base builtins.
 
@@ -13,252 +13,252 @@ Also see [Base MATLAB reference-list validation](#base-validation) — 705 conve
 
 | Toolbox | Implemented | Total | % |
 | :--- | ---: | ---: | ---: |
-| [Stats Toolbox](#stats) | 111 | 861 | 13% |
-| [Signal Toolbox](#signal) | 52 | 397 | 13% |
-| [Map Toolbox](#map) | 34 | 399 | 9% |
-| [Control Toolbox](#control) | 20 | 352 | 6% |
-| [Comm Toolbox](#comm) | 17 | 409 | 4% |
-| [Images Toolbox](#images) | 17 | 651 | 3% |
-| [Pde Toolbox](#pde) | 16 | 191 | 8% |
-| [Wavelet Toolbox](#wavelet) | 13 | 211 | 6% |
-| [Audio Toolbox](#audio) | 11 | 180 | 6% |
-| [5g Toolbox](#5g) | 5 | 176 | 3% |
-| [Aerotbx Toolbox](#aerotbx) | 5 | 223 | 2% |
-| [Antenna Toolbox](#antenna) | 5 | 279 | 2% |
-| [Bioinfo Toolbox](#bioinfo) | 5 | 334 | 1% |
-| [Bugfinder Toolbox](#bugfinder) | 5 | 267 | 2% |
-| [Coder Toolbox](#coder) | 5 | 219 | 2% |
-| [Compiler_sdk Toolbox](#compiler_sdk) | 5 | 149 | 3% |
-| [Deeplearning Toolbox](#deeplearning) | 5 | 402 | 1% |
+| [core_referencelist (core list)](#0core_referencelist) | 1144 | 3094 | 37% |
+| [Stats Toolbox](#stats) | 156 | 861 | 18% |
+| [Signal Toolbox](#signal) | 131 | 397 | 33% |
+| [Fixedpoint Toolbox](#fixedpoint) | 87 | 335 | 26% |
+| [Map Toolbox](#map) | 84 | 399 | 21% |
+| [Control Toolbox](#control) | 44 | 352 | 13% |
+| [Aerotbx Toolbox](#aerotbx) | 40 | 223 | 18% |
+| [Comm Toolbox](#comm) | 33 | 409 | 8% |
+| [Finance Toolbox](#finance) | 31 | 383 | 8% |
+| [Images Toolbox](#images) | 30 | 651 | 5% |
+| [simulink (core list)](#0simulink) | 26 | 889 | 3% |
+| [Pde Toolbox](#pde) | 25 | 191 | 13% |
+| [Ident Toolbox](#ident) | 18 | 261 | 7% |
+| [Antenna Toolbox](#antenna) | 17 | 279 | 6% |
+| [Wavelet Toolbox](#wavelet) | 14 | 211 | 7% |
+| [Deeplearning Toolbox](#deeplearning) | 13 | 402 | 3% |
+| [Driving Toolbox](#driving) | 13 | 539 | 2% |
+| [Fusion Toolbox](#fusion) | 12 | 266 | 5% |
+| [Audio Toolbox](#audio) | 9 | 180 | 5% |
+| [Rf Toolbox](#rf) | 8 | 205 | 4% |
+| [Slrealtime Toolbox](#slrealtime) | 8 | 217 | 4% |
+| [Medical-imaging Toolbox](#medical-imaging) | 7 | 164 | 4% |
+| [Radar Toolbox](#radar) | 7 | 271 | 3% |
+| [Compiler_sdk Toolbox](#compiler_sdk) | 6 | 149 | 4% |
+| [Parallel-computing Toolbox](#parallel-computing) | 6 | 139 | 4% |
+| [Ros Toolbox](#ros) | 6 | 148 | 4% |
+| [Slrequirements Toolbox](#slrequirements) | 6 | 224 | 3% |
+| [Systemcomposer Toolbox](#systemcomposer) | 6 | 371 | 2% |
 | [Ecoder Toolbox](#ecoder) | 5 | 491 | 1% |
-| [Fault-analyzer Toolbox](#fault-analyzer) | 5 | 108 | 5% |
-| [Finance Toolbox](#finance) | 5 | 383 | 1% |
-| [Fininst Toolbox](#fininst) | 5 | 534 | 1% |
-| [Fusion Toolbox](#fusion) | 5 | 266 | 2% |
-| [Hdlcoder Toolbox](#hdlcoder) | 5 | 154 | 3% |
-| [Ident Toolbox](#ident) | 5 | 261 | 2% |
-| [Medical-imaging Toolbox](#medical-imaging) | 5 | 164 | 3% |
 | [Nav Toolbox](#nav) | 5 | 248 | 2% |
-| [Parallel-computing Toolbox](#parallel-computing) | 5 | 139 | 4% |
-| [Radar Toolbox](#radar) | 5 | 271 | 2% |
-| [Reinforcement-learning Toolbox](#reinforcement-learning) | 5 | 150 | 3% |
-| [Rf Toolbox](#rf) | 5 | 205 | 2% |
-| [Ros Toolbox](#ros) | 5 | 148 | 3% |
-| [Rptgen Toolbox](#rptgen) | 5 | 292 | 2% |
-| [Rtw Toolbox](#rtw) | 5 | 240 | 2% |
-| [Slcheck Toolbox](#slcheck) | 5 | 213 | 2% |
-| [Slcontrol Toolbox](#slcontrol) | 5 | 131 | 4% |
-| [Slrealtime Toolbox](#slrealtime) | 5 | 217 | 2% |
-| [Slrequirements Toolbox](#slrequirements) | 5 | 224 | 2% |
-| [Sltest Toolbox](#sltest) | 5 | 158 | 3% |
-| [Sm Toolbox](#sm) | 5 | 112 | 4% |
-| [Systemcomposer Toolbox](#systemcomposer) | 5 | 371 | 1% |
-| [Wlan Toolbox](#wlan) | 5 | 186 | 3% |
-| [Robotics Toolbox](#robotics) | 4 | 197 | 2% |
-| [Driving Toolbox](#driving) | 3 | 539 | 1% |
-| [Vision Toolbox](#vision) | 3 | 410 | 1% |
-| [Fixedpoint Toolbox](#fixedpoint) | 1 | 335 | 0% |
-| [core_referencelist (core list)](#0core_referencelist) | 0 | 3094 | 0% |
-| [simulink (core list)](#0simulink) | 0 | 889 | 0% |
+| [Coder Toolbox](#coder) | 4 | 219 | 2% |
+| [Fault-analyzer Toolbox](#fault-analyzer) | 4 | 108 | 4% |
+| [Reinforcement-learning Toolbox](#reinforcement-learning) | 4 | 150 | 3% |
+| [Rptgen Toolbox](#rptgen) | 4 | 292 | 1% |
+| [Vision Toolbox](#vision) | 4 | 410 | 1% |
+| [Bioinfo Toolbox](#bioinfo) | 3 | 334 | 1% |
+| [Fininst Toolbox](#fininst) | 2 | 534 | 0% |
+| [Slcontrol Toolbox](#slcontrol) | 2 | 131 | 2% |
+| [Hdlcoder Toolbox](#hdlcoder) | 1 | 154 | 1% |
+| [Robotics Toolbox](#robotics) | 1 | 197 | 1% |
+| [Rtw Toolbox](#rtw) | 1 | 240 | 0% |
+| [Slcheck Toolbox](#slcheck) | 1 | 213 | 0% |
+| [Sltest Toolbox](#sltest) | 1 | 158 | 1% |
+| [Sm Toolbox](#sm) | 1 | 112 | 1% |
+| [5g Toolbox](#5g) | 0 | 176 | 0% |
+| [Bugfinder Toolbox](#bugfinder) | 0 | 267 | 0% |
+| [Wlan Toolbox](#wlan) | 0 | 186 | 0% |
 
 ---
 
 <a id="0core_referencelist"></a>
 ## core_referencelist (core list)  
 
-_0 / 3094 implemented_
+_1144 / 3094 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
 |   | `ans` | Most recent answer |
-|   | `clc` | Clear Command Window |
+| ✅ | `clc` | Clear Command Window |
 |   | `commandhistory` | View previously run statements |
 |   | `commandwindow` | Enter statements at the command line |
 |   | `diary` | Log Command Window text to file |
 |   | `DisplayFormatOptions` | Output display format in Command Window |
-|   | `format` | Set output display format |
+| ✅ | `format` | Set output display format |
 |   | `home` | Send cursor home |
-|   | `iskeyword` | Determine if input isMATLABkeyword |
+| ✅ | `iskeyword` | Determine if input isMATLABkeyword |
 |   | `more` | Control paged output in Command Window |
-|   | `blkdiag` | Block diagonal matrix |
-|   | `cat` | Concatenate arrays |
+| ✅ | `blkdiag` | Block diagonal matrix |
+| ✅ | `cat` | Concatenate arrays |
 |   | `combinations` | Generate all element combinations of arrays(Since R2023a) |
-|   | `diag` | Create diagonal matrix or get diagonal elements of matrix |
-|   | `eye` | Identity matrix |
-|   | `false` | Logical 0 (false) |
-|   | `horzcat` | Concatenate arrays horizontally |
-|   | `ones` | Create array of all ones |
-|   | `rand` | Uniformly distributed random numbers |
-|   | `repelem` | Repeat copies of array elements |
-|   | `repmat` | Repeat copies of array |
-|   | `true` | Logical 1 (true) |
-|   | `vertcat` | Concatenate arrays vertically |
-|   | `zeros` | Create array of all zeros |
+| ✅ | `diag` | Create diagonal matrix or get diagonal elements of matrix |
+| ✅ | `eye` | Identity matrix |
+| ✅ | `false` | Logical 0 (false) |
+| ✅ | `horzcat` | Concatenate arrays horizontally |
+| ✅ | `ones` | Create array of all ones |
+| ✅ | `rand` | Uniformly distributed random numbers |
+| ✅ | `repelem` | Repeat copies of array elements |
+| ✅ | `repmat` | Repeat copies of array |
+| ✅ | `true` | Logical 1 (true) |
+| ✅ | `vertcat` | Concatenate arrays vertically |
+| ✅ | `zeros` | Create array of all zeros |
 |   | `freqspace` | Frequency spacing for frequency response |
-|   | `linspace` | Generate linearly spaced vector |
-|   | `logspace` | Generate logarithmically spaced vector |
-|   | `meshgrid` | 2-D and 3-D grids |
-|   | `ndgrid` | Rectangular grid in N-D space |
-|   | `iscolumn` | Determine if input is column vector |
-|   | `isempty` | Determine whether array is empty |
-|   | `ismatrix` | Determine whether input is matrix |
-|   | `isrow` | Determine if input is row vector |
-|   | `isscalar` | Determine whether input is scalar |
-|   | `issorted` | Determine if array is sorted |
-|   | `issortedrows` | Determine if matrix or table rows are sorted |
-|   | `isuniform` | Determine if vector is uniformly spaced(Since R2022b) |
-|   | `isvector` | Determine whether input is vector |
-|   | `length` | Length of largest array dimension |
-|   | `ndims` | Number of array dimensions |
-|   | `numel` | Number of array elements |
-|   | `size` | Array size |
-|   | `head` | Get top rows of array or table |
-|   | `paddata` | Pad data by adding elements(Since R2023b) |
-|   | `resize` | Resize data by adding or removing elements(Since R2023b) |
-|   | `tail` | Get bottom rows of array or table |
-|   | `trimdata` | Trim data by removing elements(Since R2023b) |
-|   | `ipermute` | Inverse permute array dimensions |
-|   | `permute` | Permute array dimensions |
-|   | `reshape` | Reshape array by rearranging existing elements |
-|   | `shiftdim` | Shift array dimensions |
-|   | `squeeze` | Remove dimensions of length 1 |
-|   | `circshift` | Shift array circularly |
-|   | `ctranspose` | Complex conjugate transpose |
-|   | `flip` | Flip order of elements |
-|   | `fliplr` | Flip array left to right |
-|   | `flipud` | Flip array up to down |
-|   | `rot90` | Rotate array 90 degrees |
-|   | `sort` | Sort array elements |
-|   | `sortrows` | Sort rows of matrix or table |
-|   | `transpose` | Transpose vector or matrix |
-|   | `colon` | Vector creation, array subscripting, andfor-loop
+| ✅ | `linspace` | Generate linearly spaced vector |
+| ✅ | `logspace` | Generate logarithmically spaced vector |
+| ✅ | `meshgrid` | 2-D and 3-D grids |
+| ✅ | `ndgrid` | Rectangular grid in N-D space |
+| ✅ | `iscolumn` | Determine if input is column vector |
+| ✅ | `isempty` | Determine whether array is empty |
+| ✅ | `ismatrix` | Determine whether input is matrix |
+| ✅ | `isrow` | Determine if input is row vector |
+| ✅ | `isscalar` | Determine whether input is scalar |
+| ✅ | `issorted` | Determine if array is sorted |
+| ✅ | `issortedrows` | Determine if matrix or table rows are sorted |
+| ✅ | `isuniform` | Determine if vector is uniformly spaced(Since R2022b) |
+| ✅ | `isvector` | Determine whether input is vector |
+| ✅ | `length` | Length of largest array dimension |
+| ✅ | `ndims` | Number of array dimensions |
+| ✅ | `numel` | Number of array elements |
+| ✅ | `size` | Array size |
+| ✅ | `head` | Get top rows of array or table |
+| ✅ | `paddata` | Pad data by adding elements(Since R2023b) |
+| ✅ | `resize` | Resize data by adding or removing elements(Since R2023b) |
+| ✅ | `tail` | Get bottom rows of array or table |
+| ✅ | `trimdata` | Trim data by removing elements(Since R2023b) |
+| ✅ | `ipermute` | Inverse permute array dimensions |
+| ✅ | `permute` | Permute array dimensions |
+| ✅ | `reshape` | Reshape array by rearranging existing elements |
+| ✅ | `shiftdim` | Shift array dimensions |
+| ✅ | `squeeze` | Remove dimensions of length 1 |
+| ✅ | `circshift` | Shift array circularly |
+| ✅ | `ctranspose` | Complex conjugate transpose |
+| ✅ | `flip` | Flip order of elements |
+| ✅ | `fliplr` | Flip array left to right |
+| ✅ | `flipud` | Flip array up to down |
+| ✅ | `rot90` | Rotate array 90 degrees |
+| ✅ | `sort` | Sort array elements |
+| ✅ | `sortrows` | Sort rows of matrix or table |
+| ✅ | `transpose` | Transpose vector or matrix |
+| ✅ | `colon` | Vector creation, array subscripting, andfor-loop
             iteration |
 |   | `end` | Terminate block of code or indicate last array index |
-|   | `ind2sub` | Convert linear indices to subscripts |
-|   | `sub2ind` | Convert subscripts to linear indices |
-|   | `allfinite` | Determine if all array elements are finite(Since R2022a) |
-|   | `anynan` | Determine if any array element isNaN(Since R2022a) |
-|   | `cast` | Convert variable to different data type |
-|   | `double` | Double-precision arrays |
-|   | `eps` | Floating-point relative accuracy |
-|   | `flintmax` | Largest consecutive integer in floating-point format |
-|   | `Inf` | Create array of allInfvalues |
-|   | `int16` | 16-bit signed integer arrays |
-|   | `int32` | 32-bit signed integer arrays |
-|   | `int64` | 64-bit signed integer arrays |
-|   | `int8` | 8-bit signed integer arrays |
-|   | `intmax` | Largest value of specific integer type |
-|   | `intmin` | Smallest value of specific integer type |
-|   | `isfinite` | Determine which array elements are finite |
-|   | `isfloat` | Determine if input is floating-point array |
-|   | `isinf` | Determine which array elements are infinite |
-|   | `isinteger` | Determine whether input is integer array |
-|   | `isnan` | Determine which array elements are NaN |
-|   | `isnumeric` | Determine whether input is numeric array |
-|   | `isreal` | Determine whether array uses complex storage |
-|   | `NaN` | Create array of allNaNvalues |
+| ✅ | `ind2sub` | Convert linear indices to subscripts |
+| ✅ | `sub2ind` | Convert subscripts to linear indices |
+| ✅ | `allfinite` | Determine if all array elements are finite(Since R2022a) |
+| ✅ | `anynan` | Determine if any array element isNaN(Since R2022a) |
+| ✅ | `cast` | Convert variable to different data type |
+| ✅ | `double` | Double-precision arrays |
+| ✅ | `eps` | Floating-point relative accuracy |
+| ✅ | `flintmax` | Largest consecutive integer in floating-point format |
+| ✅ | `Inf` | Create array of allInfvalues |
+| ✅ | `int16` | 16-bit signed integer arrays |
+| ✅ | `int32` | 32-bit signed integer arrays |
+| ✅ | `int64` | 64-bit signed integer arrays |
+| ✅ | `int8` | 8-bit signed integer arrays |
+| ✅ | `intmax` | Largest value of specific integer type |
+| ✅ | `intmin` | Smallest value of specific integer type |
+| ✅ | `isfinite` | Determine which array elements are finite |
+| ✅ | `isfloat` | Determine if input is floating-point array |
+| ✅ | `isinf` | Determine which array elements are infinite |
+| ✅ | `isinteger` | Determine whether input is integer array |
+| ✅ | `isnan` | Determine which array elements are NaN |
+| ✅ | `isnumeric` | Determine whether input is numeric array |
+| ✅ | `isreal` | Determine whether array uses complex storage |
+| ✅ | `NaN` | Create array of allNaNvalues |
 |   | `realmax` | Largest positive floating-point number |
 |   | `realmin` | Smallest normalized floating-point number |
-|   | `single` | Single-precision arrays |
-|   | `typecast` | Convert data type without changing underlying data |
-|   | `uint16` | 16-bit unsigned integer arrays |
-|   | `uint32` | 32-bit unsigned integer arrays |
-|   | `uint64` | 64-bit unsigned integer arrays |
-|   | `uint8` | 8-bit unsigned integer arrays |
+| ✅ | `single` | Single-precision arrays |
+| ✅ | `typecast` | Convert data type without changing underlying data |
+| ✅ | `uint16` | 16-bit unsigned integer arrays |
+| ✅ | `uint32` | 32-bit unsigned integer arrays |
+| ✅ | `uint64` | 64-bit unsigned integer arrays |
+| ✅ | `uint8` | 8-bit unsigned integer arrays |
 |   | `alphanumericBoundary` | Match boundary between alphanumeric and non-alphanumeric characters |
 |   | `alphanumericsPattern` | Match letter and digit characters |
-|   | `append` | Combine strings |
+| ✅ | `append` | Combine strings |
 |   | `asFewOfPattern` | Match pattern as few times as possible |
 |   | `asManyOfPattern` | Match pattern as many times as possible |
-|   | `blanks` | Create character array of blanks |
+| ✅ | `blanks` | Create character array of blanks |
 |   | `caseInsensitivePattern` | Match pattern regardless of case |
 |   | `caseSensitivePattern` | Match pattern with case sensitivity |
-|   | `cellstr` | Convert to cell array of character vectors |
-|   | `char` | Character array |
+| ✅ | `cellstr` | Convert to cell array of character vectors |
+| ✅ | `char` | Character array |
 |   | `characterListPattern` | Match characters from list |
-|   | `compose` | Format data into multiple strings |
-|   | `contains` | Determine if pattern is in strings |
-|   | `convertCharsToStrings` | Convert character arrays to string arrays, leaving other arrays
+| ✅ | `compose` | Format data into multiple strings |
+| ✅ | `contains` | Determine if pattern is in strings |
+| ✅ | `convertCharsToStrings` | Convert character arrays to string arrays, leaving other arrays
             unaltered |
 |   | `convertContainedStringsToChars` | Convert string arrays at any level of cell array or structure |
-|   | `convertStringsToChars` | Convert string arrays to character arrays, leaving other arrays
+| ✅ | `convertStringsToChars` | Convert string arrays to character arrays, leaving other arrays
             unaltered |
-|   | `count` | Count occurrences of pattern in strings |
-|   | `deblank` | Remove trailing whitespace from ends of strings |
+| ✅ | `count` | Count occurrences of pattern in strings |
+| ✅ | `deblank` | Remove trailing whitespace from ends of strings |
 |   | `digitBoundary` | Match boundary between digit characters and non-digit characters |
 |   | `digitsPattern` | Match digit characters |
-|   | `endsWith` | Determine if strings end with pattern |
-|   | `erase` | Delete substrings within strings |
-|   | `eraseBetween` | Delete substrings between start and end points |
-|   | `extract` | Extract substrings from strings |
-|   | `extractAfter` | Extract substrings after specified positions |
-|   | `extractBefore` | Extract substrings before specified positions |
-|   | `extractBetween` | Extract substrings between start and end points |
-|   | `insertAfter` | Insert strings after specified substrings |
-|   | `insertBefore` | Insert strings before specified substrings |
-|   | `iscellstr` | Determine if input is cell array of character arrays |
-|   | `ischar` | Determine if input is character array |
-|   | `isletter` | Determine which characters are letters |
-|   | `isspace` | Determine which characters are space characters |
-|   | `isstring` | Determine if input is string array |
-|   | `isStringScalar` | Determine if input is string array with one element |
-|   | `isstrprop` | Determine which characters in input strings are of specified category |
-|   | `join` | Combine strings |
+| ✅ | `endsWith` | Determine if strings end with pattern |
+| ✅ | `erase` | Delete substrings within strings |
+| ✅ | `eraseBetween` | Delete substrings between start and end points |
+| ✅ | `extract` | Extract substrings from strings |
+| ✅ | `extractAfter` | Extract substrings after specified positions |
+| ✅ | `extractBefore` | Extract substrings before specified positions |
+| ✅ | `extractBetween` | Extract substrings between start and end points |
+| ✅ | `insertAfter` | Insert strings after specified substrings |
+| ✅ | `insertBefore` | Insert strings before specified substrings |
+| ✅ | `iscellstr` | Determine if input is cell array of character arrays |
+| ✅ | `ischar` | Determine if input is character array |
+| ✅ | `isletter` | Determine which characters are letters |
+| ✅ | `isspace` | Determine which characters are space characters |
+| ✅ | `isstring` | Determine if input is string array |
+| ✅ | `isStringScalar` | Determine if input is string array with one element |
+| ✅ | `isstrprop` | Determine which characters in input strings are of specified category |
+| ✅ | `join` | Combine strings |
 |   | `letterBoundary` | Match boundary between letter characters and non-letter characters |
 |   | `lettersPattern` | Match letter characters |
 |   | `lineBoundary` | Match start or end of line |
 |   | `lookAheadBoundary` | Match boundary before specified pattern |
 |   | `lookBehindBoundary` | Match boundary following specified pattern |
-|   | `lower` | Convert strings to lowercase |
+| ✅ | `lower` | Convert strings to lowercase |
 |   | `maskedPattern` | Pattern with specified display name |
-|   | `matches` | Determine if pattern matches strings |
+| ✅ | `matches` | Determine if pattern matches strings |
 |   | `namedPattern` | Designate named pattern |
 |   | `newline` | Create newline character |
-|   | `num2str` | Convert numbers to character array |
+| ✅ | `num2str` | Convert numbers to character array |
 |   | `optionalPattern` | Make pattern optional to match |
-|   | `pad` | Add leading or trailing characters to strings |
+| ✅ | `pad` | Add leading or trailing characters to strings |
 |   | `pattern` | Patterns to search and match text |
-|   | `plus` | Add numbers, append strings |
+| ✅ | `plus` | Add numbers, append strings |
 |   | `possessivePattern` | Match pattern without backtracking |
-|   | `regexp` | Match regular expression (case sensitive) |
-|   | `regexpi` | Match regular expression (case insensitive) |
+| ✅ | `regexp` | Match regular expression (case sensitive) |
+| ✅ | `regexpi` | Match regular expression (case insensitive) |
 |   | `regexpPattern` | Pattern that matches specified regular expression |
-|   | `regexprep` | Replace text using regular expression |
-|   | `regexptranslate` | Translate text into regular expression |
-|   | `replace` | Find and replace one or more substrings |
-|   | `replaceBetween` | Replace substrings between start and end points |
-|   | `reverse` | Reverse order of characters in strings |
-|   | `split` | Split strings at delimiters |
-|   | `splitlines` | Split strings at newline characters |
-|   | `sprintf` | Format data into string or character vector |
-|   | `sscanf` | Read formatted data from strings |
-|   | `startsWith` | Determine if strings start with pattern |
-|   | `str2double` | Convert strings to double precision values |
-|   | `strcat` | Concatenate strings horizontally |
-|   | `strcmp` | Compare strings |
-|   | `strcmpi` | Compare strings (case insensitive) |
-|   | `strfind` | Find strings within other strings |
-|   | `string` | String array |
-|   | `strings` | Create string array with no characters |
-|   | `strip` | Remove leading and trailing characters from strings |
-|   | `strjoin` | Join strings in array |
-|   | `strjust` | Justify strings |
-|   | `strlength` | Lengths of strings |
-|   | `strncmp` | Compare firstncharacters of strings
+| ✅ | `regexprep` | Replace text using regular expression |
+| ✅ | `regexptranslate` | Translate text into regular expression |
+| ✅ | `replace` | Find and replace one or more substrings |
+| ✅ | `replaceBetween` | Replace substrings between start and end points |
+| ✅ | `reverse` | Reverse order of characters in strings |
+| ✅ | `split` | Split strings at delimiters |
+| ✅ | `splitlines` | Split strings at newline characters |
+| ✅ | `sprintf` | Format data into string or character vector |
+| ✅ | `sscanf` | Read formatted data from strings |
+| ✅ | `startsWith` | Determine if strings start with pattern |
+| ✅ | `str2double` | Convert strings to double precision values |
+| ✅ | `strcat` | Concatenate strings horizontally |
+| ✅ | `strcmp` | Compare strings |
+| ✅ | `strcmpi` | Compare strings (case insensitive) |
+| ✅ | `strfind` | Find strings within other strings |
+| ✅ | `string` | String array |
+| ✅ | `strings` | Create string array with no characters |
+| ✅ | `strip` | Remove leading and trailing characters from strings |
+| ✅ | `strjoin` | Join strings in array |
+| ✅ | `strjust` | Justify strings |
+| ✅ | `strlength` | Lengths of strings |
+| ✅ | `strncmp` | Compare firstncharacters of strings
 (case sensitive) |
-|   | `strncmpi` | Compare firstncharacters of strings
+| ✅ | `strncmpi` | Compare firstncharacters of strings
 (case insensitive) |
-|   | `strrep` | Find and replace substrings |
-|   | `strsplit` | Split string or character vector at specified delimiter |
-|   | `strtok` | Selected parts of strings |
-|   | `strtrim` | Remove leading and trailing whitespace from strings |
+| ✅ | `strrep` | Find and replace substrings |
+| ✅ | `strsplit` | Split string or character vector at specified delimiter |
+| ✅ | `strtok` | Selected parts of strings |
+| ✅ | `strtrim` | Remove leading and trailing whitespace from strings |
 |   | `textBoundary` | Match start or end of text |
-|   | `upper` | Convert strings to uppercase |
+| ✅ | `upper` | Convert strings to uppercase |
 |   | `whitespaceBoundary` | Match boundary between whitespace characters and non-whitespace
       characters |
 |   | `whitespacePattern` | Match whitespace characters |
 |   | `wildcardPattern` | Match as few characters of any type as possible |
-|   | `addtodate` | (Not recommended; usedurationorcalendarDuration) Add time to serial date number |
+| ✅ | `addtodate` | (Not recommended; usedurationorcalendarDuration) Add time to serial date number |
 |   | `between` | Calendar math differences |
 |   | `caldays` | Calendar duration in days |
 |   | `caldiff` | Calendar math successive differences |
@@ -268,36 +268,36 @@ _0 / 3094 implemented_
 |   | `calquarters` | Calendar duration in quarters |
 |   | `calweeks` | Calendar duration in weeks |
 |   | `calyears` | Calendar duration in years |
-|   | `clock` | (Not recommended; usedatetime) Current date and time as date
+| ✅ | `clock` | (Not recommended; usedatetime) Current date and time as date
             vector |
 |   | `convertTo` | Convertdatetimevalues to numeric representations |
-|   | `date` | (Not recommended; usedatetime("today")) Current date as
+| ✅ | `date` | (Not recommended; usedatetime("today")) Current date as
       character vector |
-|   | `datenum` | (Not recommended; usedatetimeorduration) Convert date and time to serial date
+| ✅ | `datenum` | (Not recommended; usedatetimeorduration) Convert date and time to serial date
                   number |
 |   | `dateshift` | Shift date or generate sequence of dates and times |
-|   | `datestr` | (Not recommended; usestringorchar) Convert
+| ✅ | `datestr` | (Not recommended; usestringorchar) Convert
    date and time to string format |
-|   | `datetime` | Arrays that represent points in time |
-|   | `datevec` | Convert date and time to vector of components |
-|   | `day` | Day number or name of input date and time |
-|   | `days` | Duration in days |
-|   | `duration` | Lengths of time in fixed-length units |
+| ✅ | `datetime` | Arrays that represent points in time |
+| ✅ | `datevec` | Convert date and time to vector of components |
+| ✅ | `day` | Day number or name of input date and time |
+| ✅ | `days` | Duration in days |
+| ✅ | `duration` | Lengths of time in fixed-length units |
 |   | `eomdate` | (Not recommended; usedateshift) Last date of
             month |
-|   | `eomday` | Last day of month |
-|   | `etime` | (Not recommended; usedatetimevalues orbetween)
+| ✅ | `eomday` | Last day of month |
+| ✅ | `etime` | (Not recommended; usedatetimevalues orbetween)
             Time elapsed between date vectors |
 |   | `exceltime` | ConvertMATLABdatetime toExceldate number |
 |   | `hms` | Hour, minute, and second numbers of datetime or duration |
-|   | `hour` | Hour component of input date and time |
-|   | `hours` | Duration in hours |
-|   | `isbetween` | Determine which elements are within specified range |
+| ✅ | `hour` | Hour component of input date and time |
+| ✅ | `hours` | Duration in hours |
+| ✅ | `isbetween` | Determine which elements are within specified range |
 |   | `iscalendarduration` | Determine if input is calendar duration array |
-|   | `isdatetime` | Determine if input is datetime array |
+| ✅ | `isdatetime` | Determine if input is datetime array |
 |   | `isdst` | Determine daylight saving time elements |
-|   | `isduration` | Determine if input is duration array |
-|   | `isnat` | Determine NaT (Not-a-Time) elements |
+| ✅ | `isduration` | Determine if input is duration array |
+| ✅ | `isnat` | Determine NaT (Not-a-Time) elements |
 |   | `isregular` | Determine if input times are regular with respect to time or calendar
             unit |
 |   | `isweekend` | Determine weekend elements |
@@ -309,125 +309,125 @@ _0 / 3094 implemented_
 |   | `m2xdate` | (Not recommended; useexceltime)MATLABdate toExcelserial date number |
 |   | `matlab.datetime.compatibility.convertDatenum` | Convert inputs todatetimevalues in a backward-compatible
       way(Since R2022a) |
-|   | `milliseconds` | Duration in milliseconds |
-|   | `minute` | Minute component of input date and time |
-|   | `minutes` | Duration in minutes |
-|   | `month` | Month number or name of input date and time |
+| ✅ | `milliseconds` | Duration in milliseconds |
+| ✅ | `minute` | Minute component of input date and time |
+| ✅ | `minutes` | Duration in minutes |
+| ✅ | `month` | Month number or name of input date and time |
 |   | `months` | (Not recommended; usebetween) Number of whole months between
             dates |
-|   | `NaT` | Not-a-Time |
-|   | `now` | (Not recommended; usedatetime) Current date and time as serial
+| ✅ | `NaT` | Not-a-Time |
+| ✅ | `now` | (Not recommended; usedatetime) Current date and time as serial
       date number |
 |   | `nweekdate` | (Not recommended; usedateshift) Date of specific occurrence
             of weekday in month |
 |   | `posixtime` | ConvertMATLABdatetime toPOSIXtime |
 |   | `quarter` | Quarter number of input date and time |
-|   | `second` | Seconds component of input date and time |
-|   | `seconds` | Duration in seconds |
+| ✅ | `second` | Seconds component of input date and time |
+| ✅ | `seconds` | Duration in seconds |
 |   | `time` | Convert time of calendar duration to duration |
 |   | `timeofday` | Elapsed time since midnight fordatetimearrays |
 |   | `timezones` | List all time zones |
-|   | `today` | (Not recommended; usedatetime("today")) Current
+| ✅ | `today` | (Not recommended; usedatetime("today")) Current
             date |
 |   | `tzoffset` | Time zone offset from UTC |
 |   | `week` | Week number of input date and time |
-|   | `weekday` | Day of week |
+| ✅ | `weekday` | Day of week |
 |   | `weeknum` | (Not recommended; useweek) Week in year |
 |   | `x2mdate` | (Not recommended; usedatetime)Excelserial date number toMATLABserial date number ordatetimevalue |
-|   | `year` | Year number of input date and time |
-|   | `years` | Duration in years |
-|   | `ymd` | Year, month, and day numbers of datetime |
+| ✅ | `year` | Year number of input date and time |
+| ✅ | `years` | Duration in years |
+| ✅ | `ymd` | Year, month, and day numbers of datetime |
 |   | `yyyymmdd` | ConvertMATLABdatetime to YYYYMMDD numeric value |
-|   | `addcats` | Add categories to categorical array |
-|   | `categorical` | Array that contains values assigned to categories |
-|   | `categories` | List of categories in categorical array |
-|   | `countcats` | Count occurrences of categorical array elements by category |
-|   | `discretize` | Group data into bins or categories |
-|   | `iscategorical` | Determine if input is categorical array |
-|   | `iscategory` | Determine if inputs are names of categories |
+| ✅ | `addcats` | Add categories to categorical array |
+| ✅ | `categorical` | Array that contains values assigned to categories |
+| ✅ | `categories` | List of categories in categorical array |
+| ✅ | `countcats` | Count occurrences of categorical array elements by category |
+| ✅ | `discretize` | Group data into bins or categories |
+| ✅ | `iscategorical` | Determine if input is categorical array |
+| ✅ | `iscategory` | Determine if inputs are names of categories |
 |   | `isordinal` | Determine if input is ordinal categorical array |
 |   | `isprotected` | Determine if categories of categorical array are protected |
 |   | `isundefined` | Find undefined elements in categorical array |
-|   | `mergecats` | Merge categories in categorical array |
-|   | `removecats` | Remove categories from categorical array |
-|   | `renamecats` | Rename categories in categorical array |
-|   | `reordercats` | Reorder categories in categorical array |
+| ✅ | `mergecats` | Merge categories in categorical array |
+| ✅ | `removecats` | Remove categories from categorical array |
+| ✅ | `renamecats` | Rename categories in categorical array |
+| ✅ | `reordercats` | Reorder categories in categorical array |
 |   | `setcats` | Set categories in categorical array |
-|   | `summary` | Data summary |
+| ✅ | `summary` | Data summary |
 |   | `addprop` | Add custom properties to table or timetable |
-|   | `addvars` | Add variables to table or timetable |
-|   | `anymissing` | Determine if any array element is missing(Since R2022a) |
-|   | `array2table` | Convert homogeneous array to table |
-|   | `cell2table` | Convert cell array to table |
+| ✅ | `addvars` | Add variables to table or timetable |
+| ✅ | `anymissing` | Determine if any array element is missing(Since R2022a) |
+| ✅ | `array2table` | Convert homogeneous array to table |
+| ✅ | `cell2table` | Convert cell array to table |
 |   | `convertvars` | Convert table or timetable variables to specified data type |
 |   | `detectImportOptions` | Create import options based on file content |
-|   | `fillmissing` | Fill missing entries |
-|   | `findgroups` | Find groups and return group numbers |
+| ✅ | `fillmissing` | Fill missing entries |
+| ✅ | `findgroups` | Find groups and return group numbers |
 |   | `getvaropts` | Get variable import options |
-|   | `groupcounts` | Number of group elements |
+| ✅ | `groupcounts` | Number of group elements |
 |   | `groupfilter` | Filter by group |
-|   | `groupsummary` | Compute summary statistics by group |
+| ✅ | `groupsummary` | Compute summary statistics by group |
 |   | `grouptransform` | Transform by group |
-|   | `height` | Number of table rows |
+| ✅ | `height` | Number of table rows |
 |   | `inner2outer` | Invert nested table-in-table hierarchy in tables or timetables |
-|   | `innerjoin` | Inner join between two tables or timetables |
-|   | `intersect` | Intersection of two sets of data |
-|   | `ismember` | Find set members of data |
-|   | `ismissing` | Find missing values |
-|   | `istable` | Determine if input is table |
-|   | `istabular` | Determine if input is table or timetable(Since R2021b) |
-|   | `mergevars` | Combine table or timetable variables into multicolumn variable |
-|   | `movevars` | Move variables in table or timetable |
-|   | `outerjoin` | Outer join between two tables or timetables |
+| ✅ | `innerjoin` | Inner join between two tables or timetables |
+| ✅ | `intersect` | Intersection of two sets of data |
+| ✅ | `ismember` | Find set members of data |
+| ✅ | `ismissing` | Find missing values |
+| ✅ | `istable` | Determine if input is table |
+| ✅ | `istabular` | Determine if input is table or timetable(Since R2021b) |
+| ✅ | `mergevars` | Combine table or timetable variables into multicolumn variable |
+| ✅ | `movevars` | Move variables in table or timetable |
+| ✅ | `outerjoin` | Outer join between two tables or timetables |
 |   | `parquetinfo` | Get information about Parquet file |
 |   | `parquetread` | Read columnar data from a Parquet file |
 |   | `parquetwrite` | Write columnar data to Parquet file |
 |   | `pivot` | Summarize tabular data in pivoted table(Since R2023a) |
 |   | `preview` | Preview eight rows from file using import options |
-|   | `readtable` | Create table from file |
-|   | `removevars` | Delete variables from table or timetable |
-|   | `renamevars` | Rename variables in table or timetable |
-|   | `rmmissing` | Remove missing entries |
+| ✅ | `readtable` | Create table from file |
+| ✅ | `removevars` | Delete variables from table or timetable |
+| ✅ | `renamevars` | Rename variables in table or timetable |
+| ✅ | `rmmissing` | Remove missing entries |
 |   | `rmprop` | Remove custom properties from table or timetable |
 |   | `rowfilter` | Selectively import rows of interest(Since R2022a) |
-|   | `rowfun` | Apply function to table or timetable rows |
+| ✅ | `rowfun` | Apply function to table or timetable rows |
 |   | `rows2vars` | Reorient table or timetable so that rows become variables |
-|   | `setdiff` | Difference of two sets of data |
+| ✅ | `setdiff` | Difference of two sets of data |
 |   | `setvaropts` | Set variable import options |
 |   | `setvartype` | Set variable data types |
-|   | `setxor` | Exclusive OR of two sets of data |
-|   | `splitapply` | Split data into groups and apply function |
+| ✅ | `setxor` | Exclusive OR of two sets of data |
+| ✅ | `splitapply` | Split data into groups and apply function |
 |   | `splitvars` | Split multicolumn variables in table or timetable |
 |   | `spreadsheetImportOptions` | Import options object for Spreadsheets |
 |   | `stack` | Stack data from input table or timetable into one variable of output table or
             timetable |
 |   | `stackedplot` | Stacked plot of several variables with common x-axis |
-|   | `standardizeMissing` | Insert standard missing values |
-|   | `struct2table` | Convert structure array to table |
-|   | `table` | Table array with named variables that can contain different types |
-|   | `table2array` | Convert table to homogeneous array |
-|   | `table2cell` | Convert table to cell array |
-|   | `table2struct` | Convert table to structure array |
+| ✅ | `standardizeMissing` | Insert standard missing values |
+| ✅ | `struct2table` | Convert structure array to table |
+| ✅ | `table` | Table array with named variables that can contain different types |
+| ✅ | `table2array` | Convert table to homogeneous array |
+| ✅ | `table2cell` | Convert table to cell array |
+| ✅ | `table2struct` | Convert table to structure array |
 |   | `table2timetable` | Convert table to timetable |
 |   | `timetable2table` | Convert timetable to table |
-|   | `topkrows` | Top rows in sorted order |
-|   | `union` | Union of two sets of data |
-|   | `unique` | Unique values |
+| ✅ | `topkrows` | Top rows in sorted order |
+| ✅ | `union` | Union of two sets of data |
+| ✅ | `unique` | Unique values |
 |   | `unstack` | Unstack data from input table or timetable into multiple variables of output
             table or timetable |
-|   | `varfun` | Apply function to table or timetable variables |
+| ✅ | `varfun` | Apply function to table or timetable variables |
 |   | `vartype` | Subscript into table or timetable by variable type |
-|   | `width` | Number of table variables |
-|   | `writetable` | Write table to file |
+| ✅ | `width` | Number of table variables |
+| ✅ | `writetable` | Write table to file |
 |   | `array2timetable` | Convert homogeneous array to timetable |
 |   | `containsrange` | Determine if timetable row times contain specified time range |
 |   | `eventfilter` | Create event filter for selecting timetable rows(Since R2023a) |
 |   | `eventtable` | Event table(Since R2023a) |
 |   | `extractevents` | Extract event table from subset of timetable data(Since R2023a) |
-|   | `istimetable` | Determine if input is timetable |
+| ✅ | `istimetable` | Determine if input is timetable |
 |   | `lag` | Time-shift data in timetable |
 |   | `overlapsrange` | Determine if timetable row times overlap specified time range |
-|   | `readtimetable` | Create timetable from file |
+| ✅ | `readtimetable` | Create timetable from file |
 |   | `retime` | Resample or aggregate data in timetable, and resolve duplicate or irregular
             times |
 |   | `syncevents` | Add and synchronize variables from attached event table to timetable(Since R2023a) |
@@ -435,53 +435,53 @@ _0 / 3094 implemented_
             from input timetables |
 |   | `timerange` | Time range for timetable row subscripting |
 |   | `timeseries2timetable` | Converttimeseriesobjects to timetable |
-|   | `timetable` | Tables for time series data,  with timestamped rows and variables of different
+| ✅ | `timetable` | Tables for time series data,  with timestamped rows and variables of different
             types |
 |   | `withinrange` | Determine if timetable row times are within specified time range |
 |   | `withtol` | Time tolerance for timetable row subscripting |
 |   | `writetimetable` | Write timetable to file |
-|   | `arrayfun` | Apply function to each element of array |
-|   | `cell2struct` | Convert cell array to structure array |
-|   | `fieldnames` | Field names of structure, or public fields ofJavaorMicrosoftCOMobject |
-|   | `getfield` | Field of structure array |
-|   | `isfield` | Determine if input is structure array field |
-|   | `isstruct` | Determine if input is structure array |
-|   | `orderfields` | Order fields of structure array |
-|   | `rmfield` | Remove fields from structure |
-|   | `setfield` | Assign value to structure array field |
-|   | `struct` | Structure array |
-|   | `struct2cell` | Convert structure to cell array |
-|   | `structfun` | Apply function to each field of scalar structure |
-|   | `cell` | Cell array |
-|   | `cell2mat` | Convert cell array to ordinary array |
-|   | `celldisp` | Display cell array contents |
-|   | `cellfun` | Apply function to each cell in cell array |
+| ✅ | `arrayfun` | Apply function to each element of array |
+| ✅ | `cell2struct` | Convert cell array to structure array |
+| ✅ | `fieldnames` | Field names of structure, or public fields ofJavaorMicrosoftCOMobject |
+| ✅ | `getfield` | Field of structure array |
+| ✅ | `isfield` | Determine if input is structure array field |
+| ✅ | `isstruct` | Determine if input is structure array |
+| ✅ | `orderfields` | Order fields of structure array |
+| ✅ | `rmfield` | Remove fields from structure |
+| ✅ | `setfield` | Assign value to structure array field |
+| ✅ | `struct` | Structure array |
+| ✅ | `struct2cell` | Convert structure to cell array |
+| ✅ | `structfun` | Apply function to each field of scalar structure |
+| ✅ | `cell` | Cell array |
+| ✅ | `cell2mat` | Convert cell array to ordinary array |
+| ✅ | `celldisp` | Display cell array contents |
+| ✅ | `cellfun` | Apply function to each cell in cell array |
 |   | `cellplot` | Graphically display structure of cell array |
-|   | `iscell` | Determine if input is cell array |
-|   | `mat2cell` | Convert array to cell array whose cells contain subarrays |
-|   | `num2cell` | Convert array to cell array with consistently sized cells |
-|   | `feval` | Evaluate function |
-|   | `func2str` | Construct character vector from function handle |
-|   | `function_handle` | Handle to function |
-|   | `functions` | Information about function handle |
+| ✅ | `iscell` | Determine if input is cell array |
+| ✅ | `mat2cell` | Convert array to cell array whose cells contain subarrays |
+| ✅ | `num2cell` | Convert array to cell array with consistently sized cells |
+| ✅ | `feval` | Evaluate function |
+| ✅ | `func2str` | Construct character vector from function handle |
+| ✅ | `function_handle` | Handle to function |
+| ✅ | `functions` | Information about function handle |
 |   | `localfunctions` | Handles to all local functions in current file |
-|   | `str2func` | Construct function handle from character vector |
+| ✅ | `str2func` | Construct function handle from character vector |
 |   | `configureDictionary` | Create dictionary with specified key and value types(Since R2023b) |
-|   | `containers.Map` | Object that maps unique keys to values |
-|   | `dictionary` | Dictionary that maps unique keys to values(Since R2022b) |
-|   | `entries` | Key-value pairs of dictionary(Since R2022b) |
-|   | `insert` | Add entries to a dictionary(Since R2023b) |
-|   | `isConfigured` | Determine if dictionary has types assigned to keys and values(Since R2022b) |
-|   | `isKey` | Determine if dictionary contains key(Since R2022b) |
+| ✅ | `containers.Map` | Object that maps unique keys to values |
+| ✅ | `dictionary` | Dictionary that maps unique keys to values(Since R2022b) |
+| ✅ | `entries` | Key-value pairs of dictionary(Since R2022b) |
+| ✅ | `insert` | Add entries to a dictionary(Since R2023b) |
+| ✅ | `isConfigured` | Determine if dictionary has types assigned to keys and values(Since R2022b) |
+| ✅ | `isKey` | Determine if dictionary contains key(Since R2022b) |
 |   | `keyHash` | Generate hash code for dictionary key(Since R2022b) |
 |   | `keyMatch` | Determine if two dictionary keys are the same(Since R2022b) |
-|   | `keys` | Keys of dictionary(Since R2022b) |
-|   | `lookup` | Find value in dictionary by key(Since R2023b) |
-|   | `numEntries` | Number of key-value pairs in dictionary(Since R2022b) |
+| ✅ | `keys` | Keys of dictionary(Since R2022b) |
+| ✅ | `lookup` | Find value in dictionary by key(Since R2023b) |
+| ✅ | `numEntries` | Number of key-value pairs in dictionary(Since R2022b) |
 |   | `readdictionary` | Create dictionary from file(Since R2024b) |
-|   | `remove` | Remove dictionary entries(Since R2023b) |
+| ✅ | `remove` | Remove dictionary entries(Since R2023b) |
 |   | `types` | Types of dictionary keys and values(Since R2022b) |
-|   | `values` | Values of dictionary(Since R2022b) |
+| ✅ | `values` | Values of dictionary(Since R2022b) |
 |   | `writedictionary` | Write dictionary to file(Since R2024b) |
 |   | `addevent` | Add event totimeseries |
 |   | `addsample` | Add data sample totimeseriesobject |
@@ -490,8 +490,8 @@ _0 / 3094 implemented_
 |   | `delevent` | Remove event fromtimeseries |
 |   | `delsample` | Remove sample fromtimeseriesobject |
 |   | `delsamplefromcollection` | Delete sample fromtscollection |
-|   | `detrend` | Subtract mean or best-fit line fromtimeseriesobject |
-|   | `filter` | Modify frequency content oftimeseriesobjects |
+| ✅ | `detrend` | Subtract mean or best-fit line fromtimeseriesobject |
+| ✅ | `filter` | Modify frequency content oftimeseriesobjects |
 |   | `findEvent` | Querytsdata.eventby name |
 |   | `getabstime` | Converttimeseriesortscollectiontime
             vector to cell array |
@@ -510,12 +510,12 @@ _0 / 3094 implemented_
 |   | `gettsbeforeevent` | Createtimeseriesbefore event |
 |   | `gettsbetweenevents` | Createtimeseriesbetween events |
 |   | `idealfilter` | timeseriesideal filter |
-|   | `iqr` | Interquartile range oftimeseriesdata |
-|   | `max` | Maximum oftimeseriesdata |
-|   | `mean` | Mean oftimeseriesdata |
-|   | `median` | Median oftimeseriesdata |
-|   | `min` | Minimum oftimeseriesdata |
-|   | `plot` | Plottimeseries |
+| ✅ | `iqr` | Interquartile range oftimeseriesdata |
+| ✅ | `max` | Maximum oftimeseriesdata |
+| ✅ | `mean` | Mean oftimeseriesdata |
+| ✅ | `median` | Median oftimeseriesdata |
+| ✅ | `min` | Minimum oftimeseriesdata |
+| ✅ | `plot` | Plottimeseries |
 |   | `removets` | Removetimeseriesfromtscollection |
 |   | `resample` | Resample time vector intimeseriesortscollection |
 |   | `setabstime` | Settimeseriesortscollectiontimes as
@@ -523,37 +523,37 @@ _0 / 3094 implemented_
 |   | `setinterpmethod` | Set default interpolation method fortimeseriesobject |
 |   | `settimeseriesnames` | Renametimeseriesintscollection |
 |   | `setuniformtime` | Modify uniformtimeseriestime vector |
-|   | `std` | Standard deviation oftimeseriesdata |
-|   | `sum` | Sum oftimeseriesdata |
+| ✅ | `std` | Standard deviation oftimeseriesdata |
+| ✅ | `sum` | Sum oftimeseriesdata |
 |   | `timeseries` | Createtimeseriesobject |
 |   | `tscollection` | Createtscollectionobject |
 |   | `tsdata.event` | Createtsdata.eventobject |
-|   | `var` | Variance oftimeseriesdata |
-|   | `class` | Class of object |
-|   | `isa` | Determine if input is instance of specified class |
-|   | `isenum` | Determine if variable is enumeration |
-|   | `isgraphics` | True for valid graphics object handles |
-|   | `isjava` | Determine if input isJavaobject |
-|   | `islogical` | Determine if input is logical array |
-|   | `isobject` | Determine if input isMATLABobject |
-|   | `issparse` | Determine whether input is sparse |
-|   | `isUnderlyingType` | Determine whether input has specified underlying data type |
-|   | `underlyingType` | Type of underlying data determining array behavior |
-|   | `validateattributes` | Check validity of array |
-|   | `whos` | List variables in workspace, with sizes and types |
-|   | `base2dec` | Convert text representation of base-ninteger to double value |
-|   | `bin2dec` | Convert text representation of binary integer to double value |
-|   | `dec2base` | Convert decimal integer to its base-nrepresentation |
-|   | `dec2bin` | Convert decimal integer to its binary representation |
-|   | `dec2hex` | Convert decimal integer to its hexadecimal representation |
-|   | `hex2dec` | Convert text representation of hexadecimal integer to double value |
-|   | `hex2num` | ConvertIEEEhexadecimal format to double-precision number |
-|   | `int2str` | Convert integers to characters |
-|   | `mat2str` | Convert matrix to characters |
-|   | `native2unicode` | Convert numeric bytes toUnicodecharacters |
-|   | `num2hex` | Convert single- and double-precision numbers toIEEEhexadecimal format |
-|   | `str2num` | Convert character array or string to numeric array |
-|   | `unicode2native` | ConvertUnicodecharacters to numeric bytes |
+| ✅ | `var` | Variance oftimeseriesdata |
+| ✅ | `class` | Class of object |
+| ✅ | `isa` | Determine if input is instance of specified class |
+| ✅ | `isenum` | Determine if variable is enumeration |
+| ✅ | `isgraphics` | True for valid graphics object handles |
+| ✅ | `isjava` | Determine if input isJavaobject |
+| ✅ | `islogical` | Determine if input is logical array |
+| ✅ | `isobject` | Determine if input isMATLABobject |
+| ✅ | `issparse` | Determine whether input is sparse |
+| ✅ | `isUnderlyingType` | Determine whether input has specified underlying data type |
+| ✅ | `underlyingType` | Type of underlying data determining array behavior |
+| ✅ | `validateattributes` | Check validity of array |
+| ✅ | `whos` | List variables in workspace, with sizes and types |
+| ✅ | `base2dec` | Convert text representation of base-ninteger to double value |
+| ✅ | `bin2dec` | Convert text representation of binary integer to double value |
+| ✅ | `dec2base` | Convert decimal integer to its base-nrepresentation |
+| ✅ | `dec2bin` | Convert decimal integer to its binary representation |
+| ✅ | `dec2hex` | Convert decimal integer to its hexadecimal representation |
+| ✅ | `hex2dec` | Convert text representation of hexadecimal integer to double value |
+| ✅ | `hex2num` | ConvertIEEEhexadecimal format to double-precision number |
+| ✅ | `int2str` | Convert integers to characters |
+| ✅ | `mat2str` | Convert matrix to characters |
+| ✅ | `native2unicode` | Convert numeric bytes toUnicodecharacters |
+| ✅ | `num2hex` | Convert single- and double-precision numbers toIEEEhexadecimal format |
+| ✅ | `str2num` | Convert character array or string to numeric array |
+| ✅ | `unicode2native` | ConvertUnicodecharacters to numeric bytes |
 |   | `'` | Complex conjugate transpose |
 |   | `*` | Matrix multiplication |
 |   | `+` | Add numbers, append strings |
@@ -566,59 +566,59 @@ _0 / 3094 implemented_
 |   | `/` | Solve systems of linear equationsxA = Bforx |
 |   | `\` | Solve systems of linear equationsAx = Bforx |
 |   | `^` | Matrix power |
-|   | `bsxfun` | Apply element-wise operation to two arrays with implicit
+| ✅ | `bsxfun` | Apply element-wise operation to two arrays with implicit
 expansion enabled |
-|   | `ceil` | Round toward positive infinity |
-|   | `cumprod` | Cumulative product |
-|   | `cumsum` | Cumulative sum |
-|   | `diff` | Differences and approximate derivatives |
-|   | `fix` | Round toward zero |
-|   | `floor` | Round toward negative infinity |
-|   | `idivide` | Integer division with rounding option |
-|   | `mod` | Remainder after division (modulo operation) |
-|   | `movsum` | Moving sum |
-|   | `pagectranspose` | Page-wise complex conjugate transpose |
-|   | `pagemldivide` | Page-wise left matrix divide(Since R2022a) |
-|   | `pagemrdivide` | Page-wise right matrix divide(Since R2022a) |
-|   | `pagemtimes` | Page-wise matrix multiplication |
-|   | `pagetranspose` | Page-wise transpose |
-|   | `prod` | Product of array elements |
-|   | `rem` | Remainder after division |
-|   | `round` | Round to nearest decimal or integer |
-|   | `tensorprod` | Tensor products between two tensors(Since R2022a) |
-|   | `uminus` | Unary minus |
-|   | `uplus` | Unary plus |
+| ✅ | `ceil` | Round toward positive infinity |
+| ✅ | `cumprod` | Cumulative product |
+| ✅ | `cumsum` | Cumulative sum |
+| ✅ | `diff` | Differences and approximate derivatives |
+| ✅ | `fix` | Round toward zero |
+| ✅ | `floor` | Round toward negative infinity |
+| ✅ | `idivide` | Integer division with rounding option |
+| ✅ | `mod` | Remainder after division (modulo operation) |
+| ✅ | `movsum` | Moving sum |
+| ✅ | `pagectranspose` | Page-wise complex conjugate transpose |
+| ✅ | `pagemldivide` | Page-wise left matrix divide(Since R2022a) |
+| ✅ | `pagemrdivide` | Page-wise right matrix divide(Since R2022a) |
+| ✅ | `pagemtimes` | Page-wise matrix multiplication |
+| ✅ | `pagetranspose` | Page-wise transpose |
+| ✅ | `prod` | Product of array elements |
+| ✅ | `rem` | Remainder after division |
+| ✅ | `round` | Round to nearest decimal or integer |
+| ✅ | `tensorprod` | Tensor products between two tensors(Since R2022a) |
+| ✅ | `uminus` | Unary minus |
+| ✅ | `uplus` | Unary plus |
 |   | `<` | Determine less than |
 |   | `<=` | Determine less than or equal to |
 |   | `==` | Determine equality |
 |   | `>` | Determine greater than |
 |   | `>=` | Determine greater than or equal to |
-|   | `isapprox` | Determine approximate equality(Since R2024b) |
-|   | `isequal` | Determine array equality |
-|   | `isequaln` | Determine array equality, treating NaN values as equal |
+| ✅ | `isapprox` | Determine approximate equality(Since R2024b) |
+| ✅ | `isequal` | Determine array equality |
+| ✅ | `isequaln` | Determine array equality, treating NaN values as equal |
 |   | `~=` | Determine inequality |
 |   | `&` | Find logical AND |
-|   | `all` | Determine if all array elements are nonzero ortrue |
-|   | `any` | Determine if any array elements are nonzero |
-|   | `find` | Find indices and values of nonzero elements |
-|   | `logical` | Convert numeric values to logicals |
+| ✅ | `all` | Determine if all array elements are nonzero ortrue |
+| ✅ | `any` | Determine if any array elements are nonzero |
+| ✅ | `find` | Find indices and values of nonzero elements |
+| ✅ | `logical` | Convert numeric values to logicals |
 |   | `Short-Circuit &&` | Logical AND with short-circuiting |
 |   | `Short-Circuit ||` | Logical OR with short-circuiting |
-|   | `xor` | Find logical exclusive-OR |
+| ✅ | `xor` | Find logical exclusive-OR |
 |   | `|` | Find logical OR |
 |   | `~` | Find logical NOT |
-|   | `allunique` | Determine if all values are unique(Since R2025a) |
-|   | `ismembertol` | Find set members of data within tolerance |
-|   | `numunique` | Number of unique values(Since R2025a) |
-|   | `uniquetol` | Unique values within tolerance |
-|   | `bitand` | Bit-wise AND |
-|   | `bitcmp` | Bit-wise complement |
-|   | `bitget` | Get bit at specified position |
-|   | `bitor` | Bit-wise OR |
-|   | `bitset` | Set bit at specific location |
-|   | `bitshift` | Shift bits specified number of places |
-|   | `bitxor` | Bit-wise XOR |
-|   | `swapbytes` | Swap byte ordering |
+| ✅ | `allunique` | Determine if all values are unique(Since R2025a) |
+| ✅ | `ismembertol` | Find set members of data within tolerance |
+| ✅ | `numunique` | Number of unique values(Since R2025a) |
+| ✅ | `uniquetol` | Unique values within tolerance |
+| ✅ | `bitand` | Bit-wise AND |
+| ✅ | `bitcmp` | Bit-wise complement |
+| ✅ | `bitget` | Get bit at specified position |
+| ✅ | `bitor` | Bit-wise OR |
+| ✅ | `bitset` | Set bit at specific location |
+| ✅ | `bitshift` | Shift bits specified number of places |
+| ✅ | `bitxor` | Bit-wise XOR |
+| ✅ | `swapbytes` | Swap byte ordering |
 |   | `!` | Operating system command |
 |   | `%` | Code comments, conversion specifier |
 |   | `%{ %}` | Block comments |
@@ -641,7 +641,7 @@ expansion enabled |
 of times |
 |   | `if, elseif, else` | Execute statements if condition is true |
 |   | `parfor` | Parallelfor-loop |
-|   | `pause` | StopMATLABexecution temporarily |
+| ✅ | `pause` | StopMATLABexecution temporarily |
 |   | `return` | Return control to invoking script or function |
 |   | `switch, case, otherwise` | Execute one of several groups of statements |
 |   | `try, catch` | Execute statements and catch resulting errors |
@@ -654,7 +654,7 @@ is true |
 |   | `audioread` | Read audio file |
 |   | `audiorecorder` | Object for recording audio |
 |   | `audiowrite` | Write audio file |
-|   | `beep` | Produce operating system beep sound |
+| ✅ | `beep` | Produce operating system beep sound |
 |   | `cdfinfo` | Information about Common Data Format (CDF) file |
 |   | `cdflib.breakdownTT2000` | ConvertCDF_TIME_TT2000timestamp to time
       components(Since R2022b) |
@@ -754,7 +754,7 @@ Format (CDF) file |
 |   | `cdflib.setVarsCacheSize` | Specify number of cache buffers used for all variables |
 |   | `cdflib.setVarSparseRecords` | Specify how variable handles sparse records |
 |   | `cdfread` | Read data from Common Data Format (CDF) file |
-|   | `close` | Close file after writing video data |
+| ✅ | `close` | Close file after writing video data |
 |   | `delimitedTextImportOptions` | Import options object for delimited text |
 |   | `fileread` | Read contents of file as text |
 |   | `fitsdisp` | Display FITS metadata |
@@ -791,13 +791,13 @@ Format (CDF) file |
 |   | `hdfvs` | Gateway to VS functions in HDF Vdata interface |
 |   | `htmlImportOptions` | Import options object for HTML files(Since R2021b) |
 |   | `imfinfo` | Information about graphics file |
-|   | `importdata` | Load data from file |
+| ✅ | `importdata` | Load data from file |
 |   | `imread` | Read image from graphics file |
 |   | `imwrite` | Write image to graphics file |
 |   | `isplaying` | Determine if playback is in progress |
 |   | `isrecording` | Determine if recording is in progress |
-|   | `jsondecode` | Decode JSON-formatted text |
-|   | `jsonencode` | Create JSON-formatted text from structuredMATLABdata |
+| ✅ | `jsondecode` | Decode JSON-formatted text |
+| ✅ | `jsonencode` | Create JSON-formatted text from structuredMATLABdata |
 |   | `jsonImportOptions` | Import options object for JSON files(Since R2026a) |
 |   | `lin2mu` | Convert linear audio signal to mu-law |
 |   | `matlab.io.fits.closeFile` | Close FITS file |
@@ -987,12 +987,12 @@ Format (CDF) file |
 |   | `playblocking` | Play audio fromaudioplayerobject; hold control until playback
                                     completes |
 |   | `read` | Read one or more video frames |
-|   | `readcell` | Create cell array from file |
+| ✅ | `readcell` | Create cell array from file |
 |   | `readFrame` | Read next video frame |
 |   | `readlines` | Read lines of file as string array |
-|   | `readmatrix` | Read matrix from file |
+| ✅ | `readmatrix` | Read matrix from file |
 |   | `readstruct` | Create structure array from file |
-|   | `readvars` | Read variables from file |
+| ✅ | `readvars` | Read variables from file |
 |   | `record` | Record audio toaudiorecorderobject |
 |   | `recordblocking` | Record audio toaudiorecorderobject; hold control until recording
       completes |
@@ -1005,35 +1005,35 @@ Format (CDF) file |
 |   | `tabularTextDatastore` | Datastore for tabular text files |
 |   | `textscan` | Read formatted data from text file or string |
 |   | `Tiff` | MATLABGateway to LibTIFF library routines |
-|   | `type` | Display contents of file |
+| ✅ | `type` | Display contents of file |
 |   | `VideoReader` | Create object to read video files |
 |   | `VideoWriter` | Create object to write video files |
 |   | `wordDocumentImportOptions` | Import options object forMicrosoftWorddocument files(Since R2021b) |
-|   | `writecell` | Write cell array to file |
+| ✅ | `writecell` | Write cell array to file |
 |   | `writelines` | Write text to file(Since R2022a) |
-|   | `writematrix` | Write matrix to file |
+| ✅ | `writematrix` | Write matrix to file |
 |   | `writestruct` | Write structure array to file |
 |   | `writeVideo` | Write video data to file |
 |   | `xmlImportOptions` | Import options object for XML files |
 |   | `xmlread` | Read XML document and return Document Object Model node |
 |   | `xmlwrite` | Write XML Document Object Model node |
 |   | `xslt` | Transform XML document using XSLT engine |
-|   | `clear` | Remove items from workspace, freeing up system memory |
+| ✅ | `clear` | Remove items from workspace, freeing up system memory |
 |   | `clearvars` | Clear variables from memory |
-|   | `disp` | Display value of variable |
+| ✅ | `disp` | Display value of variable |
 |   | `formattedDisplayText` | Capture display output as string |
-|   | `load` | Load variables from file into workspace |
+| ✅ | `load` | Load variables from file into workspace |
 |   | `matfile` | Access and change variables in MAT file without loading file into
       memory |
-|   | `save` | Save variables from workspace to file |
-|   | `who` | List variables in workspace |
+| ✅ | `save` | Save variables from workspace to file |
+| ✅ | `who` | List variables in workspace |
 |   | `fclose` | Close one or all open files |
 |   | `feof` | Test for end of file |
 |   | `ferror` | File I/O error information |
 |   | `fgetl` | Read line from file, removing newline characters |
 |   | `fgets` | Read line from file, keeping newline characters |
 |   | `fopen` | Open file or obtain information about open files |
-|   | `fprintf` | Write data to text file |
+| ✅ | `fprintf` | Write data to text file |
 |   | `fread` | Read data from binary file |
 |   | `frewind` | Move file position pointer to beginning of open file |
 |   | `fscanf` | Read data from text file |
@@ -1041,7 +1041,7 @@ Format (CDF) file |
 |   | `ftell` | Current location of file position pointer in file |
 |   | `fwrite` | Write data to binary file |
 |   | `openedFiles` | File identifiers of all open files(Since R2024a) |
-|   | `abort` | End flight ofRyzedrone |
+| ✅ | `abort` | End flight ofRyzedrone |
 |   | `accellog` | Return logged acceleration data from mobile device sensor |
 |   | `addon` | Connection to add-on device forArduinohardware |
 |   | `adis16505` | Connect to ADIS16505 sensor onArduinohardware SPI bus(Since R2024a) |
@@ -1242,8 +1242,8 @@ Format (CDF) file |
 |   | `ascii` | Set FTP transfer mode to ASCII |
 |   | `binary` | Set FTP transfer mode to binary |
 |   | `cd` | Change or view current folder on SFTP or FTP server |
-|   | `delete` | Delete file on SFTP or FTP server |
-|   | `dir` | List folder contents on SFTP or FTP server |
+| ✅ | `delete` | Delete file on SFTP or FTP server |
+| ✅ | `dir` | List folder contents on SFTP or FTP server |
 |   | `ftp` | Connection to FTP server to access its files |
 |   | `matlab.htmlviewer.HTMLViewer` | HTML Viewer tab(Since R2025a) |
 |   | `mget` | Download files from SFTP or FTP server |
@@ -1261,7 +1261,7 @@ Format (CDF) file |
 |   | `websave` | Save content from RESTful web service to file |
 |   | `webwrite` | Write data to RESTful web service |
 |   | `arrayDatastore` | Datastore for in-memory data |
-|   | `combine` | Combine data from multiple datastores |
+| ✅ | `combine` | Combine data from multiple datastores |
 |   | `CombinedDatastore` | Datastore to combine data read from multiple underlying datastores |
 |   | `datastore` | Create datastore for large collections of data |
 |   | `fileDatastore` | Datastore with custom file reader |
@@ -1317,552 +1317,552 @@ not fit in memory |
 |   | `ValueIterator` | An iterator over intermediate values for use with mapreduce |
 |   | `memmapfile` | Create memory map to a file |
 |   | `fillmissing2` | Fill missing entries in 2-D data(Since R2023a) |
-|   | `missing` | Create missing values |
+| ✅ | `missing` | Create missing values |
 |   | `allbetween` | Determine if all elements are within specified range(Since R2025a) |
-|   | `clip` | Clip data to range(Since R2024a) |
-|   | `filloutliers` | Detect and replace outliers in data |
-|   | `isoutlier` | Find outliers in data |
-|   | `rmoutliers` | Detect and remove outliers in data |
-|   | `movmean` | Moving mean |
-|   | `movmedian` | Moving median |
-|   | `smoothdata` | Smooth noisy data |
-|   | `smoothdata2` | Smooth noisy data in two dimensions(Since R2023b) |
+| ✅ | `clip` | Clip data to range(Since R2024a) |
+| ✅ | `filloutliers` | Detect and replace outliers in data |
+| ✅ | `isoutlier` | Find outliers in data |
+| ✅ | `rmoutliers` | Detect and remove outliers in data |
+| ✅ | `movmean` | Moving mean |
+| ✅ | `movmedian` | Moving median |
+| ✅ | `smoothdata` | Smooth noisy data |
+| ✅ | `smoothdata2` | Smooth noisy data in two dimensions(Since R2023b) |
 |   | `ischange` | Find abrupt changes in data |
-|   | `islocalmax` | Find local maxima |
+| ✅ | `islocalmax` | Find local maxima |
 |   | `islocalmax2` | Find local maxima in 2-D data(Since R2024a) |
-|   | `islocalmin` | Find local minima |
+| ✅ | `islocalmin` | Find local minima |
 |   | `islocalmin2` | Find local minima in 2-D data(Since R2024a) |
-|   | `normalize` | Normalize data |
-|   | `rescale` | Scale range of array elements |
+| ✅ | `normalize` | Normalize data |
+| ✅ | `rescale` | Scale range of array elements |
 |   | `trenddecomp` | Find trends in data(Since R2021b) |
-|   | `accumarray` | Accumulate vector elements |
-|   | `histcounts` | Histogram bin counts |
-|   | `histcounts2` | Bivariate histogram bin counts |
-|   | `mode` | Most frequent values in array |
-|   | `rms` | Root mean square value |
-|   | `bounds` | Minimum and maximum values of an array |
-|   | `maxk` | Findklargest elements of array |
-|   | `mink` | Findksmallest elements of array |
-|   | `prctile` | Percentiles of data set |
-|   | `quantile` | Quantiles of data set |
-|   | `movmad` | Moving median absolute deviation |
-|   | `movmax` | Moving maximum |
-|   | `movmin` | Moving minimum |
-|   | `movprod` | Moving product |
-|   | `movstd` | Moving standard deviation |
-|   | `movvar` | Moving variance |
-|   | `cummax` | Cumulative maximum |
-|   | `cummin` | Cumulative minimum |
-|   | `corrcoef` | Correlation coefficients |
-|   | `cov` | Covariance |
-|   | `xcorr` | Cross-correlation |
-|   | `xcov` | Cross-covariance |
-|   | `mldivide` | Solve systems of linear equationsAx = Bforx |
-|   | `mrdivide` | Solve systems of linear equationsxA = Bforx |
-|   | `polyfit` | Polynomial curve fitting |
-|   | `polyval` | Polynomial evaluation |
-|   | `mape` | Mean absolute percentage error between arrays(Since R2022b) |
-|   | `rmse` | Root mean squared error between arrays(Since R2022b) |
-|   | `histogram` | Histogram plot |
-|   | `kde` | Kernel density estimate for univariate data(Since R2023b) |
-|   | `scatter` | Scatter plot |
+| ✅ | `accumarray` | Accumulate vector elements |
+| ✅ | `histcounts` | Histogram bin counts |
+| ✅ | `histcounts2` | Bivariate histogram bin counts |
+| ✅ | `mode` | Most frequent values in array |
+| ✅ | `rms` | Root mean square value |
+| ✅ | `bounds` | Minimum and maximum values of an array |
+| ✅ | `maxk` | Findklargest elements of array |
+| ✅ | `mink` | Findksmallest elements of array |
+| ✅ | `prctile` | Percentiles of data set |
+| ✅ | `quantile` | Quantiles of data set |
+| ✅ | `movmad` | Moving median absolute deviation |
+| ✅ | `movmax` | Moving maximum |
+| ✅ | `movmin` | Moving minimum |
+| ✅ | `movprod` | Moving product |
+| ✅ | `movstd` | Moving standard deviation |
+| ✅ | `movvar` | Moving variance |
+| ✅ | `cummax` | Cumulative maximum |
+| ✅ | `cummin` | Cumulative minimum |
+| ✅ | `corrcoef` | Correlation coefficients |
+| ✅ | `cov` | Covariance |
+| ✅ | `xcorr` | Cross-correlation |
+| ✅ | `xcov` | Cross-covariance |
+| ✅ | `mldivide` | Solve systems of linear equationsAx = Bforx |
+| ✅ | `mrdivide` | Solve systems of linear equationsxA = Bforx |
+| ✅ | `polyfit` | Polynomial curve fitting |
+| ✅ | `polyval` | Polynomial evaluation |
+| ✅ | `mape` | Mean absolute percentage error between arrays(Since R2022b) |
+| ✅ | `rmse` | Root mean squared error between arrays(Since R2022b) |
+| ✅ | `histogram` | Histogram plot |
+| ✅ | `kde` | Kernel density estimate for univariate data(Since R2023b) |
+| ✅ | `scatter` | Scatter plot |
 |   | `sonify` | Convert numeric data to sound(Since R2024b) |
-|   | `acos` | Inverse cosine in radians |
-|   | `acosd` | Inverse cosine in degrees |
-|   | `acosh` | Inverse hyperbolic cosine |
-|   | `acot` | Inverse cotangent in radians |
-|   | `acotd` | Inverse cotangent in degrees |
-|   | `acoth` | Inverse hyperbolic cotangent |
-|   | `acsc` | Inverse cosecant in radians |
-|   | `acscd` | Inverse cosecant in degrees |
-|   | `acsch` | Inverse hyperbolic cosecant |
-|   | `asec` | Inverse secant in radians |
-|   | `asecd` | Inverse secant in degrees |
-|   | `asech` | Inverse hyperbolic secant |
-|   | `asin` | Inverse sine in radians |
-|   | `asind` | Inverse sine in degrees |
-|   | `asinh` | Inverse hyperbolic sine |
-|   | `atan` | Inverse tangent in radians |
-|   | `atan2` | Four-quadrant inverse tangent |
-|   | `atan2d` | Four-quadrant inverse tangent in degrees |
-|   | `atand` | Inverse tangent in degrees |
-|   | `atanh` | Inverse hyperbolic tangent |
-|   | `cart2pol` | Transform Cartesian coordinates to polar or cylindrical |
-|   | `cart2sph` | Transform Cartesian coordinates to spherical |
-|   | `cos` | Cosine of argument in radians |
-|   | `cosd` | Cosine of argument in degrees |
-|   | `cosh` | Hyperbolic cosine |
-|   | `cospi` | Compute cos(X*pi) accurately |
-|   | `cot` | Cotangent of angle in radians |
-|   | `cotd` | Cotangent of argument in degrees |
-|   | `coth` | Hyperbolic cotangent |
-|   | `csc` | Cosecant of input angle in radians |
-|   | `cscd` | Cosecant of argument in degrees |
-|   | `csch` | Hyperbolic cosecant |
-|   | `deg2rad` | Convert angle from degrees to radians |
-|   | `hypot` | Square root of sum of squares (hypotenuse) |
-|   | `pol2cart` | Transform polar or cylindrical coordinates to Cartesian |
-|   | `rad2deg` | Convert angle from radians to degrees |
-|   | `sec` | Secant of angle in radians |
-|   | `secd` | Secant of argument in degrees |
-|   | `sech` | Hyperbolic secant |
-|   | `sin` | Sine of argument in radians |
-|   | `sind` | Sine of argument in degrees |
-|   | `sinh` | Hyperbolic sine |
-|   | `sinpi` | Compute sin(X*pi) accurately |
-|   | `sph2cart` | Transform spherical coordinates to Cartesian |
-|   | `tan` | Tangent of argument in radians |
-|   | `tand` | Tangent of argument in degrees |
-|   | `tanh` | Hyperbolic tangent |
-|   | `exp` | Exponential |
-|   | `expm1` | Computeexp(X)-1accurately for smallX |
-|   | `log` | Natural logarithm |
-|   | `log10` | Common logarithm (base 10) |
-|   | `log1p` | Compute natural logarithm of1+Xaccurately for smallX |
-|   | `log2` | Base 2 logarithm and floating-point number dissection |
-|   | `nextpow2` | Exponent of next higher power of 2 |
-|   | `nthroot` | Real nth root of real numbers |
-|   | `pow2` | Base 2 exponentiation and scaling of floating-point numbers |
-|   | `reallog` | Natural logarithm for nonnegative real arrays |
-|   | `realpow` | Array power for real-only output |
-|   | `realsqrt` | Square root for nonnegative real arrays |
-|   | `sqrt` | Square root |
-|   | `abs` | Absolute value and complex magnitude |
-|   | `angle` | Phase angle |
-|   | `complex` | Create complex array |
-|   | `conj` | Complex conjugate |
-|   | `cplxpair` | Sort complex numbers into complex conjugate pairs |
+| ✅ | `acos` | Inverse cosine in radians |
+| ✅ | `acosd` | Inverse cosine in degrees |
+| ✅ | `acosh` | Inverse hyperbolic cosine |
+| ✅ | `acot` | Inverse cotangent in radians |
+| ✅ | `acotd` | Inverse cotangent in degrees |
+| ✅ | `acoth` | Inverse hyperbolic cotangent |
+| ✅ | `acsc` | Inverse cosecant in radians |
+| ✅ | `acscd` | Inverse cosecant in degrees |
+| ✅ | `acsch` | Inverse hyperbolic cosecant |
+| ✅ | `asec` | Inverse secant in radians |
+| ✅ | `asecd` | Inverse secant in degrees |
+| ✅ | `asech` | Inverse hyperbolic secant |
+| ✅ | `asin` | Inverse sine in radians |
+| ✅ | `asind` | Inverse sine in degrees |
+| ✅ | `asinh` | Inverse hyperbolic sine |
+| ✅ | `atan` | Inverse tangent in radians |
+| ✅ | `atan2` | Four-quadrant inverse tangent |
+| ✅ | `atan2d` | Four-quadrant inverse tangent in degrees |
+| ✅ | `atand` | Inverse tangent in degrees |
+| ✅ | `atanh` | Inverse hyperbolic tangent |
+| ✅ | `cart2pol` | Transform Cartesian coordinates to polar or cylindrical |
+| ✅ | `cart2sph` | Transform Cartesian coordinates to spherical |
+| ✅ | `cos` | Cosine of argument in radians |
+| ✅ | `cosd` | Cosine of argument in degrees |
+| ✅ | `cosh` | Hyperbolic cosine |
+| ✅ | `cospi` | Compute cos(X*pi) accurately |
+| ✅ | `cot` | Cotangent of angle in radians |
+| ✅ | `cotd` | Cotangent of argument in degrees |
+| ✅ | `coth` | Hyperbolic cotangent |
+| ✅ | `csc` | Cosecant of input angle in radians |
+| ✅ | `cscd` | Cosecant of argument in degrees |
+| ✅ | `csch` | Hyperbolic cosecant |
+| ✅ | `deg2rad` | Convert angle from degrees to radians |
+| ✅ | `hypot` | Square root of sum of squares (hypotenuse) |
+| ✅ | `pol2cart` | Transform polar or cylindrical coordinates to Cartesian |
+| ✅ | `rad2deg` | Convert angle from radians to degrees |
+| ✅ | `sec` | Secant of angle in radians |
+| ✅ | `secd` | Secant of argument in degrees |
+| ✅ | `sech` | Hyperbolic secant |
+| ✅ | `sin` | Sine of argument in radians |
+| ✅ | `sind` | Sine of argument in degrees |
+| ✅ | `sinh` | Hyperbolic sine |
+| ✅ | `sinpi` | Compute sin(X*pi) accurately |
+| ✅ | `sph2cart` | Transform spherical coordinates to Cartesian |
+| ✅ | `tan` | Tangent of argument in radians |
+| ✅ | `tand` | Tangent of argument in degrees |
+| ✅ | `tanh` | Hyperbolic tangent |
+| ✅ | `exp` | Exponential |
+| ✅ | `expm1` | Computeexp(X)-1accurately for smallX |
+| ✅ | `log` | Natural logarithm |
+| ✅ | `log10` | Common logarithm (base 10) |
+| ✅ | `log1p` | Compute natural logarithm of1+Xaccurately for smallX |
+| ✅ | `log2` | Base 2 logarithm and floating-point number dissection |
+| ✅ | `nextpow2` | Exponent of next higher power of 2 |
+| ✅ | `nthroot` | Real nth root of real numbers |
+| ✅ | `pow2` | Base 2 exponentiation and scaling of floating-point numbers |
+| ✅ | `reallog` | Natural logarithm for nonnegative real arrays |
+| ✅ | `realpow` | Array power for real-only output |
+| ✅ | `realsqrt` | Square root for nonnegative real arrays |
+| ✅ | `sqrt` | Square root |
+| ✅ | `abs` | Absolute value and complex magnitude |
+| ✅ | `angle` | Phase angle |
+| ✅ | `complex` | Create complex array |
+| ✅ | `conj` | Complex conjugate |
+| ✅ | `cplxpair` | Sort complex numbers into complex conjugate pairs |
 |   | `i` | Imaginary unit |
-|   | `imag` | Imaginary part of complex number |
+| ✅ | `imag` | Imaginary part of complex number |
 |   | `j` | Imaginary unit |
-|   | `real` | Real part of complex number |
-|   | `sign` | Sign function (signum function) |
-|   | `unwrap` | Shift phase angles |
-|   | `factor` | Prime factors |
-|   | `factorial` | Factorial of input |
-|   | `gcd` | Greatest common divisor |
-|   | `isprime` | Determine which array elements are prime |
-|   | `lcm` | Least common multiple |
-|   | `matchpairs` | Solve linear assignment problem |
-|   | `nchoosek` | Binomial coefficient or all combinations |
-|   | `perms` | All possible permutations |
-|   | `primes` | Prime numbers less than or equal to input value |
-|   | `rat` | Rational fraction approximation |
-|   | `rats` | Rational output |
-|   | `conv` | Convolution and polynomial multiplication |
-|   | `deconv` | Least-squares deconvolution and polynomial division |
-|   | `poly` | Polynomial with specified roots or characteristic polynomial |
-|   | `polyder` | Polynomial differentiation |
-|   | `polydiv` | Polynomial long division(Since R2024a) |
-|   | `polyeig` | Polynomial eigenvalue problem |
-|   | `polyint` | Polynomial integration |
-|   | `polyvalm` | Matrix polynomial evaluation |
-|   | `residue` | Partial fraction expansion (partial fraction decomposition) |
-|   | `roots` | Polynomial roots |
-|   | `airy` | Airy Functions |
-|   | `besselh` | Bessel function of third kind (Hankel function) |
-|   | `besseli` | Modified Bessel function of first kind |
-|   | `besselj` | Bessel function of first kind |
-|   | `besselk` | Modified Bessel function of second kind |
-|   | `bessely` | Bessel function of second kind |
-|   | `beta` | Beta function |
-|   | `betainc` | Incomplete beta function |
-|   | `betaincinv` | Beta inverse cumulative distribution function |
-|   | `betaln` | Logarithm of beta function |
-|   | `ellipj` | Jacobi elliptic functions |
-|   | `ellipke` | Complete elliptic integrals of first and second kind |
-|   | `erf` | Error function |
-|   | `erfc` | Complementary error function |
-|   | `erfcinv` | Inverse complementary error function |
-|   | `erfcx` | Scaled complementary error function |
-|   | `erfinv` | Inverse error function |
-|   | `expint` | Exponential integral function |
-|   | `gamma` | Gamma function |
-|   | `gammainc` | Regularized incomplete gamma function |
-|   | `gammaincinv` | Inverse of regularized incomplete gamma function |
-|   | `gammaln` | Logarithm of gamma function |
-|   | `legendre` | Associated Legendre functions |
-|   | `psi` | Digamma and polygamma functions |
-|   | `compan` | Companion matrix |
-|   | `gallery` | Test matrices |
-|   | `hadamard` | Hadamard matrix |
-|   | `hankel` | Hankel matrix |
-|   | `hilb` | Hilbert matrix |
-|   | `invhilb` | Inverse of Hilbert matrix |
-|   | `magic` | Magic square |
-|   | `pascal` | Pascal matrix |
+| ✅ | `real` | Real part of complex number |
+| ✅ | `sign` | Sign function (signum function) |
+| ✅ | `unwrap` | Shift phase angles |
+| ✅ | `factor` | Prime factors |
+| ✅ | `factorial` | Factorial of input |
+| ✅ | `gcd` | Greatest common divisor |
+| ✅ | `isprime` | Determine which array elements are prime |
+| ✅ | `lcm` | Least common multiple |
+| ✅ | `matchpairs` | Solve linear assignment problem |
+| ✅ | `nchoosek` | Binomial coefficient or all combinations |
+| ✅ | `perms` | All possible permutations |
+| ✅ | `primes` | Prime numbers less than or equal to input value |
+| ✅ | `rat` | Rational fraction approximation |
+| ✅ | `rats` | Rational output |
+| ✅ | `conv` | Convolution and polynomial multiplication |
+| ✅ | `deconv` | Least-squares deconvolution and polynomial division |
+| ✅ | `poly` | Polynomial with specified roots or characteristic polynomial |
+| ✅ | `polyder` | Polynomial differentiation |
+| ✅ | `polydiv` | Polynomial long division(Since R2024a) |
+| ✅ | `polyeig` | Polynomial eigenvalue problem |
+| ✅ | `polyint` | Polynomial integration |
+| ✅ | `polyvalm` | Matrix polynomial evaluation |
+| ✅ | `residue` | Partial fraction expansion (partial fraction decomposition) |
+| ✅ | `roots` | Polynomial roots |
+| ✅ | `airy` | Airy Functions |
+| ✅ | `besselh` | Bessel function of third kind (Hankel function) |
+| ✅ | `besseli` | Modified Bessel function of first kind |
+| ✅ | `besselj` | Bessel function of first kind |
+| ✅ | `besselk` | Modified Bessel function of second kind |
+| ✅ | `bessely` | Bessel function of second kind |
+| ✅ | `beta` | Beta function |
+| ✅ | `betainc` | Incomplete beta function |
+| ✅ | `betaincinv` | Beta inverse cumulative distribution function |
+| ✅ | `betaln` | Logarithm of beta function |
+| ✅ | `ellipj` | Jacobi elliptic functions |
+| ✅ | `ellipke` | Complete elliptic integrals of first and second kind |
+| ✅ | `erf` | Error function |
+| ✅ | `erfc` | Complementary error function |
+| ✅ | `erfcinv` | Inverse complementary error function |
+| ✅ | `erfcx` | Scaled complementary error function |
+| ✅ | `erfinv` | Inverse error function |
+| ✅ | `expint` | Exponential integral function |
+| ✅ | `gamma` | Gamma function |
+| ✅ | `gammainc` | Regularized incomplete gamma function |
+| ✅ | `gammaincinv` | Inverse of regularized incomplete gamma function |
+| ✅ | `gammaln` | Logarithm of gamma function |
+| ✅ | `legendre` | Associated Legendre functions |
+| ✅ | `psi` | Digamma and polygamma functions |
+| ✅ | `compan` | Companion matrix |
+| ✅ | `gallery` | Test matrices |
+| ✅ | `hadamard` | Hadamard matrix |
+| ✅ | `hankel` | Hankel matrix |
+| ✅ | `hilb` | Hilbert matrix |
+| ✅ | `invhilb` | Inverse of Hilbert matrix |
+| ✅ | `magic` | Magic square |
+| ✅ | `pascal` | Pascal matrix |
 |   | `pi` | Ratio of circle's circumference to its diameter |
-|   | `rosser` | Classic symmetric eigenvalue test problem |
-|   | `toeplitz` | Toeplitz matrix |
-|   | `vander` | Vandermonde matrix |
-|   | `wilkinson` | Wilkinson's eigenvalue test matrix |
-|   | `decomposition` | Matrix decomposition for solving linear systems |
-|   | `inv` | Matrix inverse |
-|   | `linsolve` | Solve linear system of equations |
-|   | `lscov` | Least-squares solution in presence of known covariance |
-|   | `lsqminnorm` | Minimum norm least-squares solution to linear equation |
-|   | `lsqnonneg` | Solve nonnegative linear least-squares problem |
-|   | `pinv` | Moore-Penrose pseudoinverse |
-|   | `sylvester` | Solve Sylvester equationAX + XB = CforX |
-|   | `balance` | Diagonal scaling to improve eigenvalue accuracy |
-|   | `cdf2rdf` | Convert complex diagonal form to real block diagonal form |
-|   | `eig` | Eigenvalues and eigenvectors |
-|   | `eigs` | Subset of eigenvalues and eigenvectors |
-|   | `gsvd` | Generalized singular value decomposition |
-|   | `hess` | Hessenberg form of matrix |
-|   | `ordeig` | Eigenvalues of quasitriangular matrices |
-|   | `ordqz` | Reorder eigenvalues in QZ factorization |
-|   | `ordschur` | Reorder eigenvalues in Schur factorization |
-|   | `qz` | Generalized Schur (QZ) factorization for generalized eigenvalues |
-|   | `rsf2csf` | Convert real Schur form to complex Schur form |
-|   | `schur` | Schur decomposition |
-|   | `svd` | Singular value decomposition |
-|   | `svdappend` | Revise SVD after appending data(Since R2023b) |
-|   | `svds` | Subset of singular values and vectors |
-|   | `svdsketch` | Compute SVD of low-rank matrix sketch |
-|   | `chol` | Cholesky factorization |
-|   | `cholupdate` | Rank 1 update to Cholesky factorization |
-|   | `ldl` | Block LDL' factorization for Hermitian indefinite matrices |
-|   | `lu` | LU matrix factorization |
-|   | `planerot` | Givens plane rotation |
-|   | `qr` | QR decomposition |
-|   | `qrdelete` | Remove column or row from QR factorization |
-|   | `qrinsert` | Insert column or row into QR factorization |
-|   | `qrupdate` | Rank 1 update to QR factorization |
-|   | `cross` | Cross product |
-|   | `dot` | Dot product |
-|   | `expm` | Matrix exponential |
-|   | `expmv` | Matrix exponential multiplied by vector(Since R2023b) |
-|   | `funm` | Evaluate general matrix function |
-|   | `kron` | Kronecker tensor product |
-|   | `logm` | Matrix logarithm |
-|   | `mpower` | Matrix power |
-|   | `mtimes` | Matrix multiplication |
-|   | `sqrtm` | Matrix square root |
-|   | `bandwidth` | Lower and upper matrix bandwidth |
-|   | `isbanded` | Determine if matrix is within specified bandwidth |
-|   | `isdiag` | Determine if matrix is diagonal |
-|   | `ishermitian` | Determine if matrix is Hermitian or skew-Hermitian |
-|   | `issymmetric` | Determine if matrix is symmetric or skew-symmetric |
-|   | `istril` | Determine if matrix is lower triangular |
-|   | `istriu` | Determine if matrix is upper triangular |
-|   | `tril` | Lower triangular part of matrix |
-|   | `triu` | Upper triangular part of matrix |
-|   | `cond` | Condition number for inversion |
-|   | `condeig` | Condition number with respect to eigenvalues |
-|   | `condest` | 1-norm condition number estimate |
-|   | `det` | Matrix determinant |
-|   | `norm` | Vector and matrix norms |
-|   | `normest` | 2-norm estimate |
-|   | `null` | Null space of matrix |
-|   | `orth` | Orthonormal basis for range of matrix |
-|   | `rank` | Rank of matrix |
-|   | `rcond` | Reciprocal condition number |
-|   | `rref` | Reduced row echelon form (Gauss-Jordan elimination) |
-|   | `subspace` | Angle between two subspaces |
-|   | `trace` | Sum of diagonal elements |
-|   | `vecnorm` | Vector-wise norm |
-|   | `pageeig` | Page-wise eigenvalues and eigenvectors(Since R2023a) |
-|   | `pageinv` | Page-wise matrix inverse(Since R2022a) |
-|   | `pagelsqminnorm` | Page-wise minimum-norm least-squares solution to linear equation(Since R2024a) |
-|   | `pagenorm` | Page-wise matrix or vector norm(Since R2022b) |
-|   | `pagepinv` | Page-wise Moore-Penrose pseudoinverse(Since R2024a) |
-|   | `pagesvd` | Page-wise singular value decomposition(Since R2021b) |
-|   | `randi` | Uniformly distributed random integers |
-|   | `randn` | Normally distributed random numbers |
-|   | `randperm` | Random permutation of integers |
-|   | `RandStream` | Random number stream |
-|   | `rng` | Control random number generator |
-|   | `griddedInterpolant` | Gridded data interpolation |
-|   | `interp1` | 1-D data interpolation (table lookup) |
-|   | `interp2` | Interpolation for 2-D gridded data in meshgrid format |
-|   | `interp3` | Interpolation for 3-D gridded data in meshgrid format |
-|   | `interpft` | 1-D interpolation (FFT method) |
-|   | `interpn` | Interpolation for 1-D, 2-D, 3-D, and N-D gridded data
+| ✅ | `rosser` | Classic symmetric eigenvalue test problem |
+| ✅ | `toeplitz` | Toeplitz matrix |
+| ✅ | `vander` | Vandermonde matrix |
+| ✅ | `wilkinson` | Wilkinson's eigenvalue test matrix |
+| ✅ | `decomposition` | Matrix decomposition for solving linear systems |
+| ✅ | `inv` | Matrix inverse |
+| ✅ | `linsolve` | Solve linear system of equations |
+| ✅ | `lscov` | Least-squares solution in presence of known covariance |
+| ✅ | `lsqminnorm` | Minimum norm least-squares solution to linear equation |
+| ✅ | `lsqnonneg` | Solve nonnegative linear least-squares problem |
+| ✅ | `pinv` | Moore-Penrose pseudoinverse |
+| ✅ | `sylvester` | Solve Sylvester equationAX + XB = CforX |
+| ✅ | `balance` | Diagonal scaling to improve eigenvalue accuracy |
+| ✅ | `cdf2rdf` | Convert complex diagonal form to real block diagonal form |
+| ✅ | `eig` | Eigenvalues and eigenvectors |
+| ✅ | `eigs` | Subset of eigenvalues and eigenvectors |
+| ✅ | `gsvd` | Generalized singular value decomposition |
+| ✅ | `hess` | Hessenberg form of matrix |
+| ✅ | `ordeig` | Eigenvalues of quasitriangular matrices |
+| ✅ | `ordqz` | Reorder eigenvalues in QZ factorization |
+| ✅ | `ordschur` | Reorder eigenvalues in Schur factorization |
+| ✅ | `qz` | Generalized Schur (QZ) factorization for generalized eigenvalues |
+| ✅ | `rsf2csf` | Convert real Schur form to complex Schur form |
+| ✅ | `schur` | Schur decomposition |
+| ✅ | `svd` | Singular value decomposition |
+| ✅ | `svdappend` | Revise SVD after appending data(Since R2023b) |
+| ✅ | `svds` | Subset of singular values and vectors |
+| ✅ | `svdsketch` | Compute SVD of low-rank matrix sketch |
+| ✅ | `chol` | Cholesky factorization |
+| ✅ | `cholupdate` | Rank 1 update to Cholesky factorization |
+| ✅ | `ldl` | Block LDL' factorization for Hermitian indefinite matrices |
+| ✅ | `lu` | LU matrix factorization |
+| ✅ | `planerot` | Givens plane rotation |
+| ✅ | `qr` | QR decomposition |
+| ✅ | `qrdelete` | Remove column or row from QR factorization |
+| ✅ | `qrinsert` | Insert column or row into QR factorization |
+| ✅ | `qrupdate` | Rank 1 update to QR factorization |
+| ✅ | `cross` | Cross product |
+| ✅ | `dot` | Dot product |
+| ✅ | `expm` | Matrix exponential |
+| ✅ | `expmv` | Matrix exponential multiplied by vector(Since R2023b) |
+| ✅ | `funm` | Evaluate general matrix function |
+| ✅ | `kron` | Kronecker tensor product |
+| ✅ | `logm` | Matrix logarithm |
+| ✅ | `mpower` | Matrix power |
+| ✅ | `mtimes` | Matrix multiplication |
+| ✅ | `sqrtm` | Matrix square root |
+| ✅ | `bandwidth` | Lower and upper matrix bandwidth |
+| ✅ | `isbanded` | Determine if matrix is within specified bandwidth |
+| ✅ | `isdiag` | Determine if matrix is diagonal |
+| ✅ | `ishermitian` | Determine if matrix is Hermitian or skew-Hermitian |
+| ✅ | `issymmetric` | Determine if matrix is symmetric or skew-symmetric |
+| ✅ | `istril` | Determine if matrix is lower triangular |
+| ✅ | `istriu` | Determine if matrix is upper triangular |
+| ✅ | `tril` | Lower triangular part of matrix |
+| ✅ | `triu` | Upper triangular part of matrix |
+| ✅ | `cond` | Condition number for inversion |
+| ✅ | `condeig` | Condition number with respect to eigenvalues |
+| ✅ | `condest` | 1-norm condition number estimate |
+| ✅ | `det` | Matrix determinant |
+| ✅ | `norm` | Vector and matrix norms |
+| ✅ | `normest` | 2-norm estimate |
+| ✅ | `null` | Null space of matrix |
+| ✅ | `orth` | Orthonormal basis for range of matrix |
+| ✅ | `rank` | Rank of matrix |
+| ✅ | `rcond` | Reciprocal condition number |
+| ✅ | `rref` | Reduced row echelon form (Gauss-Jordan elimination) |
+| ✅ | `subspace` | Angle between two subspaces |
+| ✅ | `trace` | Sum of diagonal elements |
+| ✅ | `vecnorm` | Vector-wise norm |
+| ✅ | `pageeig` | Page-wise eigenvalues and eigenvectors(Since R2023a) |
+| ✅ | `pageinv` | Page-wise matrix inverse(Since R2022a) |
+| ✅ | `pagelsqminnorm` | Page-wise minimum-norm least-squares solution to linear equation(Since R2024a) |
+| ✅ | `pagenorm` | Page-wise matrix or vector norm(Since R2022b) |
+| ✅ | `pagepinv` | Page-wise Moore-Penrose pseudoinverse(Since R2024a) |
+| ✅ | `pagesvd` | Page-wise singular value decomposition(Since R2021b) |
+| ✅ | `randi` | Uniformly distributed random integers |
+| ✅ | `randn` | Normally distributed random numbers |
+| ✅ | `randperm` | Random permutation of integers |
+| ✅ | `RandStream` | Random number stream |
+| ✅ | `rng` | Control random number generator |
+| ✅ | `griddedInterpolant` | Gridded data interpolation |
+| ✅ | `interp1` | 1-D data interpolation (table lookup) |
+| ✅ | `interp2` | Interpolation for 2-D gridded data in meshgrid format |
+| ✅ | `interp3` | Interpolation for 3-D gridded data in meshgrid format |
+| ✅ | `interpft` | 1-D interpolation (FFT method) |
+| ✅ | `interpn` | Interpolation for 1-D, 2-D, 3-D, and N-D gridded data
 in ndgrid format |
-|   | `makima` | Modified Akima piecewise cubic Hermite interpolation |
-|   | `mkpp` | Make piecewise polynomial |
-|   | `padecoef` | Padé approximation of time delays |
-|   | `pchip` | Piecewise Cubic Hermite Interpolating Polynomial (PCHIP) |
-|   | `ppval` | Evaluate piecewise polynomial |
-|   | `spline` | Cubic spline data interpolation |
-|   | `unmkpp` | Extract piecewise polynomial details |
-|   | `griddata` | Interpolate 2-D or 3-D scattered data |
-|   | `griddatan` | Interpolate N-D scattered data |
-|   | `scatteredInterpolant` | Interpolate 2-D or 3-D scattered data |
-|   | `fminbnd` | Solve single-variable local minimization problem on a fixed interval |
-|   | `fminsearch` | Solve unconstrained multivariable local minimization problem using derivative-free
+| ✅ | `makima` | Modified Akima piecewise cubic Hermite interpolation |
+| ✅ | `mkpp` | Make piecewise polynomial |
+| ✅ | `padecoef` | Padé approximation of time delays |
+| ✅ | `pchip` | Piecewise Cubic Hermite Interpolating Polynomial (PCHIP) |
+| ✅ | `ppval` | Evaluate piecewise polynomial |
+| ✅ | `spline` | Cubic spline data interpolation |
+| ✅ | `unmkpp` | Extract piecewise polynomial details |
+| ✅ | `griddata` | Interpolate 2-D or 3-D scattered data |
+| ✅ | `griddatan` | Interpolate N-D scattered data |
+| ✅ | `scatteredInterpolant` | Interpolate 2-D or 3-D scattered data |
+| ✅ | `fminbnd` | Solve single-variable local minimization problem on a fixed interval |
+| ✅ | `fminsearch` | Solve unconstrained multivariable local minimization problem using derivative-free
             method |
-|   | `fzero` | Root of nonlinear function |
-|   | `optimget` | Optimization options values |
-|   | `optimset` | Create or modify optimization options structure |
-|   | `decic` | Compute consistent initial conditions forode15i |
-|   | `deval` | Evaluate differential equation solution structure |
-|   | `ode` | Ordinary differential equations(Since R2023b) |
-|   | `ode113` | Solve nonstiff differential equations — variable
+| ✅ | `fzero` | Root of nonlinear function |
+| ✅ | `optimget` | Optimization options values |
+| ✅ | `optimset` | Create or modify optimization options structure |
+| ✅ | `decic` | Compute consistent initial conditions forode15i |
+| ✅ | `deval` | Evaluate differential equation solution structure |
+| ✅ | `ode` | Ordinary differential equations(Since R2023b) |
+| ✅ | `ode113` | Solve nonstiff differential equations — variable
 order method |
-|   | `ode15i` | Solve fully implicit differential equations — variable
+| ✅ | `ode15i` | Solve fully implicit differential equations — variable
 order method |
-|   | `ode15s` | Solve stiff differential equations and DAEs — variable
+| ✅ | `ode15s` | Solve stiff differential equations and DAEs — variable
 order method |
-|   | `ode23` | Solve nonstiff differential equations — low order
+| ✅ | `ode23` | Solve nonstiff differential equations — low order
 method |
-|   | `ode23s` | Solve stiff differential equations — low order
+| ✅ | `ode23s` | Solve stiff differential equations — low order
 method |
-|   | `ode23t` | Solve moderately stiff ODEs and DAEs — trapezoidal
+| ✅ | `ode23t` | Solve moderately stiff ODEs and DAEs — trapezoidal
 rule |
-|   | `ode23tb` | Solve stiff differential equations — trapezoidal
+| ✅ | `ode23tb` | Solve stiff differential equations — trapezoidal
 rule + backward differentiation formula |
-|   | `ode45` | Solve nonstiff differential equations — medium
+| ✅ | `ode45` | Solve nonstiff differential equations — medium
 order method |
-|   | `ode78` | Solve nonstiff differential equations — high order method(Since R2021b) |
-|   | `ode89` | Solve nonstiff differential equations — high order method(Since R2021b) |
-|   | `odeDelay` | ODE delay definition(Since R2025a) |
-|   | `odeEvent` | ODE event definition(Since R2023b) |
-|   | `odeget` | Extract ODE option values |
-|   | `odeJacobian` | ODE Jacobian matrix(Since R2023b) |
-|   | `odeMassMatrix` | ODE mass matrix(Since R2023b) |
+| ✅ | `ode78` | Solve nonstiff differential equations — high order method(Since R2021b) |
+| ✅ | `ode89` | Solve nonstiff differential equations — high order method(Since R2021b) |
+| ✅ | `odeDelay` | ODE delay definition(Since R2025a) |
+| ✅ | `odeEvent` | ODE event definition(Since R2023b) |
+| ✅ | `odeget` | Extract ODE option values |
+| ✅ | `odeJacobian` | ODE Jacobian matrix(Since R2023b) |
+| ✅ | `odeMassMatrix` | ODE mass matrix(Since R2023b) |
 |   | `ODEResults` | Results of ODE integration(Since R2023b) |
-|   | `odeSensitivity` | ODE sensitivity analysis(Since R2024a) |
-|   | `odeset` | Create or modify options structure for ODE and PDE solvers |
-|   | `odextend` | Extend solution to ODE |
-|   | `bvp4c` | Solve boundary value problem — fourth-order method |
-|   | `bvp5c` | Solve boundary value problem — fifth-order method |
-|   | `bvpget` | Extract properties from options structure created with
+| ✅ | `odeSensitivity` | ODE sensitivity analysis(Since R2024a) |
+| ✅ | `odeset` | Create or modify options structure for ODE and PDE solvers |
+| ✅ | `odextend` | Extend solution to ODE |
+| ✅ | `bvp4c` | Solve boundary value problem — fourth-order method |
+| ✅ | `bvp5c` | Solve boundary value problem — fifth-order method |
+| ✅ | `bvpget` | Extract properties from options structure created with
 bvpset |
-|   | `bvpinit` | Form initial guess for boundary value problem solver |
-|   | `bvpset` | Create or alter options structure of boundary value problem |
-|   | `bvpxtend` | Form guess structure for extending boundary value solutions |
-|   | `dde23` | Solve delay differential equations (DDEs) with constant delays |
-|   | `ddeget` | Extract properties from delay differential equations options
+| ✅ | `bvpinit` | Form initial guess for boundary value problem solver |
+| ✅ | `bvpset` | Create or alter options structure of boundary value problem |
+| ✅ | `bvpxtend` | Form guess structure for extending boundary value solutions |
+| ✅ | `dde23` | Solve delay differential equations (DDEs) with constant delays |
+| ✅ | `ddeget` | Extract properties from delay differential equations options
 structure |
-|   | `ddensd` | Solve delay differential equations (DDEs) of neutral type |
-|   | `ddesd` | Solve delay differential equations (DDEs) with general
+| ✅ | `ddensd` | Solve delay differential equations (DDEs) of neutral type |
+| ✅ | `ddesd` | Solve delay differential equations (DDEs) with general
 delays |
-|   | `ddeset` | Create or alter delay differential equations options structure |
-|   | `pdepe` | Solve 1-D parabolic and elliptic PDEs |
-|   | `pdeval` | Interpolate numerical solution of PDE |
-|   | `cumtrapz` | Cumulative trapezoidal numerical integration |
-|   | `del2` | Discrete Laplacian |
-|   | `gradient` | Numerical gradient |
-|   | `integral` | Numerical integration |
-|   | `integral2` | Numerically evaluate double integral |
-|   | `integral3` | Numerically evaluate triple integral |
-|   | `quad2d` | Numerically evaluate double integral — tiled method |
-|   | `quadgk` | Numerically evaluate integral — Gauss-Kronrod quadrature |
-|   | `trapz` | Trapezoidal numerical integration |
-|   | `fft` | Fast Fourier transform |
-|   | `fft2` | 2-D fast Fourier transform |
-|   | `fftn` | N-D fast Fourier transform |
-|   | `fftshift` | Shift zero-frequency component to center of spectrum |
-|   | `fftw` | Define method for determining FFT algorithm |
-|   | `ifft` | Inverse fast Fourier transform |
-|   | `ifft2` | 2-D inverse fast Fourier transform |
-|   | `ifftn` | Multidimensional inverse fast Fourier transform |
-|   | `ifftshift` | Inverse zero-frequency shift |
-|   | `nufft` | Nonuniform fast Fourier transform |
-|   | `nufftn` | N-D nonuniform fast Fourier transform |
-|   | `conv2` | 2-D convolution |
-|   | `convn` | N-D convolution |
-|   | `filter2` | 2-D digital filter |
-|   | `ss2tf` | Convert state-space representation to transfer function |
-|   | `spalloc` | Allocate space for sparse matrix |
-|   | `sparse` | Create sparse matrix |
-|   | `spconvert` | Import from sparse matrix external format |
-|   | `spdiags` | Extract nonzero diagonals and create sparse band and diagonal matrices |
-|   | `speye` | Sparse identity matrix |
-|   | `sprand` | Sparse uniformly distributed random matrix |
-|   | `sprandn` | Sparse normally distributed random matrix |
-|   | `sprandsym` | Sparse symmetric random matrix |
-|   | `full` | Convert sparse matrix to full storage |
-|   | `nnz` | Number of nonzero matrix elements |
-|   | `nonzeros` | Nonzero matrix elements |
-|   | `nzmax` | Amount of storage allocated for nonzero matrix elements |
-|   | `spfun` | Apply function to nonzero sparse matrix elements |
-|   | `spones` | Replace nonzero sparse matrix elements with ones |
-|   | `spparms` | Set parameters for sparse matrix routines |
-|   | `spy` | Visualize sparsity pattern of matrix |
-|   | `amd` | Approximate minimum degree permutation |
-|   | `colamd` | Column approximate minimum degree permutation |
-|   | `colperm` | Sparse column permutation based on nonzero count |
-|   | `dissect` | Nested dissection permutation |
-|   | `dmperm` | Dulmage-Mendelsohn decomposition |
-|   | `symamd` | Symmetric approximate minimum degree permutation |
-|   | `symrcm` | Sparse reverse Cuthill-McKee ordering |
-|   | `bicg` | Solve system of linear equations — biconjugate gradients method |
-|   | `bicgstab` | Solve system of linear equations — stabilized biconjugate gradients
+| ✅ | `ddeset` | Create or alter delay differential equations options structure |
+| ✅ | `pdepe` | Solve 1-D parabolic and elliptic PDEs |
+| ✅ | `pdeval` | Interpolate numerical solution of PDE |
+| ✅ | `cumtrapz` | Cumulative trapezoidal numerical integration |
+| ✅ | `del2` | Discrete Laplacian |
+| ✅ | `gradient` | Numerical gradient |
+| ✅ | `integral` | Numerical integration |
+| ✅ | `integral2` | Numerically evaluate double integral |
+| ✅ | `integral3` | Numerically evaluate triple integral |
+| ✅ | `quad2d` | Numerically evaluate double integral — tiled method |
+| ✅ | `quadgk` | Numerically evaluate integral — Gauss-Kronrod quadrature |
+| ✅ | `trapz` | Trapezoidal numerical integration |
+| ✅ | `fft` | Fast Fourier transform |
+| ✅ | `fft2` | 2-D fast Fourier transform |
+| ✅ | `fftn` | N-D fast Fourier transform |
+| ✅ | `fftshift` | Shift zero-frequency component to center of spectrum |
+| ✅ | `fftw` | Define method for determining FFT algorithm |
+| ✅ | `ifft` | Inverse fast Fourier transform |
+| ✅ | `ifft2` | 2-D inverse fast Fourier transform |
+| ✅ | `ifftn` | Multidimensional inverse fast Fourier transform |
+| ✅ | `ifftshift` | Inverse zero-frequency shift |
+| ✅ | `nufft` | Nonuniform fast Fourier transform |
+| ✅ | `nufftn` | N-D nonuniform fast Fourier transform |
+| ✅ | `conv2` | 2-D convolution |
+| ✅ | `convn` | N-D convolution |
+| ✅ | `filter2` | 2-D digital filter |
+| ✅ | `ss2tf` | Convert state-space representation to transfer function |
+| ✅ | `spalloc` | Allocate space for sparse matrix |
+| ✅ | `sparse` | Create sparse matrix |
+| ✅ | `spconvert` | Import from sparse matrix external format |
+| ✅ | `spdiags` | Extract nonzero diagonals and create sparse band and diagonal matrices |
+| ✅ | `speye` | Sparse identity matrix |
+| ✅ | `sprand` | Sparse uniformly distributed random matrix |
+| ✅ | `sprandn` | Sparse normally distributed random matrix |
+| ✅ | `sprandsym` | Sparse symmetric random matrix |
+| ✅ | `full` | Convert sparse matrix to full storage |
+| ✅ | `nnz` | Number of nonzero matrix elements |
+| ✅ | `nonzeros` | Nonzero matrix elements |
+| ✅ | `nzmax` | Amount of storage allocated for nonzero matrix elements |
+| ✅ | `spfun` | Apply function to nonzero sparse matrix elements |
+| ✅ | `spones` | Replace nonzero sparse matrix elements with ones |
+| ✅ | `spparms` | Set parameters for sparse matrix routines |
+| ✅ | `spy` | Visualize sparsity pattern of matrix |
+| ✅ | `amd` | Approximate minimum degree permutation |
+| ✅ | `colamd` | Column approximate minimum degree permutation |
+| ✅ | `colperm` | Sparse column permutation based on nonzero count |
+| ✅ | `dissect` | Nested dissection permutation |
+| ✅ | `dmperm` | Dulmage-Mendelsohn decomposition |
+| ✅ | `symamd` | Symmetric approximate minimum degree permutation |
+| ✅ | `symrcm` | Sparse reverse Cuthill-McKee ordering |
+| ✅ | `bicg` | Solve system of linear equations — biconjugate gradients method |
+| ✅ | `bicgstab` | Solve system of linear equations — stabilized biconjugate gradients
       method |
-|   | `bicgstabl` | Solve system of linear equations — stabilized biconjugate gradients (l)
+| ✅ | `bicgstabl` | Solve system of linear equations — stabilized biconjugate gradients (l)
       method |
-|   | `cgs` | Solve system of linear equations — conjugate gradients squared method |
-|   | `equilibrate` | Matrix scaling for improved conditioning |
-|   | `gmres` | Solve system of linear equations — generalized minimum residual method |
-|   | `ichol` | Incomplete Cholesky factorization |
-|   | `ilu` | Incomplete LU factorization |
-|   | `lsqr` | Solve system of linear equations — least-squares method |
-|   | `minres` | Solve system of linear equations — minimum residual method |
-|   | `pcg` | Solve system of linear equations — preconditioned conjugate gradients
+| ✅ | `cgs` | Solve system of linear equations — conjugate gradients squared method |
+| ✅ | `equilibrate` | Matrix scaling for improved conditioning |
+| ✅ | `gmres` | Solve system of linear equations — generalized minimum residual method |
+| ✅ | `ichol` | Incomplete Cholesky factorization |
+| ✅ | `ilu` | Incomplete LU factorization |
+| ✅ | `lsqr` | Solve system of linear equations — least-squares method |
+| ✅ | `minres` | Solve system of linear equations — minimum residual method |
+| ✅ | `pcg` | Solve system of linear equations — preconditioned conjugate gradients
       method |
-|   | `qmr` | Solve system of linear equations — quasi-minimal residual method |
-|   | `symmlq` | Solve system of linear equations — symmetric LQ method |
-|   | `tfqmr` | Solve system of linear equations — transpose-free quasi-minimal residual
+| ✅ | `qmr` | Solve system of linear equations — quasi-minimal residual method |
+| ✅ | `symmlq` | Solve system of linear equations — symmetric LQ method |
+| ✅ | `tfqmr` | Solve system of linear equations — transpose-free quasi-minimal residual
       method |
-|   | `etree` | Elimination tree |
-|   | `etreeplot` | Plot elimination tree |
-|   | `gplot` | Plot nodes and edges in adjacency matrix |
-|   | `spaugment` | Form least-squares augmented system |
-|   | `sprank` | Structural rank |
-|   | `symbfact` | Symbolic factorization analysis |
-|   | `treelayout` | Lay out tree or forest |
-|   | `treeplot` | Plot picture of tree |
-|   | `unmesh` | Convert edge matrix to coordinate and Laplacian matrices |
-|   | `digraph` | Graph with directed edges |
-|   | `graph` | Graph with undirected edges |
-|   | `addedge` | Add new edge to graph |
-|   | `addnode` | Add new node to graph |
-|   | `edgecount` | Number of edges between two nodes |
-|   | `findedge` | Locate edge in graph |
-|   | `findnode` | Locate node in graph |
-|   | `flipedge` | Reverse edge directions |
-|   | `numedges` | Number of edges in graph |
-|   | `numnodes` | Number of nodes in graph |
-|   | `reordernodes` | Reorder graph nodes |
-|   | `rmedge` | Remove edge from graph |
-|   | `rmnode` | Remove node from graph |
-|   | `subgraph` | Extract subgraph |
-|   | `bctree` | Block-cut tree graph |
-|   | `biconncomp` | Biconnected graph components |
-|   | `centrality` | Measure node importance |
-|   | `condensation` | Graph condensation |
-|   | `conncomp` | Connected graph components |
-|   | `isdag` | Determine if graph is acyclic |
-|   | `isisomorphic` | Determine whether two graphs are isomorphic |
-|   | `ismultigraph` | Determine whether graph has multiple edges |
-|   | `isomorphism` | Compute isomorphism between two graphs |
-|   | `simplify` | Reduce multigraph to simple graph |
-|   | `toposort` | Topological order of directed acyclic graph |
-|   | `transclosure` | Transitive closure |
-|   | `transreduction` | Transitive reduction |
-|   | `allcycles` | Find all cycles in graph |
-|   | `allpaths` | Find all paths between two graph nodes |
-|   | `bfsearch` | Breadth-first graph search |
-|   | `cyclebasis` | Fundamental cycle basis of graph |
-|   | `dfsearch` | Depth-first graph search |
-|   | `distances` | Shortest path distances of all node pairs |
-|   | `hascycles` | Determine whether graph contains cycles |
-|   | `maxflow` | Maximum flow in graph |
-|   | `minspantree` | Minimum spanning tree of graph |
-|   | `shortestpath` | Shortest path between two single nodes |
-|   | `shortestpathtree` | Shortest path tree from node |
-|   | `adjacency` | Graph adjacency matrix |
-|   | `incidence` | Graph incidence matrix |
-|   | `laplacian` | Graph Laplacian matrix |
-|   | `degree` | Degree of graph nodes |
-|   | `indegree` | In-degree of nodes |
-|   | `inedges` | Incoming edges to node |
-|   | `nearest` | Nearest neighbors within radius |
-|   | `neighbors` | Neighbors of graph node |
-|   | `outdegree` | Out-degree of nodes |
-|   | `outedges` | Outgoing edges from node |
-|   | `predecessors` | Node predecessors |
-|   | `successors` | Node successors |
-|   | `highlight` | Highlight nodes and edges in plotted graph |
-|   | `labeledge` | Label graph edges |
-|   | `labelnode` | Label graph nodes |
-|   | `layout` | Change layout of graph plot |
-|   | `layoutcoords` | Graph node and edge layout coordinates(Since R2024b) |
-|   | `GraphPlot` | Graph plot for directed and undirected graphs |
-|   | `circumcenter` | Circumcenter of triangle or tetrahedron |
-|   | `convexHull` | Convex hull of Delaunay triangulation |
-|   | `delaunay` | Delaunay triangulation |
-|   | `delaunayn` | N-D Delaunay triangulation |
-|   | `delaunayTriangulation` | Delaunay triangulation in 2-D and 3-D |
-|   | `edgeAttachments` | Triangles or tetrahedra attached to specified edge |
-|   | `edges` | Triangulation edges |
-|   | `faceNormal` | Triangulation unit normal vectors |
-|   | `featureEdges` | Sharp edges of surface triangulation |
-|   | `freeBoundary` | Free boundary facets |
-|   | `incenter` | Incenter of triangulation elements |
-|   | `isConnected` | Test if two vertices are connected by an edge |
-|   | `isInterior` | Query points inside Delaunay triangulation |
+| ✅ | `etree` | Elimination tree |
+| ✅ | `etreeplot` | Plot elimination tree |
+| ✅ | `gplot` | Plot nodes and edges in adjacency matrix |
+| ✅ | `spaugment` | Form least-squares augmented system |
+| ✅ | `sprank` | Structural rank |
+| ✅ | `symbfact` | Symbolic factorization analysis |
+| ✅ | `treelayout` | Lay out tree or forest |
+| ✅ | `treeplot` | Plot picture of tree |
+| ✅ | `unmesh` | Convert edge matrix to coordinate and Laplacian matrices |
+| ✅ | `digraph` | Graph with directed edges |
+| ✅ | `graph` | Graph with undirected edges |
+| ✅ | `addedge` | Add new edge to graph |
+| ✅ | `addnode` | Add new node to graph |
+| ✅ | `edgecount` | Number of edges between two nodes |
+| ✅ | `findedge` | Locate edge in graph |
+| ✅ | `findnode` | Locate node in graph |
+| ✅ | `flipedge` | Reverse edge directions |
+| ✅ | `numedges` | Number of edges in graph |
+| ✅ | `numnodes` | Number of nodes in graph |
+| ✅ | `reordernodes` | Reorder graph nodes |
+| ✅ | `rmedge` | Remove edge from graph |
+| ✅ | `rmnode` | Remove node from graph |
+| ✅ | `subgraph` | Extract subgraph |
+| ✅ | `bctree` | Block-cut tree graph |
+| ✅ | `biconncomp` | Biconnected graph components |
+| ✅ | `centrality` | Measure node importance |
+| ✅ | `condensation` | Graph condensation |
+| ✅ | `conncomp` | Connected graph components |
+| ✅ | `isdag` | Determine if graph is acyclic |
+| ✅ | `isisomorphic` | Determine whether two graphs are isomorphic |
+| ✅ | `ismultigraph` | Determine whether graph has multiple edges |
+| ✅ | `isomorphism` | Compute isomorphism between two graphs |
+| ✅ | `simplify` | Reduce multigraph to simple graph |
+| ✅ | `toposort` | Topological order of directed acyclic graph |
+| ✅ | `transclosure` | Transitive closure |
+| ✅ | `transreduction` | Transitive reduction |
+| ✅ | `allcycles` | Find all cycles in graph |
+| ✅ | `allpaths` | Find all paths between two graph nodes |
+| ✅ | `bfsearch` | Breadth-first graph search |
+| ✅ | `cyclebasis` | Fundamental cycle basis of graph |
+| ✅ | `dfsearch` | Depth-first graph search |
+| ✅ | `distances` | Shortest path distances of all node pairs |
+| ✅ | `hascycles` | Determine whether graph contains cycles |
+| ✅ | `maxflow` | Maximum flow in graph |
+| ✅ | `minspantree` | Minimum spanning tree of graph |
+| ✅ | `shortestpath` | Shortest path between two single nodes |
+| ✅ | `shortestpathtree` | Shortest path tree from node |
+| ✅ | `adjacency` | Graph adjacency matrix |
+| ✅ | `incidence` | Graph incidence matrix |
+| ✅ | `laplacian` | Graph Laplacian matrix |
+| ✅ | `degree` | Degree of graph nodes |
+| ✅ | `indegree` | In-degree of nodes |
+| ✅ | `inedges` | Incoming edges to node |
+| ✅ | `nearest` | Nearest neighbors within radius |
+| ✅ | `neighbors` | Neighbors of graph node |
+| ✅ | `outdegree` | Out-degree of nodes |
+| ✅ | `outedges` | Outgoing edges from node |
+| ✅ | `predecessors` | Node predecessors |
+| ✅ | `successors` | Node successors |
+| ✅ | `highlight` | Highlight nodes and edges in plotted graph |
+| ✅ | `labeledge` | Label graph edges |
+| ✅ | `labelnode` | Label graph nodes |
+| ✅ | `layout` | Change layout of graph plot |
+| ✅ | `layoutcoords` | Graph node and edge layout coordinates(Since R2024b) |
+| ✅ | `GraphPlot` | Graph plot for directed and undirected graphs |
+| ✅ | `circumcenter` | Circumcenter of triangle or tetrahedron |
+| ✅ | `convexHull` | Convex hull of Delaunay triangulation |
+| ✅ | `delaunay` | Delaunay triangulation |
+| ✅ | `delaunayn` | N-D Delaunay triangulation |
+| ✅ | `delaunayTriangulation` | Delaunay triangulation in 2-D and 3-D |
+| ✅ | `edgeAttachments` | Triangles or tetrahedra attached to specified edge |
+| ✅ | `edges` | Triangulation edges |
+| ✅ | `faceNormal` | Triangulation unit normal vectors |
+| ✅ | `featureEdges` | Sharp edges of surface triangulation |
+| ✅ | `freeBoundary` | Free boundary facets |
+| ✅ | `incenter` | Incenter of triangulation elements |
+| ✅ | `isConnected` | Test if two vertices are connected by an edge |
+| ✅ | `isInterior` | Query points inside Delaunay triangulation |
 |   | `stlread` | Create triangulation from STL file |
 |   | `stlwrite` | Create STL file from triangulation |
-|   | `tetramesh` | Tetrahedron mesh plot |
-|   | `triangulation` | Triangulation in 2-D or 3-D |
-|   | `trimesh` | Triangular mesh plot |
-|   | `triplot` | 2-D triangular plot |
-|   | `trisurf` | Triangular surface plot |
-|   | `vertexAttachments` | Triangles or tetrahedra attached to vertex |
-|   | `vertexNormal` | Triangulation vertex normal |
-|   | `voronoi` | Plot Voronoi diagram in 2-D space |
-|   | `barycentricToCartesian` | Convert coordinates from barycentric to Cartesian |
-|   | `cartesianToBarycentric` | Convert coordinates from Cartesian to barycentric |
-|   | `dsearchn` | Nearest point search |
-|   | `nearestNeighbor` | Vertex closest to specified point |
-|   | `pointLocation` | Triangle or tetrahedron enclosing point |
-|   | `tsearchn` | N-D closest simplex search |
-|   | `alphaShape` | Polygons and polyhedra from points in 2-D and 3-D |
-|   | `alphaSpectrum` | Alpha values giving distinct alpha shapes |
-|   | `alphaTriangulation` | Triangulation that fills alpha shape |
-|   | `area` | Area of 2-D alpha shape |
-|   | `boundary` | Boundary around a set of points in 2-D or 3-D |
-|   | `boundaryFacets` | Boundary facets of alpha shape |
-|   | `convhull` | Convex hull |
-|   | `convhulln` | N-D convex hull |
-|   | `criticalAlpha` | Alpha radius defining critical transition in shape |
-|   | `inShape` | Determine if point is inside alpha shape |
-|   | `numRegions` | Number of regions in alpha shape |
-|   | `perimeter` | Perimeter of 2-D alpha shape |
-|   | `surfaceArea` | Surface area of 3-D alpha shape |
-|   | `volume` | Volume of 3-D alpha shape |
-|   | `voronoiDiagram` | Compute Voronoi diagram of Delaunay triangulation |
-|   | `voronoin` | Compute Voronoi diagram in N-D space |
-|   | `addboundary` | Addpolyshapeboundary |
-|   | `boundaryshape` | Createpolyshapefrom 2-D triangulation |
-|   | `boundingbox` | Find bounding box ofpolyshape |
-|   | `centroid` | Find centroid ofpolyshape |
-|   | `holes` | Convertpolyshapehole boundaries to array ofpolyshapeobjects |
-|   | `inpolygon` | Find points located inside or on edge of polygon |
-|   | `ishole` | Determine ifpolyshapeboundary is a hole |
-|   | `isinterior` | Query points insidepolyshape |
-|   | `issimplified` | Determine ifpolyshapeis well-defined |
-|   | `nearestvertex` | Query nearestpolyshapevertex |
-|   | `nsidedpoly` | Createpolyshaperepresenting regular polygon withnsides |
-|   | `numboundaries` | Find number ofpolyshapeboundaries |
-|   | `numsides` | Find number ofpolyshapesides |
-|   | `overlaps` | Determine whetherpolyshapeobjects overlap |
-|   | `polyarea` | Compute area of polygon |
-|   | `polybuffer` | Create buffer around points, lines, orpolyshapeobjects |
-|   | `polyshape` | Represent 2-D polygonal shapes |
-|   | `rectint` | Find rectangle intersection area |
-|   | `regions` | Accesspolyshaperegions |
-|   | `rmboundary` | Removepolyshapeboundary |
-|   | `rmholes` | Remove holes inpolyshape |
-|   | `rmslivers` | Removepolyshapeboundary outliers |
-|   | `rotate` | Rotatepolyshape |
-|   | `scale` | Scalepolyshape |
-|   | `sortboundaries` | Sortpolyshapeboundaries |
-|   | `sortregions` | Sortpolyshaperegions |
-|   | `subtract` | Difference of twopolyshapeobjects |
-|   | `translate` | Translatepolyshape |
+| ✅ | `tetramesh` | Tetrahedron mesh plot |
+| ✅ | `triangulation` | Triangulation in 2-D or 3-D |
+| ✅ | `trimesh` | Triangular mesh plot |
+| ✅ | `triplot` | 2-D triangular plot |
+| ✅ | `trisurf` | Triangular surface plot |
+| ✅ | `vertexAttachments` | Triangles or tetrahedra attached to vertex |
+| ✅ | `vertexNormal` | Triangulation vertex normal |
+| ✅ | `voronoi` | Plot Voronoi diagram in 2-D space |
+| ✅ | `barycentricToCartesian` | Convert coordinates from barycentric to Cartesian |
+| ✅ | `cartesianToBarycentric` | Convert coordinates from Cartesian to barycentric |
+| ✅ | `dsearchn` | Nearest point search |
+| ✅ | `nearestNeighbor` | Vertex closest to specified point |
+| ✅ | `pointLocation` | Triangle or tetrahedron enclosing point |
+| ✅ | `tsearchn` | N-D closest simplex search |
+| ✅ | `alphaShape` | Polygons and polyhedra from points in 2-D and 3-D |
+| ✅ | `alphaSpectrum` | Alpha values giving distinct alpha shapes |
+| ✅ | `alphaTriangulation` | Triangulation that fills alpha shape |
+| ✅ | `area` | Area of 2-D alpha shape |
+| ✅ | `boundary` | Boundary around a set of points in 2-D or 3-D |
+| ✅ | `boundaryFacets` | Boundary facets of alpha shape |
+| ✅ | `convhull` | Convex hull |
+| ✅ | `convhulln` | N-D convex hull |
+| ✅ | `criticalAlpha` | Alpha radius defining critical transition in shape |
+| ✅ | `inShape` | Determine if point is inside alpha shape |
+| ✅ | `numRegions` | Number of regions in alpha shape |
+| ✅ | `perimeter` | Perimeter of 2-D alpha shape |
+| ✅ | `surfaceArea` | Surface area of 3-D alpha shape |
+| ✅ | `volume` | Volume of 3-D alpha shape |
+| ✅ | `voronoiDiagram` | Compute Voronoi diagram of Delaunay triangulation |
+| ✅ | `voronoin` | Compute Voronoi diagram in N-D space |
+| ✅ | `addboundary` | Addpolyshapeboundary |
+| ✅ | `boundaryshape` | Createpolyshapefrom 2-D triangulation |
+| ✅ | `boundingbox` | Find bounding box ofpolyshape |
+| ✅ | `centroid` | Find centroid ofpolyshape |
+| ✅ | `holes` | Convertpolyshapehole boundaries to array ofpolyshapeobjects |
+| ✅ | `inpolygon` | Find points located inside or on edge of polygon |
+| ✅ | `ishole` | Determine ifpolyshapeboundary is a hole |
+| ✅ | `isinterior` | Query points insidepolyshape |
+| ✅ | `issimplified` | Determine ifpolyshapeis well-defined |
+| ✅ | `nearestvertex` | Query nearestpolyshapevertex |
+| ✅ | `nsidedpoly` | Createpolyshaperepresenting regular polygon withnsides |
+| ✅ | `numboundaries` | Find number ofpolyshapeboundaries |
+| ✅ | `numsides` | Find number ofpolyshapesides |
+| ✅ | `overlaps` | Determine whetherpolyshapeobjects overlap |
+| ✅ | `polyarea` | Compute area of polygon |
+| ✅ | `polybuffer` | Create buffer around points, lines, orpolyshapeobjects |
+| ✅ | `polyshape` | Represent 2-D polygonal shapes |
+| ✅ | `rectint` | Find rectangle intersection area |
+| ✅ | `regions` | Accesspolyshaperegions |
+| ✅ | `rmboundary` | Removepolyshapeboundary |
+| ✅ | `rmholes` | Remove holes inpolyshape |
+| ✅ | `rmslivers` | Removepolyshapeboundary outliers |
+| ✅ | `rotate` | Rotatepolyshape |
+| ✅ | `scale` | Scalepolyshape |
+| ✅ | `sortboundaries` | Sortpolyshapeboundaries |
+| ✅ | `sortregions` | Sortpolyshaperegions |
+| ✅ | `subtract` | Difference of twopolyshapeobjects |
+| ✅ | `translate` | Translatepolyshape |
 |   | `turningdist` | Compute turning distance betweenpolyshapeobjects |
-|   | `ccxGate` | Controlled controlled X gate (CCNOT or Toffoli gate)(Since R2023a) |
-|   | `chGate` | Controlled Hadamard gate(Since R2023a) |
-|   | `cnotGate` | CNOT gate (controlled X gate)(Since R2023a) |
-|   | `compositeGate` | Construct composite gate for quantum computing(Since R2023a) |
-|   | `cr1Gate` | Controlledz-axis rotation gate with global phase(Since R2023a) |
-|   | `crxGate` | Controlledx-axis rotation gate(Since R2023a) |
-|   | `cryGate` | Controlledy-axis rotation gate(Since R2023a) |
-|   | `crzGate` | Controlledz-axis rotation gate(Since R2023a) |
-|   | `cxGate` | Controlled X gate (CNOT gate)(Since R2023a) |
-|   | `cyGate` | Controlled Y gate(Since R2023a) |
-|   | `czGate` | Controlled Z gate(Since R2023a) |
-|   | `hGate` | Hadamard gate(Since R2023a) |
-|   | `idGate` | Identity gate(Since R2023a) |
-|   | `initGate` | Initialization gate with specified qubit states(Since R2023b) |
-|   | `mcxGate` | Multi-controlled X gate(Since R2023a) |
-|   | `observable` | Measurements in Pauli basis(Since R2024b) |
-|   | `qftGate` | Quantum Fourier transform gate(Since R2023a) |
+| ✅ | `ccxGate` | Controlled controlled X gate (CCNOT or Toffoli gate)(Since R2023a) |
+| ✅ | `chGate` | Controlled Hadamard gate(Since R2023a) |
+| ✅ | `cnotGate` | CNOT gate (controlled X gate)(Since R2023a) |
+| ✅ | `compositeGate` | Construct composite gate for quantum computing(Since R2023a) |
+| ✅ | `cr1Gate` | Controlledz-axis rotation gate with global phase(Since R2023a) |
+| ✅ | `crxGate` | Controlledx-axis rotation gate(Since R2023a) |
+| ✅ | `cryGate` | Controlledy-axis rotation gate(Since R2023a) |
+| ✅ | `crzGate` | Controlledz-axis rotation gate(Since R2023a) |
+| ✅ | `cxGate` | Controlled X gate (CNOT gate)(Since R2023a) |
+| ✅ | `cyGate` | Controlled Y gate(Since R2023a) |
+| ✅ | `czGate` | Controlled Z gate(Since R2023a) |
+| ✅ | `hGate` | Hadamard gate(Since R2023a) |
+| ✅ | `idGate` | Identity gate(Since R2023a) |
+| ✅ | `initGate` | Initialization gate with specified qubit states(Since R2023b) |
+| ✅ | `mcxGate` | Multi-controlled X gate(Since R2023a) |
+| ✅ | `observable` | Measurements in Pauli basis(Since R2024b) |
+| ✅ | `qftGate` | Quantum Fourier transform gate(Since R2023a) |
 |   | `quantum.backend.QuantumDeviceAWS` | Quantum device available throughAWS(Since R2023a) |
 |   | `quantum.backend.QuantumDeviceIBM` | Quantum device available throughIBM(Since R2023b) |
 |   | `quantum.backend.QuantumTaskAWS` | Task sent toAWSfor execution on quantum device(Since R2023a) |
@@ -1871,53 +1871,53 @@ delays |
 |   | `quantum.gate.QuantumMeasurement` | Measurement result of quantum circuit(Since R2023a) |
 |   | `quantum.gate.QuantumState` | State of qubits in quantum circuit(Since R2023a) |
 |   | `quantum.gate.SimpleGate` | Simple gate for quantum computing(Since R2023a) |
-|   | `quantumCircuit` | Quantum computing circuit(Since R2023a) |
-|   | `r1Gate` | z-axis rotation gate with global phase(Since R2023a) |
-|   | `rxGate` | x-axis rotation gate(Since R2023a) |
-|   | `rxxGate` | Ising XX coupling gate(Since R2023a) |
-|   | `ryGate` | y-axis rotation gate(Since R2023a) |
-|   | `ryyGate` | Ising YY coupling gate(Since R2023a) |
-|   | `rzGate` | z-axis rotation gate(Since R2023a) |
-|   | `rzzGate` | Ising ZZ coupling gate(Since R2023a) |
-|   | `sGate` | S gate(Since R2023a) |
-|   | `siGate` | Inverse S gate(Since R2023a) |
-|   | `swapGate` | Swap gate(Since R2023a) |
-|   | `tGate` | T gate(Since R2023a) |
-|   | `tiGate` | Inverse T gate(Since R2023a) |
-|   | `ucrxGate` | Uniformly controlledx-axis rotation gate(Since R2023b) |
-|   | `ucryGate` | Uniformly controlledy-axis rotation gate(Since R2023b) |
-|   | `ucrzGate` | Uniformly controlledz-axis rotation gate(Since R2023b) |
-|   | `unitaryGate` | Unitary matrix gate(Since R2023b) |
-|   | `xGate` | Pauli X gate(Since R2023a) |
-|   | `yGate` | Pauli Y gate(Since R2023a) |
-|   | `zGate` | Pauli Z gate(Since R2023a) |
-|   | `evaluateObjective` | Evaluate QUBO (Quadratic Unconstrained Binary Optimization) objective(Since R2023a) |
-|   | `knapsack2qubo` | Convert knapsack problem to QUBO (Quadratic Unconstrained Binary
+| ✅ | `quantumCircuit` | Quantum computing circuit(Since R2023a) |
+| ✅ | `r1Gate` | z-axis rotation gate with global phase(Since R2023a) |
+| ✅ | `rxGate` | x-axis rotation gate(Since R2023a) |
+| ✅ | `rxxGate` | Ising XX coupling gate(Since R2023a) |
+| ✅ | `ryGate` | y-axis rotation gate(Since R2023a) |
+| ✅ | `ryyGate` | Ising YY coupling gate(Since R2023a) |
+| ✅ | `rzGate` | z-axis rotation gate(Since R2023a) |
+| ✅ | `rzzGate` | Ising ZZ coupling gate(Since R2023a) |
+| ✅ | `sGate` | S gate(Since R2023a) |
+| ✅ | `siGate` | Inverse S gate(Since R2023a) |
+| ✅ | `swapGate` | Swap gate(Since R2023a) |
+| ✅ | `tGate` | T gate(Since R2023a) |
+| ✅ | `tiGate` | Inverse T gate(Since R2023a) |
+| ✅ | `ucrxGate` | Uniformly controlledx-axis rotation gate(Since R2023b) |
+| ✅ | `ucryGate` | Uniformly controlledy-axis rotation gate(Since R2023b) |
+| ✅ | `ucrzGate` | Uniformly controlledz-axis rotation gate(Since R2023b) |
+| ✅ | `unitaryGate` | Unitary matrix gate(Since R2023b) |
+| ✅ | `xGate` | Pauli X gate(Since R2023a) |
+| ✅ | `yGate` | Pauli Y gate(Since R2023a) |
+| ✅ | `zGate` | Pauli Z gate(Since R2023a) |
+| ✅ | `evaluateObjective` | Evaluate QUBO (Quadratic Unconstrained Binary Optimization) objective(Since R2023a) |
+| ✅ | `knapsack2qubo` | Convert knapsack problem to QUBO (Quadratic Unconstrained Binary
       Optimization)(Since R2025b) |
-|   | `maxcut2qubo` | Convert max-cut problem to QUBO (Quadratic Unconstrained Binary
+| ✅ | `maxcut2qubo` | Convert max-cut problem to QUBO (Quadratic Unconstrained Binary
       Optimization)(Since R2024b) |
-|   | `qaoa` | Quantum approximate optimization algorithm (QAOA) for solving QUBO
+| ✅ | `qaoa` | Quantum approximate optimization algorithm (QAOA) for solving QUBO
       problem(Since R2024b) |
 |   | `qaoaResult` | Result of solving QUBO problem using QAOA(Since R2024b) |
-|   | `qubo` | Quadratic Unconstrained Binary Optimization(Since R2023a) |
-|   | `qubo2ising` | Convert QUBO problem to Ising observable(Since R2024b) |
+| ✅ | `qubo` | Quadratic Unconstrained Binary Optimization(Since R2023a) |
+| ✅ | `qubo2ising` | Convert QUBO problem to Ising observable(Since R2024b) |
 |   | `quboResult` | Result of solving QUBO problem(Since R2023a) |
-|   | `quboResult2knapsack` | Convert QUBO result to knapsack solution(Since R2025b) |
-|   | `quboResult2tsp` | Convert QUBO result to traveling salesperson solution(Since R2025b) |
-|   | `solve` | Solve QUBO (Quadratic Unconstrained Binary Optimization) problem(Since R2023a) |
-|   | `tabuSearch` | Tabu search algorithm forQUBOsolve(Since R2023a) |
+| ✅ | `quboResult2knapsack` | Convert QUBO result to knapsack solution(Since R2025b) |
+| ✅ | `quboResult2tsp` | Convert QUBO result to traveling salesperson solution(Since R2025b) |
+| ✅ | `solve` | Solve QUBO (Quadratic Unconstrained Binary Optimization) problem(Since R2023a) |
+| ✅ | `tabuSearch` | Tabu search algorithm forQUBOsolve(Since R2023a) |
 |   | `tabuSearchResult` | Result ofsolvefor Tabu search algorithm(Since R2023a) |
-|   | `tsp2qubo` | Convert traveling salesperson problem to QUBO (Quadratic Unconstrained Binary
+| ✅ | `tsp2qubo` | Convert traveling salesperson problem to QUBO (Quadratic Unconstrained Binary
       Optimization)(Since R2025b) |
-|   | `errorbar` | Line plot with error bars |
-|   | `fimplicit` | Plot implicit function |
-|   | `fplot` | Plot expression or function |
-|   | `fplot3` | 3-D parametric curve plotter |
-|   | `loglog` | Log-log scale plot |
-|   | `plot3` | 3-D line plot |
-|   | `semilogx` | Semilog plot (x-axis has log scale) |
-|   | `semilogy` | Semilog plot (y-axis has log scale) |
-|   | `stairs` | Stairstep graph |
+| ✅ | `errorbar` | Line plot with error bars |
+| ✅ | `fimplicit` | Plot implicit function |
+| ✅ | `fplot` | Plot expression or function |
+| ✅ | `fplot3` | 3-D parametric curve plotter |
+| ✅ | `loglog` | Log-log scale plot |
+| ✅ | `plot3` | 3-D line plot |
+| ✅ | `semilogx` | Semilog plot (x-axis has log scale) |
+| ✅ | `semilogy` | Semilog plot (y-axis has log scale) |
+| ✅ | `stairs` | Stairstep graph |
 |   | `binscatter` | Binned scatter plot |
 |   | `boxchart` | Box chart (box plot) |
 |   | `bubblechart` | Bubble chart |
@@ -1926,18 +1926,18 @@ delays |
 |   | `bubblelegend` | Create legend for bubble chart |
 |   | `bubblelim` | Map bubble sizes to data range |
 |   | `bubblesize` | Set minimum and maximum bubble sizes in points |
-|   | `donutchart` | Donut chart(Since R2023b) |
+| ✅ | `donutchart` | Donut chart(Since R2023b) |
 |   | `fewerbins` | Decrease number of histogram bins |
 |   | `heatmap` | Create heatmap chart |
-|   | `histogram2` | Bivariate histogram plot |
+| ✅ | `histogram2` | Bivariate histogram plot |
 |   | `morebins` | Increase number of histogram bins |
 |   | `parallelplot` | Create parallel coordinates plot |
-|   | `pie` | Legacy pie chart |
-|   | `pie3` | 3-D pie chart |
-|   | `piechart` | Pie chart(Since R2023b) |
-|   | `plotmatrix` | Scatter plot matrix |
+| ✅ | `pie` | Legacy pie chart |
+| ✅ | `pie3` | 3-D pie chart |
+| ✅ | `piechart` | Pie chart(Since R2023b) |
+| ✅ | `plotmatrix` | Scatter plot matrix |
 |   | `raincloudplot` | Rain cloud plot(Since R2026a) |
-|   | `scatter3` | 3-D scatter plot |
+| ✅ | `scatter3` | 3-D scatter plot |
 |   | `scatterhistogram` | Create scatter plot with histograms |
 |   | `sortx` | Sort elements in heatmap row |
 |   | `sorty` | Sort elements in heatmap column |
@@ -1945,106 +1945,106 @@ delays |
 |   | `swarmchart3` | 3-D swarm scatter chart |
 |   | `violinplot` | Violin plot(Since R2024b) |
 |   | `wordcloud` | Create word cloud chart from text data |
-|   | `bar` | Bar graph |
-|   | `bar3` | 3-D bar graph |
-|   | `bar3h` | Horizontal 3-D bar graph |
-|   | `barh` | Horizontal bar graph |
-|   | `pareto` | Pareto chart |
-|   | `stem` | Plot discrete sequence data |
-|   | `stem3` | Plot 3-D discrete sequence data |
+| ✅ | `bar` | Bar graph |
+| ✅ | `bar3` | 3-D bar graph |
+| ✅ | `bar3h` | Horizontal 3-D bar graph |
+| ✅ | `barh` | Horizontal bar graph |
+| ✅ | `pareto` | Pareto chart |
+| ✅ | `stem` | Plot discrete sequence data |
+| ✅ | `stem3` | Plot 3-D discrete sequence data |
 |   | `addToolbarMapButton` | Add map button to toolbar(Since R2021b) |
 |   | `geoaxes` | Create geographic axes |
-|   | `geobasemap` | Set or query basemap |
+| ✅ | `geobasemap` | Set or query basemap |
 |   | `geobubble` | Standalone geographic bubble chart |
 |   | `geodensityplot` | Density plot in geographic coordinates |
 |   | `geoiconchart` | Icon chart in geographic coordinates(Since R2024b) |
-|   | `geolimits` | Set or query geographic limits |
-|   | `geoplot` | Plot line in geographic coordinates |
-|   | `geoscatter` | Scatter chart in geographic coordinates |
+| ✅ | `geolimits` | Set or query geographic limits |
+| ✅ | `geoplot` | Plot line in geographic coordinates |
+| ✅ | `geoscatter` | Scatter chart in geographic coordinates |
 |   | `geotickformat` | Set or query geographic tick label format |
 |   | `removeToolbarMapButton` | Remove map button from toolbar(Since R2021b) |
 |   | `compassplot` | Polar plot with arrows emanating from origin(Since R2024b) |
 |   | `fpolarplot` | Plot expression or function in polar coordinates(Since R2024a) |
-|   | `polaraxes` | Create polar axes |
+| ✅ | `polaraxes` | Create polar axes |
 |   | `polarbubblechart` | Polar bubble chart |
-|   | `polarhistogram` | Histogram chart in polar coordinates |
-|   | `polarplot` | Plot line in polar coordinates |
+| ✅ | `polarhistogram` | Histogram chart in polar coordinates |
+| ✅ | `polarplot` | Plot line in polar coordinates |
 |   | `polarregion` | Filled polar rectangle(Since R2024a) |
-|   | `polarscatter` | Scatter chart in polar coordinates |
+| ✅ | `polarscatter` | Scatter chart in polar coordinates |
 |   | `radiusregion` | Filled circular region (annulus) in polar coordinates(Since R2024a) |
-|   | `rlim` | Set or queryr-axis limits for polar
+| ✅ | `rlim` | Set or queryr-axis limits for polar
 axes |
-|   | `rtickangle` | Rotater-axis tick labels |
+| ✅ | `rtickangle` | Rotater-axis tick labels |
 |   | `rtickformat` | Specifyr-axis tick label format |
-|   | `rticklabels` | Set or queryr-axis tick labels |
-|   | `rticks` | Set or queryr-axis tick values |
-|   | `thetalim` | Set or query theta-axis limits for polar axes |
+| ✅ | `rticklabels` | Set or queryr-axis tick labels |
+| ✅ | `rticks` | Set or queryr-axis tick values |
+| ✅ | `thetalim` | Set or query theta-axis limits for polar axes |
 |   | `thetaregion` | Filled wedge in polar coordinates(Since R2024a) |
 |   | `thetatickformat` | Specifytheta-axis tick label format |
-|   | `thetaticklabels` | Set or querytheta-axis tick labels |
-|   | `thetaticks` | Set or querytheta-axis tick values |
+| ✅ | `thetaticklabels` | Set or querytheta-axis tick labels |
+| ✅ | `thetaticks` | Set or querytheta-axis tick values |
 |   | `clabel` | Label contour plot elevation |
-|   | `contour` | Contour plot of matrix |
-|   | `contour3` | 3-D contour plot |
-|   | `contourc` | Low-level contour matrix computation |
-|   | `contourf` | Filled 2-D contour plot |
-|   | `contourslice` | Draw contours in volume slice planes |
-|   | `fcontour` | Plot contours |
-|   | `feather` | Arrows from x-axis |
-|   | `quiver` | Quiver or vector plot |
-|   | `quiver3` | 3-D quiver or vector plot |
-|   | `streamline` | Plot streamlines from 2-D or 3-D vector data |
+| ✅ | `contour` | Contour plot of matrix |
+| ✅ | `contour3` | 3-D contour plot |
+| ✅ | `contourc` | Low-level contour matrix computation |
+| ✅ | `contourf` | Filled 2-D contour plot |
+| ✅ | `contourslice` | Draw contours in volume slice planes |
+| ✅ | `fcontour` | Plot contours |
+| ✅ | `feather` | Arrows from x-axis |
+| ✅ | `quiver` | Quiver or vector plot |
+| ✅ | `quiver3` | 3-D quiver or vector plot |
+| ✅ | `streamline` | Plot streamlines from 2-D or 3-D vector data |
 |   | `streamslice` | Plot streamlines in slice planes |
-|   | `coneplot` | Plot cones in 3-D vector field |
-|   | `curl` | Curl and angular velocity of vector field |
-|   | `cylinder` | Create cylinder |
-|   | `divergence` | Compute divergence of vector field |
-|   | `ellipsoid` | Create ellipsoid |
+| ✅ | `coneplot` | Plot cones in 3-D vector field |
+| ✅ | `curl` | Curl and angular velocity of vector field |
+| ✅ | `cylinder` | Create cylinder |
+| ✅ | `divergence` | Compute divergence of vector field |
+| ✅ | `ellipsoid` | Create ellipsoid |
 |   | `fill` | Create filled 2-D patches |
 |   | `fill3` | Create filled 3-D patches |
-|   | `fimplicit3` | Plot 3-D implicit function |
+| ✅ | `fimplicit3` | Plot 3-D implicit function |
 |   | `flow` | Simple function of three variables |
-|   | `fmesh` | Plot 3-D mesh |
-|   | `fsurf` | Plot 3-D surface |
+| ✅ | `fmesh` | Plot 3-D mesh |
+| ✅ | `fsurf` | Plot 3-D surface |
 |   | `hidden` | Remove hidden lines from mesh plot |
 |   | `interpstreamspeed` | Interpolate stream-line vertices from flow speed |
 |   | `isocaps` | Compute isosurface end-cap geometry |
 |   | `isocolors` | Calculate isosurface and patch colors |
 |   | `isonormals` | Compute normals of isosurface vertices |
-|   | `isosurface` | Extract isosurface data from volume data |
-|   | `mesh` | Mesh surface plot |
-|   | `meshc` | Contour plot under mesh surface plot |
-|   | `meshz` | Mesh surface plot with curtain |
+| ✅ | `isosurface` | Extract isosurface data from volume data |
+| ✅ | `mesh` | Mesh surface plot |
+| ✅ | `meshc` | Contour plot under mesh surface plot |
+| ✅ | `meshz` | Mesh surface plot with curtain |
 |   | `patch` | Create patches of colored polygons |
-|   | `pcolor` | Pseudocolor plot |
-|   | `peaks` | Peaks function |
+| ✅ | `pcolor` | Pseudocolor plot |
+| ✅ | `peaks` | Peaks function |
 |   | `reducepatch` | Reduce number of patch faces |
 |   | `reducevolume` | Reduce number of elements in volume data set |
-|   | `ribbon` | Ribbon plot |
+| ✅ | `ribbon` | Ribbon plot |
 |   | `shrinkfaces` | Reduce  size of patch faces |
-|   | `slice` | Volume slice planes |
+| ✅ | `slice` | Volume slice planes |
 |   | `smooth3` | Smooth 3-D data |
-|   | `sphere` | Create sphere |
-|   | `stream2` | Compute 2-D streamline data |
-|   | `stream3` | Compute 3-D streamline data |
+| ✅ | `sphere` | Create sphere |
+| ✅ | `stream2` | Compute 2-D streamline data |
+| ✅ | `stream3` | Compute 3-D streamline data |
 |   | `streamparticles` | Plot stream particles |
 |   | `streamribbon` | 3-D stream ribbon plot from vector volume data |
 |   | `streamtube` | Create 3-D stream tube plot |
 |   | `subvolume` | Extract subset of volume data set |
-|   | `surf` | Surface plot |
+| ✅ | `surf` | Surface plot |
 |   | `surf2patch` | Convert surface data to patch data |
-|   | `surface` | Primitive surface plot |
-|   | `surfc` | Contour plot under surface plot |
-|   | `surfl` | Surface plot with colormap-based lighting |
-|   | `surfnorm` | Surface normals |
+| ✅ | `surface` | Primitive surface plot |
+| ✅ | `surfc` | Contour plot under surface plot |
+| ✅ | `surfl` | Surface plot with colormap-based lighting |
+| ✅ | `surfnorm` | Surface normals |
 |   | `volumebounds` | Coordinate and color limits for volume data |
-|   | `waterfall` | Waterfall plot |
-|   | `addpoints` | Add points to animated line |
-|   | `animatedline` | Create animated line |
-|   | `clearpoints` | Clear points from animated line |
-|   | `comet` | 2-D comet plot |
-|   | `comet3` | 3-D comet plot |
-|   | `drawnow` | Update figures and process callbacks |
+| ✅ | `waterfall` | Waterfall plot |
+| ✅ | `addpoints` | Add points to animated line |
+| ✅ | `animatedline` | Create animated line |
+| ✅ | `clearpoints` | Clear points from animated line |
+| ✅ | `comet` | 2-D comet plot |
+| ✅ | `comet3` | 3-D comet plot |
+| ✅ | `drawnow` | Update figures and process callbacks |
 |   | `frame2im` | Return image data associated with movie frame |
 |   | `getframe` | Capture axes or figure as movie frame |
 |   | `getpoints` | Return points that define animated line |
@@ -2052,125 +2052,125 @@ axes |
 |   | `linkdata` | Automatically update charted data |
 |   | `movie` | Play recorded movie frames |
 |   | `refreshdata` | Refresh charted data |
-|   | `annotation` | Create annotations |
+| ✅ | `annotation` | Create annotations |
 |   | `Arrow` | Arrow annotation on figure |
 |   | `constantplane` | Infinite plane in 3-D coordinates(Since R2024b) |
 |   | `datatip` | Create data tip |
 |   | `DoubleEndArrow` | Double-ended arrow annotation on figure |
 |   | `Ellipse` | Ellipse annotation on figure |
-|   | `fontname` | Change font name for objects in a figure(Since R2022a) |
-|   | `fontsize` | Change font size for objects in a figure(Since R2022a) |
+| ✅ | `fontname` | Change font name for objects in a figure(Since R2022a) |
+| ✅ | `fontsize` | Change font size for objects in a figure(Since R2022a) |
 |   | `ginput` | Identify axes coordinates |
-|   | `gtext` | Add text to figure using mouse |
-|   | `legend` | Add legend to axes |
-|   | `line` | Create primitive line |
+| ✅ | `gtext` | Add text to figure using mouse |
+| ✅ | `legend` | Add legend to axes |
+| ✅ | `line` | Create primitive line |
 |   | `Line` | Line annotation on figure |
-|   | `rectangle` | Create rectangle with sharp or curved corners |
+| ✅ | `rectangle` | Create rectangle with sharp or curved corners |
 |   | `Rectangle` | Rectangle annotation on figure |
-|   | `sgtitle` | Add title to grid of plots |
-|   | `subtitle` | Add subtitle to plot |
-|   | `texlabel` | Format text with TeX characters |
-|   | `text` | Add text descriptions to data points |
+| ✅ | `sgtitle` | Add title to grid of plots |
+| ✅ | `subtitle` | Add subtitle to plot |
+| ✅ | `texlabel` | Format text with TeX characters |
+| ✅ | `text` | Add text descriptions to data points |
 |   | `TextArrow` | Text arrow annotation on figure |
 |   | `TextBox` | Text box annotation on figure |
-|   | `title` | Add title |
-|   | `xlabel` | Label  x-axis |
-|   | `xline` | Vertical line with constant x-value |
+| ✅ | `title` | Add title |
+| ✅ | `xlabel` | Label  x-axis |
+| ✅ | `xline` | Vertical line with constant x-value |
 |   | `xregion` | 1-D filled region betweenx-coordinates(Since R2023a) |
-|   | `ylabel` | Label  y-axis |
-|   | `yline` | Horizontal line with constant y-value |
+| ✅ | `ylabel` | Label  y-axis |
+| ✅ | `yline` | Horizontal line with constant y-value |
 |   | `yregion` | 1-D filled region betweeny-coordinates(Since R2023a) |
-|   | `zlabel` | Label  z-axis |
+| ✅ | `zlabel` | Label  z-axis |
 |   | `axes` | Create Cartesian axes |
-|   | `axis` | Set axis limits and aspect ratios |
-|   | `box` | Display axes outline |
-|   | `cla` | Clear axes |
-|   | `clf` | Clear figure |
-|   | `daspect` | Control data unit length along each axis |
-|   | `figure` | Create figure window |
-|   | `grid` | Display or hide axes grid lines |
-|   | `hold` | Retain current plot when adding new plots |
-|   | `nexttile` | Create axes in tiled chart layout |
+| ✅ | `axis` | Set axis limits and aspect ratios |
+| ✅ | `box` | Display axes outline |
+| ✅ | `cla` | Clear axes |
+| ✅ | `clf` | Clear figure |
+| ✅ | `daspect` | Control data unit length along each axis |
+| ✅ | `figure` | Create figure window |
+| ✅ | `grid` | Display or hide axes grid lines |
+| ✅ | `hold` | Retain current plot when adding new plots |
+| ✅ | `nexttile` | Create axes in tiled chart layout |
 |   | `num2ruler` | Convert numeric data for use with specific ruler |
-|   | `pbaspect` | Control relative lengths of each axis |
+| ✅ | `pbaspect` | Control relative lengths of each axis |
 |   | `ruler2num` | Convert data from specific ruler to numeric data |
-|   | `subplot` | Create axes in tiled positions |
+| ✅ | `subplot` | Create axes in tiled positions |
 |   | `tightPosition` | Position of axes plotting area(Since R2022b) |
-|   | `tiledlayout` | Create tiled chart layout for displaying subplots |
+| ✅ | `tiledlayout` | Create tiled chart layout for displaying subplots |
 |   | `tilenum` | Tile location numbers in tiled chart layout(Since R2022b) |
 |   | `tilerowcol` | Row and column numbers in tiled chart layout(Since R2022b) |
-|   | `xlim` | Set or queryx-axis limits |
-|   | `xscale` | Set or queryx-axis scale (linear or
+| ✅ | `xlim` | Set or queryx-axis limits |
+| ✅ | `xscale` | Set or queryx-axis scale (linear or
       logarithmic)(Since R2023b) |
 |   | `xsecondarylabel` | Setx-axis secondary label(Since R2023b) |
-|   | `xtickangle` | Rotatex-axis tick labels |
-|   | `xtickformat` | Specifyx-axis tick label format |
-|   | `xticklabels` | Set or queryx-axis tick labels |
-|   | `xticks` | Set or queryx-axis tick values |
-|   | `ylim` | Set or queryy-axis limits |
-|   | `yscale` | Set or queryy-axis scale (linear or
+| ✅ | `xtickangle` | Rotatex-axis tick labels |
+| ✅ | `xtickformat` | Specifyx-axis tick label format |
+| ✅ | `xticklabels` | Set or queryx-axis tick labels |
+| ✅ | `xticks` | Set or queryx-axis tick values |
+| ✅ | `ylim` | Set or queryy-axis limits |
+| ✅ | `yscale` | Set or queryy-axis scale (linear or
       logarithmic)(Since R2023b) |
 |   | `ysecondarylabel` | Sety-axis secondary label(Since R2023b) |
-|   | `ytickangle` | Rotatey-axis tick labels |
-|   | `ytickformat` | Specifyy-axis tick label format |
-|   | `yticklabels` | Set or queryy-axis tick labels |
-|   | `yticks` | Set or queryy-axis tick values |
-|   | `yyaxis` | Create chart with two y-axes |
-|   | `zlim` | Set or queryz-axis limits |
-|   | `zscale` | Set or queryz-axis scale (linear or
+| ✅ | `ytickangle` | Rotatey-axis tick labels |
+| ✅ | `ytickformat` | Specifyy-axis tick label format |
+| ✅ | `yticklabels` | Set or queryy-axis tick labels |
+| ✅ | `yticks` | Set or queryy-axis tick values |
+| ✅ | `yyaxis` | Create chart with two y-axes |
+| ✅ | `zlim` | Set or queryz-axis limits |
+| ✅ | `zscale` | Set or queryz-axis scale (linear or
       logarithmic)(Since R2023b) |
 |   | `zsecondarylabel` | Setz-axis secondary label(Since R2023b) |
-|   | `ztickangle` | Rotatez-axis tick labels |
-|   | `ztickformat` | Specifyz-axis tick label format |
-|   | `zticklabels` | Set or queryz-axis tick labels |
-|   | `zticks` | Set or queryz-axis tick values |
-|   | `abyss` | Abyss colormap array(Since R2023b) |
-|   | `autumn` | Autumn colormap array |
-|   | `bone` | Bone colormap array |
-|   | `brighten` | Brighten or darken colormap |
-|   | `clim` | Set colormap limits (Renamed fromcaxisin R2022a) |
-|   | `colorbar` | Colorbar showing color scale |
-|   | `colorcube` | Colorcube colormap array |
-|   | `colormap` | View and set current colormap |
+| ✅ | `ztickangle` | Rotatez-axis tick labels |
+| ✅ | `ztickformat` | Specifyz-axis tick label format |
+| ✅ | `zticklabels` | Set or queryz-axis tick labels |
+| ✅ | `zticks` | Set or queryz-axis tick values |
+| ✅ | `abyss` | Abyss colormap array(Since R2023b) |
+| ✅ | `autumn` | Autumn colormap array |
+| ✅ | `bone` | Bone colormap array |
+| ✅ | `brighten` | Brighten or darken colormap |
+| ✅ | `clim` | Set colormap limits (Renamed fromcaxisin R2022a) |
+| ✅ | `colorbar` | Colorbar showing color scale |
+| ✅ | `colorcube` | Colorcube colormap array |
+| ✅ | `colormap` | View and set current colormap |
 |   | `colormaplist` | List available colormaps(Since R2025a) |
-|   | `colororder` | Set or query color order palette |
+| ✅ | `colororder` | Set or query color order palette |
 |   | `contrast` | Create grayscale colormap for indexed image |
-|   | `cool` | Cool colormap array |
-|   | `copper` | Copper colormap array |
-|   | `flag` | Flag colormap array |
+| ✅ | `cool` | Cool colormap array |
+| ✅ | `copper` | Copper colormap array |
+| ✅ | `flag` | Flag colormap array |
 |   | `fliplightness` | Darken light colors and lighten dark colors(Since R2025a) |
-|   | `gray` | Gray colormap array |
-|   | `hex2rgb` | Convert hexadecimal color codes to RGB triplets(Since R2024a) |
-|   | `hot` | Hot colormap array |
-|   | `hsv` | HSV colormap array |
-|   | `hsv2rgb` | Convert HSV colors to RGB |
-|   | `jet` | Jet colormap array |
-|   | `lines` | Lines colormap array |
+| ✅ | `gray` | Gray colormap array |
+| ✅ | `hex2rgb` | Convert hexadecimal color codes to RGB triplets(Since R2024a) |
+| ✅ | `hot` | Hot colormap array |
+| ✅ | `hsv` | HSV colormap array |
+| ✅ | `hsv2rgb` | Convert HSV colors to RGB |
+| ✅ | `jet` | Jet colormap array |
+| ✅ | `lines` | Lines colormap array |
 |   | `linestyleorder` | Set or query line style order(Since R2024a) |
-|   | `nebula` | Nebula colormap array(Since R2025a) |
-|   | `orderedcolors` | Color palettes for visualizing multiple data series(Since R2023b) |
-|   | `parula` | Parula colormap array |
-|   | `pink` | Pink colormap array |
-|   | `prism` | Prism colormap array |
-|   | `rgb2hex` | Convert RGB triplets to hexadecimal color codes(Since R2024a) |
-|   | `rgb2hsv` | Convert RGB colors to HSV |
-|   | `rgbplot` | Plot colormap |
-|   | `sky` | Sky colormap array(Since R2023a) |
-|   | `spring` | Spring colormap array |
-|   | `summer` | Summer colormap array |
+| ✅ | `nebula` | Nebula colormap array(Since R2025a) |
+| ✅ | `orderedcolors` | Color palettes for visualizing multiple data series(Since R2023b) |
+| ✅ | `parula` | Parula colormap array |
+| ✅ | `pink` | Pink colormap array |
+| ✅ | `prism` | Prism colormap array |
+| ✅ | `rgb2hex` | Convert RGB triplets to hexadecimal color codes(Since R2024a) |
+| ✅ | `rgb2hsv` | Convert RGB colors to HSV |
+| ✅ | `rgbplot` | Plot colormap |
+| ✅ | `sky` | Sky colormap array(Since R2023a) |
+| ✅ | `spring` | Spring colormap array |
+| ✅ | `summer` | Summer colormap array |
 |   | `theme` | Set or get graphics theme(Since R2025a) |
-|   | `turbo` | Turbo colormap array |
-|   | `winter` | Winter colormap array |
+| ✅ | `turbo` | Turbo colormap array |
+| ✅ | `winter` | Winter colormap array |
 |   | `addToolbarExplorationButtons` | Add data exploration buttons to figure toolbar |
 |   | `alim` | Set or query axes alpha limits |
-|   | `alpha` | Add transparency to objects in axes |
-|   | `alphamap` | Specify figure alphamap (transparency) |
+| ✅ | `alpha` | Add transparency to objects in axes |
+| ✅ | `alphamap` | Specify figure alphamap (transparency) |
 |   | `axtoolbar` | Create axes toolbar |
 |   | `axtoolbarbtn` | Add buttons to axes toolbar |
 |   | `brush` | Interactively mark data values in a chart |
 |   | `camdolly` | Move camera position and target |
 |   | `cameratoolbar` | Control camera toolbar programmatically |
-|   | `camlight` | Create or move light object in camera coordinates |
+| ✅ | `camlight` | Create or move light object in camera coordinates |
 |   | `camlookat` | Position camera to view object or group of objects |
 |   | `camorbit` | Rotate camera position around camera target |
 |   | `campan` | Rotate camera target around camera position |
@@ -2191,12 +2191,12 @@ axes |
 |   | `enableLegacyExplorationModes` | Control behavior of modes in figures |
 |   | `light` | Create a light object |
 |   | `lightangle` | Create or position light object in spherical coordinates |
-|   | `lighting` | Set lighting method |
-|   | `linkaxes` | Synchronize limits of multiple axes |
+| ✅ | `lighting` | Set lighting method |
+| ✅ | `linkaxes` | Synchronize limits of multiple axes |
 |   | `linkprop` | Keep same value for corresponding properties of graphics
 objects |
 |   | `makehgtform` | Create 4-by-4 transform matrix |
-|   | `material` | Set reflectance of surfaces and patches |
+| ✅ | `material` | Set reflectance of surfaces and patches |
 |   | `pan` | Enable pan mode |
 |   | `panInteraction` | Pan interaction |
 |   | `plotedit` | Interactively edit and annotate plots |
@@ -2205,24 +2205,24 @@ objects |
 |   | `rotate3d` | Enable rotate mode |
 |   | `rotateInteraction` | Rotate interaction |
 |   | `rulerPanInteraction` | Ruler-pan interaction |
-|   | `shading` | Set color shading of surfaces and patches |
+| ✅ | `shading` | Set color shading of surfaces and patches |
 |   | `specular` | Calculate specular reflectance |
-|   | `view` | Camera line of sight |
+| ✅ | `view` | Camera line of sight |
 |   | `viewmtx` | View transformation matrices |
 |   | `zoom` | Enable zoom mode |
 |   | `zoomInteraction` | Zoom interaction |
-|   | `image` | Display image from array |
-|   | `imagesc` | Display image with scaled colors |
+| ✅ | `image` | Display image from array |
+| ✅ | `imagesc` | Display image with scaled colors |
 |   | `imshow` | Display image |
 |   | `imformats` | Manage image file format registry |
-|   | `imresize` | Resize image |
+| ✅ | `imresize` | Resize image |
 |   | `imtile` | Combine multiple image frames into one rectangular tiled image |
-|   | `cmap2gray` | Convert RGB colormap to grayscale colormap |
+| ✅ | `cmap2gray` | Convert RGB colormap to grayscale colormap |
 |   | `getrangefromclass` | Default display range of image based on its class |
-|   | `im2double` | Convert image to double precision |
-|   | `im2gray` | Convert RGB image to grayscale |
+| ✅ | `im2double` | Convert image to double precision |
+| ✅ | `im2gray` | Convert RGB image to grayscale |
 |   | `ind2rgb` | Convert indexed image to RGB image |
-|   | `rgb2gray` | Convert RGB image or colormap to grayscale |
+| ✅ | `rgb2gray` | Convert RGB image or colormap to grayscale |
 |   | `rgb2ind` | Convert RGB image to indexed image |
 |   | `cmpermute` | Rearrange colors in colormap |
 |   | `cmunique` | Eliminate duplicate colors in colormap; convert grayscale or truecolor image to
@@ -2241,10 +2241,10 @@ objects |
 |   | `DoubleEndArrow Properties` | Double-ended arrow annotation on figure |
 |   | `Ellipse Properties` | Ellipse annotation on figure |
 |   | `Figure` | Figure window |
-|   | `get` | Query graphics object properties |
+| ✅ | `get` | Query graphics object properties |
 |   | `Line Properties` | Line annotation on figure |
 |   | `Rectangle Properties` | Rectangle annotation on figure |
-|   | `set` | Set graphics object properties |
+| ✅ | `set` | Set graphics object properties |
 |   | `TextArrow Properties` | Text arrow annotation on figure |
 |   | `TextBox Properties` | Text box annotation on figure |
 |   | `allchild` | Find all children of specified objects |
@@ -2253,10 +2253,10 @@ objects |
 |   | `findall` | Find all graphics objects |
 |   | `findfigs` | Find visible offscreen figures |
 |   | `findobj` | Find graphics objects with specific properties |
-|   | `gca` | Current axes or chart |
+| ✅ | `gca` | Current axes or chart |
 |   | `gcbf` | Handle of figure containing object whose callback is executing |
 |   | `gcbo` | Handle of object whose callback is executing |
-|   | `gcf` | Current figure handle |
+| ✅ | `gcf` | Current figure handle |
 |   | `gco` | Handle of current object |
 |   | `gobjects` | Initialize array for graphics objects |
 |   | `groot` | Graphics root object |
@@ -2282,59 +2282,59 @@ objects |
 |   | `setup` | Set up instance of chart container subclass |
 |   | `update` | Update instance of chart container subclass after setting properties |
 |   | `rendererinfo` | Graphics renderer information |
-|   | `edit` | Edit or create file |
+| ✅ | `edit` | Edit or create file |
 |   | `grabcode` | ExtractMATLABcode from file published to HTML |
-|   | `input` | Request user input |
+| ✅ | `input` | Request user input |
 |   | `publish` | Generate view ofMATLABfile in specified format |
 |   | `run` | RunMATLABscript |
 |   | `snapnow` | Take snapshot of image for inclusion in published document |
 |   | `function` | Declare function name, inputs, and outputs |
 |   | `arguments` | Declare function argument validation |
-|   | `inputname` | Variable name of function input |
+| ✅ | `inputname` | Variable name of function input |
 |   | `inputParser` | Input parser for functions |
 |   | `mfilename` | Filename of currently running code |
 |   | `mustBeA` | Validate that value comes from one of specified classes |
 |   | `mustBeBetween` | Validate that all elements are within specified range(Since R2025a) |
-|   | `mustBeColumn` | Validate that value is column vector(Since R2024b) |
+| ✅ | `mustBeColumn` | Validate that value is column vector(Since R2024b) |
 |   | `mustBeFile` | Validate that path refers to file |
-|   | `mustBeFinite` | Validate that value is finite |
-|   | `mustBeFloat` | Validate that value is floating-point array |
+| ✅ | `mustBeFinite` | Validate that value is finite |
+| ✅ | `mustBeFloat` | Validate that value is floating-point array |
 |   | `mustBeFolder` | Validate that input path refers to folder |
-|   | `mustBeGreaterThan` | Validate that value is greater than another value |
-|   | `mustBeGreaterThanOrEqual` | Validate that value is greater than or equal to another value |
-|   | `mustBeInteger` | Validate that value is integer |
-|   | `mustBeLessThan` | Validate that value is less than another value |
-|   | `mustBeLessThanOrEqual` | Validate that value is less than or equal to another value |
-|   | `mustBeMatrix` | Validate that value is matrix(Since R2024b) |
-|   | `mustBeMember` | Validate that value is member of specified set |
-|   | `mustBeNegative` | Validate that value is negative |
-|   | `mustBeNonempty` | Validate that value is nonempty |
+| ✅ | `mustBeGreaterThan` | Validate that value is greater than another value |
+| ✅ | `mustBeGreaterThanOrEqual` | Validate that value is greater than or equal to another value |
+| ✅ | `mustBeInteger` | Validate that value is integer |
+| ✅ | `mustBeLessThan` | Validate that value is less than another value |
+| ✅ | `mustBeLessThanOrEqual` | Validate that value is less than or equal to another value |
+| ✅ | `mustBeMatrix` | Validate that value is matrix(Since R2024b) |
+| ✅ | `mustBeMember` | Validate that value is member of specified set |
+| ✅ | `mustBeNegative` | Validate that value is negative |
+| ✅ | `mustBeNonempty` | Validate that value is nonempty |
 |   | `mustBeNonmissing` | Validate that input does not contain missing values |
-|   | `mustBeNonNan` | Validate that input does not containNaN |
-|   | `mustBeNonnegative` | Validate that value is nonnegative |
-|   | `mustBeNonpositive` | Validate that value is nonpositive |
+| ✅ | `mustBeNonNan` | Validate that input does not containNaN |
+| ✅ | `mustBeNonnegative` | Validate that value is nonnegative |
+| ✅ | `mustBeNonpositive` | Validate that value is nonpositive |
 |   | `mustBeNonsparse` | Validate that value is nonsparse |
-|   | `mustBeNonzero` | Validate that value is nonzero |
-|   | `mustBeNonzeroLengthText` | Validate that value is text with nonzero length |
-|   | `mustBeNumeric` | Validate that value is numeric |
-|   | `mustBeNumericOrLogical` | Validate that value is numeric or logical |
-|   | `mustBePositive` | Validate that value is positive |
-|   | `mustBeReal` | Validate that value is real |
-|   | `mustBeRow` | Validate that value is row vector(Since R2024b) |
-|   | `mustBeScalarOrEmpty` | Validate that value is scalar or empty |
-|   | `mustBeSorted` | Validate that input is sorted(Since R2026a) |
+| ✅ | `mustBeNonzero` | Validate that value is nonzero |
+| ✅ | `mustBeNonzeroLengthText` | Validate that value is text with nonzero length |
+| ✅ | `mustBeNumeric` | Validate that value is numeric |
+| ✅ | `mustBeNumericOrLogical` | Validate that value is numeric or logical |
+| ✅ | `mustBePositive` | Validate that value is positive |
+| ✅ | `mustBeReal` | Validate that value is real |
+| ✅ | `mustBeRow` | Validate that value is row vector(Since R2024b) |
+| ✅ | `mustBeScalarOrEmpty` | Validate that value is scalar or empty |
+| ✅ | `mustBeSorted` | Validate that input is sorted(Since R2026a) |
 |   | `mustBeSparse` | Validate that value is sparse(Since R2023b) |
-|   | `mustBeText` | Validate that value is string array, character vector, or cell array of
+| ✅ | `mustBeText` | Validate that value is string array, character vector, or cell array of
       character vectors |
-|   | `mustBeTextScalar` | Validate that value is single piece of text |
+| ✅ | `mustBeTextScalar` | Validate that value is single piece of text |
 |   | `mustBeUnderlyingType` | Validate that value has specified underlying type |
 |   | `mustBeValidVariableName` | Validate that input name is valid variable name |
-|   | `mustBeVector` | Validate that value is vector |
+| ✅ | `mustBeVector` | Validate that value is vector |
 |   | `namedargs2cell` | Convert structure containing name-value pairs to cell array |
 |   | `nargin` | Number of function input arguments |
-|   | `narginchk` | Validate number of input arguments |
+| ✅ | `narginchk` | Validate number of input arguments |
 |   | `nargout` | Number of function output arguments |
-|   | `nargoutchk` | Validate number of output arguments |
+| ✅ | `nargoutchk` | Validate number of output arguments |
 |   | `validatecolor` | Validate color values |
 |   | `validatestring` | Check validity of text |
 |   | `varargin` | Variable-length input argument list |
@@ -2342,7 +2342,7 @@ objects |
 |   | `assignin` | Assign value to variable in specified workspace |
 |   | `evaluateAndCapture` | Evaluate MATLAB code in specified workspace(Since R2025a) |
 |   | `global` | Declare variables as global |
-|   | `isvarname` | Determine if input is valid variable name |
+| ✅ | `isvarname` | Determine if input is valid variable name |
 |   | `matlab.lang.makeUniqueStrings` | Construct unique strings from input strings |
 |   | `matlab.lang.makeValidName` | Construct validMATLABidentifiers from input strings |
 |   | `matlab.lang.Workspace` | Store workspace variables(Since R2025a) |
@@ -2356,12 +2356,12 @@ objects |
 |   | `persistent` | Define persistent variable |
 |   | `variableNames` | Names of variables in workspace(Since R2025a) |
 |   | `variables` | Information about workspace variables(Since R2025a) |
-|   | `assert` | Throw error if condition false |
+| ✅ | `assert` | Throw error if condition false |
 |   | `cancel` | Cancel cleanup tasks(Since R2025a) |
-|   | `error` | Throw error and display message |
+| ✅ | `error` | Throw error and display message |
 |   | `lastwarn` | Last warning message |
 |   | `onCleanup` | Cleanup tasks upon function completion |
-|   | `warning` | Display warning message |
+| ✅ | `warning` | Display warning message |
 |   | `matlab.metadata.Argument` | Describe argument of function or method(Since R2026a) |
 |   | `matlab.metadata.ArgumentIdentifier` | Name and group name of function argument(Since R2026a) |
 |   | `matlab.metadata.ArgumentValidation` | Describe validation for function argument(Since R2026a) |
@@ -2546,7 +2546,7 @@ objects |
 |   | `CloudPermissions` | Permissions of file or folder in remote location(Since R2025a) |
 |   | `copyfile` | Copy file or folder |
 |   | `createSymbolicLink` | Create symbolic link(Since R2024b) |
-|   | `exist` | Check existence of variable, script, function, folder,
+| ✅ | `exist` | Check existence of variable, script, function, folder,
 or class |
 |   | `filebrowser` | Manage files and folders inMATLAB |
 |   | `filePermissions` | View and edit file, folder, and symbolic link permissions(Since R2025a) |
@@ -2556,7 +2556,7 @@ or class |
 |   | `isfilePathInclusive` | Determine if input is file in current folder, specified location, orMATLABpath(Since R2026a) |
 |   | `isfolder` | Determine if input is folder |
 |   | `isSymbolicLink` | Determine if input is symbolic link(Since R2024b) |
-|   | `ls` | List folder contents |
+| ✅ | `ls` | List folder contents |
 |   | `movefile` | Move or rename file or folder |
 |   | `pwd` | Identify current folder |
 |   | `recycle` | Set option to move deleted files to recycle folder |
@@ -2564,14 +2564,14 @@ or class |
 |   | `UnixPermissions` | Permissions of file, folder, or symbolic link inUNIX(Since R2025a) |
 |   | `visdiff` | Compare two files or folders |
 |   | `what` | ListMATLABfiles in folder |
-|   | `which` | Locate functions and files |
+| ✅ | `which` | Locate functions and files |
 |   | `WindowsPermissions` | Permissions of file, folder, or symbolic link inWindows(Since R2025a) |
 |   | `winopen` | Open file in appropriate application (Windows) |
 |   | `matlabdrive` | Root folder ofMATLABDrive |
 |   | `addpath` | Add folders to search path |
 |   | `genpath` | Generate search path |
 |   | `path` | View or change search path |
-|   | `pathsep` | Search path separator for current platform |
+| ✅ | `pathsep` | Search path separator for current platform |
 |   | `pathtool` | Open Set Path dialog box to view and change search path |
 |   | `rehash` | Refresh function and file system path caches |
 |   | `restoredefaultpath` | Restore search path to factory-installed state |
@@ -2585,9 +2585,9 @@ or class |
 |   | `unzip` | Extract contents of ZIP file |
 |   | `zip` | Compress files into ZIP file |
 |   | `filemarker` | Character to separate file name from local or nested function name |
-|   | `fileparts` | Get parts of file name |
-|   | `filesep` | File separator for current platform |
-|   | `fullfile` | Build full file name from parts |
+| ✅ | `fileparts` | Get parts of file name |
+| ✅ | `filesep` | File separator for current platform |
+| ✅ | `fullfile` | Build full file name from parts |
 |   | `matlabroot` | MATLABroot folder |
 |   | `tempdir` | Name of temporary folder for the system |
 |   | `tempname` | Unique name for temporary file |
@@ -2627,8 +2627,8 @@ or class |
       functions(Since R2024b) |
 |   | `pcode` | Create content-obscured, executable files |
 |   | `secretID` | Secret object(Since R2025a) |
-|   | `eval` | EvaluateMATLABexpression |
-|   | `evalc` | EvaluateMATLABexpression and capture results |
+| ✅ | `eval` | EvaluateMATLABexpression |
+| ✅ | `evalc` | EvaluateMATLABexpression and capture results |
 |   | `evalin` | EvaluateMATLABexpression in specified workspace |
 |   | `addCause` | Record additional causes of exception |
 |   | `addCorrection` | Provide suggested fix for exception |
@@ -2636,10 +2636,10 @@ or class |
 |   | `matlab.lang.correction.AppendArgumentsCorrection` | Correct error by appending missing input arguments |
 |   | `matlab.lang.correction.ConvertToFunctionNotationCorrection` | Correct error by converting to function notation |
 |   | `matlab.lang.correction.ReplaceIdentifierCorrection` | Correct error by replacing identifier in function call |
-|   | `MException` | Capture error information |
+| ✅ | `MException` | Capture error information |
 |   | `MException.last` | Return last uncaught exception |
-|   | `rethrow` | Rethrow previously caught exception |
-|   | `throw` | Throw exception |
+| ✅ | `rethrow` | Rethrow previously caught exception |
+| ✅ | `throw` | Throw exception |
 |   | `throwAsCaller` | Throw exception as if occurs within calling function |
 |   | `uifigure` | Create figure for designing apps |
 |   | `uigridlayout` | Create grid layout manager |
@@ -2679,7 +2679,7 @@ buttons |
 |   | `removeStyle` | Remove style from UI component |
 |   | `uistyle` | Create style for UI component |
 |   | `collapse` | Collapse tree node |
-|   | `expand` | Expand tree node |
+| ✅ | `expand` | Expand tree node |
 |   | `focus` | Give focus to UI component(Since R2022a) |
 |   | `isInScrollView` | Determine if component is visible in scrollable container(Since R2022a) |
 |   | `scroll` | Scroll to location within UI component |
@@ -2796,7 +2796,7 @@ buttons |
 |   | `clearAllMemoizedCaches` | Clear caches for allMemoizedFunctionobjects |
 |   | `codeCompatibilityReport` | Create code compatibility report |
 |   | `codeIssues` | Identify code issues in files(Since R2022b) |
-|   | `cputime` | CPU time used byMATLAB |
+| ✅ | `cputime` | CPU time used byMATLAB |
 |   | `dbclear` | Remove breakpoints |
 |   | `dbcont` | Resume execution |
 |   | `dbdown` | Reversedbupworkspace shift |
@@ -2817,9 +2817,9 @@ mode |
 |   | `MemoizedFunction` | Call memoized function and cache results |
 |   | `memory` | Memory information |
 |   | `profile` | Profile execution time for functions |
-|   | `tic` | Start stopwatch timer |
-|   | `timeit` | Measure time required to run function |
-|   | `toc` | Read elapsed time from
+| ✅ | `tic` | Start stopwatch timer |
+| ✅ | `timeit` | Measure time required to run function |
+| ✅ | `toc` | Read elapsed time from
 stopwatch |
 |   | `addFile` | Add files or folders to project |
 |   | `addFolderIncludingChildFiles` | Add folders and child files to project |
@@ -3199,7 +3199,7 @@ files |
 |   | `license` | Get license status, test existence of license, or check out feature
             license |
 |   | `matlabRelease` | CurrentMATLABrelease information |
-|   | `ver` | Version information |
+| ✅ | `ver` | Version information |
 |   | `verLessThan` | Compare toolbox version to specified character vector |
 |   | `version` | Version number forMATLABand libraries |
 |   | `computer` | Information about computer on whichMATLABis running |
@@ -3258,11 +3258,11 @@ files |
 |   | `ReleaseCompatibilityResults` | Results of upgrading toolbox with specific version number |
 |   | `VersionResults` | Results of upgrade operations |
 |   | `demo` | Access product examples |
-|   | `doc` | Documentation in system web browser |
+| ✅ | `doc` | Documentation in system web browser |
 |   | `docsearch` | Documentation search |
 |   | `echodemo` | Run example script step-by-step in Command Window |
-|   | `help` | Help for functions in Command Window |
-|   | `lookfor` | Search for keyword in reference page text |
+| ✅ | `help` | Help for functions in Command Window |
+| ✅ | `lookfor` | Search for keyword in reference page text |
 |   | `openExample` | Open aMathWorksexample |
 
 ---
@@ -3270,7 +3270,7 @@ files |
 <a id="0simulink"></a>
 ## simulink (core list)  
 
-_0 / 889 implemented_
+_26 / 889 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -3279,7 +3279,7 @@ _0 / 889 implemented_
 |   | `gcbh` | Get handle of current block |
 |   | `gcbp` | GetSimulink.BlockPathobject for current block |
 |   | `gcs` | Get path name of current system |
-|   | `get_param` | Get  parameter names and values |
+| ✅ | `get_param` | Get  parameter names and values |
 |   | `getCallbackAnnotation` | Get annotation executing callback |
 |   | `getCurrentAnnotation` | Get current annotation object |
 |   | `getfullname` | Get path that identifies block or line |
@@ -3311,22 +3311,22 @@ _0 / 889 implemented_
 |   | `bdclose` | Close any or allSimulinkmodel windows unconditionally |
 |   | `close_system` | CloseSimulinkmodel window or block dialog box |
 |   | `load_system` | LoadSimulinkmodel into memory |
-|   | `new_system` | CreateSimulinkmodel or library in memory |
+| ✅ | `new_system` | CreateSimulinkmodel or library in memory |
 |   | `open_system` | Open model, library, subsystem, or block dialog box |
 |   | `save_system` | SaveSimulinkmodel |
-|   | `add_block` | Add block to model |
+| ✅ | `add_block` | Add block to model |
 |   | `addterms` | Add terminators to unconnected ports in model |
 |   | `delete_block` | Delete blocks fromSimulinksystem |
 |   | `replace_block` | Replace blocks inSimulinkmodel |
 |   | `Simulink.BlockDiagram.deleteContents` | Delete graphical contents of model |
 |   | `Simulink.SubSystem.deleteContents` | Delete contents of subsystem |
-|   | `add_line` | Add line toSimulinkmodel |
+| ✅ | `add_line` | Add line toSimulinkmodel |
 |   | `delete_line` | Delete line fromSimulinkmodel |
 |   | `Simulink.connectBlocks` | Connect blocks with signal lines(Since R2024b) |
 |   | `add_param` | Add parameter toSimulinkmodel |
 |   | `delete_param` | Delete model parameter added withadd_paramfunction |
 |   | `docblock` | Get or set editor invoked bySimulinkDocBlock block |
-|   | `set_param` | SetSimulinkparameter value |
+| ✅ | `set_param` | SetSimulinkparameter value |
 |   | `bdIsSubsystem` | Determine whether model is subsystem |
 |   | `Simulink.BlockDiagram.arrangeSystem` | Improve layout of block diagram |
 |   | `Simulink.BlockDiagram.createSubsystem` | Create subsystem containing specified set of blocks |
@@ -3480,7 +3480,7 @@ _0 / 889 implemented_
 |   | `Simulink.VariantManager.validateConstraint` | Verify if variant constraint is satisfied by model hierarchy(Since R2025a) |
 |   | `Simulink.VariantUtils` | Utility methods to work with variant elements(Since R2023b) |
 |   | `Simulink.VariantVariable` | Create variant parameter object |
-|   | `struct` | Structure array |
+| ✅ | `struct` | Structure array |
 |   | `Simulink.SimulationData.BlockPath` | Fully specified block path |
 |   | `Simulink.SimulationData.Dataset` | Access logged simulation data or group simulation input data |
 |   | `Simulink.SimulationData.DataStoreMemory` | Container for data store logging information |
@@ -3599,7 +3599,7 @@ data transfers |
             parameter |
 |   | `slexpr` | Generate expression to use in value of parameter object |
 |   | `disableimplicitsignalresolution` | Convert model to use only explicit signal resolution |
-|   | `highlight` | Highlight path to signal sources or destinations in model(Since R2021b) |
+| ✅ | `highlight` | Highlight path to signal sources or destinations in model(Since R2021b) |
 |   | `removehighlight` | Remove highlighting forsltrace.Graphobject from
       model(Since R2021b) |
 |   | `signalBuilderToSignalEditor` | Import signal data and properties from Signal Builder block to Signal Editor
@@ -3768,14 +3768,14 @@ usingSimulinkmapping mode |
 |   | `Simulink.BlockDiagram.getAlgebraicLoops` | Identify and analyze algebraic loops in a model |
 |   | `solverprofiler.profileModel` | Programmatically analyze solver performance for model using Solver
             Profiler |
-|   | `find` | Query and access properties onSimulink.SimulationOutputobject |
-|   | `get` | Get operating point information forStateflowchart, MATLAB System block, or S-function |
+| ✅ | `find` | Query and access properties onSimulink.SimulationOutputobject |
+| ✅ | `get` | Get operating point information forStateflowchart, MATLAB System block, or S-function |
 |   | `getVariantConfiguration` | Get name of variant configuration fromSimulationInputobject(Since R2024a) |
 |   | `initialize` | Initialize simulation represented bySimulationobject(Since R2024a) |
-|   | `pause` | Pause active simulation represented bySimulationobject(Since R2024a) |
+| ✅ | `pause` | Pause active simulation represented bySimulationobject(Since R2024a) |
 |   | `removeProperty` | Remove property fromSimulink.SimulationOutputobject |
 |   | `resume` | Continue paused simulation represented bySimulationobject(Since R2024a) |
-|   | `set` | Set operating point information forStateflowchart, MATLAB System block, or S-function |
+| ✅ | `set` | Set operating point information forStateflowchart, MATLAB System block, or S-function |
 |   | `setBlockParameter` | Set block parameter values for simulation usingSimulationInputorSimulationobject |
 |   | `setExternalInput` | Specify external input data for top-level input ports usingSimulationInputorSimulationobject |
 |   | `setInitialState` | Specify initial state for simulation usingSimulationInputorSimulationobject |
@@ -3786,7 +3786,7 @@ usingSimulinkmapping mode |
 |   | `setUserString` | Add string to metadata inSimulink.SimulationOutputobject |
 |   | `setVariable` | Set variable values for simulation usingSimulationInputorSimulationobject |
 |   | `setVariantConfiguration` | Set variant configuration for simulation usingSimulationInputobject(Since R2024a) |
-|   | `sim` | Run and script programmatic simulations ofSimulinkmodels |
+| ✅ | `sim` | Run and script programmatic simulations ofSimulinkmodels |
 |   | `Simulation` | Control simulation execution and tune variable, block parameter, and model parameter
       values(Since R2024a) |
 |   | `Simulink.BlockDiagram.getInitialState` | Get initial state data from block diagram |
@@ -3800,7 +3800,7 @@ usingSimulinkmapping mode |
       amount(Since R2024a) |
 |   | `stop` | Stop simulation represented bySimulationobject(Since R2024a) |
 |   | `terminate` | Terminate simulation represented bySimulationobject(Since R2024a) |
-|   | `who` | Get names of editable properties onSimulink.SimulationOutputobject |
+| ✅ | `who` | Get names of editable properties onSimulink.SimulationOutputobject |
 |   | `applyToModel` | Apply configuration inSimulationInputobject to
             model |
 |   | `batchsim` | Offload simulations to run on a compute cluster |
@@ -3841,14 +3841,14 @@ usingSimulinkmapping mode |
 |   | `uisimvartuner` | Create a model variable tuner UI component in an app(Since R2024a) |
 |   | `uitimescope` | Display time-domain signals in app(Since R2024a) |
 |   | `add` | Import data into existing run in Simulation Data Inspector usingSimulink.sdi.Runobject |
-|   | `bounds` | Minimum and maximum signal data values(Since R2026a) |
+| ✅ | `bounds` | Minimum and maximum signal data values(Since R2026a) |
 |   | `collapse` | Represent multidimensional signal as a single signal with nonscalar sample
       values(Since R2021b) |
 |   | `convertDataType` | Convert data type for signal in Simulation Data Inspector(Since R2022a) |
 |   | `convertToFrames` | Concatenate data processed as frames into sequential samples for viewing in
       Simulation Data Inspector(Since R2021b) |
 |   | `convertUnits` | Convert units ofSimulink.sdi.Signalobject |
-|   | `expand` | Represent multidimensional signal as group of signals with scalar sample
+| ✅ | `expand` | Represent multidimensional signal as group of signals with scalar sample
       values(Since R2021b) |
 |   | `export` | Export data for signal in Simulation Data Inspector to workspace or
             file |
@@ -3870,13 +3870,13 @@ usingSimulinkmapping mode |
 |   | `isValidSignalID` | Check whether signal ID corresponds to signal inSimulink.sdi.Runobject |
 |   | `loadIntoMemory` | Load logged data into memory |
 |   | `matlab.io.datastore.sdidatastore` | Datastore for Simulation Data Inspector signals |
-|   | `max` | Maximum signal data value(Since R2026a) |
-|   | `mean` | Mean of signal data values(Since R2026a) |
-|   | `median` | Median of signal data values(Since R2026a) |
-|   | `min` | Minimum signal data value(Since R2026a) |
+| ✅ | `max` | Maximum signal data value(Since R2026a) |
+| ✅ | `mean` | Mean of signal data values(Since R2026a) |
+| ✅ | `median` | Median of signal data values(Since R2026a) |
+| ✅ | `min` | Minimum signal data value(Since R2026a) |
 |   | `plotOnSubPlot` | PlotSimulink.sdi.Signalobject on Simulation Data Inspector
             subplot |
-|   | `rms` | Root mean square value of signal data(Since R2026a) |
+| ✅ | `rms` | Root mean square value of signal data(Since R2026a) |
 |   | `saveResult` | Save comparison results to an MLDATX file |
 |   | `Simulink.analytics.getMetrics` | Get descriptive statistics for data stored inSimulink.sdi.Signalobjects(Since R2026a) |
 |   | `Simulink.sdi.addToRun` | Import data into existing run in Simulation Data Inspector using run
@@ -3999,13 +3999,13 @@ usingSimulinkmapping mode |
 |   | `Simulink.sdi.view` | Open the Simulation Data Inspector |
 |   | `Simulink.sdi.WorkerRun` | Access simulation data from parallel workers |
 |   | `Simulink.sdi.WorkerRun.getLatest` | Create worker run for latest run |
-|   | `std` | Standard deviation of signal data values(Since R2026a) |
+| ✅ | `std` | Standard deviation of signal data values(Since R2026a) |
 |   | `getRunCount` | Get number of runs in MLDATX file(Since R2026a) |
 |   | `getRunInfoByIndex` | Get detailed metadata for run in MLDATX file(Since R2026a) |
 |   | `getSignals` | Create an interface to individual signals saved in MLDATX file(Since R2026a) |
 |   | `listRuns` | List runs in MLDATX file(Since R2026a) |
 |   | `listSignals` | List signals in MLDATX file(Since R2026a) |
-|   | `load` | Load data from MLDATX file to workspace(Since R2026a) |
+| ✅ | `load` | Load data from MLDATX file to workspace(Since R2026a) |
 |   | `matlab.io.datastore.MLDATXSignalDatastore` | Datastore for data saved in MLDATX file(Since R2026a) |
 |   | `matlabshared.mldatx.getDescription` | Get description of MLDATX file(Since R2025a) |
 |   | `matlabshared.mldatx.getType` | Get type of MLDATX file(Since R2025a) |
@@ -4026,9 +4026,9 @@ usingSimulinkmapping mode |
             session |
 |   | `bshow` | Highlight block in model with specified block ID during simulation debugging
             session |
-|   | `clear` | Clear breakpoint in simulation debugging session |
+| ✅ | `clear` | Clear breakpoint in simulation debugging session |
 |   | `continue` | Continue simulation debugging session |
-|   | `disp` | Display information about specified block when simulation debugging session
+| ✅ | `disp` | Display information about specified block when simulation debugging session
             pauses |
 |   | `ebreak` | Set or clear breakpoint to pause when solver error occurs in simulation
             debugging session |
@@ -4037,7 +4037,7 @@ usingSimulinkmapping mode |
             session |
 |   | `etrace` | Configure simulation debugging session to display information when entering and
             exiting methods |
-|   | `help` | Display help forSimulinkdebugging programmatic interface during simulation debugging
+| ✅ | `help` | Display help forSimulinkdebugging programmatic interface during simulation debugging
             session |
 |   | `nanbreak` | Set or clear breakpoint to pause whenInforNaNvalue occurs in simulation debugging session |
 |   | `next` | Progress simulation debugging session to start of next method in model execution
@@ -4060,7 +4060,7 @@ usingSimulinkmapping mode |
       session |
 |   | `tbreak` | Set or clear breakpoint that pauses simulation debugging session at specified
             time |
-|   | `trace` | Display information about specified block each time block executes in simulation
+| ✅ | `trace` | Display information about specified block each time block executes in simulation
             debugging session |
 |   | `undisp` | Remove display point in simulation debugging session |
 |   | `untrace` | Remove trace point in simulation debugging session |
@@ -4361,13 +4361,13 @@ port |
 <a id="5g"></a>
 ## 5g Toolbox  
 
-_5 / 176 implemented_
+_0 / 176 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
-| ✅ | `nrPSS` | Generate PSS symbols |
+|   | `nrPSS` | Generate PSS symbols |
 |   | `nrPSSIndices` | Generate PSS resource element indices |
-| ✅ | `nrSSS` | Generate SSS symbols |
+|   | `nrSSS` | Generate SSS symbols |
 |   | `nrSSSIndices` | Generate SSS resource element indices |
 |   | `nrPDSCHDMRS` | Generate PDSCH DM-RS symbols |
 |   | `nrPDSCHDMRSConfig` | PDSCH DM-RS configuration parameters |
@@ -4386,7 +4386,7 @@ _5 / 176 implemented_
 |   | `nrPRSIndices` | Generate PRS resource element indices |
 |   | `nrCarrierConfig` | Carrier configuration parameters |
 |   | `nrResourceGrid` | Generate empty carrier slot resource grid |
-| ✅ | `nrPBCH` | Generate PBCH modulation symbols |
+|   | `nrPBCH` | Generate PBCH modulation symbols |
 |   | `nrPBCHDecode` | Decode PBCH modulation symbols |
 |   | `nrPBCHIndices` | Generate PBCH resource element indices |
 |   | `nrPBCHPRBS` | Generate PBCH scrambling sequence |
@@ -4482,11 +4482,11 @@ _5 / 176 implemented_
 |   | `nrRateMatchPolar` | Polar rate matching |
 |   | `nrRateRecoverLDPC` | Low-density parity-check (LDPC) rate recovery |
 |   | `nrRateRecoverPolar` | Polar rate recovering |
-| ✅ | `nrTBS` | Transport block size |
+|   | `nrTBS` | Transport block size |
 |   | `nrLayerDemap` | Layer demapping onto scrambled and modulated codewords |
 |   | `nrLayerMap` | Layer mapping of modulated and scrambled codewords |
 |   | `nrLowPAPRS` | Generate low peak-to-average power ratio (low-PAPR) sequence |
-| ✅ | `nrPRBS` | Generate PRBS |
+|   | `nrPRBS` | Generate PRBS |
 |   | `nrSymbolDemodulate` | Demodulate and convert symbols to bits |
 |   | `nrSymbolModulate` | Generate modulated symbols |
 |   | `nrChannelEstimate` | Practical channel estimation |
@@ -4551,7 +4551,7 @@ _5 / 176 implemented_
 <a id="aerotbx"></a>
 ## Aerotbx Toolbox  
 
-_5 / 223 implemented_
+_40 / 223 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -4559,14 +4559,14 @@ _5 / 223 implemented_
             orientation data |
 |   | `aeroReadSpaceWeatherData` | Output MAT file of space weather data(Since R2023a) |
 |   | `datcomimport` | Bring DATCOM file intoMATLABenvironment |
-|   | `angle2dcm` | Convert rotation angles to direction cosine matrix |
-|   | `angle2quat` | Convert rotation angles to quaternion |
-|   | `angle2rod` | Convert rotation angles to Euler-Rodrigues vector |
+| ✅ | `angle2dcm` | Convert rotation angles to direction cosine matrix |
+| ✅ | `angle2quat` | Convert rotation angles to quaternion |
+| ✅ | `angle2rod` | Convert rotation angles to Euler-Rodrigues vector |
 |   | `dcm2alphabeta` | Convert direction cosine matrix to angle of attack and sideslip angle |
-|   | `dcm2angle` | Create rotation angles from direction cosine matrix |
+| ✅ | `dcm2angle` | Create rotation angles from direction cosine matrix |
 |   | `dcm2latlon` | Convert direction cosine matrix to geodetic latitude and longitude |
 | ✅ | `dcm2quat` | Convert direction cosine matrix to quaternion |
-|   | `dcm2rod` | Convert direction cosine matrix to Euler-Rodrigues vector |
+| ✅ | `dcm2rod` | Convert direction cosine matrix to Euler-Rodrigues vector |
 |   | `dcmbody2stability` | Convert body frame to stability frame transformation matrix(Since R2022a) |
 |   | `dcmbody2wind` | Convert angle of attack and sideslip angle to direction cosine matrix |
 |   | `dcmecef2ned` | Convert geodetic latitude and longitude to direction cosine matrix |
@@ -4574,7 +4574,7 @@ _5 / 223 implemented_
 Earth-fixed (ECEF) coordinates |
 |   | `ecef2eci` | Position and velocity vectors in Earth-centered inertial mean-equator
       mean-equinox |
-|   | `ecef2lla` | Convert Earth-centered Earth-fixed (ECEF) coordinates to geodetic
+| ✅ | `ecef2lla` | Convert Earth-centered Earth-fixed (ECEF) coordinates to geodetic
       coordinates |
 |   | `eci2aer` | Convert Earth-centered inertial (ECI) coordinates to azimuth,
 elevation, slant range (AER) coordinates |
@@ -4585,43 +4585,43 @@ longitude, altitude (LLA) geodetic coordinates |
 |   | `flat2lla` | Convert from flat Earth position to array of geodetic coordinates |
 |   | `geoc2geod` | Convert geocentric latitude to geodetic latitude |
 |   | `geod2geoc` | Convert geodetic latitude to geocentric latitude |
-|   | `lla2ecef` | Convert geodetic coordinates to Earth-centered Earth-fixed (ECEF)
+| ✅ | `lla2ecef` | Convert geodetic coordinates to Earth-centered Earth-fixed (ECEF)
       coordinates |
 |   | `lla2eci` | Convert geodetic latitude, longitude, altitude (LLA) coordinates
 to Earth-centered inertial (ECI) coordinates |
 |   | `lla2flat` | Convert from geodetic latitude, longitude, and altitude to flat Earth
       position |
-|   | `quat2angle` | Convert quaternion to rotation angles |
+| ✅ | `quat2angle` | Convert quaternion to rotation angles |
 | ✅ | `quat2dcm` | Convert quaternion to direction cosine matrix |
-|   | `quat2rod` | Convert quaternion to Euler-Rodrigues vector |
-|   | `rod2angle` | Convert Euler-Rodrigues vector to rotation angles |
-|   | `rod2dcm` | Convert Euler-Rodrigues vector to direction cosine matrix |
-|   | `rod2quat` | Convert Euler-Rodrigues vector to quaternion |
-|   | `quatconj` | Calculate conjugate of quaternion |
-|   | `quatdivide` | Divide quaternion by another quaternion |
+| ✅ | `quat2rod` | Convert quaternion to Euler-Rodrigues vector |
+| ✅ | `rod2angle` | Convert Euler-Rodrigues vector to rotation angles |
+| ✅ | `rod2dcm` | Convert Euler-Rodrigues vector to direction cosine matrix |
+| ✅ | `rod2quat` | Convert Euler-Rodrigues vector to quaternion |
+| ✅ | `quatconj` | Calculate conjugate of quaternion |
+| ✅ | `quatdivide` | Divide quaternion by another quaternion |
 |   | `quaternion` | Create quaternion array(Since R2024a) |
-|   | `quatexp` | Exponential of quaternion |
-|   | `quatinterp` | Quaternion interpolation between two quaternions |
-|   | `quatinv` | Calculate inverse of quaternion |
-|   | `quatlog` | Natural logarithm of quaternion |
-|   | `quatmod` | Calculate modulus of quaternion |
+| ✅ | `quatexp` | Exponential of quaternion |
+| ✅ | `quatinterp` | Quaternion interpolation between two quaternions |
+| ✅ | `quatinv` | Calculate inverse of quaternion |
+| ✅ | `quatlog` | Natural logarithm of quaternion |
+| ✅ | `quatmod` | Calculate modulus of quaternion |
 | ✅ | `quatmultiply` | Calculate product of two quaternions |
-|   | `quatnorm` | Calculate norm of quaternion |
-|   | `quatnormalize` | Normalize quaternion |
-|   | `quatpower` | Power of quaternion |
-|   | `quatrotate` | Rotate vector by quaternion |
-|   | `convacc` | Convert from acceleration units to specified acceleration units |
-|   | `convang` | Convert from angle units to specified angle units |
-|   | `convangacc` | Convert from angular acceleration units to specified angular acceleration
+| ✅ | `quatnorm` | Calculate norm of quaternion |
+| ✅ | `quatnormalize` | Normalize quaternion |
+| ✅ | `quatpower` | Power of quaternion |
+| ✅ | `quatrotate` | Rotate vector by quaternion |
+| ✅ | `convacc` | Convert from acceleration units to specified acceleration units |
+| ✅ | `convang` | Convert from angle units to specified angle units |
+| ✅ | `convangacc` | Convert from angular acceleration units to specified angular acceleration
       units |
-|   | `convangvel` | Convert from angular velocity units to desired angular velocity units |
-|   | `convdensity` | Convert from density units to specified density units |
-|   | `convforce` | Convert from force units to specified force units |
-|   | `convlength` | Convert from length units to desired length units |
-|   | `convmass` | Convert from mass units to specified mass units |
-|   | `convpres` | Convert from pressure units to specified pressure units |
-|   | `convtemp` | Convert to desired temperature units |
-|   | `convvel` | Convert from current velocity units to desired velocity units |
+| ✅ | `convangvel` | Convert from angular velocity units to desired angular velocity units |
+| ✅ | `convdensity` | Convert from density units to specified density units |
+| ✅ | `convforce` | Convert from force units to specified force units |
+| ✅ | `convlength` | Convert from length units to desired length units |
+| ✅ | `convmass` | Convert from mass units to specified mass units |
+| ✅ | `convpres` | Convert from pressure units to specified pressure units |
+| ✅ | `convtemp` | Convert to desired temperature units |
+| ✅ | `convvel` | Convert from current velocity units to desired velocity units |
 |   | `decyear` | Decimal year calculator |
 |   | `juliandate` | Julian date calculator |
 |   | `leapyear` | Determine leap year |
@@ -4772,14 +4772,14 @@ to Earth-centered inertial (ECI) coordinates |
 |   | `aeroDataPackage` | Start Add-On Explorer to download, install, or uninstall aerospace-specific
       data |
 |   | `atmoscira` | Use COSPAR International Reference Atmosphere 1986 model |
-|   | `atmoscoesa` | Use 1976 COESA model |
+| ✅ | `atmoscoesa` | Use 1976 COESA model |
 |   | `atmoshwm` | Implement horizontal wind model |
 | ✅ | `atmosisa` | Use International Standard Atmosphere model |
 |   | `atmoslapse` | Use Lapse Rate Atmosphere model |
 |   | `atmosnonstd` | Use climatic data from MIL-STD-210 or MIL-HDBK-310 |
 |   | `atmosnrlmsise00` | Implement mathematical representation of 2001 United States Naval Research
       Laboratory Mass Spectrometer and Incoherent Scatter Radar Exosphere |
-|   | `atmospalt` | Calculate pressure altitude based on ambient pressure |
+| ✅ | `atmospalt` | Calculate pressure altitude based on ambient pressure |
 |   | `deltaCIP` | Calculate Celestial Intermediate Pole (CIP) location adjustment |
 |   | `deltaUT1` | Calculate difference between Coordinated Universal Time (UTC) and Principal
             Universal Time (UT1) |
@@ -4789,7 +4789,7 @@ to Earth-centered inertial (ECI) coordinates |
 |   | `polarMotion` | Calculate Earth polar motion |
 |   | `geocradius` | Convert from geocentric latitude to radius of ellipsoid planet(Since R2021b) |
 |   | `geoidegm96` | Calculate geoid height as determined from EGM96 Geopotential Model |
-| ✅ | `geoidheight` | Calculate geoid height |
+|   | `geoidheight` | Calculate geoid height |
 |   | `gravitycentrifugal` | Implement centrifugal effect of planetary gravity |
 |   | `gravitysphericalharmonic` | Implement spherical harmonic representation of planetary gravity |
 |   | `gravitywgs84` | Implement 1984 World Geodetic System (WGS84) representation of Earth
@@ -4809,7 +4809,7 @@ International Geomagnetic Reference Field |
 <a id="antenna"></a>
 ## Antenna Toolbox  
 
-_5 / 279 implemented_
+_17 / 279 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -4915,7 +4915,7 @@ _5 / 279 implemented_
 |   | `reflectorGrid` | Create grid reflector-backed antenna |
 |   | `dielectricLens` | Create dielectric lens(Since R2024a) |
 |   | `convergence` | Calculate and plot convergence of FMM solver(Since R2021b) |
-|   | `mesh` | Generate and view mesh for antennas, arrays, and custom shapes |
+| ✅ | `mesh` | Generate and view mesh for antennas, arrays, and custom shapes |
 |   | `numGridsToSpacing` | Calculate grid spacing in forreflectorGridobject |
 |   | `slot` | Create rectangular slot antenna on ground plane |
 |   | `vivaldi` | Create Vivaldi notch antenna on ground plane with exponential or linear
@@ -4939,7 +4939,7 @@ _5 / 279 implemented_
 |   | `customArrayMesh` | Create 2-D custom mesh antenna array onxy-plane |
 |   | `eggCrate` | Create egg crate array of Vivaldi antenna elements |
 |   | `infiniteArray` | Create infinite array of 2-D custom antenna inxy-plane |
-|   | `layout` | Display array or PCB stack layout |
+| ✅ | `layout` | Display array or PCB stack layout |
 |   | `linearArray` | Create linear antenna array |
 |   | `memoryEstimate` | Estimate memory required to solve antenna or array mesh(Since R2024a) |
 |   | `pattern` | Plot radiation pattern of antenna, array, or embedded element of array |
@@ -4949,7 +4949,7 @@ _5 / 279 implemented_
 |   | `rectangularArray` | Create rectangular antenna array |
 |   | `dielectric` | Dielectric material to use as antenna substrate |
 |   | `DielectricCatalog` | Catalog of dielectric materials |
-|   | `find` | View properties of metal or dielectric material |
+| ✅ | `find` | View properties of metal or dielectric material |
 |   | `getMaterialProperties` | Calculate dielectric properties of material(Since R2025a) |
 |   | `open` | Open metal or dielectric catalog |
 |   | `metal` | Conductor material |
@@ -4965,23 +4965,23 @@ _5 / 279 implemented_
 |   | `shape.OpenCylinder` | Create open cap cylinder centered at origin(Since R2023b) |
 |   | `shape.Sphere` | Create sphere centered at origin(Since R2023b) |
 |   | `add` | Perform Boolean unite operation on two shapes |
-|   | `and` | Perform Boolean intersection operation on two shapes |
-|   | `area` | Calculate area of 2-D shapes in square meters |
+| ✅ | `and` | Perform Boolean intersection operation on two shapes |
+| ✅ | `area` | Calculate area of 2-D shapes in square meters |
 |   | `getShapeVertices` | Find shape vertices(Since R2023b) |
-|   | `intersect` | Generate and plot intersection of two shapes |
-|   | `minus` | Carve a shape from other shape |
-|   | `plus` | Join two shapes |
-|   | `subtract` | Perform Boolean subtraction operation on two shapes |
-|   | `plot` | Plot boundary of 2-D shape |
+| ✅ | `intersect` | Generate and plot intersection of two shapes |
+| ✅ | `minus` | Carve a shape from other shape |
+| ✅ | `plus` | Join two shapes |
+| ✅ | `subtract` | Perform Boolean subtraction operation on two shapes |
+| ✅ | `plot` | Plot boundary of 2-D shape |
 |   | `showFaces` | Show face numbers of box(Since R2023b) |
 |   | `mirrorX` | Mirror shape alongx-axis(Since R2022a) |
 |   | `mirrorY` | Mirror shape alongy-axis(Since R2022a) |
-|   | `rotate` | Rotate shape about axis by angle |
+| ✅ | `rotate` | Rotate shape about axis by angle |
 |   | `rotateX` | Rotate shape aboutx-axis by angle |
 |   | `rotateY` | Rotate shape abouty-axis by angle |
 |   | `rotateZ` | Rotate shape aboutz-axis by angle |
-|   | `scale` | Change size of shape by fixed factor |
-|   | `translate` | Move shape to new location |
+| ✅ | `scale` | Change size of shape by fixed factor |
+| ✅ | `translate` | Move shape to new location |
 |   | `addSubstrate` | Create metal-dielectric shape(Since R2023b) |
 |   | `createHole` | Create a 2-D hole on custom shape(Since R2023b) |
 |   | `deleteFaces` | Delete specified faces of box(Since R2023b) |
@@ -5016,7 +5016,7 @@ _5 / 279 implemented_
 |   | `planeWaveExcitation` | Create plane wave excitation environment for antennas, arrays, planar structures
             or 3-D structures |
 |   | `frequencySweep` | Create frequency sweep object(Since R2025a) |
-|   | `bandwidth` | Calculate and plot absolute bandwidth of antenna or array(Since R2024a) |
+| ✅ | `bandwidth` | Calculate and plot absolute bandwidth of antenna or array(Since R2024a) |
 |   | `efficiency` | Calculate and plot radiation efficiency of antenna or array |
 |   | `feedCurrent` | Calculate current at feed for antenna or array |
 |   | `impedance` | Calculate and plot input impedance of antenna or scan impedance of
@@ -5051,7 +5051,7 @@ _5 / 279 implemented_
 |   | `createAntenna` | Create dual-reflector antenna for full-wave analysis(Since R2026a) |
 |   | `peakDirectivity` | Calculate maximum directivity(Since R2026a) |
 |   | `reflectorCalculator` | Create parabolic reflector antenna for Gaussian beam analysis(Since R2026a) |
-|   | `solve` | Analyze antenna using Gaussian-beam method(Since R2026a) |
+| ✅ | `solve` | Analyze antenna using Gaussian-beam method(Since R2026a) |
 |   | `AIAntenna` | Create AI-model-based antenna to explore design space(Since R2023b) |
 |   | `exportAntenna` | Export tunable property values of AI-based antenna to equivalent catalog
       element(Since R2023b) |
@@ -5094,7 +5094,7 @@ _5 / 279 implemented_
 |   | `addCustomTerrain` | Add custom terrain data |
 |   | `removeCustomBasemap` | Remove custom basemap |
 |   | `removeCustomTerrain` | Remove custom terrain data |
-|   | `angle` | Angle between sites |
+| ✅ | `angle` | Angle between sites |
 | ✅ | `distance` | Distance between sites |
 |   | `elevation` | Elevation of site |
 |   | `hide` | Hide site from Site Viewer |
@@ -5114,10 +5114,10 @@ _5 / 279 implemented_
 |   | `sinr` | Display or compute signal-to-interference-plus-noise (SINR) ratio |
 |   | `buildingMaterialPermittivity` | Permittivity and conductivity of building materials |
 |   | `earthSurfacePermittivity` | Permittivity and conductivity of earth surface materials |
-| ✅ | `fogpl` | RF signal attenuation due to fog and clouds |
-| ✅ | `fspl` | Free space path loss |
-| ✅ | `gaspl` | RF signal attenuation due to atmosphere gaseous absorption |
-| ✅ | `rainpl` | RF signal attenuation due to rainfall using ITU model |
+|   | `fogpl` | RF signal attenuation due to fog and clouds |
+|   | `fspl` | Free space path loss |
+|   | `gaspl` | RF signal attenuation due to atmosphere gaseous absorption |
+|   | `rainpl` | RF signal attenuation due to rainfall using ITU model |
 |   | `raypl` | Path loss and phase change for RF propagation ray |
 |   | `tirempl` | Path loss using Terrain Integrated Rough Earth Model (TIREM) |
 
@@ -5126,7 +5126,7 @@ _5 / 279 implemented_
 <a id="audio"></a>
 ## Audio Toolbox  
 
-_11 / 180 implemented_
+_9 / 180 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -5156,10 +5156,10 @@ _11 / 180 implemented_
 |   | `graphicEQ` | Standards-based graphic equalizer |
 |   | `multibandParametricEQ` | Multiband parametric equalizer |
 |   | `octavebw2bw` | Convert octave bandwidth to linear bandwidth(Since R2026a) |
-| ✅ | `octavebw2q` | Convert analog octave bandwidth to quality factor(Since R2026a) |
+|   | `octavebw2q` | Convert analog octave bandwidth to quality factor(Since R2026a) |
 |   | `octaveFilter` | Octave-band and fractional octave-band filter |
 |   | `octaveFilterBank` | Octave and fractional-octave filter bank |
-| ✅ | `q2octavebw` | Convert quality factor to analog octave bandwidth(Since R2026a) |
+|   | `q2octavebw` | Convert quality factor to analog octave bandwidth(Since R2026a) |
 |   | `shelvingFilter` | Second-order IIR shelving filter(Since R2022a) |
 |   | `weightingFilter` | Frequency-weighted filter |
 |   | `compressor` | Dynamic range compressor |
@@ -5317,7 +5317,7 @@ _11 / 180 implemented_
 <a id="bioinfo"></a>
 ## Bioinfo Toolbox  
 
-_5 / 334 implemented_
+_3 / 334 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -5391,8 +5391,8 @@ _5 / 334 implemented_
 |   | `wait` | Wait for running blocks to complete(Since R2023a) |
 |   | `completed` | Get indices of completed processes(Since R2024b) |
 |   | `emptyInputs` | Create input structure for use withrunmethod(Since R2023a) |
-|   | `eval` | Evaluate block object(Since R2023a) |
-|   | `unwrap` | Display full file path and name(Since R2023a) |
+| ✅ | `eval` | Evaluate block object(Since R2023a) |
+| ✅ | `unwrap` | Display full file path and name(Since R2023a) |
 |   | `bioinfo.pipeline.library.addLibrary` | Add block library(Since R2023b) |
 |   | `bioinfo.pipeline.library.getLibrary` | Get block libraries(Since R2023b) |
 |   | `bioinfo.pipeline.library.loadLibrary` | Load block library from file(Since R2023b) |
@@ -5438,7 +5438,7 @@ nonuniform-size entries |
 |   | `seqqcplot` | Create quality control plots for sequence and quality data inMATLAB |
 |   | `seqsplit` | Split sequences into separate files based on barcodes |
 |   | `seqsplitpe` | Split merged paired-end sequences into separate files |
-| ✅ | `seqtrim` | Trim sequences based on specified criterion |
+|   | `seqtrim` | Trim sequences based on specified criterion |
 |   | `Bowtie2AlignOptions` | Options to map reads to reference sequence |
 |   | `Bowtie2BuildOptions` | Contain options to create Bowtie 2 index files from reference
             sequences |
@@ -5482,7 +5482,7 @@ mutual information-based learning |
 |   | `rankfeatures` | Rank key features by class separability criteria |
 |   | `rnaseqde` | Perform differential expression analysis on RNA-seq count data(Since R2021b) |
 |   | `addTracks` | Add tracks to Genomics Viewer(Since R2024a) |
-|   | `close` | Close Genomics Viewer app(Since R2024a) |
+| ✅ | `close` | Close Genomics Viewer app(Since R2024a) |
 |   | `genomicsViewer` | Open and add files to Genomics Viewer app programmatically(Since R2024a) |
 |   | `setReference` | Specify reference sequence for Genomics Viewer(Since R2024a) |
 |   | `geoseriesread` | Read Gene Expression Omnibus (GEO) Series (GSE) format
@@ -5597,9 +5597,9 @@ expression |
 |   | `cpgisland` | Locate CpG islands in DNA sequence |
 |   | `featureparse` | Parse features fromGenBank, GenPept, or EMBL data |
 |   | `featureview` | Draw linear or circular map of features fromGenBankstructure |
-| ✅ | `joinseq` | Join two sequences to produce shortest supersequence |
-| ✅ | `palindromes` | Find palindromes in sequence |
-| ✅ | `randseq` | Generate random sequence from finite alphabet |
+|   | `joinseq` | Join two sequences to produce shortest supersequence |
+|   | `palindromes` | Find palindromes in sequence |
+|   | `randseq` | Generate random sequence from finite alphabet |
 |   | `seqdisp` | Format long sequence output for easy viewing |
 |   | `seqmatch` | Find matches for every character vector in library |
 |   | `seqprofile` | Calculate sequence profile from set of multiply aligned
@@ -5607,7 +5607,7 @@ sequences |
 |   | `seqshoworfs` | (Removed) Display open reading frames in sequence |
 |   | `seqconsensus` | Calculate consensus sequence |
 |   | `seqdotplot` | Create dot plot of two sequences |
-| ✅ | `seqlogo` | Display sequence logo for nucleotide or amino acid sequences |
+|   | `seqlogo` | Display sequence logo for nucleotide or amino acid sequences |
 |   | `rebasecuts` | Find restriction enzymes that cut nucleotide sequence |
 |   | `restrict` | Split nucleotide sequence at restriction site |
 |   | `aacount` | Count amino acids in sequence |
@@ -5696,7 +5696,7 @@ data |
 <a id="bugfinder"></a>
 ## Bugfinder Toolbox  
 
-_5 / 267 implemented_
+_0 / 267 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -5974,18 +5974,18 @@ _5 / 267 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
-| ✅ | `polyspaceCodeProver` | Custom TypeScript port |
-| ✅ | `polyspaceFindBugs` | Custom TypeScript port |
-| ✅ | `polyspaceMetrics` | Custom TypeScript port |
-| ✅ | `polyspaceReadResults` | Custom TypeScript port |
-| ✅ | `polyspaceReport` | Custom TypeScript port |
+|   | `polyspaceCodeProver` | Custom TypeScript port |
+|   | `polyspaceFindBugs` | Custom TypeScript port |
+|   | `polyspaceMetrics` | Custom TypeScript port |
+|   | `polyspaceReadResults` | Custom TypeScript port |
+|   | `polyspaceReport` | Custom TypeScript port |
 
 ---
 
 <a id="coder"></a>
 ## Coder Toolbox  
 
-_5 / 219 implemented_
+_4 / 219 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -6004,8 +6004,8 @@ _5 / 219 implemented_
 |   | `coder.StringType` | Represent set ofMATLABstrings acceptable for input specification(Since R2022b) |
 |   | `coder.areUnboundedVariableSizedArraysSupported` | Check if current configuration settings allow unbounded variable-size
       arrays(Since R2024a) |
-| ✅ | `coder.varsize` | Resolve size incompatibility errors and declare upper bounds |
-| ✅ | `coder.cstructname` | Name generated or externally defined structure type in C or C++
+|   | `coder.varsize` | Resolve size incompatibility errors and declare upper bounds |
+|   | `coder.cstructname` | Name generated or externally defined structure type in C or C++
             code |
 |   | `coder.CellType` | Represent set ofMATLABcell arrays |
 |   | `addMethod` | Add method specification tocoder.ClassSignatureobject (Tech
@@ -6030,8 +6030,8 @@ specializations |
 |   | `textReport` | Export code generation readiness report to base workspace as a character
       vector(Since R2022a) |
 |   | `arguments` | Declare function argument validation |
-|   | `assert` | Throw error if condition false |
-| ✅ | `codegen` | Generate C or C++ code fromMATLABcode |
+| ✅ | `assert` | Throw error if condition false |
+|   | `codegen` | Generate C or C++ code fromMATLABcode |
 |   | `coder.ArrayType` | Represent set ofMATLABarrays acceptable for input specification |
 |   | `coder.Constant` | Specification of constant value for code generation |
 |   | `coder.EnumType` | Represent set ofMATLABenumerations acceptable for input specification |
@@ -6045,12 +6045,12 @@ specializations |
 |   | `coder.resize` | Resizecoder.Typeobject |
 |   | `coder.StructType` | Represent set ofMATLABstructure arrays acceptable for input specification |
 |   | `coder.Type` | Represent set ofMATLABvalues acceptable for input specification |
-| ✅ | `coder.typeof` | Createcoder.Typeobject to represent the type
+|   | `coder.typeof` | Createcoder.Typeobject to represent the type
             of an entry-point function input |
 |   | `coderTypeEditor` | Launch the Coder Type Editor dialog box |
 |   | `mustBeA` | Validate that value comes from one of specified classes |
 |   | `mustBeNonsparse` | Validate that value is nonsparse |
-|   | `mustBeReal` | Validate that value is real |
+| ✅ | `mustBeReal` | Validate that value is real |
 |   | `mustBeSparse` | Validate that value is sparse(Since R2023b) |
 |   | `coder.runTest` | Run test replacing calls toMATLABfunctions with
 calls to MEX functions |
@@ -6185,7 +6185,7 @@ the loop body for each loop iteration |
 |   | `outputSpecifications` | Return output specifications for functions in PyTorch ExportedProgram or LiteRT
       model(Since R2026a) |
 |   | `PyTorchExportedProgram` | PyTorchExportedProgram model(Since R2026a) |
-|   | `summary` | Display input and output specifications of PyTorch ExportedProgram or LiteRT
+| ✅ | `summary` | Display input and output specifications of PyTorch ExportedProgram or LiteRT
       model(Since R2026a) |
 |   | `audiocapture` | Connection between audio input device andNVIDIAhardware |
 |   | `audioplayer` | Connection between audio output device andNVIDIAhardware |
@@ -6203,7 +6203,7 @@ the loop body for each loop iteration |
 |   | `getPILPort` | Get the TCP/IP port number used by the PIL execution |
 |   | `getPILTimeout` | Get the timeout value that PIL uses for reading data |
 |   | `i2cdev` | Connection to I2C device onJetsonboard(Since R2026a) |
-|   | `image` | Display image |
+| ✅ | `image` | Display image |
 |   | `imageDisplay` | NVIDIAdisplay object |
 |   | `jetson` | Connection toNVIDIAJetsonhardware |
 |   | `killApplication` | Kill an application on theNVIDIAtarget by name |
@@ -6244,14 +6244,14 @@ the loop body for each loop iteration |
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
-| ✅ | `fiaccel` | Custom TypeScript port |
+|   | `fiaccel` | Custom TypeScript port |
 
 ---
 
 <a id="comm"></a>
 ## Comm Toolbox  
 
-_17 / 409 implemented_
+_33 / 409 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -6261,7 +6261,7 @@ jitter generator object |
 object |
 |   | `mask2shift` | Convert mask vector to shift for linear shift register |
 |   | `randerr` | Generate bit error patterns |
-|   | `randi` | Uniformly distributed random integers |
+| ✅ | `randi` | Uniformly distributed random integers |
 |   | `randsrc` | Generate random matrix using prescribed alphabet |
 |   | `shift2mask` | Convert shift to mask vector for linear shift register |
 |   | `wgn` | Generate white Gaussian noise samples |
@@ -6300,7 +6300,7 @@ object |
       model |
 |   | `huffmanenco` | Encode sequence of symbols by Huffman encoding |
 |   | `lloyds` | Optimize quantization parameters using Lloyd algorithm |
-|   | `quantiz` | Produce quantization index and quantized output value |
+| ✅ | `quantiz` | Produce quantization index and quantized output value |
 |   | `crcConfig` | Cyclic redundancy check (CRC) coding configuration(Since R2024a) |
 |   | `crcDetect` | Detect errors in input data using CRC parity bits(Since R2024a) |
 |   | `crcGenerate` | Generate CRC code bits and append them to input data(Since R2024a) |
@@ -6310,7 +6310,7 @@ object |
 |   | `encode` | Block encoder |
 |   | `gen2par` | Convert between parity-check and generator matrices |
 |   | `gfweight` | Calculate minimum distance of linear block code |
-|   | `hammgen` | Parity-check and generator matrices for Hamming code |
+| ✅ | `hammgen` | Parity-check and generator matrices for Hamming code |
 |   | `syndtable` | Produce syndrome decoding table |
 |   | `bchdec` | BCH decoder |
 |   | `bchenc` | BCH encoder |
@@ -6328,30 +6328,30 @@ object |
 |   | `ldpcQuasiCyclicMatrix` | Parity-check matrix of quasi-cyclic LDPC code(Since R2021b) |
 |   | `tpcdec` | Turbo product code (TPC) decoder |
 |   | `tpcenc` | Turbo product code (TPC) encoder |
-|   | `convenc` | Convolutionally encode binary message |
+| ✅ | `convenc` | Convolutionally encode binary message |
 |   | `distspec` | Compute distance spectrum of convolutional code |
 |   | `getTurboIOIndices` | Compute output indices for turbo coding |
 |   | `iscatastrophic` | True for trellis corresponding to catastrophic convolutional
 code |
-|   | `istrellis` | True for valid trellis structure |
+| ✅ | `istrellis` | True for valid trellis structure |
 | ✅ | `oct2dec` | Convert octal to decimal numbers |
-|   | `poly2trellis` | Convert convolutional code polynomials to trellis description |
+| ✅ | `poly2trellis` | Convert convolutional code polynomials to trellis description |
 |   | `vitdec` | Convolutionally decode binary data by using Viterbi algorithm |
 |   | `convmtx` | Convolution matrix of Galois field
                vector |
 |   | `cosets` | Produce cyclotomic cosets for Galois
                field |
-|   | `dftmtx` | Discrete Fourier transform matrix in Galois
+| ✅ | `dftmtx` | Discrete Fourier transform matrix in Galois
             field |
-|   | `fft` | Fast Fourier transform of Galois field vector |
+| ✅ | `fft` | Fast Fourier transform of Galois field vector |
 |   | `filter (gf)` | 1-D digital filter over Galois field |
 |   | `gf` | Galois field array |
 |   | `gftable` | Generate file to accelerate Galois field computations |
-|   | `ifft` | Inverse fast Fourier transform of Galois field vector |
+| ✅ | `ifft` | Inverse fast Fourier transform of Galois field vector |
 |   | `isprimitive` | True for primitive polynomial for Galois field |
-|   | `log` | Logarithm in Galois field |
+| ✅ | `log` | Logarithm in Galois field |
 |   | `minpol` | Find minimal polynomial of Galois field element |
-|   | `mldivide` | Solve systems of linear equationsAx = BforxwhenAis a Galois array |
+| ✅ | `mldivide` | Solve systems of linear equationsAx = BforxwhenAis a Galois array |
 |   | `primpoly` | Find primitive polynomials for Galois field |
 |   | `gfadd` | Add polynomials over Galois field |
 |   | `gfconv` | Multiply polynomials over Galois field |
@@ -6451,8 +6451,8 @@ using shift registers |
 |   | `fskmod` | Frequency shift keying modulation |
 |   | `ofdmdemod` | Demodulate signals using OFDM method |
 |   | `ofdmmod` | Modulate signals using OFDM method |
-|   | `dpskdemod` | Differential phase shift keying demodulation |
-|   | `dpskmod` | Differential phase shift keying modulation |
+| ✅ | `dpskdemod` | Differential phase shift keying demodulation |
+| ✅ | `dpskmod` | Differential phase shift keying modulation |
 | ✅ | `pskdemod` | Demodulate using M-ary PSK method |
 | ✅ | `pskmod` | Modulate signal using M-PSK method |
 |   | `amdemod` | Amplitude demodulation |
@@ -6513,7 +6513,7 @@ using shift registers |
 |   | `comm.RaisedCosineTransmitFilter` | Apply pulse shaping by interpolating signal using raised-cosine FIR
             filter |
 |   | `gaussdesign` | Gaussian FIR pulse-shaping filter design |
-|   | `intdump` | Integrate discrete-time signal |
+| ✅ | `intdump` | Integrate discrete-time signal |
 |   | `rcosdesign` | Raised cosine FIR pulse-shaping filter design |
 |   | `rectpulse` | Rectangular pulse shaping |
 |   | `comm.DecisionFeedbackEqualizer` | Equalize modulated signals using decision feedback filtering |
@@ -6560,8 +6560,8 @@ imbalance |
 |   | `addCustomTerrain` | Add custom terrain data |
 |   | `removeCustomBasemap` | Remove custom basemap |
 |   | `removeCustomTerrain` | Remove custom terrain data |
-|   | `angle` | Angle between sites |
-|   | `distance` | Distance between sites |
+| ✅ | `angle` | Angle between sites |
+| ✅ | `distance` | Distance between sites |
 |   | `elevation` | Elevation of site |
 |   | `hide` | Hide site from Site Viewer |
 |   | `location` | Coordinates at distance and angle from site |
@@ -6712,23 +6712,23 @@ model |
 <a id="compiler_sdk"></a>
 ## Compiler_sdk Toolbox  
 
-_5 / 149 implemented_
+_6 / 149 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
 |   | `compiler.build.comComponent` | Create COM component for deployment outsideMATLAB |
 |   | `compiler.build.cppSharedLibrary` | Create C++ shared library |
 |   | `compiler.build.cSharedLibrary` | Create C shared library |
-| ✅ | `compiler.build.dotNETAssembly` | Create .NET assembly for deployment outsideMATLAB |
+|   | `compiler.build.dotNETAssembly` | Create .NET assembly for deployment outsideMATLAB |
 |   | `compiler.build.excelClientForProductionServer` | CreateMicrosoftExceladd-in forMATLABProduction Server(Since R2021b) |
-| ✅ | `compiler.build.javaPackage` | CreateJavapackage for deployment outsideMATLAB |
+|   | `compiler.build.javaPackage` | CreateJavapackage for deployment outsideMATLAB |
 |   | `compiler.build.productionServerArchive` | Create an archive for deployment toMATLABProduction ServerorDocker |
-| ✅ | `compiler.build.pythonPackage` | CreatePythonpackage for deployment outsideMATLAB |
+|   | `compiler.build.pythonPackage` | CreatePythonpackage for deployment outsideMATLAB |
 |   | `compiler.build.Results` | Compiler build results object |
 |   | `compiler.package.microserviceDockerImage` | Create a microserviceDockerimage using files generated byMATLABCompiler SDK(Since R2022a) |
 |   | `createDeploymentScript` | Create a deployment script from aMATLABCompilerPRJfile(Since R2022b) |
 |   | `mbuild` | Compile and link source files againstMATLABgenerated shared libraries |
-| ✅ | `mcc` | CompileMATLABfunctions for deployment |
+|   | `mcc` | CompileMATLABfunctions for deployment |
 |   | `compiler.package.installer` | Create an installer for files generated byMATLABCompiler |
 |   | `compiler.package.InstallerOptions` | Options for creatingMATLABCompilerpackage installers |
 |   | `ctfroot` | Location of files related to deployed application |
@@ -6854,17 +6854,17 @@ platforms |
 |   | `version` | Version number for persistence provider |
 |   | `bytes` | Return the number of bytes of storage used by value stored at each
       key |
-|   | `clear` | Remove all keys and values from cache |
+| ✅ | `clear` | Remove all keys and values from cache |
 |   | `flush` | Write all locally modified keys to the persistence service |
-|   | `get` | Fetch values of keys from cache |
+| ✅ | `get` | Fetch values of keys from cache |
 |   | `getp` | Get the value of a public cache property |
-|   | `isKey` | Determine if the cache contains specified keys |
-|   | `keys` | Get all keys from cache |
-|   | `length` | Number of key-value pairs in the data cache |
+| ✅ | `isKey` | Determine if the cache contains specified keys |
+| ✅ | `keys` | Get all keys from cache |
+| ✅ | `length` | Number of key-value pairs in the data cache |
 |   | `mps.cache.connect` | Connect to cache, or create a cache if it doesn't exist |
 |   | `purge` | Flush all local data to the persistence service |
 |   | `put` | Write key-value pairs to cache |
-|   | `remove` | Remove keys from cache |
+| ✅ | `remove` | Remove keys from cache |
 |   | `retain` | Store remote keys from cache locally or return locally stored keys |
 |   | `acquire` | Acquire advisory lock on persistence service mutex |
 |   | `mps.sync.mutex` | Create a persistence service mutex |
@@ -6884,14 +6884,14 @@ platforms |
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
-| ✅ | `compiler.build.standaloneApplication` | Custom TypeScript port |
+|   | `compiler.build.standaloneApplication` | Custom TypeScript port |
 
 ---
 
 <a id="control"></a>
 ## Control Toolbox  
 
-_20 / 352 implemented_
+_44 / 352 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -6939,7 +6939,7 @@ _20 / 352 implemented_
 |   | `tunableSS` | Tunable fixed-order state-space model |
 |   | `tunableTF` | Tunable transfer function with fixed number of poles and zeros |
 |   | `addInterface` | Add interface for physical assembly(Since R2026a) |
-|   | `append` | Group models by appending their inputs and outputs |
+| ✅ | `append` | Group models by appending their inputs and outputs |
 |   | `assemble` | Assemble components by connecting their physical interfaces(Since R2026a) |
 |   | `augdelay` | Append internal delay signal to outputs of state-space model(Since R2026a) |
 |   | `augoffset` | Map offset contribution to extra input channel(Since R2024a) |
@@ -6971,13 +6971,13 @@ star product) |
 |   | `evalfr` | Evaluate system response at specific frequency |
 |   | `findop` | Compute operating condition from specifications(Since R2023b) |
 |   | `freqresp` | Evaluate system response over a grid of frequencies |
-|   | `full` | Convert sparse models to dense storage |
+| ✅ | `full` | Convert sparse models to dense storage |
 |   | `getDelayModel` | State-space representation of internal delays |
 |   | `getx0` | Map initial conditions from amechssobject to asparssobject |
 |   | `imp2exp` | Convert implicit linear relationship to explicit input-output relation |
 |   | `impulse` | Impulse response plot of dynamic system; impulse response data |
 |   | `initial` | System response to initial states of state-space model |
-|   | `inv` | Invert dynamic system models |
+| ✅ | `inv` | Invert dynamic system models |
 |   | `linearize` | Linear approximation ofSimulinkmodel or subsystem |
 |   | `linearizeInput` | (To be removed) Specify inputs to linearized model(Since R2021b) |
 |   | `linearizeOptions` | Set linearization options |
@@ -6997,7 +6997,7 @@ Linear Analysis Plots block, or Model Verification block |
       sparsity(Since R2024b) |
 |   | `sparss` | Sparse first-order state-space model |
 |   | `sparssdata` | Access first-order sparse state-space model data |
-|   | `spy` | Visualize sparsity pattern of a sparse model |
+| ✅ | `spy` | Visualize sparsity pattern of a sparse model |
 |   | `step` | Step response of dynamic system |
 |   | `c2d` | Convert model from continuous to discrete time |
 |   | `d2c` | Convert model from discrete to continuous time |
@@ -7016,7 +7016,7 @@ model |
 and states |
 |   | `hasdelay` | True for linear model with time delays |
 |   | `hasInternalDelay` | Determine if model has internal delays |
-|   | `pade` | Padé approximation of models with time delay |
+| ✅ | `pade` | Padé approximation of models with time delay |
 |   | `setDelayModel` | Construct state-space model with internal delays |
 |   | `thiran` | Generate fractional delay filter based on Thiran approximation |
 |   | `totaldelay` | Total combined I/O delays for LTI model |
@@ -7025,42 +7025,42 @@ and states |
 |   | `dssdata` | Extract descriptor state-space data |
 |   | `frdata` | Access data for frequency response data (FRD) object |
 |   | `frdfun` | Apply a function to the frequency response value at each frequency of anfrdmodel object |
-|   | `get` | Access model
+| ✅ | `get` | Access model
 property values |
 |   | `isct` | Determine if dynamic system model is in continuous time |
 |   | `isdt` | Determine if dynamic system model is in discrete time |
-|   | `isempty` | Determine whether dynamic system model is empty |
-|   | `isfinite` | Determine if model has finite coefficients |
+| ✅ | `isempty` | Determine whether dynamic system model is empty |
+| ✅ | `isfinite` | Determine if model has finite coefficients |
 |   | `isParametric` | Determine if model has tunable parameters |
 |   | `isproper` | Determine if dynamic system model is proper |
-|   | `isreal` | Determine if model has real-valued coefficients |
+| ✅ | `isreal` | Determine if model has real-valued coefficients |
 |   | `issiso` | Determine if dynamic system model is single-input/single-output
             (SISO) |
 | ✅ | `isstable` | Determine if dynamic system model is stable |
 |   | `isstatic` | Determine if model is static or dynamic |
-|   | `ndims` | Query number of dimensions of dynamic system model or
+| ✅ | `ndims` | Query number of dimensions of dynamic system model or
 model array |
 | ✅ | `order` | Query model order |
 |   | `piddata` | Access coefficients of parallel-form PID controller |
 |   | `piddata2` | Access coefficients of parallel-form 2-DOF PID controller |
 |   | `pidstddata` | Access coefficients of standard-form PID controller |
 |   | `pidstddata2` | Access coefficients of standard-form 2-DOF PID controller |
-|   | `set` | Set or modify model properties |
-|   | `size` | Query output/input/array dimensions of input–output model and number of
+| ✅ | `set` | Set or modify model properties |
+| ✅ | `size` | Query output/input/array dimensions of input–output model and number of
             frequencies of FRD model |
 |   | `ssdata` | Access state-space model data |
 |   | `tfdata` | Access transfer function data |
 |   | `zpkdata` | Access zero-pole-gain data |
 |   | `nmodels` | Number of models in model array |
-|   | `permute` | Rearrange array dimensions in model arrays |
+| ✅ | `permute` | Rearrange array dimensions in model arrays |
 |   | `repsys` | Replicate and tile models |
-|   | `reshape` | Change shape of model array |
+| ✅ | `reshape` | Change shape of model array |
 |   | `stack` | Build model array by stacking models or model arrays along
 array dimensions |
 |   | `voidModel` | Mark missing or irrelevant models in model array |
-|   | `blkdiag` | Block-diagonal concatenation of models |
+| ✅ | `blkdiag` | Block-diagonal concatenation of models |
 |   | `connectOptions` | Options for theconnectcommand |
-|   | `ctranspose` | Conjugate dynamic system model |
+| ✅ | `ctranspose` | Conjugate dynamic system model |
 |   | `sumblk` | Summing junction for name-based interconnections |
 |   | `getComponents` | Extract SISO control components from a 2-DOF PID controller |
 |   | `make1DOF` | Convert 2-DOF PID controller to 1-DOF controller |
@@ -7069,7 +7069,7 @@ array dimensions |
       conversions |
 |   | `d2cOptions` | Create option set for discrete- to continuous-time conversions |
 |   | `d2dOptions` | Create option set for discrete-time resampling |
-|   | `upsample` | Upsample discrete-time models |
+| ✅ | `upsample` | Upsample discrete-time models |
 |   | `freqsep` | Slow-fast decomposition |
 |   | `modalsep` | Compute modal decomposition(Since R2023b) |
 |   | `modalsum` | Sum of modal components(Since R2023b) |
@@ -7096,7 +7096,7 @@ array dimensions |
 |   | `getUR` | ObtainUandRfactors from incremental proper
       orthogonal decomposition(Since R2024b) |
 |   | `merge` | Combine incremental proper orthogonal decomposition results(Since R2024b) |
-|   | `svd` | Compute truncated SVD of state-data matrix(Since R2024b) |
+| ✅ | `svd` | Compute truncated SVD of state-data matrix(Since R2024b) |
 |   | `update` | Update URV approximation given new snapshots for POD(Since R2024b) |
 |   | `BalancedTruncation` | Balanced truncation model order reduction(Since R2023b) |
 |   | `BalancedTruncationOptions` | Options for model order reduction with balanced truncation(Since R2023b) |
@@ -7129,13 +7129,13 @@ array dimensions |
 |   | `nicholsplot` | Plot Nichols frequency response of dynamic system |
 |   | `nyquistplot` | Plot Nyquist response of dynamic system |
 |   | `sigmaplot` | Plot singular values for frequency response of dynamic system |
-|   | `bandwidth` | Frequency response bandwidth |
-|   | `db2mag` | Convert decibels (dB) to magnitude |
+| ✅ | `bandwidth` | Frequency response bandwidth |
+| ✅ | `db2mag` | Convert decibels (dB) to magnitude |
 |   | `fnorm` | Pointwise peak gain of FRD model |
 |   | `getGainCrossover` | Crossover frequencies for specified gain |
 |   | `getPeakGain` | Peak gain of dynamic system frequency response |
-|   | `mag2db` | Convert magnitude to decibels (dB) |
-|   | `norm` | Norm of linear model |
+| ✅ | `mag2db` | Convert magnitude to decibels (dB) |
+| ✅ | `norm` | Norm of linear model |
 | ✅ | `damp` | Natural frequency and damping ratio |
 | ✅ | `dsort` | Sort discrete-time poles by magnitude |
 | ✅ | `esort` | Sort continuous-time poles by real part |
@@ -7277,12 +7277,12 @@ tuning setup forsystuneusingslTunerinterface |
 |   | `bdschur` | Block-diagonal Schur factorization |
 |   | `ctrbf` | Compute controllability staircase
 form |
-|   | `dlyap` | Solve discrete-time Lyapunov equations |
+| ✅ | `dlyap` | Solve discrete-time Lyapunov equations |
 |   | `dlyapchol` | Square-root solver for discrete-time Lyapunov equations |
 |   | `gramOptions` | Options for thegramcommand |
 |   | `icare` | Implicit solver for continuous-time algebraic Riccati equations |
 |   | `idare` | Implicit solver for discrete-time algebraic Riccati equations |
-|   | `lyap` | Solve continuous-time Lyapunov equation |
+| ✅ | `lyap` | Solve continuous-time Lyapunov equation |
 |   | `lyapchol` | Square-root solver for continuous-time Lyapunov equation |
 |   | `obsvf` | Compute observability staircase
 form |
@@ -7301,7 +7301,7 @@ form |
 <a id="deeplearning"></a>
 ## Deeplearning Toolbox  
 
-_5 / 402 implemented_
+_13 / 402 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -7360,7 +7360,7 @@ _5 / 402 implemented_
 |   | `cwtLayer` | Continuous wavelet transform layer(Since R2022b) |
 |   | `cwtmag2sig` | Signal reconstruction from CWT magnitude(Since R2023b) |
 |   | `deepSignalAnomalyDetector` | Create signal anomaly detector(Since R2023a) |
-|   | `detrend` | Remove polynomial trend |
+| ✅ | `detrend` | Remove polynomial trend |
 |   | `dlcwt` | Deep learning continuous wavelet transform(Since R2022b) |
 |   | `dldwt` | Differentiable discrete wavelet transform(Since R2025a) |
 |   | `dlicwt` | Deep learning inverse continuous 1-D wavelet transform(Since R2024b) |
@@ -7388,11 +7388,11 @@ _5 / 402 implemented_
 |   | `mergesigroi` | Merge signal regions of interest |
 |   | `modwt` | Maximal overlap discrete wavelet transform |
 |   | `modwtLayer` | Maximal overlap discrete wavelet transform layer(Since R2022b) |
-|   | `paddata` | Pad data by adding elements(Since R2023b) |
+| ✅ | `paddata` | Pad data by adding elements(Since R2023b) |
 |   | `plotsigroi` | Plot signal regions based on signal mask |
 |   | `removesigroi` | Remove signal regions of interest |
-|   | `resize` | Resize data by adding or removing elements(Since R2023b) |
-|   | `risetime` | Rise time of positive-going bilevel waveform transitions |
+| ✅ | `resize` | Resize data by adding or removing elements(Since R2023b) |
+| ✅ | `risetime` | Rise time of positive-going bilevel waveform transitions |
 |   | `shortensigroi` | Shorten signal regions of interest from left and right |
 |   | `signalDatastore` | Datastore for collection of signals |
 |   | `signalFrequencyFeatureExtractor` | Streamline signal frequency feature extraction(Since R2021b) |
@@ -7402,13 +7402,13 @@ _5 / 402 implemented_
 |   | `signalTimeFrequencyFeatureExtractor` | Streamline signal time-frequency feature extraction(Since R2024a) |
 |   | `sigrangebinmask` | Label signal samples with values within a specified range(Since R2023a) |
 |   | `sigroi2binmask` | Convert matrix of ROI limits to binary mask |
-|   | `smoothdata` | Smooth noisy data |
+| ✅ | `smoothdata` | Smooth noisy data |
 |   | `splitlabels` | Find indices to split labels according to specified proportions |
 |   | `stft` | Short-time Fourier transform |
 |   | `stftLayer` | Short-time Fourier transform layer(Since R2021b) |
 |   | `stftmag2sig` | Signal reconstruction from STFT magnitude |
 |   | `timeFrequencyScattering` | Joint time-frequency scattering(Since R2024b) |
-|   | `trimdata` | Trim data by removing elements(Since R2023b) |
+| ✅ | `trimdata` | Trim data by removing elements(Since R2023b) |
 |   | `waveletScattering` | Wavelet time scattering |
 |   | `audioDataAugmenter` | Augment audio data |
 |   | `audioFeatureExtractor` | Streamline audio feature extraction |
@@ -7452,7 +7452,7 @@ _5 / 402 implemented_
 |   | `writeWordEmbedding` | Write word embedding file |
 |   | `augment` | Apply identical random transformations to multiple images |
 |   | `augmentedImageDatastore` | Transform batches to augment image data |
-|   | `combine` | Combine data from multiple datastores |
+| ✅ | `combine` | Combine data from multiple datastores |
 |   | `CombinedDatastore` | Datastore to combine data read from multiple underlying datastores |
 |   | `imageDataAugmenter` | Configure image data augmentation |
 |   | `minibatchqueue` | Create mini-batches for deep learning |
@@ -7577,10 +7577,10 @@ _5 / 402 implemented_
 |   | `setLearnRateFactor` | Set learn rate factor of layer learnable parameter |
 |   | `analyzeNetwork` | Analyze deep learning network architecture |
 |   | `checkLayer` | Check validity of custom or function layer |
-|   | `isequal` | Check equality of neural networks |
-|   | `isequaln` | Check equality of neural networks ignoringNaNvalues |
-|   | `plot` | Plot neural network architecture |
-|   | `summary` | Print network summary(Since R2022b) |
+| ✅ | `isequal` | Check equality of neural networks |
+| ✅ | `isequaln` | Check equality of neural networks ignoringNaNvalues |
+| ✅ | `plot` | Plot neural network architecture |
+| ✅ | `summary` | Print network summary(Since R2022b) |
 |   | `findPlaceholderLayers` | (Not recommended) Find placeholder layers in network architecture imported from
             Keras orONNX |
 |   | `PlaceholderLayer` | Layer replacing an unsupported Keras orONNXlayer |
@@ -7607,9 +7607,9 @@ _5 / 402 implemented_
 |   | `maxunpool` | Unpool the output of a maximum pooling operation |
 |   | `gelu` | Apply Gaussian error linear unit (GELU) activation(Since R2022b) |
 |   | `leakyrelu` | Apply leaky rectified linear unit activation |
-| ✅ | `relu` | Apply rectified linear unit activation |
-| ✅ | `sigmoid` | Apply sigmoid activation |
-| ✅ | `softmax` | Apply softmax activation to channel dimension |
+|   | `relu` | Apply rectified linear unit activation |
+|   | `sigmoid` | Apply sigmoid activation |
+|   | `softmax` | Apply softmax activation to channel dimension |
 |   | `deep.transform.doublelogit` | Double logit transform(Since R2026a) |
 |   | `deep.transform.invlogit` | Inverse logit transform(Since R2026a) |
 |   | `deep.transform.ismax` | Is-maximum mask transform(Since R2026a) |
@@ -7625,11 +7625,11 @@ _5 / 402 implemented_
 |   | `indexcrossentropy` | Index cross-entropy loss for classification tasks(Since R2024b) |
 |   | `l1loss` | L1loss for regression tasks(Since R2021b) |
 |   | `l2loss` | L2loss for regression tasks(Since R2021b) |
-| ✅ | `mse` | Half mean squared error |
+|   | `mse` | Half mean squared error |
 |   | `AcceleratedFunction` | Accelerated deep learning function |
 |   | `clearCache` | Clear accelerated deep learning function trace cache |
 |   | `dlaccelerate` | Accelerate deep learning function |
-|   | `close` | Close training information plot(Since R2023b) |
+| ✅ | `close` | Close training information plot(Since R2023b) |
 |   | `show` | Show training information plot(Since R2023b) |
 |   | `TrainingInfo` | Neural network training information(Since R2023b) |
 |   | `trainingOptions` | Options for training deep learning neural network |
@@ -7675,7 +7675,7 @@ _5 / 402 implemented_
 |   | `reset` | Reset minibatchqueue to start of data |
 |   | `shuffle` | Shuffle data in minibatchqueue |
 |   | `experiments.Monitor` | Update results table and training plots for custom training experiments |
-|   | `yscale` | Set training ploty-axis scale (linear or
+| ✅ | `yscale` | Set training ploty-axis scale (linear or
       logarithmic)(Since R2024a) |
 |   | `deep.gpu.deterministicAlgorithms` | Set determinism of deep learning operations on the GPU to get reproducible
       results(Since R2024b) |
@@ -7747,14 +7747,14 @@ _5 / 402 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
-| ✅ | `tanh_dl` | Custom TypeScript port |
+|   | `tanh_dl` | Custom TypeScript port |
 
 ---
 
 <a id="driving"></a>
 ## Driving Toolbox  
 
-_3 / 539 implemented_
+_13 / 539 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -7796,7 +7796,7 @@ scenario |
       driving scenario orRoadRunner Scenario(Since R2025a) |
 |   | `insertParkingSpaces` | Insert parking spaces into parking lot(Since R2021b) |
 |   | `insSensor` | Inertial navigation system and GNSS/GPS simulation model |
-|   | `join` | Join two object meshes |
+| ✅ | `join` | Join two object meshes |
 |   | `laneBoundaries` | Get lane boundaries of actor lane |
 |   | `laneBoundaryPlotter` | Lane boundary plotter for bird's-eye plot |
 |   | `laneMarking` | Create road lane marking object |
@@ -7812,7 +7812,7 @@ scenario |
 |   | `parkingLot` | Add parking lot to driving scenario(Since R2021b) |
 |   | `parkingSpace` | Define parking space for parking lot(Since R2021b) |
 |   | `pathPlotter` | Path plotter for bird's-eye plot |
-|   | `plot` | Plot driving scenario |
+| ✅ | `plot` | Plot driving scenario |
 |   | `plotBarrierOutline` | Display barrier outlines on bird's-eye plot |
 |   | `plotCoverageArea` | Display sensor coverage area on bird's-eye plot |
 |   | `plotDetection` | Display object detections on bird's-eye plot |
@@ -7836,8 +7836,8 @@ scenario |
 |   | `roadGroup` | Add road junction or intersection to driving scenario |
 |   | `roadMesh` | Mesh representation of roads near actor |
 |   | `roadNetwork` | Add road network to driving scenario |
-|   | `rotate` | Rotate mesh about coordinate axes |
-|   | `scale` | Scale mesh in each dimension |
+| ✅ | `rotate` | Rotate mesh about coordinate axes |
+| ✅ | `scale` | Scale mesh in each dimension |
 |   | `scaleToFit` | Auto-scale object mesh to match specified cuboid dimensions |
 |   | `show` | Display the mesh as a patch on the current axes |
 |   | `smoothTrajectory` | Create smooth, jerk-limited actor trajectory in driving scenario |
@@ -7848,7 +7848,7 @@ scenario |
 |   | `targetPoses` | Target positions and orientations relative to host vehicle |
 |   | `trackPlotter` | Track plotter for bird's-eye plot |
 |   | `trajectory` | Create actor or vehicle trajectory in driving scenario |
-|   | `translate` | Translate mesh along coordinate axes |
+| ✅ | `translate` | Translate mesh along coordinate axes |
 |   | `ultrasonicDetectionGenerator` | Generate ultrasonic range detections in driving scenario orRoadRunner Scenario(Since R2022a) |
 |   | `updatePlots` | Update driving scenario plots |
 |   | `vehicle` | Add vehicle to driving scenario |
@@ -7933,7 +7933,7 @@ scenario |
 |   | `SystemActionPhase` | Specify logic phase that executes system action(Since R2025a) |
 |   | `addAction` | Add action to logic phase(Since R2025a) |
 |   | `findActions` | Extract actions from logic phase(Since R2025a) |
-|   | `remove` | Remove condition object fromRoadRunnerscenario(Since R2025a) |
+| ✅ | `remove` | Remove condition object fromRoadRunnerscenario(Since R2025a) |
 |   | `setEndCondition` | Assign end condition to specified phase(Since R2025a) |
 |   | `setFailCondition` | Assign fail condition to simulation(Since R2025a) |
 |   | `ChangeLaneAction` | SpecifyChange Laneaction(Since R2025a) |
@@ -7975,7 +7975,7 @@ scenario |
 |   | `newScene` | Create newRoadRunnerscene usingMATLAB(Since R2022a) |
 |   | `openScene` | OpenRoadRunnerscene usingMATLAB(Since R2022a) |
 |   | `saveScene` | SaveRoadRunnerscene usingMATLAB(Since R2022a) |
-|   | `close` | CloseRoadRunnerusingMATLAB(Since R2022a) |
+| ✅ | `close` | CloseRoadRunnerusingMATLAB(Since R2022a) |
 |   | `connect` | Connect to open instance ofRoadRunnerusingMATLAB(Since R2022a) |
 |   | `newProject` | Create newRoadRunnerproject usingMATLAB(Since R2022a) |
 |   | `openProject` | OpenRoadRunnerproject usingMATLAB(Since R2022a) |
@@ -7994,13 +7994,13 @@ scenario |
 |   | `roadrunnerHDMap` | CreateRoadRunnerHD Map usingMATLAB(Since R2022b) |
 |   | `roadrunnerHDMapQuery` | QueryRoadRunnerHD Map(Since R2026a) |
 |   | `addEvent` | Add user-defined event inMATLABactor interface(Since R2023a) |
-|   | `get` | Get value of scenario simulation parameter(Since R2022a) |
-|   | `load` | Load saved simulation log(Since R2023a) |
+| ✅ | `get` | Get value of scenario simulation parameter(Since R2022a) |
+| ✅ | `load` | Load saved simulation log(Since R2023a) |
 |   | `reportDiagnostic` | Report information, warning, or error message during scenario
       simulation(Since R2022a) |
-|   | `save` | Save simulation log to file for later use(Since R2023a) |
+| ✅ | `save` | Save simulation log to file for later use(Since R2023a) |
 |   | `ScenarioSimulation` | Create, access, and controlRoadRunner Scenariosimulations fromMATLAB(Since R2022a) |
-|   | `set` | Set value of scenario simulation parameter(Since R2022a) |
+| ✅ | `set` | Set value of scenario simulation parameter(Since R2022a) |
 |   | `Simulink.ScenarioSimulation.find` | Return scenario simulations or actors in currentMATLABsession(Since R2022a) |
 |   | `addObserver` | Add observer to scenario simulation(Since R2022a) |
 |   | `removeObserver` | Remove observer from scenario simulation(Since R2022a) |
@@ -8019,7 +8019,7 @@ scenario |
 |   | `publishCustomAction` | Generate asset file for user-defined action(Since R2022b) |
 |   | `publishCustomEvent` | Generate asset file for user-defined event(Since R2023a) |
 |   | `ScenarioLog` | ViewRoadRunner Scenariosimulation outcomes inMATLABat any time step(Since R2022a) |
-|   | `view` | View logged scenario simulation data(Since R2024a) |
+| ✅ | `view` | View logged scenario simulation data(Since R2024a) |
 |   | `getProtoMessage` | Get OSI protocol buffer (protobuf) message at each simulation step(Since R2024b) |
 |   | `groundTruthArea` | Ground truth area centered at ego vehicle origin(Since R2025a) |
 |   | `openSimulationInterface` | StoreRoadRunner Scenariosimulation data inASAM Open Simulation Interface (OSI)format(Since R2024b) |
@@ -8190,7 +8190,7 @@ detection report |
 |   | `trackingUKF` | Unscented Kalman filter for object tracking |
 |   | `compact` | Convert quaternion array toN-by-4 matrix |
 |   | `dist` | Angular distance in radians |
-|   | `euler` | Convert quaternion to Euler angles (radians) |
+| ✅ | `euler` | Convert quaternion to Euler angles (radians) |
 |   | `eulerd` | Convert quaternion to Euler angles (degrees) |
 |   | `parts` | Extract quaternion parts |
 |   | `quaternion` | Create quaternion array |
@@ -8351,9 +8351,9 @@ images |
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
-| ✅ | `calculateDistance` | Custom TypeScript port (not in standard MATLAB reference) |
-| ✅ | `fuelConsumption` | Custom TypeScript port (not in standard MATLAB reference) |
-| ✅ | `speedProfile` | Custom TypeScript port (not in standard MATLAB reference) |
+|   | `calculateDistance` | Custom TypeScript port (not in standard MATLAB reference) |
+|   | `fuelConsumption` | Custom TypeScript port (not in standard MATLAB reference) |
+|   | `speedProfile` | Custom TypeScript port (not in standard MATLAB reference) |
 
 ---
 
@@ -8371,7 +8371,7 @@ _5 / 491 implemented_
 |   | `coder.mapping.api.get` | Get code mappings for model |
 |   | `coder.mapping.utils.create` | Create code mappings object for configuring data and function interface for C
       and C++ code generation |
-|   | `find` | Get model elements for the category of model code mappings |
+| ✅ | `find` | Get model elements for the category of model code mappings |
 |   | `getDataDefault` | Get default storage class or storage class property setting for model data
       category |
 |   | `getDataStore` | Get code and calibration configuration from code mappings for local or shared local
@@ -8506,7 +8506,7 @@ _5 / 491 implemented_
 |   | `coder.cdf.export` | Generate CDF (Calibration Data Format) file according to ASAM AE CDF
       standards |
 |   | `rtw.asap2SetAddress` | Set ECU address in A2L file |
-| ✅ | `packNGo` | Package generated code in ZIP file for relocation |
+|   | `packNGo` | Package generated code in ZIP file for relocation |
 |   | `rsimgetrtp` | Global model parameter structure |
 |   | `rsimsetrtpparam` | Set parameters ofrtPmodel parameter structure |
 |   | `Simulink.ModelReference.ProtectedModel.HookInfo` | Files and exported symbols generated by creation of protected model |
@@ -8546,7 +8546,7 @@ model |
 |   | `getTarget` | Get handle of target computer(Since R2022b) |
 |   | `getTargetName` | Get target computer name(Since R2022b) |
 |   | `getUserName` | Get user name of target computer(Since R2022b) |
-|   | `isConnected` | Get Boolean value representing target computer connection status(Since R2022b) |
+| ✅ | `isConnected` | Get Boolean value representing target computer connection status(Since R2022b) |
 |   | `removeApplicationPackage` | Remove application package from selected target computer(Since R2022b) |
 |   | `removeTarget` | Delete target computer(Since R2022b) |
 |   | `renameTarget` | Rename target computer(Since R2022b) |
@@ -8852,7 +8852,7 @@ replacement table entry |
 |   | `coder.profile.test.TestHook` | Define custom callback functions forcoder.profile.test.runTests(Since R2025a) |
 |   | `annotate` | Color profiled model components or open model with profiled components
          colored |
-|   | `display` | Generate message that describes how to open code execution profiling
+| ✅ | `display` | Generate message that describes how to open code execution profiling
          report |
 |   | `ExecutionTimeInSeconds` | Get execution time in seconds for profiled section of
 code |
@@ -8889,8 +8889,8 @@ code |
 |   | `addDetails` | Add text items to Code Profile Analyzer display or code profiling
       report(Since R2025a) |
 |   | `coder.profile.test.runTests` | Automate execution-time or stack usage analysis of code generated fromSimulinkmodels orMATLABfunctions(Since R2024a) |
-|   | `get` | Extract specific execution-time profile from aggregate of profiles(Since R2023b) |
-|   | `remove` | Remove execution-time profile from aggregate of profiles(Since R2023b) |
+| ✅ | `get` | Extract specific execution-time profile from aggregate of profiles(Since R2023b) |
+| ✅ | `remove` | Remove execution-time profile from aggregate of profiles(Since R2023b) |
 |   | `coder.profile.ExecutionStackSet` | Aggregate stack usage profiling results from multiple SIL, PIL, or external mode
          simulations(Since R2023b) |
 |   | `target.AddOn` | Describe add-on properties for target type |
@@ -8969,17 +8969,17 @@ folder |
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
-| ✅ | `codegen` | Custom TypeScript port |
-| ✅ | `coder.hardware.Info` | Custom TypeScript port |
-| ✅ | `ert_config_opt` | Custom TypeScript port |
-| ✅ | `ert_unspecified_hardware` | Custom TypeScript port |
+|   | `codegen` | Custom TypeScript port |
+|   | `coder.hardware.Info` | Custom TypeScript port |
+|   | `ert_config_opt` | Custom TypeScript port |
+|   | `ert_unspecified_hardware` | Custom TypeScript port |
 
 ---
 
 <a id="fault-analyzer"></a>
 ## Fault-analyzer Toolbox  
 
-_5 / 108 implemented_
+_4 / 108 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -9030,7 +9030,7 @@ _5 / 108 implemented_
 |   | `refreshLinks` | Refresh link resolved status in Safety Analysis Manager documents(Since R2025a) |
 |   | `slreq.createLink` | Create traceable links |
 |   | `slreq.load` | Load requirement set, link set, or Requirements Table block |
-|   | `close` | Close spreadsheet in Safety Analysis Manager(Since R2023b) |
+| ✅ | `close` | Close spreadsheet in Safety Analysis Manager(Since R2023b) |
 |   | `safetyAnalysisMgr.closeAllDocuments` | Close documents in Safety Analysis Manager(Since R2023b) |
 |   | `safetyAnalysisMgr.closeManager` | Close Safety Analysis Manager(Since R2023b) |
 |   | `safetyAnalysisMgr.import` | ImportExcelfile into Safety Analysis Manager(Since R2023b) |
@@ -9045,7 +9045,7 @@ _5 / 108 implemented_
       Manager(Since R2023b) |
 |   | `setColumnLabel` | Adjust column label of spreadsheet in Safety Analysis Manager(Since R2023b) |
 |   | `addFlag` | Add flag to Safety Analysis Manager spreadsheet cell or row(Since R2023b) |
-|   | `clear` | Clear Safety Analysis Manager document flag(Since R2023b) |
+| ✅ | `clear` | Clear Safety Analysis Manager document flag(Since R2023b) |
 |   | `clearFlags` | Clear flags in Safety Analysis Manager spreadsheet(Since R2023b) |
 |   | `refreshDerivedValues` | Recalculate values in spreadsheet derived columns(Since R2024b) |
 |   | `setValue` | Write values to spreadsheet cells(Since R2023b) |
@@ -9061,7 +9061,7 @@ _5 / 108 implemented_
 |   | `setCallback` | Assign code to Safety Analysis Manager spreadsheet callback(Since R2024a) |
 |   | `setDocumentAttribute` | Set document attributes in spreadsheet in Safety Analysis Manager(Since R2023b) |
 |   | `export` | Export Safety Analysis Manager spreadsheet toExcel(Since R2023b) |
-|   | `find` | Find cells in Safety Analysis Manager spreadsheets containing specific
+| ✅ | `find` | Find cells in Safety Analysis Manager spreadsheets containing specific
       values(Since R2023b) |
 |   | `getCallback` | Retrieve spreadsheet callback code in Safety Analysis Manager(Since R2024a) |
 |   | `getCell` | Retrieve spreadsheet cells(Since R2023b) |
@@ -9079,7 +9079,7 @@ _5 / 108 implemented_
 |   | `safetyAnalysisMgr.getDiagnostics` | Return diagnostics in Safety Analysis Manager(Since R2023b) |
 |   | `safetyAnalysisMgr.getOpenDocuments` | Retrieve open spreadsheets in Safety Analysis Manager(Since R2023b) |
 |   | `safetyAnalysisMgr.saveDiagnostics` | Save diagnostics in Safety Analysis Manager to text file(Since R2023b) |
-|   | `save` | Save spreadsheet in Safety Analysis Manager(Since R2023b) |
+| ✅ | `save` | Save spreadsheet in Safety Analysis Manager(Since R2023b) |
 |   | `saveTemplate` | Save spreadsheet in Safety Analysis Manager as a template(Since R2023b) |
 |   | `addReference` | Add references to cells(Since R2024b) |
 |   | `getReferencedValues` | Get referenced cell values(Since R2024b) |
@@ -9099,32 +9099,32 @@ _5 / 108 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
-| ✅ | `analyzeFaults` | Custom TypeScript port |
-| ✅ | `faultFactory` | Custom TypeScript port |
-| ✅ | `faultReport` | Custom TypeScript port |
-| ✅ | `injectFault` | Custom TypeScript port |
-| ✅ | `removeFault` | Custom TypeScript port |
+|   | `analyzeFaults` | Custom TypeScript port |
+|   | `faultFactory` | Custom TypeScript port |
+|   | `faultReport` | Custom TypeScript port |
+|   | `injectFault` | Custom TypeScript port |
+|   | `removeFault` | Custom TypeScript port |
 
 ---
 
 <a id="finance"></a>
 ## Finance Toolbox  
 
-_5 / 383 implemented_
+_31 / 383 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
 |   | `datefind` | Indices of dates in matrix |
 |   | `datetim` | Arrays that represent points in time |
-|   | `datevec` | Convert date and time to vector of components |
-|   | `now` | (Not recommended; usedatetime) Current date and time as serial
+| ✅ | `datevec` | Convert date and time to vector of components |
+| ✅ | `now` | (Not recommended; usedatetime) Current date and time as serial
       date number |
 |   | `yeardays` | Number of days in year |
 |   | `date2time` | Time and frequency from dates |
 |   | `datedisp` | Display date entries |
-|   | `datenum` | (Not recommended; usedatetimeorduration) Convert date and time to serial date
+| ✅ | `datenum` | (Not recommended; usedatetimeorduration) Convert date and time to serial date
                   number |
-|   | `datestr` | (Not recommended; usestringorchar) Convert
+| ✅ | `datestr` | (Not recommended; usestringorchar) Convert
    date and time to string format |
 |   | `time2date` | Dates from time and frequency |
 |   | `uicalendar` | Graphical calendar |
@@ -9169,31 +9169,31 @@ Association (PSA) compliant) |
 |   | `thirtytwo2dec` | Thirty-second quotation to decimal |
 |   | `array2timetable` | Convert homogeneous array to timetable |
 |   | `table2timetable` | Convert table to timetable |
-|   | `timetable` | Tables for time series data,  with timestamped rows and variables of different
+| ✅ | `timetable` | Tables for time series data,  with timestamped rows and variables of different
             types |
-|   | `fillmissing` | Fill missing entries |
-|   | `ismissing` | Find missing values |
+| ✅ | `fillmissing` | Fill missing entries |
+| ✅ | `ismissing` | Find missing values |
 |   | `retime` | Resample or aggregate data in timetable, and resolve duplicate or irregular
             times |
-|   | `rmmissing` | Remove missing entries |
-|   | `sortrows` | Sort rows of matrix or table |
+| ✅ | `rmmissing` | Remove missing entries |
+| ✅ | `sortrows` | Sort rows of matrix or table |
 |   | `convert2annual` | Aggregate timetable data to annual periodicity |
 |   | `convert2daily` | Aggregate timetable data to daily periodicity |
 |   | `convert2monthly` | Aggregate timetable data to monthly periodicity |
 |   | `convert2quarterly` | Aggregate timetable data to quarterly periodicity |
 |   | `convert2semiannual` | Aggregate timetable data to semiannual periodicity |
 |   | `convert2weekly` | Aggregate timetable data to weekly periodicity |
-|   | `horzcat` | Concatenate arrays horizontally |
+| ✅ | `horzcat` | Concatenate arrays horizontally |
 |   | `synchronize` | Synchronize timetables to common time vector, and resample or aggregate data
             from input timetables |
-|   | `vertcat` | Concatenate arrays vertically |
-|   | `summary` | Data summary |
+| ✅ | `vertcat` | Concatenate arrays vertically |
+| ✅ | `summary` | Data summary |
 |   | `timerange` | Time range for timetable row subscripting |
 |   | `vartype` | Subscript into table or timetable by variable type |
 |   | `withtol` | Time tolerance for timetable row subscripting |
-|   | `findgroups` | Find groups and return group numbers |
-|   | `rowfun` | Apply function to table or timetable rows |
-|   | `splitapply` | Split data into groups and apply function |
+| ✅ | `findgroups` | Find groups and return group numbers |
+| ✅ | `rowfun` | Apply function to table or timetable rows |
+| ✅ | `splitapply` | Split data into groups and apply function |
 |   | `adosc` | Accumulation/Distribution oscillator |
 |   | `chaikosc` | Chaikin oscillator |
 |   | `macd` | Moving Average Convergence/Divergence (MACD) |
@@ -9233,7 +9233,7 @@ Association (PSA) compliant) |
 |   | `annuterm` | Number of periods to obtain value |
 |   | `payadv` | Periodic payment given number of advance payments |
 |   | `payodd` | Payment of loan or annuity with odd first period |
-|   | `payper` | Periodic payment of loan or annuity |
+| ✅ | `payper` | Periodic payment of loan or annuity |
 |   | `payuni` | Uniform payment equal to varying cash flow |
 |   | `amortize` | Amortization schedule |
 |   | `depfixdb` | Fixed declining-balance depreciation schedule |
@@ -9242,15 +9242,15 @@ Association (PSA) compliant) |
 |   | `depsoyd` | Sum of years' digits depreciation |
 |   | `depstln` | Straight-line depreciation schedule |
 |   | `fvdisc` | Future value of discounted security |
-|   | `fvfix` | Future value with fixed periodic payments |
-|   | `fvvar` | Future value of varying cash flow |
-|   | `pvfix` | Present value with fixed periodic payments |
-|   | `pvvar` | Present value of varying cash flow |
-|   | `effrr` | Effective rate of return |
+| ✅ | `fvfix` | Future value with fixed periodic payments |
+| ✅ | `fvvar` | Future value of varying cash flow |
+| ✅ | `pvfix` | Present value with fixed periodic payments |
+| ✅ | `pvvar` | Present value of varying cash flow |
+| ✅ | `effrr` | Effective rate of return |
 |   | `elpm` | Compute expected lower partial moments for normal asset returns |
-|   | `irr` | Internal rate of return |
+| ✅ | `irr` | Internal rate of return |
 |   | `mirr` | Modified internal rate of return |
-|   | `nomrr` | Nominal rate of return |
+| ✅ | `nomrr` | Nominal rate of return |
 |   | `taxedrr` | After-tax rate of return |
 |   | `xirr` | Internal rate of return for nonperiodic cash flow |
 |   | `cfamounts` | Cash flow and time mapping for bond portfolio |
@@ -9505,11 +9505,11 @@ swap market quotes |
 model |
 |   | `blkimpv` | Implied volatility for futures options from Black model |
 |   | `blkprice` | Black model for pricing futures options |
-|   | `blsdelta` | Black-Scholes sensitivity to underlying price change |
+| ✅ | `blsdelta` | Black-Scholes sensitivity to underlying price change |
 |   | `blsgamma` | Black-Scholes sensitivity to underlying delta change |
 |   | `blsimpv` | Black-Scholes implied volatility |
 |   | `blslambda` | Black-Scholes elasticity |
-|   | `blsprice` | Black-Scholes put and call option pricing |
+| ✅ | `blsprice` | Black-Scholes put and call option pricing |
 |   | `blsrho` | Black-Scholes sensitivity to interest-rate change |
 |   | `blstheta` | Black-Scholes sensitivity to time-until-maturity change |
 |   | `blsvega` | Black-Scholes sensitivity to underlying price volatility |
@@ -9538,7 +9538,7 @@ model |
             approximation(Since R2023a) |
 |   | `simByMilstein2` | SimulateBM,GBM,CEV,HWV,SDEDDO,SDELD,SDEMRDprocess sample paths by second order Milstein
             approximation(Since R2023b) |
-|   | `simulate` | Simulate multivariate stochastic differential equations (SDEs) forSDE,BM,GBM,CEV,CIR,HWV,Heston,SDEDDO,SDELD,SDEMRD,Merton, orBatesmodels |
+| ✅ | `simulate` | Simulate multivariate stochastic differential equations (SDEs) forSDE,BM,GBM,CEV,CIR,HWV,Heston,SDEDDO,SDELD,SDEMRD,Merton, orBatesmodels |
 |   | `simByQuadExp` | SimulateBates,Heston, andCIRsample paths by quadratic-exponential discretization
             scheme |
 |   | `simBySolution` | Simulate approximate solution of diagonal-driftGBMprocesses |
@@ -9554,7 +9554,7 @@ model |
 <a id="fininst"></a>
 ## Fininst Toolbox  
 
-_5 / 534 implemented_
+_2 / 534 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -10244,9 +10244,9 @@ swap market quotes |
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
 | ✅ | `blsdelta` | Custom TypeScript port |
-| ✅ | `bsimpv` | Custom TypeScript port |
-| ✅ | `bsprice` | Custom TypeScript port |
-| ✅ | `cfamounts` | Custom TypeScript port |
+|   | `bsimpv` | Custom TypeScript port |
+|   | `bsprice` | Custom TypeScript port |
+|   | `cfamounts` | Custom TypeScript port |
 | ✅ | `pvfix` | Custom TypeScript port |
 
 ---
@@ -10254,38 +10254,38 @@ swap market quotes |
 <a id="fixedpoint"></a>
 ## Fixedpoint Toolbox  
 
-_1 / 335 implemented_
+_87 / 335 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
-|   | `abs` | Absolute value offiobject |
+| ✅ | `abs` | Absolute value offiobject |
 |   | `accumneg` | Subtract twofiobjects or values |
 |   | `accumpos` | Add twofiobjects or values |
 |   | `add` | Add two arrays usingfimathobject |
 |   | `assignmentquantizer` | Createquantizerobject withfiobject
       attributes |
-|   | `atan2` | Four-quadrant inverse tangent of fixed-point values |
+| ✅ | `atan2` | Four-quadrant inverse tangent of fixed-point values |
 |   | `bin` | Unsigned binary representation of stored integer offiobject |
 |   | `bin2num` | Convert two's complement binary string to number usingquantizerobject |
-|   | `bitand` | BitwiseANDof twofiobjects |
+| ✅ | `bitand` | BitwiseANDof twofiobjects |
 |   | `bitandreduce` | Reduce consecutive slice of bits to one bit by performing bitwiseANDoperation |
-|   | `bitcmp` | Bit-wise complement offiobject |
+| ✅ | `bitcmp` | Bit-wise complement offiobject |
 |   | `bitconcat` | Concatenate bits offiobjects |
-|   | `bitget` | Get bits at certain positions |
-|   | `bitor` | BitwiseORof twofiobjects |
+| ✅ | `bitget` | Get bits at certain positions |
+| ✅ | `bitor` | BitwiseORof twofiobjects |
 |   | `bitorreduce` | Reduce consecutive slice of bits to one bit by performing bitwiseORoperation |
 |   | `bitreplicate` | Replicate and concatenate bits offiobject |
 |   | `bitrol` | Bitwise rotate left |
 |   | `bitror` | Bitwise rotate right |
-|   | `bitset` | Set bit at specific location |
-|   | `bitshift` | Shift bits specified number of places |
+| ✅ | `bitset` | Set bit at specific location |
+| ✅ | `bitshift` | Shift bits specified number of places |
 |   | `bitsliceget` | Get consecutive slice of bits |
 |   | `bitsll` | Bit shift left logical |
 |   | `bitsra` | Bit shift right arithmetic |
 |   | `bitsrl` | Bit shift right logical |
-|   | `bitxor` | Bitwise XOR of twofiobjects |
+| ✅ | `bitxor` | Bitwise XOR of twofiobjects |
 |   | `bitxorreduce` | Reduce consecutive slice of bits to one bit by performing bitwise exclusiveORoperation |
-|   | `cast` | Cast variable to different data type |
+| ✅ | `cast` | Cast variable to different data type |
 |   | `cast64BitFiToInt` | Castfiobject types that can be exactly represented to a
       64-bit integer data type |
 |   | `cast64BitIntToFi` | Cast 64-bit integer types to an equivalentfiobject
@@ -10293,29 +10293,29 @@ _1 / 335 implemented_
 |   | `castFiToInt` | Cast fi object to equivalent integer data type |
 |   | `castFiToMATLAB` | Castfiobject type to an equivalent built-inMATLABdata type |
 |   | `castIntToFi` | Cast an integer data type to equivalentfitype |
-|   | `cat` | Concatenatefiarrays(Since R2026a) |
-|   | `ceil` | Rounds toward positive infinity |
+| ✅ | `cat` | Concatenatefiarrays(Since R2026a) |
+| ✅ | `ceil` | Rounds toward positive infinity |
 |   | `ceilDiv` | Round the result of division toward positive infinity |
 |   | `colon, :` | Create vectors, array subscripting |
-|   | `complex` | Construct complexfiobject from real and imaginary
+| ✅ | `complex` | Construct complexfiobject from real and imaginary
       parts |
-|   | `conj` | Complex conjugate offiobject |
-|   | `conv` | Convolution and polynomial multiplication offiobjects |
+| ✅ | `conj` | Complex conjugate offiobject |
+| ✅ | `conv` | Convolution and polynomial multiplication offiobjects |
 |   | `convergent` | Round toward nearest integer with ties rounding to nearest even integer |
 |   | `copyobj` | Make independent copy ofquantizerobject |
 |   | `cordicsigmoid` | CORDIC-based approximation of sigmoid activation(Since R2023b) |
-|   | `cos` | Cosine offiobject in radians |
-|   | `ctranspose` | Complex conjugate transpose offiobject |
+| ✅ | `cos` | Cosine offiobject in radians |
+| ✅ | `ctranspose` | Complex conjugate transpose offiobject |
 |   | `dec` | Unsigned decimal representation of stored integer offiobject |
-|   | `dec2base` | Convert decimal integer to its base-nrepresentation forfiobjects(Since R2021b) |
-|   | `dec2bin` | Convert decimal integer to its binary representation forfiobjects(Since R2021b) |
-|   | `dec2hex` | Convert decimal integer to its hexadecimal representation forfiobjects(Since R2021b) |
+| ✅ | `dec2base` | Convert decimal integer to its base-nrepresentation forfiobjects(Since R2021b) |
+| ✅ | `dec2bin` | Convert decimal integer to its binary representation forfiobjects(Since R2021b) |
+| ✅ | `dec2hex` | Convert decimal integer to its hexadecimal representation forfiobjects(Since R2021b) |
 |   | `denormalmax` | Largest denormalized quantized number forquantizerobject |
 |   | `denormalmin` | Smallest denormalized quantized number forquantizerobject |
 |   | `divide` | Divide twofiobjects |
-|   | `double` | Double-precision floating-point real-world value offiobject |
-|   | `eps` | Quantized relative accuracy forfiorquantizerobjects |
-|   | `eq` | Determine whether real-world values are equal |
+| ✅ | `double` | Double-precision floating-point real-world value offiobject |
+| ✅ | `eps` | Quantized relative accuracy forfiorquantizerobjects |
+| ✅ | `eq` | Determine whether real-world values are equal |
 |   | `errmean` | Mean of quantization error |
 |   | `errpdf` | Probability density function of quantization error |
 |   | `errvar` | Variance of quantization error |
@@ -10323,12 +10323,12 @@ _1 / 335 implemented_
 |   | `exponentlength` | Exponent length ofquantizerobject |
 |   | `exponentmax` | Maximum exponent forquantizerobject |
 |   | `exponentmin` | Minimum exponent forquantizerobject |
-|   | `eye` | Create identity matrix with fixed-point properties |
+| ✅ | `eye` | Create identity matrix with fixed-point properties |
 |   | `fi` | Create fixed-point numeric object |
-|   | `filter` | 1-D digital filter offiobjects |
+| ✅ | `filter` | 1-D digital filter offiobjects |
 |   | `fimath` | Set fixed-point math settings |
 |   | `fipref` | Set fixed-point preferences |
-|   | `fix` | Round toward zero |
+| ✅ | `fix` | Round toward zero |
 |   | `fixDiv` | Round the result of division toward zero |
 |   | `fixed.aggregateType` | Compute aggregate numerictype |
 |   | `fixed.backwardSubstitute` | Solve upper-triangular system of equations through backward
@@ -10345,33 +10345,33 @@ _1 / 335 implemented_
       upper-triangular factorR |
 |   | `fixed.qrMatrixSolve` | Solve system of linear equationsAx=Bforxusing QR decomposition |
 |   | `fixed.svd` | Fixed-point Golub-Kahan-Reinsch singular value decomposition(Since R2022b) |
-|   | `floor` | Round toward negative infinity |
+| ✅ | `floor` | Round toward negative infinity |
 |   | `floorDiv` | Round the result of division toward negative infinity |
 |   | `for` | forloop to repeat specified number of times |
-| ✅ | `fractionlength` | Fraction length ofquantizerobject |
-|   | `ge` | Determine whether real-world value of one array is greater than or equal to
+|   | `fractionlength` | Fraction length ofquantizerobject |
+| ✅ | `ge` | Determine whether real-world value of one array is greater than or equal to
       another |
-|   | `get` | Property values of object |
+| ✅ | `get` | Property values of object |
 |   | `getlsb` | Least significant bit |
 |   | `getmsb` | Most significant bit |
 |   | `globalfimath` | Configure global fimath and return handle object |
-|   | `gt` | Determine whether real-world value of one array is greater than another |
+| ✅ | `gt` | Determine whether real-world value of one array is greater than another |
 |   | `hex` | Hexadecimal representation of stored integer offiobject |
-|   | `hex2num` | Convert hexadecimal string to number usingquantizerobject |
-|   | `horzcat` | Concatenate multiplefiobjects horizontally |
-|   | `int` | Get and set stored integer value offiobject |
-|   | `int16` | Convertfiobject to signed 16-bit integer |
-|   | `int32` | Convertfiobject to signed 32-bit integer |
-|   | `int64` | Convertfiobject to signed 64-bit integer |
-|   | `int8` | Convertfiobject to signed 8-bit integer |
-|   | `intmax` | Largest positive stored integer value representable bynumerictypeoffiobject |
-|   | `intmin` | Smallest stored integer value representable bynumerictypeoffiobject |
+| ✅ | `hex2num` | Convert hexadecimal string to number usingquantizerobject |
+| ✅ | `horzcat` | Concatenate multiplefiobjects horizontally |
+| ✅ | `int` | Get and set stored integer value offiobject |
+| ✅ | `int16` | Convertfiobject to signed 16-bit integer |
+| ✅ | `int32` | Convertfiobject to signed 32-bit integer |
+| ✅ | `int64` | Convertfiobject to signed 64-bit integer |
+| ✅ | `int8` | Convertfiobject to signed 8-bit integer |
+| ✅ | `intmax` | Largest positive stored integer value representable bynumerictypeoffiobject |
+| ✅ | `intmin` | Smallest stored integer value representable bynumerictypeoffiobject |
 |   | `isboolean` | Determine whether input is Boolean |
 |   | `isdouble` | Determine whether input is double-precision data type |
-|   | `isequal` | Determine whether real-world values of twofiobjects are equal,
+| ✅ | `isequal` | Determine whether real-world values of twofiobjects are equal,
       or determine whether properties of twofimath,numerictype, orquantizerobjects are
       equal |
-|   | `isequaln` | Determine equality of fixed-point arrays, treating NaN values as equal |
+| ✅ | `isequaln` | Determine equality of fixed-point arrays, treating NaN values as equal |
 |   | `isequivalent` | Determine if twonumerictypeobjects
 have equivalent properties |
 |   | `isfi` | Determine whether variable isfiobject |
@@ -10379,7 +10379,7 @@ have equivalent properties |
 |   | `isfimathlocal` | Determine whetherfiobject has localfimath |
 |   | `isfipref` | Determine whether input isfiprefobject |
 |   | `isfixed` | Determine whether input is fixed-point data type |
-|   | `isfloat` | Determine whether input is floating-point data type |
+| ✅ | `isfloat` | Determine whether input is floating-point data type |
 |   | `isnumerictype` | Determine whether input isnumerictypeobject |
 |   | `ispropequal` | Determine whether properties of twofiobjects are
       equal |
@@ -10393,80 +10393,80 @@ have equivalent properties |
 |   | `issingle` | Determine whether input is single-precision data type |
 |   | `isslopebiasscaled` | Determine whethernumerictypeobject has nontrivial slope and
       bias scaling |
-|   | `le` | Determine whether real-world value of one array is less than or equal to
+| ✅ | `le` | Determine whether real-world value of one array is less than or equal to
       another |
 |   | `logreport` | Quantization report |
 |   | `lowerbound` | Lower bound of range offiobject |
 |   | `lsb` | Scaling of least significant bit offiobject, or value of least
       significant bit ofquantizerobject |
-|   | `lt` | Determine whether real-world value of one array is less than another |
-|   | `mat2str` | Convert matrix to string |
-|   | `max` | Largest element in array offiobjects |
+| ✅ | `lt` | Determine whether real-world value of one array is less than another |
+| ✅ | `mat2str` | Convert matrix to string |
+| ✅ | `max` | Largest element in array offiobjects |
 |   | `maxlog` | Log maximums |
-|   | `mean` | Average or mean value of fixed-point array |
-|   | `median` | Median value of fixed-point array |
-|   | `min` | Smallest element in array offiobjects |
+| ✅ | `mean` | Average or mean value of fixed-point array |
+| ✅ | `median` | Median value of fixed-point array |
+| ✅ | `min` | Smallest element in array offiobjects |
 |   | `minlog` | Log minimums |
-|   | `minus` | Matrix difference betweenfiobjects |
-|   | `mod` | Modulus after division forfiobjects |
+| ✅ | `minus` | Matrix difference betweenfiobjects |
+| ✅ | `mod` | Modulus after division forfiobjects |
 |   | `modByConstant` | Modulus after division by a constant denominator |
-|   | `mpower` | Fixed-point matrix power (^) |
+| ✅ | `mpower` | Fixed-point matrix power (^) |
 |   | `mpy` | Multiply two arrays usingfimathobject |
-|   | `mrdivide` | Right-matrix division |
-|   | `mtimes` | Matrix product offiobjects |
-|   | `ne` | Determine whether real-world values of two arrays are not equal |
-|   | `nearest` | Round toward nearest integer with ties rounding toward positive
+| ✅ | `mrdivide` | Right-matrix division |
+| ✅ | `mtimes` | Matrix product offiobjects |
+| ✅ | `ne` | Determine whether real-world values of two arrays are not equal |
+| ✅ | `nearest` | Round toward nearest integer with ties rounding toward positive
       infinity |
 |   | `nearestDiv` | Round the result of division toward the nearest integer |
-|   | `nextpow2` | Exponent of next higher power of 2 offiobject |
-|   | `nnz` | Number of nonzero elements infiobject |
+| ✅ | `nextpow2` | Exponent of next higher power of 2 offiobject |
+| ✅ | `nnz` | Number of nonzero elements infiobject |
 |   | `noperations` | Number of quantization operations byquantizerobject |
 |   | `normalizedReciprocal` | Compute normalized reciprocal |
 |   | `noverflows` | Number of overflows |
 |   | `num2bin` | Convert number to binary representation usingquantizerobject |
-|   | `num2hex` | Convert number to hexadecimal equivalent usingquantizerobject |
+| ✅ | `num2hex` | Convert number to hexadecimal equivalent usingquantizerobject |
 |   | `num2int` | Convert number to signed integer usingquantizerobject |
-|   | `num2str` | Convert numbers to character array |
-|   | `numel` | Number of data elements infiarray |
+| ✅ | `num2str` | Convert numbers to character array |
+| ✅ | `numel` | Number of data elements infiarray |
 |   | `numerictype` | Create anembedded.numerictypeobject describing fixed-point or
       floating-point data type |
 |   | `nunderflows` | Number of underflows |
 |   | `oct` | Octal representation of stored integer offiobject |
-|   | `ones` | Create array of all ones with fixed-point properties |
-|   | `plus` | Matrix sum offiobjects |
-|   | `pow2` | Efficient fixed-point multiplication by
+| ✅ | `ones` | Create array of all ones with fixed-point properties |
+| ✅ | `plus` | Matrix sum offiobjects |
+| ✅ | `pow2` | Efficient fixed-point multiplication by
         2K |
-|   | `power` | Fixed-point element-wise power |
-|   | `qr` | Orthogonal-triangular decomposition |
+| ✅ | `power` | Fixed-point element-wise power |
+| ✅ | `qr` | Orthogonal-triangular decomposition |
 |   | `quantize` | Quantize numeric data usingquantizerobject |
 |   | `quantizenumeric` | Quantize numeric data |
 |   | `quantizer` | Createquantizerobject |
 |   | `randquant` | Generate uniformly distributed, quantized random number
 usingquantizerobject |
-|   | `range` | Numerical range offiorquantizerobject |
-|   | `rdivide` | Right-array division |
+| ✅ | `range` | Numerical range offiorquantizerobject |
+| ✅ | `rdivide` | Right-array division |
 |   | `realmax` | Largest positive fixed-point value or quantized number |
 |   | `realmin` | Smallest positive normalized fixed-point value or quantized number |
 |   | `reinterpretcast` | Convert fixed-point or integer data types without changing underlying
       data |
 |   | `removefimath` | Removefimathfromfiobject |
 |   | `removeglobalfimathpref` | Remove global fimath preference |
-|   | `rescale` | Change scaling offiobject |
+| ✅ | `rescale` | Change scaling offiobject |
 |   | `reset` | Reset objects to initial conditions |
 |   | `resetglobalfimath` | Set global fimath toMATLABfactory default |
 |   | `resetlog` | Clear log forfiorquantizerobject |
-|   | `round` | Roundfiobject toward nearest integer or round input data usingquantizerobject |
+| ✅ | `round` | Roundfiobject toward nearest integer or round input data usingquantizerobject |
 |   | `savefipref` | Savefipreferences for nextMATLABsession |
 |   | `sdec` | Signed decimal representation of stored integer offiobject |
-|   | `set` | Set or display property values forquantizerobjects |
+| ✅ | `set` | Set or display property values forquantizerobjects |
 |   | `setfimath` | Attachfimathobject tofiobject |
 |   | `shiftdata` | Shiftfidata to operate on specified dimension |
-|   | `sign` | Perform sign function (signum function) on array |
-|   | `sin` | Sine of fixed-point values |
-|   | `single` | Single-precision floating-point real-world value offiobject |
-|   | `sort` | Sort elements of real-valuedfiobject in ascending or descending
+| ✅ | `sign` | Perform sign function (signum function) on array |
+| ✅ | `sin` | Sine of fixed-point values |
+| ✅ | `single` | Single-precision floating-point real-world value offiobject |
+| ✅ | `sort` | Sort elements of real-valuedfiobject in ascending or descending
       order |
-|   | `sqrt` | Square root offiobject |
+| ✅ | `sqrt` | Square root offiobject |
 |   | `storedInteger` | Get stored integer value offiobject |
 |   | `storedIntegerToDouble` | Convert stored integer value offiobject to built-in double
       value |
@@ -10474,25 +10474,25 @@ usingquantizerobject |
 |   | `sub` | Subtract two arrays usingfimathobject |
 |   | `subsasgn` | Subscripted assignment |
 |   | `subsref` | Subscripted reference |
-|   | `sum` | Sum offiarray elements |
-|   | `svd` | Fixed-point Golub-Kahan-Reinsch singular value decomposition(Since R2022b) |
-|   | `times` | Element-by-element multiplication offiobjects |
-|   | `toeplitz` | Create Toeplitz matrix |
+| ✅ | `sum` | Sum offiarray elements |
+| ✅ | `svd` | Fixed-point Golub-Kahan-Reinsch singular value decomposition(Since R2022b) |
+| ✅ | `times` | Element-by-element multiplication offiobjects |
+| ✅ | `toeplitz` | Create Toeplitz matrix |
 |   | `tostring` | Convertfi,fimath,numerictype, orquantizerobject to
       string |
-|   | `uint16` | Convertfiobject to unsigned 16-bit integer |
-|   | `uint32` | Stored integer value offiobject as built-inuint32 |
-|   | `uint64` | Convertfiobject to unsigned 64-bit integer |
-|   | `uint8` | Convertfiobject to unsigned 8-bit integer |
-|   | `uminus` | Negate elements offiobject array |
+| ✅ | `uint16` | Convertfiobject to unsigned 16-bit integer |
+| ✅ | `uint32` | Stored integer value offiobject as built-inuint32 |
+| ✅ | `uint64` | Convertfiobject to unsigned 64-bit integer |
+| ✅ | `uint8` | Convertfiobject to unsigned 8-bit integer |
+| ✅ | `uminus` | Negate elements offiobject array |
 |   | `unitquantize` | Quantize numeric data usingquantizerobject except numbers
       withinepsof+1 |
 |   | `unitquantizer` | Createunitquantizerobject |
 |   | `unshiftdata` | Inverse ofshiftdata |
 |   | `upperbound` | Upper bound of range offiobject |
-|   | `vertcat` | Concatenatefiobject arrays vertically |
+| ✅ | `vertcat` | Concatenatefiobject arrays vertically |
 |   | `wordlength` | Word length ofquantizerobject |
-|   | `zeros` | Create array of all zeros with fixed-point properties |
+| ✅ | `zeros` | Create array of all zeros with fixed-point properties |
 |   | `fixdt` | CreateSimulink.NumericTypeobject describing a fixed-point or
       floating-point data type |
 |   | `Simulink.NumericType` | Specify floating-point, boolean, or fixed-point data type |
@@ -10651,35 +10651,35 @@ conversion |
 <a id="fusion"></a>
 ## Fusion Toolbox  
 
-_5 / 266 implemented_
+_12 / 266 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
 |   | `classUnderlying` | Class of parts within quaternion |
-|   | `normalize` | Quaternion normalization |
-|   | `ones` | Create quaternion array with real parts set to one and imaginary parts set to
+| ✅ | `normalize` | Quaternion normalization |
+| ✅ | `ones` | Create quaternion array with real parts set to one and imaginary parts set to
             zero |
 |   | `quaternion` | Create quaternion array |
 |   | `randrot` | Uniformly distributed random rotations |
-|   | `zeros` | Create quaternion array with all parts set to zero |
-|   | `conj` | Complex conjugate of quaternion |
-|   | `exp` | Exponential of quaternion array |
+| ✅ | `zeros` | Create quaternion array with all parts set to zero |
+| ✅ | `conj` | Complex conjugate of quaternion |
+| ✅ | `exp` | Exponential of quaternion array |
 |   | `ldivide, .\` | Element-wise quaternion left division |
-|   | `log` | Natural logarithm of quaternion array |
+| ✅ | `log` | Natural logarithm of quaternion array |
 |   | `minus, -` | Quaternion subtraction |
 |   | `mldivide, \` | Quaternion left division for scalars(Since R2024a) |
 |   | `mrdivide, /` | Quaternion right division for scalars(Since R2024a) |
 |   | `mtimes, *` | Quaternion multiplication |
 |   | `power, .^` | Element-wise quaternion power |
-|   | `prod` | Product of quaternion array |
+| ✅ | `prod` | Product of quaternion array |
 |   | `rdivide, ./` | Element-wise quaternion right division |
 |   | `times, .*` | Element-wise quaternion multiplication |
 |   | `uminus, -` | Quaternion unary minus |
 |   | `angvel` | Angular velocity from quaternion array |
 |   | `dist` | Angular distance in radians |
-|   | `interp1` | Quaternion interpolation (table lookup)(Since R2025a) |
+| ✅ | `interp1` | Quaternion interpolation (table lookup)(Since R2025a) |
 |   | `meanrot` | Quaternion mean rotation |
-|   | `norm` | Quaternion norm |
+| ✅ | `norm` | Quaternion norm |
 |   | `slerp` | Spherical linear interpolation |
 |   | `rotateframe` | Quaternion frame rotation |
 |   | `rotatepoint` | Quaternion point rotation |
@@ -10688,15 +10688,15 @@ _5 / 266 implemented_
 |   | `ctranspose, '` | Complex conjugate transpose of quaternion array |
 |   | `transpose, .'` | Transpose quaternion array |
 |   | `compact` | Convert quaternion array toN-by-4 matrix |
-|   | `euler` | Convert quaternion to Euler angles (radians) |
+| ✅ | `euler` | Convert quaternion to Euler angles (radians) |
 |   | `eulerd` | Convert quaternion to Euler angles (degrees) |
 |   | `parts` | Extract quaternion parts |
 |   | `rotmat` | Convert quaternion to rotation matrix |
 |   | `rotvec` | Convert quaternion to rotation vector (radians) |
 |   | `rotvecd` | Convert quaternion to rotation vector (degrees) |
 |   | `enu2lla` | Transform local east-north-up coordinates to geodetic coordinates |
-|   | `lla2enu` | Transform geodetic coordinates to local east-north-up coordinates |
-|   | `lla2ned` | Transform geodetic coordinates to local north-east-down coordinates |
+| ✅ | `lla2enu` | Transform geodetic coordinates to local east-north-up coordinates |
+| ✅ | `lla2ned` | Transform geodetic coordinates to local north-east-down coordinates |
 |   | `ned2lla` | Transform local north-east-down coordinates to geodetic coordinates |
 |   | `se2` | SE(2) homogeneous transformation(Since R2023b) |
 |   | `se3` | SE(3) homogeneous transformation(Since R2023b) |
@@ -10809,7 +10809,7 @@ detection report |
 |   | `initctekf` | Create constant turn-rate extended Kalman filter from detection report |
 |   | `initctrvekf` | Create constant turn-rate and velocity-magnitude extended Kalman filter from
       detection report(Since R2024b) |
-| ✅ | `initcvekf` | Create constant-velocity extended Kalman filter from detection
+|   | `initcvekf` | Create constant-velocity extended Kalman filter from detection
 report |
 |   | `initsingerekf` | Singer accelerationtrackingEKFinitialization |
 |   | `initcaukf` | Create constant-acceleration unscented Kalman filter from
@@ -10962,17 +10962,17 @@ detection report |
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
-| ✅ | `fusecov` | Custom TypeScript port (not in standard MATLAB reference) |
-| ✅ | `fusepose` | Custom TypeScript port (not in standard MATLAB reference) |
-| ✅ | `trackGOSPA` | Custom TypeScript port (not in standard MATLAB reference) |
-| ✅ | `trackingMetrics` | Custom TypeScript port (not in standard MATLAB reference) |
+|   | `fusecov` | Custom TypeScript port (not in standard MATLAB reference) |
+|   | `fusepose` | Custom TypeScript port (not in standard MATLAB reference) |
+|   | `trackGOSPA` | Custom TypeScript port (not in standard MATLAB reference) |
+|   | `trackingMetrics` | Custom TypeScript port (not in standard MATLAB reference) |
 
 ---
 
 <a id="hdlcoder"></a>
 ## Hdlcoder Toolbox  
 
-_5 / 154 implemented_
+_1 / 154 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -11008,7 +11008,7 @@ library that you specify |
 |   | `checkhdl` | Check subsystem or model for HDL code generation compatibility |
 |   | `hdlcodeadvisor` | Open HDL Code Advisor |
 |   | `hdllib` | Display blocks that are compatible with HDL code generation |
-| ✅ | `hdlsetup` | Set model configuration parameters for HDL code generation |
+|   | `hdlsetup` | Set model configuration parameters for HDL code generation |
 |   | `modeladvisor` | Open Model Advisor |
 |   | `hdldispblkparams` | Display HDL block parameters with nondefault values |
 |   | `hdldispmdlparams` | Display HDL model parameters with nondefault values |
@@ -11044,7 +11044,7 @@ configuration |
 |   | `hdlcoder.TimingGenerator` | Base class to implement custom tool and device support for critical path
             estimation reporting(Since R2024a) |
 |   | `hdlcoder.WorkflowConfig` | Configure HDL code generation and deployment workflows |
-| ✅ | `makehdl` | Generate HDL RTL code from model, subsystem, or model reference |
+|   | `makehdl` | Generate HDL RTL code from model, subsystem, or model reference |
 |   | `makehdltb` | Generate HDL test bench from model or subsystem |
 |   | `setAllTasks` | Enable all tasks in workflow |
 |   | `validate` | Check property values in HDL Workflow CLI configuration
@@ -11075,7 +11075,7 @@ object |
       interface |
 |   | `addMemoryInterface` | Access memory regions on your FPGA or SoC hardware(Since R2023a) |
 |   | `deleteFile` | Delete file on SoC board(Since R2022a) |
-|   | `dir` | List directory contents on SoC board(Since R2022a) |
+| ✅ | `dir` | List directory contents on SoC board(Since R2022a) |
 |   | `getFile` | Transfer file from SoC board to host computer(Since R2022a) |
 |   | `mapPort` | Maps a DUT port to specified AXI4 interface in HDL IP core |
 |   | `programFPGA` | Program FPGA and set corresponding device tree from processor on SoC
@@ -11169,16 +11169,16 @@ executed during Program Target Device task in the Workflow Advisor |
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
-| ✅ | `checkHDL` | Custom TypeScript port |
-| ✅ | `hdlPortMapping` | Custom TypeScript port |
-| ✅ | `hdlcoder.WorkflowAdvisor.run` | Custom TypeScript port |
+|   | `checkHDL` | Custom TypeScript port |
+|   | `hdlPortMapping` | Custom TypeScript port |
+|   | `hdlcoder.WorkflowAdvisor.run` | Custom TypeScript port |
 
 ---
 
 <a id="ident"></a>
 ## Ident Toolbox  
 
-_5 / 261 implemented_
+_18 / 261 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -11189,10 +11189,10 @@ _5 / 261 implemented_
 |   | `idinput` | Generate input signals to support system identification |
 |   | `midprefs` | Specify location for file containing System Identification
 app startup information |
-|   | `sim` | Simulate response of identified model |
+| ✅ | `sim` | Simulate response of identified model |
 |   | `simOptions` | Option set forsim |
-|   | `size` | Determine size ofiddatadata set |
-|   | `timetable` | Tables for time series data,  with timestamped rows and variables of different
+| ✅ | `size` | Determine size ofiddatadata set |
+| ✅ | `timetable` | Tables for time series data,  with timestamped rows and variables of different
             types |
 |   | `fcat` | Concatenate FRD models along frequency dimension |
 |   | `fselect` | Select frequency points or range in FRD model |
@@ -11208,7 +11208,7 @@ app startup information |
 |   | `etfe` | Estimate empirical transfer functions and periodograms |
 |   | `idplot` | Plot input and output channels of estimation data(Since R2023a) |
 |   | `impulseest` | Nonparametric impulse response estimation |
-|   | `isreal` | Determine whether model parameters or data values are
+| ✅ | `isreal` | Determine whether model parameters or data values are
 real |
 |   | `pexcit` | Level of excitation of input signals |
 |   | `realdata` | Determine whetheriddatais based on
@@ -11218,8 +11218,8 @@ real-valued signals |
 |   | `spafdr` | Estimate frequency response and spectrum using spectral analysis with
             frequency-dependent resolution |
 |   | `chgFreqUnit` | Change frequency units of frequency-response data model |
-|   | `detrend` | Subtract offset or trend from time-domain signals contained iniddataobjects |
-|   | `diff` | Difference signals in iddata objects |
+| ✅ | `detrend` | Subtract offset or trend from time-domain signals contained iniddataobjects |
+| ✅ | `diff` | Difference signals in iddata objects |
 |   | `fdel` | Delete specified data from frequency response data (FRD) models |
 |   | `getTrend` | Create trend information object to store offset, mean, and trend information for
       time-domain signals stored iniddataobject |
@@ -11232,8 +11232,8 @@ or Butterworth filters |
 |   | `resample` | (Not recommended) Resample time-domain data that is stored in aniddataobject by decimation or interpolation (requiresSignal Processing Toolboxsoftware) |
 |   | `retrend` | Add offsets or trends to time-domain data signals stored iniddataobjects |
 |   | `TrendInfo` | Offset and linear trend slope values for detrending data |
-|   | `fft` | Fast Fourier transform (FFT) ofiddataobject |
-|   | `ifft` | Transform iddata objects from frequency to time domain |
+| ✅ | `fft` | Fast Fourier transform (FFT) ofiddataobject |
+| ✅ | `ifft` | Transform iddata objects from frequency to time domain |
 |   | `getpar` | Obtain attributes such as values and bounds of linear model
             parameters |
 |   | `getpvec` | Obtain model parameters and associated uncertainty data |
@@ -11247,13 +11247,13 @@ or Butterworth filters |
 |   | `setpvec` | Modify values of model parameters |
 |   | `armax` | Estimate parameters of ARMAX, ARIMAX, ARMA, or ARIMA model using time-domain
       data |
-| ✅ | `arx` | Estimate parameters of ARX, ARIX, AR, or ARI model |
+|   | `arx` | Estimate parameters of ARX, ARIX, AR, or ARI model |
 |   | `bj` | Estimate Box-Jenkins polynomial model using time-domain data |
 |   | `idpoly` | Polynomial model with identifiable parameters |
 |   | `iv4` | ARX model estimation using four-stage instrumental variable method |
 |   | `ivx` | ARX model estimation using instrumental variable method with arbitrary
       instruments |
-| ✅ | `oe` | Estimate output-error polynomial model using time-domain or frequency-domain
+|   | `oe` | Estimate output-error polynomial model using time-domain or frequency-domain
       data |
 |   | `polyest` | Estimate polynomial model using time- or frequency-domain data |
 |   | `arxstruc` | Compute loss functions for single-output ARX models |
@@ -11338,7 +11338,7 @@ model estimation |
 |   | `getDelayInfo` | Get input/output delay information foridnlarxmodel
             structure |
 |   | `nlarxPlot` | Plot nonlinearity of nonlinear ARX model(Since R2023a) |
-| ✅ | `predict` | Predict identified model K-step-ahead output |
+|   | `predict` | Predict identified model K-step-ahead output |
 |   | `predictOptions` | Option set forpredict |
 |   | `findopOptions` | Option set forfindop |
 |   | `idnlarx/findop` | Compute operating point for Nonlinear ARX model |
@@ -11405,14 +11405,14 @@ models |
 |   | `getcov` | Parameter covariance of identified model |
 |   | `setcov` | Set parameter covariance data in identified model |
 |   | `translatecov` | Translate parameter covariance across model transformation operations |
-| ✅ | `impulse` | Impulse response plot of dynamic system; impulse response data |
+|   | `impulse` | Impulse response plot of dynamic system; impulse response data |
 |   | `iopzmap` | Plot pole-zero map for input-output pairs of dynamic system using default
       options |
 |   | `iopzplot` | Plot pole-zero map for input-output pairs of dynamic system |
 |   | `nyquist` | Nyquist response of dynamic system |
 |   | `nyquistplot` | Plot Nyquist response of dynamic system |
 |   | `showConfidence` | Display confidence regions on response plots for identified models |
-| ✅ | `step` | Step response of dynamic system |
+|   | `step` | Step response of dynamic system |
 |   | `stepplot` | Plot step response of dynamic system |
 |   | `c2d` | Convert model from continuous to discrete time |
 |   | `c2dOptions` | Specify discretization method for continuous-time to discrete-time
@@ -11424,7 +11424,7 @@ model |
 |   | `d2dOptions` | Create option set for discrete-time resampling |
 |   | `absorbDelay` | Replace time delays by poles atz= 0 or phase
             shift |
-|   | `append` | Group models by appending their inputs and outputs |
+| ✅ | `append` | Group models by appending their inputs and outputs |
 |   | `chgTimeUnit` | Change time units of dynamic system |
 |   | `compreal` | Compute companion state-space realization(Since R2023b) |
 |   | `merge` | Merge estimated models |
@@ -11436,19 +11436,19 @@ model |
 |   | `stack` | Build model array by stacking models or model arrays along
 array dimensions |
 |   | `frdata` | Access data for frequency response data (FRD) object |
-|   | `ndims` | Query number of dimensions of dynamic system model or
+| ✅ | `ndims` | Query number of dimensions of dynamic system model or
 model array |
-|   | `order` | Query model order |
-|   | `pole` | Poles of dynamic system |
+| ✅ | `order` | Query model order |
+| ✅ | `pole` | Poles of dynamic system |
 |   | `ssdata` | Access state-space model data |
-|   | `zero` | Zeros and gain of SISO dynamic system |
-|   | `get` | Access model
+| ✅ | `zero` | Zeros and gain of SISO dynamic system |
+| ✅ | `get` | Access model
 property values |
 |   | `nparams` | Number of identified model parameters |
-|   | `set` | Set or modify model properties |
-|   | `bandwidth` | Frequency response bandwidth |
-|   | `damp` | Natural frequency and damping ratio |
-|   | `dcgain` | Low-frequency (DC) gain of LTI system |
+| ✅ | `set` | Set or modify model properties |
+| ✅ | `bandwidth` | Frequency response bandwidth |
+| ✅ | `damp` | Natural frequency and damping ratio |
+| ✅ | `dcgain` | Low-frequency (DC) gain of LTI system |
 |   | `spectrum` | Plot or return output power spectrum of time series model or disturbance
             spectrum of linear input/output model |
 |   | `lsim` | Compute time response simulation data of dynamic system to arbitrary
@@ -11505,7 +11505,7 @@ regression method |
 <a id="images"></a>
 ## Images Toolbox  
 
-_17 / 651 implemented_
+_30 / 651 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -11577,16 +11577,16 @@ _17 / 651 implemented_
 |   | `blockedImageDatastore` | Datastore for use with blocks fromblockedImageobjects |
 |   | `countEachLabel` | Counts number of pixel labels for each class |
 |   | `crop` | Create cropped version of blocked image |
-|   | `cmap2gray` | Convert RGB colormap to grayscale colormap |
+| ✅ | `cmap2gray` | Convert RGB colormap to grayscale colormap |
 |   | `demosaic` | Convert Bayer image to truecolor image |
 |   | `gray2ind` | Convert grayscale or binary image to indexed image |
-|   | `im2gray` | Convert RGB image to grayscale |
+| ✅ | `im2gray` | Convert RGB image to grayscale |
 |   | `imsplit` | Split multichannel image into its individual channels |
 |   | `ind2gray` | Convert indexed image to grayscale image |
 |   | `ind2rgb` | Convert indexed image to RGB image |
 |   | `label2rgb` | Convert label matrix into RGB image |
 | ✅ | `mat2gray` | Convert matrix to grayscale image |
-|   | `rgb2gray` | Convert RGB image or colormap to grayscale |
+| ✅ | `rgb2gray` | Convert RGB image or colormap to grayscale |
 |   | `rgb2ind` | Convert RGB image to indexed image |
 |   | `rgb2lightness` | Convert RGB color values to lightness values |
 |   | `adaptthresh` | Adaptive image threshold using local first-order statistics |
@@ -11605,11 +11605,11 @@ output values |
 |   | `montage` | Display multiple images as rectangular montage |
 |   | `colorcloud` | Display 3-D color gamut as point cloud in specified color
 space |
-|   | `hsv2rgb` | Convert HSV colors to RGB |
+| ✅ | `hsv2rgb` | Convert HSV colors to RGB |
 |   | `lab2rgb` | Convert CIE 1976 L*a*b* to RGB |
 |   | `lab2xyz` | Convert CIE 1976 L*a*b* to CIE 1931 XYZ |
 |   | `ntsc2rgb` | Convert NTSC values to RGB color space |
-|   | `rgb2hsv` | Convert RGB colors to HSV |
+| ✅ | `rgb2hsv` | Convert RGB colors to HSV |
 |   | `rgb2lab` | Convert RGB to CIE 1976 L*a*b* |
 |   | `rgb2ntsc` | Convert RGB color values to NTSC color space |
 |   | `rgb2xyz` | Convert RGB to CIE 1931 XYZ |
@@ -12017,18 +12017,18 @@ segmentation |
 |   | `plotChromaticity` | Plot color reproduction on chromaticity diagram |
 |   | `plotSFR` | Plot spatial frequency response of edge |
 |   | `dct2` | 2-D discrete cosine transform |
-|   | `dctmtx` | Discrete cosine transform matrix |
+| ✅ | `dctmtx` | Discrete cosine transform matrix |
 |   | `fan2para` | Convert fan-beam projections to parallel-beam |
 |   | `fanbeam` | Fan-beam transform |
-|   | `fft2` | 2-D fast Fourier transform |
-|   | `fftshift` | Shift zero-frequency component to center of spectrum |
+| ✅ | `fft2` | 2-D fast Fourier transform |
+| ✅ | `fftshift` | Shift zero-frequency component to center of spectrum |
 |   | `idct2` | 2-D inverse discrete cosine transform |
 |   | `ifanbeam` | Inverse fan-beam transform |
-|   | `ifft2` | 2-D inverse fast Fourier transform |
-|   | `ifftshift` | Inverse zero-frequency shift |
+| ✅ | `ifft2` | 2-D inverse fast Fourier transform |
+| ✅ | `ifftshift` | Inverse zero-frequency shift |
 |   | `para2fan` | Convert parallel-beam projections to fan-beam |
 |   | `augmentedImageDatastore` | Transform batches to augment image data |
-|   | `combine` | Combine data from multiple datastores |
+| ✅ | `combine` | Combine data from multiple datastores |
 |   | `denoisingImageDatastore` | Denoising image datastore |
 |   | `imageDatastore` | Datastore for image data |
 |   | `randomPatchExtractionDatastore` | Datastore for extracting random 2-D or 3-D random patches from images or pixel label
@@ -12144,9 +12144,9 @@ segmentation |
 |   | `changeGap` | Change gap between components in optical system(Since R2026a) |
 |   | `distanceAfter` | Query distance after optical component(Since R2026a) |
 |   | `distanceBefore` | Query distance before optical component(Since R2026a) |
-|   | `insert` | Insert optical component into optical system(Since R2026a) |
+| ✅ | `insert` | Insert optical component into optical system(Since R2026a) |
 |   | `opticalSystem` | Model components of optical system(Since R2026a) |
-|   | `remove` | Remove component from optical system(Since R2026a) |
+| ✅ | `remove` | Remove component from optical system(Since R2026a) |
 |   | `resolveMaterials` | Resolve component materials in optical system against glass library(Since R2026a) |
 |   | `setConstructionFrame` | Set coordinate break for all subsequent components in optical system(Since R2026a) |
 |   | `focus` | Position image plane of optical system to minimize RMS spot size(Since R2026a) |
@@ -12203,7 +12203,7 @@ segmentation |
 <a id="map"></a>
 ## Map Toolbox  
 
-_34 / 399 implemented_
+_84 / 399 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -12226,7 +12226,7 @@ _34 / 399 implemented_
 |   | `makedbfspec` | Create DBF specification |
 |   | `readgeotable` | Read geospatial table from vector data file(Since R2021b) |
 |   | `shapeinfo` | Information about shapefile |
-| ✅ | `shaperead` | Read vector features and attributes from shapefile |
+|   | `shaperead` | Read vector features and attributes from shapefile |
 |   | `shapewrite` | Write geographic vector data structure to shapefile |
 |   | `RasterInfo` | Information about geospatial raster data file |
 |   | `RPCCoefficientTag` | Rational Polynomial Coefficients Tag |
@@ -12251,37 +12251,37 @@ _34 / 399 implemented_
 |   | `wmsread` | Retrieve WMS map from server |
 |   | `wmsupdate` | SynchronizeWMSLayerobject with server |
 |   | `bubblechart` | Bubble chart |
-|   | `cla` | Clear axes |
-|   | `gca` | Current axes or chart |
+| ✅ | `cla` | Clear axes |
+| ✅ | `gca` | Current axes or chart |
 |   | `geodensityplot` | Density plot in geographic coordinates |
 |   | `geoiconchart` | Icon chart in geographic coordinates(Since R2024b) |
 |   | `geoimage` | Display RGB or grayscale image(Since R2026a) |
 |   | `geopcolor` | Display raster using scaled colors(Since R2026a) |
-|   | `geoplot` | Plot points, lines, and polygons on map(Since R2022a) |
-|   | `geoscatter` | Scatter chart in geographic coordinates |
-|   | `hold` | Retain current plot when adding new plots |
+| ✅ | `geoplot` | Plot points, lines, and polygons on map(Since R2022a) |
+| ✅ | `geoscatter` | Scatter chart in geographic coordinates |
+| ✅ | `hold` | Retain current plot when adding new plots |
 |   | `mapaxes` | Create map axes(Since R2023a) |
 |   | `newmap` | Set up new map(Since R2023a) |
-|   | `clim` | Set colormap limits (Renamed fromcaxisin R2022a) |
-|   | `colorbar` | Colorbar showing color scale |
-|   | `colormap` | View and set current colormap |
-|   | `fontsize` | Change font size for objects in a figure(Since R2022a) |
-|   | `geolimits` | Set or query geographic limits |
+| ✅ | `clim` | Set colormap limits (Renamed fromcaxisin R2022a) |
+| ✅ | `colorbar` | Colorbar showing color scale |
+| ✅ | `colormap` | View and set current colormap |
+| ✅ | `fontsize` | Change font size for objects in a figure(Since R2022a) |
+| ✅ | `geolimits` | Set or query geographic limits |
 |   | `geotickformat` | Set or query geographic tick label format |
 |   | `lcolorbar` | Color bar with text labels |
-|   | `legend` | Add legend to axes |
-|   | `subtitle` | Add subtitle to plot |
-|   | `text` | Add text descriptions to data points |
-|   | `title` | Add title |
+| ✅ | `legend` | Add legend to axes |
+| ✅ | `subtitle` | Add subtitle to plot |
+| ✅ | `text` | Add text descriptions to data points |
+| ✅ | `title` | Add title |
 |   | `addCustomBasemap` | Add custom basemap |
-|   | `geobasemap` | Set or query basemap |
+| ✅ | `geobasemap` | Set or query basemap |
 |   | `readBasemapImage` | Read image from geographic basemap(Since R2022a) |
 |   | `removeCustomBasemap` | Remove custom basemap |
 |   | `addToolbarMapButton` | Add map button to toolbar(Since R2021b) |
 |   | `datatip` | Create data tip |
 |   | `dataTipTextRow` | Add row to data tips |
 |   | `ginput` | Identify axes coordinates |
-|   | `gtext` | Add text to figure using mouse |
+| ✅ | `gtext` | Add text to figure using mouse |
 |   | `removeToolbarMapButton` | Remove map button from toolbar(Since R2021b) |
 |   | `axesm` | Createaxesm-based map |
 |   | `axesmui` | Defineaxesm-based map and modify projection and display
@@ -12371,7 +12371,7 @@ _34 / 399 implemented_
 |   | `camposm` | Set camera position foraxesm-based map using geographic coordinates |
 |   | `camtargm` | Set camera target foraxesm-based map using geographic coordinates |
 |   | `camupm` | Set camera up vector foraxesm-based map using geographic coordinates |
-|   | `view` | Camera line of sight |
+| ✅ | `view` | Camera line of sight |
 |   | `daspectm` | Control vertical exaggeration ofaxesm-based map |
 |   | `demcmap` | Colormaps appropriate to terrain elevation data |
 |   | `lightm` | Project light objects onaxesm-based map |
@@ -12400,16 +12400,16 @@ arrays |
 and lines |
 |   | `struct2geotable` | Convert structure array to geospatial table(Since R2021b) |
 |   | `table2geotable` | Convert table to geospatial table(Since R2021b) |
-|   | `area` | Area of polygon shape in geographic or planar coordinates(Since R2024a) |
-|   | `bounds` | Bounds of shape in geographic or planar coordinates(Since R2024b) |
+| ✅ | `area` | Area of polygon shape in geographic or planar coordinates(Since R2024a) |
+| ✅ | `bounds` | Bounds of shape in geographic or planar coordinates(Since R2024b) |
 |   | `extractfield` | Field values from structure array |
 |   | `isgeotable` | Determine if input is geospatial table(Since R2021b) |
-|   | `isinterior` | Query geographic or planar points in polygon(Since R2022a) |
+| ✅ | `isinterior` | Query geographic or planar points in polygon(Since R2022a) |
 |   | `ismultipoint` | Determine which array elements are multipoint shapes(Since R2022b) |
 |   | `ispolycw` | Determine if polygon vertices are in clockwise order |
 |   | `isShapeMultipart` | Determine if line or polygon has multiple parts |
 |   | `linelength` | Length of line shape in geographic or planar coordinates(Since R2024a) |
-|   | `perimeter` | Perimeter of polygon shape in geographic or planar coordinates(Since R2024a) |
+| ✅ | `perimeter` | Perimeter of polygon shape in geographic or planar coordinates(Since R2024a) |
 |   | `buffer` | Buffer shape in geographic or planar coordinates(Since R2024b) |
 |   | `bufferm` | Buffer zones for latitude-longitude polygons |
 |   | `flatearthpoly` | Clip polygon to world limits |
@@ -12422,10 +12422,10 @@ and lines |
 |   | `maptrimp` | Trim polygons to latitude-longitude quadrangle |
 |   | `nanclip` | Clip vector data with NaNs at specified pen-down locations |
 |   | `reducem` | Reduce density of points in vector data |
-|   | `intersect` | Intersection of shapes in geographic or planar coordinates(Since R2025a) |
-|   | `subtract` | Difference of shapes in geographic or planar coordinates(Since R2025a) |
-|   | `union` | Union of shapes in geographic or planar coordinates(Since R2025a) |
-|   | `xor` | Exclusive OR of shapes in geographic or planar coordinates(Since R2025a) |
+| ✅ | `intersect` | Intersection of shapes in geographic or planar coordinates(Since R2025a) |
+| ✅ | `subtract` | Difference of shapes in geographic or planar coordinates(Since R2025a) |
+| ✅ | `union` | Union of shapes in geographic or planar coordinates(Since R2025a) |
+| ✅ | `xor` | Exclusive OR of shapes in geographic or planar coordinates(Since R2025a) |
 |   | `circcirc` | Find intersection of circles in Cartesian coordinates |
 |   | `linecirc` | Find intersection of line and circle in Cartesian coordinates |
 |   | `polyxpoly` | Intersection points for lines or polygon edges |
@@ -12445,7 +12445,7 @@ and lines |
 |   | `refmatToGeoRasterReference` | Convert referencing matrix to geographic raster reference object |
 |   | `refvecToGeoRasterReference` | Convert referencing vector to geographic raster reference object |
 |   | `changem` | Replace values in array |
-|   | `contains` | Determine if geographic or map raster contains points |
+| ✅ | `contains` | Determine if geographic or map raster contains points |
 |   | `encodem` | Fill in regular data grid from seed values and locations |
 |   | `filterm` | Filter latitudes and longitudes based on underlying data
 grid |
@@ -12538,51 +12538,51 @@ grid |
 |   | `enu2ecefv` | Rotate local east-north-up vector to geocentric Earth-centered Earth-fixed |
 |   | `ned2ecefv` | Rotate local north-east-down vector to geocentric Earth-centered
                         Earth-fixed |
-|   | `deg2rad` | Convert angle from degrees to radians |
+| ✅ | `deg2rad` | Convert angle from degrees to radians |
 |   | `degrees2dm` | Convert degrees to degrees-minutes |
 |   | `degrees2dms` | Convert degrees to degrees-minutes-seconds |
 |   | `dm2degrees` | Convert degrees-minutes to degrees |
 |   | `dms2degrees` | Convert degrees-minutes-seconds to degrees |
 |   | `fromDegrees` | Convert angles from degrees |
 |   | `fromRadians` | Convert angles from radians |
-|   | `rad2deg` | Convert angle from radians to degrees |
+| ✅ | `rad2deg` | Convert angle from radians to degrees |
 |   | `toDegrees` | Convert angles to degrees |
 |   | `toRadians` | Convert angles to radians |
 |   | `unwrapMultipart` | Unwrap angles with parts separated byNaNvalues |
-|   | `wrapTo180` | Wrap angle in degrees to [–180, 180] |
-|   | `wrapTo2Pi` | Wrap angle in radians to [0, 2*pi] |
-|   | `wrapTo360` | Wrap angle in degrees to [0, 360] |
-|   | `wrapToPi` | Wrap angle in radians to [−pi, pi] |
-|   | `km2nm` | Convert kilometers to nautical miles |
-|   | `km2sm` | Convert kilometers to statute miles |
-|   | `nm2km` | Convert nautical miles to kilometers |
-|   | `nm2sm` | Convert nautical to statute miles |
-|   | `sm2km` | Convert statute miles to kilometers |
-|   | `sm2nm` | Convert statute to nautical miles |
-|   | `deg2km` | Convert spherical distance from degrees to kilometers |
-|   | `deg2nm` | Convert spherical distance from degrees to nautical miles |
-|   | `deg2sm` | Convert spherical distance from degrees to statute miles |
-|   | `km2deg` | Convert spherical distance from kilometers to degrees |
-|   | `km2rad` | Convert spherical distance from kilometers to radians |
-|   | `nm2deg` | Convert spherical distance from nautical miles to degrees |
-|   | `nm2rad` | Convert spherical distance from nautical miles to radians |
-|   | `rad2km` | Convert spherical distance from radians to kilometers |
-|   | `rad2nm` | Convert spherical distance from radians to nautical miles |
-|   | `rad2sm` | Convert spherical distance from radians to statute miles |
-|   | `sm2deg` | Convert spherical distance from statute miles to degrees |
-|   | `sm2rad` | Convert spherical distance from statute miles to radians |
+| ✅ | `wrapTo180` | Wrap angle in degrees to [–180, 180] |
+| ✅ | `wrapTo2Pi` | Wrap angle in radians to [0, 2*pi] |
+| ✅ | `wrapTo360` | Wrap angle in degrees to [0, 360] |
+| ✅ | `wrapToPi` | Wrap angle in radians to [−pi, pi] |
+| ✅ | `km2nm` | Convert kilometers to nautical miles |
+| ✅ | `km2sm` | Convert kilometers to statute miles |
+| ✅ | `nm2km` | Convert nautical miles to kilometers |
+| ✅ | `nm2sm` | Convert nautical to statute miles |
+| ✅ | `sm2km` | Convert statute miles to kilometers |
+| ✅ | `sm2nm` | Convert statute to nautical miles |
+| ✅ | `deg2km` | Convert spherical distance from degrees to kilometers |
+| ✅ | `deg2nm` | Convert spherical distance from degrees to nautical miles |
+| ✅ | `deg2sm` | Convert spherical distance from degrees to statute miles |
+| ✅ | `km2deg` | Convert spherical distance from kilometers to degrees |
+| ✅ | `km2rad` | Convert spherical distance from kilometers to radians |
+| ✅ | `nm2deg` | Convert spherical distance from nautical miles to degrees |
+| ✅ | `nm2rad` | Convert spherical distance from nautical miles to radians |
+| ✅ | `rad2km` | Convert spherical distance from radians to kilometers |
+| ✅ | `rad2nm` | Convert spherical distance from radians to nautical miles |
+| ✅ | `rad2sm` | Convert spherical distance from radians to statute miles |
+| ✅ | `sm2deg` | Convert spherical distance from statute miles to degrees |
+| ✅ | `sm2rad` | Convert spherical distance from statute miles to radians |
 |   | `angl2str` | Convert angles to character array |
 |   | `map.geodesy.isDegree` | True if input matches'degree'and false if'radian' |
 |   | `str2angle` | Convert strings to angles in degrees |
 |   | `unitsratio` | Conversion factor between units |
 |   | `validateLengthUnit` | Validate and standardize length unit |
 | ✅ | `azimuth` | Azimuth between points on sphere or ellipsoid |
-|   | `departure` | Departure of longitudes at specified latitudes |
+| ✅ | `departure` | Departure of longitudes at specified latitudes |
 | ✅ | `distance` | Distance between points on sphere or ellipsoid |
 | ✅ | `meridianarc` | Ellipsoidal distance along meridian |
-|   | `antipode` | Point on opposite side of globe |
+| ✅ | `antipode` | Point on opposite side of globe |
 |   | `meridianfwd` | Reckon position along meridian |
-|   | `reckon` | Point at specified azimuth and range on sphere or ellipsoid |
+| ✅ | `reckon` | Point at specified azimuth and range on sphere or ellipsoid |
 |   | `track` | Geographic track points from waypoints |
 |   | `track1` | Geographic track points from starting point, azimuth, and range |
 |   | `track2` | Geographic track points from starting and ending points |
@@ -12638,15 +12638,15 @@ grid |
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
-| ✅ | `geocshow` | Custom TypeScript port |
-| ✅ | `geotiffread` | Custom TypeScript port |
+|   | `geocshow` | Custom TypeScript port |
+|   | `geotiffread` | Custom TypeScript port |
 
 ---
 
 <a id="medical-imaging"></a>
 ## Medical-imaging Toolbox  
 
-_5 / 164 implemented_
+_7 / 164 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -12656,7 +12656,7 @@ _5 / 164 implemented_
 |   | `montage` | Display medical image slices or frames as montage in patient
       coordinates(Since R2023a) |
 |   | `extractSlice` | Extract voxels and spatial details for one slice of medical volume(Since R2022b) |
-| ✅ | `medicalVolume` | 3-D medical image voxel data and spatial referencing information(Since R2022b) |
+|   | `medicalVolume` | 3-D medical image voxel data and spatial referencing information(Since R2022b) |
 |   | `replaceSlice` | Replace voxel values for one slice of medical volume(Since R2022b) |
 |   | `reposition` | Update position of medical volume in patient coordinates(Since R2025a) |
 |   | `resample` | Resample medical image volume in different patient coordinate system(Since R2022b) |
@@ -12667,7 +12667,7 @@ _5 / 164 implemented_
 |   | `updateOrientation` | Update slice orientation of medical volume voxels(Since R2025a) |
 |   | `volshow` | Display medical volume in patient coordinates(Since R2023a) |
 |   | `write` | Write affine medical volume data to NIfTI file(Since R2022b) |
-|   | `contains` | Determine if affine image volume contains points specified in patient coordinate
+| ✅ | `contains` | Determine if affine image volume contains points specified in patient coordinate
       system(Since R2022b) |
 |   | `intrinsicToWorld` | Map points from intrinsic coordinates to patient coordinates(Since R2022b) |
 |   | `intrinsicToWorldMapping` | Geometric transform between intrinsic and patient coordinates of medical image
@@ -12686,11 +12686,11 @@ _5 / 164 implemented_
 |   | `dicomConnection` | Establish connection with PACS server(Since R2024b) |
 |   | `dicomFile` | Process DICOM file(Since R2023a) |
 |   | `dicomget` | Retrieve DICOM files from PACS server(Since R2024b) |
-| ✅ | `dicominfo` | Read metadata from DICOM message |
+|   | `dicominfo` | Read metadata from DICOM message |
 |   | `dicomquery` | Query PACS server for DICOM metadata(Since R2024b) |
-| ✅ | `dicomread` | Read DICOM image |
+|   | `dicomread` | Read DICOM image |
 |   | `dicomstore` | Store DICOM files to PACS server(Since R2024b) |
-| ✅ | `dicomwrite` | Write images as DICOM files |
+|   | `dicomwrite` | Write images as DICOM files |
 |   | `findAttribute` | Find location and value of specified DICOM attribute(Since R2023b) |
 |   | `getAttribute` | Get value of specified top level DICOM attribute(Since R2023a) |
 |   | `getPixelData` | Get pixel data of DICOM file(Since R2023a) |
@@ -12701,7 +12701,7 @@ _5 / 164 implemented_
 |   | `nrrdinfo` | Read metadata from NRRD file(Since R2022b) |
 |   | `nrrdread` | Read NRRD image(Since R2022b) |
 |   | `niftiinfo` | Read metadata from NIfTI file |
-| ✅ | `niftiread` | Read NIfTI image |
+|   | `niftiread` | Read NIfTI image |
 |   | `niftiwrite` | Write volume to file using NIfTI format |
 |   | `analyze75info` | Read metadata from header file of Analyze 7.5 data set |
 |   | `analyze75read` | Read image data from image file of Analyze 7.5 data set |
@@ -12709,10 +12709,10 @@ _5 / 164 implemented_
 |   | `interfileread` | Read images in Interfile format |
 |   | `Surface` | Display surface in 3-D viewer(Since R2022b) |
 |   | `viewer3d` | Create viewer for 3-D image display(Since R2022b) |
-|   | `fspecial` | Create predefined 2-D filter |
+| ✅ | `fspecial` | Create predefined 2-D filter |
 |   | `fspecial3` | Create predefined 3-D filter |
-|   | `imfilter` | N-D filtering of multidimensional images |
-|   | `imgaussfilt` | 2-D Gaussian filtering of images |
+| ✅ | `imfilter` | N-D filtering of multidimensional images |
+| ✅ | `imgaussfilt` | 2-D Gaussian filtering of images |
 |   | `imgaussfilt3` | 3-D Gaussian filtering of 3-D images |
 |   | `medfilt2` | 2-D median filtering |
 |   | `medfilt3` | 3-D median filtering |
@@ -12764,8 +12764,8 @@ images |
             technique |
 |   | `graydiffweight` | Calculate weights for image pixels based on grayscale
 intensity difference |
-|   | `graythresh` | Global image threshold using Otsu's method |
-|   | `imbinarize` | Binarize 2-D grayscale image or 3-D volume by thresholding |
+| ✅ | `graythresh` | Global image threshold using Otsu's method |
+| ✅ | `imbinarize` | Binarize 2-D grayscale image or 3-D volume by thresholding |
 |   | `imsegfmm` | Binary image segmentation using fast marching method |
 |   | `imsegkmeans` | K-means clustering based image segmentation |
 |   | `imsegkmeans3` | K-means clustering based volume segmentation |
@@ -12780,7 +12780,7 @@ intensity difference |
       segmentation(Since R2024b) |
 |   | `segmentObjectsFromEmbeddings` | Segment objects in medical image using Medical Segment Anything Model (MedSAM) image
       embeddings(Since R2024b) |
-|   | `combine` | Combine data from multiple datastores |
+| ✅ | `combine` | Combine data from multiple datastores |
 |   | `imageDatastore` | Datastore for image data |
 |   | `pixelLabelDatastore` | Datastore for pixel label data |
 |   | `randomPatchExtractionDatastore` | Datastore for extracting random 2-D or 3-D random patches from images or pixel label
@@ -12865,8 +12865,8 @@ _5 / 248 implemented_
 |   | `tform2rotm` | Extract rotation matrix from homogeneous transformation |
 |   | `tform2trvec` | Extract translation vector from homogeneous transformation |
 |   | `enu2lla` | Transform local east-north-up coordinates to geodetic coordinates |
-|   | `lla2enu` | Transform geodetic coordinates to local east-north-up coordinates |
-|   | `lla2ned` | Transform geodetic coordinates to local north-east-down coordinates |
+| ✅ | `lla2enu` | Transform geodetic coordinates to local east-north-up coordinates |
+| ✅ | `lla2ned` | Transform geodetic coordinates to local north-east-down coordinates |
 |   | `ned2lla` | Transform local north-east-down coordinates to geodetic coordinates |
 |   | `angdiff` | Difference between two angles |
 |   | `cart2hom` | Convert Cartesian coordinates to homogeneous coordinates |
@@ -13103,10 +13103,10 @@ _5 / 248 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
-| ✅ | `distanceBetweenCoords` | Custom TypeScript port (not in standard MATLAB reference) |
+|   | `distanceBetweenCoords` | Custom TypeScript port (not in standard MATLAB reference) |
 | ✅ | `ecef2lla` | Custom TypeScript port (not in standard MATLAB reference) |
 | ✅ | `lla2ecef` | Custom TypeScript port (not in standard MATLAB reference) |
-| ✅ | `ned2enu` | Custom TypeScript port (not in standard MATLAB reference) |
+|   | `ned2enu` | Custom TypeScript port (not in standard MATLAB reference) |
 | ✅ | `quatnormalize` | Custom TypeScript port (not in standard MATLAB reference) |
 
 ---
@@ -13114,7 +13114,7 @@ _5 / 248 implemented_
 <a id="parallel-computing"></a>
 ## Parallel-computing Toolbox  
 
-_5 / 139 implemented_
+_6 / 139 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -13124,9 +13124,9 @@ _5 / 139 implemented_
 |   | `gpuArray` | Array stored on GPU |
 |   | `mpiprofile` | Profile parallel communication and execution times |
 |   | `parallel.pool.ActivityMonitor` | Parallel pool activity monitor(Since R2025a) |
-| ✅ | `parfeval` | Run function on parallel pool worker |
+|   | `parfeval` | Run function on parallel pool worker |
 |   | `parfor` | Executefor-loop iterations in parallel on workers |
-| ✅ | `parpool` | Create parallel pool on cluster |
+|   | `parpool` | Create parallel pool on cluster |
 |   | `stop` | Stop monitoring parallel pool activity(Since R2025a) |
 |   | `ticBytes` | Start counting bytes transferred within parallel pool |
 |   | `tocBytes` | Read how many bytes have been transferred since callingticBytes |
@@ -13139,11 +13139,11 @@ _5 / 139 implemented_
 |   | `cancel` | Stop function running in the background |
 |   | `cancelAll` | Cancel all jobs or tasks(Since R2022a) |
 |   | `fetchNext` | Retrieve next unread outputs fromFuturearray |
-| ✅ | `fetchOutputs` | Retrieve results from function running in the background |
+|   | `fetchOutputs` | Retrieve results from function running in the background |
 |   | `Future` | Function scheduled to run |
 |   | `parfevalOnAll` | Run function asynchronously on all workers in parallel pool |
 |   | `wait` | Wait for futures to complete |
-|   | `close` | Close pollable data queue(Since R2025a) |
+| ✅ | `close` | Close pollable data queue(Since R2025a) |
 |   | `parallel.pool.PollableDataQueue` | Send and poll data between client and workers |
 |   | `poll` | Retrieve data sent to pollable data queue |
 |   | `codistributed` | Access elements of arrays distributed among workers in parallel pool |
@@ -13172,9 +13172,9 @@ not fit in memory |
 |   | `parallel.cluster.Hadoop` | Hadoop cluster for mapreducer, mapreduce and tall arrays |
 |   | `parallel.cluster.Spark` | Sparkcluster for mapreducer, mapreduce and tall arrays(Since R2022b) |
 |   | `partition` | Partition a datastore |
-|   | `delete` | Remove job or task object from cluster and memory |
+| ✅ | `delete` | Remove job or task object from cluster and memory |
 |   | `diary` | Display or save Command Window text of batch job |
-|   | `load` | Load workspace variables from batch job |
+| ✅ | `load` | Load workspace variables from batch job |
 |   | `createCommunicatingJob` | Create communicating job on cluster |
 |   | `createJob` | Create independent job on cluster |
 |   | `createTask` | Create new task in job |
@@ -13210,7 +13210,7 @@ not fit in memory |
 |   | `getDebugLog` | Read output messages from job run in CJS cluster |
 |   | `getJobClusterData` | Get specific user data for job on third-party cluster |
 |   | `logout` | Log out ofMATLABJob Scheduler cluster |
-|   | `pause` | PauseMATLABJob Scheduler queue |
+| ✅ | `pause` | PauseMATLABJob Scheduler queue |
 |   | `promote` | Promote job inMATLABJob Scheduler cluster queue |
 |   | `resume` | Resume processing queue inMATLABJob Scheduler |
 |   | `setJobClusterData` | Set specific user data for job on third-party cluster |
@@ -13234,7 +13234,7 @@ not fit in memory |
 |   | `updateAttachedFiles` | Update attached files or folders on parallel pool |
 |   | `gpuDevice` | Query or select a GPU device |
 |   | `GPUDeviceManager` | Manager for GPU Devices |
-|   | `arrayfun` | Apply function to each element of array on GPU |
+| ✅ | `arrayfun` | Apply function to each element of array on GPU |
 |   | `existsOnGPU` | Determine if gpuArray or CUDAKernel is available on GPU |
 |   | `gpuDeviceCount` | Number of GPU devices present |
 |   | `gpuDeviceTable` | Table of properties of GPU devices |
@@ -13247,11 +13247,11 @@ not fit in memory |
 |   | `validateGPU` | Validate GPU devices(Since R2024b) |
 |   | `wait (GPUDevice)` | Wait for GPU calculation to complete |
 |   | `CUDAKernel` | Kernel executable on GPU |
-|   | `feval` | Evaluate kernel on GPU |
+| ✅ | `feval` | Evaluate kernel on GPU |
 |   | `mexcuda` | Compile MEX functions or PTX files for GPU computation |
 |   | `mxGPUArray` | Type for MATLAB gpuArray |
 |   | `setConstantMemory` | Set some constant memory on GPU |
-| ✅ | `gcp` | Get current parallel pool |
+|   | `gcp` | Get current parallel pool |
 |   | `pctRunOnAll` | Run command on client and on all workers in parallel pool |
 |   | `parallel.exportProfile` | Export one or more profiles to file |
 |   | `saveAsProfile` | Save cluster properties to specified profile |
@@ -13265,14 +13265,14 @@ not fit in memory |
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
-| ✅ | `deletePool` | Custom TypeScript port |
+|   | `deletePool` | Custom TypeScript port |
 
 ---
 
 <a id="pde"></a>
 ## Pde Toolbox  
 
-_16 / 191 implemented_
+_25 / 191 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -13284,20 +13284,20 @@ _16 / 191 implemented_
 |   | `multicylinder` | Create geometry formed by several cylindrical cells |
 |   | `multisphere` | Create geometry formed by several spherical cells |
 |   | `pdegplot` | Plot PDE geometry |
-|   | `triangulation` | Createtriangulationobject fromfegeometry(Since R2023b) |
+| ✅ | `triangulation` | Createtriangulationobject fromfegeometry(Since R2023b) |
 |   | `addCell` | Combine two geometries by adding one inside a cell of another |
 |   | `addFace` | Fill void regions in 2-D and split cells in 3-D geometry |
 |   | `addVertex` | Add vertex on geometry boundary |
 |   | `addVoid` | Create void regions inside 3-D geometry |
 |   | `deleteCell` | Delete geometry cells(Since R2025a) |
 |   | `extrude` | Vertically extrude 2-D geometry or specified faces of 3-D geometry |
-|   | `intersect` | Boolean intersection of 3-D geometries(Since R2025a) |
+| ✅ | `intersect` | Boolean intersection of 3-D geometries(Since R2025a) |
 |   | `mergeCells` | Merge geometry cells(Since R2023b) |
-|   | `rotate` | Rotate geometry |
-|   | `scale` | Scale geometry |
-|   | `subtract` | Boolean subtraction of 3-D geometries(Since R2025a) |
-|   | `translate` | Translate geometry |
-|   | `union` | Boolean union of 3-D geometries(Since R2025a) |
+| ✅ | `rotate` | Rotate geometry |
+| ✅ | `scale` | Scale geometry |
+| ✅ | `subtract` | Boolean subtraction of 3-D geometries(Since R2025a) |
+| ✅ | `translate` | Translate geometry |
+| ✅ | `union` | Boolean union of 3-D geometries(Since R2025a) |
 |   | `cellEdges` | Find edges belonging to boundaries of specified cells |
 |   | `cellFaces` | Find faces belonging to specified cells |
 |   | `faceEdges` | Find edges belonging to specified faces |
@@ -13318,7 +13318,7 @@ _16 / 191 implemented_
 |   | `pdeplot` | Plot solution or mesh for 2-D problem |
 |   | `pdeplot3D` | Plot solution or surface mesh for 3-D problem |
 |   | `pdeviz` | Create and plot PDE visualization object |
-|   | `volume` | Compute volume of 3-D mesh elements |
+| ✅ | `volume` | Compute volume of 3-D mesh elements |
 |   | `adaptmesh` | Create adaptive 2-D mesh and solve PDE |
 |   | `csgdel` | Delete boundaries between subdomains |
 |   | `initmesh` | Create initial 2-D mesh |
@@ -13353,7 +13353,7 @@ _16 / 191 implemented_
 |   | `assembleFEMatrices` | Assemble finite element matrices |
 |   | `reduce` | Reduce structural or thermal model |
 |   | `setupRadiation` | Specify radiation parameters for surface-to-surface heat transfer(Since R2023b) |
-|   | `solve` | Solve structural, heat transfer, electromagnetic, or P2D battery simulation
+| ✅ | `solve` | Solve structural, heat transfer, electromagnetic, or P2D battery simulation
             problem |
 |   | `FrequencyStructuralResults` | Frequency response structural solution and derived quantities |
 |   | `ModalStructuralResults` | Modal structural solution |
@@ -13515,20 +13515,20 @@ oracle-exact against live MATLAB.
 <a id="radar"></a>
 ## Radar Toolbox  
 
-_5 / 271 implemented_
+_7 / 271 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
 |   | `bistaticConstantSNR` | Create bistatic constant SNR contours or surfaces(Since R2024b) |
-|   | `radareqpow` | Peak power estimate from radar equation |
-|   | `radareqrng` | Maximum theoretical range estimate |
+| ✅ | `radareqpow` | Peak power estimate from radar equation |
+| ✅ | `radareqrng` | Maximum theoretical range estimate |
 |   | `radareqsarpow` | Minimum peak transmit power using SAR equation |
 |   | `radareqsarrng` | Maximum detectable range using SAR equation |
 |   | `radareqsarsnr` | Signal-to-noise ratio of SAR image |
 |   | `radareqsearchpap` | Power-aperture product using search radar equation |
 |   | `radareqsearchrng` | Maximum detectable range using search radar equation |
 |   | `radareqsearchsnr` | Range-dependent SNR using search radar equation |
-|   | `radareqsnr` | SNR estimate from radar equation |
+| ✅ | `radareqsnr` | SNR estimate from radar equation |
 |   | `radarmetricplot` | Plot radar performance metric against target range |
 |   | `albersheim` | Required SNR using Albersheim’s equation |
 |   | `blakechart` | Range-angle-height (Blake) chart |
@@ -13644,12 +13644,12 @@ probability |
 |   | `waypointTrajectory` | Waypoint trajectory generator |
 |   | `compact` | Convert quaternion array toN-by-4 matrix |
 |   | `dist` | Angular distance in radians |
-|   | `euler` | Convert quaternion to Euler angles (radians) |
+| ✅ | `euler` | Convert quaternion to Euler angles (radians) |
 |   | `eulerd` | Convert quaternion to Euler angles (degrees) |
-|   | `interp1` | Quaternion interpolation (table lookup)(Since R2025a) |
+| ✅ | `interp1` | Quaternion interpolation (table lookup)(Since R2025a) |
 |   | `meanrot` | Quaternion mean rotation |
-|   | `norm` | Quaternion norm |
-|   | `normalize` | Quaternion normalization |
+| ✅ | `norm` | Quaternion norm |
+| ✅ | `normalize` | Quaternion normalization |
 |   | `parts` | Extract quaternion parts |
 |   | `quaternion` | Create quaternion array |
 |   | `randrot` | Uniformly distributed random rotations |
@@ -13815,18 +13815,18 @@ detection report |
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
-| ✅ | `cfar1d` | Custom TypeScript port (not in standard MATLAB reference) |
-| ✅ | `dopplerFreq` | Custom TypeScript port (not in standard MATLAB reference) |
-| ✅ | `phased_steeringVector` | Custom TypeScript port (not in standard MATLAB reference) |
-| ✅ | `radarEquation` | Custom TypeScript port (not in standard MATLAB reference) |
-| ✅ | `range2tof` | Custom TypeScript port (not in standard MATLAB reference) |
+|   | `cfar1d` | Custom TypeScript port (not in standard MATLAB reference) |
+|   | `dopplerFreq` | Custom TypeScript port (not in standard MATLAB reference) |
+|   | `phased_steeringVector` | Custom TypeScript port (not in standard MATLAB reference) |
+|   | `radarEquation` | Custom TypeScript port (not in standard MATLAB reference) |
+|   | `range2tof` | Custom TypeScript port (not in standard MATLAB reference) |
 
 ---
 
 <a id="reinforcement-learning"></a>
 ## Reinforcement-learning Toolbox  
 
-_5 / 150 implemented_
+_4 / 150 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -13860,7 +13860,7 @@ _5 / 150 implemented_
 |   | `rlMultiAgentFunctionEnv` | Create custom multiagent reinforcement learning environment(Since R2023b) |
 |   | `rlTurnBasedFunctionEnv` | Create custom turn-based multiagent reinforcement learning environment(Since R2023b) |
 |   | `createIntegratedEnv` | Create environment object from aSimulinkenvironment model that does not contain an agent block |
-| ✅ | `rlSimulinkEnv` | Create environment object from aSimulinkmodel already containing at least one agent block |
+|   | `rlSimulinkEnv` | Create environment object from aSimulinkmodel already containing at least one agent block |
 |   | `SimulinkEnvWithAgent` | Reinforcement learning environment with a dynamic model implemented inSimulink |
 |   | `evaluate` | Evaluate function approximator object given observation (or observation-action)
       input data(Since R2022a) |
@@ -13882,7 +13882,7 @@ _5 / 150 implemented_
 |   | `setup` | Set up reinforcement learning environment or initialize data logger
       object(Since R2022a) |
 |   | `rlACAgent` | Actor-critic (AC) reinforcement learning agent |
-| ✅ | `rlDDPGAgent` | Deep deterministic policy gradient (DDPG) reinforcement learning agent |
+|   | `rlDDPGAgent` | Deep deterministic policy gradient (DDPG) reinforcement learning agent |
 |   | `rlDQNAgent` | Deep Q-network (DQN) reinforcement learning agent |
 |   | `rlLSPIAgent` | Least square policy iteration reinforcement learning agent(Since R2025a) |
 |   | `rlPGAgent` | Policy gradient (PG) reinforcement learning agent |
@@ -13916,9 +13916,9 @@ _5 / 150 implemented_
 |   | `getAction` | Obtain action from agent, actor, or policy object given environment
       observations |
 |   | `allExperiences` | Return all experiences in replay memory buffer(Since R2022b) |
-|   | `append` | Append experiences to replay memory buffer(Since R2022a) |
+| ✅ | `append` | Append experiences to replay memory buffer(Since R2022a) |
 |   | `generateHindsightExperiences` | Generate hindsight experiences from hindsight experience replay buffer(Since R2023a) |
-|   | `resize` | Resize replay memory experience buffer(Since R2022b) |
+| ✅ | `resize` | Resize replay memory experience buffer(Since R2022b) |
 |   | `rlHindsightPrioritizedReplayMemory` | Hindsight replay memory experience buffer with prioritized sampling(Since R2023a) |
 |   | `rlHindsightReplayMemory` | Hindsight replay memory experience buffer(Since R2023a) |
 |   | `rlPrioritizedReplayMemory` | Replay memory experience buffer with prioritized sampling(Since R2022b) |
@@ -13933,7 +13933,7 @@ _5 / 150 implemented_
       agents(Since R2022a) |
 |   | `rlHybridStochasticActor` | Hybrid stochastic actor with a hybrid action space for reinforcement learning
       agents(Since R2024b) |
-| ✅ | `rlQValueFunction` | Q-Value function approximator with a continuous or discrete action space
+|   | `rlQValueFunction` | Q-Value function approximator with a continuous or discrete action space
       reinforcement learning agents(Since R2022a) |
 |   | `rlTable` | Value table or Q table |
 |   | `rlValueFunction` | Value function approximator object for reinforcement learning agents(Since R2022a) |
@@ -13948,7 +13948,7 @@ _5 / 150 implemented_
 |   | `syncParameters` | Modify the learnable parameters of one approximator toward the learnable parameters
       of another approximator(Since R2022a) |
 |   | `getNormalizer` | Get normalizer from function approximator object(Since R2024a) |
-|   | `normalize` | Normalize input data using method defined in normalizer object(Since R2024a) |
+| ✅ | `normalize` | Normalize input data using method defined in normalizer object(Since R2024a) |
 |   | `rlNormalizer` | Configure normalization for input of function approximator object(Since R2024a) |
 |   | `setNormalizer` | Set normalizer in function approximator object(Since R2024a) |
 |   | `rlOptimizerOptions` | Optimization options for actors and critics(Since R2022a) |
@@ -13988,7 +13988,7 @@ _5 / 150 implemented_
 |   | `rlEvolutionStrategyTrainingOptions` | Options for training off-policy reinforcement learning agents using an evolutionary
       strategy(Since R2023b) |
 |   | `rlMultiAgentTrainingOptions` | Options for training multiple reinforcement learning agents(Since R2022a) |
-| ✅ | `rlTrainingOptions` | Options for training reinforcement learning agents |
+|   | `rlTrainingOptions` | Options for training reinforcement learning agents |
 |   | `show` | Visualize a training result object in a new Reinforcement Learning Training Monitor
       window(Since R2024a) |
 |   | `train` | Train reinforcement learning agents within a specified environment |
@@ -14011,7 +14011,7 @@ _5 / 150 implemented_
       target(Since R2022b) |
 |   | `rlSimulationOptions` | Options for simulating a reinforcement learning agent within an
       environment |
-|   | `sim` | Simulate trained reinforcement learning agents within specified
+| ✅ | `sim` | Simulate trained reinforcement learning agents within specified
       environment |
 |   | `AcceleratedFunction` | Accelerated deep learning function |
 |   | `cancel` | Cancel unfinished reinforcement learning environment simulations on
@@ -14036,14 +14036,14 @@ _5 / 150 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
-| ✅ | `rlPGPolicy` | Custom TypeScript port |
+|   | `rlPGPolicy` | Custom TypeScript port |
 
 ---
 
 <a id="rf"></a>
 ## Rf Toolbox  
 
-_5 / 205 implemented_
+_8 / 205 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -14074,7 +14074,7 @@ _5 / 205 implemented_
 |   | `s2t` | Convert S-parameters to T-parameters |
 |   | `s2tf` | Convert S-parameters of 2-port network to voltage or power-wave transfer
       function |
-| ✅ | `s2y` | Convert S-parameters to Y-parameters |
+|   | `s2y` | Convert S-parameters to Y-parameters |
 |   | `s2z` | Convert S-parameters to Z-parameters |
 |   | `smm2s` | Convert mixed-mode 2N-port S-parameters to single-ended 4N-port
       S-parameters |
@@ -14090,7 +14090,7 @@ _5 / 205 implemented_
 |   | `z2y` | Convert Z-parameters to Y-parameters |
 |   | `y2abcd` | Convert Y-parameters to ABCD-parameters |
 |   | `y2h` | Convert Y-parameters to hybrid h-parameters |
-| ✅ | `y2s` | Convert Y-parameters to S-parameters |
+|   | `y2s` | Convert Y-parameters to S-parameters |
 |   | `y2z` | Convert Y-parameters to Z-parameters |
 |   | `g2h` | Convert g-parameters to hybrid h-parameters |
 |   | `h2abcd` | Convert hybrid h-parameters to ABCD-parameters |
@@ -14159,7 +14159,7 @@ _5 / 205 implemented_
 |   | `add` | Insert circuit element or circuit object into circuit |
 |   | `clone` | Create copy of existing circuit element or circuit object |
 |   | `copy` | Copy circuit or data object |
-|   | `delete` | Delete circuit object and decouple its elements(Since R2022a) |
+| ✅ | `delete` | Delete circuit object and decouple its elements(Since R2022a) |
 |   | `groupdelay` | Group delay of S-parameter, RF filter, orRF Toolboxcircuit object |
 |   | `kuroda` | Apply Kuroda's transformation based on Kuroda's identities(Since R2021b) |
 |   | `noisefigure` | Calculate noise figure of transmission lines, series RLC, and shunt RLC
@@ -14170,26 +14170,26 @@ _5 / 205 implemented_
 |   | `setports` | Set ports of circuit object |
 |   | `setterminals` | Set terminals of circuit object |
 |   | `datasheet` | Open datasheet of Modelithics component(Since R2023a) |
-|   | `remove` | Remove search parameters fromrfPartSelectorobject(Since R2026a) |
+| ✅ | `remove` | Remove search parameters fromrfPartSelectorobject(Since R2026a) |
 |   | `rfPart` | Create RF component from selected third-party components(Since R2026a) |
 |   | `search` | Search Modelithics component of interest(Since R2023a) |
 |   | `show` | Display selected third-party components(Since R2026a) |
 |   | `analyze` | Analyze RFCKT object in frequency domain |
 |   | `calculate` | Calculate specified parameters for rfckt objects or rfdata objects |
 |   | `circle` | Draw circles onSmithChart |
-|   | `extract` | Extract specified network parameters from rfckt object or data object |
+| ✅ | `extract` | Extract specified network parameters from rfckt object or data object |
 |   | `getop` | Display operating conditions |
 |   | `getz0` | Calculate characteristic impedance of RFCKT transmission line object |
 |   | `listformat` | List valid formats for specified circuit object parameter |
 |   | `listparam` | List valid parameters for specified circuit object |
-|   | `loglog` | Plot specified circuit object parameters using log-log scale |
-|   | `plot` | Plot circuit object parameters on X-Y plane |
+| ✅ | `loglog` | Plot specified circuit object parameters using log-log scale |
+| ✅ | `plot` | Plot circuit object parameters on X-Y plane |
 |   | `plotyy` | Plot parameters of RF circuit or RF data on xy-plane with two Y-axes |
 |   | `polar` | Plot specified object parameters on polar coordinates |
 |   | `read` | Read RF data from file to new or existing circuit or data object |
 |   | `restore` | Restore data to original frequencies |
-|   | `semilogx` | Plot RF circuit object parameters using log scale forx-axis |
-|   | `semilogy` | Plot RF circuit object parameters using log scale fory-axis |
+| ✅ | `semilogx` | Plot RF circuit object parameters using log scale forx-axis |
+| ✅ | `semilogy` | Plot RF circuit object parameters using log scale fory-axis |
 |   | `setop` | Set operating conditions |
 |   | `smith` | Plot circuit object parameters onSmithChart |
 |   | `write` | Write RF data from circuit or data object to file |
@@ -14227,7 +14227,7 @@ _5 / 205 implemented_
 |   | `visualizePhaseNoise` | Plot phase noise characteristics of idealized mixer(Since R2024b) |
 |   | `visualizePower` | Plot power characteristics of idealized mixer(Since R2024b) |
 |   | `freqresp` | Frequency response for rational objects |
-| ✅ | `gamma2z` | Convert reflection coefficient to impedance |
+|   | `gamma2z` | Convert reflection coefficient to impedance |
 |   | `gammain` | Calculate input reflection coefficient of two-port network |
 |   | `gammaml` | Calculate load reflection coefficient of two-port network |
 |   | `gammams` | Calculate source reflection coefficient of two-port network |
@@ -14236,12 +14236,12 @@ _5 / 205 implemented_
 |   | `makepassive` | Make N-port S-parameters passive |
 |   | `passivity` | Plot passivity ofN-by-Nrational fit
             output |
-| ✅ | `powergain` | Calculate power gain from two-port S-parameters |
+|   | `powergain` | Calculate power gain from two-port S-parameters |
 |   | `rfinterp1` | Interpolate network parameter data at new frequencies |
 |   | `stabilityk` | Stability factorKof two-port network |
 |   | `stabilitymu` | Stability factorμof two-port network |
 |   | `vswr` | VSWR at given reflection coefficientΓ |
-| ✅ | `z2gamma` | Convert impedance to reflection coefficient |
+|   | `z2gamma` | Convert impedance to reflection coefficient |
 |   | `rfbudget` | Create RF budget object and compute RF budget results for chain of 2-port
             elements |
 |   | `rfsystem` | GenerateRF Blocksetmodel and perform circuit envelope or idealized baseband simulation |
@@ -14265,7 +14265,7 @@ _5 / 205 implemented_
 |   | `timeresp` | Time response for rational objects |
 |   | `iscausal` | Determine if data is causal at specified frequencies(Since R2023a) |
 |   | `abcd` | Construct state-space matrices fromrationalobject |
-|   | `zpk` | Compute zeros, poles, and gain of rational object |
+| ✅ | `zpk` | Compute zeros, poles, and gain of rational object |
 |   | `generateSPICE` | Generate SPICE file fromrationalfitof
             S-parameters |
 |   | `writeva` | Generate Verilog-A description ofrationalobject |
@@ -14283,7 +14283,7 @@ _5 / 205 implemented_
 <a id="robotics"></a>
 ## Robotics Toolbox  
 
-_4 / 197 implemented_
+_1 / 197 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -14323,7 +14323,7 @@ _4 / 197 implemented_
 |   | `unicycleKinematics` | Unicycle vehicle model |
 |   | `analyticalInverseKinematics` | Create analytical inverse kinematics solver |
 |   | `generalizedInverseKinematics` | Create multiconstraint inverse kinematics solver |
-| ✅ | `inverseKinematics` | Create inverse kinematic solver |
+|   | `inverseKinematics` | Create inverse kinematic solver |
 |   | `constraintAiming` | Create aiming constraint for pointing at a target location |
 |   | `constraintCartesianBounds` | Create constraint to keep body origin inside Cartesian
                         bounds |
@@ -14364,7 +14364,7 @@ _4 / 197 implemented_
 |   | `lidarScan` | Create object for storing 2-D lidar scan |
 |   | `move` | Move map in world frame |
 |   | `occupancyMatrix` | Convert occupancy grid to matrix |
-|   | `plot` | Display laser or lidar scan readings |
+| ✅ | `plot` | Display laser or lidar scan readings |
 |   | `predict` | Predict state of robot in next time step |
 |   | `raycast` | Compute cell indices along a ray |
 |   | `removeInvalidData` | Remove invalid range and angle data |
@@ -14500,16 +14500,16 @@ _4 / 197 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
-| ✅ | `collisionCheck` | Custom TypeScript port (not in standard MATLAB reference) |
-| ✅ | `forwardKinematics` | Custom TypeScript port (not in standard MATLAB reference) |
-| ✅ | `pathPlan` | Custom TypeScript port (not in standard MATLAB reference) |
+|   | `collisionCheck` | Custom TypeScript port (not in standard MATLAB reference) |
+|   | `forwardKinematics` | Custom TypeScript port (not in standard MATLAB reference) |
+|   | `pathPlan` | Custom TypeScript port (not in standard MATLAB reference) |
 
 ---
 
 <a id="ros"></a>
 ## Ros Toolbox  
 
-_5 / 148 implemented_
+_6 / 148 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -14517,7 +14517,7 @@ _5 / 148 implemented_
 |   | `getTransform` | Return the transformation between two coordinate frames(Since R2023a) |
 |   | `isNodeRunning` | Determine if ROS or ROS 2 node is running |
 |   | `ros2` | Retrieve information about ROS 2 network |
-| ✅ | `ros2device` | Connect to remote ROS 2 device |
+|   | `ros2device` | Connect to remote ROS 2 device |
 |   | `ros2duration` | Create a ROS 2 duration message(Since R2022b) |
 |   | `ros2message` | Create ROS 2 message structures |
 |   | `ros2node` | Create a ROS 2 node on the specified network |
@@ -14567,8 +14567,8 @@ _5 / 148 implemented_
 |   | `waitForServer` | Wait for ROS or ROS 2 service server to start(Since R2021b) |
 |   | `Core` | Create ROS Core |
 |   | `del` | Delete a ROS parameter |
-|   | `get` | Get ROS parameter value |
-|   | `has` | Check if ROS parameter name exists |
+| ✅ | `get` | Get ROS parameter value |
+| ✅ | `has` | Check if ROS parameter name exists |
 |   | `isCoreRunning` | Determine if ROS core is running |
 |   | `Node` | Start ROS node and connect to ROS
             master |
@@ -14578,16 +14578,16 @@ _5 / 148 implemented_
 |   | `rosinit` | Connect to ROS network |
 |   | `rosmsg` | Retrieve information about ROS messages and message types |
 |   | `rosnode` | Retrieve information about ROS network nodes |
-| ✅ | `rosparam` | Access ROS parameter server values |
+|   | `rosparam` | Access ROS parameter server values |
 |   | `rosrate` | Execute loop at fixed frequency |
 |   | `rosshutdown` | Shut down ROS system |
 |   | `rostf` | Receive, send, and apply ROS transformations |
-| ✅ | `rostime` | Access ROS time functionality |
-| ✅ | `rostopic` | Retrieve information about ROS topics |
+|   | `rostime` | Access ROS time functionality |
+|   | `rostopic` | Retrieve information about ROS topics |
 |   | `runCore` | Start ROS core |
 |   | `search` | Search ROS network for parameter names |
-|   | `seconds` | Returns seconds of a time or duration |
-|   | `set` | Set value of ROS parameter or add new parameter |
+| ✅ | `seconds` | Returns seconds of a time or duration |
+| ✅ | `set` | Set value of ROS parameter or add new parameter |
 |   | `stopCore` | Stop ROS core |
 |   | `TransformStamped` | Create transformation message |
 |   | `waitForTransform` | Wait until a transformation is available |
@@ -14608,7 +14608,7 @@ _5 / 148 implemented_
 |   | `rosAddons` | Install add-ons for ROS |
 |   | `rosgenmsg` | Generate custom messages from ROS definitions |
 |   | `rosRegisterMessages` | Register ROS custom messages withMATLAB(Since R2022b) |
-|   | `delete` | Remove ros2bagwriter object from memory(Since R2022b) |
+| ✅ | `delete` | Remove ros2bagwriter object from memory(Since R2022b) |
 |   | `pauseRecording` | Pause recording live topic data from ROS 2 network without closing bag
       writer(Since R2026a) |
 |   | `readMessages` | Read messages from ros2bagreader object |
@@ -14619,7 +14619,7 @@ _5 / 148 implemented_
 |   | `select` | Select subset of messages in ros2bagreader |
 |   | `startRecording` | Start recording live topic data from ROS 2 network into bag file(Since R2026a) |
 |   | `stopRecording` | Stop recording live topic data from ROS 2 network(Since R2026a) |
-|   | `timetable` | Create timetable for selected message properties in ROS 2 bag file(Since R2024a) |
+| ✅ | `timetable` | Create timetable for selected message properties in ROS 2 bag file(Since R2024a) |
 |   | `write` | Write logs to ROS 2 bag log file(Since R2022b) |
 |   | `BagSelection` | Object for storing rosbag selection |
 |   | `rosbag` | Open and parse rosbag log file |
@@ -14682,14 +14682,14 @@ _5 / 148 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
-| ✅ | `rostype` | Custom TypeScript port |
+|   | `rostype` | Custom TypeScript port |
 
 ---
 
 <a id="rptgen"></a>
 ## Rptgen Toolbox  
 
-_5 / 292 implemented_
+_4 / 292 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -14910,9 +14910,9 @@ _5 / 292 implemented_
 |   | `mlreportgen.utils.normalizeString` | Remove extra spaces and line feeds from text |
 |   | `mlreportgen.utils.toString` | Create string representation of MATLAB variable |
 |   | `pptview` | OpenMicrosoftPowerPointpresentation or convert it to PDF |
-| ✅ | `add` | Add text box, table, or picture to slide |
-|   | `find` | Search a presentation |
-|   | `replace` | Replace text, tables, or pictures in a slide |
+|   | `add` | Add text box, table, or picture to slide |
+| ✅ | `find` | Search a presentation |
+| ✅ | `replace` | Replace text, tables, or pictures in a slide |
 |   | `getLayoutNames` | Get names of layouts for presentation slide master |
 |   | `getMasterNames` | Get names of slide masters for presentation |
 |   | `getTableStyleNames` | Get table style names for presentation |
@@ -14943,7 +14943,7 @@ _5 / 292 implemented_
 |   | `mlreportgen.ppt.ProgressMessage` | Progress message |
 |   | `mlreportgen.ppt.WarningMessage` | Warning message |
 |   | `mlreportgen.ppt.Video` | Video to include in presentation(Since R2026a) |
-|   | `close` | Close presentation |
+| ✅ | `close` | Close presentation |
 |   | `createTemplate` | Create copy of PPT API default presentation template |
 |   | `open` | Open presentation |
 |   | `mlreportgen.ppt.AutoFit` | Scale text to fit placeholder or text box |
@@ -14972,7 +14972,7 @@ _5 / 292 implemented_
 |   | `mlreportgen.ppt.setDefaultNumberFormat` | Set default formatting of numeric data generated by PPT API(Since R2024b) |
 |   | `mlreportgen.ppt.TemplatePicture` | Picture from template presentation slide |
 |   | `mlreportgen.ppt.TemplateTable` | Table from template presentation slide |
-|   | `append` | Append content to paragraph |
+| ✅ | `append` | Append content to paragraph |
 |   | `clone` | Copy PPT API paragraph(Since R2021b) |
 |   | `entry` | Access table entry |
 |   | `row` | Access table row |
@@ -14980,7 +14980,7 @@ _5 / 292 implemented_
 |   | `rptrebuildcache` | Rebuild Report Explorer template cache |
 |   | `rptrebuildregistry` | Rebuild Report Explorer style sheet registry |
 |   | `setedit` | Start Report Explorer |
-| ✅ | `report` | Generate reports from Report Explorer setup files |
+|   | `report` | Generate reports from Report Explorer setup files |
 |   | `rpt2api` | Convert Report Explorer setup files toMATLABprograms(Since R2022b) |
 |   | `compwiz` | Create customMATLABReport Generatorcomponents |
 
@@ -14988,16 +14988,16 @@ _5 / 292 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
-| ✅ | `rptgen.cfr_para` | Custom TypeScript port |
-| ✅ | `rptgen.cfr_report` | Custom TypeScript port |
-| ✅ | `rptgen.cfr_table` | Custom TypeScript port |
+|   | `rptgen.cfr_para` | Custom TypeScript port |
+|   | `rptgen.cfr_report` | Custom TypeScript port |
+|   | `rptgen.cfr_table` | Custom TypeScript port |
 
 ---
 
 <a id="rtw"></a>
 ## Rtw Toolbox  
 
-_5 / 240 implemented_
+_1 / 240 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -15007,7 +15007,7 @@ _5 / 240 implemented_
 |   | `coder.mapping.api.get` | Get code mappings for model |
 |   | `coder.mapping.utils.create` | Create code mappings object for configuring data and function interface for C
       and C++ code generation |
-|   | `find` | Get model elements for the category of model code mappings |
+| ✅ | `find` | Get model elements for the category of model code mappings |
 |   | `getDataDefault` | Get default storage class or storage class property setting for model data
       category |
 |   | `getDataStore` | Get code and calibration configuration from code mappings for local or shared local
@@ -15279,40 +15279,40 @@ model |
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
-| ✅ | `PIL` | Custom TypeScript port |
-| ✅ | `ert_auto_configuration` | Custom TypeScript port |
-| ✅ | `makeRTWCode` | Custom TypeScript port |
-| ✅ | `rtw.BuildInfo` | Custom TypeScript port |
-| ✅ | `targets_getActiveConfigSet` | Custom TypeScript port |
+|   | `PIL` | Custom TypeScript port |
+|   | `ert_auto_configuration` | Custom TypeScript port |
+|   | `makeRTWCode` | Custom TypeScript port |
+|   | `rtw.BuildInfo` | Custom TypeScript port |
+|   | `targets_getActiveConfigSet` | Custom TypeScript port |
 
 ---
 
 <a id="signal"></a>
 ## Signal Toolbox  
 
-_52 / 397 implemented_
+_131 / 397 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
 | ✅ | `chirp` | Swept-frequency cosine |
 |   | `diric` | Dirichlet or periodic sinc function |
-|   | `gauspuls` | Gaussian-modulated sinusoidal RF pulse |
+| ✅ | `gauspuls` | Gaussian-modulated sinusoidal RF pulse |
 |   | `gmonopuls` | Gaussian monopulse |
 |   | `pulstran` | Pulse train |
-|   | `randn` | Normally distributed random numbers |
-|   | `rectpuls` | Sampled aperiodic rectangle |
-|   | `sawtooth` | Sawtooth or triangle wave |
-|   | `sin` | Sine of argument in radians |
+| ✅ | `randn` | Normally distributed random numbers |
+| ✅ | `rectpuls` | Sampled aperiodic rectangle |
+| ✅ | `sawtooth` | Sawtooth or triangle wave |
+| ✅ | `sin` | Sine of argument in radians |
 | ✅ | `sinc` | Sinc function |
 |   | `square` | Square wave |
-|   | `stem` | Plot discrete sequence data |
-|   | `tripuls` | Sampled aperiodic triangle |
+| ✅ | `stem` | Plot discrete sequence data |
+| ✅ | `tripuls` | Sampled aperiodic triangle |
 |   | `vco` | Voltage-controlled oscillator |
 |   | `buffer` | Buffer signal vector into matrix of data frames |
 |   | `demod` | Demodulation for communications simulation |
 |   | `framelbl` | Partition label sequence into frames(Since R2024a) |
 |   | `framesig` | Partition signal into frames(Since R2024a) |
-|   | `marcumq` | Generalized MarcumQ-function |
+| ✅ | `marcumq` | Generalized MarcumQ-function |
 |   | `modulate` | Modulation for communications simulation |
 |   | `shiftdata` | Shift data to operate on specified dimension |
 |   | `udecode` | Decode 2n-level quantized integer inputs to
@@ -15320,37 +15320,37 @@ _52 / 397 implemented_
 |   | `uencode` | Quantize and encode floating-point inputs to integer outputs |
 |   | `unshiftdata` | Inverse ofshiftdata |
 |   | `strips` | Strip plot |
-|   | `detrend` | Remove polynomial trend |
-|   | `filloutliers` | Detect and replace outliers in data |
+| ✅ | `detrend` | Remove polynomial trend |
+| ✅ | `filloutliers` | Detect and replace outliers in data |
 |   | `hampel` | Outlier removal using Hampel identifier |
-|   | `isoutlier` | Find outliers in data |
+| ✅ | `isoutlier` | Find outliers in data |
 | ✅ | `medfilt1` | 1-D median filtering |
-|   | `movmad` | Moving median absolute deviation |
-|   | `movmedian` | Moving median |
+| ✅ | `movmad` | Moving median absolute deviation |
+| ✅ | `movmedian` | Moving median |
 | ✅ | `sgolay` | Savitzky-Golay filter design |
 | ✅ | `sgolayfilt` | Savitzky-Golay filtering |
-|   | `smoothdata` | Smooth noisy data |
-|   | `cummax` | Cumulative maximum |
-|   | `cummin` | Cumulative minimum |
+| ✅ | `smoothdata` | Smooth noisy data |
+| ✅ | `cummax` | Cumulative maximum |
+| ✅ | `cummin` | Cumulative minimum |
 |   | `envelope` | Signal envelope |
-|   | `max` | Maximum elements of array |
-|   | `mean` | Average or mean value of array |
-|   | `meanfreq` | Mean frequency |
-|   | `medfreq` | Median frequency |
-|   | `median` | Median value of array |
-|   | `min` | Minimum elements of array |
+| ✅ | `max` | Maximum elements of array |
+| ✅ | `mean` | Average or mean value of array |
+| ✅ | `meanfreq` | Mean frequency |
+| ✅ | `medfreq` | Median frequency |
+| ✅ | `median` | Median value of array |
+| ✅ | `min` | Minimum elements of array |
 | ✅ | `peak2peak` | Maximum-to-minimum difference |
 | ✅ | `peak2rms` | Peak-magnitude-to-RMS ratio |
 | ✅ | `rssq` | Root-sum-of-squares level |
 |   | `seqperiod` | Compute period of sequence |
-|   | `std` | Standard deviation |
-|   | `var` | Variance |
+| ✅ | `std` | Standard deviation |
+| ✅ | `var` | Variance |
 |   | `alignsignals` | Align two signals by delaying earliest signal |
 |   | `cusum` | Detect small changes in mean using cumulative sum |
 | ✅ | `dtw` | Distance between signals using dynamic time warping |
 | ✅ | `edr` | Edit distance on real signals |
 |   | `findchangepts` | Find abrupt changes in signal |
-|   | `finddelay` | Estimate delay(s) between signals |
+| ✅ | `finddelay` | Estimate delay(s) between signals |
 |   | `findpeaks` | Find local maxima |
 |   | `findsignal` | Find signal location using similarity search |
 |   | `refinepeaks` | Refine peak value and location estimates(Since R2024b) |
@@ -15386,12 +15386,12 @@ _52 / 397 implemented_
 | ✅ | `statelevels` | State-level estimation for bilevel waveform with histogram
 method |
 | ✅ | `undershoot` | Undershoot metrics of bilevel waveform transitions |
-|   | `bandpower` | Band power |
+| ✅ | `bandpower` | Band power |
 | ✅ | `enbw` | Equivalent noise bandwidth |
 |   | `instbw` | Estimate instantaneous bandwidth |
 |   | `instfreq` | Estimate instantaneous frequency |
-|   | `obw` | Occupied bandwidth |
-|   | `powerbw` | Power bandwidth |
+| ✅ | `obw` | Occupied bandwidth |
+| ✅ | `powerbw` | Power bandwidth |
 |   | `spectralCrest` | Spectral crest for signals and spectrograms |
 |   | `spectralEntropy` | Spectral entropy for signals and spectrograms |
 |   | `spectralFlatness` | Spectral flatness for signals and spectrograms |
@@ -15402,22 +15402,22 @@ method |
 |   | `snr` | Signal-to-noise ratio |
 |   | `thd` | Total harmonic distortion |
 |   | `toi` | Third-order intercept point |
-|   | `abs` | Absolute value and complex magnitude |
-|   | `angle` | Phase angle |
-|   | `czt` | Chirp Z-transform |
-|   | `dct` | Discrete cosine transform |
-|   | `dftmtx` | Discrete Fourier transform matrix |
-|   | `fft` | Fast Fourier transform |
-|   | `fft2` | 2-D fast Fourier transform |
-|   | `fftshift` | Shift zero-frequency component to center of spectrum |
-|   | `goertzel` | Discrete-Time Fourier transform with second-order Goertzel algorithm |
-|   | `idct` | Inverse discrete cosine transform |
-|   | `ifft` | Inverse fast Fourier transform |
-|   | `ifft2` | 2-D inverse fast Fourier transform |
-|   | `ifftshift` | Inverse zero-frequency shift |
-|   | `fwht` | Fast Walsh-Hadamard transform |
-|   | `hilbert` | Discrete-time analytic signal using Hilbert transform |
-|   | `ifwht` | Inverse Fast Walsh-Hadamard transform |
+| ✅ | `abs` | Absolute value and complex magnitude |
+| ✅ | `angle` | Phase angle |
+| ✅ | `czt` | Chirp Z-transform |
+| ✅ | `dct` | Discrete cosine transform |
+| ✅ | `dftmtx` | Discrete Fourier transform matrix |
+| ✅ | `fft` | Fast Fourier transform |
+| ✅ | `fft2` | 2-D fast Fourier transform |
+| ✅ | `fftshift` | Shift zero-frequency component to center of spectrum |
+| ✅ | `goertzel` | Discrete-Time Fourier transform with second-order Goertzel algorithm |
+| ✅ | `idct` | Inverse discrete cosine transform |
+| ✅ | `ifft` | Inverse fast Fourier transform |
+| ✅ | `ifft2` | 2-D inverse fast Fourier transform |
+| ✅ | `ifftshift` | Inverse zero-frequency shift |
+| ✅ | `fwht` | Fast Walsh-Hadamard transform |
+| ✅ | `hilbert` | Discrete-time analytic signal using Hilbert transform |
+| ✅ | `ifwht` | Inverse Fast Walsh-Hadamard transform |
 |   | `dlistft` | Deep learning inverse short-time Fourier transform(Since R2024a) |
 |   | `dlstft` | Deep learning short-time Fourier transform |
 |   | `emd` | Empirical mode decomposition |
@@ -15436,22 +15436,22 @@ method |
 |   | `xspectrogram` | Cross-spectrogram using short-time Fourier transforms |
 |   | `xwvd` | Cross Wigner-Ville distribution and cross smoothed pseudo Wigner-Ville
       distribution |
-|   | `cceps` | Complex cepstral analysis |
+| ✅ | `cceps` | Complex cepstral analysis |
 |   | `icceps` | Inverse complex cepstrum |
-|   | `rceps` | Real cepstrum and minimum-phase reconstruction |
+| ✅ | `rceps` | Real cepstrum and minimum-phase reconstruction |
 |   | `bitrevorder` | Permute data into bit-reversed order |
 |   | `digitrevorder` | Permute input into digit-reversed order |
-|   | `corrcoef` | Correlation coefficients |
+| ✅ | `corrcoef` | Correlation coefficients |
 |   | `corrmtx` | Data matrix for autocorrelation matrix estimation |
-|   | `xcorr` | Cross-correlation |
+| ✅ | `xcorr` | Cross-correlation |
 |   | `xcorr2` | 2-D cross-correlation |
-|   | `xcov` | Cross-covariance |
+| ✅ | `xcov` | Cross-covariance |
 |   | `cconv` | Modulo-n circular convolution |
-|   | `conv` | Convolution and polynomial multiplication |
-|   | `conv2` | 2-D convolution |
+| ✅ | `conv` | Convolution and polynomial multiplication |
+| ✅ | `conv2` | 2-D convolution |
 |   | `convmtx` | Convolution matrix |
-|   | `cov` | Covariance |
-|   | `deconv` | Least-squares deconvolution and polynomial division |
+| ✅ | `cov` | Covariance |
+| ✅ | `deconv` | Least-squares deconvolution and polynomial division |
 | ✅ | `ac2poly` | Convert autocorrelation sequence to prediction polynomial |
 |   | `ac2rc` | Convert autocorrelation sequence to reflection coefficients |
 |   | `is2rc` | Convert inverse sine parameters to reflection coefficients |
@@ -15501,7 +15501,7 @@ method |
 |   | `ellipord` | Minimum order for elliptic filters |
 |   | `yulewalk` | Recursive digital filter design |
 |   | `digitalFilter` | Digital filter |
-|   | `double` | Cast coefficients of digital filter to double precision |
+| ✅ | `double` | Cast coefficients of digital filter to double precision |
 |   | `filt2block` | GenerateSimulinkfilter block |
 |   | `filterAnalyzer` | Analyze filters with Filter Analyzer app(Since R2024a) |
 |   | `info` | Information about digital filter |
@@ -15511,12 +15511,12 @@ method |
 |   | `polystab` | Stabilize polynomial |
 |   | `scaleFilterSections` | Scale cascaded transfer functions with scale values(Since R2023b) |
 |   | `setSampleRate` | Set sample rate of digital filter(Since R2026a) |
-|   | `single` | Cast coefficients of digital filter to single precision |
+| ✅ | `single` | Cast coefficients of digital filter to single precision |
 | ✅ | `freqz` | Frequency response of digital filter |
 |   | `grpdelay` | Average filter delay (group delay) |
 |   | `phasedelay` | Phase delay of digital filter |
 |   | `phasez` | Phase response of digital filter |
-|   | `unwrap` | Shift phase angles |
+| ✅ | `unwrap` | Shift phase angles |
 |   | `zerophase` | Zero-phase response of digital filter |
 |   | `zplane` | Zero-pole plot for discrete-time systems |
 |   | `impz` | Impulse response of digital filter |
@@ -15531,14 +15531,14 @@ method |
 |   | `islinphase` | Determine whether filter has linear phase |
 |   | `ismaxphase` | Determine whether filter is maximum phase |
 |   | `isminphase` | Determine whether filter is minimum phase |
-|   | `isstable` | Determine whether filter is stable |
+| ✅ | `isstable` | Determine whether filter is stable |
 |   | `bandpass` | Bandpass-filter signals |
 |   | `bandstop` | Bandstop-filter
             signals |
 |   | `ctffilt` | Cascaded transfer function filtering(Since R2024b) |
 |   | `fftfilt` | FFT-based FIR filtering using overlap-add method |
-|   | `filter` | 1-D digital filter |
-|   | `filter2` | 2-D digital filter |
+| ✅ | `filter` | 1-D digital filter |
+| ✅ | `filter2` | 2-D digital filter |
 |   | `filtfilt` | Zero-phase digital filtering |
 |   | `filtic` | Initial conditions for transposed direct-form II filter implementation |
 |   | `highpass` | Highpass-filter signals |
@@ -15562,34 +15562,34 @@ to state-space form |
       form |
 |   | `sos2zp` | Convert digital filter second-order section parameters to zero-pole-gain
       form |
-|   | `ss` | Convert digital filter to state-space representation |
+| ✅ | `ss` | Convert digital filter to state-space representation |
 |   | `ss2sos` | Convert digital filter state-space parameters to second-order
 sections form |
-|   | `ss2tf` | Convert state-space representation to transfer function |
+| ✅ | `ss2tf` | Convert state-space representation to transfer function |
 |   | `ss2zp` | Convert state-space filter parameters to zero-pole-gain form |
-|   | `tf` | Convert digital filter to transfer function |
+| ✅ | `tf` | Convert digital filter to transfer function |
 |   | `tf2latc` | Convert transfer function filter coefficients to lattice filter form |
 |   | `tf2sos` | Convert digital filter transfer function data to second-order sections
       form |
-|   | `tf2ss` | Convert transfer function filter parameters to state-space form |
-|   | `tf2zp` | Convert transfer function filter parameters to zero-pole-gain form |
+| ✅ | `tf2ss` | Convert transfer function filter parameters to state-space form |
+| ✅ | `tf2zp` | Convert transfer function filter parameters to zero-pole-gain form |
 |   | `tf2zpk` | Convert transfer function filter parameters to zero-pole-gain form |
 |   | `zp2ctf` | Convert zero-pole-gain filter parameters to cascaded transfer function
       form(Since R2024a) |
 |   | `zp2sos` | Convert zero-pole-gain filter parameters to second-order sections form |
 |   | `zp2ss` | Convert zero-pole-gain filter parameters to state-space form |
-|   | `zp2tf` | Convert zero-pole-gain filter parameters to transfer function form |
-|   | `zpk` | Convert digital filter to zero-pole-gain representation |
+| ✅ | `zp2tf` | Convert zero-pole-gain filter parameters to transfer function form |
+| ✅ | `zpk` | Convert digital filter to zero-pole-gain representation |
 |   | `decimate` | Decimation — decrease sample rate by integer factor |
-|   | `downsample` | Decrease sample rate by integer factor |
+| ✅ | `downsample` | Decrease sample rate by integer factor |
 |   | `fillgaps` | Fill gaps using autoregressive modeling |
 |   | `interp` | Interpolation — increase sample rate by integer factor |
-|   | `interp1` | 1-D data interpolation (table lookup) |
-|   | `pchip` | Piecewise Cubic Hermite Interpolating Polynomial (PCHIP) |
+| ✅ | `interp1` | 1-D data interpolation (table lookup) |
+| ✅ | `pchip` | Piecewise Cubic Hermite Interpolating Polynomial (PCHIP) |
 |   | `resample` | Resample uniform or nonuniform data to new fixed rate |
-|   | `spline` | Cubic spline data interpolation |
-|   | `upfirdn` | Upsample, apply FIR filter, and downsample |
-|   | `upsample` | Increase sample rate by integer factor |
+| ✅ | `spline` | Cubic spline data interpolation |
+| ✅ | `upfirdn` | Upsample, apply FIR filter, and downsample |
+| ✅ | `upsample` | Increase sample rate by integer factor |
 |   | `besself` | Bessel analog filter design |
 | ✅ | `freqs` | Frequency response of analog filters |
 |   | `freqspace` | Frequency spacing for frequency response |
@@ -15607,20 +15607,20 @@ sections form |
                                                   filter |
 |   | `cpsd` | Cross power spectral density |
 |   | `mscohere` | Magnitude-squared coherence |
-|   | `periodogram` | Periodogram power spectral density estimate |
+| ✅ | `periodogram` | Periodogram power spectral density estimate |
 |   | `plomb` | Lomb-Scargle periodogram |
 |   | `pmtm` | Multitaper power spectral density estimate |
 |   | `poctave` | Generate octave spectrum |
-|   | `pwelch` | Welch’s power spectral density estimate |
+| ✅ | `pwelch` | Welch’s power spectral density estimate |
 |   | `tfestimate` | Transfer function estimate |
 |   | `db` | Convert energy or power measurements to decibels |
 | ✅ | `db2mag` | Convert decibels to magnitude |
 | ✅ | `db2pow` | Convert decibels to power |
 | ✅ | `mag2db` | Convert magnitude to decibels |
 | ✅ | `pow2db` | Convert power to decibels |
-|   | `paddata` | Pad data by adding elements(Since R2023b) |
-|   | `resize` | Resize data by adding or removing elements(Since R2023b) |
-|   | `trimdata` | Trim data by removing elements(Since R2023b) |
+| ✅ | `paddata` | Pad data by adding elements(Since R2023b) |
+| ✅ | `resize` | Resize data by adding or removing elements(Since R2023b) |
+| ✅ | `trimdata` | Trim data by removing elements(Since R2023b) |
 |   | `pburg` | Autoregressive power spectral density estimate —
 Burg’s method |
 |   | `pcov` | Autoregressive power spectral density estimate —
@@ -15688,12 +15688,12 @@ Yule-Walker method |
 |   | `modwtLayer` | Maximal overlap discrete wavelet transform layer(Since R2022b) |
 |   | `signalDatastore` | Datastore for collection of signals |
 |   | `cwtmag2sig` | Signal reconstruction from CWT magnitude(Since R2023b) |
-|   | `islocalmax` | Find local maxima |
+| ✅ | `islocalmax` | Find local maxima |
 |   | `edfheader` | Create header structure for EDF or EDF+ file |
 |   | `edfinfo` | Get information about EDF/EDF+ file |
 |   | `edfread` | Read data from EDF/EDF+ file |
 |   | `edfwrite` | Create or modify EDF or EDF+ file |
-|   | `rms` | Root mean square value |
+| ✅ | `rms` | Root mean square value |
 |   | `timeFrequencyScattering` | Joint time-frequency scattering(Since R2024b) |
 |   | `wsstridge` | Time-frequency ridges from wavelet synchrosqueezing |
 |   | `dlcwt` | Deep learning continuous wavelet transform(Since R2022b) |
@@ -15724,7 +15724,7 @@ Yule-Walker method |
 <a id="slcheck"></a>
 ## Slcheck Toolbox  
 
-_5 / 213 implemented_
+_1 / 213 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -15784,10 +15784,10 @@ check |
 |   | `ModelAdvisor.CheckResult` | Access Model Advisor check results |
 |   | `ModelAdvisor.lookupCheckID` | Look up current Model Advisor check ID for legacy Model Advisor check
                         ID |
-| ✅ | `ModelAdvisor.run` | Use Model Advisor to run checks on systems |
+|   | `ModelAdvisor.run` | Use Model Advisor to run checks on systems |
 |   | `ModelAdvisor.summaryReport` | Open Model Advisor Command-Line Summary report |
 |   | `ModelAdvisor.SystemResult` | Access system-level Model Advisor results |
-|   | `view` | View Model Advisor run results for checks |
+| ✅ | `view` | View Model Advisor run results for checks |
 |   | `viewReport` | View Model Advisor run results for systems |
 |   | `slmetric.Engine` | (To be removed) Collect metric data on models or model components |
 |   | `slmetric.metric.MetaInformation` | (To be removed) Access meta-information for metrics |
@@ -15866,7 +15866,7 @@ type |
             Slicer |
 |   | `createProcessTaskID` | Generate ID for specific task iteration defined by process model |
 |   | `generateProcessTasks` | Get list of valid task keys |
-| ✅ | `generateReport` | Generate report for recent task results |
+|   | `generateReport` | Generate report for recent task results |
 |   | `getProcessTaskResults` | Get available task results and result details for task iterations in MBD
       pipeline |
 |   | `processadvisor` | Open Process Advisor app forSimulinkmodel |
@@ -15969,29 +15969,29 @@ type |
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
-| ✅ | `checkModel` | Custom TypeScript port |
-| ✅ | `getCheckGroup` | Custom TypeScript port |
-| ✅ | `slcheck.run` | Custom TypeScript port |
+|   | `checkModel` | Custom TypeScript port |
+|   | `getCheckGroup` | Custom TypeScript port |
+|   | `slcheck.run` | Custom TypeScript port |
 
 ---
 
 <a id="slcontrol"></a>
 ## Slcontrol Toolbox  
 
-_5 / 131 implemented_
+_2 / 131 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
 |   | `operpoint` | Create operating point forSimulinkmodel |
 |   | `findop` | Find steady-state operating point from specifications (trimming) or
             simulation |
-| ✅ | `findopOptions` | Options for finding operating points from specifications |
+|   | `findopOptions` | Options for finding operating points from specifications |
 |   | `addoutputspec` | Add output specification to operating point specification |
 |   | `getInputIndex` | Get index of an input element of an operating point specification |
 |   | `getOutputIndex` | Get index of an output element of an operating point specification |
 |   | `getStateIndex` | Get index of a state element of an operating point specification |
 |   | `initopspec` | Initialize operating point specification values |
-| ✅ | `operspec` | Operating point specifications |
+|   | `operspec` | Operating point specifications |
 |   | `getinputstruct` | Obtain input values from operating point |
 |   | `getstatestruct` | Obtain state values from operating point |
 |   | `update` | Update operating point object with structural changes in model |
@@ -15999,7 +15999,7 @@ _5 / 131 implemented_
 |   | `getlinio` | Obtain linear analysis points fromSimulinkmodel,
 Linear Analysis Plots block, or Model Verification block |
 |   | `linearize` | Linear approximation ofSimulinkmodel or subsystem |
-| ✅ | `linearizeOptions` | Set linearization options |
+|   | `linearizeOptions` | Set linearization options |
 |   | `linio` | Create linear analysis point forSimulinkmodel,
 Linear Analysis Plots block, or Model Verification block |
 |   | `linlft` | Linearize model while removing contribution of specified
@@ -16025,10 +16025,10 @@ usingslLinearizerorslTunerinterface |
 |   | `refresh` | ResynchronizeslLinearizerorslTunerinterface
 with current model state |
 |   | `advise` | Find blocks that are potentially problematic for linearization |
-|   | `find` | Find blocks in linearization results that match specific criteria |
+| ✅ | `find` | Find blocks in linearization results that match specific criteria |
 |   | `getBlockInfo` | Obtain diagnostic information for block linearizations |
 |   | `getBlockPaths` | Obtain list of blocks inLinearizationAdvisorobject |
-|   | `highlight` | Highlight linearization path inSimulinkmodel |
+| ✅ | `highlight` | Highlight linearization path inSimulinkmodel |
 |   | `linqueryAdvise` | Query object for finding blocks that are potentially problematic for
             linearization |
 |   | `linqueryAllBlocks` | Query object for finding all linearized blocks |
@@ -16135,15 +16135,15 @@ tuning setup forsystuneusingslTunerinterface |
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
-| ✅ | `linoptions` | Custom TypeScript port |
-| ✅ | `tunableSS` | Custom TypeScript port |
+|   | `linoptions` | Custom TypeScript port |
+|   | `tunableSS` | Custom TypeScript port |
 
 ---
 
 <a id="slrealtime"></a>
 ## Slrealtime Toolbox  
 
-_5 / 217 implemented_
+_8 / 217 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -16169,7 +16169,7 @@ _5 / 217 implemented_
             environment settings |
 |   | `getTargetTime` | Get target computer date and time(Since R2025a) |
 |   | `getTargetTimezone` | Get target computer time zone information(Since R2025a) |
-|   | `isConnected` | Get target computer connected status(Since R2021b) |
+| ✅ | `isConnected` | Get target computer connected status(Since R2021b) |
 |   | `isLoaded` | Get  real-time application loaded status(Since R2021b) |
 |   | `isRunning` | Get real-time application running status(Since R2021b) |
 |   | `removeTarget` | Remove target computer
@@ -16184,7 +16184,7 @@ _5 / 217 implemented_
 |   | `setTargetTime` | Set target computer date and time(Since R2025a) |
 |   | `setTargetTimezone` | Set target computer time zone preference(Since R2025a) |
 |   | `setupTLSCertificate` | Setup TLS certificate file for HTTPS and other protocols(Since R2026a) |
-| ✅ | `slrealtime` | Interface for managing target computer |
+|   | `slrealtime` | Interface for managing target computer |
 |   | `Instrument` | Create real-time instrument object |
 |   | `slrealtime.instrument.LineStyle` | Create real-time instrument LineStyle object(Since R2022b) |
 |   | `Target` | Represent real-time
@@ -16235,9 +16235,9 @@ _5 / 217 implemented_
 |   | `slrealtime.EtherCAT.filterNotifications` | Display EtherCAT notifications in human-readable format |
 |   | `slrealtime.EtherCAT.getSignalNames` | Display EtherCAT notifications in human-readable format |
 |   | `slrealtime.createEthernetPacketBusObj` | Created Ethernet packet bus object(Since R2022a) |
-| ✅ | `start` | Start the PTP daemon on the target computer |
+|   | `start` | Start the PTP daemon on the target computer |
 |   | `status` | View the PTP daemon status on the target computer |
-| ✅ | `stop` | Stop the PTP daemon on the target computer |
+|   | `stop` | Stop the PTP daemon on the target computer |
 |   | `Target.ptpd` | Target Computer PTP Daemon |
 |   | `slrealtime.createUDPPacketBusObj` | Created UDP packet bus object(Since R2022a) |
 |   | `copyPage` | Copy one calibration page to another in the real-time
@@ -16259,7 +16259,7 @@ _5 / 217 implemented_
 |   | `getLastApplication` | Get name of real-time application most recently run on target computer(Since R2021b) |
 |   | `removeAllApplications` | Removes allSimulinkReal-Timeapplications from target computer(Since R2022b) |
 |   | `removeApplication` | RemovesSimulinkReal-Timeapplication fromSpeedgoattarget computer(Since R2022a) |
-|   | `pause` | Pause stimulation of root inports of model on target computer |
+| ✅ | `pause` | Pause stimulation of root inports of model on target computer |
 |   | `reloadData` | Reload data signal of root inports of model on target computer |
 |   | `clearLogs` | Remove system log file and backup log file on target computer(Since R2026a) |
 |   | `getStatus` | Return status of root inports stimulation of model on target computer |
@@ -16336,7 +16336,7 @@ _5 / 217 implemented_
 |   | `connectLine` | Connect signal for streaming to axes |
 |   | `connectScalar` | Add signal for streaming to scalar display |
 |   | `connectXYPlot` | Connect X and Y signal structures to display on axes(Since R2024b) |
-|   | `delete` | Delete real-time instrument object |
+| ✅ | `delete` | Delete real-time instrument object |
 |   | `generateScript` | Generate script that creates scalar and axes controls from signals, scalars, and
       lines in real-time instrument object |
 |   | `getBufferedData` | Gets data from the real-time application instrument buffer(Since R2022b) |
@@ -16352,7 +16352,7 @@ _5 / 217 implemented_
 |   | `install` | Install real-time application on target computer |
 |   | `setStartupApp` | Configure startup real-time application for target computer |
 |   | `messages` | Display console log messages in a system log object |
-|   | `tail` | Display a selected number of lines of console log messages in a system log
+| ✅ | `tail` | Display a selected number of lines of console log messages in a system log
       object |
 |   | `Stimulation` | Target computer model root inport stimulator object |
 |   | `SystemLog` | Create a system log object that contains the current console log |
@@ -16373,7 +16373,7 @@ _5 / 217 implemented_
 |   | `removeForMATLAB` | Remove an instrument from a target object that was for MATLAB data(Since R2026a) |
 |   | `removeForSDI` | Remove an instrument from a target object that was for data in the Simulation Data
       Inspector(Since R2026a) |
-|   | `view` | Open Instrument Viewer app(Since R2026a) |
+| ✅ | `view` | Open Instrument Viewer app(Since R2026a) |
 |   | `ParameterSet` | Real-time application parameter set |
 |   | `exportToModel` | Export values fromParameterSetobject to model |
 |   | `compare` | Compare the parameters in two parameter set objects(Since R2023b) |
@@ -16382,13 +16382,13 @@ _5 / 217 implemented_
 |   | `loadPreviousParamSetOnAppLoad` | Load autosaved parameter set on application reload(Since R2026a) |
 |   | `resolve` | Compare parameter set differences and output resolved parameter set
       object(Since R2023b) |
-|   | `set` | Set a parameter value in aParameterSetobject |
+| ✅ | `set` | Set a parameter value in aParameterSetobject |
 |   | `syncWithApp` | Sync model parameters to real-time application parameters |
 |   | `getAllInstruments` | Get information on instruments added to target object(Since R2021b) |
 |   | `addFileLogSignals` | Find signals connected to File Log blocks and add these to real-time instrument
       object(Since R2026a) |
 |   | `copy` | Copy the array of handle objects from one Instrument object to another(Since R2026a) |
-|   | `get` | Query Instrument object properties(Since R2026a) |
+| ✅ | `get` | Query Instrument object properties(Since R2026a) |
 |   | `ConnectButton` | Create connect target computer button for instrument panel UI(Since R2021b) |
 |   | `ImportFileLogButton` | Create import file log button for instrument panel UI(Since R2023b) |
 |   | `LatchButton` | Create latch button for instrument panel UI(Since R2024a) |
@@ -16429,28 +16429,28 @@ _5 / 217 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
-| ✅ | `getparamid` | Custom TypeScript port |
+|   | `getparamid` | Custom TypeScript port |
 
 ---
 
 <a id="slrequirements"></a>
 ## Slrequirements Toolbox  
 
-_5 / 224 implemented_
+_6 / 224 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
 |   | `slreq.convertAnnotation` | Convert annotations to requirement objects |
 |   | `slreq.editor` | Open Requirements Editor |
-| ✅ | `slreq.new` | Create requirement set |
+|   | `slreq.new` | Create requirement set |
 |   | `slreq.clear` | Clear requirements and links from memory |
 |   | `slreq.load` | Load requirement set, link set, or Requirements Table block |
 |   | `slreq.open` | Open requirement set |
-| ✅ | `slreq.find` | Find requirement, reference, and link set artifacts |
+|   | `slreq.find` | Find requirement, reference, and link set artifacts |
 |   | `slreq.getCurrentObject` | Get selected objects in Requirements Editor, Requirements Browser, or
       Requirements Table block |
-|   | `children` | Get top-level items in requirement set |
-|   | `find` | Find requirements in requirement set that have matching attribute
+| ✅ | `children` | Get top-level items in requirement set |
+| ✅ | `find` | Find requirements in requirement set that have matching attribute
             values |
 |   | `add` | Add requirements to requirement set |
 |   | `addJustification` | Add justifications to requirement set |
@@ -16465,11 +16465,11 @@ _5 / 224 implemented_
 |   | `getPreSaveFcn` | Get contents ofPreSaveFcncallback(Since R2022a) |
 |   | `setPostLoadFcn` | AssignPostLoadFcncallback script(Since R2022a) |
 |   | `setPreSaveFcn` | AssignPreSaveFcncallback script(Since R2022a) |
-|   | `close` | Close requirement sets |
+| ✅ | `close` | Close requirement sets |
 |   | `discard` | Close requirement set without saving |
-|   | `save` | Save requirement sets |
+| ✅ | `save` | Save requirement sets |
 |   | `copy` | Copy and paste requirement |
-|   | `remove` | Remove requirement from requirement set |
+| ✅ | `remove` | Remove requirement from requirement set |
 |   | `isRequirementRow` | Check if requirement is a row in a Requirements Table block(Since R2026a) |
 |   | `parent` | Find parent item of requirement |
 |   | `reqSet` | Return parent requirement set |
@@ -16499,7 +16499,7 @@ _5 / 224 implemented_
 |   | `addAssumptionRow` | Add assumption to Requirements Table block(Since R2022a) |
 |   | `addChild` | Add child requirement or assumption to Requirements Table block(Since R2022a) |
 |   | `addRequirementRow` | Add requirement to Requirements Table block(Since R2022a) |
-|   | `clear` | Clear row in Requirements Table block(Since R2022a) |
+| ✅ | `clear` | Clear row in Requirements Table block(Since R2022a) |
 |   | `findRequirementRow` | Find rows inRequirementsTableobject(Since R2026a) |
 |   | `getAssumptionRows` | Retrieve assumptions in Requirements Table block(Since R2022a) |
 |   | `getChildren` | Retrieve child requirements and assumptions in Requirements Table block(Since R2022a) |
@@ -16514,7 +16514,7 @@ _5 / 224 implemented_
 |   | `outLinks` | Get outgoing links for Requirements Table block rows(Since R2026a) |
 |   | `slreq.createLink` | Create traceable links |
 |   | `slreq.getCurrentImportOptions` | Get import options inPreImportFcncallback(Since R2022a) |
-| ✅ | `slreq.import` | Import requirements from external documents |
+|   | `slreq.import` | Import requirements from external documents |
 |   | `slreq.updateReqIfMappings` | Refresh registered customReqIFimport mappings(Since R2023b) |
 |   | `slreq.validateReqIF` | ValidateReqIFfiles(Since R2022b) |
 |   | `slreq.getLinkableTypes` | Get registered document interfaces(Since R2024b) |
@@ -16675,15 +16675,15 @@ _5 / 224 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
-| ✅ | `slreq.getActiveSet` | Custom TypeScript port |
-| ✅ | `slreq.link` | Custom TypeScript port |
+|   | `slreq.getActiveSet` | Custom TypeScript port |
+|   | `slreq.link` | Custom TypeScript port |
 
 ---
 
 <a id="sltest"></a>
 ## Sltest Toolbox  
 
-_5 / 158 implemented_
+_1 / 158 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -16704,7 +16704,7 @@ _5 / 158 implemented_
 |   | `sltest.testmanager.addTestsForMissingCoverage` | Add tests to increase coverage(Since R2022a) |
 |   | `sltest.testmanager.CoverageSettings` | Modify coverage settings |
 |   | `sltest.testmanager.TestOptions` | Options for adding test coverage(Since R2022a) |
-| ✅ | `sltest.testmanager.clear` | Clear test files from the Test Manager |
+|   | `sltest.testmanager.clear` | Clear test files from the Test Manager |
 |   | `sltest.testmanager.copyTests` | Copy test cases or test suites to another location |
 |   | `sltest.testmanager.createTestForComponent` | Create test cases and test harnesses for model or model components |
 |   | `sltest.testmanager.createTestsFromModel` | Generate test cases from a model |
@@ -16753,7 +16753,7 @@ _5 / 158 implemented_
 |   | `createTemporaryFolder` | Create temporary folder |
 |   | `fatalAssertSignalsMatch` | Fatally assert two data sets are equivalent |
 |   | `loadSystem` | Load model for MATLAB-based Simulink test |
-|   | `simulate` | Simulate model orSimulink.SimulationInputfor MATLAB-based
+| ✅ | `simulate` | Simulate model orSimulink.SimulationInputfor MATLAB-based
       Simulink test |
 |   | `sltest.harness.SimulationInput` | Create test harness simulation input forMATLAB-basedSimulinktests |
 |   | `sltest.plugins.MATLABTestCaseIntegrationPlugin` | Add simulation and test results for MATLAB-based Simulink tests to Test
@@ -16821,7 +16821,7 @@ configuration parameter set based on main model |
 |   | `sltest.AssessmentSet` | Access a set of assessments from a simulation |
 |   | `sltest.getAssessments` | Returns test assessment set object |
 |   | `sltest.testmanager.mergeCoverage` | Merge coverage results from two or more test result sets(Since R2023a) |
-| ✅ | `sltest.testmanager.run` | Run tests with Test Manager |
+|   | `sltest.testmanager.run` | Run tests with Test Manager |
 |   | `sltest.testmanager.AssessmentResult` | Access logical and temporal assessment results data(Since R2023b) |
 |   | `sltest.testmanager.AssessmentResultSet` | Access logical and temporal assessment result set data(Since R2023b) |
 |   | `sltest.testmanager.clearResults` | Clear results from Test Manager |
@@ -16858,16 +16858,16 @@ configuration parameter set based on main model |
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
-| ✅ | `sltest.assessments.verify` | Custom TypeScript port |
-| ✅ | `sltest.getTestCase` | Custom TypeScript port |
-| ✅ | `sltest.testmanager.loadTestFile` | Custom TypeScript port |
+|   | `sltest.assessments.verify` | Custom TypeScript port |
+|   | `sltest.getTestCase` | Custom TypeScript port |
+|   | `sltest.testmanager.loadTestFile` | Custom TypeScript port |
 
 ---
 
 <a id="sm"></a>
 ## Sm Toolbox  
 
-_5 / 112 implemented_
+_1 / 112 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -16972,7 +16972,7 @@ _5 / 112 implemented_
 |   | `removeOutputVariables` | Drop select output variables from the KinematicsSolver object |
 |   | `removeTargetVariables` | Drop select target variables from the KinematicsSolver object |
 |   | `generateCode` | Generate C code to run kinematic analysis on KinematicsSolver object |
-|   | `solve` | Run kinematic analysis for KinematicsSolver object |
+| ✅ | `solve` | Run kinematic analysis for KinematicsSolver object |
 |   | `closeViewer` | Close the Kinematics Solver Viewer window |
 |   | `viewSolution` | Open Multibody Explorer to visualize KinematicsSolver solution |
 |   | `simscape.multibody.DynamicsResult` | Dynamics Results of Multibody Models(Since R2024a) |
@@ -16983,18 +16983,18 @@ _5 / 112 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
-| ✅ | `smBody` | Custom TypeScript port |
-| ✅ | `smJoint` | Custom TypeScript port |
-| ✅ | `smMechViz` | Custom TypeScript port |
-| ✅ | `smSolverConfig` | Custom TypeScript port |
-| ✅ | `smWorldFrame` | Custom TypeScript port |
+|   | `smBody` | Custom TypeScript port |
+|   | `smJoint` | Custom TypeScript port |
+|   | `smMechViz` | Custom TypeScript port |
+|   | `smSolverConfig` | Custom TypeScript port |
+|   | `smWorldFrame` | Custom TypeScript port |
 
 ---
 
 <a id="stats"></a>
 ## Stats Toolbox  
 
-_111 / 861 implemented_
+_156 / 861 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -17019,24 +17019,24 @@ _111 / 861 implemented_
 |   | `dataset2struct` | (Not Recommended) Convert dataset array to structure |
 |   | `dataset2table` | Convert dataset array to table |
 |   | `export` | (Not Recommended) Write dataset array to file |
-|   | `ismissing` | (Not Recommended) Find dataset array elements with missing values |
-|   | `join` | (Not Recommended) Merge dataset array observations |
+| ✅ | `ismissing` | (Not Recommended) Find dataset array elements with missing values |
+| ✅ | `join` | (Not Recommended) Merge dataset array observations |
 |   | `mat2dataset` | (Not Recommended) Convert matrix to dataset array |
 |   | `struct2dataset` | (Not Recommended) Convert structure array to dataset array |
 |   | `table2dataset` | (Not Recommended) Convert table to dataset array |
 |   | `dataset` | (Not Recommended) Arrays for statistical data |
-|   | `geomean` | Geometric mean |
-|   | `harmmean` | Harmonic mean |
-|   | `kurtosis` | Kurtosis |
+| ✅ | `geomean` | Geometric mean |
+| ✅ | `harmmean` | Harmonic mean |
+| ✅ | `kurtosis` | Kurtosis |
 | ✅ | `moment` | Central moment |
-|   | `skewness` | Skewness |
+| ✅ | `skewness` | Skewness |
 | ✅ | `trimmean` | Mean, excluding outliers |
-|   | `mad` | Mean or median absolute deviation |
+| ✅ | `mad` | Mean or median absolute deviation |
 | ✅ | `range` | Range of values |
-|   | `zscore` | Standardizedz-scores |
+| ✅ | `zscore` | Standardizedz-scores |
 |   | `cholcov` | Cholesky-like covariance decomposition |
-|   | `corr` | Linear or rank correlation |
-|   | `corrcov` | Convert covariance matrix to correlation matrix |
+| ✅ | `corr` | Linear or rank correlation |
+| ✅ | `corrcov` | Convert covariance matrix to correlation matrix |
 |   | `nearcorr` | Compute nearest correlation matrix by minimizing Frobenius distance |
 |   | `partialcorr` | Linear or rank partial correlation coefficients |
 |   | `partialcorri` | Partial correlation coefficients adjusted for internal
@@ -17066,24 +17066,24 @@ variables |
 |   | `fitdist` | Fit probability distribution object to data |
 | ✅ | `makedist` | Create probability distribution object |
 |   | `gather` | Gather properties ofStatistics and Machine Learning Toolboxobject from GPU |
-|   | `iqr` | Interquartile range of probability distribution |
+| ✅ | `iqr` | Interquartile range of probability distribution |
 | ✅ | `mean` | Mean of probability distribution |
-|   | `median` | Median of probability distribution |
+| ✅ | `median` | Median of probability distribution |
 |   | `negloglik` | Negative loglikelihood of probability distribution |
 |   | `paramci` | Confidence intervals for probability distribution parameters |
-|   | `plot` | Plot probability distribution object(Since R2022b) |
+| ✅ | `plot` | Plot probability distribution object(Since R2022b) |
 |   | `proflik` | Profile likelihood function for probability distribution |
 |   | `qqplot` | Quantile-quantile plot |
-|   | `std` | Standard deviation of probability distribution |
+| ✅ | `std` | Standard deviation of probability distribution |
 |   | `truncate` | Truncate probability distribution object |
-|   | `var` | Variance of probability distribution |
+| ✅ | `var` | Variance of probability distribution |
 | ✅ | `binocdf` | Binomial cumulative distribution function |
-|   | `binofit` | Binomial parameter estimates |
+| ✅ | `binofit` | Binomial parameter estimates |
 | ✅ | `binoinv` | Binomial inverse cumulative distribution function |
 | ✅ | `binopdf` | Binomial probability density function |
 |   | `binornd` | Random numbers from binomial distribution |
 | ✅ | `binostat` | Binomial mean and variance |
-|   | `ecdf` | Empirical cumulative distribution function |
+| ✅ | `ecdf` | Empirical cumulative distribution function |
 |   | `ecdfhist` | Histogram based on empirical cumulative distribution function |
 | ✅ | `geocdf` | Geometric cumulative distribution function |
 |   | `geoinv` | Geometric inverse cumulative distribution function |
@@ -17096,13 +17096,13 @@ variables |
 |   | `hygernd` | Hypergeometric random numbers |
 | ✅ | `hygestat` | Hypergeometric mean and variance |
 | ✅ | `nbincdf` | Negative binomial cumulative distribution function |
-|   | `nbinfit` | Negative binomial parameter estimates |
+| ✅ | `nbinfit` | Negative binomial parameter estimates |
 | ✅ | `nbininv` | Negative binomial inverse cumulative distribution function |
 | ✅ | `nbinpdf` | Negative binomial probability density function |
 |   | `nbinrnd` | Negative binomial random numbers |
 | ✅ | `nbinstat` | Negative binomial mean and variance |
 | ✅ | `poisscdf` | Poisson cumulative distribution function |
-|   | `poissfit` | Poisson parameter estimates |
+| ✅ | `poissfit` | Poisson parameter estimates |
 | ✅ | `poissinv` | Poisson inverse cumulative distribution function |
 | ✅ | `poisspdf` | Poisson probability density function |
 |   | `poissrnd` | Random numbers from Poisson distribution |
@@ -17144,7 +17144,7 @@ variables |
 |   | `tLocationScaleDistribution` | tlocation-scale probability distribution object |
 |   | `TriangularDistribution` | Triangular probability distribution object |
 |   | `WeibullDistribution` | Weibull probability distribution object |
-|   | `boundary` | Piecewise distribution boundaries |
+| ✅ | `boundary` | Piecewise distribution boundaries |
 |   | `lowerparams` | Lower Pareto tail parameters |
 |   | `nsegments` | Number of segments in piecewise distribution |
 |   | `segment` | Piecewise distribution segments containing input values |
@@ -17152,7 +17152,7 @@ variables |
 |   | `histfit` | Histogram with a distribution fit |
 |   | `mlecov` | Asymptotic covariance of maximum likelihood estimators |
 | ✅ | `betacdf` | Beta cumulative distribution function |
-|   | `betafit` | Beta parameter estimates |
+| ✅ | `betafit` | Beta parameter estimates |
 | ✅ | `betainv` | Beta inverse cumulative distribution function |
 |   | `betalike` | Beta negative loglikelihood |
 | ✅ | `betapdf` | Beta probability density function |
@@ -17170,7 +17170,7 @@ variables |
 |   | `ncx2rnd` | Noncentral chi-square random numbers |
 | ✅ | `ncx2stat` | Noncentral chi-square mean and variance |
 | ✅ | `expcdf` | Exponential cumulative distribution function |
-|   | `expfit` | Exponential parameter estimates |
+| ✅ | `expfit` | Exponential parameter estimates |
 | ✅ | `expinv` | Exponential inverse cumulative distribution function |
 |   | `explike` | Exponential negative loglikelihood |
 | ✅ | `exppdf` | Exponential probability density function |
@@ -17202,7 +17202,7 @@ variables |
 |   | `ncfrnd` | NoncentralFrandom numbers |
 | ✅ | `ncfstat` | NoncentralFmean and variance |
 | ✅ | `gamcdf` | Gamma cumulative distribution function |
-|   | `gamfit` | Gamma parameter estimates |
+| ✅ | `gamfit` | Gamma parameter estimates |
 | ✅ | `gaminv` | Gamma inverse cumulative distribution function |
 |   | `gamlike` | Gamma negative loglikelihood |
 | ✅ | `gampdf` | Gamma probability density function |
@@ -17213,7 +17213,7 @@ variables |
 bivariate data |
 |   | `mvksdensity` | Kernel smoothing function estimate for multivariate data |
 | ✅ | `normcdf` | Normal cumulative distribution function |
-|   | `normfit` | Normal parameter estimates |
+| ✅ | `normfit` | Normal parameter estimates |
 | ✅ | `norminv` | Normal inverse cumulative distribution function |
 |   | `normlike` | Normal negative loglikelihood |
 | ✅ | `normpdf` | Normal probability density function |
@@ -17222,7 +17222,7 @@ bivariate data |
 |   | `normspec` | Normal density plot shading between specifications |
 | ✅ | `normstat` | Normal mean and variance |
 | ✅ | `logncdf` | Lognormal cumulative distribution function |
-|   | `lognfit` | Lognormal parameter estimates |
+| ✅ | `lognfit` | Lognormal parameter estimates |
 | ✅ | `logninv` | Lognormal inverse cumulative distribution function |
 |   | `lognlike` | Lognormal negative loglikelihood |
 | ✅ | `lognpdf` | Lognormal probability density function |
@@ -17240,7 +17240,7 @@ bivariate data |
 |   | `pearspdf` | Pearson probability density function(Since R2023b) |
 |   | `pearsrnd` | Pearson system random numbers |
 | ✅ | `raylcdf` | Rayleigh cumulative distribution function |
-|   | `raylfit` | Rayleigh parameter estimates |
+| ✅ | `raylfit` | Rayleigh parameter estimates |
 | ✅ | `raylinv` | Rayleigh inverse cumulative distribution function |
 | ✅ | `raylpdf` | Rayleigh probability density function |
 |   | `raylrnd` | Rayleigh random numbers |
@@ -17258,15 +17258,15 @@ bivariate data |
 | ✅ | `tstat` | Student'stmean and variance |
 | ✅ | `ttest` | One-sample and paired-samplet-test |
 | ✅ | `ttest2` | Two-samplet-test |
-|   | `rand` | Uniformly distributed random numbers |
+| ✅ | `rand` | Uniformly distributed random numbers |
 | ✅ | `unifcdf` | Continuous uniform cumulative distribution function |
 | ✅ | `unifinv` | Continuous uniform inverse cumulative distribution function |
-|   | `unifit` | Continuous uniform parameter estimates |
+| ✅ | `unifit` | Continuous uniform parameter estimates |
 | ✅ | `unifpdf` | Continuous uniform probability density function |
 |   | `unifrnd` | Continuous uniform random numbers |
 | ✅ | `unifstat` | Continuous uniform mean and variance |
 | ✅ | `wblcdf` | Weibull cumulative distribution function |
-|   | `wblfit` | Weibull parameter estimates |
+| ✅ | `wblfit` | Weibull parameter estimates |
 | ✅ | `wblinv` | Weibull inverse cumulative distribution function |
 |   | `wbllike` | Weibull negative loglikelihood |
 | ✅ | `wblpdf` | Weibull probability density function |
@@ -17281,11 +17281,11 @@ bivariate data |
 |   | `copulaparam` | Copula parameters as function of rank correlation |
 |   | `copulapdf` | Copula probability density function |
 |   | `copularnd` | Copula random numbers |
-|   | `copulastat` | Copula rank correlation |
+| ✅ | `copulastat` | Copula rank correlation |
 |   | `wishrnd` | Wishart random numbers |
 |   | `iwishrnd` | Inverse Wishart random numbers |
 |   | `mvncdf` | Multivariate normal cumulative distribution function |
-|   | `mvnpdf` | Multivariate normal probability density function |
+| ✅ | `mvnpdf` | Multivariate normal probability density function |
 |   | `mvnrnd` | Multivariate normal random numbers |
 |   | `mvtcdf` | Multivariatetcumulative distribution function |
 |   | `mvtpdf` | Multivariatetprobability density function |
@@ -17311,7 +17311,7 @@ bivariate data |
 |   | `crossval` | Estimate loss using cross-validation |
 |   | `datasample` | Randomly sample from data, with or without replacement |
 |   | `jackknife` | Jackknife sampling |
-|   | `randsample` | Random sample |
+| ✅ | `randsample` | Random sample |
 |   | `adtest` | Anderson-Darling test |
 |   | `dwtest` | Durbin-Watson test with residual inputs |
 |   | `fishertest` | Fisher’s exact test |
@@ -17342,7 +17342,7 @@ bivariate data |
 |   | `detectdrift` | Detect drifts between baseline and target data using permutation
       testing(Since R2022a) |
 |   | `DriftDiagnostics` | Diagnostics information for batch drift detection(Since R2022a) |
-|   | `histcounts` | Compute histogram bin counts for specified variables in baseline and target data for
+| ✅ | `histcounts` | Compute histogram bin counts for specified variables in baseline and target data for
       drift detection(Since R2022a) |
 |   | `plotDriftStatus` | Plotp-values and confidence intervals for variables tested for
       data drift(Since R2022a) |
@@ -17351,7 +17351,7 @@ bivariate data |
 |   | `plotHistogram` | Plot histogram of a variable specified for data drift detection(Since R2022a) |
 |   | `plotPermutationResults` | Plot histogram of permutation results for a variable specified for data drift
       detection(Since R2022a) |
-|   | `summary` | Summary table forDriftDiagnosticsobject(Since R2022a) |
+| ✅ | `summary` | Summary table forDriftDiagnosticsobject(Since R2022a) |
 |   | `fractionalFactorialDOE` | Fractional factorial design of experiments (DOE)(Since R2026a) |
 |   | `fullFactorialDOE` | Full factorial design of experiments (DOE)(Since R2024b) |
 |   | `mixtureDOE` | Design of experiments (DOE) for mixture experiments(Since R2024b) |
@@ -17438,7 +17438,7 @@ model |
 |   | `CompactCensoredLinearModel` | Compact censored linear regression model(Since R2025a) |
 |   | `CompactLinearModel` | Compact linear regression model |
 |   | `CompactRegressionQuantileLinear` | Compact quantile linear regression model(Since R2025a) |
-|   | `feval` | Predict responses of linear regression model using one input for each
+| ✅ | `feval` | Predict responses of linear regression model using one input for each
             predictor |
 |   | `fitlmcens` | Fit censored linear regression model(Since R2025a) |
 |   | `fitrlinear` | Fit linear regression model to high-dimensional data |
@@ -17468,7 +17468,7 @@ model |
 |   | `plotSlice` | Plot of slices through fitted linear regression surface |
 |   | `plsregress` | Partial least-squares (PLS) regression |
 |   | `polyconf` | Polynomial confidence intervals |
-|   | `polyfit` | Polynomial curve fitting |
+| ✅ | `polyfit` | Polynomial curve fitting |
 |   | `polytool` | Interactive polynomial fitting |
 |   | `regress` | Multiple linear regression |
 |   | `RegressionLinear` | Linear regression model for high-dimensional data |
@@ -17570,7 +17570,7 @@ regression model |
 |   | `predictorImportance` | Estimates of predictor importance for regression tree |
 |   | `surrogateAssociation` | Mean predictive measure of association for surrogate splits in regression
             tree |
-|   | `view` | View regression tree |
+| ✅ | `view` | View regression tree |
 |   | `cvloss` | Regression error by cross-validation for regression tree model |
 |   | `CompactRegressionTree` | Compact regression tree |
 |   | `RegressionPartitionedModel` | Cross-validated regression model |
@@ -17609,7 +17609,7 @@ bag of regression trees |
 |   | `RegressionPartitionedNeuralNetwork` | Cross-validated regression neural network model(Since R2023b) |
 |   | `RegressionPartitionedQuantileNeuralNetwork` | Cross-validated quantile neural network for regression(Since R2026a) |
 |   | `RegressionQuantileNeuralNetwork` | Quantile neural network model for regression(Since R2024b) |
-|   | `fit` | Fit incremental normalizer model to streaming data(Since R2026a) |
+| ✅ | `fit` | Fit incremental normalizer model to streaming data(Since R2026a) |
 |   | `incrementalNormalizer` | Instantiate incremental data normalizer(Since R2026a) |
 |   | `reset` | Reset incremental normalizer model(Since R2026a) |
 |   | `transform` | Normalize streaming data(Since R2026a) |
@@ -17702,7 +17702,7 @@ bag of regression trees |
       search(Since R2024a) |
 |   | `KDTreeSearcher` | CreateKd-tree nearest neighbor searcher |
 | ✅ | `pdist` | Pairwise distance between pairs of observations |
-|   | `pdist2` | Pairwise distance between two sets of observations |
+| ✅ | `pdist2` | Pairwise distance between two sets of observations |
 |   | `ClassificationKNN` | k-nearest neighbor classification |
 |   | `fitcsvm` | Train support vector machine (SVM) classifier for one-class and binary
             classification |
@@ -17910,12 +17910,12 @@ and states |
 |   | `add` | Add new component or pipeline to existing pipeline(Since R2026a) |
 |   | `connect` | Create connections between pipeline components(Since R2026a) |
 |   | `disconnect` | Remove connections between ports in pipeline(Since R2026a) |
-|   | `expand` | Expand subpipelines in pipeline(Since R2026a) |
-|   | `insert` | Insert component or pipeline into existing pipeline(Since R2026a) |
-|   | `parallel` | Connect components or pipelines in parallel to create pipeline(Since R2026a) |
-|   | `remove` | Remove existing components or pipelines from pipeline(Since R2026a) |
-|   | `replace` | Replace existing pipeline component with new component(Since R2026a) |
-|   | `series` | Connect components in series to create pipeline(Since R2026a) |
+| ✅ | `expand` | Expand subpipelines in pipeline(Since R2026a) |
+| ✅ | `insert` | Insert component or pipeline into existing pipeline(Since R2026a) |
+| ✅ | `parallel` | Connect components or pipelines in parallel to create pipeline(Since R2026a) |
+| ✅ | `remove` | Remove existing components or pipelines from pipeline(Since R2026a) |
+| ✅ | `replace` | Replace existing pipeline component with new component(Since R2026a) |
+| ✅ | `series` | Connect components in series to create pipeline(Since R2026a) |
 |   | `crossvalidate` | Cross-validate pipeline(Since R2026a) |
 |   | `learn` | Initialize and evaluate pipeline or component(Since R2026a) |
 |   | `run` | Execute pipeline or component for inference after learning(Since R2026a) |
@@ -17957,7 +17957,7 @@ and states |
 <a id="systemcomposer"></a>
 ## Systemcomposer Toolbox  
 
-_5 / 371 implemented_
+_6 / 371 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -17982,24 +17982,24 @@ _5 / 371 implemented_
 |   | `systemcomposer.interface.PhysicalElement` | Physical element in physical interface(Since R2021b) |
 |   | `systemcomposer.interface.PhysicalInterface` | Physical interface(Since R2021b) |
 |   | `systemcomposer.ValueType` | Value type inSystem Composer(Since R2021b) |
-|   | `close` | Close architecture model |
+| ✅ | `close` | Close architecture model |
 |   | `createArchitectureModel` | Create architecture model from component(Since R2021b) |
 |   | `createArchitectureSubsystem` | Create architecture subsystem from component(Since R2023a) |
 |   | `inlineComponent` | Remove reference architecture or behavior from component |
 |   | `linkToModel` | Link component to model |
 |   | `open` | Open architecture model |
-|   | `save` | Save architecture model or data dictionary |
-| ✅ | `systemcomposer.createModel` | Create System Composer model |
+| ✅ | `save` | Save architecture model or data dictionary |
+|   | `systemcomposer.createModel` | Create System Composer model |
 |   | `systemcomposer.exportToAUTOSARArchitecture` | Export current model to new AUTOSAR architecture model(Since R2023b) |
 |   | `systemcomposer.exportToSoftwareArchitecture` | Export current model to new software architecture model(Since R2023b) |
 |   | `systemcomposer.exportToVersion` | Export architecture model and dependencies to previous release of System
       Composer |
 |   | `systemcomposer.extractArchitectureFromSimulink` | Extract architecture from Simulink model |
 |   | `systemcomposer.loadModel` | Load System Composer model |
-| ✅ | `systemcomposer.openModel` | Open System Composer model |
-| ✅ | `addComponent` | Add components to architecture |
-| ✅ | `addPort` | Add ports to architecture |
-| ✅ | `connect` | Create architecture model connections |
+|   | `systemcomposer.openModel` | Open System Composer model |
+|   | `addComponent` | Add components to architecture |
+|   | `addPort` | Add ports to architecture |
+|   | `connect` | Create architecture model connections |
 |   | `current` | Get object of currently selected element |
 |   | `destroy` | Remove model element |
 |   | `getComponent` | Get component by name |
@@ -18009,7 +18009,7 @@ _5 / 371 implemented_
 |   | `getSmartConnectPolicy` | Get smart connect policy(Since R2025a) |
 |   | `getUnconnectedPorts` | Get unconnected ports(Since R2025a) |
 |   | `IsAdapterComponent` | Determine component is adapter |
-|   | `lookup` | Search for architectural element |
+| ✅ | `lookup` | Search for architectural element |
 |   | `setMaskImage` | Apply mask image to component(Since R2023b) |
 |   | `setName` | Set name for port |
 |   | `setSmartConnectPolicy` | Set smart connect policy(Since R2025a) |
@@ -18157,7 +18157,7 @@ _5 / 371 implemented_
 |   | `runQuery` | Re-run architecture view query on model |
 |   | `setPortQuery` | Set port query on view(Since R2026a) |
 |   | `AnyComponent` | Create query to select all components in model |
-|   | `find` | Find architecture model elements using query |
+| ✅ | `find` | Find architecture model elements using query |
 |   | `findElementsOfType` | Find all elements of specific type(Since R2023a) |
 |   | `findElementsWithInterface` | Find all elements with type set by interface(Since R2023a) |
 |   | `findElementsWithProperty` | Find all elements with property value(Since R2023a) |
@@ -18310,7 +18310,7 @@ _5 / 371 implemented_
 |   | `openProject` | Load an existing project |
 |   | `createWorkspace` | Create SysML v2 workspace(Since R2026a) |
 |   | `executeQuery` | Execute query(Since R2026a) |
-|   | `get` | Get element property(Since R2026a) |
+| ✅ | `get` | Get element property(Since R2026a) |
 |   | `getAncestors` | Get SysML v2 ancestors(Since R2026a) |
 |   | `getDescendants` | Get SysML v2 descendants(Since R2026a) |
 |   | `getElementRelationships` | Get relationship elements(Since R2026a) |
@@ -18338,7 +18338,7 @@ _5 / 371 implemented_
 |   | `decreaseExecutionOrder` | Change function execution order to earlier(Since R2021b) |
 |   | `getFunctionArgument` | Get function argument on function element(Since R2022a) |
 |   | `increaseExecutionOrder` | Change function execution order to later(Since R2021b) |
-|   | `remove` | Remove function from function group(Since R2026a) |
+| ✅ | `remove` | Remove function from function group(Since R2026a) |
 |   | `setAsynchronous` | Set function element as asynchronous(Since R2022b) |
 |   | `setFunctionPrototype` | Set prototype for function element(Since R2022a) |
 |   | `ungroup` | Remove all functions from function group(Since R2026a) |
@@ -18348,7 +18348,7 @@ _5 / 371 implemented_
 <a id="vision"></a>
 ## Vision Toolbox  
 
-_3 / 410 implemented_
+_4 / 410 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -18451,7 +18451,7 @@ _3 / 410 implemented_
 |   | `merge` | Merge two or more ground truth objects(Since R2023b) |
 |   | `sceneTimeRanges` | Time ranges of scene labels from ground truth data(Since R2021b) |
 |   | `writeVideoScenes` | Write video sequence to video file(Since R2021b) |
-|   | `combine` | Combine data from multiple datastores |
+| ✅ | `combine` | Combine data from multiple datastores |
 |   | `countEachLabel` | Count occurrence of pixel or box labels |
 |   | `countlabels` | Count number of unique labels |
 |   | `folders2labels` | Get list of labels from folder names |
@@ -18491,15 +18491,15 @@ _3 / 410 implemented_
 |   | `trainACFObjectDetector` | Train ACF object detector |
 |   | `trainCascadeObjectDetector` | Train cascade object detector model |
 |   | `balanceBoxLabels` | Balance bounding box labels for object detection |
-| ✅ | `bbox2points` | Convert rectangle to corner points list |
+|   | `bbox2points` | Convert rectangle to corner points list |
 |   | `bboxcrop` | Crop bounding boxes |
 |   | `bboxerase` | Remove bounding boxes |
-| ✅ | `bboxresize` | Resize bounding boxes |
+|   | `bboxresize` | Resize bounding boxes |
 |   | `bboxwarp` | Apply geometric transformation to bounding boxes |
 |   | `blockLocationsWithROI` | Select image block locations that contain bounding box ROIs(Since R2025a) |
 |   | `centerCropWindow2d` | Create rectangular center cropping window |
 |   | `imcrop` | Crop image |
-|   | `imresize` | Resize image |
+| ✅ | `imresize` | Resize image |
 |   | `integralImage` | Calculate 2-D integral image |
 |   | `randomAffine2d` | Create randomized 2-D affine transformation |
 |   | `randomWindow2d` | Randomly select rectangular region in image |
@@ -18594,7 +18594,7 @@ _3 / 410 implemented_
 |   | `anomalyMap` | Predict per-pixel anomaly score map(Since R2022b) |
 |   | `anomalyMapOverlay` | Overlay heatmap on image using per-pixel anomaly scores(Since R2022b) |
 |   | `evaluateAnomalyDetection` | Evaluate anomaly detection results against ground truth(Since R2022b) |
-|   | `normalize` | Normalize anomaly score map using percentiles(Since R2024b) |
+| ✅ | `normalize` | Normalize anomaly score map using percentiles(Since R2024b) |
 |   | `percentileNormalizer` | Create percentile normalizer for anomaly map normalization(Since R2024b) |
 |   | `viewAnomalyDetectionResults` | View anomaly detection results(Since R2022b) |
 |   | `detect` | Detect objects using YOLOX object detector(Since R2023b) |
@@ -18675,7 +18675,7 @@ _3 / 410 implemented_
 |   | `pose2extr` | Convert camera pose to extrinsics(Since R2022b) |
 |   | `cameraIntrinsicsFromOpenCV` | Convert camera intrinsic parameters from OpenCV toMATLAB(Since R2021b) |
 |   | `cameraIntrinsicsToOpenCV` | Convert camera intrinsic parameters fromMATLABto OpenCV(Since R2021b) |
-| ✅ | `rotmat2vec3d` | Convert 3-D rotation matrix to rotation vector(Since R2022b) |
+|   | `rotmat2vec3d` | Convert 3-D rotation matrix to rotation vector(Since R2022b) |
 |   | `rotvec2mat3d` | Convert 3-D rotation vector to rotation matrix(Since R2022b) |
 |   | `stereoParametersFromOpenCV` | Convert stereo camera parameters from OpenCV toMATLAB(Since R2021b) |
 |   | `stereoParametersToOpenCV` | Convert stereo camera parameters fromMATLABto OpenCV(Since R2021b) |
@@ -18719,7 +18719,7 @@ images |
 |   | `mapPoints` | Build 3-D map of world points(Since R2023b) |
 |   | `monovslam` | Visual simultaneous localization and mapping (vSLAM) and visual-inertial sensor
       fusion with monocular camera(Since R2023b) |
-|   | `plot` | Plot 3-D map points and estimated camera trajectory in visual SLAM(Since R2023b) |
+| ✅ | `plot` | Plot 3-D map points and estimated camera trajectory in visual SLAM(Since R2023b) |
 |   | `poses` | Absolute camera poses of key frames(Since R2023b) |
 |   | `reset` | Reset visual SLAM object(Since R2023b) |
 |   | `rgbdvslam` | Feature-based visual simultaneous localization and mapping (vSLAM) and
@@ -18808,7 +18808,7 @@ images |
 <a id="wavelet"></a>
 ## Wavelet Toolbox  
 
-_13 / 211 implemented_
+_14 / 211 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -18816,7 +18816,7 @@ _13 / 211 implemented_
 |   | `cwtfilterbank` | Continuous wavelet transform filter bank |
 |   | `cwtfreqbounds` | CWT maximum and minimum frequency or period |
 |   | `cwtmag2sig` | Signal reconstruction from CWT magnitude(Since R2023b) |
-|   | `freqz` | CWT filter bank frequency responses |
+| ✅ | `freqz` | CWT filter bank frequency responses |
 |   | `icwt` | Inverse continuous 1-D wavelet transform |
 |   | `iwsst` | Inverse wavelet synchrosqueezed transform |
 |   | `scaleSpectrum` | Scale-averaged wavelet spectrum |
@@ -19044,7 +19044,7 @@ polynomial transform |
 <a id="wlan"></a>
 ## Wlan Toolbox  
 
-_5 / 186 implemented_
+_0 / 186 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -19064,7 +19064,7 @@ _5 / 186 implemented_
 |   | `wlanWaveformGenerator` | Generate WLAN waveform |
 |   | `wlanBCCEncode` | BCC-encode data |
 |   | `wlanConstellationMap` | Constellation mapping |
-| ✅ | `wlanScramble` | Scramble and descramble binary input sequence |
+|   | `wlanScramble` | Scramble and descramble binary input sequence |
 |   | `wlanStreamParse` | Stream-parse encoded streams |
 |   | `getActiveSubchannelIndex` | Active subchannel indices(Since R2021b) |
 |   | `getPSDULength` | Calculate HE or WUR PSDU length |
@@ -19089,7 +19089,7 @@ _5 / 186 implemented_
 |   | `phyType` | Return DMG PHY modulation type |
 |   | `wlanDMGConfig` | Configure DMG transmission |
 |   | `wlanGolaySequence` | Generate Golay sequence |
-| ✅ | `wlanHTConfig` | Configure HT transmission |
+|   | `wlanHTConfig` | Configure HT transmission |
 |   | `wlanVHTConfig` | Configure VHT transmission |
 |   | `wlanHTData` | Generate HT-Data field waveform |
 |   | `wlanHTLTF` | Generate HT-LTF waveform |
@@ -19242,9 +19242,9 @@ _5 / 186 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
-| ✅ | `wlanBitInterleave` | Custom TypeScript port (not in standard MATLAB reference) |
-| ✅ | `wlanCRC32` | Custom TypeScript port (not in standard MATLAB reference) |
-| ✅ | `wlanConvEncode` | Custom TypeScript port (not in standard MATLAB reference) |
+|   | `wlanBitInterleave` | Custom TypeScript port (not in standard MATLAB reference) |
+|   | `wlanCRC32` | Custom TypeScript port (not in standard MATLAB reference) |
+|   | `wlanConvEncode` | Custom TypeScript port (not in standard MATLAB reference) |
 
 ---
 
