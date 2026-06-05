@@ -1022,3 +1022,117 @@ Per updated loop instructions, batches are now **25 functions** and the full `np
 - Rich ≥10-line help added for all 25 functions (14 new structured entries).
 
 **100-function build boundary reached at 480**: full `npm run build` (tsc + vite) green; registry invariant 0/1420 without help. Batches 39–42 committed and pushed together.
+
+## Batch 43 — functions 481–505 (25-fn batch; integer limits · matrix inverse · type predicates)
+
+Mostly type-test predicates (the `is*` family), all verified working; help expanded for every one.
+
+| Function | Status | Notes |
+|---|---|---|
+| `intmax` | ✅ | **fixed**: returns the correct integer class (was double) + full-integer display |
+| `intmin` | ✅ | **fixed**: integer class |
+| `inv` | ✅ | matrix inverse |
+| `invhilb` | ✅ | exact inverse Hilbert matrix |
+| `ipermute` | ✅ | inverse dimension permute (round-trips `permute`) |
+| `iqr` | ✅ | interquartile range → `iqr(1:8)=4` |
+| `isConfigured`/`isConnected`/`isInterior` | ✅ | dictionary/triangulation predicates |
+| `isKey` | ✅ | dictionary/Map key test |
+| `isStringScalar`/`isUnderlyingType`/`isa` | ✅ | type predicates |
+| `isapprox` | ✅ | approximate equality → `isapprox(sin(3/4*pi),1/sqrt(2))=true` |
+| `isbanded` | ✅ | bandwidth test |
+| `isbetween` | ✅ | **fixed**: works on datetime/duration (was numeric-only) |
+| `iscategorical`/`iscategory` | ✅ | categorical predicates |
+| `iscell`/`iscellstr`/`ischar`/`iscolumn` | ✅ | container/type predicates |
+| `isdag` | ✅ | acyclic digraph test |
+| `isdatetime`/`isdiag` | ✅ | type/structure predicates |
+
+### Fixes landed in this batch
+- **`intmax`/`intmin` integer class**: they returned plain doubles, so `class(intmax)` was `double` and `intmax('uint64')` displayed as `1.8447e+19`. They now apply the integer class (`int32` default), and — via a **display fix** — scalar integer-typed values print as full integers (`18446744073709552000`, limited by double precision) rather than exponential.
+- **`isbetween` on temporal data**: it threw "expected a numeric value" on durations/datetimes. It now reads the underlying values, so `isbetween(hours(2),hours(1),hours(3))` works.
+- Verified `inv`, `invhilb`, `ipermute`, `iqr`, `isapprox`, `isbanded`, `isdiag`, `isdag`, and the full `is*` type-predicate family.
+- Rich ≥10-line help added for all 25 functions (16 new structured entries). Help verified via esbuild; full build deferred to 580.
+
+## Batch 44 — functions 506–530 (25-fn batch; the `is*` predicate family)
+
+Almost entirely type/value test predicates; all verified correct, help expanded for each.
+
+| Function | Status | Notes |
+|---|---|---|
+| `isduration`/`isenum`/`isfloat`/`isinteger`/`islogical`/`ischar`-family | ✅ | type predicates |
+| `isempty` | ✅ | empty-array test |
+| `isequal`/`isequaln` | ✅ | whole-array equality (NaN handling differs) |
+| `isfield` | ✅ | struct field test |
+| `isfinite`/`isinf` | ✅ | finite/infinite element masks |
+| `isgraphics` | ✅ | graphics-handle validity |
+| `ishermitian` | ✅ | Hermitian/skew-Hermitian test |
+| `ishole`/`isinterior` | ✅/🟡 | polyshape predicates |
+| `isisomorphic` | ✅ | graph isomorphism |
+| `isjava` | ✅ | Java-object test (always false in sandbox) |
+| `iskeyword`/`isletter` | ✅ | language/char predicates |
+| `islocalmax`/`islocalmin` | ✅ | peak/trough detection |
+| `ismatrix` | ✅ | **fixed**: returns false for 3-D arrays (was hard-coded true) |
+| `ismember` | ✅ | set membership + `loc` output |
+| `ismembertol` | ✅ | tolerant membership |
+| `ismissing` | ✅ | missing-value mask |
+
+### Fixes landed in this batch
+- **`ismatrix`** was hard-coded to return `true` for everything; it now returns `false` for arrays with more than two dimensions (`ismatrix(ones(2,2,2))=false`) while staying true for scalars, vectors, and 2-D matrices.
+- Verified the entire `is*` family against doc examples: `isequal`/`isequaln` NaN semantics, `ishermitian`, `isfinite`/`isinf`, `ismember` with `loc`, `islocalmax`/`islocalmin`, `ismembertol`, `isisomorphic`, `iskeyword`, `isletter`, and the type predicates.
+- Rich ≥10-line help added for all 25 functions (15 new structured entries). Help verified via esbuild; full build deferred to 580.
+
+## Batch 45 — functions 531–555 (25-fn batch; more `is*` predicates + isosurface/isoutlier/isomorphism)
+
+All verified working; only one behavioral fix needed.
+
+| Function | Status | Notes |
+|---|---|---|
+| `ismultigraph` | ✅ | parallel-edge test |
+| `isnan`/`isnat` | ✅ | NaN / NaT masks |
+| `isnumeric`/`isobject`/`isreal`/`isscalar`/`isrow` | ✅ | type/shape predicates |
+| `isomorphism` | ✅ | graph node mapping |
+| `isosurface` | ✅ | 3-D isosurface (`[F,V]`) |
+| `isoutlier` | ✅ | outlier detection → `isoutlier([1 2 3 100 4 5])` |
+| `isprime` | ✅ | primality mask → `isprime([2 3 4 5 6 7])=[1 1 0 1 0 1]` |
+| `issimplified` | ✅ | polyshape predicate |
+| `issorted` | ✅ | **fixed**: `direction` option (`descend`/`strictascend`/`monotonic`) |
+| `issortedrows` | ✅ | sorted-rows test |
+| `isspace`/`isstrprop` | ✅ | char-category masks |
+| `issparse`/`isstring`/`isstruct` | ✅ | type predicates |
+| `issymmetric` | ✅ | symmetric/skew-symmetric test |
+| `istable`/`istabular`/`istimetable` | ✅ | tabular-type predicates |
+| `istril` | ✅ | lower-triangular test |
+
+### Fixes landed in this batch
+- **`issorted` direction option**: it only tested ascending order, so `issorted([3 2 1],'descend')` returned false. It now handles `ascend`, `descend`, `strictascend`, `strictdescend`, and `monotonic`.
+- Verified the rest of the `is*` family plus `isosurface`, `isoutlier`, `isomorphism`, `isprime` against doc examples.
+- Rich ≥10-line help added for all 25 functions (10 new structured entries). Help verified via esbuild; full build deferred to 580.
+
+## Batch 46 — functions 556–580 (25-fn batch; predicates · JSON · graph/colormap · kron/ldl/legendre) — **100-fn build boundary (580)**
+
+| Function | Status | Notes |
+|---|---|---|
+| `istriu`/`isuniform`/`isvarname`/`isvector` | ✅ | structure/name predicates |
+| `jet` | 🟡 | jet colormap (visual) |
+| `join` | ✅ | **fixed**: 2-D string array joins per row → `["a" "b";"c" "d"]`→`["a b";"c d"]` |
+| `jsondecode`/`jsonencode` | ✅ | JSON round-trip verified |
+| `kde` | 🟡 | kernel density estimate (renders) |
+| `keys` | ✅ | dictionary/Map keys |
+| `knapsack2qubo` | ✅ | knapsack → QUBO object |
+| `kron` | ✅ | Kronecker product |
+| `labeledge`/`labelnode`/`layout`/`layoutcoords` | 🟡 | graph-plot annotation (graphics) |
+| `laplacian` | ✅ | graph Laplacian (sparse) |
+| `lasterr`/`lasterror` | ✅ | last-error message / struct |
+| `lcm` | ✅ | **fixed**: preserves integer class |
+| `ldl` | ✅ | LDLᵀ factorization → `[L,D]` |
+| `legend` | 🟡 | plot legend (graphics) |
+| `legendre` | ✅ | associated Legendre functions |
+| `length` | ✅ | largest-dimension length |
+| `lighting` | 🟡 | surface lighting mode (graphics) |
+
+### Fixes landed in this batch
+- **`join` on a 2-D string array** joined everything in column-major order into one string; it now joins along the columns to produce one combined string per row (an m-by-1 result), matching MATLAB.
+- **`lcm`** preserves the integer class of its input (like `gcd`/`factor`), so `lcm(uint16(...),...)` stays `uint16`.
+- Verified `jsondecode`/`jsonencode` round-trips, `kron`, `ldl`, `legendre`, `laplacian`, `keys`, `isvarname`, `isuniform`, the triangular/vector predicates, and `knapsack2qubo`.
+- Rich ≥10-line help added for all 25 functions (9 new structured entries).
+
+**100-function build boundary reached at 580**: full `npm run build` (tsc + vite) green; registry invariant 0/1420 without help. Batches 43–46 committed and pushed together.

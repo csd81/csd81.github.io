@@ -578,7 +578,7 @@ export const BUILTINS: Record<string, Builtin> = {
     if (n >= 2) { const G = elementwise(A, B, (x, y) => extgcd(x, y)[0]); const U = elementwise(A, B, (x, y) => extgcd(x, y)[1]); const V = elementwise(A, B, (x, y) => extgcd(x, y)[2]); return [A.itype ? applyClass(G, A.itype) : G, U, V]; }
     const G = elementwise(A, B, gcd2); return ret(A.itype ? applyClass(G, A.itype) : G);
   },
-  lcm: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, y) => (x === 0 || y === 0 ? 0 : Math.abs(x * y) / gcd2(x, y)))),
+  lcm: async (a) => { const A = m(a[0]); const L = elementwise(A, m(a[1]), (x, y) => (x === 0 || y === 0 ? 0 : Math.abs(x * y) / gcd2(x, y))); return ret(A.itype ? applyClass(L, A.itype) : L); },
   factorial: async (a) => { const A = m(a[0]); const r = map(A, (x) => factorialN(Math.round(x))); return ret(A.itype ? applyClass(r, A.itype) : r); },
   nchoosek: async (a) => {
     const n = Math.round(asScalar(a[0])); const k = Math.round(asScalar(a[1]));
@@ -971,7 +971,7 @@ export const BUILTINS: Record<string, Builtin> = {
   isvector: async (a) => { const [r, c] = dimsOf(a[0]); return ret(bool(r === 1 || c === 1)); },
   isrow: async (a) => ret(bool(dimsOf(a[0])[0] === 1)),
   iscolumn: async (a) => ret(bool(dimsOf(a[0])[1] === 1)),
-  ismatrix: async () => ret(bool(true)),
+  ismatrix: async (a) => ret(bool(!(isMat(a[0]) && (a[0] as Mat).nd !== undefined && (a[0] as Mat).nd!.length > 2))),
 
   // ═══════════════════════════ LINEAR ALGEBRA ═══════════════════════════
   det: async (a) => { if (isSym(a[0])) return ret(makeSym(1, 1, [simplifyExpr(symDet(a[0].exprs, a[0].rows))])); const A = m(a[0]); if (isComplex(A)) { const [re, im] = cDet(A); return ret(cscalar(re, im)); } return ret(scalar(det(A))); },
@@ -1683,7 +1683,20 @@ export const BUILTINS: Record<string, Builtin> = {
   zscore: async (a) => ret(colMap(m(a[0]), (c) => normalizeVec(c, 'zscore'))),
   center: async (a) => ret(colMap(m(a[0]), (c) => normalizeVec(c, 'center'))),
   meansq: async (a) => ret(colReduce(m(a[0]), (c) => c.reduce((s, x) => s + x * x, 0) / c.length)),
-  issorted: async (a) => { const v = toArray(m(a[0])); let ok = true; for (let i = 1; i < v.length; i++) if (v[i] < v[i - 1]) { ok = false; break; } return ret(bool(ok)); },
+  issorted: async (a) => {
+    const v = toArray(m(a[0]));
+    const dir = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar)) ? asString(a[1]).toLowerCase() : 'ascend';
+    let ok = true;
+    for (let i = 1; i < v.length; i++) {
+      if (dir === 'descend') { if (v[i] > v[i - 1]) { ok = false; break; } }
+      else if (dir === 'strictascend') { if (v[i] <= v[i - 1]) { ok = false; break; } }
+      else if (dir === 'strictdescend') { if (v[i] >= v[i - 1]) { ok = false; break; } }
+      else if (dir === 'monotonic') { /* either direction — checked separately below */ }
+      else { if (v[i] < v[i - 1]) { ok = false; break; } }
+    }
+    if (dir === 'monotonic') { let asc = true, desc = true; for (let i = 1; i < v.length; i++) { if (v[i] < v[i - 1]) asc = false; if (v[i] > v[i - 1]) desc = false; } ok = asc || desc; }
+    return ret(bool(ok));
+  },
   normest: async (a) => ret(scalar(norm(m(a[0]), 2))),
   // ── type predicates ──
   islogical: async (a) => ret(bool(isMat(a[0]) && !!(a[0] as Mat).isBool)),
@@ -1933,7 +1946,14 @@ export const BUILTINS: Record<string, Builtin> = {
   pad: async (a) => { const n = Math.round(asScalar(a[1])); const side = a.length >= 3 ? asString(a[2]).toLowerCase() : 'right'; return ret(mapStrArr(a[0], (x) => (side === 'left' ? x.padStart(n) : side === 'both' ? x.padStart(Math.floor((n + x.length) / 2)).padEnd(n) : x.padEnd(n)))); },
   split: async (a) => { const str = asString(a[0]); const delim = a.length >= 2 ? asString(a[1]) : ' '; const parts = a.length >= 2 ? str.split(delim) : str.split(/\s+/).filter((x) => x.length); return ret(makeStrArr(parts.length, 1, parts)); },
   splitlines: async (a) => { const parts = asString(a[0]).split(/\r\n|\r|\n/); return ret(makeStrArr(parts.length, 1, parts)); },
-  join: async (a) => { const s = asStrArr(a[0]); const delim = a.length >= 2 ? asString(a[1]) : ' '; return ret(makeStr(s.items.join(delim))); },
+  join: async (a) => {
+    const s = asStrArr(a[0]); const delim = a.length >= 2 ? asString(a[1]) : ' ';
+    // A row/column vector joins to a single string; an m-by-n array joins along columns → m-by-1.
+    if (s.rows <= 1 || s.cols <= 1) return ret(makeStr(s.items.join(delim)));
+    const out: string[] = [];
+    for (let r = 0; r < s.rows; r++) { const row: string[] = []; for (let c = 0; c < s.cols; c++) row.push(s.items[r + c * s.rows]); out.push(row.join(delim)); }
+    return ret(makeStrArr(s.rows, 1, out));
+  },
   append: async (a) => {
     // String arrays concatenate element-wise (scalars broadcast); otherwise join as text.
     if (a.some(isStr)) {
@@ -2241,7 +2261,14 @@ export const BUILTINS: Record<string, Builtin> = {
     }
     return ret(colMap(A, (c) => fillVec(c, method, 0)));
   },
-  isbetween: async (a) => { const A = m(a[0]); const lo = asScalar(a[1]), hi = asScalar(a[2]); return [{ ...map(A, (x) => (x >= lo && x <= hi ? 1 : 0)), isBool: true }]; },
+  isbetween: async (a) => {
+    // Works on numeric, datetime, and duration arrays (compared on the underlying values).
+    const num = (v: Value) => (isTemporal(v) ? { data: v.data, rows: v.rows, cols: v.cols } : (() => { const M = m(v); return { data: M.data, rows: M.rows, cols: M.cols }; })());
+    const A = num(a[0]); const lo = isTemporal(a[1]) ? a[1].data[0] : asScalar(a[1]); const hi = isTemporal(a[2]) ? a[2].data[0] : asScalar(a[2]);
+    const o = zeros(A.rows, A.cols); o.isBool = true;
+    for (let i = 0; i < A.data.length; i++) o.data[i] = A.data[i] >= lo && A.data[i] <= hi ? 1 : 0;
+    return [o];
+  },
   isuniform: async (a, n) => { const v = toArray(m(a[0])); if (v.length < 2) return n >= 2 ? [bool(true), scalar(0)] : [bool(true)]; const step = v[1] - v[0]; let ok = true; for (let i = 2; i < v.length; i++) if (Math.abs((v[i] - v[i - 1]) - step) > 1e-12 * (1 + Math.abs(step))) { ok = false; break; } return n >= 2 ? [bool(ok), scalar(ok ? step : NaN)] : [bool(ok)]; },
   allunique: async (a) => {
     // String arrays: compare by text. NaN/missing are each treated as unique.
@@ -3588,8 +3615,8 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   rat: async (a) => { const [n, d] = ratApprox(asScalar(a[0])); return ret(str(d === 1 ? `${n}` : `${n}/${d}`)); },
   flintmax: async (a) => { const ty = a.length >= 1 ? asString(a[0]).toLowerCase() : 'double'; return ret(applyClass(scalar(ty === 'single' ? 2 ** 24 : 2 ** 53), ty === 'single' ? 'single' : 'double')); },
-  intmax: async (a) => ret(scalar(INT_LIMITS[a.length ? asString(a[0]) : 'int32']?.[1] ?? 2147483647)),
-  intmin: async (a) => ret(scalar(INT_LIMITS[a.length ? asString(a[0]) : 'int32']?.[0] ?? -2147483648)),
+  intmax: async (a) => { const ty = a.length ? asString(a[0]).toLowerCase() : 'int32'; return ret(applyClass(scalar(INT_LIMITS[ty]?.[1] ?? 2147483647), ty)); },
+  intmin: async (a) => { const ty = a.length ? asString(a[0]).toLowerCase() : 'int32'; return ret(applyClass(scalar(INT_LIMITS[ty]?.[0] ?? -2147483648), ty)); },
   // ── transforms ──
   fft: async (a) => ret(fftApply(m(a[0]), -1)),
   ifft: async (a) => ret(fftApply(m(a[0]), 1)),

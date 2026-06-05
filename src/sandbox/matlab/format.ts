@@ -172,7 +172,7 @@ export function dispValue(v: Value): string {
   if (v.isChar) return charLines(v).join('\n');
   if (numel(v) === 0) return '';
   if (isComplex(v)) return isScalar(v) ? fmtC(v.data[0], v.idata![0]) : complexMatrixLines(v).join('\n');
-  if (isScalar(v)) return formatScalar(v.data[0]);
+  if (isScalar(v)) { const isInt = !!v.itype && v.itype !== 'single' && v.itype !== 'double'; return isInt ? String(Math.round(v.data[0])) : formatScalar(v.data[0]); }
   return matrixLines(v).join('\n');
 }
 
@@ -196,7 +196,7 @@ export function displayValue(name: string, v: Value): string {
   if (v.isChar) { const ls = charLines(v); return ls.length <= 1 ? `${name} =\n\n    ${ls[0] ?? ''}\n` : `${name} =\n\n` + ls.map((l) => '    ' + l).join('\n') + '\n'; }
   if (numel(v) === 0) return `${name} =\n\n     []\n`;
   if (isComplex(v)) return isScalar(v) ? `${name} =\n\n   ${fmtC(v.data[0], v.idata![0])}\n` : `${name} =\n\n${complexMatrixLines(v).join('\n')}\n`;
-  if (isScalar(v)) return `${name} =\n\n   ${formatScalar(v.data[0])}\n`;
+  if (isScalar(v)) { const isInt = !!v.itype && v.itype !== 'single' && v.itype !== 'double'; return `${name} =\n\n   ${isInt ? String(Math.round(v.data[0])) : formatScalar(v.data[0])}\n`; }
   return `${name} =\n\n${matrixLines(v).join('\n')}\n`;
 }
 

@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **480 / 1170** audited.
+Progress: **580 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -487,3 +487,105 @@ Progress: **480 / 1170** audited.
 | 478 | `interpft` | ✅ | FFT-based periodic interpolation |
 | 479 | `interpn` | ✅ | **fixed**: 1-D gridded `interpn(x,v,xq)` |
 | 480 | `intersect` | ✅ | **fixed**: `[C,ia,ib]` index outputs |
+| 481 | `intmax` | ✅ | **fixed**: integer class + full-integer display |
+| 482 | `intmin` | ✅ | **fixed**: integer class |
+| 483 | `inv` | ✅ | matrix inverse |
+| 484 | `invhilb` | ✅ | exact inverse Hilbert matrix |
+| 485 | `ipermute` | ✅ | inverse dimension permute |
+| 486 | `iqr` | ✅ | interquartile range |
+| 487 | `isConfigured` | ✅ | dictionary configured test |
+| 488 | `isConnected` | ✅ | triangulation vertex adjacency |
+| 489 | `isInterior` | ✅ | interior triangles (constrained) |
+| 490 | `isKey` | ✅ | dictionary/Map key test |
+| 491 | `isStringScalar` | ✅ | 1×1 string test |
+| 492 | `isUnderlyingType` | ✅ | underlying type test |
+| 493 | `isa` | ✅ | class/category test |
+| 494 | `isapprox` | ✅ | approximate equality |
+| 495 | `isbanded` | ✅ | bandwidth test |
+| 496 | `isbetween` | ✅ | **fixed**: datetime/duration range test |
+| 497 | `iscategorical` | ✅ | categorical type test |
+| 498 | `iscategory` | ✅ | category membership |
+| 499 | `iscell` | ✅ | cell array test |
+| 500 | `iscellstr` | ✅ | cellstr test |
+| 501 | `ischar` | ✅ | char array test |
+| 502 | `iscolumn` | ✅ | column-vector test |
+| 503 | `isdag` | ✅ | acyclic digraph test |
+| 504 | `isdatetime` | ✅ | datetime type test |
+| 505 | `isdiag` | ✅ | diagonal-matrix test |
+
+**Bonus display fix:** scalar integer-typed values (e.g. `intmax('uint64')`) now print as full integers instead of exponential notation.
+| 506 | `isduration` | ✅ | duration type test |
+| 507 | `isempty` | ✅ | empty-array test |
+| 508 | `isenum` | ✅ | enumeration test |
+| 509 | `isequal` | ✅ | whole-array equality |
+| 510 | `isequaln` | ✅ | equality with NaN==NaN |
+| 511 | `isfield` | ✅ | struct field test |
+| 512 | `isfinite` | ✅ | finite-element test |
+| 513 | `isfloat` | ✅ | float-type test |
+| 514 | `isgraphics` | ✅ | graphics-handle test |
+| 515 | `ishermitian` | ✅ | Hermitian/skew test |
+| 516 | `ishole` | 🟡 | polyshape hole boundaries |
+| 517 | `isinf` | ✅ | infinite-element test |
+| 518 | `isinteger` | ✅ | integer-type test |
+| 519 | `isinterior` | ✅ | point-in-polyshape |
+| 520 | `isisomorphic` | ✅ | graph isomorphism |
+| 521 | `isjava` | ✅ | Java-object test (always false) |
+| 522 | `iskeyword` | ✅ | language-keyword test |
+| 523 | `isletter` | ✅ | letter-char test |
+| 524 | `islocalmax` | ✅ | local maxima |
+| 525 | `islocalmin` | ✅ | local minima |
+| 526 | `islogical` | ✅ | logical-type test |
+| 527 | `ismatrix` | ✅ | **fixed**: 2-D test (was always true; N-D now false) |
+| 528 | `ismember` | ✅ | set membership + loc |
+| 529 | `ismembertol` | ✅ | tolerant membership |
+| 530 | `ismissing` | ✅ | missing-value mask |
+| 531 | `ismultigraph` | ✅ | parallel-edge test |
+| 532 | `isnan` | ✅ | NaN mask |
+| 533 | `isnat` | ✅ | NaT mask |
+| 534 | `isnumeric` | ✅ | numeric-type test |
+| 535 | `isobject` | ✅ | class-object test |
+| 536 | `isomorphism` | ✅ | graph node mapping |
+| 537 | `isosurface` | ✅ | 3-D isosurface extraction |
+| 538 | `isoutlier` | ✅ | outlier detection (median/MAD) |
+| 539 | `isprime` | ✅ | primality mask |
+| 540 | `isreal` | ✅ | real-storage test |
+| 541 | `isrow` | ✅ | row-vector test |
+| 542 | `isscalar` | ✅ | scalar test |
+| 543 | `issimplified` | ✅ | polyshape simplified test |
+| 544 | `issorted` | ✅ | **fixed**: direction option (descend/strict/monotonic) |
+| 545 | `issortedrows` | ✅ | sorted-rows test |
+| 546 | `isspace` | ✅ | whitespace mask |
+| 547 | `issparse` | ✅ | sparse-storage test |
+| 548 | `isstring` | ✅ | string-array test |
+| 549 | `isstrprop` | ✅ | char-category mask |
+| 550 | `isstruct` | ✅ | struct test |
+| 551 | `issymmetric` | ✅ | symmetric/skew test |
+| 552 | `istable` | ✅ | table test |
+| 553 | `istabular` | ✅ | table-or-timetable test |
+| 554 | `istimetable` | ✅ | timetable test |
+| 555 | `istril` | ✅ | lower-triangular test |
+| 556 | `istriu` | ✅ | upper-triangular test |
+| 557 | `isuniform` | ✅ | uniform-spacing test (+ step) |
+| 558 | `isvarname` | ✅ | valid-name test |
+| 559 | `isvector` | ✅ | vector-shape test |
+| 560 | `jet` | 🟡 | jet colormap (visual) |
+| 561 | `join` | ✅ | **fixed**: per-row join of 2-D string array |
+| 562 | `jsondecode` | ✅ | JSON → MATLAB value |
+| 563 | `jsonencode` | ✅ | MATLAB → JSON text |
+| 564 | `kde` | 🟡 | kernel density estimate (renders) |
+| 565 | `keys` | ✅ | dictionary/Map keys |
+| 566 | `knapsack2qubo` | ✅ | knapsack → QUBO |
+| 567 | `kron` | ✅ | Kronecker product |
+| 568 | `labeledge` | 🟡 | edge labels (graphics) |
+| 569 | `labelnode` | 🟡 | node labels (graphics) |
+| 570 | `laplacian` | ✅ | graph Laplacian (sparse) |
+| 571 | `lasterr` | ✅ | last error message |
+| 572 | `lasterror` | ✅ | last error struct |
+| 573 | `layout` | 🟡 | graph layout (graphics) |
+| 574 | `layoutcoords` | 🟡 | layout coords (graphics) |
+| 575 | `lcm` | ✅ | **fixed**: integer-class preserve |
+| 576 | `ldl` | ✅ | LDLᵀ factorization |
+| 577 | `legend` | 🟡 | plot legend (graphics) |
+| 578 | `legendre` | ✅ | associated Legendre functions |
+| 579 | `length` | ✅ | largest-dimension length |
+| 580 | `lighting` | 🟡 | surface lighting mode (graphics) |
