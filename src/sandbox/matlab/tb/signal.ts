@@ -3,7 +3,7 @@
 // bartlett/sinc) and closed-form definitions. See plan §7 and tb/signal.VALIDATION.md.
 import type { Builtin } from '../builtins';
 import {
-  type Value, type Mat, isMat, isStr, scalar, colVec, rowVec, toArray, map,
+  type Value, type Mat, isMat, isStr, scalar, colVec, rowVec, toArray, map, zeros,
   asString, asScalar, toMat as m,
 } from '../values';
 import type { ToolboxModule } from './types';
