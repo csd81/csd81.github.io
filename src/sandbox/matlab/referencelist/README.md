@@ -769,3 +769,25 @@ All 35 batch-8 examples pass.
 - Verified `faceNormal` gives correct unit normals for 3-D surface triangulations.
 - The seven `ez*` plotters are graphics-only (render verified, nothing numeric to assert).
 - Rich ≥10-line help added for all batch-33 functions (incl. new structured `ezmeshc`/`ezsurfc`/`factor`/`factorial`).
+
+## Batch 34 — functions 331–340 (feval · FFT family · triangulation edges · fieldnames)
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `fcontour` | 🟡 | renders a function contour | visual only |
+| `feather` | 🟡 | renders feather (vector) plot | visual only |
+| `featureEdges` | ✅ | sharp/boundary edges of a 3-D surface triangulation | — |
+| `feval` | ✅ | **fixed**: `feval("round",pi)` accepts a function NAME, not only a handle | — |
+| `fft` | ✅ | 1-D FFT → `fft([1 1 1 1])=[4 0 0 0]` | — |
+| `fft2` | ✅ | 2-D FFT → `fft2([1 2;3 4])=[10 -2;-4 0]` | — |
+| `fftn` | ✅ | **fixed**: true N-D FFT → `fftn(reshape(1:8,[2 2 2]))` stays 2×2×2 | — |
+| `fftshift` | ✅ | **fixed**: odd-length → `fftshift([1..7])=[5 6 7 1 2 3 4]` | — |
+| `fftw` | ✅ | planner method accepted as a no-op (compat) | not FFTW-backed, so planning has no effect |
+| `fieldnames` | ✅ | cell of struct field names | — |
+
+### Fixes landed in this batch
+- **`feval` accepts a string name**: it rejected anything but a function handle, so `feval("round",pi)` errored. It now resolves a character/string first argument to the named function via `makeHandle`.
+- **`fftn` does a true N-D transform**: it was implemented with a 2-D transpose trick that collapsed 3-D+ arrays (`fftn(reshape(1:8,[2 2 2]))` returned a 2×4). Added `fftnND`/`fftAlongDimND` that FFT along every dimension over the column-major buffer; `ifftn(fftn(X))` round-trips for 3-D arrays.
+- **`fftshift` odd-length**: it shifted by `ceil(n/2)`, giving `[4 5 6 7 1 2 3]` for a 7-vector instead of MATLAB's `[5 6 7 1 2 3 4]`. Swapped so `fftshift` uses `floor(n/2)` and `ifftshift` uses `ceil(n/2)` (equal for even n), so `ifftshift(fftshift(x))` is the identity.
+- Verified `fft`/`fft2`, `featureEdges`, `fieldnames`; `fcontour`/`feather`/`fftw` are graphics/compat-only.
+- Rich ≥10-line help added for all batch-34 functions (incl. new structured `feather`/`fft`/`fft2`/`fftn`/`fftshift`).

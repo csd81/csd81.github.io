@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **330 / 1170** audited.
+Progress: **340 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -335,3 +335,13 @@ Progress: **330 / 1170** audited.
 | 328 | `faceNormal` | ✅ | unit face normals (3-D triangulation) |
 | 329 | `factor` | ✅ | **fixed**: preserves integer class of input |
 | 330 | `factorial` | ✅ | **fixed**: preserves integer class; full-integer display for int types |
+| 331 | `fcontour` | 🟡 | renders function contour |
+| 332 | `feather` | 🟡 | renders feather/vector plot |
+| 333 | `featureEdges` | ✅ | sharp/boundary edges of a triangulation |
+| 334 | `feval` | ✅ | **fixed**: accepts a function NAME (string), not just a handle |
+| 335 | `fft` | ✅ | 1-D FFT |
+| 336 | `fft2` | ✅ | 2-D FFT |
+| 337 | `fftn` | ✅ | **fixed**: true N-D FFT (was collapsing to 2-D) |
+| 338 | `fftshift` | ✅ | **fixed**: odd-length shift (floor vs ceil) |
+| 339 | `fftw` | ✅ | planner no-op (compat) |
+| 340 | `fieldnames` | ✅ | struct field names cell |

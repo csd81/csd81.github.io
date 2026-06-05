@@ -1397,8 +1397,8 @@ export const BUILTINS: Record<string, Builtin> = {
   xcorr: async (a) => { const x = toArray(m(a[0])); const y = a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar ? toArray(m(a[1])) : x; return ret(rowVec(xcorrFn(x, y))); },
   xcov: async (a) => { const x = toArray(m(a[0])); const y = a.length >= 2 ? toArray(m(a[1])) : x; const mx = x.reduce((s, v) => s + v, 0) / x.length, my = y.reduce((s, v) => s + v, 0) / y.length; return ret(rowVec(xcorrFn(x.map((v) => v - mx), y.map((v) => v - my)))); },
   detrend: async (a) => { const type = a.length >= 2 && isMat(a[1]) && (a[1] as Mat).isChar ? asString(a[1]) : 'linear'; return ret(colMap(m(a[0]), (c) => detrendVec(c, type))); },
-  fftn: async (a) => { const A = m(a[0]); return ret(A.rows === 1 || A.cols === 1 ? fftApply(A, -1) : transpose(fftApply(transpose(fftApply(A, -1)), -1))); },
-  ifftn: async (a) => { const A = m(a[0]); return ret(A.rows === 1 || A.cols === 1 ? fftApply(A, 1) : transpose(fftApply(transpose(fftApply(A, 1)), 1))); },
+  fftn: async (a) => { const A = m(a[0]); if (A.nd) return ret(fftnND(A, -1)); return ret(A.rows === 1 || A.cols === 1 ? fftApply(A, -1) : transpose(fftApply(transpose(fftApply(A, -1)), -1))); },
+  ifftn: async (a) => { const A = m(a[0]); if (A.nd) return ret(fftnND(A, 1)); return ret(A.rows === 1 || A.cols === 1 ? fftApply(A, 1) : transpose(fftApply(transpose(fftApply(A, 1)), 1))); },
   // ── data preprocessing & smoothing ──
   smoothdata: async (a) => { const A = m(a[0]); const win = a.find((v, i) => i > 0 && isMat(v) && !(v as Mat).isChar); const k = win ? Math.round(asScalar(win)) : Math.max(3, Math.round((A.rows === 1 || A.cols === 1 ? numel(A) : A.rows) * 0.1)); const method = a.find((v) => isMat(v) && (v as Mat).isChar); const med = !!(method && asString(method as Mat) === 'movmedian'); return ret(colMap(A, (c) => movVec(c, k, med))); },
   smoothdata2: async (a) => { const A = m(a[0]); const k = a.length >= 2 ? Math.round(asScalar(a[1])) : 3; return ret(smooth2(A, k)); },
@@ -3545,9 +3545,10 @@ export const BUILTINS: Record<string, Builtin> = {
 
   // functional
   feval: async (a, n, env) => {
-    const f = a[0];
+    let f = a[0];
+    if (isStr(f) || (isMat(f) && (f as Mat).isChar)) f = env.makeHandle(asString(f));   // feval("name",...) resolves the named function
     if (isHandle(f)) return env.callHandle(f, a.slice(1), n);
-    throw new MatError('feval: first argument must be a function handle');
+    throw new MatError('feval: first argument must be a function handle or name');
   },
   arrayfun: async (a, n, env) => {
     const f = a[0];
@@ -5015,8 +5016,29 @@ function fftApply(A: Mat, sign: number): Mat {
   for (let c = 0; c < cols; c++) { const re: number[] = [], im: number[] = []; for (let r = 0; r < rows; r++) { re.push(A.data[r + c * rows]); im.push(A.idata ? A.idata[r + c * rows] : 0); } const R = fftVec(re, im, sign); if (inv) for (let i = 0; i < rows; i++) { R.re[i] /= rows; R.im[i] /= rows; } for (let r = 0; r < rows; r++) { Re[r + c * rows] = R.re[r]; Im[r + c * rows] = R.im[r]; } }
   return finishComplex(rows, cols, Re, Im);
 }
+/** FFT along one (0-based) dimension of an N-D array, in place over a working copy. */
+function fftAlongDimND(Re: Float64Array, Im: Float64Array, dims: number[], dim: number, sign: number): void {
+  const n = dims[dim] ?? 1; if (n <= 1) return; const total = Re.length; const inv = sign > 0;
+  const stride: number[] = []; { let s = 1; for (let i = 0; i < dims.length; i++) { stride[i] = s; s *= dims[i]; } }
+  const st = stride[dim];
+  for (let base = 0; base < total; base++) {
+    if (Math.floor(base / st) % n !== 0) continue;   // process each fiber once (dim-coordinate 0)
+    const re: number[] = [], im: number[] = [];
+    for (let k = 0; k < n; k++) { const idx = base + k * st; re.push(Re[idx]); im.push(Im[idx]); }
+    const R = fftVec(re, im, sign); if (inv) for (let k = 0; k < n; k++) { R.re[k] /= n; R.im[k] /= n; }
+    for (let k = 0; k < n; k++) { const idx = base + k * st; Re[idx] = R.re[k]; Im[idx] = R.im[k]; }
+  }
+}
+/** N-D FFT: 1-D transform along every dimension. */
+function fftnND(A: Mat, sign: number): Mat {
+  const dims = ndSize(A); const total = A.data.length;
+  const Re = Float64Array.from(A.data); const Im = A.idata ? Float64Array.from(A.idata) : new Float64Array(total);
+  for (let d = 0; d < dims.length; d++) fftAlongDimND(Re, Im, dims, d, sign);
+  const out = makeND(dims.slice(), Re); out.idata = Im; return out;
+}
 function fftShift(A: Mat, inverse: boolean): Mat {
-  const shift = (len: number) => (inverse ? Math.floor(len / 2) : Math.ceil(len / 2));
+  // fftshift right-shifts by floor(n/2); ifftshift (its inverse) by ceil(n/2). Equal for even n.
+  const shift = (len: number) => (inverse ? Math.ceil(len / 2) : Math.floor(len / 2));
   const o = zeros(A.rows, A.cols); const im = A.idata ? new Float64Array(A.data.length) : null;
   const sr = A.rows === 1 ? 0 : shift(A.rows), sc = A.cols === 1 ? 0 : (A.rows === 1 ? shift(A.cols) : shift(A.cols));
   const scol = A.rows === 1 ? shift(A.cols) : sc;
