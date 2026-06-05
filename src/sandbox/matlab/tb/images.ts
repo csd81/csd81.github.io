@@ -3,7 +3,7 @@
 // Otsu, imbinarize), and YCbCr conversion. (rgb2gray/im2gray are already base.) See plan §7.
 import type { Builtin } from '../builtins';
 import {
-  type Value, type Mat, isMat, scalar, zeros, toArray, asScalar, asString, toMat as m, applyClass,
+  type Value, type Mat, isMat, scalar, colVec, zeros, toArray, asScalar, asString, toMat as m, applyClass,
 } from '../values';
 import type { ToolboxModule } from './types';
 
@@ -88,6 +88,37 @@ export const IMAGES: ToolboxModule = {
     },
     /** imgaussfilt(A[,sigma]) — Gaussian smoothing (default sigma 0.5), replicate padding. */
     imgaussfilt: (a) => { const sigma = a.length >= 2 && isMat(a[1]) ? asScalar(a[1]) : 0.5; const sz = 2 * Math.ceil(2 * sigma) + 1; return ret(fromRows(filter2d(matToRows(m(a[0])), fspecial('gaussian', [{ kind: 'num', rows: 1, cols: 2, data: Float64Array.of(sz, sz) } as Mat, scalar(sigma)]), false, 'replicate'))); },
+    /** stretchlim(I[,tol]) — [low;high] contrast-stretch limits (256-bin CDF, default 1% saturation). */
+    stretchlim: (a) => {
+      const u = toUnit(m(a[0])); let lo = 0.01, hi = 0.99;
+      if (a.length >= 2 && isMat(a[1])) { const t = toArray(m(a[1])); if (t.length >= 2) { lo = t[0]; hi = t[1]; } else { lo = t[0]; hi = 1 - t[0]; } }
+      const nb = 256, hist = new Array(nb).fill(0); for (const v of u) hist[Math.min(nb - 1, Math.max(0, Math.round(v * (nb - 1))))]++;
+      const total = u.length; let cum = 0, loB = 0, hiB = nb - 1;
+      cum = 0; for (let i = 0; i < nb; i++) { cum += hist[i]; if (cum / total > lo) { loB = i; break; } }
+      cum = 0; for (let i = 0; i < nb; i++) { cum += hist[i]; if (cum / total >= hi) { hiB = i; break; } }
+      if (loB >= hiB) { loB = 0; hiB = nb - 1; }
+      return ret(colVec([loB / (nb - 1), hiB / (nb - 1)]));
+    },
+    /** rgb2lin(rgb) / lin2rgb(rgb) — sRGB EOTF / inverse-EOTF (gamma decode/encode), double in [0,1]. */
+    rgb2lin: (a) => ret(likeShape(m(a[0]), toArray(m(a[0])).map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)))),
+    lin2rgb: (a) => ret(likeShape(m(a[0]), toArray(m(a[0])).map((c) => (c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055)))),
+    /** imresize(A,scale|[r c][,method]) — resize via u=i/scale+0.5(1−1/scale); 'nearest' or 'bilinear' (no antialiasing). */
+    imresize: (a) => {
+      const A = matToRows(m(a[0])); const R = A.length, C = A[0]?.length ?? 0;
+      let method = 'bilinear', szArg: Mat | null = null;
+      for (const arg of a.slice(1)) { if (isMat(arg) && (arg as Mat).isChar) method = asString(arg).toLowerCase(); else if (isMat(arg) && !szArg) szArg = arg as Mat; }
+      let outR = R, outC = C; if (szArg) { const s = toArray(szArg); if (s.length >= 2) { outR = Math.round(s[0]); outC = Math.round(s[1]); } else { outR = Math.round(R * s[0]); outC = Math.round(C * s[0]); } }
+      const sr = outR / R, sc = outC / C; const out: number[][] = [];
+      const samp = (ur: number, uc: number) => {
+        ur = Math.max(1, Math.min(R, ur)); uc = Math.max(1, Math.min(C, uc));
+        if (method === 'nearest') return A[Math.round(ur) - 1][Math.round(uc) - 1];
+        const ri = Math.max(0, Math.min(R - 2, Math.floor(ur) - 1)), ci = Math.max(0, Math.min(C - 2, Math.floor(uc) - 1));
+        const fr = ur - 1 - ri, fc = uc - 1 - ci;
+        return (1 - fr) * (1 - fc) * A[ri][ci] + (1 - fr) * fc * A[ri][ci + 1] + fr * (1 - fc) * A[ri + 1][ci] + fr * fc * A[ri + 1][ci + 1];
+      };
+      for (let i = 0; i < outR; i++) { out[i] = []; const ur = (i + 1) / sr + 0.5 * (1 - 1 / sr); for (let j = 0; j < outC; j++) out[i][j] = samp(ur, (j + 1) / sc + 0.5 * (1 - 1 / sc)); }
+      return ret(fromRows(out));
+    },
   },
   help: {
     im2double: 'Convert image to double precision [0,1]', im2uint8: 'Convert image to uint8', im2uint16: 'Convert image to uint16',
@@ -95,6 +126,7 @@ export const IMAGES: ToolboxModule = {
     graythresh: 'Global image threshold (Otsu method)', imbinarize: 'Binarize image by thresholding',
     rgb2ycbcr: 'Convert RGB to YCbCr', ycbcr2rgb: 'Convert YCbCr to RGB',
     fspecial: 'Create a predefined 2-D filter kernel', imfilter: 'N-D filtering of images', imgaussfilt: '2-D Gaussian smoothing filtering',
+    stretchlim: 'Find limits to contrast-stretch an image', rgb2lin: 'Apply gamma decoding (sRGB to linear)', lin2rgb: 'Apply gamma encoding (linear to sRGB)', imresize: 'Resize an image',
   },
 };
 
