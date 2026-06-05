@@ -3,7 +3,7 @@
 // Otsu, imbinarize), and YCbCr conversion. (rgb2gray/im2gray are already base.) See plan §7.
 import type { Builtin } from '../builtins';
 import {
-  type Value, type Mat, isMat, scalar, zeros, toArray, asScalar, toMat as m, applyClass,
+  type Value, type Mat, isMat, scalar, zeros, toArray, asScalar, asString, toMat as m, applyClass,
 } from '../values';
 import type { ToolboxModule } from './types';
 
@@ -75,12 +75,26 @@ export const IMAGES: ToolboxModule = {
     /** rgb2ycbcr / ycbcr2rgb on an N×3 colormap-style matrix (BT.601, double in [0,1]). */
     rgb2ycbcr: (a) => ret(mapRows3(m(a[0]), (r, gg, b) => [16 / 255 + (65.481 * r + 128.553 * gg + 24.966 * b) / 255, 128 / 255 + (-37.797 * r - 74.203 * gg + 112.0 * b) / 255, 128 / 255 + (112.0 * r - 93.786 * gg - 18.214 * b) / 255])),
     ycbcr2rgb: (a) => ret(mapRows3(m(a[0]), (y, cb, cr) => { const Y = y * 255 - 16, Cb = cb * 255 - 128, Cr = cr * 255 - 128; return [(1.164 * Y + 1.596 * Cr) / 255, (1.164 * Y - 0.392 * Cb - 0.813 * Cr) / 255, (1.164 * Y + 2.017 * Cb) / 255]; })),
+
+    // ── spatial filtering ──
+    /** fspecial(type,…) — predefined 2-D filter kernels. */
+    fspecial: (a) => ret(fromRows(fspecial(asString(a[0]).toLowerCase(), a.slice(1)))),
+    /** imfilter(A,h[,boundary][,'conv'|'corr'][,'same'|'full']) — 2-D filtering (default corr, 0-pad, same). */
+    imfilter: (a) => {
+      const A = matToRows(m(a[0])), h = matToRows(m(a[1]));
+      let conv = false; let boundary: number | string = 0;
+      for (const arg of a.slice(2)) { if (isMat(arg) && (arg as Mat).isChar) { const o = asString(arg).toLowerCase(); if (o === 'conv') conv = true; else if (o === 'corr' || o === 'same' || o === 'full') { /* corr/shape */ } else boundary = o; } else if (isMat(arg)) boundary = asScalar(arg); }
+      return ret(fromRows(filter2d(A, h, conv, boundary)));
+    },
+    /** imgaussfilt(A[,sigma]) — Gaussian smoothing (default sigma 0.5), replicate padding. */
+    imgaussfilt: (a) => { const sigma = a.length >= 2 && isMat(a[1]) ? asScalar(a[1]) : 0.5; const sz = 2 * Math.ceil(2 * sigma) + 1; return ret(fromRows(filter2d(matToRows(m(a[0])), fspecial('gaussian', [{ kind: 'num', rows: 1, cols: 2, data: Float64Array.of(sz, sz) } as Mat, scalar(sigma)]), false, 'replicate'))); },
   },
   help: {
     im2double: 'Convert image to double precision [0,1]', im2uint8: 'Convert image to uint8', im2uint16: 'Convert image to uint16',
     mat2gray: 'Scale matrix values to grayscale [0,1]', imcomplement: 'Complement (negative) of an image', imadjust: 'Adjust image intensity values',
     graythresh: 'Global image threshold (Otsu method)', imbinarize: 'Binarize image by thresholding',
     rgb2ycbcr: 'Convert RGB to YCbCr', ycbcr2rgb: 'Convert YCbCr to RGB',
+    fspecial: 'Create a predefined 2-D filter kernel', imfilter: 'N-D filtering of images', imgaussfilt: '2-D Gaussian smoothing filtering',
   },
 };
 
@@ -89,4 +103,39 @@ function mapRows3(M: Mat, f: (a: number, b: number, c: number) => number[]): Mat
   const N = M.rows; const o = zeros(N, 3);
   for (let r = 0; r < N; r++) { const out = f(M.data[r], M.data[r + N], M.data[r + 2 * N]); for (let c = 0; c < 3; c++) o.data[r + c * N] = out[c]; }
   return o;
+}
+/** Rows of a column-major Mat as number[][]. */
+function matToRows(M: Mat): number[][] { const o: number[][] = []; for (let r = 0; r < M.rows; r++) { const row: number[] = []; for (let c = 0; c < M.cols; c++) row.push(M.data[r + c * M.rows]); o.push(row); } return o; }
+/** Build a column-major Mat from number[][]. */
+function fromRows(rows: number[][]): Mat { const R = rows.length, C = R ? Math.max(...rows.map((r) => r.length)) : 0; const o = zeros(R, C); for (let r = 0; r < R; r++) for (let c = 0; c < (rows[r]?.length ?? 0); c++) o.data[r + c * R] = rows[r][c]; return o; }
+
+/** Predefined 2-D filter kernels (subset of MATLAB fspecial). */
+function fspecial(type: string, args: Value[]): number[][] {
+  const a0 = args[0] && isMat(args[0]) ? toArray(m(args[0])) : null;
+  switch (type) {
+    case 'sobel': return [[1, 2, 1], [0, 0, 0], [-1, -2, -1]];
+    case 'prewitt': return [[1, 1, 1], [0, 0, 0], [-1, -1, -1]];
+    case 'average': { let r = 3, c = 3; if (a0) { if (a0.length >= 2) { r = a0[0]; c = a0[1]; } else r = c = Math.round(a0[0]); } const v = 1 / (r * c); return Array.from({ length: r }, () => new Array(c).fill(v)); }
+    case 'laplacian': { const al = a0 ? a0[0] : 0.2; const h1 = al / (al + 1), h2 = (1 - al) / (al + 1), h3 = -4 / (al + 1); return [[h1, h2, h1], [h2, h3, h2], [h1, h2, h1]]; }
+    case 'gaussian': { let r = 3, c = 3; if (a0) { if (a0.length >= 2) { r = a0[0]; c = a0[1]; } else r = c = Math.round(a0[0]); } const sig = args[1] && isMat(args[1]) ? asScalar(args[1]) : 0.5; const cy = (r - 1) / 2, cx = (c - 1) / 2; const g: number[][] = []; let sum = 0; for (let i = 0; i < r; i++) { g[i] = []; for (let j = 0; j < c; j++) { const v = Math.exp(-(((i - cy) ** 2) + ((j - cx) ** 2)) / (2 * sig * sig)); g[i][j] = v; sum += v; } } return g.map((row) => row.map((v) => v / sum)); }
+    case 'disk': { const rad = a0 ? Math.round(a0[0]) : 5; const n = 2 * rad + 1; const k: number[][] = []; let sum = 0; for (let i = 0; i < n; i++) { k[i] = []; for (let j = 0; j < n; j++) { const inside = (i - rad) ** 2 + (j - rad) ** 2 <= rad * rad ? 1 : 0; k[i][j] = inside; sum += inside; } } return k.map((row) => row.map((v) => v / sum)); }
+    default: throw new Error(`fspecial: type '${type}' not supported`);
+  }
+}
+/** 2-D correlation/convolution; boundary 0 (default), 'replicate', 'circular', or 'symmetric'. */
+function filter2d(A: number[][], h: number[][], conv: boolean, boundary: number | string): number[][] {
+  const R = A.length, C = A[0]?.length ?? 0, hr = h.length, hc = h[0]?.length ?? 0;
+  const cy = Math.floor(hr / 2), cx = Math.floor(hc / 2);
+  const ker = conv ? h.map((row) => [...row].reverse()).reverse() : h;
+  const get = (i: number, j: number): number => {
+    if (i >= 0 && i < R && j >= 0 && j < C) return A[i][j];
+    if (typeof boundary === 'number') return boundary;
+    if (boundary === 'replicate') return A[Math.max(0, Math.min(R - 1, i))][Math.max(0, Math.min(C - 1, j))];
+    if (boundary === 'circular') return A[((i % R) + R) % R][((j % C) + C) % C];
+    const rf = (k: number, n: number) => { k = ((k % (2 * n)) + 2 * n) % (2 * n); return k < n ? k : 2 * n - 1 - k; };
+    return A[rf(i, R)][rf(j, C)];   // symmetric
+  };
+  const out: number[][] = [];
+  for (let i = 0; i < R; i++) { out[i] = []; for (let j = 0; j < C; j++) { let s = 0; for (let di = 0; di < hr; di++) for (let dj = 0; dj < hc; dj++) s += ker[di][dj] * get(i + di - cy, j + dj - cx); out[i][j] = s; } }
+  return out;
 }

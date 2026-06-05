@@ -17,3 +17,19 @@ and known results). `rgb2gray`/`im2gray` were already base.
 (explicit limits + gamma), `graythresh` (Otsu, MATLAB tie-break), `imbinarize`, `rgb2ycbcr`,
 `ycbcr2rgb`. **Deferred:** spatial filters (`imfilter`/`imgaussfilt`), `imresize`/`imrotate`,
 `histeq`, `edge`, morphology — larger pieces for a later pass.
+
+## Spatial filtering (added)
+
+| Function | Test | Sandbox | Reference |
+|---|---|---|---|
+| `fspecial` | `fspecial('sobel')` | `[1 2 1;0 0 0;-1 -2 -1]` | MATLAB exact ✓ |
+| `fspecial` | `fspecial('average',3)` | all `1/9` | ✓ |
+| `fspecial` | `fspecial('laplacian',0.2)` | `[.1667 .6667 .1667;…;-3.3333…]` | MATLAB exact ✓ |
+| `imfilter` | `imfilter(magic(3),fspecial('average',3))` | `[1.8889 3.3333 2.1111;…]` | `conv2(A,rot90(h,2),'same')` exact ✓ |
+| `imfilter` | `imfilter([1..9],fspecial('sobel'))` | `[-13 -20 -17;-18 -24 -18;13 20 17]` | exact ✓ |
+| `imfilter` | replicate pad on `[1 2;3 4]` avg3 | `[2 2.333;2.667 3]` | by hand ✓ |
+
+**Added:** `fspecial` (`average`/`gaussian`/`sobel`/`prewitt`/`laplacian`/`disk`), `imfilter`
+(2-D correlation/convolution; boundary `0`/`replicate`/`circular`/`symmetric`, default corr+0-pad
++same — equals `conv2(A,rot90(h,2),'same')`), `imgaussfilt`. **Deferred:** `histeq`, `imresize`,
+`imrotate`, `edge`, morphology.
