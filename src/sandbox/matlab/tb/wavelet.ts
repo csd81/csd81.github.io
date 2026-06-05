@@ -4,7 +4,7 @@
 // Haar matches hand calculation. See plan §7 and tb/wavelet.VALIDATION.md.
 import type { Builtin } from '../builtins';
 import {
-  type Value, rowVec, colVec, toArray, asString, asScalar, toMat as m, type Mat,
+  type Value, rowVec, colVec, scalar, toArray, asString, asScalar, toMat as m, type Mat, isMat, isCell, makeCell,
 } from '../values';
 import type { ToolboxModule } from './types';
 
@@ -48,6 +48,9 @@ function idwt1(cA: number[], cD: number[], lo: number[], hi: number[]): number[]
   for (let k = 0; k < half; k++) for (let j = 0; j < L; j++) { const idx = (2 * k + j) % N; x[idx] += lo[j] * cA[k] + hi[j] * cD[k]; }
   return x;
 }
+/** Normalized Haar analysis/synthesis steps (for haart/ihaart). */
+function haarStep(x: number[]): { cA: number[]; cD: number[] } { const h = Math.floor(x.length / 2), cA: number[] = [], cD: number[] = []; for (let k = 0; k < h; k++) { cA.push((x[2 * k] + x[2 * k + 1]) / SQRT2); cD.push((x[2 * k] - x[2 * k + 1]) / SQRT2); } return { cA, cD }; }
+function invHaarStep(cA: number[], cD: number[]): number[] { const x = new Array(cA.length * 2); for (let k = 0; k < cA.length; k++) { x[2 * k] = (cA[k] + cD[k]) / SQRT2; x[2 * k + 1] = (cA[k] - cD[k]) / SQRT2; } return x; }
 
 export const WAVELET: ToolboxModule = {
   id: 'wavelet',
@@ -74,11 +77,31 @@ export const WAVELET: ToolboxModule = {
       for (let i = 0; i < n; i++) { const dl = L[i + 1]; const cD = C.slice(off, off + dl); off += dl; cur = idwt1(cur, cD, lo, hi); }
       return ret(rowVec(cur));
     },
+    /** [a,d] = haart(x[,level]) — Haar wavelet transform. a = approximation; d = detail (cell if multilevel). */
+    haart: (a, nargout) => {
+      const x = toArray(m(a[0])); const maxL = Math.floor(Math.log2(x.length));
+      const level = a.length >= 2 && isMat(a[1]) ? Math.round(asScalar(a[1])) : maxL;
+      let cur = x; const dets: number[][] = [];
+      for (let i = 0; i < level; i++) { const { cA, cD } = haarStep(cur); dets.push(cD); cur = cA; }
+      const aVal = cur.length === 1 ? scalar(cur[0]) : rowVec(cur);
+      if (nargout < 2) return ret(aVal);
+      const d = dets.length === 1 ? rowVec(dets[0]) : makeCell(1, dets.length, dets.map((dd) => (dd.length === 1 ? scalar(dd[0]) : rowVec(dd))));
+      return Promise.resolve([aVal, d]);
+    },
+    /** ihaart(a,d) — inverse Haar wavelet transform. */
+    ihaart: (a) => {
+      const aVal = toArray(m(a[0])); const dArg = a[1];
+      const dets = isCell(dArg) ? dArg.items.map((it) => toArray(m(it))) : [toArray(m(dArg))];
+      let cur = aVal;
+      for (let i = dets.length - 1; i >= 0; i--) cur = invHaarStep(cur, dets[i]);
+      return ret(rowVec(cur));
+    },
   },
   help: {
     dct: 'Discrete cosine transform (DCT-II, orthonormal)', idct: 'Inverse discrete cosine transform',
     dwt: 'Single-level discrete 1-D wavelet transform', idwt: 'Single-level inverse discrete 1-D wavelet transform',
     wavedec: 'Multilevel 1-D wavelet decomposition', waverec: 'Multilevel 1-D wavelet reconstruction',
+    haart: 'Haar 1-D wavelet transform', ihaart: 'Inverse Haar 1-D wavelet transform',
   },
 };
 
