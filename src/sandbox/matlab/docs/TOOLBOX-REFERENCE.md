@@ -1,10 +1,10 @@
 # MATLAB Toolbox Function Reference (master)
 
-Consolidated coverage tables for 47 toolboxes. The **Implemented** column (✅) marks
+Consolidated coverage tables for 48 toolboxes. The **Implemented** column (✅) marks
 functions available in the TypeScript sandbox interpreter. Generated from the former per-toolbox
 docs/*.md files.
 
-**Overall: 2030 / 16830 functions implemented across 47 toolboxes.**
+**Overall: 2385 / 17245 functions implemented across 48 toolboxes.**
 
 Also see [Base MATLAB reference-list validation](#base-validation) — 705 converged / 905 audited base builtins.
 
@@ -14,6 +14,7 @@ Also see [Base MATLAB reference-list validation](#base-validation) — 705 conve
 | Toolbox | Implemented | Total | % |
 | :--- | ---: | ---: | ---: |
 | [core_referencelist (core list)](#0core_referencelist) | 1144 | 3094 | 37% |
+| [Symbolic Math Toolbox](#symbolic) | 355 | 415 | 86% |
 | [Stats Toolbox](#stats) | 156 | 861 | 18% |
 | [Signal Toolbox](#signal) | 131 | 397 | 33% |
 | [Fixedpoint Toolbox](#fixedpoint) | 87 | 335 | 26% |
@@ -19245,6 +19246,431 @@ _0 / 186 implemented_
 |   | `wlanBitInterleave` | Custom TypeScript port (not in standard MATLAB reference) |
 |   | `wlanCRC32` | Custom TypeScript port (not in standard MATLAB reference) |
 |   | `wlanConvEncode` | Custom TypeScript port (not in standard MATLAB reference) |
+
+---
+
+<a id="symbolic"></a>
+## Symbolic Math Toolbox  
+
+_355 / 415 implemented_
+
+| Implemented | Function | Description |
+| :---: | :--- | :--- |
+| ✅ | `abs` | |
+| ✅ | `acos` | |
+| ✅ | `acosd` | |
+| ✅ | `acosh` | |
+| ✅ | `acot` | |
+| ✅ | `acotd` | |
+| ✅ | `acoth` | |
+| ✅ | `acsc` | |
+| ✅ | `acscd` | |
+| ✅ | `acsch` | |
+| ✅ | `adjoint` | |
+| ✅ | `airy` | |
+| ✅ | `angle` | |
+| ✅ | `asec` | |
+| ✅ | `asecd` | |
+| ✅ | `asech` | |
+| ✅ | `asin` | |
+| ✅ | `asind` | |
+| ✅ | `asinh` | |
+| ✅ | `assume` | |
+| ✅ | `assumeAlso` | |
+| ✅ | `assumptions` | |
+| ✅ | `atan` | |
+| ✅ | `atan2` | |
+| ✅ | `atan2d` | |
+| ✅ | `atand` | |
+| ✅ | `atanh` | |
+|    | `baseUnits` | |
+| ✅ | `bernoulli` | |
+| ✅ | `bernstein` | |
+| ✅ | `bernsteinMatrix` | |
+| ✅ | `besselh` | |
+| ✅ | `besseli` | |
+| ✅ | `besselj` | |
+| ✅ | `besselk` | |
+| ✅ | `bessely` | |
+| ✅ | `beta` | |
+| ✅ | `blkdiag` | |
+| ✅ | `cart2pol` | |
+| ✅ | `cart2sph` | |
+| ✅ | `cat` | |
+|    | `catalan` | |
+|    | `ccode` | |
+| ✅ | `cdf2rdf` | |
+| ✅ | `ceil` | |
+| ✅ | `cell2sym` | |
+|    | `changeIntegrationVariable` | |
+| ✅ | `char` | |
+| ✅ | `charpoly` | |
+| ✅ | `charToFunction` | (C) |
+| ✅ | `chebyshevT` | |
+| ✅ | `chebyshevU` | |
+|    | `checkIgnoreAnalyticConstraintsValue` | Static auxiliary method of the sym class: |
+|    | `checkUnits` | |
+| ✅ | `children` | |
+| ✅ | `chol` | |
+| ✅ | `circshift` | |
+| ✅ | `coeffs` | |
+| ✅ | `collect` | |
+| ✅ | `colon` | |
+| ✅ | `colspace` | |
+| ✅ | `combine` | |
+| ✅ | `compan` | |
+| ✅ | `compose` | |
+| ✅ | `cond` | |
+| ✅ | `condest` | |
+| ✅ | `conj` | |
+| ✅ | `cos` | |
+| ✅ | `cosd` | |
+| ✅ | `cosh` | |
+| ✅ | `coshint` | |
+| ✅ | `cosint` | |
+| ✅ | `cospi` | |
+| ✅ | `cot` | |
+| ✅ | `cotd` | |
+| ✅ | `coth` | |
+| ✅ | `cov` | |
+| ✅ | `csc` | |
+| ✅ | `cscd` | |
+| ✅ | `csch` | |
+| ✅ | `ctranspose` | |
+| ✅ | `cumprod` | |
+| ✅ | `cumsum` | |
+| ✅ | `curl` | |
+|    | `daeFunction` | |
+| ✅ | `dawson` | |
+| ✅ | `dec2bin` | |
+| ✅ | `dec2hex` | |
+| ✅ | `decic` | |
+| ✅ | `deg2rad` | |
+|    | `derivedUnits` | |
+| ✅ | `det` | |
+| ✅ | `diag` | |
+| ✅ | `diff` | |
+| ✅ | `digits` | |
+| ✅ | `dilog` | |
+| ✅ | `dirac` | |
+| ✅ | `disp` | |
+| ✅ | `display` | Display function for syms. |
+|    | `displayFormula` | |
+| ✅ | `divergence` | |
+| ✅ | `divisors` | |
+| ✅ | `dsolve` | |
+| ✅ | `ei` | |
+| ✅ | `eig` | |
+| ✅ | `eliminate` | |
+| ✅ | `ellipj` | |
+| ✅ | `ellipke` | |
+| ✅ | `ellipticCE` | |
+| ✅ | `ellipticCK` | |
+| ✅ | `ellipticCPi` | |
+| ✅ | `ellipticE` | |
+| ✅ | `ellipticF` | |
+| ✅ | `ellipticK` | |
+| ✅ | `ellipticNome` | |
+| ✅ | `ellipticPi` | |
+| ✅ | `equationsToMatrix` | |
+| ✅ | `erf` | |
+| ✅ | `erfc` | |
+| ✅ | `erfcinv` | |
+| ✅ | `erfi` | |
+| ✅ | `erfinv` | |
+| ✅ | `euler` | |
+|    | `eulergamma` | |
+| ✅ | `eulerPhi` | |
+| ✅ | `eval` | is not recommended. Use subs instead. |
+| ✅ | `exp` | |
+| ✅ | `expand` | |
+| ✅ | `expint` | |
+| ✅ | `expm` | |
+| ✅ | `ezcontour` | is not recommended. With appropriate code changes, use fcontour instead. |
+| ✅ | `ezcontourf` | is not recommended. Use fcontour instead, and set the 'Fill' value to 'on'. |
+| ✅ | `ezmesh` | is not recommended. With appropriate code changes, use fmesh instead. |
+| ✅ | `ezmeshc` | is not recommended. Use fmesh instead, and set the 'ShowContours' value to 'on'. |
+| ✅ | `ezplot` | is not recommended. Use fplot or fimplicit instead. |
+| ✅ | `ezplot3` | is not recommended. With appropriate code changes, use fplot3 instead. |
+| ✅ | `ezpolar` | is not recommended. With appropriate code changes, use fpolarplot instead. |
+| ✅ | `ezsurf` | is not recommended. With appropriate code changes, use fsurf instead. |
+| ✅ | `ezsurfc` | is not recommended. Use fsurf instead, and set the 'ShowContours' value to 'on'. |
+| ✅ | `factor` | |
+| ✅ | `factorial` | |
+| ✅ | `factorIntegerPower` | |
+| ✅ | `feval` | Evaluate symbolic function |
+| ✅ | `fibonacci` | |
+|    | `findDecoupledBlocks` | |
+| ✅ | `findSymType` | |
+|    | `findUnits` | |
+| ✅ | `finverse` | |
+| ✅ | `fix` | |
+| ✅ | `floor` | |
+|    | `fold` | |
+|    | `fortran` | |
+| ✅ | `fourier` | |
+| ✅ | `frac` | Symbolic matrix element-wise fractional part. |
+| ✅ | `fresnelc` | |
+| ✅ | `fresnels` | |
+| ✅ | `functionalDerivative` | |
+| ✅ | `funm` | |
+|    | `funtool` | |
+| ✅ | `gamma` | |
+| ✅ | `gammaln` | |
+|    | `gbasis` | |
+| ✅ | `gcd` | |
+| ✅ | `gegenbauerC` | |
+|    | `getEqnsVars` | (eq1,...,eqn,x1,...,xm) |
+| ✅ | `gradient` | |
+| ✅ | `harmonic` | |
+| ✅ | `has` | |
+| ✅ | `hasSymType` | |
+| ✅ | `heaviside` | |
+| ✅ | `hermiteForm` | |
+| ✅ | `hermiteH` | |
+| ✅ | `hessian` | |
+| ✅ | `horner` | |
+| ✅ | `horzcat` | |
+| ✅ | `htrans` | |
+| ✅ | `hurwitzZeta` | |
+| ✅ | `hypergeom` | |
+| ✅ | `hypot` | |
+| ✅ | `ifourier` | |
+| ✅ | `igamma` | |
+| ✅ | `ihtrans` | |
+| ✅ | `ilaplace` | |
+| ✅ | `imag` | |
+|    | `in` | |
+|    | `incidenceMatrix` | |
+| ✅ | `int` | |
+|    | `integrateByParts` | |
+| ✅ | `inv` | |
+| ✅ | `isAlways` | |
+| ✅ | `isCondition` | (x) |
+| ✅ | `isDistinctVariable` | This function is undocumented and will change in a future release |
+| ✅ | `isfinite` | |
+| ✅ | `isinf` | |
+|    | `isLowIndexDAE` | |
+| ✅ | `ismember` | |
+| ✅ | `isnan` | |
+| ✅ | `isolate` | |
+| ✅ | `isprime` | |
+| ✅ | `isPrimitiveRoot` | |
+| ✅ | `isscalar` | |
+| ✅ | `isSymType` | |
+|    | `isUnit` | |
+| ✅ | `isVariable` | (x) |
+| ✅ | `iztrans` | |
+| ✅ | `jacobiAM` | |
+| ✅ | `jacobian` | |
+| ✅ | `jacobiCD` | |
+| ✅ | `jacobiCN` | |
+| ✅ | `jacobiCS` | |
+| ✅ | `jacobiDC` | |
+| ✅ | `jacobiDN` | |
+| ✅ | `jacobiDS` | |
+| ✅ | `jacobiNC` | |
+| ✅ | `jacobiND` | |
+| ✅ | `jacobiNS` | |
+| ✅ | `jacobiP` | |
+| ✅ | `jacobiSC` | |
+| ✅ | `jacobiSD` | |
+| ✅ | `jacobiSN` | |
+| ✅ | `jacobiSymbol` | |
+| ✅ | `jacobiZeta` | |
+| ✅ | `jordan` | |
+| ✅ | `kron` | |
+| ✅ | `kroneckerDelta` | |
+| ✅ | `kummerU` | |
+| ✅ | `laguerreL` | |
+| ✅ | `lambertw` | |
+| ✅ | `laplace` | |
+| ✅ | `laplacian` | |
+| ✅ | `latex` | |
+| ✅ | `lcm` | |
+| ✅ | `legendreP` | |
+| ✅ | `lhs` | |
+| ✅ | `limit` | |
+| ✅ | `linsolve` | |
+| ✅ | `linspace` | |
+| ✅ | `log` | |
+| ✅ | `log10` | |
+| ✅ | `log2` | |
+| ✅ | `logint` | |
+| ✅ | `logm` | |
+| ✅ | `logspace` | |
+| ✅ | `lu` | |
+| ✅ | `mapSymType` | |
+|    | `massMatrixForm` | |
+|    | `mathml` | |
+| ✅ | `matlabFunction` | |
+|    | `matlabFunctionBlock` | |
+| ✅ | `max` | Symbolic maximum computation. |
+| ✅ | `mean` | |
+|    | `meijerG` | |
+| ✅ | `min` | Symbolic minimum computation. |
+| ✅ | `minpoly` | |
+| ✅ | `minus` | |
+|    | `mixedUnits` | |
+| ✅ | `mod` | |
+| ✅ | `mode` | |
+| ✅ | `mustBeInteger` | |
+| ✅ | `mustBePositive` | |
+| ✅ | `nchoosek` | |
+| ✅ | `ndims` | |
+|    | `newUnit` | |
+|    | `newUnitSystem` | |
+| ✅ | `nextprime` | |
+| ✅ | `nnz` | |
+| ✅ | `nonzeros` | |
+| ✅ | `norm` | |
+| ✅ | `nthprime` | |
+| ✅ | `nthroot` | |
+| ✅ | `null` | |
+| ✅ | `numden` | |
+| ✅ | `numel` | |
+|    | `odeFunction` | |
+| ✅ | `odeToVectorField` | |
+| ✅ | `orth` | |
+| ✅ | `paddata` | |
+| ✅ | `pade` | |
+| ✅ | `partfrac` | |
+|    | `pdeCoefficients` | |
+|    | `pdeCoefficientsToDouble` | |
+| ✅ | `perms` | |
+| ✅ | `permute` | |
+| ✅ | `piecewise` | |
+| ✅ | `pinv` | |
+| ✅ | `planerot` | |
+| ✅ | `plus` | |
+| ✅ | `pochhammer` | |
+| ✅ | `pol2cart` | |
+| ✅ | `poles` | |
+| ✅ | `poly` | cannot be used to compute the characteristic polynomial of a SYM matrix, use charpoly instead. |
+| ✅ | `poly2sym` | |
+| ✅ | `polylog` | |
+| ✅ | `polynomialDegree` | |
+| ✅ | `polynomialReduce` | |
+| ✅ | `potential` | |
+| ✅ | `powermod` | |
+| ✅ | `pretty` | 'sym/pretty' is not recommended. |
+| ✅ | `prevprime` | |
+| ✅ | `primes` | |
+| ✅ | `prod` | |
+| ✅ | `psi` | |
+| ✅ | `qr` | |
+| ✅ | `quorem` | |
+| ✅ | `rad2deg` | |
+| ✅ | `rank` | |
+| ✅ | `rat` | |
+| ✅ | `real` | |
+| ✅ | `rectangularPulse` | |
+|    | `reduceDAEIndex` | |
+|    | `reduceDAEToODE` | |
+|    | `reduceDifferentialOrder` | |
+|    | `reduceRedundancies` | |
+|    | `release` | |
+| ✅ | `rem` | |
+|    | `removeUnit` | |
+|    | `removeUnitSystem` | |
+| ✅ | `repelem` | |
+| ✅ | `repmat` | |
+| ✅ | `reshape` | |
+| ✅ | `resize` | |
+| ✅ | `resultant` | |
+| ✅ | `rewrite` | |
+| ✅ | `rhs` | |
+|    | `root` | |
+| ✅ | `roots` | |
+| ✅ | `round` | |
+| ✅ | `rref` | |
+|    | `rsums` | |
+|    | `saveobj` | |
+| ✅ | `sec` | |
+| ✅ | `secd` | |
+| ✅ | `sech` | |
+|    | `separateUnits` | |
+| ✅ | `series` | |
+| ✅ | `setdiff` | |
+| ✅ | `setxor` | |
+| ✅ | `sign` | |
+| ✅ | `signIm` | |
+| ✅ | `simplify` | |
+| ✅ | `simplifyFraction` | |
+|    | `simscapeEquation` | |
+| ✅ | `sin` | |
+| ✅ | `sinc` | |
+| ✅ | `sind` | |
+| ✅ | `sinh` | |
+| ✅ | `sinhint` | |
+| ✅ | `sinint` | |
+| ✅ | `sinpi` | |
+| ✅ | `smithForm` | |
+| ✅ | `solve` | |
+|    | `solveRecurrence` | |
+| ✅ | `sort` | |
+| ✅ | `sph2cart` | |
+| ✅ | `sqrt` | |
+| ✅ | `sqrtm` | |
+| ✅ | `ssinint` | |
+| ✅ | `str2sym` | |
+|    | `str2symunit` | |
+| ✅ | `string` | |
+| ✅ | `subexpr` | |
+| ✅ | `subs` | |
+| ✅ | `sum` | |
+| ✅ | `svd` | |
+| ✅ | `sym` | |
+| ✅ | `sym2cell` | |
+| ✅ | `sym2poly` | |
+|    | `symbolicUnitsCollection` | Physical units in Symbolic Math Toolbox |
+| ✅ | `symfalse` | |
+| ✅ | `symfun` | |
+|    | `symfunmatrix` | |
+| ✅ | `symFunType` | |
+|    | `symmatrix` | |
+| ✅ | `sympref` | |
+| ✅ | `symprod` | |
+|    | `symReadSSCParameters` | |
+|    | `symReadSSCVariables` | |
+| ✅ | `syms` | |
+| ✅ | `symsum` | |
+| ✅ | `symtrue` | |
+| ✅ | `symType` | |
+|    | `symunit` | |
+|    | `symunit2str` | |
+| ✅ | `symvar` | |
+|    | `symWriteSSC` | |
+| ✅ | `tan` | |
+| ✅ | `tand` | |
+| ✅ | `tanh` | |
+| ✅ | `taylor` | |
+|    | `taylortool` | |
+| ✅ | `texlabel` | |
+| ✅ | `toeplitz` | |
+| ✅ | `transpose` | |
+| ✅ | `triangularPulse` | |
+| ✅ | `tril` | |
+| ✅ | `trimdata` | |
+| ✅ | `triu` | |
+| ✅ | `union` | |
+| ✅ | `unique` | |
+|    | `unitConversionFactor` | |
+|    | `unitConvert` | |
+|    | `unitInfo` | |
+|    | `unitSystems` | |
+| ✅ | `vander` | |
+|    | `vectorPotential` | |
+| ✅ | `vertcat` | |
+| ✅ | `vpa` | |
+| ✅ | `vpaintegral` | |
+| ✅ | `vpasolve` | |
+| ✅ | `vpasum` | |
+| ✅ | `whittakerM` | |
+| ✅ | `whittakerW` | |
+| ✅ | `wrightOmega` | |
+| ✅ | `zeta` | |
+| ✅ | `ztrans` | |
 
 ---
 
