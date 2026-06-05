@@ -772,7 +772,9 @@ export function svd(A: Mat): { U: Mat; s: number[]; V: Mat } {
 }
 
 export function rankOf(A: Mat, tol?: number): number {
-  const { s } = svd(A);
+  // one-sided Jacobi (svdC) resolves tiny singular values with high relative accuracy;
+  // the AtA-based svd loses half the digits and overcounts rank for singular matrices (e.g. magic(4)).
+  const { s } = svdC(A);
   const t = tol ?? (Math.max(A.rows, A.cols) * (s[0] || 0) * 2.220446049250313e-16);
   return s.filter((x) => x > t).length;
 }

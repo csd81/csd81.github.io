@@ -722,3 +722,113 @@ Validated against MATLAB R2026a.
 - **`polyeig` eigenvectors + real-snapping**: `[X,e]=polyeig(...)` errored ("not enough output arguments") — only eigenvalues were returned. Now requests eigenvectors from the companion linearization, takes the top `N` entries of each companion eigenvector, unit-normalizes, and returns `X` (`N×Np`). Also snaps root-finder imaginary noise (~6e-9) to exactly real when `|imag| < 1e-7·scale`, so `polyeig([2 0;0 2],[0 0;0 0],[-2 0;0 -2])`→`[-1;-1;1;1]` (real, like MATLAB's QZ) instead of `±1 ± 6e-9i`.
 - **`pink` / `hot` colormaps used a continuous approximation**: `hotColor(t)` made `hot(3)`'s first row black `[0 0 0]` instead of MATLAB's `[1 0 0]`, which also broke `pink` (defined as `sqrt((2·gray(m)+hot(m))/3)`). Replaced with MATLAB's **discrete** `hot(m)` formula (`hotRow(i,n)`: red ramps over the first ⌊3m/8⌋ rows, then green, then blue). Now `hot(3)`→`[1 0 0;1 1 0;1 1 1]` and `pink(3)`→`[0.5774 0 0;0.8165 0.8165 0.5774;1 1 1]`, both exact.
 - **`polydiv` remainder length**: returned a trimmed remainder (`polydiv([1 0 -1],[1 1])`→`r=0`); MATLAB pads the remainder with leading zeros to the length of the dividend (`r=[0 0 0]`). Now pads accordingly: `[1 0 0 -1]÷[1 1]`→`q=[1 -1 1]`, `r=[0 0 0 -2]`.
+
+## V33 — functions 800–824 (ppval … quboResult2knapsack) — **2 bugs fixed**
+
+Validated against MATLAB R2026a.
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `ppval` | ✅ | spline eval `ppval(spline(1:4,(1:4).^2),2.5)`→6.25 |
+| `prctile`/`quantile` | ✅ | 50th pct / 0.5 quantile of `[1 2 3 4]`→2.5 |
+| `predecessors` | ✅ | digraph in-neighbors of node 3 → `[1;2]` |
+| `primes` | ✅ | `primes(20)`→`[2 3 5 7 11 13 17 19]` |
+| `prism` | 🟡 | colormap (exists) |
+| `probability` | 🟡 | quantum state method (exists; not a free MATLAB fn) |
+| `prod` | ✅ | vector→24, matrix cols→`[3 8]` |
+| `psi` | ✅ | digamma `psi(1)`→−0.5772, polygamma `psi(1,1)`→π²/6 |
+| `qaoa`/`qftGate`/`quantumCircuit`/`qubo`/`qubo2ising`/`quboResult2knapsack` | 🟡 | quantum/Optimization-Toolbox (exist in sandbox; `exist`=0 in this MATLAB install) |
+| `qmr` | ✅ | **fixed** (see below) |
+| `qr` | ✅ | **fixed** (see below) — `Q*R` reconstruction already correct |
+| `qrdelete`/`qrinsert`/`qrupdate` | ✅ | rank-1 QR updates (correct factor sizes) |
+| `quad`/`quadl`/`quadv` | ✅ | legacy integrators (exist; `quadgk`-based) |
+| `quad2d` | ✅ | `∫∫xy over [0,1]²`→0.25 |
+| `quadgk` | ✅ | `∫sin over [0,π]`→2 |
+
+### Fixes
+- **`qmr` multi-output**: like the other Krylov solvers (fixed in V31), `qmr` was a one-liner returning only `x`, so `[x,flag]=qmr(...)` errored. Rewired to the shared `krylovSolve(args,nargout)` backend: `[x,fl]=qmr([4 1;1 3],[1;2])`→`x=[0.0909;0.6364]`, `fl=0` — matches MATLAB.
+- **`qr` R-factor structural zeros**: the Householder QR left rounding residuals (~4e-16) in the strictly-lower triangle of `R`, e.g. `R(2,1)=4.4e-16` where MATLAB shows exactly `0`. Now zeros the sub-diagonal of `R` (real and imaginary parts) after the decomposition, matching MATLAB's structural upper-triangular guarantee. `Q*R` still reconstructs the input exactly.
+
+## V34 — functions 825–849 (quboResult2tsp … realsqrt) — **3 bugs fixed**
+
+Validated against MATLAB R2026a.
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `quboResult2tsp`/`querystates`/`randsample`/`r1Gate` | 🟡 | quantum/Optimization-Toolbox (exist in sandbox) |
+| `quiver`/`quiver3` | 🟡 | graphics (exist) |
+| `qz` | ✅ | **fixed** (see below) |
+| `rad2deg` | ✅ | `rad2deg(π)`→180 |
+| `rand`/`randn`/`randi`/`randperm` | ✅ | size/range/permutation properties match (values RNG-specific) |
+| `rank` | ✅ | **fixed** (see below) |
+| `rat` | ✅ | **fixed** (see below) |
+| `rats` | ✅ | `rats(0.75)`→`3/4` |
+| `rcond` | ✅ | `rcond(eye(3))`→1 |
+| `readcell`/`readmatrix`/`readtable`/`readtimetable`/`readvars` | 🟡 | file readers (exist; need a VFS file) |
+| `real` | ✅ | `real(3+4i)`→3 |
+| `reallog`/`realpow`/`realsqrt` | ✅ | `reallog(e)`→1, `realpow(2,3)`→8, `realsqrt(4)`→2 |
+
+### Fixes
+- **`rank` over-counted for singular matrices**: `rank(magic(4))`→4 (MATLAB 3). Root cause — the real `svd` computes singular values from the eigendecomposition of `AᵀA`, which squares the condition number and can't resolve a singular value below ≈√eps·σ₁; magic(4)'s true zero singular value came out as `1.97e-7` (MATLAB `7e-17`), exceeding the rank tolerance. Re-routed `rankOf` through the one-sided-Jacobi `svdC` (operates directly on `A`, high relative accuracy). Now `rank(magic(4))`→3, `rank(eye(5))`→5, `rank([1 2;2 4])`→1. (The standalone `svd` builtin still uses the `AtA` path for its `U`/`V` factors; only rank's singular-value tolerance test was affected.)
+- **`rat` returned a fraction instead of the continued-fraction string**: `rat(pi)`→`355/113`, but MATLAB's `rat` returns the *continued-fraction expansion string* `3 + 1/(7 + 1/(16))` (the `p/q` form is `rats`). Added a nearest-integer CF expansion (`ratCF`) to within the default `1e-6·|x|` tolerance (or a supplied tol), formatted as `a0 + 1/(a1 + 1/(…))`. Also implemented the documented `[N,D]=rat(x)` two-output convergent form (denominator > 0). `rat(pi)`→`3 + 1/(7 + 1/(16))`, `rat(0.75)`→`1 + 1/(-4)`, `[N,D]=rat(0.75)`→`3,4`, `[N,D]=rat(pi)`→`355,113`.
+- **`qz` 5th/6th outputs**: `[AA,BB,Q,Z,V]=qz(A,B)` errored ("not enough output arguments"). Added the generalized right (`V`) and left (`W`) eigenvector outputs, computed as the eigenvectors of `B⁻¹A` and `(B⁻¹A)ᵀ`. The 4-output Schur form is unchanged; eigenvalues `diag(AA)./diag(BB)` match MATLAB. (Eigenvector column ordering/scaling is implementation-defined and may differ from MATLAB's.)
+
+## V35 — functions 850–874 (rectangle … reverse) — **2 bugs fixed**
+
+Validated against MATLAB R2026a.
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `rectangle` | 🟡 | graphics (exists) |
+| `rectint` | ✅ | rectangle-intersection area → 1 |
+| `regexp` | ✅ | match/start/tokens/split |
+| `regexpi` | ✅ | **fixed** (see below) |
+| `regexprep` | ✅ | `regexprep('hello world','o','0')`→`hell0 w0rld` |
+| `regexptranslate` | ✅ | `escape` → `a\.b\*c` |
+| `regions`/`reordernodes` | ✅ | polyshape regions / graph node reorder |
+| `rem` | ✅ | `rem(5,3)`→2, `rem(-5,3)`→−2 (sign of dividend) |
+| `remove`/`removecats`/`removevars`/`renamecats`/`renamevars`/`reordercats` | ✅ | dictionary/categorical/table mutators |
+| `repelem` | ✅ | `repelem([1 2 3],2)`→`[1 1 2 2 3 3]`; m×n form matches |
+| `replace`/`replaceBetween`/`reverse` | ✅ | string ops (display fixed — see below) |
+| `repmat` | ✅ | `repmat([1 2],2,2)`→`[1 2 1 2;1 2 1 2]` |
+| `rescale` | ✅ | `[1 2 3 4]`→`[0 .333 .667 1]`; `[a,b]` range form matches |
+| `reshape` | ✅ | column-major `reshape(1:6,[2 3])` |
+| `residue` | 🟡 | residues + poles correct & correctly paired, but **pole order** differs (follows `roots()`; MATLAB returns `[2;1]`, sandbox `[1;2]` — implementation-defined) |
+| `resize` | ✅ | `resize([1 2 3],5)`→`[1 2 3 0 0]` |
+| `rethrow` | ✅ | re-throws a caught MException |
+
+### Fixes
+- **`disp` of a scalar string printed quotes**: `disp("hello")` showed `    "hello"` (quoted, indented) — MATLAB prints bare `hello` for a *scalar* string (only string *arrays* and `name = value` display show the quoted grid). Fixed `dispValue`'s `str` branch to return the raw text for a 1×1 string; arrays still render the quoted grid. This also corrects the displayed output of every string-returning function (`replace`, `replaceBetween`, `reverse`, `string`, …).
+- **`regexpi` ignored its option argument**: it only ever returned start indices, so `regexpi(s,pat,'match')` returned a numeric index vector instead of the matched cell (and broke downstream `strjoin`). Refactored the full `regexp` engine into a shared `regexpImpl(args,nargout,forceIC)` and routed both `regexp` and `regexpi` through it; `regexpi` forces case-insensitivity. `regexpi('ABCabc','abc','match')`→`{'ABC','abc'}`, `regexpi('aXbXc','x','start')`→`[2 4]`; `regexp` unchanged.
+
+## V36 — functions 875–899 (rgb2gray … rsf2csf) — **clean (0 bugs)** — **V900 boundary: built + pushed**
+
+Validated against MATLAB R2026a. **All values matched.**
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `rgb2gray` | ✅ | NTSC luminance `0.2989R+0.587G+0.114B` per colormap row |
+| `rgb2hex` | ✅ | `[1 0 0]`→`#FF0000` |
+| `rgb2hsv` | ✅ | `[1 0 0]`→`[0 1 1]` |
+| `rgbplot`/`ribbon`/`rlim` | 🟡 | graphics (exist) |
+| `rmboundary`/`rmholes`/`rmslivers`/`rotate` | ✅ | polyshape mutators |
+| `rmedge`/`rmnode` | ✅ | graph mutators |
+| `rmfield` | ✅ | `rmfield(s,'b')` → remaining fields `a,c` |
+| `rmmissing` | ✅ | `[1 NaN 3 NaN 5]`→`[1 3 5]` |
+| `rmoutliers` | ✅ | `[1 2 3 4 100]`→`[1 2 3 4]` |
+| `rms`/`rmse` | ✅ | `rms([3 4])`→3.5355, `rmse([1 2 3],[1 2 4])`→0.5774 |
+| `rng` | ✅ | seeds the RNG (no comparable output) |
+| `roots` | 🟡 | root **set** correct; **order** is the companion-matrix eigenvalue order (QR-dependent, *not* a sort: MATLAB `roots([1 -2 -5 6])`→`[-2;3;1]`) — implementation-defined, like `eig` |
+| `rosser` | ✅ | classic 8×8 test matrix (trace 4040) |
+| `rot90` | ✅ | `rot90([1 2;3 4])`→`[2 4;1 3]` |
+| `round` | ✅ | `round(2.5)`→3, `round(2.567,2)`→2.57, `round(-2.5)`→−3 |
+| `rowfun` | ✅ | table row-wise apply |
+| `rref` | ✅ | reduced row echelon → identity for full-rank 3×3 |
+| `rsf2csf` | ✅ | real→complex Schur; diagonal = eigenvalues (1±i → real parts `[1;1]`) |
+
+No code changes this batch.
+
+---
+
+### V801–V900 commit
+Build green (tsc+vite); fixes pushed (staged explicitly — `builtins.ts`, `linalg.ts`, `format.ts`, `VALIDATION.md`, `validate_progress.json` — excluding `toolboxes/`). **7 bugs** caught by live-MATLAB cross-validation in functions 801–900: **`qmr` multi-output, `qr` R structural zeros** (V33); **`rank` SVD accuracy, `rat` continued-fraction string, `qz` eigenvector outputs** (V34); **`disp` scalar-string quotes, `regexpi` options** (V35). V36 was clean.

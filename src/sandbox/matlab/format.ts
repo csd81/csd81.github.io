@@ -156,7 +156,7 @@ export function dispValue(v: Value): string {
   if (v.kind === 'cell') return cellLines(v).join('\n');
   if (v.kind === 'struct') return structLines(v).join('\n');
   if (v.kind === 'sparse') return sparseLines(v).join('\n');
-  if (v.kind === 'str') return strLines(v).join('\n');
+  if (v.kind === 'str') return v.rows * v.cols === 1 ? v.items[0] : strLines(v).join('\n');   // disp of a scalar string is bare text (no quotes); arrays show the quoted grid
   if (v.kind === 'graph') return graphLines(v).join('\n');
   if (v.kind === 'geom') return geomLines(v).join('\n');
   if (v.kind === 'quantum') return quantumLines(v).join('\n');

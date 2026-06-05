@@ -485,6 +485,32 @@ function krylovSolve(a: Value[], nargout: number): Value[] {
   const resvec = colVec([norm(b, 2), norm(r, 2)]);
   return [x, scalar(0), scalar(relres), scalar(0), resvec];
 }
+/** Shared backend for regexp/regexpi: matches `pat` in `s` and builds the requested
+ *  outputs (start/end/match/tokens/split, plus 'once'). `forceIC` forces case-insensitivity. */
+function regexpImpl(a: Value[], n: number, forceIC: boolean): Value[] {
+  const s = asString(a[0]); const pat = asString(a[1]); const opts = a.slice(2).map((x) => asString(x).toLowerCase());
+  const once = opts.includes('once'); const re = new RegExp(pat, 'g' + (forceIC || opts.includes('ignorecase') ? 'i' : ''));
+  const ms: RegExpExecArray[] = []; let mt: RegExpExecArray | null; while ((mt = re.exec(s)) !== null) { ms.push(mt); if (mt.index === re.lastIndex) re.lastIndex++; }
+  const splitParts = () => { const parts: string[] = []; let last = 0; for (const mm of ms) { parts.push(s.slice(last, mm.index)); last = mm.index + mm[0].length; } parts.push(s.slice(last)); return parts; };
+  const build = (which: string): Value => {
+    if (which === 'end') return rowVec(ms.map((mm) => mm.index + mm[0].length));
+    if (which === 'match') return makeCell(1, ms.length, ms.map((mm) => str(mm[0])));
+    if (which === 'tokens') return makeCell(1, ms.length, ms.map((mm) => makeCell(1, Math.max(0, mm.length - 1), mm.slice(1).map((t) => str(t ?? ''))) as Value));
+    if (which === 'split') { const p = splitParts(); return makeCell(1, p.length, p.map((x) => str(x))); }
+    return rowVec(ms.map((mm) => mm.index + 1));   // 'start' (default)
+  };
+  const want = opts.filter((o) => ['start', 'end', 'match', 'tokens', 'split'].includes(o));
+  if (once) {
+    const w = want[0] ?? 'start'; const m0 = ms[0];
+    if (w === 'match') return [str(m0 ? m0[0] : '')];
+    if (w === 'tokens') return [makeCell(1, m0 ? m0.length - 1 : 0, m0 ? m0.slice(1).map((t) => str(t ?? '')) : [])];
+    if (w === 'split') { const p = splitParts(); return [makeCell(1, p.length, p.map((x) => str(x)))]; }
+    if (w === 'end') return [m0 ? scalar(m0.index + m0[0].length) : zeros(1, 0)];
+    return [m0 ? scalar(m0.index + 1) : zeros(1, 0)];
+  }
+  if (want.length === 0) return [build('start')];
+  return want.slice(0, Math.max(1, n)).map(build);
+}
 /** Coerce char/string/cellstr/numeric to a string-array view (dims + items). */
 function asStrArr(v: Value): { rows: number; cols: number; items: string[] } {
   if (isStr(v)) return { rows: v.rows, cols: v.cols, items: v.items };
@@ -1211,7 +1237,7 @@ export const BUILTINS: Record<string, Builtin> = {
     const R = cholFn(A);
     return ret(lower ? ctransposeFn(R) : R);
   },
-  qr: async (a, n) => { const { Q, R } = qrDecomp(m(a[0])); return n >= 2 ? [Q, R] : [R]; },
+  qr: async (a, n) => { const { Q, R } = qrDecomp(m(a[0])); for (let c = 0; c < R.cols; c++) for (let r = c + 1; r < R.rows; r++) { R.data[r + c * R.rows] = 0; if (R.idata) R.idata[r + c * R.rows] = 0; } return n >= 2 ? [Q, R] : [R]; },
   lu: async (a, n) => {
     const { L, U, P } = luOutputs(m(a[0]));
     if (n >= 3) return [L, U, P];
@@ -1288,7 +1314,14 @@ export const BUILTINS: Record<string, Builtin> = {
     const { D, B } = balanceFn(m(a[0])); const nn = D.length; const Tm = zeros(nn, nn); for (let i = 0; i < nn; i++) Tm.data[i + i * nn] = D[i];
     return n >= 2 ? [Tm, B] : [B];
   },
-  qz: async (a, n) => { const { AA, BB, Q, Z } = qzFn(m(a[0]), m(a[1])); return n >= 4 ? [AA, BB, Q, Z] : n >= 2 ? [AA, BB] : [AA]; },
+  qz: async (a, n) => {
+    const A = m(a[0]), B = m(a[1]); const { AA, BB, Q, Z } = qzFn(A, B);
+    if (n < 5) return n >= 4 ? [AA, BB, Q, Z] : n >= 2 ? [AA, BB] : [AA];
+    // 5th/6th outputs: generalized right (V) and left (W) eigenvectors of (A,B) = eig-vectors of B⁻¹A
+    const C = mldivide(B, A); const out: Value[] = [AA, BB, Q, Z, generalEig(C, true).V!];
+    if (n >= 6) out.push(generalEig(transpose(C), true).V!);
+    return out;
+  },
   // rank-1 / column QR updates (recompute factorization of the modified matrix)
   qrupdate: async (a, n) => { const Q = m(a[0]), R = m(a[1]), u = m(a[2]), v = m(a[3]); const A1 = ewAdd(matmul(Q, R), matmul(u, transpose(v))); const r = qrDecomp(A1); return n >= 2 ? [r.Q, r.R] : [r.R]; },
   qrinsert: async (a, n) => { const A = matmul(m(a[0]), m(a[1])); const j = Math.round(asScalar(a[2])) - 1; const x = m(a[3]); const orient = a.length >= 5 && asString(a[4]).startsWith('r') ? 'row' : 'col'; const r = qrDecomp(insertVec(A, j, x, orient)); return n >= 2 ? [r.Q, r.R] : [r.R]; },
@@ -1908,31 +1941,8 @@ export const BUILTINS: Record<string, Builtin> = {
   // ── class / regexp / sscanf ──
   class: async (a) => { const v = a[0]; if (isMap(v)) return ret(str('containers.Map')); if (isDict(v)) return ret(str('dictionary')); if (isHandle(v)) return ret(str('function_handle')); if (v.kind === 'gobj') return ret(str(v.gtype)); if (isGraph(v)) return ret(str((v as Graph).directed ? 'digraph' : 'graph')); if (isGeom(v)) return ret(str((v as Geom).gkind)); if (v.kind === 'quantum') return ret(str(v.qkind === 'circuit' ? 'quantumCircuit' : v.qkind === 'state' ? 'quantum.gate.QuantumState' : 'quantum.gate.SimpleGate')); if (isStr(v)) return ret(str('string')); if (isCell(v)) return ret(str('cell')); if (isStruct(v)) return ret(str('struct')); if (isTable(v)) return ret(str(v.isTimetable ? 'timetable' : 'table')); if (isCategorical(v)) return ret(str('categorical')); if (isSym(v)) return ret(str('sym')); if ((v as Mat).isChar) return ret(str('char')); if ((v as Mat).isBool) return ret(str('logical')); return ret(str((v as Mat).itype ?? 'double')); },
   isa: async (a) => { const v = a[0]; const ty = asString(a[1]); const M = v as Mat; const cls = isHandle(v) ? 'function_handle' : M.isChar ? 'char' : M.isBool ? 'logical' : (M.itype ?? 'double'); if (ty === cls) return ret(bool(true)); const isInt = isMat(v) && !!M.itype && M.itype !== 'single'; const isFlt = isMat(v) && !M.isChar && !M.isBool && (!M.itype || M.itype === 'single'); if (ty === 'numeric' && isMat(v) && !M.isChar && !M.isBool) return ret(bool(true)); if (ty === 'float' && isFlt) return ret(bool(true)); if (ty === 'integer' && isInt) return ret(bool(true)); return ret(bool(false)); },
-  regexp: async (a, n) => {
-    const s = asString(a[0]); const pat = asString(a[1]); const opts = a.slice(2).map((x) => asString(x).toLowerCase());
-    const once = opts.includes('once'); const re = new RegExp(pat, 'g' + (opts.includes('ignorecase') ? 'i' : ''));
-    const ms: RegExpExecArray[] = []; let mt: RegExpExecArray | null; while ((mt = re.exec(s)) !== null) { ms.push(mt); if (mt.index === re.lastIndex) re.lastIndex++; }
-    const splitParts = () => { const parts: string[] = []; let last = 0; for (const mm of ms) { parts.push(s.slice(last, mm.index)); last = mm.index + mm[0].length; } parts.push(s.slice(last)); return parts; };
-    const build = (which: string): Value => {
-      if (which === 'end') return rowVec(ms.map((mm) => mm.index + mm[0].length));
-      if (which === 'match') return makeCell(1, ms.length, ms.map((mm) => str(mm[0])));
-      if (which === 'tokens') return makeCell(1, ms.length, ms.map((mm) => makeCell(1, Math.max(0, mm.length - 1), mm.slice(1).map((t) => str(t ?? ''))) as Value));
-      if (which === 'split') { const p = splitParts(); return makeCell(1, p.length, p.map((x) => str(x))); }
-      return rowVec(ms.map((mm) => mm.index + 1));   // 'start' (default)
-    };
-    const want = opts.filter((o) => ['start', 'end', 'match', 'tokens', 'split'].includes(o));
-    if (once) {
-      const w = want[0] ?? 'start'; const m0 = ms[0];
-      if (w === 'match') return ret(str(m0 ? m0[0] : ''));
-      if (w === 'tokens') return ret(makeCell(1, m0 ? m0.length - 1 : 0, m0 ? m0.slice(1).map((t) => str(t ?? '')) : []));
-      if (w === 'split') { const p = splitParts(); return ret(makeCell(1, p.length, p.map((x) => str(x)))); }
-      if (w === 'end') return ret(m0 ? scalar(m0.index + m0[0].length) : zeros(1, 0));
-      return ret(m0 ? scalar(m0.index + 1) : zeros(1, 0));
-    }
-    if (want.length === 0) return [build('start')];
-    return want.slice(0, Math.max(1, n)).map(build);
-  },
-  regexpi: async (a) => { const s = asString(a[0]); const re = new RegExp(asString(a[1]), 'gi'); const idx: number[] = []; let mt: RegExpExecArray | null; while ((mt = re.exec(s)) !== null) { idx.push(mt.index + 1); if (mt.index === re.lastIndex) re.lastIndex++; } return ret(rowVec(idx)); },
+  regexp: async (a, n) => regexpImpl(a, n, false),
+  regexpi: async (a, n) => regexpImpl(a, n, true),   // case-insensitive; supports the same option/output set as regexp
   regexptranslate: async (a) => { const op = asString(a[0]).toLowerCase(); const s = asString(a[1]); if (op === 'wildcard') return ret(str(s.replace(/[.+^$|()[\]{}\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.'))); return ret(str(s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))); },
   iskeyword: async (a) => { const kw = ['break', 'case', 'catch', 'classdef', 'continue', 'else', 'elseif', 'end', 'for', 'function', 'global', 'if', 'otherwise', 'parfor', 'persistent', 'return', 'spmd', 'switch', 'try', 'while']; if (a.length === 0) return ret(makeCell(kw.length, 1, kw.map((k) => str(k)))); return ret(bool(kw.includes(asString(a[0])))); },
   sscanf: async (a) => { const s = asString(a[0]); const nums = (s.match(/-?\d+\.?\d*(e[+-]?\d+)?/gi) ?? []).map(Number); return ret(colVec(nums)); },
@@ -2049,7 +2059,7 @@ export const BUILTINS: Record<string, Builtin> = {
     for (let i = 0; i < p; i++) for (let j = 0; j < p; j++) R.data[i + j * p] = C.data[i + j * p] / Math.sqrt(C.data[i + i * p] * C.data[j + j * p]);
     return ret(R);
   },
-  qmr: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
+  qmr: async (a, n) => krylovSolve(a, n),
   condest1: async (a) => { const A = m(a[0]); return ret(scalar(norm(A, 1) * norm(inv(A), 1))); },
   wilkinson: async (a) => {
     const n = Math.round(asScalar(a[0])); const W = zeros(n, n); const mid = (n - 1) / 2;
@@ -3878,7 +3888,16 @@ export const BUILTINS: Record<string, Builtin> = {
     rec([], v); acc.sort((x, y) => { for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return y[i] - x[i]; return 0; });
     return ret(fromRows(acc));
   },
-  rat: async (a) => { const [n, d] = ratApprox(asScalar(a[0])); return ret(str(d === 1 ? `${n}` : `${n}/${d}`)); },
+  rat: async (a, nargout) => {
+    const x = asScalar(a[0]);
+    const tol = a.length >= 2 && isMat(a[1]) ? Math.abs(asScalar(a[1])) : 1e-6 * Math.abs(x);
+    const terms = ratCF(x, tol);
+    if (nargout >= 2) { const [n, d] = ratConvergent(terms); return [scalar(n), scalar(d)]; }
+    // continued-fraction string: a0 + 1/(a1 + 1/(a2 + ...))
+    let s = `${terms[terms.length - 1]}`;
+    for (let i = terms.length - 2; i >= 0; i--) s = `${terms[i]} + 1/(${s})`;
+    return ret(str(s));
+  },
   flintmax: async (a) => { const ty = a.length >= 1 ? asString(a[0]).toLowerCase() : 'double'; return ret(applyClass(scalar(ty === 'single' ? 2 ** 24 : 2 ** 53), ty === 'single' ? 'single' : 'double')); },
   intmax: async (a) => { const ty = a.length ? asString(a[0]).toLowerCase() : 'int32'; return ret(applyClass(scalar(INT_LIMITS[ty]?.[1] ?? 2147483647), ty)); },
   intmin: async (a) => { const ty = a.length ? asString(a[0]).toLowerCase() : 'int32'; return ret(applyClass(scalar(INT_LIMITS[ty]?.[0] ?? -2147483648), ty)); },
@@ -5451,6 +5470,24 @@ function ratApprox(x: number): [number, number] {
   let h1 = 1, h0 = 0, k1 = 0, k0 = 1, b = x;
   for (let i = 0; i < 20; i++) { const aa = Math.floor(b); const h2 = aa * h1 + h0, k2 = aa * k1 + k0; h0 = h1; h1 = h2; k0 = k1; k1 = k2; if (Math.abs(x - h1 / k1) < 1e-6 * x || b === aa) break; b = 1 / (b - aa); }
   return [sgn * h1, k1];
+}
+/** Nearest-integer continued-fraction terms of x to within tol (matches MATLAB rat's expansion). */
+function ratCF(x: number, tol: number): number[] {
+  const terms: number[] = []; let r = x;
+  for (let i = 0; i < 20; i++) {
+    const a = Math.round(r); terms.push(a); const frac = r - a;
+    let h1 = 1, h0 = 0, k1 = 0, k0 = 1;
+    for (const t of terms) { const h2 = t * h1 + h0, k2 = t * k1 + k0; h0 = h1; h1 = h2; k0 = k1; k1 = k2; }
+    if (Math.abs(x - h1 / k1) <= tol || Math.abs(frac) < 1e-13) break;
+    r = 1 / frac;
+  }
+  return terms;
+}
+/** Final convergent (numerator, denominator) of a continued-fraction term list, denominator > 0. */
+function ratConvergent(terms: number[]): [number, number] {
+  let h1 = 1, h0 = 0, k1 = 0, k0 = 1;
+  for (const t of terms) { const h2 = t * h1 + h0, k2 = t * k1 + k0; h0 = h1; h1 = h2; k0 = k1; k1 = k2; }
+  return k1 < 0 ? [-h1, -k1] : [h1, k1];
 }
 /** Unscaled DFT (radix-2 when n is a power of two, else O(n²)). sign=-1 forward, +1 inverse. */
 function fftVec(re: number[], im: number[], sign: number): { re: number[]; im: number[] } {
