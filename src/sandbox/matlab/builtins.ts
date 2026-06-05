@@ -465,15 +465,19 @@ function catND(dim: number, parts: Mat[]): Mat {
   const outDims = ndSize(parts[0]).slice(); while (outDims.length <= d) outDims.push(1);
   outDims[d] = parts.reduce((s, p) => { const pd = ndSize(p); return s + (pd[d] ?? 1); }, 0);
   const ostride = [1]; for (let i = 1; i < outDims.length; i++) ostride[i] = ostride[i - 1] * outDims[i - 1];
-  const data = new Float64Array(prodA(outDims)); let offset = 0;
+  const total = prodA(outDims);
+  const data = new Float64Array(total);
+  const anyImag = parts.some((p) => p.idata);
+  const idata = anyImag ? new Float64Array(total) : null;
+  let offset = 0;
   for (const p of parts) {
     const PD = ndSize(p).slice(); while (PD.length < outDims.length) PD.push(1);
     const pstride = [1]; for (let i = 1; i < PD.length; i++) pstride[i] = pstride[i - 1] * PD[i - 1];
     const ptot = numel(p);
-    for (let o = 0; o < ptot; o++) { let lin = 0; for (let k = 0; k < PD.length; k++) { const idx = Math.floor(o / pstride[k]) % PD[k]; lin += (k === d ? idx + offset : idx) * ostride[k]; } data[lin] = p.data[o]; }
+    for (let o = 0; o < ptot; o++) { let lin = 0; for (let k = 0; k < PD.length; k++) { const idx = Math.floor(o / pstride[k]) % PD[k]; lin += (k === d ? idx + offset : idx) * ostride[k]; } data[lin] = p.data[o]; if (idata) idata[lin] = p.idata ? p.idata[o] : 0; }
     offset += PD[d];
   }
-  return makeND(outDims, data, { isChar: parts[0].isChar });
+  return makeND(outDims, data, { isChar: parts[0].isChar, idata });
 }
 /** Permute the dimensions of an array (1-based order). */
 function permuteND(A: Mat, order: number[]): Mat {
@@ -1244,10 +1248,25 @@ export const BUILTINS: Record<string, Builtin> = {
   qrinsert: async (a, n) => { const A = matmul(m(a[0]), m(a[1])); const j = Math.round(asScalar(a[2])) - 1; const x = m(a[3]); const orient = a.length >= 5 && asString(a[4]).startsWith('r') ? 'row' : 'col'; const r = qrDecomp(insertVec(A, j, x, orient)); return n >= 2 ? [r.Q, r.R] : [r.R]; },
   qrdelete: async (a, n) => { const A = matmul(m(a[0]), m(a[1])); const j = Math.round(asScalar(a[2])) - 1; const orient = a.length >= 4 && asString(a[3]).startsWith('r') ? 'row' : 'col'; const r = qrDecomp(deleteVec(A, j, orient)); return n >= 2 ? [r.Q, r.R] : [r.R]; },
   cdf2rdf: async (a, n) => { const { V, D } = cdf2rdfFn(m(a[0]), m(a[1])); return n >= 2 ? [V, D] : [D]; },
-  pageeig: async (a) => {
+  pageeig: async (a, n) => {
     const A = m(a[0]); const dims = ndSize(A); const d0 = dims[0], psz = d0 * d0; const np = A.data.length / psz; const rest = dims.slice(2);
+    const page = (p: number): Mat => { const x = mat(d0, d0, A.data.slice(p * psz, p * psz + psz)); if (A.idata) x.idata = A.idata.slice(p * psz, p * psz + psz); return x; };
+    if (n >= 2) {
+      const vre = new Float64Array(d0 * d0 * np), vim = new Float64Array(d0 * d0 * np);
+      const dre = new Float64Array(d0 * d0 * np), dim = new Float64Array(d0 * d0 * np);
+      let vC = false, dC = false;
+      for (let p = 0; p < np; p++) {
+        const { D, V } = generalEig(page(p), true);
+        if (V) for (let k = 0; k < d0 * d0; k++) { vre[p * psz + k] = V.data[k]; if (V.idata) { vim[p * psz + k] = V.idata[k]; if (V.idata[k] !== 0) vC = true; } }
+        for (let i = 0; i < d0; i++) { const idx = p * psz + i + i * d0; dre[idx] = D.re[i]; dim[idx] = D.im[i]; if (D.im[i] !== 0) dC = true; }
+      }
+      const dimsOut = [d0, d0, ...rest];
+      const Vout = rest.length ? makeND(dimsOut, vre, { idata: vC ? vim : null }) : (vC ? { kind: 'num', rows: d0, cols: d0, data: vre, idata: vim } as Mat : mat(d0, d0, vre));
+      const Dout = rest.length ? makeND(dimsOut, dre, { idata: dC ? dim : null }) : (dC ? { kind: 'num', rows: d0, cols: d0, data: dre, idata: dim } as Mat : mat(d0, d0, dre));
+      return [Vout, Dout];
+    }
     const re = new Float64Array(d0 * np); const im = new Float64Array(d0 * np); let anyC = false;
-    for (let p = 0; p < np; p++) { const { D } = generalEig(mat(d0, d0, A.data.slice(p * psz, p * psz + psz)), false); for (let i = 0; i < d0; i++) { re[p * d0 + i] = D.re[i]; im[p * d0 + i] = D.im[i]; if (D.im[i] !== 0) anyC = true; } }
+    for (let p = 0; p < np; p++) { const { D } = generalEig(page(p), false); for (let i = 0; i < d0; i++) { re[p * d0 + i] = D.re[i]; im[p * d0 + i] = D.im[i]; if (D.im[i] !== 0) anyC = true; } }
     const ndims = [d0, 1, ...rest];
     return ret(rest.length ? makeND(ndims, re, { idata: anyC ? im : null }) : (anyC ? { kind: 'num', rows: d0, cols: np, data: re, idata: im } : mat(d0, np, re)));
   },
@@ -1599,7 +1618,15 @@ export const BUILTINS: Record<string, Builtin> = {
     for (let i = start; i + 1 < a.length; i += 2) fields.set(asString(a[i]), [a[i + 1]]);
     return ret({ kind: 'struct', rows: 1, cols: 1, fields } as StructV);
   },
-  odeget: async () => ret(zeros(0, 0)),
+  odeget: async (a) => {
+    const def = a.length >= 3 ? a[2] : zeros(0, 0);
+    if (!a.length || !isStruct(a[0])) return ret(def);
+    const name = asString(a[1]).toLowerCase();
+    for (const [k, v] of (a[0] as StructV).fields) {
+      if (k.toLowerCase() === name) { const val = v[0]; if (val !== undefined && !(isMat(val) && isEmpty(val as Mat))) return ret(val); }
+    }
+    return ret(def);
+  },
   // ── special functions ──
   erfcx: async (a) => ret(map(m(a[0]), erfcxFn)),
   erfcinv: async (a) => ret(map(m(a[0]), (y) => erfinvFn(1 - y))),
@@ -2079,7 +2106,7 @@ export const BUILTINS: Record<string, Builtin> = {
   isspace: async (a) => charPred(a[0], (ch) => /\s/.test(ch)),
   isstrprop: async (a) => { const p = asString(a[1]).toLowerCase(); const re: Record<string, RegExp> = { alpha: /[A-Za-z]/, digit: /[0-9]/, alphanum: /[A-Za-z0-9]/, wspace: /\s/, upper: /[A-Z]/, lower: /[a-z]/, punct: /[!-/:-@[-`{-~]/, xdigit: /[0-9A-Fa-f]/ }; const r = re[p] ?? /$^/; return charPred(a[0], (ch) => r.test(ch)); },
   hex2num: async (a) => { const h = asString(a[0]).replace(/\s/g, '').padEnd(16, '0').slice(0, 16); const dv = new DataView(new ArrayBuffer(8)); dv.setBigUint64(0, BigInt('0x' + h)); return ret(scalar(dv.getFloat64(0))); },
-  num2hex: async (a) => { const dv = new DataView(new ArrayBuffer(8)); dv.setFloat64(0, asScalar(a[0])); return ret(str(dv.getBigUint64(0).toString(16).padStart(16, '0'))); },
+  num2hex: async (a) => { const A = m(a[0]); const isSingle = A.itype === 'single'; const vals = toArray(A); const rows = vals.map((x) => { if (isSingle) { const dv = new DataView(new ArrayBuffer(4)); dv.setFloat32(0, x); return dv.getUint32(0).toString(16).padStart(8, '0'); } const dv = new DataView(new ArrayBuffer(8)); dv.setFloat64(0, x); return dv.getBigUint64(0).toString(16).padStart(16, '0'); }); return ret(rows.length <= 1 ? str(rows[0] ?? '') : makeStrArr(rows.length, 1, rows)); },
   native2unicode: async (a) => ret(str(toArray(m(a[0])).map((x) => String.fromCharCode(Math.round(x))).join(''))),
   unicode2native: async (a) => ret(rowVec(asString(a[0]).split('').map((c) => c.charCodeAt(0)))),
   // type predicates / introspection
@@ -2097,11 +2124,23 @@ export const BUILTINS: Record<string, Builtin> = {
   pagemtimes: async (a) => ret(pageBinary(m(a[0]), m(a[1]), (X, Y) => matmul(X, Y))),
   pagemldivide: async (a) => ret(pageBinary(m(a[0]), m(a[1]), (X, Y) => mldivide(X, Y))),
   pagemrdivide: async (a) => ret(pageBinary(m(a[0]), m(a[1]), (X, Y) => transpose(mldivide(transpose(Y), transpose(X))))),
-  pagesvd: async (a) => {
+  pagesvd: async (a, n) => {
     const A = m(a[0]); const dims = ndSize(A); const d0 = dims[0], d1 = dims[1], psz = d0 * d1; const np = A.data.length / psz; const k = Math.min(d0, d1);
+    const rest = dims.slice(2);
+    if (n >= 3) {
+      const ud = new Float64Array(d0 * d0 * np), sd = new Float64Array(d0 * d1 * np), vd = new Float64Array(d1 * d1 * np);
+      for (let p = 0; p < np; p++) {
+        const { U, s, V } = svdReal(mat(d0, d1, A.data.slice(p * psz, p * psz + psz)));
+        ud.set(U.data, p * d0 * d0); vd.set(V.data, p * d1 * d1);
+        for (let i = 0; i < k; i++) sd[p * d0 * d1 + i + i * d0] = s[i] ?? 0;
+      }
+      const Uout = rest.length ? makeND([d0, d0, ...rest], ud) : mat(d0, d0, ud);
+      const Sout = rest.length ? makeND([d0, d1, ...rest], sd) : mat(d0, d1, sd);
+      const Vout = rest.length ? makeND([d1, d1, ...rest], vd) : mat(d1, d1, vd);
+      return [Uout, Sout, Vout];
+    }
     const out = new Float64Array(k * np);
     for (let p = 0; p < np; p++) { const { s } = svdReal(mat(d0, d1, A.data.slice(p * psz, p * psz + psz))); for (let i = 0; i < k; i++) out[p * k + i] = s[i]; }
-    const rest = dims.slice(2);
     return ret(rest.length ? makeND([k, 1, ...rest], out) : mat(k, 1, out));
   },
   pageinv: async (a) => ret(pageUnary(m(a[0]), (X) => inv(X))),
@@ -2575,8 +2614,8 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret({ kind: 'struct', rows: 1, cols: 1, fields: f } as StructV);
   },
   odeEvent: async (a) => { const f = new Map<string, Value[]>(); for (let i = 0; i + 1 < a.length; i += 2) f.set(asString(a[i]), [a[i + 1]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields: f } as StructV); },
-  odeJacobian: async (a) => ret(a[0] ?? makeSym(0, 0, [])),
-  odeMassMatrix: async (a) => ret(a[0] ?? makeSym(0, 0, [])),
+  odeJacobian: async (a) => { const f = new Map<string, Value[]>(); for (let i = 0; i + 1 < a.length; i += 2) f.set(asString(a[i]), [a[i + 1]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields: f } as StructV); },
+  odeMassMatrix: async (a) => { const f = new Map<string, Value[]>(); for (let i = 0; i + 1 < a.length; i += 2) f.set(asString(a[i]), [a[i + 1]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields: f } as StructV); },
   odeSensitivity: async (a) => { const f = new Map<string, Value[]>(); for (let i = 0; i + 1 < a.length; i += 2) f.set(asString(a[i]), [a[i + 1]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields: f } as StructV); },
   odeDelay: async (a) => { const f = new Map<string, Value[]>(); for (let i = 0; i + 1 < a.length; i += 2) f.set(asString(a[i]), [a[i + 1]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields: f } as StructV); },
   simplify: async (a) => { if (isGraph(a[0])) { const g = a[0]; const seen = new Set<string>(); const edges: typeof g.edges = []; for (const e of g.edges) { if (e.s === e.t) continue; const k = g.directed ? `${e.s}_${e.t}` : `${Math.min(e.s, e.t)}_${Math.max(e.s, e.t)}`; if (seen.has(k)) continue; seen.add(k); edges.push(e); } return ret(makeGraph(g.directed, g.n, edges, g.names)); } const s = symArg(a[0]); return ret(makeSym(s.rows, s.cols, s.exprs.map((e) => simplifyAssume(e)))); },

@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **680 / 1170** audited.
+Progress: **780 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -689,3 +689,103 @@ Progress: **680 / 1170** audited.
 | 678 | `native2unicode` | ✅ | bytes → chars |
 | 679 | `nchoosek` | ✅ | **fixed**: vector form returns combinations |
 | 680 | `ndgrid` | ✅ | N-D coordinate grid |
+| 681 | `ndims` | ✅ | number of dimensions |
+| 682 | `nearest` | ✅ | graph nodes within distance |
+| 683 | `nearestNeighbor` | ✅ | nearest triangulation vertex |
+| 684 | `nearestvertex` | ✅ | nearest polyshape vertex |
+| 685 | `nebula` | ✅ | nebula colormap (m×3) |
+| 686 | `neighbors` | ✅ | graph node neighbors |
+| 687 | `nextpow2` | ✅ | exponent of next power of 2 |
+| 688 | `nexttile` | 🟡 | tiled-layout axes (graphics) |
+| 689 | `nnz` | ✅ | count nonzeros |
+| 690 | `nonzeros` | ✅ | nonzero elements as column |
+| 691 | `norm` | ✅ | vector/matrix norms (1/2/Inf/fro) |
+| 692 | `normalize` | ✅ | z-score / range / center |
+| 693 | `normest` | ✅ | estimate 2-norm |
+| 694 | `now` | ✅ | current serial date number |
+| 695 | `nsidedpoly` | ✅ | regular polygon polyshape |
+| 696 | `nthroot` | ✅ | real n-th root |
+| 697 | `nufft` | ✅ | nonuniform FFT |
+| 698 | `nufftn` | ✅ | N-D nonuniform FFT |
+| 699 | `null` | ✅ | null-space basis |
+| 700 | `num2cell` | ✅ | array → cell |
+| 701 | `num2hex` | ✅ | **fixed**: single→8-digit hex; vector form |
+| 702 | `num2str` | ✅ | numbers → char array |
+| 703 | `numEntries` | ✅ | dictionary entry count |
+| 704 | `numRegions` | ✅ | alpha-shape/polyshape regions |
+| 705 | `numboundaries` | ✅ | polyshape boundary count |
+| 706 | `numedges` | ✅ | graph edge count |
+| 707 | `numel` | ✅ | element count |
+| 708 | `numnodes` | ✅ | graph node count |
+| 709 | `numsides` | ✅ | polyshape side count |
+| 710 | `numunique` | ✅ | unique-value count |
+| 711 | `nzmax` | ✅ | sparse storage capacity |
+| 712 | `observable` | ✅ | Pauli observable |
+| 713 | `ode` | ✅ | ODE problem object + solve |
+| 714 | `ode113` | ✅ | Adams-Bashforth-Moulton |
+| 715 | `ode15i` | ✅ | fully-implicit BDF |
+| 716 | `ode15s` | ✅ | stiff variable-order BDF |
+| 717 | `ode23` | ✅ | Bogacki-Shampine (2,3) |
+| 718 | `ode23s` | ✅ | stiff Rosenbrock (2,3) |
+| 719 | `ode23t` | ✅ | trapezoidal rule |
+| 720 | `ode23tb` | ✅ | TR-BDF2 |
+| 721 | `ode45` | ✅ | Dormand-Prince (4,5) → exp(-1) |
+| 722 | `ode78` | ✅ | Runge-Kutta (7,8) |
+| 723 | `ode89` | ✅ | Runge-Kutta (8,9) |
+| 724 | `odeDelay` | ✅ | DDE delay config struct |
+| 725 | `odeEvent` | ✅ | event config struct |
+| 726 | `odeJacobian` | ✅ | **fixed**: returns config struct |
+| 727 | `odeMassMatrix` | ✅ | **fixed**: returns config struct |
+| 728 | `odeSensitivity` | ✅ | sensitivity config struct |
+| 729 | `odeget` | ✅ | **implemented**: option lookup w/ default |
+| 730 | `odeset` | ✅ | ODE options struct |
+| 731 | `odextend` | ✅ | extend an ODE solution |
+| 732 | `ones` | ✅ | all-ones array (+ class) |
+| 733 | `optimget` | ✅ | optim option lookup |
+| 734 | `optimset` | ✅ | optim options struct |
+| 735 | `ordeig` | ✅ | (quasi)triangular eigenvalues |
+| 736 | `orderfields` | ✅ | sort struct fields |
+| 737 | `ordqz` | ✅ | reorder QZ eigenvalues |
+| 738 | `ordschur` | ✅ | reorder Schur eigenvalues |
+| 739 | `orth` | ✅ | orthonormal range basis |
+| 740 | `outdegree` | ✅ | digraph out-degree |
+| 741 | `outedges` | ✅ | edges leaving a node |
+| 742 | `outerjoin` | ✅ | table outer join |
+| 743 | `overlaps` | ✅ | polyshape overlap test |
+| 744 | `pad` | ✅ | pad strings |
+| 745 | `paddata` | ✅ | pad data to size |
+| 746 | `padecoef` | ✅ | Pade delay coefficients |
+| 747 | `pagectranspose` | ✅ | **fixed**: now conjugates (via cat fix) |
+| 748 | `pageeig` | ✅ | **fixed**: added [V,D] form |
+| 749 | `pageinv` | ✅ | page-wise inverse |
+| 750 | `pagelsqminnorm` | ✅ | page-wise min-norm lstsq |
+| 751 | `pagemldivide` | ✅ | page-wise A\\B |
+| 752 | `pagemrdivide` | ✅ | page-wise B/A |
+| 753 | `pagemtimes` | ✅ | page-wise matmul |
+| 754 | `pagenorm` | ✅ | page-wise norm |
+| 755 | `pagepinv` | ✅ | page-wise pseudoinverse |
+| 756 | `pagesvd` | ✅ | **fixed**: added [U,S,V] form |
+| 757 | `pagetranspose` | ✅ | page-wise transpose |
+| 758 | `pareto` | 🟡 | Pareto chart (graphics) |
+| 759 | `parula` | ✅ | parula colormap |
+| 760 | `pascal` | ✅ | Pascal matrix |
+| 761 | `pathsep` | ✅ | path separator |
+| 762 | `pause` | ✅ | pause (no-op delay in sandbox) |
+| 763 | `pbaspect` | 🟡 | plot box aspect (graphics) |
+| 764 | `pcg` | ✅ | conjugate gradients → A\b |
+| 765 | `pchip` | ✅ | shape-preserving cubic interp |
+| 766 | `pcolor` | 🟡 | pseudocolor plot (graphics) |
+| 767 | `pdepe` | ✅ | 1-D PDE solver |
+| 768 | `pdeval` | ✅ | evaluate pdepe solution |
+| 769 | `peaks` | ✅ | sample 2-D surface |
+| 770 | `perimeter` | ✅ | polyshape/alpha perimeter |
+| 771 | `perms` | ✅ | all permutations |
+| 772 | `permute` | ✅ | permute dimensions |
+| 773 | `pie` | 🟡 | pie chart (graphics) |
+| 774 | `pie3` | 🟡 | 3-D pie chart (graphics) |
+| 775 | `piechart` | 🟡 | object-based pie (graphics) |
+| 776 | `pink` | ✅ | pink colormap |
+| 777 | `pinv` | ✅ | pseudoinverse |
+| 778 | `planerot` | ✅ | Givens rotation → [5;0] |
+| 779 | `plot` | 🟡 | 2-D line plot (graphics) |
+| 780 | `plot3` | 🟡 | 3-D line plot (graphics) |

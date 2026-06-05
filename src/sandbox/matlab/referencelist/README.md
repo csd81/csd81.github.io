@@ -1251,3 +1251,138 @@ All 25 already existed as stubs/builtins. **Five real fixes** plus two new imple
 - **`narginchk`/`nargoutchk` dependency fulfilled**: builtins previously had no way to see the calling function's argument counts. Added a `funcScope` pointer in the interpreter (set/restored around each user-function body) plus `currentNargin()`/`currentNargout()` on the `Env` interface. `narginchk`/`nargoutchk` now read these and throw the standard "Not enough / Too many input/output arguments." errors; at base/script level they no-op (matching MATLAB, where they only apply inside functions). `nargchk` (legacy) uses the same hook for its 2-arg form and an explicit count for its 3-arg form.
 
 - Rich ≥10-line help added for all 25 functions (all new structured entries). Help verified via esbuild; **full build + push at this 680 boundary**.
+
+## Batch 51 — functions 681–705 (25-fn batch; norms · geometry/graph queries · num2* conversions)
+
+All 25 already existed. **One real fix**; the rest verified correct.
+
+| Function | Status | Notes |
+|---|---|---|
+| `ndims` | ✅ | `ndims(ones(2,3,4))` → 3 |
+| `nearest` | ✅ | graph nodes within distance d |
+| `nearestNeighbor` | ✅ | nearest triangulation vertex |
+| `nearestvertex` | ✅ | nearest polyshape vertex |
+| `nebula` | ✅ | `nebula(8)` → 8×3 colormap |
+| `neighbors` | ✅ | `neighbors(G,2)` → [1;3] |
+| `nextpow2` | ✅ | `nextpow2(100)` → 7 |
+| `nexttile` | 🟡 | tiled-layout axes (graphics) |
+| `nnz` | ✅ | `nnz([1 0 2 0 0 3])` → 3 |
+| `nonzeros` | ✅ | column of nonzeros |
+| `norm` | ✅ | 1/2/Inf/fro all verified |
+| `normalize` | ✅ | z-score verified |
+| `normest` | ✅ | `normest([1 2;3 4])` → 5.4650 |
+| `now` | ✅ | serial date number |
+| `nsidedpoly` | ✅ | regular polygon |
+| `nthroot` | ✅ | `nthroot(-27,3)` → -3 |
+| `nufft`/`nufftn` | ✅ | nonuniform FFT verified |
+| `null` | ✅ | orthonormal null-space basis |
+| `num2cell` | ✅ | array → cell |
+| `num2hex` | ✅ | **fixed** (see below) |
+| `num2str` | ✅ | precision + matrix forms |
+| `numEntries` | ✅ | dictionary count → 2 |
+| `numRegions` | ✅ | alpha-shape regions → 1 |
+| `numboundaries` | ✅ | polyshape boundaries → 1 |
+
+### Implementation note
+- **`num2hex` single-precision fix**: the builtin always encoded as Float64 (16 hex digits), so `num2hex(single(1))` wrongly returned `3ff0000000000000` instead of `3f800000`. Now it checks `itype === 'single'` and uses a 4-byte Float32 view (8 hex digits). Also added the array form: `num2hex([...])` returns a char array with one hex row per element.
+
+### Not possible / partial
+- `nexttile` is a graphics/tiled-layout function — no numeric result to verify; help documents the API.
+
+- Rich ≥10-line help added for all 25 functions (6 new structured entries + 16 expanded in place; norm/nexttile/nufft already structured). Help verified via esbuild; full build deferred to 780.
+
+## Batch 52 — functions 706–730 (25-fn batch; counts · ODE solvers + object interface)
+
+All 25 already existed. **Three fixes** (one new implementation); all ODE solvers verified to converge.
+
+| Function | Status | Notes |
+|---|---|---|
+| `numedges`/`numnodes` | ✅ | graph counts → 3 / 4 |
+| `numel` | ✅ | `numel("hello")` → 1 (string scalar) |
+| `numsides` | ✅ | hexagon → 6 |
+| `numunique` | ✅ | `numunique([1 1 2 3 3 3])` → 3 |
+| `nzmax` | ✅ | sparse storage → 2 |
+| `observable` | ✅ | Pauli observable object |
+| `ode` | ✅ | object interface: `solve(F,0,1)` → 0.3679 |
+| `ode113`/`ode23`/`ode45`/`ode78`/`ode89` | ✅ | nonstiff solvers → exp(-1) ≈ 0.3679 |
+| `ode15i` | ✅ | implicit `yp+y=0` → 0.3685 |
+| `ode15s`/`ode23s`/`ode23t`/`ode23tb` | ✅ | stiff solvers → ≈0.367 |
+| `odeDelay`/`odeEvent`/`odeSensitivity` | ✅ | config structs |
+| `odeJacobian` | ✅ | **fixed** (see below) |
+| `odeMassMatrix` | ✅ | **fixed** (see below) |
+| `odeget` | ✅ | **implemented** (see below) |
+| `odeset` | ✅ | options struct, case-insensitive |
+
+### Implementation notes
+- **`odeget` implemented**: was a stub returning `[]`. Now performs a case-insensitive field lookup in the options struct, returning the value if present and non-empty, or the supplied default (3rd argument) otherwise. Verified: `odeget(odeset("RelTol",1e-6),"reltol")` → 1e-6; default path returns the default.
+- **`odeJacobian`/`odeMassMatrix` fixed**: both returned `a[0]`, which under name=value calling (`odeJacobian(Value=@f)`) is the *name string* "Value" (class char). They now build a 1×1 config struct from the name-value pairs like the sibling constructors (`odeEvent`/`odeSensitivity`/`odeDelay`), so fields are retrievable (e.g. `m.MassMatrix`).
+
+### Verified solver accuracy
+- The decay test `dy/dt = -y, y(0)=1` over `[0,1]` returns ≈ exp(-1) = 0.3679 for every solver (ode45/23/78/89/113 exact to 4 digits; stiff ode15s/23s/23t/23tb within 1e-3).
+- Harmonic oscillator `[y2; -y1]` over `[0,π]` returns y1(π) = -1.0000. The R2023b `ode` object interface and the implicit `ode15i` both solve correctly.
+
+- Rich ≥10-line help added for all 25 functions (7 new structured entries + 16 expanded in place; ode15s/ode45 already structured). Help verified via esbuild; full build deferred to 780.
+
+## Batch 53 — functions 731–755 (25-fn batch; orth/Schur reordering · graph/table joins · page* batched linalg)
+
+All 25 already existed. **Two fixes** (one a broad interpreter fix); all page* operations verified.
+
+| Function | Status | Notes |
+|---|---|---|
+| `odextend` | ✅ | extend ODE solution |
+| `ones` | ✅ | with class arg (uint8 etc.) |
+| `optimget`/`optimset` | ✅ | optim options round-trip |
+| `ordeig` | ✅ | `ordeig([2 0;0 5])` → [2;5] |
+| `orderfields` | ✅ | alphabetical field sort |
+| `ordqz`/`ordschur` | ✅ | eigenvalue reordering |
+| `orth` | ✅ | orthonormal range basis |
+| `outdegree`/`outedges` | ✅ | digraph queries |
+| `outerjoin` | ✅ | table outer join |
+| `overlaps` | ✅ | polyshape overlap → 1 |
+| `pad`/`paddata` | ✅ | string/data padding |
+| `padecoef` | ✅ | Pade delay coefficients |
+| `pagectranspose` | ✅ | **fixed** (see below) |
+| `pageeig` | ✅ | **fixed**: added `[V,D]` form |
+| `pageinv`/`pagepinv` | ✅ | page-wise (pseudo)inverse |
+| `pagelsqminnorm` | ✅ | min-norm lstsq per page |
+| `pagemldivide`/`pagemrdivide` | ✅ | page-wise solves |
+| `pagemtimes` | ✅ | `pagemtimes(A,A)` → [7 10;15 22] |
+| `pagenorm` | ✅ | page-wise norm → [5;10] |
+
+### Implementation notes
+- **`cat` N-D complex fix (broad)**: `catND` never copied the imaginary part, so any N-D array built with `cat(3,…)` (or `cat` along dims ≥3) silently lost its complex data — `isreal(cat(3,[1+2i 3]))` wrongly returned true. Now it allocates and fills an `idata` array whenever any part is complex. This fixes complex `pagetranspose`/`pagectranspose` and benefits every N-D-complex code path.
+- **`pagectranspose` conjugation**: with the cat fix in place, `pagectranspose(cat(3,[1+2i 3]))` now correctly returns `[1-2i; 3]` (the per-page conjugate transpose); `pagetranspose` returns `[1+2i; 3]` without conjugating.
+- **`pageeig` [V,D] form**: previously only the single-output (eigenvalues) form worked; `[V,D]=pageeig(A)` threw "not enough output arguments". Added the two-output branch returning per-page eigenvector arrays V and diagonal eigenvalue arrays D, with complex support and per-page slicing of complex input.
+
+- Rich ≥10-line help added for all 25 functions (7 new structured entries + 15 expanded in place; ones/pad/pagenorm already structured). Help verified via esbuild; full build deferred to 780.
+
+## Batch 54 — functions 756–780 (25-fn batch; page SVD · interp/PDE solvers · colormaps & plots) — **100-boundary build at 780**
+
+All 25 already existed. **One fix**; the computable functions all verified; graphics functions stub cleanly.
+
+| Function | Status | Notes |
+|---|---|---|
+| `pagesvd` | ✅ | **fixed**: added `[U,S,V]` form (reconstructs A) |
+| `pagetranspose` | ✅ | page-wise transpose |
+| `pareto`/`pbaspect`/`pcolor`/`pie`/`pie3`/`piechart`/`plot`/`plot3` | 🟡 | graphics — stub without error; help documents API |
+| `parula`/`pink` | ✅ | colormaps → m×3 |
+| `pascal` | ✅ | Pascal matrix (+ factor forms) |
+| `pathsep` | ✅ | → ":" |
+| `pause` | ✅ | no-op delay in sandbox |
+| `pcg` | ✅ | `pcg([4 1;1 3],[1;2])` → [0.0909;0.6364] = A\\b |
+| `pchip` | ✅ | shape-preserving cubic → 6.34 |
+| `pdepe`/`pdeval` | ✅ | 1-D PDE solver + evaluator |
+| `peaks` | ✅ | `peaks(5)` → 5×5 |
+| `perimeter` | ✅ | unit square → 4 |
+| `perms` | ✅ | all permutations (reverse-lex rows) |
+| `permute` | ✅ | dimension permutation |
+| `pinv` | ✅ | pseudoinverse (min-norm lstsq) |
+| `planerot` | ✅ | `planerot([3;4])` → y = [5;0] |
+
+### Implementation note
+- **`pagesvd [U,S,V]` form**: previously only the single-output (singular values) form worked; `[U,S,V]=pagesvd(A)` threw "not enough output arguments". Added the three-output branch building per-page U (d0×d0), diagonal S (d0×d1), and V (d1×d1) N-D arrays. Verified that `pagemtimes(pagemtimes(U,S),pagetranspose(V))` reconstructs each page of A. (Mirrors the pageeig `[V,D]` fix from batch 53.)
+
+### Verified
+- `pcg` matches the direct solve `A\b`; `pchip` interpolates shape-preservingly (6.34 at x=2.5 for y=x²); `planerot` produces a Givens rotation zeroing the second component (norm preserved); `pascal`/`perms`/`permute`/`pinv` exact.
+
+- Rich ≥10-line help added for all 25 functions (12 new structured entries + 10 expanded in place; peaks/plot/plot3 already structured). Help verified via esbuild; **full build + push at this 780 boundary**.
