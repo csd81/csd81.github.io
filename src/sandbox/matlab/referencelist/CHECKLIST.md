@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **90 / 1170** audited.
+Progress: **100 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -95,3 +95,13 @@ Progress: **90 / 1170** audited.
 | 88 | `bitcmp` | ✅ | type-width complement |
 | 89 | `bitget` | ✅ | bit at position(s) |
 | 90 | `bitor` | ✅ | OR; format hex display pending |
+| 91 | `bitset` | ✅ | type arg + vectorized |
+| 92 | `bitshift` | ✅ | assumedtype masking |
+| 93 | `bitxor` | ✅ | bit-wise XOR |
+| 94 | `blanks` | ✅ | n spaces |
+| 95 | `blkdiag` | ✅ | block-diagonal |
+| 96 | `bone` | ✅ | colormap |
+| 97 | `boundary` | 🟡 | matrix/3-D fixed; shrink-factor approx |
+| 98 | `boundaryFacets` | 🟡 | facets; 2-output pending |
+| 99 | `boundaryshape` | 🟡 | tri->polyshape |
+| 100 | `boundingbox` | 🟡 | bbox; holes pending |

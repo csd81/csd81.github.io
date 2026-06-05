@@ -48,6 +48,13 @@ function toRational(x: number): string {
   const s = k1 === 1 ? `${h1}` : `${h1}/${k1}`;
   return neg ? `-${s}` : s;
 }
+/** Rows of a char matrix as strings (column-major storage → one string per row). */
+function charLines(v: Mat): string[] {
+  if (v.rows <= 1) return [asString(v)];
+  const out: string[] = [];
+  for (let r = 0; r < v.rows; r++) { let s = ''; for (let c = 0; c < v.cols; c++) s += String.fromCharCode(v.data[r + c * v.rows]); out.push(s); }
+  return out;
+}
 const z2 = (s: string) => s.replace(/e([+-])(\d)$/, 'e$10$2');   // MATLAB pads the exponent to ≥2 digits
 export function formatScalar(x: number): string {
   if (Number.isNaN(x)) return fmtMode === 'rat' ? '*' : 'NaN';
@@ -160,7 +167,7 @@ export function dispValue(v: Value): string {
   if (v.kind === 'gobj') return `<${v.gtype} handle>`;
   if (isHandle(v)) return `@${v.name ?? 'anonymous'}`;
   if (v.kind === 'num' && v.nd) return ndLines(v).join('\n');
-  if (v.isChar) return asString(v);
+  if (v.isChar) return charLines(v).join('\n');
   if (numel(v) === 0) return '';
   if (isComplex(v)) return isScalar(v) ? fmtC(v.data[0], v.idata![0]) : complexMatrixLines(v).join('\n');
   if (isScalar(v)) return formatScalar(v.data[0]);
@@ -184,7 +191,7 @@ export function displayValue(name: string, v: Value): string {
   if (v.kind === 'num' && v.nd) return `${name} =\n\n${ndLines(v).join('\n')}\n`;
   if (v.kind === 'gobj') return `${name} =\n\n  <${v.gtype} handle>\n`;
   if (isHandle(v)) return `${name} =\n\n    @${v.name ?? 'anonymous function'}\n`;
-  if (v.isChar) return `${name} =\n\n    ${asString(v)}\n`;
+  if (v.isChar) { const ls = charLines(v); return ls.length <= 1 ? `${name} =\n\n    ${ls[0] ?? ''}\n` : `${name} =\n\n` + ls.map((l) => '    ' + l).join('\n') + '\n'; }
   if (numel(v) === 0) return `${name} =\n\n     []\n`;
   if (isComplex(v)) return isScalar(v) ? `${name} =\n\n   ${fmtC(v.data[0], v.idata![0])}\n` : `${name} =\n\n${complexMatrixLines(v).join('\n')}\n`;
   if (isScalar(v)) return `${name} =\n\n   ${formatScalar(v.data[0])}\n`;

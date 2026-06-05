@@ -360,13 +360,15 @@ export function vertcat(parts: Mat[]): Mat {
   const anyImag = nonEmpty.some((p) => p.idata);
   const im = anyImag ? new Float64Array(rows * cols) : null;
   let ro = 0;
-  let allBool = true;
+  let allBool = true, allChar = true;
   for (const p of nonEmpty) {
     for (let c = 0; c < cols; c++) for (let r = 0; r < p.rows; r++) { out.data[(ro + r) + c * rows] = p.data[r + c * p.rows]; if (im) im[(ro + r) + c * rows] = p.idata ? p.idata[r + c * p.rows] : 0; }
     ro += p.rows;
     if (!p.isBool) allBool = false;
+    if (!p.isChar) allChar = false;
   }
-  if (im) out.idata = im; else if (allBool) out.isBool = true;
+  if (allChar) out.isChar = true;
+  if (im) out.idata = im; else if (allBool && !allChar) out.isBool = true;
   return out;
 }
 

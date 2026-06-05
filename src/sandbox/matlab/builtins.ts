@@ -101,6 +101,29 @@ function tableToCsv(t: Table): string {
 }
 const ew = (f: (x: number) => number): Builtin => async (a) => ret(map(m(a[0]), f));
 
+/** Build a char matrix whose rows are the given strings, left-padded with '0' to equal width. */
+function charRowsZ(strs: string[], minW = 0): Mat {
+  const w = Math.max(minW, ...strs.map((s) => s.length), 1);
+  const padded = strs.map((s) => s.padStart(w, '0'));
+  const rows = padded.length, M = zeros(rows, w); M.isChar = true;
+  padded.forEach((s, r) => { for (let c = 0; c < w; c++) M.data[r + c * rows] = s.charCodeAt(c); });
+  return M;
+}
+/** Wrap a number into a named integer type (uint8/int16/…), MATLAB bit-op semantics. */
+const INT_BITS: Record<string, number> = { int8: 8, uint8: 8, int16: 16, uint16: 16, int32: 32, uint32: 32, int64: 64, uint64: 64 };
+function intMask(x: number, t: string): number {
+  const bits = INT_BITS[t.toLowerCase()] ?? 64; const signed = t.toLowerCase().startsWith('int');
+  if (bits >= 53) return signed ? x : Math.max(0, x);          // can't safely mask 64-bit in doubles
+  const mod = 2 ** bits; let v = ((x % mod) + mod) % mod;
+  if (signed && v >= mod / 2) v -= mod;
+  return v;
+}
+/** Extract a trailing integer-type-name string argument (e.g. 'uint8'), if present. */
+function typeArg(args: Value[]): string | null {
+  for (const v of args) if ((isStr(v) || (isMat(v) && (v as Mat).isChar)) && INT_BITS[asString(v).toLowerCase()] !== undefined) return asString(v).toLowerCase();
+  return null;
+}
+
 // Complex inverse trig (principal branch, MATLAB-compatible). Used when the input is
 // complex or a real argument falls outside the real domain (|x|>1 for asin/acos).
 const cAsin = (re: number, im: number): [number, number] => {
@@ -1506,7 +1529,7 @@ export const BUILTINS: Record<string, Builtin> = {
   strtok: async (a, n) => { const s = asString(a[0]); const delim = a.length >= 2 ? asString(a[1]) : ' \t\n'; let i = 0; while (i < s.length && delim.includes(s[i])) i++; let j = i; while (j < s.length && !delim.includes(s[j])) j++; return n >= 2 ? [str(s.slice(i, j)), str(s.slice(j))] : [str(s.slice(i, j))]; },
   regexprep: async (a) => { try { return ret(str(asString(a[0]).replace(new RegExp(asString(a[1]), 'g'), asString(a[2]).replace(/\$(\d)/g, '$$$1')))); } catch { return ret(a[0]); } },
   // ── base conversions ──
-  dec2bin: async (a) => { const d = Math.round(asScalar(a[0])); let s2 = (d >>> 0).toString(2); if (a.length >= 2) s2 = s2.padStart(Math.round(asScalar(a[1])), '0'); return ret(str(s2)); },
+  dec2bin: async (a) => { const vals = toArray(m(a[0])).map((x) => Math.round(x)); const minW = a.length >= 2 ? Math.round(asScalar(a[1])) : 0; return ret(charRowsZ(vals.map((d) => (d >>> 0).toString(2)), minW)); },
   bin2dec: async (a) => {
     const conv = (s: string) => parseInt(s.replace(/\s/g, ''), 2);
     if (isStr(a[0])) { const s = a[0]; return ret(mat(s.rows, s.cols, Float64Array.from(s.items, conv))); }
@@ -1514,9 +1537,9 @@ export const BUILTINS: Record<string, Builtin> = {
     if (M.isChar && M.rows > 1) { const out = new Float64Array(M.rows); for (let r = 0; r < M.rows; r++) { let str = ''; for (let c = 0; c < M.cols; c++) str += String.fromCharCode(M.data[r + c * M.rows]); out[r] = conv(str); } return ret(mat(M.rows, 1, out)); }
     return ret(scalar(conv(asString(a[0]))));
   },
-  dec2hex: async (a) => { const d = Math.round(asScalar(a[0])); let s2 = d.toString(16).toUpperCase(); if (a.length >= 2) s2 = s2.padStart(Math.round(asScalar(a[1])), '0'); return ret(str(s2)); },
+  dec2hex: async (a) => { const vals = toArray(m(a[0])).map((x) => Math.round(x)); const minW = a.length >= 2 ? Math.round(asScalar(a[1])) : 0; return ret(charRowsZ(vals.map((d) => d.toString(16).toUpperCase()), minW)); },
   hex2dec: async (a) => ret(scalar(parseInt(asString(a[0]).replace(/\s/g, ''), 16))),
-  dec2base: async (a) => { const d = Math.round(asScalar(a[0])); const b = Math.round(asScalar(a[1])); let s2 = d.toString(b).toUpperCase(); if (a.length >= 3) s2 = s2.padStart(Math.round(asScalar(a[2])), '0'); return ret(str(s2)); },
+  dec2base: async (a) => { const vals = toArray(m(a[0])).map((x) => Math.round(x)); const b = Math.round(asScalar(a[1])); const minW = a.length >= 3 ? Math.round(asScalar(a[2])) : 0; return ret(charRowsZ(vals.map((d) => d.toString(b).toUpperCase()), minW)); },
   base2dec: async (a) => {
     const base = Math.round(asScalar(a[1]));
     const conv = (s: string) => parseInt(s.replace(/\s/g, ''), base);
@@ -1717,9 +1740,15 @@ export const BUILTINS: Record<string, Builtin> = {
   bitand: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, y) => Number(BigInt(Math.round(x)) & BigInt(Math.round(y))))),
   bitor: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, y) => Number(BigInt(Math.round(x)) | BigInt(Math.round(y))))),
   bitxor: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, y) => Number(BigInt(Math.round(x)) ^ BigInt(Math.round(y))))),
-  bitshift: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, k) => { const b = BigInt(Math.round(x)), kk = Math.round(k); return Number(kk >= 0 ? b << BigInt(kk) : b >> BigInt(-kk)); })),
+  bitshift: async (a) => { const t = typeArg(a.slice(2)); return ret(elementwise(m(a[0]), m(a[1]), (x, k) => { const b = BigInt(Math.round(x)), kk = Math.round(k); const r = Number(kk >= 0 ? b << BigInt(kk) : b >> BigInt(-kk)); return t ? intMask(r, t) : r; })); },
   bitget: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, p) => Number((BigInt(Math.round(x)) >> BigInt(Math.round(p) - 1)) & 1n))),
-  bitset: async (a) => { const val = a.length >= 3 ? Math.round(asScalar(a[2])) : 1; return ret(elementwise(m(a[0]), m(a[1]), (x, p) => { const b = BigInt(Math.round(x)), bit = 1n << BigInt(Math.round(p) - 1); return Number(val ? (b | bit) : (b & ~bit)); })); },
+  bitset: async (a) => {
+    const t = typeArg(a.slice(2));
+    const valArg = a.slice(2).find((v) => isMat(v) && !(v as Mat).isChar);   // bit value (default 1); a type string is not it
+    const V = valArg ? m(valArg) : scalar(1);
+    const f = (x: number, p: number, v: number) => { const b = BigInt(Math.round(x)), bit = 1n << BigInt(Math.round(p) - 1); const r = Number(v ? (b | bit) : (b & ~bit)); return t ? intMask(r, t) : r; };
+    return ret(broadcast3(m(a[0]), m(a[1]), V, f));
+  },
   bitcmp: async (a) => { const ty = a.length >= 2 && isMat(a[1]) && (a[1] as Mat).isChar ? asString(a[1]) : 'uint64'; const bits = { uint8: 8, int8: 8, uint16: 16, int16: 16, uint32: 32, int32: 32, uint64: 64, int64: 64 }[ty] ?? 64; const mask = (1n << BigInt(bits)) - 1n; return ret(map(m(a[0]), (x) => Number((~BigInt(Math.round(x))) & mask))); },
   blanks: async (a) => ret(str(' '.repeat(Math.max(0, Math.round(asScalar(a[0])))))),
   findstr: async (a) => { const s1 = asString(a[0]), s2 = asString(a[1]); const [hay, ndl] = s1.length >= s2.length ? [s1, s2] : [s2, s1]; const out: number[] = []; if (ndl.length) { let i = hay.indexOf(ndl); while (i >= 0) { out.push(i + 1); i = hay.indexOf(ndl, i + 1); } } return ret(rowVec(out)); },
@@ -2405,7 +2434,22 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(out);
   },
   boundary: async (a, n) => {
-    const xs = toArray(m(a[0])), ys = toArray(m(a[1])); const k = convHull2D(xs, ys);
+    // Accept boundary(x,y[,z]) or boundary(P) (P is N×2 or N×3); a trailing scalar is the
+    // shrink factor (only the convex hull, shrink≈0, is modeled here).
+    const mats = a.filter((v): v is Mat => isMat(v) && !(v as Mat).isChar);
+    let pts: number[][];
+    if (mats.length === 1 && mats[0].cols >= 2) pts = matRows(mats[0]);
+    else { const cols = mats.filter((mm) => numel(mm) > 1).map((mm) => toArray(mm)); const L = cols[0]?.length ?? 0; pts = Array.from({ length: L }, (_, i) => cols.map((c) => c[i])); }
+    const dim = pts[0]?.length ?? 2;
+    if (dim >= 3) {
+      const facets = convhullnd(pts);                       // 3-D convex-hull boundary (triangles)
+      const tri = zeros(facets.length, 3); facets.forEach((f, r) => f.verts.slice(0, 3).forEach((vi, c) => { tri.data[r + c * facets.length] = vi + 1; }));
+      if (n < 2) return ret(tri);
+      const c0 = pts.reduce((s, p) => s.map((v, j) => v + p[j] / pts.length), [0, 0, 0]);
+      let vol = 0; for (const f of facets) { const [p, q, r] = f.verts.slice(0, 3).map((vi) => pts[vi]); const a3 = p.map((v, j) => v - c0[j]), b3 = q.map((v, j) => v - c0[j]), c3 = r.map((v, j) => v - c0[j]); vol += Math.abs(a3[0] * (b3[1] * c3[2] - b3[2] * c3[1]) - a3[1] * (b3[0] * c3[2] - b3[2] * c3[0]) + a3[2] * (b3[0] * c3[1] - b3[1] * c3[0])) / 6; }
+      return [tri, scalar(vol)];
+    }
+    const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]); const k = convHull2D(xs, ys);
     if (n >= 2) { const px = k.map((i) => xs[i - 1]), py = k.map((i) => ys[i - 1]); let s = 0; for (let i = 0; i < px.length; i++) { const j = (i + 1) % px.length; s += px[i] * py[j] - px[j] * py[i]; } return [colVec(k), scalar(Math.abs(s) / 2)]; }
     return ret(colVec(k));
   },

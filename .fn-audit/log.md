@@ -50,3 +50,8 @@ Fixed: lexer 0b/0x literals (+u8/s16 type suffix); bin2dec string arrays; true(m
 args (logical arrays); rng command syntax. Solvers (bicg/bicgstab/bicgstabl) non-matchable (random
 matrices + datasets). bfsearch event-table + biconncomp cell/2nd-output = graph-table gaps.
 Build green; 1415 builtins, 0 without help.
+## Batch 10 (fns 91-100): bitset bitshift bitxor blanks blkdiag bone boundary boundaryFacets boundaryshape boundingbox
+Fixed: dec2bin/dec2hex/dec2base vectorization (char matrix); MULTI-ROW CHAR DISPLAY (one row/line, broad);
+vertcat preserves isChar (['ab';'cd']); bitshift/bitset assumedtype masking + bitset vectorize;
+boundary matrix/3-D input (area/volume). 40/47. Remaining: int-type tracking, groot, polyshape-holes.
+Build green; 1415 builtins, 0 without help. *** 100/1170 functions audited (10 batches) ***

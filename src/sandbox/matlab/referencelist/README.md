@@ -232,3 +232,28 @@ All 35 batch-8 examples pass.
 - **`true(m,n)` / `false(m,n)`** now accept size arguments and return logical arrays (were constants only) — `false(1,numnodes(g))` etc.
 - `rng` added to command syntax so `rng default` / `rng shuffle` parse.
 - Rich ≥10-line help added for all batch-9 functions.
+
+---
+
+## Batch 10 — functions 91–100
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `bitset` | ✅ | **fixed**: type arg + vectorized over (A,pos,val) | — |
+| `bitshift` | ✅ | **fixed**: `assumedtype` masking to integer width | the type-less uint8 loop needs integer-type tracking; `format hex` display |
+| `bitxor` | ✅ | bit-wise XOR | — |
+| `blanks` | ✅ | string of n spaces | — |
+| `blkdiag` | ✅ | block-diagonal assembly | — |
+| `bone` | ✅ | bone colormap matrix | one example sets a `groot` default colormap |
+| `boundary` | 🟡 | **fixed**: matrix/3-D input, area/volume (convex-hull) | exact shrink-factor (alpha) boundary volume differs |
+| `boundaryFacets` | 🟡 | alpha-shape boundary facets | the `[bf,P]` 2-output form pending |
+| `boundaryshape` | 🟡 | triangulation→polyshape | NumRegions display detail |
+| `boundingbox` | 🟡 | polyshape bounding box | multi-boundary (holes) polyshape construction pending |
+
+### Fixes landed in this batch (two are broad display fixes)
+- **`dec2bin` / `dec2hex` / `dec2base` vectorized**: a vector argument now returns a char matrix (one row per value), e.g. `dec2bin([12 20 33])`.
+- **Multi-row char-matrix display fixed**: char arrays with >1 row now print one row per line instead of a single column-major-flattened string (affects all char-matrix output across the interpreter).
+- **`vertcat` preserves `isChar`**: `['ab';'cd']` is now a char matrix, not numeric codes.
+- `bitshift`/`bitset` honor an `assumedtype` argument (mask/wrap to the integer width) and `bitset` vectorizes over `(A,pos,val)` via broadcasting.
+- `boundary` accepts a single point matrix and 3-D input without crashing, returning area/volume.
+- Rich ≥10-line help added for all batch-10 functions.
