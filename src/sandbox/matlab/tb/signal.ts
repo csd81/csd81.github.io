@@ -268,6 +268,23 @@ export const SIGNAL: ToolboxModule = {
     peak2peak: (a) => ret(reduceCols(m(a[0]), (x) => Math.max(...x) - Math.min(...x))),
     peak2rms: (a) => ret(reduceCols(m(a[0]), (x) => Math.max(...x.map(Math.abs)) / Math.sqrt(x.reduce((s, v) => s + v * v, 0) / x.length))),
     rssq: (a) => ret(reduceCols(m(a[0]), (x) => Math.sqrt(x.reduce((s, v) => s + v * v, 0)))),
+    // ── periodogram PSD: periodogram(x[,window][,nfft][,fs]) → [Pxx,f], one-sided for real x ──
+    periodogram: (a, nargout) => {
+      const x = toArray(m(a[0])), N = x.length;
+      const hasArg = (i: number) => a.length > i && isMat(a[i]) && m(a[i]).rows * m(a[i]).cols > 0;
+      const w = hasArg(1) ? toArray(m(a[1])) : new Array(N).fill(1);
+      const nfft = hasArg(2) ? Math.round(asScalar(a[2])) : Math.max(256, 2 ** Math.ceil(Math.log2(N)));
+      const fs = hasArg(3) ? asScalar(a[3]) : null, Fs = fs ?? 2 * Math.PI;
+      const half = Math.floor(nfft / 2), sumw2 = w.reduce((s, v) => s + v * v, 0);
+      const Pxx: number[] = [], f: number[] = [];
+      for (let k = 0; k <= half; k++) {
+        let re = 0, im = 0;
+        for (let n = 0; n < N; n++) { const ang = -2 * Math.PI * k * n / nfft, xw = x[n] * w[n]; re += xw * Math.cos(ang); im += xw * Math.sin(ang); }
+        let p = (re * re + im * im) / (Fs * sumw2); if (k > 0 && k < half) p *= 2;
+        Pxx.push(p); f.push(fs ? k * fs / nfft : k * 2 * Math.PI / nfft);
+      }
+      return Promise.resolve(nargout >= 2 ? [colVec(Pxx), colVec(f)] : [colVec(Pxx)]);
+    },
     // ── equivalent noise bandwidth of a window: enbw(w)=N*Σw²/(Σw)²; enbw(w,fs)=fs*Σw²/(Σw)² ──
     enbw: (a) => {
       const w = toArray(m(a[0])), sw = w.reduce((s, v) => s + v, 0), sw2 = w.reduce((s, v) => s + v * v, 0);
@@ -389,6 +406,7 @@ export const SIGNAL: ToolboxModule = {
     risetime: 'Rise time of positive-going bilevel waveform transitions', falltime: 'Fall time of negative-going bilevel waveform transitions', slewrate: 'Slew rate of bilevel waveform transitions',
     overshoot: 'Overshoot metrics of bilevel waveform transitions', undershoot: 'Undershoot metrics of bilevel waveform transitions',
     settlingtime: 'Settling time for bilevel waveform transitions', enbw: 'Equivalent noise bandwidth of a window',
+    periodogram: 'Periodogram power spectral density estimate',
     mag2db: 'Convert magnitude to decibels', db2mag: 'Convert decibels to magnitude', pow2db: 'Convert power to decibels', db2pow: 'Convert decibels to power',
     sinc: 'Normalized sinc function', chirp: 'Swept-frequency cosine', medfilt1: '1-D median filtering',
     freqz: 'Digital filter frequency response', freqs: 'Analog filter frequency response', fir1: 'Window-based FIR filter design',
