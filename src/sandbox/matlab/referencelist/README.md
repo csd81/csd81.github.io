@@ -375,3 +375,24 @@ All 35 batch-8 examples pass.
 - **`clip`** now accepts vector/array `lower` and `upper` bounds, broadcasting them against `X`.
 - **`broadcast3` upgraded to 2-D implicit expansion** (singleton rows/columns broadcast, not just scalars) — this also benefits `betainc` and `bitset`, e.g. `clip(X,[1 2 3 4],6)` clips each column to its own lower bound.
 - Rich ≥10-line help added for all batch-15 functions.
+
+---
+
+## Batch 16 — functions 151–160
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `colon` | ✅ | **fixed**: non-scalar bound uses first element (`1:size(A)`) | `gpuArray.colon` unsupported |
+| `colorbar` | 🟡 | colorbar accepted | nothing rendered to verify |
+| `colorcube` | 🟡 | colormap matrix | colormap-application example |
+| `colormap` | 🟡 | set named/RGB colormap | `cmap = colormap` query needs colormap-state tracking |
+| `colororder` | 🟡 | line color order accepted | `yyaxis`/`nexttile` graphics examples |
+| `colperm` | ✅ | column permutation by nonzero count | (page had no runnable examples) |
+| `combine` | 🟡 | symbolic-term combine | datastore `combine` examples need image datastores |
+| `comet` | 🟡 | animated comet accepted | not rendered |
+| `comet3` | 🟡 | animated 3-D comet accepted | not rendered |
+| `compan` | ✅ | companion matrix | `eig` returns the same roots in a different order |
+
+### Fixes landed in this batch
+- **`colon` / the `:` operator** now uses the first element of a non-scalar bound (matching MATLAB), so the common `1:size(A)` idiom returns `1:size(A,1)` instead of erroring; an empty bound yields an empty range. Normal scalar ranges are unchanged.
+- Rich ≥10-line help added for all batch-16 functions.

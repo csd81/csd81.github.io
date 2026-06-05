@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **150 / 1170** audited.
+Progress: **160 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -155,3 +155,13 @@ Progress: **150 / 1170** audited.
 | 148 | `cmap2gray` | 🟡 | needs image dataset |
 | 149 | `cnotGate` | 🟡 | gate object |
 | 150 | `colamd` | 🟡 | needs west0479 dataset |
+| 151 | `colon` | ✅ | non-scalar bound -> first element |
+| 152 | `colorbar` | 🟡 | accepted; not rendered |
+| 153 | `colorcube` | 🟡 | colormap matrix |
+| 154 | `colormap` | 🟡 | set ok; query needs state |
+| 155 | `colororder` | 🟡 | accepted; graphics examples |
+| 156 | `colperm` | ✅ | nonzero-count permutation |
+| 157 | `combine` | 🟡 | symbolic ok; datastores n/a |
+| 158 | `comet` | 🟡 | accepted; not rendered |
+| 159 | `comet3` | 🟡 | accepted; not rendered |
+| 160 | `compan` | ✅ | companion matrix |

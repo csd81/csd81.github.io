@@ -533,10 +533,12 @@ export class Interpreter implements Env {
         return this.resolveCall(e.name, [], nargout);
       }
       case 'range': {
-        const from = asScalar(await this.evalExpr(e.from, scope), 'range start');
-        const to = asScalar(await this.evalExpr(e.to, scope), 'range end');
-        const step = e.step ? asScalar(await this.evalExpr(e.step, scope), 'range step') : 1;
-        return [makeRange(from, step, to)];
+        // MATLAB's colon uses the first element of a non-scalar bound (`1:size(A)` → 1:size(A,1));
+        // an empty bound makes the range empty.
+        const fm = asMat(await this.evalExpr(e.from, scope)), tm = asMat(await this.evalExpr(e.to, scope));
+        const sm = e.step ? asMat(await this.evalExpr(e.step, scope)) : null;
+        if (numel(fm) === 0 || numel(tm) === 0 || (sm && numel(sm) === 0)) return [zeros(1, 0)];
+        return [makeRange(fm.data[0], sm ? sm.data[0] : 1, tm.data[0])];
       }
       case 'unary': {
         const raw = await this.evalExpr(e.e, scope);

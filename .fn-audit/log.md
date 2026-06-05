@@ -77,3 +77,7 @@ Build green; 1419 builtins, 0 without help.
 Fixed: clip vector/array bounds; broadcast3 upgraded to 2-D implicit expansion (benefits betainc/bitset/clip).
 Remaining mostly graphics (clf/clim/close/clear), non-deterministic clock, datasets (cmap2gray/colamd), quantum.
 Build green; 1419 builtins, 0 without help. *** 150/1170 audited (15 batches) ***
+## Batch 16 (fns 151-160): colon colorbar colorcube colormap colororder colperm combine comet comet3 compan
+Fixed: colon/range uses first element of a non-scalar bound (1:size(A) -> 1:size(A,1)); empty bound -> empty range.
+Remaining mostly graphics (colorbar/colormap query/colororder/comet), datastores (combine), eig order (compan), gpuArray.
+Build green; 1419 builtins, 0 without help.
