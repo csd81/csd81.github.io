@@ -704,3 +704,24 @@ All 35 batch-8 examples pass.
 - **`erfcx` accuracy**: replaced the naive `exp(x²)·erfc(x)` (which overflows × underflows to NaN for large x) with a Numerical-Recipes Chebyshev fit evaluated as `t·exp(poly)`. Now matches MATLAB across `erfcx(5)=0.1107`, `erfcx(10)=0.0561`, `erfcx(35)=0.0161`, `erfcx(±Inf)`.
 - **`eraseBetween` numeric positions**: `eraseBetween(str,startPos,endPos)` with numeric indices now deletes the inclusive character range (was "expected a string"); the text-boundary form is unchanged.
 - Rich ≥10-line help added for all batch-30 functions (incl. new structured `erf`/`erfc`/`erfcinv`/`erfcx`/`erfinv`).
+
+## Batch 31 — functions 301–310 (eval/evalc · elimination trees · QUBO · complex expint)
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `etime` | ✅ | seconds between two date vectors → `etime([2020 1 2..],[2020 1 1..])=86400` | — |
+| `etree` | ✅ | elimination-tree parent vector | — |
+| `etreeplot` | 🟡 | renders the elimination tree | visual only |
+| `eval` | ✅ | **fixed**: runs in caller workspace (assignments persist), displays when no output captured | — |
+| `evalc` | ✅ | **fixed**: captures output of value-less commands (`disp`, `magic(5)`) | — |
+| `evaluateObjective` | ✅ | QUBO objective `x'Qx+c'x+d`; multi-column scoring → `18`, `[18 7]` | — |
+| `exist` | ✅ | var(1)/builtin(5)/file(2)/dir(7) codes | — |
+| `exp` | ✅ | exponential, real and complex | complex scalar display shows tiny `1.2e-16i` vs MATLAB `0.0000i` |
+| `expand` | ✅ | symbolic expansion → `(x+1)^2`→`x^2+2x+1` | — |
+| `expint` | ✅ | **fixed**: complex `E1(z)` → `expint(1+2i)=-0.1268-0.0351i` | — |
+
+### Fixes landed in this batch
+- **`eval` executed in the caller workspace**: `evalInput` previously evaluated only a single expression and silently ignored assignments and value-less commands, so `eval('x=x+1;')` did not update `x`. It now runs the parsed statements via `runStmts` in the base scope (gated by whether a return value is wanted), so assignments persist and `eval('disp(42)')` works; `Z = eval('magic(3)')` still returns the value without display.
+- **`evalc`** now captures the output of commands that return nothing (it used to error "expression produced no value" on `evalc('disp(42)')`); it runs with display enabled and collects the text.
+- **`expint` complex**: added a complex `E1(z)` (power series for small `|z|`/left half-plane, Numerical-Recipes continued fraction elsewhere) → `expint(1+2i)` now matches MATLAB instead of returning the real-part value.
+- Rich ≥10-line help added for all batch-31 functions (incl. new structured `evalc`).

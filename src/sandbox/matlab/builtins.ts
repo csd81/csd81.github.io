@@ -43,7 +43,7 @@ import { SYM_BUILTINS } from './sym-builtins';
 export interface Env {
   output(text: string): void;
   requestInput(prompt: string): Promise<string>;
-  evalInput(text: string): Promise<Value>;
+  evalInput(text: string, wantValue?: boolean): Promise<Value>;
   graphics: Graphics;
   callHandle(h: Handle, args: Value[], nargout: number): Promise<Value[]>;
   makeHandle(name: string): Handle;
@@ -593,7 +593,11 @@ export const BUILTINS: Record<string, Builtin> = {
   beta: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, y) => gammaFn(x) * gammaFn(y) / gammaFn(x + y))),
   betaln: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, y) => logGamma(x) + logGamma(y) - logGamma(x + y))),
   psi: ew(digamma),
-  expint: ew(expintE1),
+  expint: async (a) => {
+    const A = m(a[0]);
+    if (isComplex(A)) { const o = zeros(A.rows, A.cols); o.idata = new Float64Array(A.data.length); for (let i = 0; i < A.data.length; i++) { const [r, im] = expintE1Complex(A.data[i], A.idata![i]); o.data[i] = r; o.idata![i] = im; } return ret(o); }
+    return ret(map(A, expintE1));
+  },
   sinint: ew((x) => cisi(x)[0]),
   cosint: ew((x) => cisi(x)[1]),
   legendre: async (a) => {
@@ -2017,8 +2021,8 @@ export const BUILTINS: Record<string, Builtin> = {
   deal: async (a, n) => { const k = Math.max(1, n); if (a.length === 1) return new Array(k).fill(a[0]); return a.slice(0, k); },
   func2str: async (a) => { const h = handle(a[0], 'func2str'); return ret(str(h.name && h.name !== 'anonymous' ? h.name : '@anonymous')); },
   str2func: async (a, _n, env) => { const sstr = asString(a[0]).trim(); return sstr.startsWith('@') ? ret(await env.evalInput(sstr)) : ret(env.makeHandle(sstr.replace(/^@/, ''))); },
-  eval: async (a, _n, env) => { const v = await env.evalInput(asString(a[0])); return v === undefined ? [] : ret(v); },
-  evalc: async (a, _n, env) => { let buf = ''; const orig = env.output; (env as { output: (t: string) => void }).output = (t) => { buf += t; }; try { await env.evalInput(asString(a[0])); } finally { (env as { output: (t: string) => void }).output = orig; } return ret(str(buf)); },
+  eval: async (a, n, env) => { const v = await env.evalInput(asString(a[0]), n >= 1); return n >= 1 ? ret(v) : []; },
+  evalc: async (a, _n, env) => { let buf = ''; const orig = env.output; (env as { output: (t: string) => void }).output = (t) => { buf += t; }; try { await env.evalInput(asString(a[0]), false); } finally { (env as { output: (t: string) => void }).output = orig; } return ret(str(buf)); },
   inline: async (a, _n, env) => { const expr = asString(a[0]); const vars = a.length >= 2 ? a.slice(1).map((v) => asString(v)) : guessVars(expr); return ret(await env.evalInput(`@(${vars.join(',')}) ${expr}`)); },
   symvar: async (a) => { const vars = isHandle(a[0]) ? [] : guessVars(asString(a[0])); return ret(makeStrArr(vars.length, 1, vars)); },
   vectorize: async (a) => ret(str(asString(a[0]).replace(/(?<![.\\])([*/^])/g, '.$1'))),
@@ -4332,6 +4336,24 @@ function expintE1(x: number): number {
   let sum = -EULER_GAMMA - Math.log(x), xk = 1, kfact = 1;
   for (let k = 1; k <= 200; k++) { xk *= x; kfact *= k; const term = (k % 2 ? 1 : -1) * xk / (k * kfact); sum += term; if (Math.abs(term) < 1e-16 * Math.abs(sum)) break; }
   return sum;
+}
+/** Complex exponential integral E1(z): power series for small |z| / Re(z)≤0, continued
+ *  fraction (Numerical Recipes) for the right half-plane. */
+function expintE1Complex(zr: number, zi: number): [number, number] {
+  const mag = Math.hypot(zr, zi);
+  const cmul = (ar: number, ai: number, br: number, bi: number): [number, number] => [ar * br - ai * bi, ar * bi + ai * br];
+  const cdiv = (ar: number, ai: number, br: number, bi: number): [number, number] => { const d = br * br + bi * bi; return [(ar * br + ai * bi) / d, (ai * br - ar * bi) / d]; };
+  if (mag <= 2 || zr <= 0) {
+    // E1(z) = -γ - Log(z) + Σ_{k≥1} (-1)^{k-1} z^k/(k·k!)
+    let sr = -EULER_GAMMA - Math.log(mag), si = -Math.atan2(zi, zr);
+    let pr = 1, pi = 0, kfact = 1;
+    for (let k = 1; k <= 300; k++) { [pr, pi] = cmul(pr, pi, zr, zi); kfact *= k; const coef = (k % 2 ? 1 : -1) / (k * kfact); sr += coef * pr; si += coef * pi; if (k > 2 && Math.hypot(coef * pr, coef * pi) < 1e-18 * Math.hypot(sr, si)) break; }
+    return [sr, si];
+  }
+  // continued fraction E1(z) = e^{-z} · 1/(z+1 − 1²/(z+3 − 2²/(z+5 − …)))
+  let br = zr + 1, bi = zi; let cr = 1e300, ci = 0; let [dr, di] = cdiv(1, 0, br, bi); let hr = dr, hi = di;
+  for (let i = 1; i <= 300; i++) { const a = -i * i; br += 2; const tr = a * dr + br, ti = a * di + bi; [dr, di] = cdiv(1, 0, tr, ti); const [qr, qi] = cdiv(a, 0, cr, ci); cr = br + qr; ci = bi + qi; const [delr, deli] = cmul(cr, ci, dr, di); [hr, hi] = cmul(hr, hi, delr, deli); if (Math.hypot(delr - 1, deli) < 1e-15) break; }
+  const ex = Math.exp(-zr); return cmul(hr, hi, ex * Math.cos(-zi), ex * Math.sin(-zi));
 }
 
 /** Sine and cosine integrals [Si(x), Ci(x)] (Numerical Recipes cisi). */

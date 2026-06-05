@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **300 / 1170** audited.
+Progress: **310 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -305,3 +305,13 @@ Progress: **300 / 1170** audited.
 | 298 | `erfinv` | ✅ | **fixed**: NaN outside [-1,1] domain |
 | 299 | `error` | ✅ | throw error w/ id + sprintf format |
 | 300 | `errorbar` | 🟡 | renders; vertical/horizontal/both |
+| 301 | `etime` | ✅ | seconds between date vectors |
+| 302 | `etree` | ✅ | elimination tree parent vector |
+| 303 | `etreeplot` | 🟡 | renders elimination tree |
+| 304 | `eval` | ✅ | **fixed**: runs in caller scope (assignments persist), display when no output |
+| 305 | `evalc` | ✅ | **fixed**: captures output of value-less commands (disp) |
+| 306 | `evaluateObjective` | ✅ | QUBO objective; multi-column scoring |
+| 307 | `exist` | ✅ | var/builtin/file/dir codes |
+| 308 | `exp` | ✅ | exponential (real+complex) |
+| 309 | `expand` | ✅ | symbolic expansion |
+| 310 | `expint` | ✅ | **fixed**: complex E1(z) support |

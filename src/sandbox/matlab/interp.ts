@@ -157,10 +157,14 @@ export class Interpreter implements Env {
   writeFileText(name: string, text: string) { this.files.set(this.fileKey(name), new TextEncoder().encode(text)); }
   listFiles(): string[] { return [...this.files.keys()].sort(); }
   deleteFile(name: string) { this.files.delete(this.fileKey(name)); }
-  async evalInput(text: string): Promise<Value> {
+  async evalInput(text: string, wantValue = true): Promise<Value> {
     const prog = parse(text);
-    const stmt = prog.stmts[0];
-    if (stmt && stmt.t === 'expr') return this.evalExpr(stmt.e, this.base);
+    for (const f of prog.functions) this.funcs.set(f.name, f);
+    // A single bare expression returns its value (for `v = eval('expr')`, str2num, anon handles).
+    if (wantValue && prog.stmts.length === 1 && prog.stmts[0].t === 'expr') return this.evalExpr(prog.stmts[0].e, this.base);
+    // Otherwise execute the statements in the base workspace so assignments persist and
+    // value-less commands (disp, plot, …) run and display as if typed.
+    await this.runStmts(prog.stmts, this.base);
     return empty();
   }
 
