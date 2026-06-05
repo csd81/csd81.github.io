@@ -12,15 +12,19 @@ import type { Value } from '../values';
 import type { HelpEntry } from '../help';
 import type { ToolboxModule } from './types';
 import { AEROSPACE } from './aerospace';
+import { AUDIO } from './audio';
 import { COMM } from './comm';
 import { CONTROL } from './control';
 import { CURVEFIT } from './curvefit';
 import { ECON } from './econ';
+import { FINANCE } from './finance';
 import { FINANCIAL } from './financial';
 import { FUZZY } from './fuzzy';
 import { IMAGES } from './images';
 import { MAPPING } from './mapping';
+import { NAV } from './nav';
 import { Pde } from './pde';
+import { RADAR } from './radar';
 import { SIGNAL } from './signal';
 import { SIMULINK } from './simulink';
 import { STATS } from './stats';
@@ -29,8 +33,8 @@ import { WAVELET } from './wavelet';
 
 /** All registered toolboxes, in precedence order (first wins on inter-toolbox collision). */
 export const TOOLBOXES: ToolboxModule[] = [
-  AEROSPACE, COMM, CONTROL, CURVEFIT, ECON, FINANCIAL, FUZZY, IMAGES,
-  MAPPING, Pde, SIGNAL, SIMULINK, STATS, SYMBOLIC, WAVELET,
+  AEROSPACE, AUDIO, COMM, CONTROL, CURVEFIT, ECON, FINANCE, FINANCIAL, FUZZY, IMAGES,
+  MAPPING, NAV, Pde, RADAR, SIGNAL, SIMULINK, STATS, SYMBOLIC, WAVELET,
 ];
 
 export const TOOLBOX_BUILTINS: Record<string, Builtin> = {};
