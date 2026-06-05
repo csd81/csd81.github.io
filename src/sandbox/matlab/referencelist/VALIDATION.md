@@ -376,3 +376,84 @@ Validated against MATLAB R2026a. **2 bugs found and fixed:**
 
 ### V301–V400 commit
 Build green (tsc+vite); fixes pushed (staged explicitly to exclude `toolboxes/`). Bugs caught by live-MATLAB cross-validation in functions 301–400: **`extract` literal semantics, `fft(x,n[,dim])`, `fillmissing` method name + `nearest` logic, `filloutliers` fill method, `gradient` 2-D, `gallery` string name**. (V15 was clean.) The recurring char-array-vs-string option/name issue has now appeared in `bitcmp`, `cellfun`, `datestr`, `fillmissing`, `gallery`.
+
+## V17 — functions 401–425 (graph … histc)
+
+Validated against MATLAB R2026a. **No bugs — all functions matched.**
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `hadamard`/`hankel`/`hilb` | ✅ | special matrices |
+| `hess` | ✅ | Hessenberg reduction (subdiagonal zeroed) |
+| `hex2dec`/`hex2num`/`hex2rgb` | ✅ | hex conversions |
+| `griddedInterpolant`/`griddata`/`griddatan` | ✅ | interpolation → 25, 1 |
+| `groupcounts`/`groupsummary` | ✅ | grouped aggregation |
+| `gsvd` | ✅ | generalized SVD |
+| `hascycles` | ✅ | cycle detection → true/false |
+| `head`/`height` | ✅ | table head / row count |
+| `histc`/`hist` | ✅ | histogram bin counts |
+| `gray`/`grid`/`gtext`/`highlight`/`graph`/`hGate`/`help` | 🟡 | graphics / object / quantum |
+
+## V18 — functions 426–450 (histcounts … imagesc)
+
+Validated against MATLAB R2026a. **2 bugs found and fixed:**
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `histcounts`/`histcounts2` | ✅ | bin counts with edges and N-bins |
+| `horzcat` | ✅ | horizontal concatenation |
+| `hour`/`hours` | ✅ | datetime hour, duration in hours |
+| `hsv2rgb` | ✅ | `hsv2rgb([0 1 1])`→[1 0 0] |
+| `hypot` | ✅ | `hypot(3,4)`→5 |
+| `idivide` | ✅ | fix/ceil/floor/round rounding modes |
+| `ifft`/`ifft2`/`ifftn`/`ifftshift` | ✅ | inverse transforms |
+| `imag` | ✅ | imaginary part |
+| `ichol`/`ilu` | ✅ | incomplete factorizations |
+| `holes` | ✅ | **fixed** (see below) |
+| `im2gray`/`rgb2gray` | ✅ | **fixed** (see below) |
+| `histogram`/`histogram2`/`hold`/`hot`/`hsv`/`image`/`imagesc`/`idGate` | 🟡 | graphics / quantum |
+
+### Fixes
+- **`holes(pgon)`**: was a stub returning an empty polyshape. Now extracts the hole boundaries (negative signed-area loops) and returns them as a polyshape with their orientation flipped to solid. `area(holes(3×3-with-1×1-hole))`→1 matches MATLAB.
+- **`rgb2gray`/`im2gray` truecolor images**: always treated the input as an m×3 colormap, so a truecolor m×n×3 image (e.g. `cat(3,1,0,0)`) wrongly produced a gray triplet instead of an m×n luminance array. Now detects the 3-D `m×n×3` case (luminance per pixel → m×n) while keeping the m×3 colormap path. Verified `im2gray(cat(3,1,0,0))`→0.2989 (scalar) and a 2×2×3 image → 2×2 against MATLAB.
+
+## V19 — functions 451–475 (importdata … interp1)
+
+Validated against MATLAB R2026a. **1 bug found and fixed:**
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `int8`/`int16`/`int32`/`int64`/`int2str` | ✅ | saturating casts |
+| `ind2sub` | ✅ | linear → subscripts |
+| `integral`/`integral2`/`integral3` | ✅ | incl. infinite limits → √π |
+| `interp1` | ✅ | **fixed** (see below) |
+| `inpolygon` | ✅ | point-in-polygon → 1 |
+| `incidence`/`indegree`/`inedges` | ✅ | graph incidence/in-degree |
+| `incenter` | ✅ | triangle incenter |
+| `innerjoin` | ✅ | table inner join → 1 row |
+| `insertAfter`/`insertBefore`/`insert` | ✅ | string insertion |
+| `importdata`/`inShape`/`initGate`/`inline`/`input`/`inputname` | 🟡 | I/O / object / interactive |
+
+### Fix
+- **`interp1` methods**: only `'linear'` and `'nearest'` were implemented; `'spline'`/`'pchip'`/`'cubic'`/`'previous'`/`'next'` all silently fell back to linear, and `'nearest'` broke ties toward the previous point. Now: `'spline'` uses the cubic-spline coefficients (`interp1([1 2 3 4],[1 8 27 64],2.5,"spline")`→15.625, exact for cubic data), `'pchip'`/`'cubic'`/`'makima'` use the shape-preserving Hermite interpolant (→15.6405), `'previous'`/`'next'` do step interpolation, and `'nearest'` breaks ties toward the next point (`interp1([1 2 3],[10 20 30],2.5,"nearest")`→30) — all matching MATLAB.
+
+## V20 — functions 476–500 (interp2 … iscellstr) — **V500 boundary: built + pushed**
+
+Validated against MATLAB R2026a. **No bugs — all functions matched.**
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `interp2`/`interp3`/`interpn`/`interpft` | ✅ | multi-D + Fourier interpolation |
+| `intersect` | ✅ | sorted + `"stable"` |
+| `intmax`/`intmin` | ✅ | integer-class limits |
+| `inv`/`invhilb` | ✅ | inverse, inverse Hilbert |
+| `ipermute` | ✅ | inverse permute round-trip |
+| `iqr` | ✅ | interquartile range → 4 |
+| `isa`/`isapprox`/`isbanded`/`isbetween` | ✅ | type/approx/band/range predicates |
+| `iscategorical`/`iscell`/`iscellstr` | ✅ | `iscellstr` correctly false for string scalars, true for char vectors |
+| `isKey`/`isStringScalar`/`isUnderlyingType`/`iscategory`/`isInterior`/`isConfigured`/`isConnected` | ✅ | membership / type predicates |
+
+---
+
+### V401–V500 commit
+Build green (tsc+vite); fixes pushed (staged explicitly to exclude `toolboxes/`). Bugs caught by live-MATLAB cross-validation in functions 401–500: **`holes` (was empty stub), `rgb2gray`/`im2gray` truecolor images, `interp1` methods (spline/pchip/previous/next + nearest tie)**. (V17 and V20 were clean — the special-matrix/predicate territory is solid.)

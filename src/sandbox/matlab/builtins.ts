@@ -2551,11 +2551,15 @@ export const BUILTINS: Record<string, Builtin> = {
     return nout >= 2 ? [xmin, scalar(fv[bi]), scalar(1)] : [xmin];   // [x, fval, exitflag]
   },
   interp1: async (a) => {
-    const x = toArray(m(a[0])), v = toArray(m(a[1])), xq = m(a[2]); const method = a.length >= 4 ? asString(a[3]) : 'linear';
+    const x = toArray(m(a[0])), v = toArray(m(a[1])), xq = m(a[2]); const method = (a.length >= 4 ? asString(a[3]) : 'linear').toLowerCase(); const L = x.length - 1;
+    if (method === 'spline') { const C = splineCoefs(x, v); const at = (q: number) => { let i = 0; while (i < L - 1 && q >= x[i + 1]) i++; const t = q - x[i]; let val = 0; for (let j = 0; j < 4; j++) val = val * t + C.data[i + j * L]; return val; }; return ret(map(xq, at)); }
+    if (method === 'pchip' || method === 'cubic' || method === 'makima') { const d = pchipSlopes(x, v); return ret(map(xq, (q) => hermiteEval(x, v, d, q))); }
     const interp = (q: number) => {
+      if (method === 'previous') { let i = 0; while (i < L && q >= x[i + 1]) i++; return q < x[0] ? NaN : v[i]; }
+      if (method === 'next') { let i = L; while (i > 0 && q <= x[i - 1]) i--; return q > x[L] ? NaN : v[i]; }
       if (q <= x[0]) return method === 'nearest' ? v[0] : v[0] + (v[1] - v[0]) * (q - x[0]) / (x[1] - x[0]);
       let i = 0; while (i < x.length - 2 && q > x[i + 1]) i++;
-      if (method === 'nearest') return Math.abs(q - x[i]) <= Math.abs(q - x[i + 1]) ? v[i] : v[i + 1];
+      if (method === 'nearest') return Math.abs(q - x[i]) < Math.abs(q - x[i + 1]) ? v[i] : v[i + 1];   // tie → next (MATLAB)
       return v[i] + (v[i + 1] - v[i]) * (q - x[i]) / (x[i + 1] - x[i]);
     };
     return ret(map(xq, interp));
@@ -3384,7 +3388,7 @@ export const BUILTINS: Record<string, Builtin> = {
   vertexNormal: async (a) => { const g = gGeom(a[0]); const acc = g.points.map(() => [0, 0, 0]); for (const t of g.conn ?? []) { const p = t.map((vi) => g.points[vi]); const u = p[1].map((x, j) => x - p[0][j]), w = p[2].map((x, j) => x - p[0][j]); const nrm = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]]; for (const vi of t) for (let j = 0; j < 3; j++) acc[vi][j] += nrm[j]; } return ret(fromRows(acc.map((n) => { const L = Math.hypot(...n) || 1; return n.map((x) => x / L); }))); },
   featureEdges: async (a) => { const g = gGeom(a[0]); const thr = a.length >= 2 ? asScalar(a[1]) : Math.PI / 6; const faceN = (t: number[]) => { const p = t.map((vi) => g.points[vi]); const u = p[1].map((x, j) => x - p[0][j]), w = p[2].map((x, j) => x - p[0][j]); const nn = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]]; const L = Math.hypot(...nn) || 1; return nn.map((x) => x / L); }; const edgeFaces = new Map<string, { e: number[]; faces: number[] }>(); (g.conn ?? []).forEach((t, ti) => { for (let k = 0; k < t.length; k++) { const e = [t[k], t[(k + 1) % t.length]].sort((x, y) => x - y); const key = e.join('_'); const en = edgeFaces.get(key) ?? edgeFaces.set(key, { e, faces: [] }).get(key)!; en.faces.push(ti); } }); const feat: number[][] = []; for (const { e, faces } of edgeFaces.values()) { if (faces.length === 1) { feat.push(e); continue; } if (faces.length === 2) { const n1 = faceN(g.conn![faces[0]]), n2 = faceN(g.conn![faces[1]]); const dot = Math.max(-1, Math.min(1, n1[0] * n2[0] + n1[1] * n2[1] + n1[2] * n2[2])); if (Math.acos(Math.abs(dot)) > thr) feat.push(e); } } const out = zeros(feat.length, 2); feat.forEach((e, i) => { out.data[i] = e[0] + 1; out.data[i + feat.length] = e[1] + 1; }); return ret(out); },
   overlaps: async (a) => { const g1 = gGeom(a[0]), g2 = gGeom(a[1]); const bb = (g: Geom) => { const xs = g.points.filter((p) => !Number.isNaN(p[0])).map((p) => p[0]), ys = g.points.filter((p) => !Number.isNaN(p[0])).map((p) => p[1]); return [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)]; }; const b1 = bb(g1), b2 = bb(g2); const o = bool(b1[0] <= b2[1] && b2[0] <= b1[1] && b1[2] <= b2[3] && b2[2] <= b1[3]); return ret(o); },
-  holes: async (a) => { gGeom(a[0]); return ret({ kind: 'geom', gkind: 'polyshape', points: [], dim: 2 } as Geom); },
+  holes: async (a) => { const g = gGeom(a[0]); const hb = polyBoundaries(g.points).filter((b) => loopSignedArea(b) < 0); const pts: number[][] = []; hb.forEach((b, i) => { if (i > 0) pts.push([NaN, NaN]); pts.push(...[...b].reverse()); }); return ret({ kind: 'geom', gkind: 'polyshape', points: pts, dim: 2 } as Geom); },
   ishole: async (a) => { const g = gGeom(a[0]); let nb = g.points.length ? 1 : 0; for (const p of g.points) if (Number.isNaN(p[0])) nb++; const o = zeros(nb, 1); o.isBool = true; return ret(o); },
   issimplified: async () => ret(bool(true)),
   isInterior: async (a) => { const g = gGeom(a[0]); const o = zeros((g.conn ?? []).length, 1); o.isBool = true; for (let i = 0; i < o.data.length; i++) o.data[i] = 1; return ret(o); },
@@ -4274,7 +4278,7 @@ export const BUILTINS: Record<string, Builtin> = {
   // colour-space conversions
   hsv2rgb: async (a) => { const M = m(a[0]); const o = zeros(M.rows, M.cols); for (let r = 0; r < M.rows; r++) { const [R, G, B] = hsv2rgb(M.data[r], M.data[r + M.rows], M.data[r + 2 * M.rows]); o.data[r] = R; o.data[r + M.rows] = G; o.data[r + 2 * M.rows] = B; } return ret(o); },
   rgb2hsv: async (a) => { const M = m(a[0]); const o = zeros(M.rows, M.cols); for (let r = 0; r < M.rows; r++) { const [H, S, V] = rgb2hsvFn(M.data[r], M.data[r + M.rows], M.data[r + 2 * M.rows]); o.data[r] = H; o.data[r + M.rows] = S; o.data[r + 2 * M.rows] = V; } return ret(o); },
-  rgb2gray: async (a) => { const M = m(a[0]); const o = zeros(M.rows, M.cols); for (let r = 0; r < M.rows; r++) { const g = 0.2989 * M.data[r] + 0.587 * M.data[r + M.rows] + 0.114 * M.data[r + 2 * M.rows]; o.data[r] = g; o.data[r + M.rows] = g; o.data[r + 2 * M.rows] = g; } return ret(o); },
+  rgb2gray: async (a) => { const M = m(a[0]); const dims = ndSize(M); if (dims.length >= 3 && dims[2] === 3) { const mm = dims[0], nn = dims[1], plane = mm * nn; const o = zeros(mm, nn); for (let i = 0; i < plane; i++) o.data[i] = 0.2989 * M.data[i] + 0.587 * M.data[i + plane] + 0.114 * M.data[i + 2 * plane]; return ret(o); } const o = zeros(M.rows, M.cols); for (let r = 0; r < M.rows; r++) { const g = 0.2989 * M.data[r] + 0.587 * M.data[r + M.rows] + 0.114 * M.data[r + 2 * M.rows]; o.data[r] = g; o.data[r + M.rows] = g; o.data[r + 2 * M.rows] = g; } return ret(o); },
   cmap2gray: async (a, n, env) => BUILTINS.rgb2gray(a, n, env),
   im2gray: async (a, n, env) => BUILTINS.rgb2gray(a, n, env),
   hex2rgb: async (a) => {
