@@ -1475,7 +1475,7 @@ export const BUILTINS: Record<string, Builtin> = {
   clip: async (a) => ret(broadcast3(m(a[0]), m(a[1]), m(a[2]), (x, lo, hi) => Math.min(hi, Math.max(lo, x)))),
   isoutlier: async (a) => { const A = m(a[0]); const r = colMap(A, (c) => outlierMask(c)); r.isBool = true; return [r]; },
   filloutliers: async (a) => { const A = m(a[0]); const fillNum = a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar ? asScalar(a[1]) : null; return ret(colMap(A, (c) => fillOutliersVec(c, fillNum))); },
-  rmoutliers: async (a) => { const c = toArray(m(a[0])); const mask = outlierMask(c); const kept = c.filter((_, i) => mask[i] === 0); return ret(m(a[0]).cols === 1 ? colVec(kept) : rowVec(kept)); },
+  rmoutliers: async (a) => { const c = toArray(m(a[0])); const mask = outlierMaskWith(c, a); const kept = c.filter((_, i) => mask[i] === 0); return ret(m(a[0]).cols === 1 ? colVec(kept) : rowVec(kept)); },
   islocalmax: async (a) => { const A = m(a[0]); const v = toArray(A); const o = v.map((_, i) => (i > 0 && i < v.length - 1 && v[i] > v[i - 1] && v[i] > v[i + 1] ? 1 : 0)); const out = A.cols === 1 ? colVec(o) : rowVec(o); out.isBool = true; return [out]; },
   islocalmin: async (a) => { const A = m(a[0]); const v = toArray(A); const o = v.map((_, i) => (i > 0 && i < v.length - 1 && v[i] < v[i - 1] && v[i] < v[i + 1] ? 1 : 0)); const out = A.cols === 1 ? colVec(o) : rowVec(o); out.isBool = true; return [out]; },
   isapprox: async (a) => { const tol = a.length >= 3 ? asScalar(a[2]) : 1e-6; const r = elementwise(m(a[0]), m(a[1]), (x, y) => (Math.abs(x - y) <= tol + tol * Math.max(Math.abs(x), Math.abs(y)) ? 1 : 0)); return ret({ ...r, isBool: true }); },
@@ -1502,8 +1502,30 @@ export const BUILTINS: Record<string, Builtin> = {
     P.forEach((p) => segs.push(discLoop(p[0], p[1], d)));
     return ret(polyResultGeom(segs));
   },
-  setdiff: async (a) => { const A = m(a[0]); const sb = new Set(toArray(m(a[1]))); const r = setUniq(toArray(A).filter((x) => !sb.has(x))); return ret(A.rows === 1 ? rowVec(r) : colVec(r)); },
-  setxor: async (a) => { const A = m(a[0]), B = m(a[1]); const sa = new Set(toArray(A)), sb = new Set(toArray(B)); const r = setUniq([...toArray(A).filter((x) => !sb.has(x)), ...toArray(B).filter((x) => !sa.has(x))]); return ret(A.rows === 1 ? rowVec(r) : colVec(r)); },
+  setdiff: async (a, nargout) => {
+    const A = m(a[0]); const arr = toArray(A); const sb = new Set(toArray(m(a[1])));
+    const stable = a.some((x) => (isStr(x) || (isMat(x) && (x as Mat).isChar)) && asString(x).toLowerCase() === 'stable');
+    const seen = new Set<number>(); const pairs: [number, number][] = [];
+    for (let i = 0; i < arr.length; i++) { const v = arr[i]; if (!sb.has(v) && !seen.has(v)) { seen.add(v); pairs.push([v, i + 1]); } }
+    if (!stable) pairs.sort((p, q) => p[0] - q[0]);
+    const C = A.rows === 1 ? rowVec(pairs.map((p) => p[0])) : colVec(pairs.map((p) => p[0]));
+    return nargout >= 2 ? [C, colVec(pairs.map((p) => p[1]))] : [C];
+  },
+  setxor: async (a, nargout) => {
+    const A = m(a[0]), B = m(a[1]); const aArr = toArray(A), bArr = toArray(B);
+    const sa = new Set(aArr), sb = new Set(bArr);
+    const stable = a.some((x) => (isStr(x) || (isMat(x) && (x as Mat).isChar)) && asString(x).toLowerCase() === 'stable');
+    const seenA = new Set<number>(), seenB = new Set<number>(); const aOnly: [number, number][] = [], bOnly: [number, number][] = [];
+    for (let i = 0; i < aArr.length; i++) { const v = aArr[i]; if (!sb.has(v) && !seenA.has(v)) { seenA.add(v); aOnly.push([v, i + 1]); } }
+    for (let i = 0; i < bArr.length; i++) { const v = bArr[i]; if (!sa.has(v) && !seenB.has(v)) { seenB.add(v); bOnly.push([v, i + 1]); } }
+    let cvals: number[], ia: number[], ib: number[];
+    if (stable) { cvals = [...aOnly.map((p) => p[0]), ...bOnly.map((p) => p[0])]; ia = aOnly.map((p) => p[1]); ib = bOnly.map((p) => p[1]); }
+    else { const all = [...aOnly.map((p) => [p[0], p[1], 0] as [number, number, number]), ...bOnly.map((p) => [p[0], p[1], 1] as [number, number, number])].sort((p, q) => p[0] - q[0]); cvals = all.map((x) => x[0]); ia = all.filter((x) => x[2] === 0).map((x) => x[1]); ib = all.filter((x) => x[2] === 1).map((x) => x[1]); }
+    const C = A.rows !== 1 || B.rows !== 1 ? colVec(cvals) : rowVec(cvals);
+    if (nargout >= 3) return [C, colVec(ia), colVec(ib)];
+    if (nargout >= 2) return [C, colVec(ia)];
+    return [C];
+  },
   // ── more statistics ──
   missing: async () => ret(scalar(NaN)),
   kde: async (a, n) => {
@@ -2305,7 +2327,7 @@ export const BUILTINS: Record<string, Builtin> = {
   },
 
   // ── Batch G: stats / preprocessing / misc numeric ──
-  rms: async (a) => ret(colReduce(m(a[0]), (c) => Math.sqrt(c.reduce((s, x) => s + x * x, 0) / c.length))),
+  rms: async (a) => { const A = m(a[0]); const f = (c: number[]) => Math.sqrt(c.reduce((s, x) => s + x * x, 0) / c.length); if (a.length >= 2 && isMat(a[1])) return ret(reduceAlongDim(A, asScalar(a[1]), (fib) => f(fib)).v); return ret(colReduce(A, f)); },
   geomean: async (a) => ret(colReduce(m(a[0]), (c) => Math.exp(c.reduce((s, x) => s + Math.log(x), 0) / c.length))),
   harmmean: async (a) => ret(colReduce(m(a[0]), (c) => c.length / c.reduce((s, x) => s + 1 / x, 0))),
   movmad: async (a) => ret(movWindow(m(a[0]), Math.round(asScalar(a[1])), (w) => { const med = medianOf(w); return medianOf(w.map((x) => Math.abs(x - med))); })),
@@ -2313,7 +2335,7 @@ export const BUILTINS: Record<string, Builtin> = {
   movstd: async (a) => ret(movWindow(m(a[0]), Math.round(asScalar(a[1])), (w) => Math.sqrt(variance(w)))),
   movvar: async (a) => ret(movWindow(m(a[0]), Math.round(asScalar(a[1])), variance)),
   mape: async (a) => { const F = toArray(m(a[0])), A = toArray(m(a[1])); let s = 0; for (let i = 0; i < F.length; i++) s += Math.abs((F[i] - A[i]) / A[i]); return ret(scalar(100 * s / F.length)); },
-  rmse: async (a) => { const F = toArray(m(a[0])), A = toArray(m(a[1])); let s = 0; for (let i = 0; i < F.length; i++) s += (F[i] - A[i]) ** 2; return ret(scalar(Math.sqrt(s / F.length))); },
+  rmse: async (a) => { const D = elementwise(m(a[0]), m(a[1]), (x, y) => x - y); const f = (c: number[]) => Math.sqrt(c.reduce((s, x) => s + x * x, 0) / c.length); if (a.length >= 3 && isMat(a[2]) && numel(a[2]) === 1) return ret(reduceAlongDim(D, asScalar(a[2]), (fib) => f(fib)).v); return ret(colReduce(D, f)); },
 
   // missing-value handling (NaN convention)
   ismissing: async (a) => { const A = m(a[0]); return [{ ...map(A, (x) => (Number.isNaN(x) ? 1 : 0)), isBool: true }]; },
@@ -2520,7 +2542,17 @@ export const BUILTINS: Record<string, Builtin> = {
     const at = (q: number) => { let i = 0; while (i < L - 1 && q >= x[i + 1]) i++; const t = q - x[i]; let v = 0; for (let j = 0; j < 4; j++) v = v * t + C.data[i + j * L]; return v; };
     return ret(map(m(a[2]), at));
   },
-  roots: async (a) => { const { re, im } = durandKerner(toArray(m(a[0]))); return ret(finishComplex(re.length, 1, Float64Array.from(re), Float64Array.from(im))); },
+  roots: async (a) => {
+    const A = m(a[0]); const { re, im } = durandKerner(toArray(A));
+    // For a real-coefficient polynomial, snap negligible imaginary residue (e.g. on repeated real
+    // roots) to zero so results match MATLAB's companion-eigenvalue output. The tolerance scales
+    // with the dominant root magnitude, so genuinely small complex roots are preserved.
+    if (!isComplex(A) && re.length) {
+      const scale = Math.max(1, ...re.map(Math.abs), ...im.map(Math.abs));
+      for (let i = 0; i < im.length; i++) if (Math.abs(im[i]) < 1e-6 * scale) im[i] = 0;
+    }
+    return ret(finishComplex(re.length, 1, Float64Array.from(re), Float64Array.from(im)));
+  },
   ode45: async (a, n, env) => odeSolve(a, n, env),
   ode78: async (a, n, env) => odeSolve(a, n, env),
   ode89: async (a, n, env) => odeSolve(a, n, env),
@@ -3203,7 +3235,23 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   polyshape: async (a) => {
     let verts: number[][];
-    if (a.length >= 2 && isMat(a[0]) && isMat(a[1])) { const x = toArray(m(a[0])), y = toArray(m(a[1])); verts = x.map((xi, i) => [xi, y[i]]); }
+    if (a.length >= 2 && isCell(a[0]) && isCell(a[1])) {
+      // cell form: each cell of x{} and y{} is one boundary; nested boundaries become holes
+      const xc = (a[0] as Cell).items, yc = (a[1] as Cell).items;
+      const bnds: number[][][] = [];
+      for (let b = 0; b < xc.length; b++) { const x = toArray(m(xc[b])), y = toArray(m(yc[b])); const loop: number[][] = []; for (let i = 0; i < x.length; i++) loop.push([x[i], y[i]]); bnds.push(loop); }
+      const parts: number[][] = [];
+      bnds.forEach((loop, bi) => {
+        let depth = 0;
+        for (let bj = 0; bj < bnds.length; bj++) if (bj !== bi && bnds[bj].length && ghPointInside(loop[0][0], loop[0][1], bnds[bj])) depth++;
+        const wantPositive = depth % 2 === 0; // even nesting depth ⇒ solid (positive), odd ⇒ hole (negative)
+        const sa = loopSignedArea(loop);
+        const oriented = (wantPositive ? sa > 0 : sa < 0) ? loop : [...loop].reverse();
+        if (bi > 0) parts.push([NaN, NaN]);
+        parts.push(...oriented);
+      });
+      verts = parts;
+    } else if (a.length >= 2 && isMat(a[0]) && isMat(a[1])) { const x = toArray(m(a[0])), y = toArray(m(a[1])); verts = x.map((xi, i) => [xi, y[i]]); }
     else { verts = matRows(m(a[0])); }
     return ret({ kind: 'geom', gkind: 'polyshape', points: verts, dim: 2 } as Geom);
   },
@@ -3308,7 +3356,9 @@ export const BUILTINS: Record<string, Builtin> = {
   ishole: async (a) => { const g = gGeom(a[0]); let nb = g.points.length ? 1 : 0; for (const p of g.points) if (Number.isNaN(p[0])) nb++; const o = zeros(nb, 1); o.isBool = true; return ret(o); },
   issimplified: async () => ret(bool(true)),
   isInterior: async (a) => { const g = gGeom(a[0]); const o = zeros((g.conn ?? []).length, 1); o.isBool = true; for (let i = 0; i < o.data.length; i++) o.data[i] = 1; return ret(o); },
-  sortboundaries: async (a) => ret(a[0]), rmholes: async (a) => ret(a[0]), rmslivers: async (a) => ret(a[0]), sortregions: async (a) => ret(a[0]),
+  sortboundaries: async (a) => ret(a[0]),
+  rmholes: async (a) => { const g = gGeom(a[0]); if (g.gkind !== 'polyshape') return ret(a[0]); const solids = polyBoundaries(g.points).filter((b) => loopSignedArea(b) > 0); const pts: number[][] = []; solids.forEach((b, i) => { if (i > 0) pts.push([NaN, NaN]); pts.push(...b); }); return ret({ ...g, points: pts } as Geom); },
+  rmslivers: async (a) => ret(a[0]), sortregions: async (a) => ret(a[0]),
   boundaryshape: async (a) => { const g = gGeom(a[0]); if (g.gkind === 'polyshape') return ret(g); const pts = g.points; const k = pts[0]?.length === 2 ? convHull2D(pts.map((p) => p[0]), pts.map((p) => p[1])) : []; return ret({ kind: 'geom', gkind: 'polyshape', points: k.map((i) => pts[i - 1]), dim: 2 } as Geom); },
   unmesh: async (a, n) => { const g = gGeom(a[0]); const P = fromRows(g.points); const T = zeros((g.conn ?? []).length, g.dim + 1); (g.conn ?? []).forEach((s, i) => s.forEach((v, j) => { T.data[i + j * (g.conn ?? []).length] = v + 1; })); return n >= 2 ? [P, T] : [P]; },
   regions: async (a) => {
@@ -3571,7 +3621,20 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   permute: async (a) => ret(permuteND(m(a[0]), toArray(m(a[1])).map((x) => Math.round(x)))),
   ipermute: async (a) => { const ord = toArray(m(a[1])).map((x) => Math.round(x)); const inv = new Array(ord.length); ord.forEach((p, i) => { inv[p - 1] = i + 1; }); return ret(permuteND(m(a[0]), inv)); },
-  shiftdim: async (a) => { const A = m(a[0]); const n = a.length >= 2 ? Math.round(asScalar(a[1])) : (A.rows === 1 ? 1 : 0); return ret(n % 2 !== 0 ? transpose(A) : A); },
+  shiftdim: async (a, nargout) => {
+    const A = m(a[0]); const dims = ndSize(A);
+    if (a.length >= 2) {
+      const n = Math.round(asScalar(a[1]));
+      if (n > 0) { const nd = dims.length; const k = ((n % nd) + nd) % nd; const order: number[] = []; for (let i = k; i < nd; i++) order.push(i + 1); for (let i = 0; i < k; i++) order.push(i + 1); return ret(permuteND(A, order)); }
+      if (n < 0) { const newDims = [...Array(-n).fill(1), ...dims]; return ret(makeND(newDims, Float64Array.from(A.data), { idata: A.idata ? Float64Array.from(A.idata) : null, isChar: A.isChar })); }
+      return ret(A);
+    }
+    // no shift count: remove leading singleton dimensions, report how many
+    let shifts = 0; while (shifts < dims.length - 1 && dims[shifts] === 1) shifts++;
+    let nd = dims.slice(shifts); if (nd.length === 1) nd = [nd[0], 1];
+    const B = makeND(nd, Float64Array.from(A.data), { idata: A.idata ? Float64Array.from(A.idata) : null, isChar: A.isChar });
+    return nargout >= 2 ? [B, scalar(shifts)] : [B];
+  },
   rot90: async (a) => { const A = m(a[0]); const k = a.length >= 2 ? Math.round(asScalar(a[1])) : 1; return ret(rot90n(A, k)); },
   circshift: async (a) => {
     const A = m(a[0]); const k = m(a[1]); const isVec = A.rows === 1 || A.cols === 1;
@@ -5754,6 +5817,20 @@ function outlierMask(c: number[]): number[] {
   const s = [...c].sort((a, b) => a - b); const n = s.length; const med = n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2;
   const dev = c.map((x) => Math.abs(x - med)).sort((a, b) => a - b); const mad = dev.length % 2 ? dev[(dev.length - 1) / 2] : (dev[dev.length / 2 - 1] + dev[dev.length / 2]) / 2;
   const thr = 3 * 1.4826 * mad; return c.map((x) => (Math.abs(x - med) > thr && thr > 0 ? 1 : 0));
+}
+/** Outlier mask honoring isoutlier/rmoutliers method + percentiles options (args[1..]). */
+function outlierMaskWith(c: number[], a: Value[]): number[] {
+  for (let i = 1; i < a.length - 1; i++) {
+    if ((isStr(a[i]) || (isMat(a[i]) && (a[i] as Mat).isChar)) && asString(a[i]).toLowerCase() === 'percentiles') {
+      const lims = toArray(m(a[i + 1])); const s = [...c].sort((x, y) => x - y);
+      const lo = pctile(s, lims[0]), hi = pctile(s, lims[1]);
+      return c.map((x) => (x < lo || x > hi ? 1 : 0));
+    }
+  }
+  const method = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar)) ? asString(a[1]).toLowerCase() : 'median';
+  if (method === 'mean') { const n = c.length; const mu = c.reduce((s, x) => s + x, 0) / n; const sd = Math.sqrt(c.reduce((s, x) => s + (x - mu) ** 2, 0) / (n - 1 || 1)); const thr = 3 * sd; return c.map((x) => (Math.abs(x - mu) > thr && thr > 0 ? 1 : 0)); }
+  if (method === 'quartiles') { const s = [...c].sort((x, y) => x - y); const q1 = pctile(s, 25), q3 = pctile(s, 75); const iqr = q3 - q1; const lo = q1 - 1.5 * iqr, hi = q3 + 1.5 * iqr; return c.map((x) => (x < lo || x > hi ? 1 : 0)); }
+  return outlierMask(c);
 }
 function fillOutliersVec(c: number[], fillNum: number | null): number[] {
   const mask = outlierMask(c); const s = [...c].sort((a, b) => a - b); const n = s.length; const med = n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2;

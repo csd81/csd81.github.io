@@ -1,7 +1,9 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **880 / 1170** audited.
+Progress: **905 / 1170** audited.
+
+_From batch 59 onward, every function is cross-validated against live MATLAB R2026a (`matlab -batch`): 2-3 test calls run on both the sandbox and MATLAB, results must match._
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -889,3 +891,28 @@ Progress: **880 / 1170** audited.
 | 878 | `rgb2hsv` | ✅ | RGB → HSV |
 | 879 | `rgbplot` | 🟡 | colormap RGB plot (graphics) |
 | 880 | `ribbon` | 🟡 | ribbon plot (graphics) |
+| 881 | `rlim` | 🟡 | polar r-axis limits (graphics) |
+| 882 | `rmboundary` | ✅ | MATLAB-validated (area→1) |
+| 883 | `rmedge` | ✅ | MATLAB-validated (numedges→2) |
+| 884 | `rmfield` | ✅ | MATLAB-validated |
+| 885 | `rmholes` | ✅ | **fixed**: MATLAB-validated (area→9) |
+| 886 | `rmmissing` | ✅ | MATLAB-validated |
+| 887 | `rmnode` | ✅ | MATLAB-validated (numnodes→3) |
+| 888 | `rmoutliers` | ✅ | **fixed**: percentiles option, MATLAB-validated |
+| 889 | `rms` | ✅ | **fixed**: dim arg, MATLAB-validated |
+| 890 | `rmse` | ✅ | **fixed**: per-column, MATLAB-validated |
+| 891 | `rmslivers` | 🟡 | no-op (no sliver model) |
+| 892 | `rng` | ✅ | MATLAB-validated (determinism) |
+| 893 | `roots` | ✅ | **fixed**: clean double roots, MATLAB-validated |
+| 894 | `rosser` | ✅ | MATLAB-validated (8×8) |
+| 895 | `rot90` | ✅ | MATLAB-validated |
+| 896 | `rotate` | ✅ | polyshape rotate, MATLAB-validated |
+| 897 | `round` | ✅ | MATLAB-validated (N digits, ties) |
+| 898 | `rowfun` | ✅ | MATLAB-validated ([11;22;33]) |
+| 899 | `rref` | ✅ | MATLAB-validated |
+| 900 | `rsf2csf` | ✅ | MATLAB-validated (eigenvalues) |
+| 901 | `rtickangle` | 🟡 | polar tick angle (graphics) |
+| 902 | `rticklabels` | 🟡 | polar tick labels (graphics) |
+| 903 | `rticks` | 🟡 | polar r-ticks (graphics) |
+| 904 | `rxGate` | ✅ | X-rotation gate |
+| 905 | `rxxGate` | ✅ | XX-rotation gate |

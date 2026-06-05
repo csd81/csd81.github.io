@@ -1514,3 +1514,29 @@ All 25 already existed. **Four fixes**, two of them broad interpreter-wide impro
 - `union` of two **disjoint** polyshapes still collapses to a single region (the Greiner-Hormann clipping keeps one component); overlapping unions are correct (area additive). `regions`/`numRegions` themselves are now correct on any properly-formed multi-region polyshape.
 
 - Rich ≥10-line help added for all 25 functions (11 new structured entries + 13 expanded in place; repelem already structured). Help verified via esbuild; **full build + push at this 880 boundary**.
+
+## Batch 59 — functions 881–905 (25-fn batch; **live-MATLAB cross-validated**)
+
+**New protocol:** every function is now cross-validated against live MATLAB R2026a (`matlab -batch`) — 2-3 test calls run on both the sandbox and MATLAB, results compared. This batch's validation caught **5 real bugs**, all now fixed and re-confirmed matching MATLAB.
+
+| Function | Status | MATLAB-validated result |
+|---|---|---|
+| `rmboundary`/`rmnode`/`rmedge`/`rmfield`/`rmmissing` | ✅ | area→1, numnodes→3, numedges→2, field removal, NaN removal |
+| `rmholes` | ✅ | **fixed**: area(rmholes(3×3 with 1×1 hole)) → 9 |
+| `rmoutliers` | ✅ | **fixed**: `"percentiles",[10 90]` → [2 3 4 5] |
+| `rms` | ✅ | **fixed**: `rms([3 4;0 0],2)` → [3.5355;0] |
+| `rmse` | ✅ | **fixed**: `rmse([1 2;3 4],[1 3;3 5])` → [0 1] |
+| `rng`/`rosser`/`rot90`/`rref`/`round` | ✅ | determinism, 8×8, rotations, RREF, ties-away-from-zero |
+| `roots` | ✅ | **fixed**: `roots([2 -8 8])` → clean [2;2] |
+| `rotate`/`rowfun`/`rsf2csf` | ✅ | polyshape rotate, [11;22;33], complex eigenvalues |
+| `rxGate`/`rxxGate` | ✅ | X / XX rotation gates |
+| `rlim`/`rmslivers`/`rtickangle`/`rticklabels`/`rticks` | 🟡 | graphics / no-op |
+
+### Fixes (all caught by MATLAB cross-validation)
+- **`rms(X,dim)`**: the dimension argument was ignored (always column-wise). Now routes through `reduceAlongDim`. `rms([3 4;0 0],2)` → [3.5355;0] matches MATLAB.
+- **`rmse` on matrices**: computed one overall scalar; MATLAB returns per-column errors. Now computes the elementwise difference and reduces per column (`rmse([1 2;3 4],[1 3;3 5])` → [0 1]).
+- **`rmoutliers(...,"percentiles",[lo hi])`**: the option was ignored. Added `outlierMaskWith` supporting the percentiles method (plus mean/quartiles). `rmoutliers([1 2 3 100 4 5],"percentiles",[10 90])` → [2 3 4 5] matches MATLAB.
+- **`roots` double roots**: Durand-Kerner left ~1e-8 spurious imaginary parts on repeated real roots; MATLAB's companion-eig gives clean reals. Now snaps negligible imaginary residue (threshold scales with the dominant root magnitude, so genuine small complex roots survive). `roots([2 -8 8])` → [2;2].
+- **`polyshape({...},{...})` cell constructor + `rmholes`**: the cell form was unimplemented (errored) and `rmholes` was a no-op. Added the cell constructor (nested boundaries become holes via containment depth + orientation) and `rmholes` (drops negative-area hole boundaries). `area(rmholes(p))` → 9 matches MATLAB.
+
+- Rich ≥10-line help added for all 25 functions (6 new structured entries + 19 expanded in place). Help verified via esbuild; full build deferred to 980.
