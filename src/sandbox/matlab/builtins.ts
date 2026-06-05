@@ -1019,6 +1019,8 @@ export const BUILTINS: Record<string, Builtin> = {
   bandwidth: async (a, n) => {
     const A = m(a[0]); let lower = 0, upper = 0;
     for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) if (A.data[r + c * A.rows] !== 0) { if (r > c) lower = Math.max(lower, r - c); else if (c > r) upper = Math.max(upper, c - r); }
+    // bandwidth(A,'lower'|'upper') selects one; otherwise [lower,upper] (or just lower).
+    if (a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar))) return ret(asString(a[1]).toLowerCase() === 'upper' ? scalar(upper) : scalar(lower));
     return n >= 2 ? [scalar(lower), scalar(upper)] : [scalar(lower)];
   },
   isbanded: async (a) => {
@@ -1502,7 +1504,14 @@ export const BUILTINS: Record<string, Builtin> = {
   dec2hex: async (a) => { const d = Math.round(asScalar(a[0])); let s2 = d.toString(16).toUpperCase(); if (a.length >= 2) s2 = s2.padStart(Math.round(asScalar(a[1])), '0'); return ret(str(s2)); },
   hex2dec: async (a) => ret(scalar(parseInt(asString(a[0]).replace(/\s/g, ''), 16))),
   dec2base: async (a) => { const d = Math.round(asScalar(a[0])); const b = Math.round(asScalar(a[1])); let s2 = d.toString(b).toUpperCase(); if (a.length >= 3) s2 = s2.padStart(Math.round(asScalar(a[2])), '0'); return ret(str(s2)); },
-  base2dec: async (a) => ret(scalar(parseInt(asString(a[0]).replace(/\s/g, ''), Math.round(asScalar(a[1]))))),
+  base2dec: async (a) => {
+    const base = Math.round(asScalar(a[1]));
+    const conv = (s: string) => parseInt(s.replace(/\s/g, ''), base);
+    if (isStr(a[0])) { const s = a[0]; return ret(mat(s.rows, s.cols, Float64Array.from(s.items, conv))); }
+    const M = m(a[0]);
+    if (M.isChar && M.rows > 1) { const out = new Float64Array(M.rows); for (let r = 0; r < M.rows; r++) { let str = ''; for (let c = 0; c < M.cols; c++) str += String.fromCharCode(M.data[r + c * M.rows]); out[r] = conv(str); } return ret(mat(M.rows, 1, out)); }
+    return ret(scalar(conv(asString(a[0]))));
+  },
   // ── class / regexp / sscanf ──
   class: async (a) => { const v = a[0]; if (isMap(v)) return ret(str('containers.Map')); if (isDict(v)) return ret(str('dictionary')); if (isHandle(v)) return ret(str('function_handle')); if (v.kind === 'gobj') return ret(str(v.gtype)); if (isStr(v)) return ret(str('string')); if (isCell(v)) return ret(str('cell')); if (isStruct(v)) return ret(str('struct')); if (isTable(v)) return ret(str(v.isTimetable ? 'timetable' : 'table')); if (isCategorical(v)) return ret(str('categorical')); if (isSym(v)) return ret(str('sym')); if ((v as Mat).isChar) return ret(str('char')); if ((v as Mat).isBool) return ret(str('logical')); return ret(str((v as Mat).itype ?? 'double')); },
   isa: async (a) => { const v = a[0]; const ty = asString(a[1]); const M = v as Mat; const cls = isHandle(v) ? 'function_handle' : M.isChar ? 'char' : M.isBool ? 'logical' : (M.itype ?? 'double'); if (ty === cls) return ret(bool(true)); const isInt = isMat(v) && !!M.itype && M.itype !== 'single'; const isFlt = isMat(v) && !M.isChar && !M.isBool && (!M.itype || M.itype === 'single'); if (ty === 'numeric' && isMat(v) && !M.isChar && !M.isBool) return ret(bool(true)); if (ty === 'float' && isFlt) return ret(bool(true)); if (ty === 'integer' && isInt) return ret(bool(true)); return ret(bool(false)); },
@@ -3501,7 +3510,21 @@ export const BUILTINS: Record<string, Builtin> = {
   cmap2gray: async (a, n, env) => BUILTINS.rgb2gray(a, n, env),
   im2gray: async (a, n, env) => BUILTINS.rgb2gray(a, n, env),
   hex2rgb: async (a) => { const h = asString(a[0]).replace(/^#/, ''); return ret(rowVec([parseInt(h.slice(0, 2), 16) / 255, parseInt(h.slice(2, 4), 16) / 255, parseInt(h.slice(4, 6), 16) / 255])); },
-  rgb2hex: async (a) => { const v = toArray(m(a[0])); return ret(str('#' + v.slice(0, 3).map((x) => Math.round(Math.max(0, Math.min(1, x)) * 255).toString(16).padStart(2, '0')).join(''))); },
+  rgb2hex: async (a) => {
+    const M = m(a[0]); const rows = M.rows;
+    const hx = (r: number) => '#' + [0, 1, 2].map((c) => Math.round(Math.max(0, Math.min(1, M.data[r + c * rows])) * 255).toString(16).padStart(2, '0')).join('').toUpperCase();
+    if (rows > 1) return ret(makeStrArr(rows, 1, Array.from({ length: rows }, (_, r) => hx(r))));
+    return ret(str(hx(0)));
+  },
+  orderedcolors: async (a) => {
+    // Named color-order palettes. 'gem' is MATLAB's default 7-color order.
+    const palettes: Record<string, number[][]> = {
+      gem: [[0, 0.4470, 0.7410], [0.8500, 0.3250, 0.0980], [0.9290, 0.6940, 0.1250], [0.4940, 0.1840, 0.5560], [0.4660, 0.6740, 0.1880], [0.3010, 0.7450, 0.9330], [0.6350, 0.0780, 0.1840]],
+      glow: [[0.2510, 0.4902, 1], [1, 0.2510, 0.2510], [0.2510, 0.7843, 0.2510], [1, 0.7529, 0.2510], [0.6275, 0.2510, 1], [0.2510, 0.8784, 0.8157], [1, 0.4392, 0.7059]],
+    };
+    const name = a.length ? asString(a[0]).toLowerCase() : 'gem';
+    return ret(fromRows(palettes[name] ?? palettes.gem));
+  },
   // axis scale + tick/aspect settings
   xscale: async (a, _n, env) => { env.graphics.setScale('x', a.length && asString(a[0]).toLowerCase().startsWith('log') ? 'log' : 'linear'); return []; },
   yscale: async (a, _n, env) => { env.graphics.setScale('y', a.length && asString(a[0]).toLowerCase().startsWith('log') ? 'log' : 'linear'); return []; },

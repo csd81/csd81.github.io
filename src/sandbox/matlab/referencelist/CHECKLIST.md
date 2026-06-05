@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **60 / 1170** audited.
+Progress: **70 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -65,3 +65,13 @@ Progress: **60 / 1170** audited.
 | 58 | `atand` | ✅ | complex-aware (fixed) |
 | 59 | `atanh` | ✅ | branch sign fixed |
 | 60 | `autumn` | ✅ | colormap |
+| 61 | `axis` | 🟡 | setter ok; query needs live axes |
+| 62 | `balance` | ✅ | eigenvalue balancing |
+| 63 | `bandwidth` | ✅ | lower/upper option fixed |
+| 64 | `bar` | 🟡 | drawn; Bar-object props pending |
+| 65 | `bar3` | 🟡 | drawn; surface props pending |
+| 66 | `bar3h` | 🟡 | drawn; style handle edits pending |
+| 67 | `barh` | 🟡 | drawn; Bar-object props pending |
+| 68 | `barycentricToCartesian` | ✅ | triangulation coords |
+| 69 | `base2dec` | ✅ | string-array support fixed |
+| 70 | `bctree` | 🟡 | tree built; node tables/2nd output pending |

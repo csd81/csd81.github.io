@@ -160,3 +160,26 @@ Status legend: ✅ converged · 🟡 partial (core works, some variants unsuppor
 - `assert`: supports `assert(cond,fmt,A1,...)` sprintf message formatting and MATLAB's default "Assertion failed." text.
 - Audit harness: the comparator now recognizes examples whose documented output **is** an error (e.g. `assert` failures), so a correct error counts as a pass.
 - Rich ≥10-line help added for all batch-6 functions.
+
+---
+
+## Batch 7 — functions 61–70
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `axis` | 🟡 | limits/mode setter | `l = axis` query needs live axes limits; tiledlayout-handle example pending |
+| `balance` | ✅ | diagonal balancing for eigenvalue conditioning | (page had no runnable examples) |
+| `bandwidth` | ✅ | **fixed**: honors `'lower'`/`'upper'`; `[lo,up]` form | — |
+| `bar` | 🟡 | bar chart drawn | Bar-object property edits (`b.CData`, `b(2).Labels`) not modeled |
+| `bar3` | 🟡 | 3-D bar chart drawn | surface-object property edits not modeled |
+| `bar3h` | 🟡 | horizontal 3-D bar chart | grouped/stacked-style handle edits + tiledlayout |
+| `barh` | 🟡 | horizontal bar chart | Bar-object endpoint/label property edits not modeled |
+| `barycentricToCartesian` | ✅ | barycentric→Cartesian over a triangulation | — |
+| `base2dec` | ✅ | **fixed**: string/char-matrix arrays (element-wise) | — |
+| `bctree` | 🟡 | block-cut tree graph | Nodes/Edges as displayed tables and the 2nd output `ix` not modeled |
+
+### Fixes landed in this batch
+- `bandwidth(A,'lower'|'upper')` now selects the requested bandwidth (was always returning lower).
+- `base2dec` handles string arrays and multi-row char arrays, returning one value per element.
+- `orderedcolors(name)` **added** (gem/glow palettes; default 7-color order) and `rgb2hex` now converts an N×3 RGB matrix to a string array of `#RRGGBB` codes. These unblock bar/barh/animatedline examples that build a palette.
+- Rich ≥10-line help added for all batch-7 functions.

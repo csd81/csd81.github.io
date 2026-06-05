@@ -36,3 +36,8 @@ Fixed: atanh branch sign on |x|>1 (x>1->+pi/2 i, x<-1->-pi/2 i); atand complex-a
 assert sprintf-formatted messages + 'Assertion failed.' default. Comparator: expected-error
 examples (assert failures) count as pass. 31/33 pass (asind tiny-imag, autumn groot default).
 Build green; 1412 builtins, 0 without help.
+## Batch 7 (fns 61-70): axis balance bandwidth bar bar3 bar3h barh barycentricToCartesian base2dec bctree
+Fixed: bandwidth 'lower'/'upper' option; base2dec string/char-matrix arrays; added orderedcolors
+(gem/glow palettes) + rgb2hex matrix->hex string array (unblocks bar/barh/animatedline palette examples).
+Remaining: bar-chart handle-object property edits + bctree node-tables (graphics/graph-table). 13/130.
+Build green; 1413 builtins, 0 without help.
