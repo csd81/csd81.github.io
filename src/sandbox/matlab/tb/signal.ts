@@ -268,6 +268,12 @@ export const SIGNAL: ToolboxModule = {
     peak2peak: (a) => ret(reduceCols(m(a[0]), (x) => Math.max(...x) - Math.min(...x))),
     peak2rms: (a) => ret(reduceCols(m(a[0]), (x) => Math.max(...x.map(Math.abs)) / Math.sqrt(x.reduce((s, v) => s + v * v, 0) / x.length))),
     rssq: (a) => ret(reduceCols(m(a[0]), (x) => Math.sqrt(x.reduce((s, v) => s + v * v, 0)))),
+    // ── equivalent noise bandwidth of a window: enbw(w)=N*Σw²/(Σw)²; enbw(w,fs)=fs*Σw²/(Σw)² ──
+    enbw: (a) => {
+      const w = toArray(m(a[0])), sw = w.reduce((s, v) => s + v, 0), sw2 = w.reduce((s, v) => s + v * v, 0);
+      const scale = a.length > 1 && isMat(a[1]) ? asScalar(a[1]) : w.length;
+      return ret(scalar(scale * sw2 / (sw * sw)));
+    },
     // ── pulse metrics (shared/measure engine: histogram state levels + 50% crossings) ──
     statelevels: (a) => { const [L, U] = stateLevelsOf(toArray(m(a[0]))); return ret(rowVec([L, U])); },
     midcross: (a) => { const x = toArray(m(a[0])); const { tm } = midCrossings(x, timeBase(a, x.length)); return ret(colVec(tm)); },
@@ -382,7 +388,7 @@ export const SIGNAL: ToolboxModule = {
     pulsewidth: 'Bilevel waveform pulse width', pulseperiod: 'Bilevel waveform pulse period', dutycycle: 'Duty cycle of pulse waveform',
     risetime: 'Rise time of positive-going bilevel waveform transitions', falltime: 'Fall time of negative-going bilevel waveform transitions', slewrate: 'Slew rate of bilevel waveform transitions',
     overshoot: 'Overshoot metrics of bilevel waveform transitions', undershoot: 'Undershoot metrics of bilevel waveform transitions',
-    settlingtime: 'Settling time for bilevel waveform transitions',
+    settlingtime: 'Settling time for bilevel waveform transitions', enbw: 'Equivalent noise bandwidth of a window',
     mag2db: 'Convert magnitude to decibels', db2mag: 'Convert decibels to magnitude', pow2db: 'Convert power to decibels', db2pow: 'Convert decibels to power',
     sinc: 'Normalized sinc function', chirp: 'Swept-frequency cosine', medfilt1: '1-D median filtering',
     freqz: 'Digital filter frequency response', freqs: 'Analog filter frequency response', fir1: 'Window-based FIR filter design',
