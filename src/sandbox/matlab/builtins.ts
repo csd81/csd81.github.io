@@ -691,7 +691,16 @@ export const BUILTINS: Record<string, Builtin> = {
     const yv = cplx ? finishComplex(M, 1, Float64Array.from(Y.data), Float64Array.from(Y.idata ?? new Float64Array(M))) : colVec(toArray(Y));
     return ret(transpose(mldivide(A, yv)));
   },
-  conv: async (a) => { const u = toArray(m(a[0])); const v = toArray(m(a[1])); const w = new Array(Math.max(0, u.length + v.length - 1)).fill(0); for (let i = 0; i < u.length; i++) for (let j = 0; j < v.length; j++) w[i + j] += u[i] * v[j]; return ret(rowVec(w)); },
+  conv: async (a) => {
+    const U = m(a[0]); const u = toArray(U), v = toArray(m(a[1]));
+    const full = new Array(Math.max(0, u.length + v.length - 1)).fill(0);
+    for (let i = 0; i < u.length; i++) for (let j = 0; j < v.length; j++) full[i + j] += u[i] * v[j];
+    const shape = a.length >= 3 && (isStr(a[2]) || (isMat(a[2]) && (a[2] as Mat).isChar)) ? asString(a[2]).toLowerCase() : 'full';
+    let out = full;
+    if (shape === 'same') { const off = Math.floor(v.length / 2); out = full.slice(off, off + u.length); }
+    else if (shape === 'valid') { const len = Math.max(u.length - v.length + 1, 0); out = full.slice(v.length - 1, v.length - 1 + len); }
+    return ret(U.cols === 1 && U.rows > 1 ? colVec(out) : rowVec(out));
+  },
   polyder: async (a) => { const p = toArray(m(a[0])); const n = p.length - 1; if (n <= 0) return ret(scalar(0)); const d: number[] = []; for (let i = 0; i < n; i++) d.push(p[i] * (n - i)); return ret(rowVec(d)); },
   polyint: async (a) => { const p = toArray(m(a[0])); const k = a.length >= 2 ? asScalar(a[1]) : 0; const n = p.length; const out: number[] = []; for (let i = 0; i < n; i++) out.push(p[i] / (n - i)); out.push(k); return ret(rowVec(out)); },
 
@@ -4807,9 +4816,16 @@ function buildMap(a: Value[]): MapV {
     for (let i = 0; i + 1 < a.length; i += 2) { const key = asString(a[i]).toLowerCase(); if (key === 'keytype') kt = asString(a[i + 1]); else if (key === 'valuetype') vt = asString(a[i + 1]); }
     return makeMap(kt === 'char' ? 'char' : 'double', vt);
   }
-  // (keySet, valueSet): keys/values may be a cell or a single key/value
-  const keyList = isCell(a[0]) ? a[0].items : [a[0]];
-  const valList = a.length >= 2 ? (isCell(a[1]) ? a[1].items : [a[1]]) : [];
+  // (keySet, valueSet): a cell, a string array, or a numeric vector all expand to multiple
+  // entries; a single scalar/char is one entry.
+  const expand = (x: Value): Value[] => {
+    if (isCell(x)) return x.items;
+    if (isStr(x)) return x.items.length > 1 ? x.items.map((s) => str(s)) : [x];
+    if (isMat(x) && !(x as Mat).isChar && numel(x) > 1) return toArray(x).map((v) => scalar(v));
+    return [x];
+  };
+  const keyList = expand(a[0]);
+  const valList = a.length >= 2 ? expand(a[1]) : [];
   const keyKind: 'char' | 'double' = isText(keyList[0]) ? 'char' : 'double';
   const mp = makeMap(keyKind, 'any');
   for (let i = 0; i < keyList.length; i++) mp.store.set(mapNormKey(mp, keyList[i]), valList[i] ?? scalar(0));

@@ -418,3 +418,25 @@ All 35 batch-8 examples pass.
 - **`cond(A,p)`** honors the norm argument — for p ≠ 2 it computes `norm(A,p)·norm(inv(A),p)` (1-norm, Inf-norm, Frobenius), instead of always returning the 2-norm value.
 - **`compose`** is now vectorized: array arguments produce a string array (one string per element-tuple), and a single matrix argument with a multi-conversion format groups each row's values per format (`compose("%d:%d",[8 15 9 30])` → `["8:15" "9:30"]`).
 - Rich ≥10-line help added for all batch-17 functions.
+
+---
+
+## Batch 18 — functions 171–180
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `conncomp` | 🟡 | connected components per node | component *numbering* order differs from MATLAB |
+| `containers.Map` | ✅ | **fixed**: vector/string-array/cell key+value sets | — |
+| `contains` | 🟡 | substring/cellstr containment | `pattern` objects (digitsPattern, …) not modeled |
+| `contour` | 🟡 | contour plot drawn | — |
+| `contour3` | 🟡 | 3-D contour drawn | — |
+| `contourc` | 🟡 | contour matrix | level selection / point ordering differs from MATLAB |
+| `contourf` | 🟡 | filled contour drawn | — |
+| `contourslice` | 🟡 | contour planes accepted | not rendered |
+| `conv` | ✅ | **fixed**: `'same'`/`'valid'` shapes; column orientation | — |
+| `conv2` | ✅ | 2-D conv with shapes | doc examples use random matrices (non-matchable) |
+
+### Fixes landed in this batch
+- **`conv`** honors the `'same'` and `'valid'` shape options (central / fully-overlapping part) and preserves the row/column orientation of the first input.
+- **`containers.Map(keySet,valueSet)`** now expands numeric vectors, string arrays, and cells into one entry per key/value (previously a numeric `valueSet` was stored as a single value, so all but the first key mapped to 0); numeric-key maps and `M(key)` lookup work.
+- Rich ≥10-line help added for all batch-18 functions (including `containers.Map`).

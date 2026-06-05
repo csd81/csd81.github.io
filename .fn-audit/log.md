@@ -85,3 +85,7 @@ Build green; 1419 builtins, 0 without help.
 Fixed: cond(A,p) honors p-norm (norm(A,p)*norm(inv(A),p)); compose vectorized -> string array + single-matrix
 row grouping by format spec count. Remaining: graphics (compass/coneplot), quantum (compositeGate),
 compose escape nuances. Build green; 1419 builtins, 0 without help.
+## Batch 18 (fns 171-180): conncomp containers.Map contains contour contour3 contourc contourf contourslice conv conv2
+Fixed: conv 'same'/'valid' shape options + column orientation; containers.Map expands vector/string-array/cell
+key+value sets (was storing a numeric valueSet as one value). Remaining: pattern objects (contains),
+contour algorithm differences, conncomp numbering order, graphics, random data. Build green; 1419 builtins.

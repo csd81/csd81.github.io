@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **170 / 1170** audited.
+Progress: **180 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -175,3 +175,13 @@ Progress: **170 / 1170** audited.
 | 168 | `condest` | ✅ | 1-norm estimate |
 | 169 | `coneplot` | 🟡 | accepted; not rendered |
 | 170 | `conj` | ✅ | complex conjugate |
+| 171 | `conncomp` | 🟡 | components; numbering order differs |
+| 172 | `containers.Map` | ✅ | vector/array key+value sets fixed |
+| 173 | `contains` | 🟡 | substring ok; pattern objects n/a |
+| 174 | `contour` | 🟡 | drawn |
+| 175 | `contour3` | 🟡 | drawn |
+| 176 | `contourc` | 🟡 | matrix; algorithm differs |
+| 177 | `contourf` | 🟡 | drawn |
+| 178 | `contourslice` | 🟡 | accepted; not rendered |
+| 179 | `conv` | ✅ | same/valid shapes fixed |
+| 180 | `conv2` | ✅ | 2-D conv; random examples |
