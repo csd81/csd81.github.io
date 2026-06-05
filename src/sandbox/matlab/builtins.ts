@@ -455,6 +455,36 @@ function dimsN(args: Value[]): number[] {
   if (dims.length === 1) { const a = m(dims[0]); if (numel(a) >= 2) return toArray(a).map((x) => Math.round(x)); const n = Math.round(asScalar(a)); return [n, n]; }
   return dims.map((x) => Math.round(asScalar(x)));
 }
+/** Apply a trailing class argument to a freshly-built array, e.g. zeros(2,3,'int8')
+ *  or ones(2,'like',proto). Returns the array coerced to the requested class. */
+function classArgN(args: Value[], M: Mat): Mat {
+  const KNOWN = new Set(['double', 'single', 'int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'int64', 'uint64', 'logical']);
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (!(isStr(a) || (isMat(a) && (a as Mat).isChar))) continue;
+    const s = asString(a).toLowerCase();
+    if (s === 'like' && i + 1 < args.length && isMat(args[i + 1])) {
+      const proto = args[i + 1] as Mat;
+      if (proto.isBool) { M.isBool = true; return M; }
+      return proto.itype ? applyClass(M, proto.itype) : M;
+    }
+    if (s === 'logical') { M.isBool = true; return M; }
+    if (KNOWN.has(s) && s !== 'double') return applyClass(M, s);
+  }
+  return M;
+}
+/** Direct-solve backend shared by the Krylov iterative solvers (pcg/bicg/cgs/gmres/bicgstab).
+ *  Returns MATLAB's [x, flag, relres, iter, resvec] contract; since we solve directly the
+ *  result has converged (flag 0) at iteration 0. */
+function krylovSolve(a: Value[], nargout: number): Value[] {
+  const A = m(a[0]); const b = m(a[1]);
+  const x = mldivide(A, b);
+  if (nargout <= 1) return [x];
+  const r = ewSub(b, matmul(A, x));                 // residual b - A*x
+  const nb = norm(b, 2) || 1; const relres = norm(r, 2) / nb;
+  const resvec = colVec([norm(b, 2), norm(r, 2)]);
+  return [x, scalar(0), scalar(relres), scalar(0), resvec];
+}
 /** Coerce char/string/cellstr/numeric to a string-array view (dims + items). */
 function asStrArr(v: Value): { rows: number; cols: number; items: string[] } {
   if (isStr(v)) return { rows: v.rows, cols: v.cols, items: v.items };
@@ -851,8 +881,8 @@ export const BUILTINS: Record<string, Builtin> = {
   ndims: async (a) => ret(scalar(isMat(a[0]) ? ndimsOf(a[0]) : 2)),
   isempty: async (a) => ret(bool(isMap(a[0]) ? (a[0] as MapV).store.size === 0 : isDict(a[0]) ? (a[0] as DictV).store.size === 0 : numelOf(a[0]) === 0)),
   isscalar: async (a) => ret(bool(numelOf(a[0]) === 1)),
-  zeros: async (a) => { const d = dimsN(a); return ret(makeND(d, new Float64Array(d.reduce((p, x) => p * x, 1)))); },
-  ones: async (a) => { const d = dimsN(a); const data = new Float64Array(d.reduce((p, x) => p * x, 1)); data.fill(1); return ret(makeND(d, data)); },
+  zeros: async (a) => { const d = dimsN(a); const M = makeND(d, new Float64Array(d.reduce((p, x) => p * x, 1))); return ret(classArgN(a, M)); },
+  ones: async (a) => { const d = dimsN(a); const data = new Float64Array(d.reduce((p, x) => p * x, 1)); data.fill(1); const M = makeND(d, data); return ret(classArgN(a, M)); },
   true: async (a) => { const d = dimsN(a); const M = makeND(d, new Float64Array(d.reduce((p, x) => p * x, 1)).fill(1)); M.isBool = true; return ret(M); },
   false: async (a) => { const d = dimsN(a); const M = makeND(d, new Float64Array(d.reduce((p, x) => p * x, 1))); M.isBool = true; return ret(M); },
   NaN: async (a) => ret(makeND(dimsN(a), new Float64Array(dimsN(a).reduce((p, x) => p * x, 1)).fill(NaN))),
@@ -1300,7 +1330,7 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   gsvd: async (a) => { const A = m(a[0]), B = m(a[1]); const ata = matmul(transpose(A), A), btb = matmul(transpose(B), B); const { values } = jacobiEigSym(mldivide(btb, ata)); return ret(colVec(values.map((v) => Math.sqrt(Math.max(0, v))).sort((x, y) => x - y))); },
   svdsketch: async (a, n) => { const A = m(a[0]); const { U, s, V } = svdReal(A); const tol = a.length >= 2 ? asScalar(a[1]) : 1e-3; const smax = s[0] ?? 0; const k = Math.max(1, s.filter((x) => x > tol * smax).length); const Uk = subcols(U, k), Vk = subcols(V, k); const S = zeros(k, k); for (let i = 0; i < k; i++) S.data[i + i * k] = s[i]; return n >= 3 ? [Uk, S, Vk] : [colVec(s.slice(0, k))]; },
-  padecoef: async (a, n) => { const T = asScalar(a[0]); const N = a.length >= 2 ? Math.round(asScalar(a[1])) : 1; const c: number[] = []; for (let k = 0; k <= N; k++) c.push(factorialN(2 * N - k) * factorialN(N) / (factorialN(2 * N) * factorialN(k) * factorialN(N - k))); const num: number[] = [], den: number[] = []; for (let k = 0; k <= N; k++) { num[N - k] = c[k] * Math.pow(-T, k); den[N - k] = c[k] * Math.pow(T, k); } return n >= 2 ? [rowVec(num), rowVec(den)] : [rowVec(num)]; },
+  padecoef: async (a, n) => { const T = asScalar(a[0]); const N = a.length >= 2 ? Math.round(asScalar(a[1])) : 1; const c: number[] = []; for (let k = 0; k <= N; k++) c.push(factorialN(2 * N - k) * factorialN(N) / (factorialN(2 * N) * factorialN(k) * factorialN(N - k))); const num: number[] = [], den: number[] = []; for (let k = 0; k <= N; k++) { num[N - k] = c[k] * Math.pow(-T, k); den[N - k] = c[k] * Math.pow(T, k); } const scale = den[0] || 1; for (let k = 0; k <= N; k++) { num[k] /= scale; den[k] /= scale; } return n >= 2 ? [rowVec(num), rowVec(den)] : [rowVec(num)]; },
   ss2tf: async (a, n) => { const A = m(a[0]), B = m(a[1]), C = m(a[2]), D = m(a[3]); const iu = (a.length >= 5 ? Math.round(asScalar(a[4])) : 1) - 1; const den = A.rows ? charpolyC(A) : [1]; const bcol = colOf(B, iu); const ny = C.rows; const num = zeros(ny, den.length); for (let i = 0; i < ny; i++) { const crow = Array.from({ length: C.cols }, (_, c) => C.data[i + c * C.rows]); const Acl = ewSub(A, matmul(bcol, rowVec(crow))); const pc = A.rows ? charpolyC(Acl) : [1]; const di = D.data[i + iu * D.rows] ?? 0; for (let k = 0; k < den.length; k++) num.data[i + k * ny] = pc[k] + (di - 1) * den[k]; } return n >= 2 ? [num, rowVec(den)] : [num]; },
   tensorprod: async (a) => ret(tensorProd(m(a[0]), m(a[1]), a.slice(2))),
   nufft: async (a) => { const x = m(a[0]); const t = a.length >= 2 && isMat(a[1]) ? toArray(m(a[1])) : toArray(x).map((_, i) => i); const N = numel(x); const f = a.length >= 3 && isMat(a[2]) ? toArray(m(a[2])) : Array.from({ length: N }, (_, i) => i); return ret(nudft(toArray(x), x.idata ? Array.from(x.idata) : toArray(x).map(() => 0), t, f)); },
@@ -1824,11 +1854,11 @@ export const BUILTINS: Record<string, Builtin> = {
     }
     return ret(m(a[1]).rows === 1 ? rowVec(x) : colVec(x));
   },
-  bicg: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
-  bicgstab: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
-  cgs: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
-  gmres: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
-  pcg: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
+  bicg: async (a, n) => krylovSolve(a, n),
+  bicgstab: async (a, n) => krylovSolve(a, n),
+  cgs: async (a, n) => krylovSolve(a, n),
+  gmres: async (a, n) => krylovSolve(a, n),
+  pcg: async (a, n) => krylovSolve(a, n),
   // ── string functions (operate on char arrays) ──
   lower: async (a) => ret(str(asString(a[0]).toLowerCase())),
   upper: async (a) => ret(str(asString(a[0]).toUpperCase())),
@@ -2346,8 +2376,20 @@ export const BUILTINS: Record<string, Builtin> = {
     // B: top-left block = Ap; identity on the lower diagonal blocks.
     for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) Bcomp.data[r + c * np] = Ap.data[r + c * N];
     for (let b = 1; b < p; b++) for (let r = 0; r < N; r++) Bcomp.data[(b * N + r) + (b * N + r) * np] = 1;
-    const C = mldivide(Bcomp, Acomp); const { D } = generalEig(C, false);
-    void n; return ret(finishComplex(np, 1, Float64Array.from(D.re), Float64Array.from(D.im)));
+    const C = mldivide(Bcomp, Acomp); const { D, V } = generalEig(C, n >= 2);
+    // snap numerically-real eigenvalues (root-finder noise ~1e-8) to exactly real, as MATLAB's QZ does
+    const scale = D.re.reduce((s, x) => Math.max(s, Math.abs(x)), 1);
+    const imSnap = D.im.map((x) => (Math.abs(x) < 1e-7 * scale ? 0 : x));
+    const e = finishComplex(np, 1, Float64Array.from(D.re), Float64Array.from(imSnap));
+    if (n < 2 || !V) return ret(e);
+    // eigenvector of the polynomial problem = top N entries of each companion eigenvector, unit-normalized
+    const Xre = new Float64Array(N * np), Xim = V.idata ? new Float64Array(N * np) : null;
+    for (let c = 0; c < np; c++) {
+      let nrm = 0; for (let r = 0; r < N; r++) { const re = V.data[r + c * np], im = V.idata ? V.idata[r + c * np] : 0; nrm += re * re + im * im; }
+      nrm = Math.sqrt(nrm) || 1;
+      for (let r = 0; r < N; r++) { Xre[r + c * N] = V.data[r + c * np] / nrm; if (Xim) Xim[r + c * N] = V.idata![r + c * np] / nrm; }
+    }
+    return [Xim ? finishComplex(N, np, Xre, Xim) : makeND([N, np], Xre), e];
   },
 
   // ── Batch G: stats / preprocessing / misc numeric ──
@@ -2413,7 +2455,25 @@ export const BUILTINS: Record<string, Builtin> = {
     for (const x of v) { if (Number.isNaN(x)) continue; if (seen.has(x)) return ret(bool(false)); seen.add(x); }
     return ret(bool(true));
   },
-  numunique: async (a) => ret(scalar(new Set(toArray(m(a[0]))).size)),
+  numunique: async (a) => {
+    const rowsMode = a.slice(1).some((x) => (isStr(x) || (isMat(x) && (x as Mat).isChar)) && asString(x).toLowerCase() === 'rows');
+    if (isStr(a[0])) return ret(scalar(new Set((a[0] as Str).items).size));   // distinct strings
+    const A = m(a[0]);
+    if (rowsMode) {
+      // each row with any NaN is distinct (NaN ~= NaN); others deduped by value key
+      const seen = new Set<string>(); let count = 0;
+      for (let r = 0; r < A.rows; r++) {
+        let nan = false; const parts: string[] = [];
+        for (let c = 0; c < A.cols; c++) { const v = A.data[r + c * A.rows]; if (Number.isNaN(v)) nan = true; parts.push(String(v)); }
+        if (nan) { count++; continue; }
+        const k = parts.join(','); if (!seen.has(k)) { seen.add(k); count++; }
+      }
+      return ret(scalar(count));
+    }
+    const arr = toArray(A); let nanCount = 0; const distinct = new Set<number>();
+    for (const v of arr) { if (Number.isNaN(v)) nanCount++; else distinct.add(v); }   // each NaN counts separately
+    return ret(scalar(distinct.size + nanCount));
+  },
   uniquetol: async (a) => {
     const v = [...toArray(m(a[0]))].sort((x, y) => x - y); const tol = a.length >= 2 ? asScalar(a[1]) : 1e-6;
     const scale = Math.max(1, ...v.map(Math.abs)); const out: number[] = [];
@@ -2453,7 +2513,7 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(isComplex(E) || isComplex(b) ? cmatmul(E, b) : matmul(E, b));
   },
   idivide: async (a) => { const op = a.length >= 3 ? asString(a[2]).toLowerCase() : 'fix'; const rnd = op === 'floor' ? Math.floor : op === 'ceil' ? Math.ceil : op === 'round' ? Math.round : Math.trunc; return ret(elementwise(m(a[0]), m(a[1]), (x, y) => rnd(x / y))); },
-  polydiv: async (a, n) => { const [q, r] = polyDivide(toArray(m(a[0])), toArray(m(a[1]))); return n >= 2 ? [rowVec(q), rowVec(r)] : [rowVec(q)]; },
+  polydiv: async (a, n) => { const dv = toArray(m(a[0])); const [q, r] = polyDivide(dv, toArray(m(a[1]))); const rp = new Array(Math.max(0, dv.length - r.length)).fill(0).concat(r); return n >= 2 ? [rowVec(q), rowVec(rp)] : [rowVec(q)]; },
   ordeig: async (a) => { const e = schurEigFn(m(a[0])); return ret(finishComplex(e.re.length, 1, Float64Array.from(e.re), Float64Array.from(e.im))); },
   betaincinv: async (a) => { const p = asScalar(a[0]), aa = asScalar(a[1]), bb = asScalar(a[2]); return ret(scalar(invMonotone((x) => betainc(x, aa, bb), p, 0, 1))); },
   gammaincinv: async (a) => { const p = asScalar(a[0]), aa = asScalar(a[1]); return ret(scalar(invMonotone((x) => gammainc(x, aa), p, 0, aa + 10 * Math.sqrt(aa) + 20))); },
@@ -3855,9 +3915,11 @@ export const BUILTINS: Record<string, Builtin> = {
     const prec = hasArg && !(a[1] as Mat).isChar ? Math.round(asScalar(a[1])) : null;
     const one = (x: number) => (fmt ? sprintf(fmt, [scalar(x)]) : prec !== null ? sprintf(`%.${prec}g`, [scalar(x)]) : trimNum(x));
     if (isScalar(A)) return ret(str(one(A.data[0])));
-    if (fmt === null && prec === null) return ret(str(matToStr(A)));
-    const rows: string[] = []; for (let r = 0; r < A.rows; r++) { const cells: string[] = []; for (let c = 0; c < A.cols; c++) cells.push(one(A.data[r + c * A.rows])); rows.push(cells.join('  ')); }
-    return ret(str(rows.join('\n')));
+    // build the cell grid, then right-align columns separated by two spaces (matches MATLAB num2str)
+    const grid: string[][] = []; let w = 0;
+    for (let r = 0; r < A.rows; r++) { const cells: string[] = []; for (let c = 0; c < A.cols; c++) { const s = one(A.data[r + c * A.rows]); cells.push(s); w = Math.max(w, s.length); } grid.push(cells); }
+    const rows = grid.map((cells) => cells.map((s) => s.padStart(w)).join('  '));
+    return ret(A.rows > 1 ? charMatRows(rows) : str(rows.join('\n')));
   },
   int2str: async (a) => {
     const M = m(a[0]);
@@ -4263,11 +4325,11 @@ export const BUILTINS: Record<string, Builtin> = {
   parula: async (a) => ret(cmapGen(a, (t) => lerpAnchors(PARULA, t))),
   turbo: async (a) => ret(cmapGen(a, (t) => lerpAnchors(TURBO, t))),
   jet: async (a) => ret(cmapGen(a, jetColor)),
-  hot: async (a) => ret(cmapGen(a, hotColor)),
+  hot: async (a) => ret(cmapGen(a, (_t, i, n) => hotRow(i, n))),
   gray: async (a) => ret(cmapGen(a, (t) => [t, t, t])),
   bone: async (a) => ret(cmapGen(a, (t) => [(7 * t) / 8 + clamp01((t - 0.75) / 0.25) / 8, (7 * t) / 8 + clamp01((t - 0.375) / 0.375) / 8, (7 * t) / 8 + clamp01(t / 0.375) / 8])),
   copper: async (a) => ret(cmapGen(a, (t) => [clamp01(1.25 * t), 0.7812 * t, 0.4975 * t])),
-  pink: async (a) => ret(cmapGen(a, (t) => { const h = hotColor(t); return [Math.sqrt((2 * t + h[0]) / 3), Math.sqrt((2 * t + h[1]) / 3), Math.sqrt((2 * t + h[2]) / 3)]; })),
+  pink: async (a) => ret(cmapGen(a, (t, i, n) => { const h = hotRow(i, n); const gy = n > 1 ? i / (n - 1) : 0; return [Math.sqrt((2 * gy + h[0]) / 3), Math.sqrt((2 * gy + h[1]) / 3), Math.sqrt((2 * gy + h[2]) / 3)]; })),
   cool: async (a) => ret(cmapGen(a, (t) => [t, 1 - t, 1])),
   spring: async (a) => ret(cmapGen(a, (t) => [1, t, 1 - t])),
   summer: async (a) => ret(cmapGen(a, (t) => [t, 0.5 + 0.5 * t, 0.4])),
@@ -5244,7 +5306,15 @@ function cmapGen(args: Value[], f: (t: number, i: number, n: number) => [number,
   return M;
 }
 const jetColor = (t: number): [number, number, number] => [clamp01(1.5 - Math.abs(4 * t - 3)), clamp01(1.5 - Math.abs(4 * t - 2)), clamp01(1.5 - Math.abs(4 * t - 1))];
-const hotColor = (t: number): [number, number, number] => [clamp01(t / 0.375), clamp01((t - 0.375) / 0.375), clamp01((t - 0.75) / 0.25)];
+// MATLAB's discrete hot(m): red ramps over the first 3/8·m rows, then green, then blue (matches hot(m) exactly).
+function hotRow(i: number, n: number): [number, number, number] {
+  const n3 = Math.max(1, Math.floor((3 / 8) * n));
+  const bDen = n - 2 * n3;
+  const r = i < n3 ? (i + 1) / n3 : 1;
+  const g = i < n3 ? 0 : i < 2 * n3 ? (i - n3 + 1) / n3 : 1;
+  const b = i < 2 * n3 ? 0 : bDen > 0 ? (i - 2 * n3 + 1) / bDen : 1;
+  return [clamp01(r), clamp01(g), clamp01(b)];
+}
 function hsv2rgb(h: number, s: number, v: number): [number, number, number] {
   const i = Math.floor(h * 6), f = h * 6 - i, p = v * (1 - s), q = v * (1 - f * s), u = v * (1 - (1 - f) * s);
   switch (((i % 6) + 6) % 6) { case 0: return [v, u, p]; case 1: return [q, v, p]; case 2: return [p, v, u]; case 3: return [p, q, v]; case 4: return [u, p, v]; default: return [v, p, q]; }
@@ -5301,7 +5371,8 @@ function lerpAnchors(A: number[][], t: number): [number, number, number] {
   const pos = clamp01(t) * (A.length - 1); const i = Math.min(A.length - 2, Math.floor(pos)); const f = pos - i;
   return [A[i][0] + f * (A[i + 1][0] - A[i][0]), A[i][1] + f * (A[i + 1][1] - A[i][1]), A[i][2] + f * (A[i + 1][2] - A[i][2])];
 }
-const PARULA = [[0.2081, 0.1663, 0.5292], [0.0779, 0.5040, 0.8384], [0.0265, 0.6137, 0.8135], [0.4668, 0.6753, 0.5226], [0.9856, 0.7572, 0.2347], [0.9763, 0.9831, 0.0538]];
+// R2026a parula anchors (sampled at parula(6)); endpoints match MATLAB exactly, interior interpolated.
+const PARULA = [[0.2422, 0.1504, 0.6603], [0.2647, 0.4030, 0.9935], [0.1085, 0.6669, 0.8734], [0.2809, 0.7964, 0.5266], [0.9184, 0.7308, 0.1890], [0.9769, 0.9839, 0.0805]];
 const TURBO = [[0.19, 0.07, 0.23], [0.27, 0.48, 0.99], [0.11, 0.92, 0.62], [0.86, 0.99, 0.10], [0.99, 0.45, 0.05], [0.48, 0.01, 0.01]];
 const LINES7 = [[0, 0.447, 0.741], [0.85, 0.325, 0.098], [0.929, 0.694, 0.125], [0.494, 0.184, 0.556], [0.466, 0.674, 0.188], [0.301, 0.745, 0.933], [0.635, 0.078, 0.184]];
 

@@ -612,3 +612,113 @@ Validated against MATLAB R2026a. **No bugs — all functions matched.**
 
 ### V601–V700 commit
 Build green (tsc+vite); fixes pushed (staged explicitly to exclude `toolboxes/`). Bugs caught by live-MATLAB cross-validation in functions 601–700: **`min`/`max` dim-2 on 2-D matrices, `mustBeTextScalar` non-scalar text**. (V25 and V28 were clean.)
+
+## V29 — functions 700–724 (num2hex … odeEvent) — **2 bugs fixed**
+
+Validated against MATLAB R2026a.
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `num2hex` | ✅ | double `3ff0…`, single `3f800000` |
+| `num2str` | ✅ | **fixed** (see below) — scalar/precision/format already matched |
+| `numEntries` | ✅ | dictionary entry count |
+| `numboundaries`/`numsides` | ✅ | polyshape (1 boundary, 4 sides) |
+| `numedges`/`numnodes` | ✅ | graph counts |
+| `numel` | ✅ | element count |
+| `numRegions` | ✅ | alphaShape region count |
+| `numunique` | ✅ | **fixed** (see below) |
+| `nzmax` | ✅ | sparse nonzero count |
+| `ode` (object) | ✅ | `ode(ODEFcn=…,InitialValue=…)`+`solve` → `exp(-1)` |
+| `ode45`/`ode23`/`ode113`/`ode78`/`ode89` | ✅ | nonstiff RK/Adams; endpoints within RelTol of `exp(-1)` |
+| `ode15s`/`ode23s`/`ode23t`/`ode23tb` | ✅ | stiff solvers; within tolerance |
+| `ode15i` | ✅ | implicit `F(t,y,yp)=yp+y` → `exp(-1)` |
+| `odeDelay`/`odeEvent` | ✅ | exist (event/delay framework objects) |
+| `observable` | 🟡 | sandbox exposes it as a builtin; in MATLAB it is only the `quantum.gate.observable` method (no free function) — harmless |
+
+Adaptive ODE solvers legitimately differ in the 3rd–4th decimal between implementations (different step sequences at default `RelTol=1e-3`); all land near `exp(-1)=0.36788`. Not bugs.
+
+### Fixes
+- **`num2str` on a vector/matrix**: with no format/precision argument it fell back to `mat2str` syntax, so `num2str([1 2 3])`→`[1 2 3]`. MATLAB produces bracket-free, right-aligned columns separated by two spaces. Now builds the cell grid, right-pads to the max width, joins with `  `, and returns a char matrix for multi-row input: `num2str([1 2 3])`→`1  2  3`, `num2str([1 20 3])`→` 1  20   3`, `num2str([1 2;30 4])`→two rows. Scalar/precision/format paths unchanged (kept `trimNum` so large integers like `100000` don't degrade to `1e+05`).
+- **`numunique` missing values + `"rows"`**: used a JS `Set`, which collapses every `NaN` into one and ignored the documented `"rows"` option. MATLAB treats each `NaN` as distinct (`numunique([1 NaN NaN 2])`→4) and `numunique(A,"rows")` counts unique rows. Now counts distinct non-NaN values plus the NaN tally, supports `"rows"` (each row containing NaN is distinct), and handles string arrays. All match (3 / 4 / 2 / 2).
+
+## V30 — functions 725–749 (odeJacobian … pagelsqminnorm) — **2 bugs fixed**
+
+Validated against MATLAB R2026a.
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `odeget`/`odeset` | ✅ | RelTol/AbsTol get; default-when-empty (`odeget(o,'MaxStep',0.5)`→0.5) |
+| `odeJacobian`/`odeMassMatrix`/`odeSensitivity`/`odextend` | ✅ | ODE-object option helpers (exist) |
+| `ones`/`zeros` | ✅ | **fixed** (see below) — class argument |
+| `optimget`/`optimset` | ✅ | TolX, MaxIter round-trip |
+| `ordeig` | ✅ | quasitriangular diagonal eigenvalues `[2;3;5]` |
+| `orderfields` | ✅ | fields alphabetized (`a,b,c`), values follow |
+| `ordqz`/`ordschur` | ✅ | reordered Schur — eigenvalues preserved |
+| `orth` | ✅ | orthonormal basis (3×2), `Q'Q=I` |
+| `outdegree`/`outedges` | ✅ | digraph out-degree `[2;1;1]`; graph incident edges `[1;3]` |
+| `outerjoin` | ✅ | table outer join |
+| `overlaps` | ✅ | polyshape overlap → true |
+| `pad` | ✅ | `pad("ab",5)` → 5-char `"ab   "` |
+| `paddata` | ✅ | `[1 2 3]`→`[1 2 3 0 0]` |
+| `padecoef` | ✅ | **fixed** (see below) |
+| `pagectranspose`/`pageeig`/`pageinv`/`pagelsqminnorm` | ✅ | page-wise transpose/eig/inverse/min-norm |
+
+### Fixes
+- **`ones`/`zeros` class argument ignored**: `ones(2,2,'int8')` returned a `double`. `dimsN` stripped the trailing class name but it was never applied. Added a `classArgN` helper that scans the args for a known class (`int8`…`uint64`, `single`, `logical`) or the `'like',proto` form and coerces the result via `applyClass`. Now `ones(2,2,'int8')`→`int8`, `ones(2,'single')`→`single`, `zeros(3,'uint16')`→`uint16`, `ones(2,'like',int32(5))`→`int32`; `ones(2)` stays `double`.
+- **`padecoef` normalization**: returned coefficients normalized so the *trailing* term was 1 (`padecoef(1,2)`→`[0.0833 -0.5 1]`/`[0.0833 0.5 1]`). MATLAB normalizes so the *leading* denominator coefficient is 1. Now divides both `num` and `den` by `den[0]`: `padecoef(1,2)`→`[1 -6 12]`/`[1 6 12]`, `padecoef(0.5,1)`→`[-1 4]`/`[1 4]` — both match MATLAB exactly.
+
+## V31 — functions 750–774 (pagemldivide … piechart) — **2 bugs fixed**
+
+Validated against MATLAB R2026a.
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `pagemldivide`/`pagemrdivide`/`pagemtimes` | ✅ | page-wise solve/multiply |
+| `pagenorm`/`pagepinv`/`pagesvd`/`pagetranspose` | ✅ | page-wise norm `[5 5]`, pinv, singular values `[4;3]`, transpose |
+| `pareto` | 🟡 | graphics (exists) |
+| `parula` | ✅ | **fixed** (see below) — endpoints now match R2026a |
+| `pascal` | ✅ | `pascal(4)` symmetric Pascal matrix |
+| `pathsep` | ✅ | `:` on Linux |
+| `pause`/`pbaspect`/`pcolor` | 🟡 | graphics/timing (exist) |
+| `pcg` | ✅ | **fixed** (see below) |
+| `pchip` | ✅ | `pchip(1:5,(1:5).^2,2.5)`→6.2396 |
+| `pdepe`/`pdeval` | 🟡 | 1-D PDE solver (exists) |
+| `peaks` | ✅ | `peaks(3)` sample surface matches |
+| `perimeter` | ✅ | alphaShape perimeter → 4 |
+| `perms` | ✅ | all 6 permutations of `[1 2 3]` (reverse-lex order) |
+| `permute` | ✅ | `permute(reshape(1:6,[2 3]),[2 1])` → 3×2 transpose |
+| `pie`/`pie3`/`piechart` | 🟡 | graphics (exist) |
+
+### Fixes
+- **`pcg` (and `bicg`/`bicgstab`/`cgs`/`gmres`) multi-output**: these five Krylov solvers were one-liners returning only `x`, so the documented `[x,flag,relres,iter,resvec]` form errored ("not enough output arguments"). Added a shared `krylovSolve(args,nargout)` backend: direct-solves `x = A\b` (correct values), and for `nargout>1` returns `flag=0` (converged), `relres = ‖b−Ax‖/‖b‖`, `iter=0`, and `resvec=[‖b‖;‖r‖]`. `[x,fl]=pcg([4 1;1 3],[1;2])`→`x=[0.0909;0.6364]`, `fl=0` — matches MATLAB; 1-output form unchanged.
+- **`parula` colormap (R2026a)**: the sandbox anchors started at the *old* parula color `[0.2081 0.1663 0.5292]` and ended at `[0.9763 0.9831 0.0538]`; R2026a's parula runs `[0.2422 0.1504 0.6603]`→`[0.9769 0.9839 0.0805]`. Replaced the 6 interpolation anchors with R2026a `parula(6)` values, so `parula(6)` and the endpoints of any `parula(n)` now match MATLAB exactly. Interior colors of small `n` remain linear interpolations of the 6 anchors (≈ but not bit-exact to MATLAB's full 256-entry table — cosmetic for a colormap).
+
+## V32 — functions 775–799 (pink … pow2) — **4 bugs fixed** — **V800 boundary: built + pushed**
+
+Validated against MATLAB R2026a.
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `pink` | ✅ | **fixed** (see below) |
+| `pinv` | ✅ | Moore–Penrose pseudo-inverse |
+| `planerot` | ✅ | Givens rotation `[3;4]`→`[5;0]`, `G=[0.6 0.8;-0.8 0.6]` |
+| `plot`/`plot3`/`plotmatrix` | 🟡 | graphics (exist) |
+| `plus` | ✅ | element-wise add |
+| `pointLocation` | 🟡 | located triangle is correct, but Delaunay **triangle numbering** differs from MATLAB's Qhull ordering (`ConnectivityList` order is implementation-defined) |
+| `pol2cart` | ✅ | `(π/2,1)`→`(0,1)` |
+| `polaraxes`/`polarhistogram`/`polarplot`/`polarscatter` | 🟡 | graphics (exist) |
+| `poly` | ✅ | `poly([1 2 3])`→`[1 -6 11 -6]` |
+| `polyarea` | ✅ | unit square → 1 |
+| `polybuffer` | 🟡 | disk area 3.1326 vs MATLAB 3.141 — circle-segment count differs (both approximate π; cosmetic) |
+| `polyder`/`polyint` | ✅ | `[1 2 3]`→`[2 2]`; `[3 2 1]`→`[1 1 1 0]` |
+| `polydiv` | ✅ | **fixed** (see below) |
+| `polyeig` | ✅ | **fixed** (see below) |
+| `polyfit` | ✅ | quadratic fit → `[1 0 0]` (MATLAB has ~1e-15 residuals) |
+| `polyshape` | ✅ | 2×2 square → area 4 |
+| `polyval`/`polyvalm` | ✅ | `polyval([1 2 3],2)`→11; `polyvalm` matrix-poly matches |
+| `pow2` | ✅ | `pow2(3)`→8, `pow2(1.5,3)`→12 |
+
+### Fixes
+- **`polyeig` eigenvectors + real-snapping**: `[X,e]=polyeig(...)` errored ("not enough output arguments") — only eigenvalues were returned. Now requests eigenvectors from the companion linearization, takes the top `N` entries of each companion eigenvector, unit-normalizes, and returns `X` (`N×Np`). Also snaps root-finder imaginary noise (~6e-9) to exactly real when `|imag| < 1e-7·scale`, so `polyeig([2 0;0 2],[0 0;0 0],[-2 0;0 -2])`→`[-1;-1;1;1]` (real, like MATLAB's QZ) instead of `±1 ± 6e-9i`.
+- **`pink` / `hot` colormaps used a continuous approximation**: `hotColor(t)` made `hot(3)`'s first row black `[0 0 0]` instead of MATLAB's `[1 0 0]`, which also broke `pink` (defined as `sqrt((2·gray(m)+hot(m))/3)`). Replaced with MATLAB's **discrete** `hot(m)` formula (`hotRow(i,n)`: red ramps over the first ⌊3m/8⌋ rows, then green, then blue). Now `hot(3)`→`[1 0 0;1 1 0;1 1 1]` and `pink(3)`→`[0.5774 0 0;0.8165 0.8165 0.5774;1 1 1]`, both exact.
+- **`polydiv` remainder length**: returned a trimmed remainder (`polydiv([1 0 -1],[1 1])`→`r=0`); MATLAB pads the remainder with leading zeros to the length of the dividend (`r=[0 0 0]`). Now pads accordingly: `[1 0 0 -1]÷[1 1]`→`q=[1 -1 1]`, `r=[0 0 0 -2]`.
