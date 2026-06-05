@@ -46,6 +46,27 @@ function midCrossings(x: number[], t: number[]): { tm: number[]; pol: number[] }
   }
   return { tm, pol };
 }
+/** Per-transition rise/fall metrics (signal.internal.getTransitions): 10%/90% reference crossings. */
+function transitions(x: number[], t: number[]): { p: number; dur: number; slew: number }[] {
+  const [L, U] = stateLevelsOf(x), amp = (U - L) / 100;
+  const lwr = L + 2 * amp, upr = L + 98 * amp, loRef = L + 10 * amp, upRef = L + 90 * amp, mid = L + 50 * amp;
+  const iState: number[] = []; for (let i = 0; i < x.length; i++) if (x[i] < lwr || x[i] > upr) iState.push(i);
+  const out: { p: number; dur: number; slew: number }[] = [];
+  for (let k = 0; k + 1 < iState.length; k++) {
+    const iA = iState[k], iB = iState[k + 1];
+    if (!((x[iA] < lwr && x[iB] > upr) || (x[iA] > upr && x[iB] < lwr))) continue;
+    const p = x[iA] < lwr ? 1 : -1, preRef = p > 0 ? loRef : upRef, postRef = p > 0 ? upRef : loRef;
+    let iRMid = -1; for (let i = iA; i < iB; i++) if (p > 0 ? (x[i] <= mid && mid < x[i + 1]) : (x[i] >= mid && mid > x[i + 1])) { iRMid = i; break; }
+    if (iRMid < 0) continue;
+    let iRPre = -1; for (let i = iA; i <= iRMid; i++) if (p > 0 ? x[i] < preRef : x[i] > preRef) iRPre = i;
+    let iRPost = -1; for (let i = iRMid; i < iB; i++) if (p > 0 ? x[i + 1] > postRef : x[i + 1] < postRef) { iRPost = i; break; }
+    if (iRPre < 0 || iRPost < 0 || iRPre + 1 >= x.length || iRPost + 1 >= x.length) continue;
+    const tPre = t[iRPre] + (t[iRPre + 1] - t[iRPre]) * (preRef - x[iRPre]) / (x[iRPre + 1] - x[iRPre]);
+    const tPost = t[iRPost] + (t[iRPost + 1] - t[iRPost]) * (postRef - x[iRPost]) / (x[iRPost + 1] - x[iRPost]);
+    const dur = tPost - tPre; out.push({ p, dur, slew: (postRef - preRef) / dur });
+  }
+  return out;
+}
 /** Resolve the time base: t-vector, scalar Fs, or default sample numbers 1..n. */
 function timeBase(a: Value[], n: number): number[] {
   if (a.length > 1 && isMat(a[1])) { const M = m(a[1]); if (M.rows * M.cols === 1) { const Fs = asScalar(a[1]); return Array.from({ length: n }, (_, i) => i / Fs); } return toArray(M); }
@@ -205,6 +226,10 @@ export const SIGNAL: ToolboxModule = {
       const d: number[] = []; for (let i = 0; i < w.length && i + 1 < pos.length; i++) d.push(w[i] / (pos[i + 1] - pos[i]));
       return ret(colVec(d));
     },
+    // ── transition metrics (signal.internal.getTransitions: 10%→90% reference crossings) ──
+    risetime: (a) => { const x = toArray(m(a[0])); return ret(colVec(transitions(x, timeBase(a, x.length)).filter((d) => d.p > 0).map((d) => d.dur))); },
+    falltime: (a) => { const x = toArray(m(a[0])); return ret(colVec(transitions(x, timeBase(a, x.length)).filter((d) => d.p < 0).map((d) => d.dur))); },
+    slewrate: (a) => { const x = toArray(m(a[0])); return ret(colVec(transitions(x, timeBase(a, x.length)).map((d) => d.slew))); },
     barthannwin: (a) => window(a, 1, (n, N) => { const r = n / N - 0.5; return 0.62 - 0.48 * Math.abs(r) + 0.38 * Math.cos(2 * Math.PI * r); }),
     gausswin: (a) => { const L = Math.round(asScalar(a[0])); const alpha = a.length >= 2 ? asScalar(a[1]) : 2.5; const N = L - 1; const w: number[] = []; for (let n = 0; n < L; n++) { const x = (n - N / 2) / (N / 2); w.push(Math.exp(-0.5 * (alpha * x) ** 2)); } return ret(colVec(L === 1 ? [1] : w)); },
     kaiser: (a) => { const L = Math.round(asScalar(a[0])); const beta = a.length >= 2 ? asScalar(a[1]) : 0.5; const N = L - 1; const i0b = besselI0(beta); const w: number[] = []; for (let n = 0; n < L; n++) { const r = (2 * n) / N - 1; w.push(besselI0(beta * Math.sqrt(1 - r * r)) / i0b); } return ret(colVec(L === 1 ? [1] : w)); },
@@ -285,6 +310,7 @@ export const SIGNAL: ToolboxModule = {
     edr: 'Edit distance on real signals', peak2peak: 'Maximum-to-minimum difference', peak2rms: 'Peak-magnitude-to-RMS ratio', rssq: 'Root-sum-of-squares level',
     statelevels: 'Estimate state-level histogram of bilevel waveform', midcross: 'Mid-reference level crossing of bilevel waveform',
     pulsewidth: 'Bilevel waveform pulse width', pulseperiod: 'Bilevel waveform pulse period', dutycycle: 'Duty cycle of pulse waveform',
+    risetime: 'Rise time of positive-going bilevel waveform transitions', falltime: 'Fall time of negative-going bilevel waveform transitions', slewrate: 'Slew rate of bilevel waveform transitions',
     mag2db: 'Convert magnitude to decibels', db2mag: 'Convert decibels to magnitude', pow2db: 'Convert power to decibels', db2pow: 'Convert decibels to power',
     sinc: 'Normalized sinc function', chirp: 'Swept-frequency cosine', medfilt1: '1-D median filtering',
     freqz: 'Digital filter frequency response', freqs: 'Analog filter frequency response', fir1: 'Window-based FIR filter design',
