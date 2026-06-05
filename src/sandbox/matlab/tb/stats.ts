@@ -196,11 +196,145 @@ function resolveDist(a: Value[]): { spec: DistSpec; vals: number[]; rest: Value[
   return { spec, vals, rest: a.slice(1, 2) };
 }
 
+// ── hypothesis-test helpers ──────────────────────────────────────────────────
+const normcdfL = (z: number) => 0.5 * erfc(-z / Math.SQRT2);
+function tcdfL(x: number, v: number): number { const ib = betainc(v / (v + x * x), v / 2, 0.5); return x >= 0 ? 1 - 0.5 * ib : 0.5 * ib; }
+function tinvL(p: number, v: number): number { if (p <= 0) return -Infinity; if (p >= 1) return Infinity; return invCdf(p, (x) => tcdfL(x, v), -1e6, 1e6); }
+const sd_ = (c: number[]) => Math.sqrt(var_(c));
+/** Build a 1×1 struct from [name, value] pairs (drops undefined entries). */
+function mkStruct(pairs: [string, Value | undefined][]): Value {
+  const fields = new Map<string, Value[]>(); for (const [k, v] of pairs) if (v !== undefined) fields.set(k, [v]);
+  return { kind: 'struct', rows: 1, cols: 1, fields } as Value;
+}
+/** Parse the trailing 'tail' option → -1 (left) | 0 (both) | 1 (right). */
+function tailCode(v: Value | undefined): number {
+  if (v === undefined) return 0; if (isMat(v) && !(v as Mat).isChar) { const t = asScalar(v); return t === -1 || t === 0 || t === 1 ? t : 0; }
+  const s = asString(v).toLowerCase(); return s.startsWith('l') ? -1 : s.startsWith('r') ? 1 : 0;
+}
+/** Average ranks with tie handling; tieadj = Σ(t³−t)/2 over tie groups. */
+function tiedrank(x: number[]): { ranks: number[]; tieadj: number } {
+  const n = x.length, idx = x.map((_, i) => i).sort((i, j) => x[i] - x[j]);
+  const ranks = new Array<number>(n); let tieadj = 0;
+  for (let i = 0; i < n;) { let j = i; while (j + 1 < n && x[idx[j + 1]] === x[idx[i]]) j++; const avg = (i + j) / 2 + 1; const t = j - i + 1; for (let k = i; k <= j; k++) ranks[idx[k]] = avg; tieadj += (t * t * t - t) / 2; i = j + 1; }
+  return { ranks, tieadj };
+}
+/** Exact signed-rank null distribution: counts[k] = #{sign subsets with positive-rank-sum k},
+ *  ranks scaled to integers (×2 if half-integer ties). Returns {counts, scale, total}. */
+function signedRankDist(ranks: number[]): { counts: number[]; scale: number; total: number } {
+  const scale = ranks.some((r) => r !== Math.floor(r)) ? 2 : 1;
+  const r = ranks.map((v) => Math.round(v * scale)); const maxS = r.reduce((s, v) => s + v, 0);
+  const counts = new Array<number>(maxS + 1).fill(0); counts[0] = 1;
+  for (const ri of r) for (let s = maxS; s >= ri; s--) counts[s] += counts[s - ri];
+  return { counts, scale, total: 2 ** ranks.length };
+}
+/** Exact rank-sum (Mann-Whitney) distribution: ways to choose exactly `ns` of the combined
+ *  ranks summing to s. Returns counts indexed by scaled sum, scale, and total C(n,ns). */
+function rankSumDist(ranks: number[], ns: number): { counts: number[]; scale: number; total: number } {
+  const scale = ranks.some((r) => r !== Math.floor(r)) ? 2 : 1;
+  const r = ranks.map((v) => Math.round(v * scale)); const maxS = r.reduce((s, v) => s + v, 0);
+  const dp = Array.from({ length: ns + 1 }, () => new Array<number>(maxS + 1).fill(0)); dp[0][0] = 1;
+  for (const ri of r) for (let j = ns; j >= 1; j--) for (let s = maxS; s >= ri; s--) dp[j][s] += dp[j - 1][s - ri];
+  let total = 0; for (const c of dp[ns]) total += c;
+  return { counts: dp[ns], scale, total };
+}
+
 export const STATS: ToolboxModule = {
   id: 'stats',
   name: 'Statistics and Machine Learning Toolbox',
   docBase: 'https://www.mathworks.com/help/stats/',
   builtins: {
+    // ── hypothesis tests ──
+    /** [h,p,ci,stats]=ttest(x[,m][,'Alpha',a][,'Tail',t]) — one-sample/paired t-test. */
+    ttest: (a, nargout) => {
+      let x = toArray(m(a[0])).filter((v) => !Number.isNaN(v)); let mu0 = 0; const opts = a.slice(1);
+      // second positional arg: scalar mean, or a paired vector (same length → x-m)
+      let oi = 0;
+      if (opts.length && isMat(opts[0]) && !(opts[0] as Mat).isChar) { const M = m(opts[0]); if (numel(M) === 1) mu0 = asScalar(M); else { const mm = toArray(M); x = toArray(m(a[0])).map((v, i) => v - mm[i]).filter((v) => !Number.isNaN(v)); } oi = 1; }
+      let alpha = 0.05, tail = 0;
+      for (let i = oi; i < opts.length; i++) { const s = isMat(opts[i]) && (opts[i] as Mat).isChar ? asString(opts[i]).toLowerCase() : ''; if (s === 'alpha') alpha = asScalar(opts[++i]); else if (s === 'tail') tail = tailCode(opts[++i]); else if (i === oi && isMat(opts[i]) && !(opts[i] as Mat).isChar) { alpha = asScalar(opts[i]); if (opts[i + 1] !== undefined) tail = tailCode(opts[++i]); } }
+      const n = x.length, df = Math.max(n - 1, 0), xbar = mean_(x), sd = sd_(x), ser = sd / Math.sqrt(n), tval = (xbar - mu0) / ser;
+      let p: number, ci: [number, number];
+      if (tail === 0) { p = 2 * tcdfL(-Math.abs(tval), df); const c = tinvL(1 - alpha / 2, df) * ser; ci = [xbar - c, xbar + c]; }
+      else if (tail === 1) { p = tcdfL(-tval, df); ci = [xbar - tinvL(1 - alpha, df) * ser, Infinity]; }
+      else { p = tcdfL(tval, df); ci = [-Infinity, xbar + tinvL(1 - alpha, df) * ser]; }
+      const h = p <= alpha ? 1 : 0;
+      const stats = mkStruct([['tstat', scalar(tval)], ['df', scalar(df)], ['sd', scalar(sd)]]);
+      return Promise.resolve([scalar(h), scalar(p), rowVec(ci), stats].slice(0, Math.max(1, nargout)));
+    },
+    /** [h,p,ci,stats]=ttest2(x,y[,'Alpha',a][,'Tail',t][,'Vartype',v]) — two-sample t-test. */
+    ttest2: (a, nargout) => {
+      const x = toArray(m(a[0])).filter((v) => !Number.isNaN(v)), y = toArray(m(a[1])).filter((v) => !Number.isNaN(v));
+      let alpha = 0.05, tail = 0, vartype = 1; const opts = a.slice(2);
+      for (let i = 0; i < opts.length; i++) { const s = isMat(opts[i]) && (opts[i] as Mat).isChar ? asString(opts[i]).toLowerCase() : ''; if (s === 'alpha') alpha = asScalar(opts[++i]); else if (s === 'tail') tail = tailCode(opts[++i]); else if (s === 'vartype') vartype = asString(opts[++i]).toLowerCase().startsWith('un') ? 2 : 1; else if (i === 0 && isMat(opts[i]) && !(opts[i] as Mat).isChar) { alpha = asScalar(opts[i]); if (opts[i + 1] !== undefined) tail = tailCode(opts[++i]); } }
+      const nx = x.length, ny = y.length, s2x = var_(x), s2y = var_(y), diff = mean_(x) - mean_(y);
+      let dfe: number, se: number;
+      if (vartype === 1) { dfe = nx + ny - 2; const sp = Math.sqrt(((nx - 1) * s2x + (ny - 1) * s2y) / dfe); se = sp * Math.sqrt(1 / nx + 1 / ny); }
+      else { const ax = s2x / nx, ay = s2y / ny; dfe = (ax + ay) ** 2 / (ax * ax / (nx - 1) + ay * ay / (ny - 1)); se = Math.sqrt(ax + ay); }
+      const ratio = diff / se;
+      let p: number, ci: [number, number];
+      if (tail === 0) { p = 2 * tcdfL(-Math.abs(ratio), dfe); const c = tinvL(1 - alpha / 2, dfe) * se; ci = [diff - c, diff + c]; }
+      else if (tail === 1) { p = tcdfL(-ratio, dfe); ci = [diff - tinvL(1 - alpha, dfe) * se, Infinity]; }
+      else { p = tcdfL(ratio, dfe); ci = [-Infinity, diff + tinvL(1 - alpha, dfe) * se]; }
+      const h = p <= alpha ? 1 : 0;
+      const stats = mkStruct([['tstat', scalar(ratio)], ['df', scalar(dfe)], ['sd', scalar(se)]]);
+      return Promise.resolve([scalar(h), scalar(p), rowVec(ci), stats].slice(0, Math.max(1, nargout)));
+    },
+    /** [p,h,stats]=ranksum(x,y[,'Alpha',a][,'Tail',t][,'Method',m]) — Wilcoxon rank-sum test. */
+    ranksum: (a, nargout) => {
+      const x = toArray(m(a[0])).filter((v) => !Number.isNaN(v)), y = toArray(m(a[1])).filter((v) => !Number.isNaN(v));
+      let alpha = 0.05, tail = 0, method = ''; const opts = a.slice(2);
+      for (let i = 0; i < opts.length; i++) { const s = isMat(opts[i]) && (opts[i] as Mat).isChar ? asString(opts[i]).toLowerCase() : ''; if (s === 'alpha') alpha = asScalar(opts[++i]); else if (s === 'tail') tail = tailCode(opts[++i]); else if (s === 'method') method = asString(opts[++i]).toLowerCase(); else if (i === 0 && isMat(opts[i]) && !(opts[i] as Mat).isChar) alpha = asScalar(opts[i]); }
+      const nx = x.length, ny = y.length, ns = Math.min(nx, ny), n = nx + ny;
+      const sameOrder = nx <= ny; const sm = sameOrder ? x : y, lg = sameOrder ? y : x;
+      const { ranks, tieadj } = tiedrank([...sm, ...lg]); const w = ranks.slice(0, ns).reduce((s, r) => s + r, 0);
+      if (!method) method = (ns < 10 && n < 20) ? 'exact' : 'approximate';
+      let p: number, z = NaN;
+      if (method === 'exact') {
+        const { counts, scale, total } = rankSumDist(ranks, ns); const ws = Math.round(w * scale);
+        const pLE = counts.slice(0, ws + 1).reduce((s, c) => s + c, 0) / total, pGE = counts.slice(ws).reduce((s, c) => s + c, 0) / total;
+        if (tail === 0) p = Math.min(1, 2 * Math.min(pLE, pGE)); else if (tail === 1) p = sameOrder ? pGE : pLE; else p = sameOrder ? pLE : pGE;
+      } else {
+        const wmean = ns * (n + 1) / 2, tiescor = 2 * tieadj / (n * (n - 1)), wvar = nx * ny * ((n + 1) - tiescor) / 12, wc = w - wmean;
+        if (tail === 0) { z = (wc - 0.5 * Math.sign(wc)) / Math.sqrt(wvar); if (!sameOrder) z = -z; p = 2 * normcdfL(-Math.abs(z)); }
+        else if (tail === 1) { z = sameOrder ? (wc - 0.5) / Math.sqrt(wvar) : -(wc + 0.5) / Math.sqrt(wvar); p = normcdfL(-z); }
+        else { z = sameOrder ? (wc + 0.5) / Math.sqrt(wvar) : -(wc - 0.5) / Math.sqrt(wvar); p = normcdfL(z); }
+      }
+      const h = p <= alpha ? 1 : 0; const ranksumStat = sameOrder ? w : ranks.slice(ns).reduce((s, r) => s + r, 0);
+      const stats = mkStruct([['ranksum', scalar(ranksumStat)], ['zval', Number.isNaN(z) ? undefined : scalar(z)]]);
+      return Promise.resolve([scalar(p), scalar(h), stats].slice(0, Math.max(1, nargout)));
+    },
+    /** [p,h,stats]=signrank(x[,y][,'Alpha',a][,'Tail',t][,'Method',m]) — Wilcoxon signed-rank test. */
+    signrank: (a, nargout) => {
+      const x = toArray(m(a[0]));
+      let yArg: number[] | null = null; const opts: Value[] = [];
+      if (a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar) { const M = m(a[1]); yArg = numel(M) === 1 ? x.map(() => asScalar(M)) : toArray(M); for (let i = 2; i < a.length; i++) opts.push(a[i]); }
+      else for (let i = 1; i < a.length; i++) opts.push(a[i]);
+      const onesample = yArg === null; const yv = yArg ?? x.map(() => 0);
+      let diff = x.map((v, i) => v - yv[i]).filter((v) => !Number.isNaN(v));
+      const epsd = (v: number) => (onesample ? 0 : 2 * Number.EPSILON * Math.max(1, Math.abs(v)));
+      diff = diff.filter((d) => Math.abs(d) > epsd(d));
+      let alpha = 0.05, tail = 0, method = '';
+      for (let i = 0; i < opts.length; i++) { const s = isMat(opts[i]) && (opts[i] as Mat).isChar ? asString(opts[i]).toLowerCase() : ''; if (s === 'alpha') alpha = asScalar(opts[++i]); else if (s === 'tail') tail = tailCode(opts[++i]); else if (s === 'method') method = asString(opts[++i]).toLowerCase(); else if (i === 0 && isMat(opts[i]) && !(opts[i] as Mat).isChar) alpha = asScalar(opts[i]); }
+      const n = diff.length;
+      if (n === 0) return Promise.resolve([scalar(1), scalar(0), mkStruct([['signedrank', scalar(0)]])].slice(0, Math.max(1, nargout)));
+      if (!method) method = n <= 15 ? 'exact' : 'approximate';
+      const { ranks, tieadj } = tiedrank(diff.map(Math.abs)); const w = ranks.filter((_, i) => diff[i] > 0).reduce((s, r) => s + r, 0);
+      let p: number, z = NaN;
+      if (method === 'exact') {
+        const { counts, scale, total } = signedRankDist(ranks); const ws = Math.round(w * scale);
+        const pLE = counts.slice(0, ws + 1).reduce((s, c) => s + c, 0) / total, pGE = counts.slice(ws).reduce((s, c) => s + c, 0) / total;
+        if (tail === 0) p = Math.min(1, 2 * Math.min(pLE, pGE)); else if (tail === 1) p = pGE; else p = pLE;
+      } else {
+        const mu = n * (n + 1) / 4, sig = Math.sqrt((n * (n + 1) * (2 * n + 1) - tieadj) / 24);
+        if (tail === 0) { z = (w - mu) / sig; p = 2 * normcdfL(-Math.abs(z)); }
+        else if (tail === 1) { z = (w - mu - 0.5) / sig; p = normcdfL(-z); }
+        else { z = (w - mu + 0.5) / sig; p = normcdfL(z); }
+      }
+      const h = p <= alpha ? 1 : 0;
+      const stats = mkStruct([['signedrank', scalar(w)], ['zval', Number.isNaN(z) ? undefined : scalar(z)]]);
+      return Promise.resolve([scalar(p), scalar(h), stats].slice(0, Math.max(1, nargout)));
+    },
+
     // ── Normal ──
     normpdf: (a) => dist(a, [0, 1], (x, mu, s) => Math.exp(-0.5 * ((x - mu) / s) ** 2) / (s * Math.sqrt(2 * Math.PI))),
     normcdf: (a) => dist(a, [0, 1], (x, mu, s) => 0.5 * erfc(-(x - mu) / (s * Math.SQRT2))),
@@ -578,6 +712,8 @@ export const STATS: ToolboxModule = {
     icdf: (a) => { const { spec, vals, rest } = resolveDist(a); return ret(map(m(rest[0]), (p) => spec.inv(p, ...vals))); },
   },
   help: {
+    ttest: 'One-sample and paired-sample t-test', ttest2: 'Two-sample t-test',
+    ranksum: 'Wilcoxon rank-sum (Mann-Whitney U) test', signrank: 'Wilcoxon signed-rank test',
     normpdf: 'Normal probability density function', normcdf: 'Normal cumulative distribution function', norminv: 'Normal inverse cumulative distribution function',
     tpdf: "Student's t probability density function", tcdf: "Student's t cumulative distribution function", tinv: "Student's t inverse cumulative distribution function",
     chi2pdf: 'Chi-square probability density function', chi2cdf: 'Chi-square cumulative distribution function', chi2inv: 'Chi-square inverse cumulative distribution function',
