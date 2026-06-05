@@ -24,6 +24,18 @@ function logGamma(x: number): number {
   for (let i = 1; i < 9; i++) a += G7[i] / (x + i);
   return 0.5 * LN2PI + (x + 0.5) * Math.log(t) - t + Math.log(a);
 }
+/** Digamma ψ(x) (recurrence to x≥6 + asymptotic series). */
+function digamma(x: number): number {
+  let r = 0; while (x < 6) { r -= 1 / x; x++; }
+  const f = 1 / (x * x);
+  return r + Math.log(x) - 0.5 / x + f * (-1 / 12 + f * (1 / 120 + f * (-1 / 252 + f * (1 / 240 - f * (1 / 132)))));
+}
+/** Trigamma ψ'(x) (recurrence to x≥6 + asymptotic series). */
+function trigamma(x: number): number {
+  let r = 0; while (x < 6) { r += 1 / (x * x); x++; }
+  const z = 1 / x;
+  return r + z + 0.5 * z * z + z * z * z * (1 / 6 - z * z * (1 / 30 - z * z * (1 / 42)));
+}
 /** Regularized lower incomplete gamma P(a,x) = γ(a,x)/Γ(a). */
 function gammainc(x: number, a: number): number {
   if (x <= 0 || a <= 0) return 0;
@@ -381,6 +393,13 @@ export const STATS: ToolboxModule = {
       const aPar = (x.reduce((s, v) => s + v ** b, 0) / N) ** (1 / b);
       return ret(rowVec([aPar, b]));
     },
+    lognfit: (a) => { const lx = toArray(m(a[0])).map(Math.log), N = lx.length, mu = lx.reduce((s, v) => s + v, 0) / N; return ret(rowVec([mu, Math.sqrt(lx.reduce((s, v) => s + (v - mu) ** 2, 0) / (N - 1))])); },
+    gamfit: (a) => {
+      const x = toArray(m(a[0])), N = x.length, meanx = x.reduce((s, v) => s + v, 0) / N, s = Math.log(meanx) - x.reduce((sm, v) => sm + Math.log(v), 0) / N;
+      let ah = (3 - s + Math.sqrt((s - 3) ** 2 + 24 * s)) / (12 * s);
+      for (let it = 0; it < 100; it++) { const f = Math.log(ah) - digamma(ah) - s, df = 1 / ah - trigamma(ah), an = ah - f / df; if (Math.abs(an - ah) < 1e-13) { ah = an; break; } ah = an; }
+      return ret(rowVec([ah, meanx / ah]));
+    },
     // ── descriptive: skewness/kurtosis (population, flag=1 default; flag=0 bias-corrected) ──
     skewness: (a) => {
       const x = toArray(m(a[0])), flag = a.length > 1 && isMat(a[1]) && m(a[1]).rows * m(a[1]).cols > 0 ? asScalar(a[1]) : 1, N = x.length;
@@ -532,6 +551,7 @@ export const STATS: ToolboxModule = {
     nctpdf: 'Noncentral t probability density function', nctcdf: 'Noncentral t cumulative distribution function', nctinv: 'Noncentral t inverse cumulative distribution function', nctstat: 'Noncentral t mean and variance',
     expfit: 'Exponential parameter estimate (MLE)', poissfit: 'Poisson parameter estimate (MLE)', raylfit: 'Rayleigh parameter estimate (MLE)', normfit: 'Normal parameter estimates (mean, std)', unifit: 'Uniform parameter estimates (min, max)',
     binofit: 'Binomial proportion estimate', wblfit: 'Weibull parameter estimates (MLE)', skewness: 'Sample skewness', kurtosis: 'Sample kurtosis',
+    lognfit: 'Lognormal parameter estimates (MLE)', gamfit: 'Gamma parameter estimates (MLE)',
     nanmean: 'Mean, ignoring NaN values', nansum: 'Sum, ignoring NaN values', nanstd: 'Standard deviation, ignoring NaN values', nanvar: 'Variance, ignoring NaN values',
     nanmedian: 'Median, ignoring NaN values', nanmax: 'Maximum, ignoring NaN values', nanmin: 'Minimum, ignoring NaN values',
     range: 'Range of values (max − min)', tabulate: 'Frequency table',
