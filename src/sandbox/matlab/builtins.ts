@@ -1668,7 +1668,17 @@ export const BUILTINS: Record<string, Builtin> = {
   split: async (a) => { const str = asString(a[0]); const delim = a.length >= 2 ? asString(a[1]) : ' '; const parts = a.length >= 2 ? str.split(delim) : str.split(/\s+/).filter((x) => x.length); return ret(makeStrArr(parts.length, 1, parts)); },
   splitlines: async (a) => { const parts = asString(a[0]).split(/\r\n|\r|\n/); return ret(makeStrArr(parts.length, 1, parts)); },
   join: async (a) => { const s = asStrArr(a[0]); const delim = a.length >= 2 ? asString(a[1]) : ' '; return ret(makeStr(s.items.join(delim))); },
-  append: async (a) => ret(makeStr(a.map((v) => asString(v)).join(''))),
+  append: async (a) => {
+    // String arrays concatenate element-wise (scalars broadcast); otherwise join as text.
+    if (a.some(isStr)) {
+      let rows = 1, cols = 1, total = 1;
+      for (const v of a) if (isStr(v) && v.items.length > total) { rows = v.rows; cols = v.cols; total = v.items.length; }
+      const items: string[] = [];
+      for (let i = 0; i < total; i++) { let s = ''; for (const v of a) s += isStr(v) ? (v.items.length === 1 ? v.items[0] : v.items[i]) : asString(v); items.push(s); }
+      return ret(makeStrArr(rows, cols, items));
+    }
+    return ret(makeStr(a.map((v) => asString(v)).join('')));
+  },
   extractBefore: async (a) => ret(mapStrArr(a[0], (x) => { const i = x.indexOf(asString(a[1])); return i < 0 ? '' : x.slice(0, i); })),
   extractAfter: async (a) => ret(mapStrArr(a[0], (x) => { const p = asString(a[1]); const i = x.indexOf(p); return i < 0 ? '' : x.slice(i + p.length); })),
   extractBetween: async (a) => { const str = asString(a[0]); const l = asString(a[1]), r = asString(a[2]); const i = str.indexOf(l); if (i < 0) return ret(makeStr('')); const j = str.indexOf(r, i + l.length); return ret(makeStr(j < 0 ? '' : str.slice(i + l.length, j))); },
@@ -1880,7 +1890,17 @@ export const BUILTINS: Record<string, Builtin> = {
 
   // missing-value handling (NaN convention)
   ismissing: async (a) => { const A = m(a[0]); return [{ ...map(A, (x) => (Number.isNaN(x) ? 1 : 0)), isBool: true }]; },
-  anymissing: async (a) => ret(bool(toArray(m(a[0])).some((x) => Number.isNaN(x)))),
+  anymissing: async (a) => {
+    const v = a[0];
+    // Missing value depends on type: NaN/NaT (numeric/datetime), "" / <missing> (string),
+    // <undefined> (categorical), and any missing in a cell's contents or a table's variables.
+    if (isStr(v)) return ret(bool(v.items.some((s) => s === '')));
+    if (v.kind === 'categorical') return ret(bool(Array.from(v.codes).some((c) => c === 0)));
+    if (isCell(v)) return ret(bool(v.items.some((it) => (isMat(it) && it.isChar ? asString(it) === '' : isMat(it) && toArray(it).some(Number.isNaN)))));
+    if (v.kind === 'table') return ret(bool(v.cols.some((col) => (isStr(col) ? col.items.some((s) => s === '') : isMat(col) ? toArray(col).some(Number.isNaN) : false))));
+    if (isTemporal(v)) return ret(bool(Array.from(v.data).some(Number.isNaN)));
+    return ret(bool(toArray(m(v)).some((x) => Number.isNaN(x))));
+  },
   standardizeMissing: async (a) => { const A = m(a[0]); const vals = new Set(toArray(m(a[1]))); return ret(map(A, (x) => (vals.has(x) ? NaN : x))); },
   rmmissing: async (a) => {
     const A = m(a[0]);
@@ -3098,15 +3118,35 @@ export const BUILTINS: Record<string, Builtin> = {
   arrayfun: async (a, n, env) => {
     const f = a[0];
     if (!isHandle(f)) throw new MatError('arrayfun: first argument must be a function handle');
-    const arrays = a.slice(1).map((v) => m(v));
-    const A0 = arrays[0];
-    const out = zeros(A0.rows, A0.cols);
-    for (let i = 0; i < A0.data.length; i++) {
-      const callArgs = arrays.map((arr) => scalar(arr.data[i]));
-      const r = await env.callHandle(f, callArgs, 1);
-      out.data[i] = r.length ? asScalar(r[0]) : NaN;
+    let uniform = true; const inputs: Value[] = [];
+    for (let i = 1; i < a.length; i++) {
+      if (isMat(a[i]) && (a[i] as Mat).isChar && i + 1 < a.length && asString(a[i]).toLowerCase() === 'uniformoutput') { uniform = truthyArg(a[i + 1]); i++; continue; }
+      inputs.push(a[i]);
     }
-    return ret(out);
+    const shapeOf = (v: Value): [number, number] => (isStruct(v) || isCell(v) ? [v.rows, v.cols] : [m(v).rows, m(v).cols]);
+    const [rows, cols] = shapeOf(inputs[0]); const total = rows * cols;
+    // element i of an input: a 1×1 struct from a struct array, a cell's content, or a scalar.
+    const elemAt = (v: Value, i: number): Value => {
+      if (isStruct(v)) { const fields = new Map<string, Value[]>(); for (const [k, arr] of v.fields) fields.set(k, [arr[i] ?? zeros(0, 0)]); return { kind: 'struct', rows: 1, cols: 1, fields }; }
+      if (isCell(v)) return v.items[i];
+      const M = m(v); const sc = scalar(M.data[i]); if (M.idata) sc.idata = Float64Array.of(M.idata[i]); sc.isChar = M.isChar; sc.isBool = M.isBool; return sc;
+    };
+    const nout = Math.max(1, n);
+    const slots: Value[][] = Array.from({ length: nout }, () => []);
+    for (let i = 0; i < total; i++) {
+      const r = await env.callHandle(f, inputs.map((v) => elemAt(v, i)), nout);
+      for (let k = 0; k < nout; k++) slots[k].push(r[k] ?? zeros(0, 0));
+    }
+    const assemble = (vals: Value[]): Value => {
+      if (!uniform) return makeCell(rows, cols, vals);
+      const out = zeros(rows, cols); let anyC = false, isB = vals.length > 0, isCh = vals.length > 0;
+      for (const v of vals) if (isMat(v) && isComplex(v)) anyC = true;
+      const im = anyC ? new Float64Array(total) : null;
+      for (let i = 0; i < vals.length; i++) { const M = m(vals[i]); out.data[i] = M.data[0]; if (im) im[i] = M.idata ? M.idata[0] : 0; if (!M.isBool) isB = false; if (!M.isChar) isCh = false; }
+      if (im) out.idata = im; if (isB) out.isBool = true; if (isCh) out.isChar = true;
+      return out;
+    };
+    return slots.map(assemble);
   },
 
   // ═══════════════════════ GRAPHICS · I/O · STRINGS ═══════════════════════

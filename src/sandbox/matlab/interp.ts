@@ -355,6 +355,30 @@ export class Interpreter implements Env {
           scope.vars.set(lv.target.name, { kind: 'struct', rows: 1, cols: 1, fields });
           return;
         }
+        // S(i).field = val : grow/create a struct array, then set the field on element i.
+        if (lv.target.t === 'index' && lv.target.target.t === 'ident') {
+          const sname = lv.target.target.name;
+          const cur = scope.vars.get(sname);
+          const st: StructV = cur && isStruct(cur)
+            ? { kind: 'struct', rows: cur.rows, cols: cur.cols, fields: new Map([...cur.fields].map(([k, v]) => [k, v.slice()])) }
+            : { kind: 'struct', rows: 0, cols: 0, fields: new Map() };
+          const total0 = st.rows * st.cols;
+          const subs = await this.evalSubsN(lv.target.args, st.rows, st.cols, total0, scope);
+          const lin = this.cellLinear(subs, st.rows, st.cols, total0);
+          const need = lin.length ? Math.max(...lin) : 0;
+          if (need > total0) {
+            if (st.rows <= 1) { st.rows = 1; st.cols = need; }       // row (or new) struct array
+            else if (st.cols === 1) { st.rows = need; }              // column struct array
+            else st.cols = need;
+          }
+          const total = st.rows * st.cols;
+          if (!st.fields.has(lv.name)) st.fields.set(lv.name, []);
+          for (const [, arr] of st.fields) { while (arr.length < total) arr.push(empty()); }
+          const farr = st.fields.get(lv.name)!;
+          for (const idx of lin) farr[idx - 1] = val;
+          scope.vars.set(sname, st);
+          return;
+        }
         const t = await this.evalExpr(lv.target, scope);
         if (t.kind === 'gobj') { this.graphics.setAxesProp(lv.name, val); return; }
         throw new MatError(`cannot assign field '.${lv.name}'`);

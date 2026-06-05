@@ -110,3 +110,29 @@ Status legend: ✅ converged · 🟡 partial (core works, some variants unsuppor
 - **Lexer/command-syntax fix**: `'` after a value followed by a space is now a string, not transpose — so `ylabel 'Phase / \pi'`, `disp 'hi'`, `[3 'ab']` parse correctly (previously a parse error on `\`). Added xlabel/ylabel/zlabel/title/legend/disp/… to command syntax. Transpose (`A'`, `[1 2 3]'`) is unchanged.
 - `allunique`: NaN/missing treated as unique; string-array and `'rows'` support.
 - Rich ≥10-line help added for all batch-4 functions.
+
+---
+
+## Batch 5 — functions 41–50
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `any` | ✅ | dim/vecdim/`'all'`/N-D, returns logical (shares the `all` rewrite) | — |
+| `anymissing` | ✅ | **extended**: NaN, NaT, "", `<undefined>`, cell/table contents | mixed-type table *display* still has a formatting crash |
+| `anynan` | ✅ | NaN-only whole-array test (Inf is not flagged) | — |
+| `append` | ✅ | **fixed**: element-wise string-array concatenation with broadcast | — |
+| `area` | 🟡 | polyshape/alphaShape area value | filled-area plotting not verifiable (graphics) |
+| `array2table` | ✅ | matrix→table, VariableNames/RowNames | — |
+| `arrayfun` | ✅ | **rewritten**: struct arrays, `UniformOutput`, multiple outputs, complex | handles-returning + plot examples and rand-based outputs not comparable |
+| `asec` | ✅ | complex inverse secant | — |
+| `asecd` | ✅ | complex inverse secant (degrees) | — |
+| `asech` | ✅ | complex inverse hyperbolic secant | — |
+
+### Fixes landed in this batch (two are high-value)
+- **Struct-array indexed-field assignment** `S(i).field = value` now creates/grows the struct array (was "undefined variable S"). This unblocks struct-array construction generally and the whole arrayfun example set.
+- **`arrayfun` rewrite**: iterates struct arrays (passing each element), honors `'UniformOutput',false` (→ cell), supports multiple outputs `[a,b]=arrayfun(...)`, and preserves complex values.
+- `append`: string arrays concatenate element-wise with scalar broadcast.
+- `anymissing`: recognizes missing values across string/categorical/cell/table/datetime, not just numeric NaN.
+- `asec`/`asecd`/`asech` already converged via the batch-2 complex inverse-trig work.
+- Audit harness: examples are now tagged with their doc section (`<h2>`/`<h3>`), available for future cross-example isolation.
+- Rich ≥10-line help added for all batch-5 functions.

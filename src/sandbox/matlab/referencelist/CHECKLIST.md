@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **40 / 1170** audited.
+Progress: **50 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -45,3 +45,13 @@ Progress: **40 / 1170** audited.
 | 38 | `angle` | ✅ | phase angle; command-label parse fixed |
 | 39 | `animatedline` | 🟡 | create/add/get; datetime pending |
 | 40 | `annotation` | 🟡 | objects accepted; not rendered |
+| 41 | `any` | ✅ | dim/vecdim/'all'/N-D |
+| 42 | `anymissing` | ✅ | multi-type missing; table display partial |
+| 43 | `anynan` | ✅ | NaN-only (Inf excluded) |
+| 44 | `append` | ✅ | string-array broadcast fixed |
+| 45 | `area` | 🟡 | polyshape area; plotting n/a |
+| 46 | `array2table` | ✅ | names/rownames |
+| 47 | `arrayfun` | ✅ | struct arrays + UniformOutput + multi-out |
+| 48 | `asec` | ✅ | complex |
+| 49 | `asecd` | ✅ | complex, degrees |
+| 50 | `asech` | ✅ | complex |
