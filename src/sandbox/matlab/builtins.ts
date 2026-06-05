@@ -403,6 +403,12 @@ function minmax(args: Value[], nargout: number, pick: (a: number, b: number) => 
     const [v, idx] = reduceVec(toArray(A));
     return nargout >= 2 ? [scalar(v), scalar(idx)] : [scalar(v)];
   }
+  const dim2d = args.length >= 3 && isMat(args[2]) && numel(args[2]) > 0 ? Math.round(asScalar(args[2])) : 1;
+  if (dim2d === 2) {   // reduce along rows → column vector
+    const vals = zeros(A.rows, 1), idxs = zeros(A.rows, 1);
+    for (let r = 0; r < A.rows; r++) { const row: number[] = []; for (let c = 0; c < A.cols; c++) row.push(A.data[r + c * A.rows]); const [v, idx] = reduceVec(row); vals.data[r] = v; idxs.data[r] = idx; }
+    return nargout >= 2 ? [vals, idxs] : [vals];
+  }
   const vals = zeros(1, A.cols), idxs = zeros(1, A.cols);
   for (let c = 0; c < A.cols; c++) {
     const col: number[] = []; for (let r = 0; r < A.rows; r++) col.push(A.data[r + c * A.rows]);
@@ -2283,7 +2289,7 @@ export const BUILTINS: Record<string, Builtin> = {
   mustBeRow: async (a) => { const M = m(a[0]); if (M.rows !== 1) throw new MatError('Value must be a row vector.'); return []; },
   mustBeSorted: async (a) => { const v = toArray(m(a[0])); for (let i = 1; i < v.length; i++) if (v[i] < v[i - 1]) throw new MatError('Value must be sorted in ascending order.'); return []; },
   mustBeText: async (a) => { if (!isStr(a[0]) && !isCell(a[0]) && !(isMat(a[0]) && (a[0] as Mat).isChar)) throw new MatError('Value must be text.'); return []; },
-  mustBeTextScalar: async (a) => { if (!(isStr(a[0]) || (isMat(a[0]) && (a[0] as Mat).isChar))) throw new MatError('Value must be a single piece of text.'); return []; },
+  mustBeTextScalar: async (a) => { const v = a[0]; const ok = (isStr(v) && v.rows * v.cols === 1) || (isMat(v) && (v as Mat).isChar && (v as Mat).rows <= 1); if (!ok) throw new MatError('Value must be a single piece of text.'); return []; },
   mustBeNonzeroLengthText: async (a) => { const s = asString(a[0]); if (s.length === 0) throw new MatError('Value must be text with one or more characters.'); return []; },
   // ── path-string utilities (no real filesystem; pure string manipulation) ──
   filesep: async () => ret(str('/')),

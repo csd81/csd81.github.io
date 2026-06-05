@@ -532,3 +532,83 @@ Validated against MATLAB R2026a. **No bugs — all functions matched.**
 
 ### V501–V600 commit
 Build green (tsc+vite); fixes pushed (staged explicitly to exclude `toolboxes/`). Bugs caught by live-MATLAB cross-validation in functions 501–600: **`isvarname` string arg, `keys`/`values` dictionary native-array return**. (V21, V22, V24 were clean — the predicate/log/linear-algebra territory is very solid.)
+
+## V25 — functions 601–625 (lsqnonneg … milliseconds)
+
+Validated against MATLAB R2026a. **No bugs — all functions matched.**
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `lu` | ✅ | `L*U` reconstructs A |
+| `magic` | ✅ | magic square (equal row/col sums) |
+| `makima` | ✅ | modified Akima → 6.2396 (exact match) |
+| `mape` | ✅ | mean absolute % error → 7.037 |
+| `mat2cell`/`mat2str` | ✅ | partition / parseable string |
+| `matchpairs` | ✅ | min-cost assignment |
+| `max`/`maxk` | ✅ | with index, k-largest |
+| `mean`/`median` | ✅ | central tendency |
+| `meshgrid` | ✅ | grid coordinates |
+| `maxflow` | ✅ | max-flow → 4 |
+| `lsqr`/`lsqnonneg` | ✅ | iterative / non-negative LS |
+| `matches`/`milliseconds`/`mergecats`/`mergevars` | ✅ | string match / duration / categorical / table |
+| `mesh`/`meshc`/`meshz`/`material`/`mcxGate`/`maxcut2qubo` | 🟡 | graphics / quantum |
+
+## V26 — functions 626–650 (min … mustBeGreaterThan)
+
+Validated against MATLAB R2026a. **1 bug found and fixed:**
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `min`/`max` | ✅ | **fixed** (see below) |
+| `mink` | ✅ | k smallest → [1 1 2] |
+| `mod` | ✅ | `mod(-7,3)`→2 |
+| `mode` | ✅ | incl. dim argument |
+| `month`/`minute`/`minutes` | ✅ | datetime/duration |
+| `mkpp` | ✅ | piecewise-poly construction |
+| `movmean`/`movsum`/`movmax`/`movmin`/`movmedian`/`movstd`/`movprod`/`movmad`/`movvar` | ✅ | moving-window stats |
+| `minspantree` | ✅ | MST total weight → 4 |
+| `minres` | ✅ | MINRES solver → A\\b |
+| `mustBeColumn`/`mustBeFinite`/`mustBeFloat`/`mustBeGreaterThan` | ✅ | argument validators |
+| `missing`/`movevars` | ✅ | missing value / table reorder |
+
+### Fix
+- **`min`/`max` dim-2 on 2-D matrices**: the `min(A,[],dim)`/`max(A,[],dim)` reductions only honored the dim argument for N-D arrays; for an ordinary 2-D matrix they always reduced column-wise (dim 1), ignoring `dim=2`. So `min([1 2;3 4],[],2)` returned `[1 2]` instead of `[1;3]`. Added per-row reduction for `dim=2` (values and indices). Verified against MATLAB: `min(...,[],2)`→[1;3], `max(...,[],2)`→[2;4], with correct index outputs; the default, dim-1, and pairwise forms unchanged.
+
+## V27 — functions 651–675 (mustBeGreaterThanOrEqual … nargchk)
+
+Validated against MATLAB R2026a (validators: pass-silently / throw behavior compared). **1 bug found and fixed:**
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `mustBeGreaterThanOrEqual`/`mustBeLessThan`/`mustBeLessThanOrEqual`/`mustBeInRange`/`mustBeInteger` | ✅ | pass/throw match |
+| `mustBeMatrix`/`mustBeMember`/`mustBeVector`/`mustBeRow`/`mustBeScalarOrEmpty` | ✅ | shape/membership validators |
+| `mustBeNegative`/`mustBeNonNan`/`mustBeNonempty`/`mustBeNonnegative`/`mustBeNonpositive`/`mustBeNonzero`/`mustBePositive`/`mustBeReal`/`mustBeNumeric`/`mustBeNumericOrLogical` | ✅ | value validators |
+| `mustBeSorted`/`mustBeText`/`mustBeNonzeroLengthText` | ✅ | order/text validators |
+| `mustBeTextScalar` | ✅ | **fixed** (see below) |
+| `nargchk` | ✅ | in-range → "", out-of-range → message |
+
+### Fix
+- **`mustBeTextScalar` non-scalar text**: accepted any string value, so `mustBeTextScalar(["a" "b"])` passed even though a 1×2 string array is not a single piece of text. Now requires a scalar string (`numel==1`) or a char row vector. `mustBeTextScalar(["a" "b"])`→error, `mustBeTextScalar("a")`/`mustBeTextScalar('abc')`→pass, matching MATLAB; `mustBeText` still accepts string arrays.
+
+## V28 — functions 676–700 (nargoutchk … num2cell) — **V700 boundary: built + pushed**
+
+Validated against MATLAB R2026a. **No bugs — all functions matched.**
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `nchoosek` | ✅ | binomial + combinations matrix |
+| `ndims`/`ndgrid` | ✅ | dimensions / grid |
+| `nextpow2`/`nnz`/`nonzeros` | ✅ | |
+| `norm`/`normest`/`normalize` | ✅ | 1/2/Inf/fro norms, z-score |
+| `nthroot` | ✅ | `nthroot(-27,3)`→-3 |
+| `null` | ✅ | null-space basis (sign-arbitrary, magnitude matches) |
+| `nufft`/`nufftn` | ✅ | nonuniform FFT magnitudes |
+| `num2cell` | ✅ | array→cell |
+| `nearest`/`nearestNeighbor`/`nearestvertex`/`neighbors` | ✅ | graph/geometry queries |
+| `native2unicode` | ✅ | bytes→chars |
+| `narginchk`/`nargoutchk`/`nebula`/`nexttile`/`nsidedpoly`/`now` | ✅/🟡 | validators / graphics |
+
+---
+
+### V601–V700 commit
+Build green (tsc+vite); fixes pushed (staged explicitly to exclude `toolboxes/`). Bugs caught by live-MATLAB cross-validation in functions 601–700: **`min`/`max` dim-2 on 2-D matrices, `mustBeTextScalar` non-scalar text**. (V25 and V28 were clean.)
