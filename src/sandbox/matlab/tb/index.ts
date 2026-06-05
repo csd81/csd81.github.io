@@ -9,9 +9,10 @@ import type { ToolboxModule } from './types';
 import { SYMBOLIC } from './symbolic';
 import { STATS } from './stats';
 import { SIGNAL } from './signal';
+import { SIMULINK } from './simulink';
 
 /** All registered toolboxes, in precedence order (first wins on inter-toolbox collision). */
-export const TOOLBOXES: ToolboxModule[] = [SYMBOLIC, STATS, SIGNAL];
+export const TOOLBOXES: ToolboxModule[] = [SYMBOLIC, STATS, SIGNAL, SIMULINK];
 
 export const TOOLBOX_BUILTINS: Record<string, Builtin> = {};
 export const TOOLBOX_CONSTANTS: Record<string, () => Value> = {};
