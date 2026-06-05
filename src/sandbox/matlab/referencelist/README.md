@@ -440,3 +440,26 @@ All 35 batch-8 examples pass.
 - **`conv`** honors the `'same'` and `'valid'` shape options (central / fully-overlapping part) and preserves the row/column orientation of the first input.
 - **`containers.Map(keySet,valueSet)`** now expands numeric vectors, string arrays, and cells into one entry per key/value (previously a numeric `valueSet` was stored as a single value, so all but the first key mapped to 0); numeric-key maps and `M(key)` lookup work.
 - Rich ≥10-line help added for all batch-18 functions (including `containers.Map`).
+
+---
+
+## Batch 19 — functions 181–190
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `convertCharsToStrings` | ✅ | **fixed**: multiple inputs→outputs | — |
+| `convertStringsToChars` | ✅ | **fixed**: multiple inputs→outputs | — |
+| `convexHull` | 🟡 | hull of a delaunayTriangulation | `[C,v]` 2-output (volume) on a triangulation pending |
+| `convhull` | ✅ | **fixed**: matrix input `convhull(P)`, area 2nd output | — |
+| `convhulln` | ✅ | N-D convex hull + volume | — |
+| `convn` | ✅ | N-D convolution with shapes | doc examples use random arrays (non-matchable) |
+| `cool` | ✅ | cool colormap | one example sets a `groot` default |
+| `copper` | ✅ | copper colormap | one example sets a `groot` default |
+| `corrcoef` | ✅ | correlation matrix (verified on deterministic data) | doc examples use `randn` (non-matchable) |
+| `cos` | ✅ | cosine (real & complex) | — |
+
+### Fixes landed in this batch
+- **`convhull`** accepts a single N-by-2 point matrix (`convhull(P)`) in addition to `convhull(x,y)`, and returns the enclosed area as a second output.
+- **`convertCharsToStrings` / `convertStringsToChars`** support the multiple-input/multiple-output form, converting each argument and returning one output per input.
+- Verified `corrcoef` is correct (perfect correlations return exactly 1); its example failures are due to random input data.
+- Rich ≥10-line help added for all batch-19 functions.

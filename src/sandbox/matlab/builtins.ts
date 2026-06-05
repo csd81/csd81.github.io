@@ -1464,7 +1464,14 @@ export const BUILTINS: Record<string, Builtin> = {
   // ── geometry ──
   polyarea: async (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])); let s = 0; const n = x.length; for (let i = 0; i < n; i++) { const j = (i + 1) % n; s += x[i] * y[j] - x[j] * y[i]; } return ret(scalar(Math.abs(s) / 2)); },
   inpolygon: async (a) => { const xq = m(a[0]), yq = m(a[1]); const xv = toArray(m(a[2])), yv = toArray(m(a[3])); const o = zeros(xq.rows, xq.cols); for (let k = 0; k < xq.data.length; k++) o.data[k] = pointInPoly(xq.data[k], yq.data[k], xv, yv) ? 1 : 0; o.isBool = true; return [o]; },
-  convhull: async (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])); return ret(colVec(convHull2D(x, y))); },
+  convhull: async (a, n) => {
+    let x: number[], y: number[];
+    if (a.length === 1 || !(isMat(a[1]) && numel(a[1]) > 1)) { const P = m(a[0]); x = []; y = []; for (let r = 0; r < P.rows; r++) { x.push(P.data[r]); y.push(P.data[r + P.rows]); } }
+    else { x = toArray(m(a[0])); y = toArray(m(a[1])); }
+    const k = convHull2D(x, y);
+    if (n >= 2) { let s = 0; for (let i = 0; i < k.length; i++) { const j = (i + 1) % k.length; s += x[k[i] - 1] * y[k[j] - 1] - x[k[j] - 1] * y[k[i] - 1]; } return [colVec(k), scalar(Math.abs(s) / 2)]; }
+    return ret(colVec(k));
+  },
   rectint: async (a) => { const A = m(a[0]), B = m(a[1]); const o = zeros(A.rows, B.rows); for (let i = 0; i < A.rows; i++) for (let j = 0; j < B.rows; j++) { const ax = A.data[i], ay = A.data[i + A.rows], aw = A.data[i + 2 * A.rows], ah = A.data[i + 3 * A.rows]; const bx = B.data[j], by = B.data[j + B.rows], bw = B.data[j + 2 * B.rows], bh = B.data[j + 3 * B.rows]; const ix = Math.max(0, Math.min(ax + aw, bx + bw) - Math.max(ax, bx)); const iy = Math.max(0, Math.min(ay + ah, by + bh) - Math.max(ay, by)); o.data[i + j * A.rows] = ix * iy; } return ret(o); },
   // ── distances ──
   pdist: async (a) => { const X = m(a[0]); const out: number[] = []; for (let i = 0; i < X.rows; i++) for (let j = i + 1; j < X.rows; j++) { let s = 0; for (let c = 0; c < X.cols; c++) s += (X.data[i + c * X.rows] - X.data[j + c * X.rows]) ** 2; out.push(Math.sqrt(s)); } return ret(rowVec(out)); },
@@ -1901,8 +1908,8 @@ export const BUILTINS: Record<string, Builtin> = {
   insertBefore: async (a) => ret(mapStrArr(a[0], (x) => { const i = x.indexOf(asString(a[1])); return i < 0 ? x : x.slice(0, i) + asString(a[2]) + x.slice(i); })),
   eraseBetween: async (a) => ret(mapStrArr(a[0], (x) => { const l = asString(a[1]), r = asString(a[2]); const i = x.indexOf(l); if (i < 0) return x; const j = x.indexOf(r, i + l.length); return j < 0 ? x : x.slice(0, i + l.length) + x.slice(j); })),
   replaceBetween: async (a) => ret(mapStrArr(a[0], (x) => { const l = asString(a[1]), r = asString(a[2]); const i = x.indexOf(l); if (i < 0) return x; const j = x.indexOf(r, i + l.length); return j < 0 ? x : x.slice(0, i + l.length) + asString(a[3]) + x.slice(j); })),
-  convertStringsToChars: async (a) => ret(isStr(a[0]) ? str(asString(a[0])) : a[0]),
-  convertCharsToStrings: async (a) => ret(isMat(a[0]) && (a[0] as Mat).isChar ? makeStr(asString(a[0])) : a[0]),
+  convertStringsToChars: async (a, n) => { const conv = (v: Value) => (isStr(v) ? (v.items.length === 1 ? str(v.items[0]) : v) : v); return a.slice(0, Math.max(1, n)).map(conv); },
+  convertCharsToStrings: async (a, n) => { const conv = (v: Value) => (isMat(v) && (v as Mat).isChar ? makeStr(asString(v)) : v); return a.slice(0, Math.max(1, n)).map(conv); },
 
   // ── Batch I: language utilities (MATLAB v7 reference) ──
   deal: async (a, n) => { const k = Math.max(1, n); if (a.length === 1) return new Array(k).fill(a[0]); return a.slice(0, k); },

@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **180 / 1170** audited.
+Progress: **190 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -185,3 +185,13 @@ Progress: **180 / 1170** audited.
 | 178 | `contourslice` | 🟡 | accepted; not rendered |
 | 179 | `conv` | ✅ | same/valid shapes fixed |
 | 180 | `conv2` | ✅ | 2-D conv; random examples |
+| 181 | `convertCharsToStrings` | ✅ | multi-output fixed |
+| 182 | `convertStringsToChars` | ✅ | multi-output fixed |
+| 183 | `convexHull` | 🟡 | 2-output on triangulation pending |
+| 184 | `convhull` | ✅ | matrix input + area fixed |
+| 185 | `convhulln` | ✅ | N-D hull + volume |
+| 186 | `convn` | ✅ | N-D conv; random examples |
+| 187 | `cool` | ✅ | colormap |
+| 188 | `copper` | ✅ | colormap |
+| 189 | `corrcoef` | ✅ | verified; randn examples |
+| 190 | `cos` | ✅ | real & complex |

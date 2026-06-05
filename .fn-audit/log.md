@@ -89,3 +89,7 @@ compose escape nuances. Build green; 1419 builtins, 0 without help.
 Fixed: conv 'same'/'valid' shape options + column orientation; containers.Map expands vector/string-array/cell
 key+value sets (was storing a numeric valueSet as one value). Remaining: pattern objects (contains),
 contour algorithm differences, conncomp numbering order, graphics, random data. Build green; 1419 builtins.
+## Batch 19 (fns 181-190): convertCharsToStrings convertStringsToChars convexHull convhull convhulln convn cool copper corrcoef cos
+Fixed: convhull(P) matrix input + area 2nd output; convertCharsToStrings/convertStringsToChars multi-output.
+corrcoef verified correct (random examples non-matchable). Remaining: triangulation 2-out, groot colormap, random.
+Build green; 1419 builtins, 0 without help.
