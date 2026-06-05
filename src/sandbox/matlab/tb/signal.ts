@@ -16,6 +16,41 @@ function reduceCols(M: Mat, f: (x: number[]) => number): Value {
   for (let c = 0; c < M.cols; c++) { const col: number[] = []; for (let r = 0; r < M.rows; r++) col.push(M.data[r + c * M.rows]); out.push(f(col)); }
   return rowVec(out);
 }
+// ── pulse-metric engine (shared/measure): histogram state levels + mid-reference crossings ──
+/** Two-state levels by histogram mode method (signal.internal.getLevelsByHistogram). */
+function stateLevelsOf(x: number[]): [number, number] {
+  const nbins = 100, ymin = Math.min(...x), ymax = Math.max(...x), dy = (ymax - ymin) / nbins;
+  if (!(dy > 0)) return [ymin, ymax];
+  const hist = new Array(nbins).fill(0);
+  for (const xi of x) { let b = Math.floor((xi - ymin) / dy); if (b < 0) b = 0; if (b >= nbins) b = nbins - 1; hist[b]++; }
+  let iLow = hist.findIndex((h) => h > 0), iHigh = nbins - 1; while (iHigh >= 0 && hist[iHigh] === 0) iHigh--;
+  if (iLow < 0) return [NaN, NaN];
+  const iLow1 = iLow + 1, iHigh1 = iHigh + 1;                       // MATLAB 1-indexed bins
+  const lLow = iLow1, lHigh = iLow1 + Math.floor((iHigh1 - iLow1) / 2), uLow = lHigh, uHigh = iHigh1;
+  let iMax = 1, mx = -1; for (let i = lLow; i <= lHigh; i++) if (hist[i - 1] > mx) { mx = hist[i - 1]; iMax = i - lLow + 1; }
+  let iMin = 1, mn = -1; for (let i = uLow; i <= uHigh; i++) if (hist[i - 1] > mn) { mn = hist[i - 1]; iMin = i - uLow + 1; }
+  return [ymin + dy * (lLow + iMax - 1.5), ymin + dy * (uLow + iMin - 1.5)];
+}
+/** Mid-reference crossings with linear interpolation (signal.internal.getMidCross). */
+function midCrossings(x: number[], t: number[]): { tm: number[]; pol: number[] } {
+  const [L, U] = stateLevelsOf(x), amp = (U - L) / 100, lwr = L + 2 * amp, upr = L + 98 * amp, midRef = L + 50 * amp;
+  const iState: number[] = []; for (let i = 0; i < x.length; i++) if (x[i] < lwr || x[i] > upr) iState.push(i);
+  const tm: number[] = [], pol: number[] = [];
+  for (let k = 0; k + 1 < iState.length; k++) {
+    const iA = iState[k], iB = iState[k + 1];
+    if (!((x[iA] < lwr && x[iB] > upr) || (x[iA] > upr && x[iB] < lwr))) continue;
+    const p = x[iA] < lwr ? 1 : -1; let iX = -1;
+    for (let i = iA; i < iB; i++) if (p > 0 ? (x[i] <= midRef && midRef < x[i + 1]) : (x[i] >= midRef && midRef > x[i + 1])) { iX = i; break; }
+    if (iX < 0) continue;
+    tm.push(t[iX] + (t[iX + 1] - t[iX]) * (midRef - x[iX]) / (x[iX + 1] - x[iX])); pol.push(p);
+  }
+  return { tm, pol };
+}
+/** Resolve the time base: t-vector, scalar Fs, or default sample numbers 1..n. */
+function timeBase(a: Value[], n: number): number[] {
+  if (a.length > 1 && isMat(a[1])) { const M = m(a[1]); if (M.rows * M.cols === 1) { const Fs = asScalar(a[1]); return Array.from({ length: n }, (_, i) => i / Fs); } return toArray(M); }
+  return Array.from({ length: n }, (_, i) => i + 1);
+}
 /** Σ bₙ·e^{-jnw} (digital, ascending powers) → [re, im]. */
 function cpoly(b: number[], w: number): [number, number] { let re = 0, im = 0; for (let n = 0; n < b.length; n++) { re += b[n] * Math.cos(n * w); im -= b[n] * Math.sin(n * w); } return [re, im]; }
 /** Σ c[i]·(jw)^(L-1-i) (analog, descending powers) → [re, im]. */
@@ -150,6 +185,26 @@ export const SIGNAL: ToolboxModule = {
     peak2peak: (a) => ret(reduceCols(m(a[0]), (x) => Math.max(...x) - Math.min(...x))),
     peak2rms: (a) => ret(reduceCols(m(a[0]), (x) => Math.max(...x.map(Math.abs)) / Math.sqrt(x.reduce((s, v) => s + v * v, 0) / x.length))),
     rssq: (a) => ret(reduceCols(m(a[0]), (x) => Math.sqrt(x.reduce((s, v) => s + v * v, 0)))),
+    // ── pulse metrics (shared/measure engine: histogram state levels + 50% crossings) ──
+    statelevels: (a) => { const [L, U] = stateLevelsOf(toArray(m(a[0]))); return ret(rowVec([L, U])); },
+    midcross: (a) => { const x = toArray(m(a[0])); const { tm } = midCrossings(x, timeBase(a, x.length)); return ret(colVec(tm)); },
+    pulsewidth: (a) => {
+      const x = toArray(m(a[0])); const { tm, pol } = midCrossings(x, timeBase(a, x.length));
+      const w: number[] = []; for (let i = 0; i + 1 < pol.length; i++) if (pol[i] > 0 && pol[i + 1] < 0) w.push(tm[i + 1] - tm[i]);
+      return ret(colVec(w));
+    },
+    pulseperiod: (a) => {
+      const x = toArray(m(a[0])); const { tm, pol } = midCrossings(x, timeBase(a, x.length));
+      const pos = tm.filter((_, i) => pol[i] > 0); const p: number[] = []; for (let i = 1; i < pos.length; i++) p.push(pos[i] - pos[i - 1]);
+      return ret(colVec(p));
+    },
+    dutycycle: (a) => {
+      const x = toArray(m(a[0])); const { tm, pol } = midCrossings(x, timeBase(a, x.length));
+      const w: number[] = [], pos: number[] = [];
+      for (let i = 0; i < pol.length; i++) { if (pol[i] > 0) pos.push(tm[i]); if (i + 1 < pol.length && pol[i] > 0 && pol[i + 1] < 0) w.push(tm[i + 1] - tm[i]); }
+      const d: number[] = []; for (let i = 0; i < w.length && i + 1 < pos.length; i++) d.push(w[i] / (pos[i + 1] - pos[i]));
+      return ret(colVec(d));
+    },
     barthannwin: (a) => window(a, 1, (n, N) => { const r = n / N - 0.5; return 0.62 - 0.48 * Math.abs(r) + 0.38 * Math.cos(2 * Math.PI * r); }),
     gausswin: (a) => { const L = Math.round(asScalar(a[0])); const alpha = a.length >= 2 ? asScalar(a[1]) : 2.5; const N = L - 1; const w: number[] = []; for (let n = 0; n < L; n++) { const x = (n - N / 2) / (N / 2); w.push(Math.exp(-0.5 * (alpha * x) ** 2)); } return ret(colVec(L === 1 ? [1] : w)); },
     kaiser: (a) => { const L = Math.round(asScalar(a[0])); const beta = a.length >= 2 ? asScalar(a[1]) : 0.5; const N = L - 1; const i0b = besselI0(beta); const w: number[] = []; for (let n = 0; n < L; n++) { const r = (2 * n) / N - 1; w.push(besselI0(beta * Math.sqrt(1 - r * r)) / i0b); } return ret(colVec(L === 1 ? [1] : w)); },
@@ -228,6 +283,8 @@ export const SIGNAL: ToolboxModule = {
     parzenwin: 'Parzen (de la Vallée Poussin) window', bohmanwin: 'Bohman window', taylorwin: 'Taylor window',
     chebwin: 'Chebyshev (Dolph-Chebyshev) window', dtw: 'Distance between signals using dynamic time warping',
     edr: 'Edit distance on real signals', peak2peak: 'Maximum-to-minimum difference', peak2rms: 'Peak-magnitude-to-RMS ratio', rssq: 'Root-sum-of-squares level',
+    statelevels: 'Estimate state-level histogram of bilevel waveform', midcross: 'Mid-reference level crossing of bilevel waveform',
+    pulsewidth: 'Bilevel waveform pulse width', pulseperiod: 'Bilevel waveform pulse period', dutycycle: 'Duty cycle of pulse waveform',
     mag2db: 'Convert magnitude to decibels', db2mag: 'Convert decibels to magnitude', pow2db: 'Convert power to decibels', db2pow: 'Convert decibels to power',
     sinc: 'Normalized sinc function', chirp: 'Swept-frequency cosine', medfilt1: '1-D median filtering',
     freqz: 'Digital filter frequency response', freqs: 'Analog filter frequency response', fir1: 'Window-based FIR filter design',
