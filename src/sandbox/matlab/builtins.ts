@@ -184,6 +184,7 @@ const cAsech = (re: number, im: number): [number, number] => cAcosh(...crecip(re
 const ewc = (rf: (x: number) => number, cf: (re: number, im: number) => [number, number], cw?: (x: number) => boolean): Builtin =>
   async (a) => { const A = m(a[0]); return ret(isComplex(A) || (cw ? toArray(A).some(cw) : false) ? cmap(A, cf) : map(A, rf)); };
 const degOf = (cf: (re: number, im: number) => [number, number]) => (re: number, im: number): [number, number] => { const [r, i] = cf(re, im); return [r / DEG, i / DEG]; };
+const cCot = (re: number, im: number): [number, number] => { const cr = Math.cos(re) * Math.cosh(im), ci = -Math.sin(re) * Math.sinh(im); const sr = Math.sin(re) * Math.cosh(im), si = Math.cos(re) * Math.sinh(im); return cdiv(cr, ci, sr, si); };
 
 /** Factor a univariate polynomial (ascending coeffs) over ℚ into a list of sym factors:
  *  peel rational roots via synthetic division, leaving any irreducible part as one factor.
@@ -457,7 +458,7 @@ export const BUILTINS: Record<string, Builtin> = {
   acos: async (a) => { const A = m(a[0]); return ret(isComplex(A) || toArray(A).some((x) => Math.abs(x) > 1) ? cmap(A, (re, im) => cAcos(re, im)) : map(A, Math.acos)); },
   atan: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmap(A, (re, im) => cAtan(re, im)) : map(A, Math.atan)); },
   sinh: ew(Math.sinh), cosh: ew(Math.cosh), tanh: ew(Math.tanh),
-  cot: ew((x) => 1 / Math.tan(x)),
+  cot: ewc((x) => 1 / Math.tan(x), cCot),
   exp: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmap(A, (re, im) => cexp(re, im)) : map(A, Math.exp)); },
   log: async (a) => { const A = m(a[0]); return ret(isComplex(A) || toArray(A).some((x) => x < 0) ? cmap(A, (re, im) => clog(re, im)) : map(A, Math.log)); },
   log10: async (a) => { const A = m(a[0]); return ret(isComplex(A) || toArray(A).some((x) => x < 0) ? cmap(A, (re, im) => { const [lr, li] = clog(re, im); return [lr / Math.LN10, li / Math.LN10]; }) : map(A, Math.log10)); },
@@ -759,6 +760,12 @@ export const BUILTINS: Record<string, Builtin> = {
   false: async (a) => { const d = dimsN(a); const M = makeND(d, new Float64Array(d.reduce((p, x) => p * x, 1))); M.isBool = true; return ret(M); },
   NaN: async (a) => ret(makeND(dimsN(a), new Float64Array(dimsN(a).reduce((p, x) => p * x, 1)).fill(NaN))),
   nan: async (a) => ret(makeND(dimsN(a), new Float64Array(dimsN(a).reduce((p, x) => p * x, 1)).fill(NaN))),
+  eps: async (a) => {
+    if (a.length === 0) return ret(scalar(Number.EPSILON));
+    if (isStr(a[0]) || (isMat(a[0]) && (a[0] as Mat).isChar)) return ret(scalar(asString(a[0]).toLowerCase() === 'single' ? 1.1920928955078125e-7 : Number.EPSILON));
+    // eps(x): the distance from |x| to the next larger floating-point number (ulp).
+    return ret(map(m(a[0]), (x) => { const ax = Math.abs(x); if (ax === 0) return Number.MIN_VALUE; if (!Number.isFinite(ax)) return NaN; return Math.pow(2, Math.floor(Math.log2(ax)) - 52); }));
+  },
   Inf: async (a) => ret(makeND(dimsN(a), new Float64Array(dimsN(a).reduce((p, x) => p * x, 1)).fill(Infinity))),
   inf: async (a) => ret(makeND(dimsN(a), new Float64Array(dimsN(a).reduce((p, x) => p * x, 1)).fill(Infinity))),
   eye: async (a) => { const [r, c] = dims2(a); return ret(eye(r, c)); },
@@ -3160,7 +3167,15 @@ export const BUILTINS: Record<string, Builtin> = {
   maxk: async (a) => { const A = m(a[0]); const k = Math.round(asScalar(a[1])); const s = toArray(A).sort((x, y) => y - x).slice(0, k); return ret(A.rows === 1 ? rowVec(s) : colVec(s)); },
   prctile: async (a) => { const A = m(a[0]); const s = toArray(A).sort((x, y) => x - y); const P = m(a[1]); const out = map(P, (p) => pctile(s, p)); return ret(out); },
   quantile: async (a) => { const A = m(a[0]); const s = toArray(A).sort((x, y) => x - y); const Q = m(a[1]); const out = map(Q, (q) => pctile(s, q * 100)); return ret(out); },
-  cov: async (a) => { let X = m(a[0]); if (a.length >= 2) X = horzcat([colvecOf(X), colvecOf(m(a[1]))]); else if (X.rows === 1 || X.cols === 1) return ret(scalar(variance(toArray(X)))); return ret(covMatrix(X)); },
+  cov: async (a) => {
+    let X = m(a[0]);
+    // a trailing scalar 0/1 is the normalization flag (w); a string is a NaN flag.
+    const w = a.slice(1).find((v) => isMat(v) && !(v as Mat).isChar && numel(v) === 1) ? Math.round(asScalar(a.slice(1).find((v) => isMat(v) && !(v as Mat).isChar && numel(v) === 1) as Mat)) : 0;
+    // cov(A,B): treat A and B as two variables — flatten each to a column vector.
+    if (a.length >= 2 && isMat(a[1]) && numel(a[1]) > 1) X = horzcat([colVec(toArray(X)), colVec(toArray(m(a[1])))]);
+    else if (X.rows === 1 || X.cols === 1) return ret(scalar(variance(toArray(X), w)));
+    return ret(covMatrix(X, w));
+  },
   corrcoef: async (a) => { let X = m(a[0]); if (a.length >= 2) X = horzcat([colvecOf(X), colvecOf(m(a[1]))]); const C = covMatrix(X); const p = C.rows; const R = zeros(p, p); for (let i = 0; i < p; i++) for (let j = 0; j < p; j++) R.data[i + j * p] = C.data[i + j * p] / Math.sqrt(C.data[i + i * p] * C.data[j + j * p]); return ret(R); },
   corrcov: async (a) => { const C = m(a[0]); const p = C.rows; const sd = Array.from({ length: p }, (_, i) => Math.sqrt(C.data[i + i * p])); const R = zeros(p, p); for (let i = 0; i < p; i++) for (let j = 0; j < p; j++) R.data[i + j * p] = C.data[i + j * p] / (sd[i] * sd[j]); return ret(R); },
   humps: async (a) => { const x = a.length ? toArray(m(a[0])) : Array.from({ length: 101 }, (_, i) => i / 100); return ret(rowVec(x.map((t) => 1 / ((t - 0.3) ** 2 + 0.01) + 1 / ((t - 0.9) ** 2 + 0.04) - 6))); },
@@ -5197,11 +5212,12 @@ function modeOf(c: number[]): number { const m = new Map<number, number>(); for 
 function pctile(sorted: number[], p: number): number { const n = sorted.length; if (n === 0) return NaN; if (n === 1) return sorted[0]; const pos = (p / 100) * n - 0.5; if (pos <= 0) return sorted[0]; if (pos >= n - 1) return sorted[n - 1]; const lo = Math.floor(pos), fr = pos - lo; return sorted[lo] * (1 - fr) + sorted[lo + 1] * fr; }
 const colvecOf = (A: Mat): Mat => (A.cols === 1 ? A : (A.rows === 1 ? transpose(A) : A));
 /** Covariance matrix with columns as variables (normalised by n-1). */
-function covMatrix(X: Mat): Mat {
+function covMatrix(X: Mat, w = 0): Mat {
   const n = X.rows, p = X.cols; const mu = new Float64Array(p);
   for (let c = 0; c < p; c++) { let s = 0; for (let r = 0; r < n; r++) s += X.data[r + c * n]; mu[c] = s / n; }
+  const denom = w === 1 ? n : (n - 1 || 1);            // w=1 normalizes by N, default by N-1
   const C = zeros(p, p);
-  for (let i = 0; i < p; i++) for (let j = 0; j < p; j++) { let s = 0; for (let r = 0; r < n; r++) s += (X.data[r + i * n] - mu[i]) * (X.data[r + j * n] - mu[j]); C.data[i + j * p] = s / (n - 1); }
+  for (let i = 0; i < p; i++) for (let j = 0; j < p; j++) { let s = 0; for (let r = 0; r < n; r++) s += (X.data[r + i * n] - mu[i]) * (X.data[r + j * n] - mu[j]); C.data[i + j * p] = s / denom; }
   return C;
 }
 /** Centred truncated moving window of length k over a vector. */

@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **190 / 1170** audited.
+Progress: **200 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -195,3 +195,13 @@ Progress: **190 / 1170** audited.
 | 188 | `copper` | ✅ | colormap |
 | 189 | `corrcoef` | ✅ | verified; randn examples |
 | 190 | `cos` | ✅ | real & complex |
+| 191 | `cosd` | ✅ | degrees cosine |
+| 192 | `cosh` | ✅ | hyperbolic cosine |
+| 193 | `cospi` | ✅ | accurate cos(pi x) |
+| 194 | `cot` | ✅ | complex fixed |
+| 195 | `cotd` | ✅ | degrees; eps(x) fixed |
+| 196 | `coth` | ✅ | hyperbolic cotangent |
+| 197 | `count` | 🟡 | substring; patterns n/a |
+| 198 | `countcats` | 🟡 | counts; summary(cat) n/a |
+| 199 | `cov` | ✅ | two-matrix + w flag fixed |
+| 200 | `cplxpair` | ✅ | conjugate pairs |

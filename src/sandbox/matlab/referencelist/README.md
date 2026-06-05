@@ -463,3 +463,27 @@ All 35 batch-8 examples pass.
 - **`convertCharsToStrings` / `convertStringsToChars`** support the multiple-input/multiple-output form, converting each argument and returning one output per input.
 - Verified `corrcoef` is correct (perfect correlations return exactly 1); its example failures are due to random input data.
 - Rich ≥10-line help added for all batch-19 functions.
+
+---
+
+## Batch 20 — functions 191–200
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `cosd` | ✅ | cosine in degrees | one example uses common-scale-factor display |
+| `cosh` | ✅ | hyperbolic cosine | common-scale-factor (`1.0e+03 *`) display not modeled |
+| `cospi` | ✅ | accurate cos(pi*x) | — |
+| `cot` | ✅ | **fixed**: complex cotangent | — |
+| `cotd` | ✅ | cotangent in degrees (needed `eps(x)` — fixed) | common-scale-factor display |
+| `coth` | ✅ | hyperbolic cotangent | — |
+| `count` | 🟡 | count substring occurrences | `pattern` objects not modeled |
+| `countcats` | 🟡 | count per category | `summary(categorical)` not modeled |
+| `cov` | ✅ | **fixed**: `cov(A,B)` two-matrix form + normalization flag `w` | `'omitrows'` NaN flag pending |
+| `cplxpair` | ✅ | sort into conjugate pairs | — |
+
+### Fixes landed in this batch
+- **`cot`** is now complex-aware (`cot(-1i) = 0 + 1.3130i`), via a complex `cos/sin` quotient.
+- **`cov(A,B)`** with two matrices flattens each to a vector and returns the 2×2 covariance; the normalization flag `w` (`cov(A,1)` divides by N) is honored for both the matrix and vector forms.
+- **`eps(x)`** added: returns the ulp (unit in the last place) at x — `eps(90) = 1.4211e-14`, `eps("single")` — in addition to the bare `eps` constant.
+- Rich ≥10-line help added for all batch-20 functions (and `eps`).
+- Noted gap: MATLAB's common-scale-factor matrix display (`1.0e+03 *`) is not yet implemented; this is the only remaining diff for `cosh`/`cotd`.

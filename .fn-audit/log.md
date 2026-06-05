@@ -93,3 +93,7 @@ contour algorithm differences, conncomp numbering order, graphics, random data. 
 Fixed: convhull(P) matrix input + area 2nd output; convertCharsToStrings/convertStringsToChars multi-output.
 corrcoef verified correct (random examples non-matchable). Remaining: triangulation 2-out, groot colormap, random.
 Build green; 1419 builtins, 0 without help.
+## Batch 20 (fns 191-200): cosd cosh cospi cot cotd coth count countcats cov cplxpair
+Fixed: cot complex (cos/sin quotient); cov(A,B) two-matrix form + normalization flag w; eps(x) ulp function.
+Remaining: common-scale-factor display (cosh/cotd), pattern objects (count), summary(categorical) (countcats).
+Build green; 1420 builtins, 0 without help. *** 200/1170 audited (20 batches) ***
