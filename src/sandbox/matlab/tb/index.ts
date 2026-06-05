@@ -17,7 +17,6 @@ import { COMM } from './comm';
 import { CONTROL } from './control';
 import { CURVEFIT } from './curvefit';
 import { ECON } from './econ';
-import { FINANCE } from './finance';
 import { FINANCIAL } from './financial';
 import { FUZZY } from './fuzzy';
 import { IMAGES } from './images';
@@ -33,7 +32,7 @@ import { WAVELET } from './wavelet';
 
 /** All registered toolboxes, in precedence order (first wins on inter-toolbox collision). */
 export const TOOLBOXES: ToolboxModule[] = [
-  AEROSPACE, AUDIO, COMM, CONTROL, CURVEFIT, ECON, FINANCE, FINANCIAL, FUZZY, IMAGES,
+  AEROSPACE, AUDIO, COMM, CONTROL, CURVEFIT, ECON, FINANCIAL, FUZZY, IMAGES,
   MAPPING, NAV, Pde, RADAR, SIGNAL, SIMULINK, STATS, SYMBOLIC, WAVELET,
 ];
 
