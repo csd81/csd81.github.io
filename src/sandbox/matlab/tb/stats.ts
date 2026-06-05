@@ -369,6 +369,31 @@ export const STATS: ToolboxModule = {
     raylfit: (a) => { const x = toArray(m(a[0])); return ret(scalar(Math.sqrt(x.reduce((s, v) => s + v * v, 0) / (2 * x.length)))); },
     normfit: (a, n) => { const x = toArray(m(a[0])), N = x.length, mu = x.reduce((s, v) => s + v, 0) / N; const sd = Math.sqrt(x.reduce((s, v) => s + (v - mu) ** 2, 0) / (N - 1)); return n >= 2 ? Promise.resolve([scalar(mu), scalar(sd)]) : ret(scalar(mu)); },
     unifit: (a, n) => { const x = toArray(m(a[0])), lo = Math.min(...x), hi = Math.max(...x); return n >= 2 ? Promise.resolve([scalar(lo), scalar(hi)]) : ret(scalar(lo)); },
+    binofit: (a) => { const M = m(a[0]), xa = toArray(M), na = toArray(m(a[1])); const out = xa.map((v, i) => v / (na.length === 1 ? na[0] : na[i])); return ret(out.length === 1 ? scalar(out[0]) : (M.rows === 1 ? rowVec(out) : colVec(out))); },
+    wblfit: (a) => {
+      const x = toArray(m(a[0])), N = x.length, meanlnx = x.reduce((s, v) => s + Math.log(v), 0) / N;
+      let b = 1;
+      for (let it = 0; it < 200; it++) {
+        let s0 = 0, s1 = 0, s2 = 0; for (const v of x) { const xb = v ** b, lv = Math.log(v); s0 += xb; s1 += xb * lv; s2 += xb * lv * lv; }
+        const f = s1 / s0 - 1 / b - meanlnx, df = (s2 * s0 - s1 * s1) / (s0 * s0) + 1 / (b * b), bn = b - f / df;
+        if (Math.abs(bn - b) < 1e-12) { b = bn; break; } b = bn;
+      }
+      const aPar = (x.reduce((s, v) => s + v ** b, 0) / N) ** (1 / b);
+      return ret(rowVec([aPar, b]));
+    },
+    // ── descriptive: skewness/kurtosis (population, flag=1 default; flag=0 bias-corrected) ──
+    skewness: (a) => {
+      const x = toArray(m(a[0])), flag = a.length > 1 && isMat(a[1]) && m(a[1]).rows * m(a[1]).cols > 0 ? asScalar(a[1]) : 1, N = x.length;
+      const mu = x.reduce((s, v) => s + v, 0) / N, m2 = x.reduce((s, v) => s + (v - mu) ** 2, 0) / N, m3 = x.reduce((s, v) => s + (v - mu) ** 3, 0) / N;
+      let g = m3 / m2 ** 1.5; if (flag === 0) g = Math.sqrt(N * (N - 1)) / (N - 2) * g;
+      return ret(scalar(g));
+    },
+    kurtosis: (a) => {
+      const x = toArray(m(a[0])), flag = a.length > 1 && isMat(a[1]) && m(a[1]).rows * m(a[1]).cols > 0 ? asScalar(a[1]) : 1, N = x.length;
+      const mu = x.reduce((s, v) => s + v, 0) / N, m2 = x.reduce((s, v) => s + (v - mu) ** 2, 0) / N, m4 = x.reduce((s, v) => s + (v - mu) ** 4, 0) / N;
+      let k = m4 / m2 ** 2; if (flag === 0) k = ((N + 1) * k - 3 * (N - 1)) * (N - 1) / ((N - 2) * (N - 3)) + 3;
+      return ret(scalar(k));
+    },
 
     // ── moments ──
     /** moment(X,order) — central moment of the given order (along columns / vector). */
@@ -506,6 +531,7 @@ export const STATS: ToolboxModule = {
     ncfpdf: 'Noncentral F probability density function', ncfcdf: 'Noncentral F cumulative distribution function', ncfinv: 'Noncentral F inverse cumulative distribution function', ncfstat: 'Noncentral F mean and variance',
     nctpdf: 'Noncentral t probability density function', nctcdf: 'Noncentral t cumulative distribution function', nctinv: 'Noncentral t inverse cumulative distribution function', nctstat: 'Noncentral t mean and variance',
     expfit: 'Exponential parameter estimate (MLE)', poissfit: 'Poisson parameter estimate (MLE)', raylfit: 'Rayleigh parameter estimate (MLE)', normfit: 'Normal parameter estimates (mean, std)', unifit: 'Uniform parameter estimates (min, max)',
+    binofit: 'Binomial proportion estimate', wblfit: 'Weibull parameter estimates (MLE)', skewness: 'Sample skewness', kurtosis: 'Sample kurtosis',
     nanmean: 'Mean, ignoring NaN values', nansum: 'Sum, ignoring NaN values', nanstd: 'Standard deviation, ignoring NaN values', nanvar: 'Variance, ignoring NaN values',
     nanmedian: 'Median, ignoring NaN values', nanmax: 'Maximum, ignoring NaN values', nanmin: 'Minimum, ignoring NaN values',
     range: 'Range of values (max − min)', tabulate: 'Frequency table',
