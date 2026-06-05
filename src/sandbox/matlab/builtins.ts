@@ -578,7 +578,9 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(cumulative(a, 1, (p, x) => p * x));
   },
   expm1: ew(Math.expm1), log1p: ew(Math.log1p),
-  sinpi: ew((x) => Math.sin(Math.PI * x)), cospi: ew((x) => Math.cos(Math.PI * x)),
+  // sinpi(x)=sin(pi*x) and cospi(x)=cos(pi*x), returning exact values at integer/half-integer x
+  sinpi: ew((x) => { if (!isFinite(x)) return NaN; if (Number.isInteger(x)) return 0; if (Number.isInteger(2 * x)) return ((Math.round(2 * x) % 4) + 4) % 4 === 1 ? 1 : -1; return Math.sin(Math.PI * x); }),
+  cospi: ew((x) => { if (!isFinite(x)) return NaN; if (Number.isInteger(2 * x)) return Number.isInteger(x) ? (Math.abs(x) % 2 === 0 ? 1 : -1) : 0; return Math.cos(Math.PI * x); }),
   pow2: async (a) => (a.length >= 2 ? ret(elementwise(m(a[0]), m(a[1]), (f, e) => f * Math.pow(2, e))) : ret(map(m(a[0]), (x) => Math.pow(2, x)))),
   nextpow2: ew((x) => { const a = Math.abs(x); return a === 0 ? 0 : Math.ceil(Math.log2(a)); }),
   realsqrt: ew((x) => { if (x < 0) throw new MatError('realsqrt: argument must be nonnegative'); return Math.sqrt(x); }),
@@ -1899,12 +1901,15 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   celldisp: async (a, _n, env) => { const C = a[0]; if (!isCell(C)) return []; for (let i = 0; i < C.items.length; i++) env.output(`{${i + 1}} = ${dispValue(C.items[i])}\n`); return []; },
   cellfun: async (a, _n, env) => {
-    const f = handle(a[0], 'cellfun'); const C = a[1]; if (!isCell(C)) throw new MatError('cellfun: second argument must be a cell array');
-    let uniform = true; for (let i = 2; i + 1 < a.length; i += 2) if (isMat(a[i]) && (a[i] as Mat).isChar && asString(a[i]).toLowerCase() === 'uniformoutput') uniform = truthyArg(a[i + 1]);
-    const results: Value[] = [];
-    for (let i = 0; i < C.items.length; i++) { const r = await env.callHandle(f, [C.items[i]], 1); results.push(r[0] ?? zeros(0, 0)); }
-    if (uniform) { const o = zeros(C.rows, C.cols); for (let i = 0; i < results.length; i++) o.data[i] = asScalar(results[i]); return ret(o); }
-    return ret(makeCell(C.rows, C.cols, results));
+    const f = handle(a[0], 'cellfun');
+    const cells: Cell[] = []; let i = 1; while (i < a.length && isCell(a[i])) { cells.push(a[i] as Cell); i++; }
+    if (!cells.length) throw new MatError('cellfun: requires at least one cell array');
+    let uniform = true;
+    for (; i + 1 < a.length; i += 2) { const nm = isStr(a[i]) || (isMat(a[i]) && (a[i] as Mat).isChar) ? asString(a[i]).toLowerCase() : ''; if (nm === 'uniformoutput') uniform = truthyArg(a[i + 1]); }
+    const C0 = cells[0]; const results: Value[] = [];
+    for (let k = 0; k < C0.items.length; k++) { const args = cells.map((c) => c.items[k]); const r = await env.callHandle(f, args, 1); results.push(r[0] ?? zeros(0, 0)); }
+    if (uniform) { const o = zeros(C0.rows, C0.cols); for (let k = 0; k < results.length; k++) o.data[k] = asScalar(results[k]); return ret(o); }
+    return ret(makeCell(C0.rows, C0.cols, results));
   },
   strsplit: async (a) => {
     const s = asString(a[0]); const delim = a.length >= 2 ? asString(a[1]) : ' ';
@@ -2680,7 +2685,7 @@ export const BUILTINS: Record<string, Builtin> = {
     const nSpecs = (fmt.match(/%[-+ 0#]*\d*\.?\d*[diouxXeEfgGcs]/g) || []).length;
     if (args.length === 1 && isMat(args[0]) && !(args[0] as Mat).isChar && nSpecs >= 1) {
       const M = m(args[0]);
-      if (M.cols > nSpecs && M.cols % nSpecs === 0) {
+      if (M.cols >= nSpecs && M.cols % nSpecs === 0) {
         const groups = M.cols / nSpecs; const items: string[] = [];
         for (let g = 0; g < groups; g++) for (let r = 0; r < M.rows; r++) { const vals: Value[] = []; for (let kk = 0; kk < nSpecs; kk++) vals.push(scalar(M.data[r + (g * nSpecs + kk) * M.rows])); items.push(sprintf(fmt, vals)); }
         return ret(makeStrArr(M.rows, groups, items));
@@ -3294,7 +3299,7 @@ export const BUILTINS: Record<string, Builtin> = {
 
   // polyshape methods
   perimeter: async (a) => ret(scalar(polyPerim(gGeom(a[0]).points))),
-  centroid: async (a) => { const c = polyCentroid(gGeom(a[0]).points); return ret(rowVec(c)); },
+  centroid: async (a, nargout) => { const c = polyCentroid(gGeom(a[0]).points); return nargout >= 2 ? [scalar(c[0]), scalar(c[1])] : ret(rowVec(c)); },
   isinterior: async (a) => { const g = gGeom(a[0]); const Q = a.length >= 3 ? toArray(m(a[1])).map((x, i) => [x, toArray(m(a[2]))[i]]) : matRows(m(a[1])); const o = colVec(Q.map((q) => (pointInPolyV(g.points, q[0], q[1]) ? 1 : 0))); o.isBool = true; return ret(o); },
   numsides: async (a) => ret(scalar(gGeom(a[0]).points.filter((p) => !Number.isNaN(p[0])).length)),
   numboundaries: async (a) => { const pts = gGeom(a[0]).points; let n = pts.length ? 1 : 0; for (const p of pts) if (Number.isNaN(p[0])) n++; return ret(scalar(n)); },
@@ -6440,9 +6445,10 @@ function cdf2rdfFn(V: Mat, D: Mat): { V: Mat; D: Mat } {
   for (let k = 0; k < n; k++) {
     const lim = di ? di[k + k * n] : 0;
     if (Math.abs(lim) > 1e-12 && k + 1 < n) {
-      const a = D.data[k + k * n], b = lim;
+      // MATLAB convention: complex pair mu ± i*omega becomes block [mu omega; -omega mu] with omega > 0
+      const a = D.data[k + k * n], b = Math.abs(lim), sgn = lim < 0 ? -1 : 1;
       Dr.data[k + k * n] = a; Dr.data[k + (k + 1) * n] = b; Dr.data[(k + 1) + k * n] = -b; Dr.data[(k + 1) + (k + 1) * n] = a;
-      for (let r = 0; r < n; r++) { Vr.data[r + k * n] = V.data[r + k * n]; Vr.data[r + (k + 1) * n] = vi ? vi[r + k * n] : 0; }
+      for (let r = 0; r < n; r++) { Vr.data[r + k * n] = V.data[r + k * n]; Vr.data[r + (k + 1) * n] = sgn * (vi ? vi[r + k * n] : 0); }
       k++;
     } else { Dr.data[k + k * n] = D.data[k + k * n]; for (let r = 0; r < n; r++) Vr.data[r + k * n] = V.data[r + k * n]; }
   }
