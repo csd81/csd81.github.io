@@ -3,7 +3,7 @@
 // bartlett/sinc) and closed-form definitions. See plan §7 and tb/signal.VALIDATION.md.
 import type { Builtin } from '../builtins';
 import {
-  type Value, type Mat, isMat, isStr, colVec, rowVec, toArray, map,
+  type Value, type Mat, isMat, isStr, scalar, colVec, rowVec, toArray, map,
   asString, asScalar, toMat as m,
 } from '../values';
 import type { ToolboxModule } from './types';
@@ -13,6 +13,44 @@ const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
 function cpoly(b: number[], w: number): [number, number] { let re = 0, im = 0; for (let n = 0; n < b.length; n++) { re += b[n] * Math.cos(n * w); im -= b[n] * Math.sin(n * w); } return [re, im]; }
 /** Σ c[i]·(jw)^(L-1-i) (analog, descending powers) → [re, im]. */
 function cpolyS(c: number[], w: number): [number, number] { let re = 0, im = 0; const L = c.length; for (let i = 0; i < L; i++) { const p = L - 1 - i, mag = c[i] * w ** p; switch (((p % 4) + 4) % 4) { case 0: re += mag; break; case 1: im += mag; break; case 2: re -= mag; break; default: im -= mag; } } return [re, im]; }
+
+// ── LPC helpers (Levinson-Durbin + step-down/step-up) ──
+/** Levinson-Durbin: autocorrelation r → AR poly a (a[0]=1), final error e, reflection coeffs k. */
+function levinsonDurbin(r: number[], p: number): { a: number[]; e: number; k: number[] } {
+  const a = [1]; let e = r[0]; const ks: number[] = [];
+  for (let i = 1; i <= p; i++) { let acc = r[i]; for (let j = 1; j < i; j++) acc += a[j] * r[i - j]; const k = -acc / e; ks.push(k); const na = a.slice(); for (let j = 1; j < i; j++) na[j] = a[j] + k * a[i - j]; na[i] = k; a.length = 0; a.push(...na); e *= 1 - k * k; }
+  return { a, e, k: ks };
+}
+/** Step-down recursion: AR poly a → reflection coeffs k[] and the order-i polynomials. */
+function stepDown(a: number[]): { k: number[]; polys: number[][] } {
+  const p = a.length - 1; let cur = a.slice(); const k = new Array(p); const polys: number[][] = new Array(p + 1); polys[p] = a.slice();
+  for (let i = p; i >= 1; i--) { const ki = cur[i]; k[i - 1] = ki; const prev = new Array(i); prev[0] = 1; for (let j = 1; j < i; j++) prev[j] = (cur[j] - ki * cur[i - j]) / (1 - ki * ki); polys[i - 1] = prev; cur = prev; }
+  return { k, polys };
+}
+/** Step-up: reflection coeffs k → AR poly a. */
+function stepUp(k: number[]): number[] { let a = [1]; for (let i = 0; i < k.length; i++) { const ki = k[i]; const na = a.slice(); na.push(0); for (let j = 1; j <= i; j++) na[j] = a[j] + ki * a[i + 1 - j]; na[i + 1] = ki; a = na; } return a; }
+/** AR poly a + final error → autocorrelation sequence. */
+function poly2acSeq(a: number[], eFinal: number): number[] {
+  const { k, polys } = stepDown(a); const p = a.length - 1; const e = new Array(p + 1); e[p] = eFinal;
+  for (let i = p; i >= 1; i--) e[i - 1] = e[i] / (1 - k[i - 1] * k[i - 1]);
+  const r = new Array(p + 1); r[0] = e[0];
+  for (let i = 1; i <= p; i++) { let s = 0; const ap = polys[i - 1]; for (let j = 1; j < i; j++) s += ap[j] * r[i - j]; r[i] = -k[i - 1] * e[i - 1] - s; }
+  return r;
+}
+/** Invert a small n×n matrix (Gauss-Jordan). */
+function matInv(M: number[][]): number[][] {
+  const n = M.length; const A = M.map((row, i) => [...row, ...Array.from({ length: n }, (_, j) => (i === j ? 1 : 0))]);
+  for (let c = 0; c < n; c++) { let piv = c; for (let r = c + 1; r < n; r++) if (Math.abs(A[r][c]) > Math.abs(A[piv][c])) piv = r; [A[c], A[piv]] = [A[piv], A[c]]; const d = A[c][c]; for (let j = 0; j < 2 * n; j++) A[c][j] /= d; for (let r = 0; r < n; r++) if (r !== c) { const f = A[r][c]; for (let j = 0; j < 2 * n; j++) A[r][j] -= f * A[c][j]; } }
+  return A.map((row) => row.slice(n));
+}
+/** Savitzky-Golay projection matrix B (F×F); B[mid] is the smoothing weights. */
+function sgolayMat(order: number, F: number): number[][] {
+  const mid = (F - 1) / 2; const V: number[][] = []; for (let i = 0; i < F; i++) { V[i] = []; for (let j = 0; j <= order; j++) V[i][j] = (i - mid) ** j; }
+  const VtV: number[][] = []; for (let a = 0; a <= order; a++) { VtV[a] = []; for (let b = 0; b <= order; b++) { let s = 0; for (let i = 0; i < F; i++) s += V[i][a] * V[i][b]; VtV[a][b] = s; } }
+  const G = matInv(VtV); const B: number[][] = [];
+  for (let i = 0; i < F; i++) { B[i] = []; for (let l = 0; l < F; l++) { let s = 0; for (let a = 0; a <= order; a++) for (let b = 0; b <= order; b++) s += V[i][a] * G[a][b] * V[l][b]; B[i][l] = s; } }
+  return B;
+}
 
 /** Modified Bessel function I0(x) (series), for the Kaiser window. */
 function besselI0(x: number): number { let s = 1, t = 1; for (let k = 1; k < 60; k++) { t *= (x / (2 * k)) ** 2; s += t; if (t < s * 1e-16) break; } return s; }
@@ -90,6 +128,30 @@ export const SIGNAL: ToolboxModule = {
       const h = new Array(n + 1); for (let k = 0; k <= n; k++) { const x = k - M; h[k] = (x === 0 ? Wn : Math.sin(Wn * Math.PI * x) / (Math.PI * x)) * (0.54 - 0.46 * Math.cos((2 * Math.PI * k) / n)); }
       const s = h.reduce((p, q) => p + q, 0); return ret(rowVec(h.map((v) => v / s)));
     },
+
+    // ── linear prediction (LPC) ──
+    /** [a,e,k] = levinson(r[,p]) — Levinson-Durbin solution of the normal equations. */
+    levinson: (a, nargout) => { const r = toArray(m(a[0])); const p = a.length >= 2 && isMat(a[1]) ? Math.round(asScalar(a[1])) : r.length - 1; const res = levinsonDurbin(r, p); return nargout >= 3 ? Promise.resolve([rowVec(res.a), scalar(res.e), colVec(res.k)]) : nargout >= 2 ? Promise.resolve([rowVec(res.a), scalar(res.e)]) : ret(rowVec(res.a)); },
+    /** [a,efinal] = ac2poly(r) — autocorrelation → prediction polynomial. */
+    ac2poly: (a, nargout) => { const r = toArray(m(a[0])); const res = levinsonDurbin(r, r.length - 1); return nargout >= 2 ? Promise.resolve([rowVec(res.a), scalar(res.e)]) : ret(rowVec(res.a)); },
+    /** r = poly2ac(a,efinal) — prediction polynomial + final error → autocorrelation. */
+    poly2ac: (a) => ret(colVec(poly2acSeq(toArray(m(a[0])), a.length >= 2 && isMat(a[1]) ? asScalar(a[1]) : 1))),
+    /** k = poly2rc(a) — prediction polynomial → reflection coefficients (step-down). */
+    poly2rc: (a) => ret(colVec(stepDown(toArray(m(a[0]))).k)),
+    /** a = rc2poly(k) — reflection coefficients → prediction polynomial (step-up). */
+    rc2poly: (a) => ret(rowVec(stepUp(toArray(m(a[0]))))),
+
+    // ── Savitzky-Golay ──
+    /** B = sgolay(order,framelen) — Savitzky-Golay FIR projection matrix. */
+    sgolay: (a) => { const order = Math.round(asScalar(a[0])), F = Math.round(asScalar(a[1])); const B = sgolayMat(order, F); const o = { kind: 'num' as const, rows: F, cols: F, data: new Float64Array(F * F) } as Mat; for (let i = 0; i < F; i++) for (let j = 0; j < F; j++) o.data[i + j * F] = B[i][j]; return ret(o); },
+    /** sgolayfilt(x,order,framelen) — Savitzky-Golay smoothing (steady-state center row + edge rows). */
+    sgolayfilt: (a) => {
+      const x = toArray(m(a[0])); const order = Math.round(asScalar(a[1])), F = Math.round(asScalar(a[2])); const mid = (F - 1) / 2; const B = sgolayMat(order, F); const n = x.length; const y = new Array(n).fill(0);
+      for (let i = mid; i < n - mid; i++) { let s = 0; for (let j = 0; j < F; j++) s += B[mid][j] * x[i - mid + j]; y[i] = s; }
+      for (let i = 0; i < mid; i++) { let s = 0; for (let j = 0; j < F; j++) s += B[i][j] * x[j]; y[i] = s; }
+      for (let i = n - mid; i < n; i++) { const rrow = i - n + F; let s = 0; for (let j = 0; j < F; j++) s += B[rrow][j] * x[n - F + j]; y[i] = s; }
+      return ret(m(a[0]).rows === 1 ? rowVec(y) : colVec(y));
+    },
   },
   help: {
     rectwin: 'Rectangular window', hann: 'Hann (Hanning) window', hanning: 'Hann window (symmetric)', hamming: 'Hamming window',
@@ -99,5 +161,8 @@ export const SIGNAL: ToolboxModule = {
     mag2db: 'Convert magnitude to decibels', db2mag: 'Convert decibels to magnitude', pow2db: 'Convert power to decibels', db2pow: 'Convert decibels to power',
     sinc: 'Normalized sinc function', chirp: 'Swept-frequency cosine', medfilt1: '1-D median filtering',
     freqz: 'Digital filter frequency response', freqs: 'Analog filter frequency response', fir1: 'Window-based FIR filter design',
+    levinson: 'Levinson-Durbin recursion', ac2poly: 'Autocorrelation to prediction polynomial', poly2ac: 'Prediction polynomial to autocorrelation',
+    poly2rc: 'Prediction polynomial to reflection coefficients', rc2poly: 'Reflection coefficients to prediction polynomial',
+    sgolay: 'Savitzky-Golay FIR smoothing matrix', sgolayfilt: 'Savitzky-Golay filtering',
   },
 };

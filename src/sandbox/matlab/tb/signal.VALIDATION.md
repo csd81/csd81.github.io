@@ -43,3 +43,18 @@ base (base precedence).
 
 `freqz`/`freqs` return complex responses (over `w∈[0,π)` for `freqz`); `fir1` is a lowpass
 windowed-sinc design (Hamming window, scaled to unity passband gain).
+
+## LPC + Savitzky-Golay (added, validated vs live MATLAB Signal/DSP toolboxes)
+
+| Function | Test | Sandbox | MATLAB |
+|---|---|---|---|
+| `ac2poly`/`levinson` | `ac2poly([1 0.5 0.1])` | `[1 -0.6 0.2]`, e=0.72 | exact ✓ |
+| `poly2ac` | `poly2ac([1 -0.9 0.2],1)` | `[2.381;1.7857;1.131]` | exact ✓ |
+| `poly2rc` | `poly2rc([1 0.5 0.1])` | `[0.4545;0.1]` | exact ✓ |
+| `rc2poly` | `rc2poly(poly2rc([1 0.5 0.1]))` | `[1 0.5 0.1]` | round-trip ✓ |
+| `sgolay` | `B=sgolay(2,5); B(3,:)` | `[-0.0857 0.3429 0.4857 0.3429 -0.0857]` | exact ✓ |
+| `sgolayfilt` | `sgolayfilt([1 2 3 100 5 6 7],2,5)` | `[-12.714 18.457 35.914 50.629 37.914 22.457 -6.7143]` | exact ✓ |
+
+`levinson`/`ac2poly` use the Levinson-Durbin recursion; `poly2ac`/`poly2rc`/`rc2poly` are the
+step-down/step-up; `sgolay`/`sgolayfilt` build the LS projection matrix `V(VᵀV)⁻¹Vᵀ` and apply the
+center row interior + edge rows at the boundary.
