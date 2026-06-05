@@ -520,7 +520,15 @@ export const BUILTINS: Record<string, Builtin> = {
   exp: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmap(A, (re, im) => cexp(re, im)) : map(A, Math.exp)); },
   log: async (a) => { const A = m(a[0]); return ret(isComplex(A) || toArray(A).some((x) => x < 0) ? cmap(A, (re, im) => clog(re, im)) : map(A, Math.log)); },
   log10: async (a) => { const A = m(a[0]); return ret(isComplex(A) || toArray(A).some((x) => x < 0) ? cmap(A, (re, im) => { const [lr, li] = clog(re, im); return [lr / Math.LN10, li / Math.LN10]; }) : map(A, Math.log10)); },
-  log2: async (a) => { const A = m(a[0]); return ret(isComplex(A) || toArray(A).some((x) => x < 0) ? cmap(A, (re, im) => { const [lr, li] = clog(re, im); return [lr / Math.LN2, li / Math.LN2]; }) : map(A, Math.log2)); },
+  log2: async (a, n) => { const A = m(a[0]);
+    if (n >= 2) {
+      // [F,E] = log2(X): X = F .* 2.^E with 0.5 <= abs(F) < 1 (frexp), E integer
+      const fr = new Float64Array(A.data.length); const ex = new Float64Array(A.data.length);
+      for (let i = 0; i < A.data.length; i++) { const x = A.data[i]; if (x === 0 || !isFinite(x)) { fr[i] = x; ex[i] = 0; } else { const e = Math.floor(Math.log2(Math.abs(x))) + 1; ex[i] = e; fr[i] = x / Math.pow(2, e); } }
+      const F = mat(A.rows, A.cols, fr); F.nd = A.nd; const E = mat(A.rows, A.cols, ex); E.nd = A.nd;
+      return [F, E];
+    }
+    return ret(isComplex(A) || toArray(A).some((x) => x < 0) ? cmap(A, (re, im) => { const [lr, li] = clog(re, im); return [lr / Math.LN2, li / Math.LN2]; }) : map(A, Math.log2)); },
   sqrt: async (a) => { const A = m(a[0]); return ret(isComplex(A) || toArray(A).some((x) => x < 0) ? cmap(A, (re, im) => csqrt(re, im)) : map(A, Math.sqrt)); },
   abs: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmapReal(A, (re, im) => Math.hypot(re, im)) : map(A, Math.abs)); },
   sign: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmap(A, (re, im) => { const mg = Math.hypot(re, im); return mg === 0 ? [0, 0] : [re / mg, im / mg]; }) : map(A, Math.sign)); },
@@ -571,11 +579,11 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   expm1: ew(Math.expm1), log1p: ew(Math.log1p),
   sinpi: ew((x) => Math.sin(Math.PI * x)), cospi: ew((x) => Math.cos(Math.PI * x)),
-  pow2: ew((x) => Math.pow(2, x)),
+  pow2: async (a) => (a.length >= 2 ? ret(elementwise(m(a[0]), m(a[1]), (f, e) => f * Math.pow(2, e))) : ret(map(m(a[0]), (x) => Math.pow(2, x)))),
   nextpow2: ew((x) => { const a = Math.abs(x); return a === 0 ? 0 : Math.ceil(Math.log2(a)); }),
   realsqrt: ew((x) => { if (x < 0) throw new MatError('realsqrt: argument must be nonnegative'); return Math.sqrt(x); }),
   reallog: ew((x) => { if (x < 0) throw new MatError('reallog: argument must be nonnegative'); return Math.log(x); }),
-  realpow: async (a) => ret(elementwise(m(a[0]), m(a[1]), Math.pow)),
+  realpow: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, y) => { const r = Math.pow(x, y); if (Number.isNaN(r) && !Number.isNaN(x) && !Number.isNaN(y)) throw new MatError('realpow: realpow produced complex result'); return r; })),
   // value queries
   isreal: async (a) => ret(bool(!isComplex(m(a[0])))),
   allfinite: async (a) => ret(bool(toArray(m(a[0])).every(Number.isFinite))),
@@ -643,7 +651,7 @@ export const BUILTINS: Record<string, Builtin> = {
   erf: ew(erfFn), erfc: ew((x) => 1 - erfFn(x)),
   beta: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, y) => gammaFn(x) * gammaFn(y) / gammaFn(x + y))),
   betaln: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, y) => logGamma(x) + logGamma(y) - logGamma(x + y))),
-  psi: ew(digamma),
+  psi: async (a) => (a.length >= 2 ? ret(elementwise(m(a[0]), m(a[1]), (k, x) => polygamma(Math.round(k), x))) : ret(map(m(a[0]), digamma))),
   expint: async (a) => {
     const A = m(a[0]);
     if (isComplex(A)) { const o = zeros(A.rows, A.cols); o.idata = new Float64Array(A.data.length); for (let i = 0; i < A.data.length; i++) { const [r, im] = expintE1Complex(A.data[i], A.idata![i]); o.data[i] = r; o.idata![i] = im; } return ret(o); }
@@ -1825,7 +1833,7 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(scalar(conv(asString(a[0]))));
   },
   // ── class / regexp / sscanf ──
-  class: async (a) => { const v = a[0]; if (isMap(v)) return ret(str('containers.Map')); if (isDict(v)) return ret(str('dictionary')); if (isHandle(v)) return ret(str('function_handle')); if (v.kind === 'gobj') return ret(str(v.gtype)); if (isStr(v)) return ret(str('string')); if (isCell(v)) return ret(str('cell')); if (isStruct(v)) return ret(str('struct')); if (isTable(v)) return ret(str(v.isTimetable ? 'timetable' : 'table')); if (isCategorical(v)) return ret(str('categorical')); if (isSym(v)) return ret(str('sym')); if ((v as Mat).isChar) return ret(str('char')); if ((v as Mat).isBool) return ret(str('logical')); return ret(str((v as Mat).itype ?? 'double')); },
+  class: async (a) => { const v = a[0]; if (isMap(v)) return ret(str('containers.Map')); if (isDict(v)) return ret(str('dictionary')); if (isHandle(v)) return ret(str('function_handle')); if (v.kind === 'gobj') return ret(str(v.gtype)); if (v.kind === 'quantum') return ret(str(v.qkind === 'circuit' ? 'quantumCircuit' : v.qkind === 'state' ? 'quantum.gate.QuantumState' : 'quantum.gate.SimpleGate')); if (isStr(v)) return ret(str('string')); if (isCell(v)) return ret(str('cell')); if (isStruct(v)) return ret(str('struct')); if (isTable(v)) return ret(str(v.isTimetable ? 'timetable' : 'table')); if (isCategorical(v)) return ret(str('categorical')); if (isSym(v)) return ret(str('sym')); if ((v as Mat).isChar) return ret(str('char')); if ((v as Mat).isBool) return ret(str('logical')); return ret(str((v as Mat).itype ?? 'double')); },
   isa: async (a) => { const v = a[0]; const ty = asString(a[1]); const M = v as Mat; const cls = isHandle(v) ? 'function_handle' : M.isChar ? 'char' : M.isBool ? 'logical' : (M.itype ?? 'double'); if (ty === cls) return ret(bool(true)); const isInt = isMat(v) && !!M.itype && M.itype !== 'single'; const isFlt = isMat(v) && !M.isChar && !M.isBool && (!M.itype || M.itype === 'single'); if (ty === 'numeric' && isMat(v) && !M.isChar && !M.isBool) return ret(bool(true)); if (ty === 'float' && isFlt) return ret(bool(true)); if (ty === 'integer' && isInt) return ret(bool(true)); return ret(bool(false)); },
   regexp: async (a, n) => {
     const s = asString(a[0]); const pat = asString(a[1]); const opts = a.slice(2).map((x) => asString(x).toLowerCase());
@@ -2070,7 +2078,7 @@ export const BUILTINS: Record<string, Builtin> = {
   exist: async (a, _n, env) => { const nm = asString(a[0]); const kind = a.length >= 2 ? asString(a[1]).toLowerCase() : ''; if (kind === 'file' || kind === 'dir') return ret(scalar(env.hasFile(nm) ? 2 : 0)); if (env.workspaceVars().some((v) => v.name === nm)) return ret(scalar(1)); if (nm in BUILTINS || nm in CONSTANTS) return ret(scalar(5)); if (env.hasFile(nm)) return ret(scalar(2)); return ret(scalar(0)); },
   // Error/exception helpers (work with try/catch).
   MException: async (a) => { const id = a.length ? asString(a[0]) : ''; const msg = a.length >= 2 ? sprintf(asString(a[1]), a.slice(2)) : ''; const fields = new Map<string, Value[]>([['identifier', [str(id)]], ['message', [str(msg)]], ['stack', [zeros(0, 0)]]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields } as StructV); },
-  rethrow: async (a) => { const e = a[0]; const msg = isStruct(e) && e.fields.get('message')?.[0] && isMat(e.fields.get('message')![0]) ? asString(e.fields.get('message')![0]) : 'rethrow: not an error struct'; throw new MatError(msg); },
+  rethrow: async (a) => { const e = a[0]; if (!isStruct(e)) throw new MatError('rethrow: not an error struct'); const f = (e as StructV).fields; const mv = f.get('message')?.[0]; const iv = f.get('identifier')?.[0]; const msg = mv ? asString(mv) : 'rethrow: not an error struct'; throw new MatError(msg, iv ? asString(iv) : undefined); },
   throw: async (a) => { const e = a[0]; const msg = isStruct(e) && e.fields.get('message')?.[0] && isMat(e.fields.get('message')![0]) ? asString(e.fields.get('message')![0]) : String(e); throw new MatError(msg); },
   lasterr: async () => ret(str('')),
   lasterror: async () => { const fields = new Map<string, Value[]>([['identifier', [str('')]], ['message', [str('')]]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields } as StructV); },
@@ -2160,7 +2168,14 @@ export const BUILTINS: Record<string, Builtin> = {
     // Text boundaries: delete the text strictly between the start and end boundaries (boundaries kept).
     return ret(mapStrArr(a[0], (x) => { const l = asString(a[1]), r = asString(a[2]); const i = x.indexOf(l); if (i < 0) return x; const j = x.indexOf(r, i + l.length); return j < 0 ? x : x.slice(0, i + l.length) + x.slice(j); }));
   },
-  replaceBetween: async (a) => ret(mapStrArr(a[0], (x) => { const l = asString(a[1]), r = asString(a[2]); const i = x.indexOf(l); if (i < 0) return x; const j = x.indexOf(r, i + l.length); return j < 0 ? x : x.slice(0, i + l.length) + asString(a[3]) + x.slice(j); })),
+  replaceBetween: async (a) => {
+    // numeric-position form: replaceBetween(str,startPos,endPos,newText) — replace chars startPos..endPos inclusive
+    if (isMat(a[1]) && !(a[1] as Mat).isChar && isMat(a[2]) && !(a[2] as Mat).isChar) {
+      const sp = Math.round(asScalar(a[1])), ep = Math.round(asScalar(a[2])); const nt = asString(a[3]);
+      return ret(mapStrArr(a[0], (x) => (sp < 1 || ep > x.length || sp > ep + 1 ? x : x.slice(0, sp - 1) + nt + x.slice(ep))));
+    }
+    return ret(mapStrArr(a[0], (x) => { const l = asString(a[1]), r = asString(a[2]); const i = x.indexOf(l); if (i < 0) return x; const j = x.indexOf(r, i + l.length); return j < 0 ? x : x.slice(0, i + l.length) + asString(a[3]) + x.slice(j); }));
+  },
   convertStringsToChars: async (a, n) => { const conv = (v: Value) => (isStr(v) ? (v.items.length === 1 ? str(v.items[0]) : v) : v); return a.slice(0, Math.max(1, n)).map(conv); },
   convertCharsToStrings: async (a, n) => { const conv = (v: Value) => (isMat(v) && (v as Mat).isChar ? makeStr(asString(v)) : v); return a.slice(0, Math.max(1, n)).map(conv); },
 
@@ -3246,7 +3261,7 @@ export const BUILTINS: Record<string, Builtin> = {
   boundaryFacets: async (a) => { const g = gGeom(a[0]); const fb = alphaBoundary(g); const out = zeros(fb.length, g.dim); fb.forEach((e, i) => e.forEach((v, j) => { out.data[i + j * fb.length] = v + 1; })); return ret(out); },
   criticalAlpha: async (a) => ret(scalar(alphaCritical(gGeom(a[0]).points, gGeom(a[0]).dim))),
   alphaSpectrum: async (a) => { const g = gGeom(a[0]); const radii = alphaSimplicesAll(g).map((s) => circumRadius(s.map((v) => g.points[v]))).sort((x, y) => x - y); return ret(colVec([...new Set(radii)])); },
-  numRegions: async (a) => ret(scalar(gGeom(a[0]).points.length ? 1 : 0)),
+  numRegions: async (a) => { const g = gGeom(a[0]); if (!g.points.length) return ret(scalar(0)); if (g.gkind === 'polyshape') return ret(scalar(polyBoundariesOf(g.points).filter((b) => polyBoundarySignedArea(b) > 0).length || 1)); return ret(scalar(1)); },
   triplot: async (a, _n, env) => {
     let T: number[][], x: number[], y: number[];
     if (isGeom(a[0])) { const g = a[0]; T = g.conn ?? []; x = g.points.map((p) => p[0]); y = g.points.map((p) => p[1]); }
@@ -3296,7 +3311,20 @@ export const BUILTINS: Record<string, Builtin> = {
   sortboundaries: async (a) => ret(a[0]), rmholes: async (a) => ret(a[0]), rmslivers: async (a) => ret(a[0]), sortregions: async (a) => ret(a[0]),
   boundaryshape: async (a) => { const g = gGeom(a[0]); if (g.gkind === 'polyshape') return ret(g); const pts = g.points; const k = pts[0]?.length === 2 ? convHull2D(pts.map((p) => p[0]), pts.map((p) => p[1])) : []; return ret({ kind: 'geom', gkind: 'polyshape', points: k.map((i) => pts[i - 1]), dim: 2 } as Geom); },
   unmesh: async (a, n) => { const g = gGeom(a[0]); const P = fromRows(g.points); const T = zeros((g.conn ?? []).length, g.dim + 1); (g.conn ?? []).forEach((s, i) => s.forEach((v, j) => { T.data[i + j * (g.conn ?? []).length] = v + 1; })); return n >= 2 ? [P, T] : [P]; },
-  regions: async (a) => ret(makeCell(1, 1, [a[0]])),
+  regions: async (a) => {
+    const g = gGeom(a[0]);
+    if (g.gkind !== 'polyshape' || !g.points.length) return ret(makeCell(1, 1, [a[0]]));
+    const bs = polyBoundariesOf(g.points);
+    const solids = bs.filter((b) => polyBoundarySignedArea(b) > 0);
+    const holes = bs.filter((b) => polyBoundarySignedArea(b) < 0);
+    if (solids.length <= 1) return ret(makeCell(1, 1, [a[0]]));
+    const regs: Value[] = solids.map((s) => {
+      const pts: number[][] = [...s];
+      for (const h of holes) if (ghPointInside(h[0][0], h[0][1], s)) { pts.push([NaN, NaN]); pts.push(...h); }
+      return { kind: 'geom', gkind: 'polyshape', points: pts, dim: 2 } as Geom;
+    });
+    return ret(makeCell(regs.length, 1, regs));
+  },
   addboundary: async (a) => { const g = gGeom(a[0]); const x = a.length >= 3 ? toArray(m(a[1])) : matRows(m(a[1])).map((p) => p[0]); const y = a.length >= 3 ? toArray(m(a[2])) : matRows(m(a[1])).map((p) => p[1]); const pts = g.points.slice(); if (pts.length) pts.push([NaN, NaN]); x.forEach((xi, i) => pts.push([xi, y[i]])); return ret({ ...g, points: pts } as Geom); },
   rmboundary: async (a) => { const g = gGeom(a[0]); const k = Math.round(asScalar(a[1])); const bnds: number[][][] = [[]]; for (const p of g.points) { if (Number.isNaN(p[0])) bnds.push([]); else bnds[bnds.length - 1].push(p); } bnds.splice(k - 1, 1); const pts: number[][] = []; bnds.forEach((b, i) => { if (i > 0) pts.push([NaN, NaN]); pts.push(...b); }); return ret({ ...g, points: pts } as Geom); },
   nearestvertex: async (a) => { const g = gGeom(a[0]); const qx = asScalar(a[1]), qy = a.length >= 3 ? asScalar(a[2]) : 0; let best = 0, bd = Infinity; g.points.forEach((p, i) => { if (Number.isNaN(p[0])) return; const d = (p[0] - qx) ** 2 + (p[1] - qy) ** 2; if (d < bd) { bd = d; best = i; } }); return ret(scalar(best + 1)); },
@@ -3347,7 +3375,7 @@ export const BUILTINS: Record<string, Builtin> = {
   qubo: async (a) => { const Q = m(a[0]); const c = a.length >= 2 && isMat(a[1]) ? colVec(toArray(m(a[1]))) : zeros(Q.rows, 1); const d = a.length >= 3 ? asScalar(a[2]) : 0; return ret(makeQubo(Q, c, d)); },
   evaluateObjective: async (a) => { const q = a[0] as StructV; const x = toArray(m(a[1])); return ret(scalar(quboEnergy(m(q.fields.get('Q')![0]), toArray(m(q.fields.get('c')![0])), asScalar(q.fields.get('d')![0]), x))); },
   tabuSearch: async (a) => ret(quboSolveResult(a[0] as StructV)),
-  qaoa: async (a) => { const qi = a.find((x) => isStruct(x) && (x as StructV).fields.has('Q')) as StructV; return ret(quboSolveResult(qi, 'qaoa')); },
+  qaoa: async (a) => { const qi = a.find((x) => isStruct(x) && (x as StructV).fields.has('Q')) as StructV; if (!qi) throw new MatError('qaoa: a QUBO problem (from qubo) is required'); return ret(quboSolveResult(qi, 'qaoa')); },
   qubo2ising: async (a, n) => {
     const q = a[0] as StructV; const Q = m(q.fields.get('Q')![0]); const cc = toArray(m(q.fields.get('c')![0])); const d = asScalar(q.fields.get('d')![0]); const nv = Q.rows;
     // x = (1 - s)/2 (s = ±1). Build h, J, offset.
@@ -3757,7 +3785,14 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   printf: async (a, _n, env) => { env.output(sprintf(asString(a[0]), a.slice(1))); return []; },
   sprintf: async (a) => ret(str(sprintf(asString(a[0]), a.slice(1)))),
-  error: async (a) => { throw new MatError(a.length ? sprintf(asString(a[0]), a.slice(1)) : 'error'); },
+  error: async (a) => {
+    if (!a.length) throw new MatError('error');
+    if (isStruct(a[0])) { const f = (a[0] as StructV).fields; const eid = f.get('identifier')?.[0]; const emsg = f.get('message')?.[0]; throw new MatError(emsg ? asString(emsg) : 'error', eid ? asString(eid) : undefined); }
+    const first = asString(a[0]);
+    // error(msgID, msg, ...) — first arg is a message identifier (component:component, no whitespace)
+    if (a.length >= 2 && /^[A-Za-z][\w]*(:[A-Za-z][\w]*)+$/.test(first)) throw new MatError(sprintf(asString(a[1]), a.slice(2)), first);
+    throw new MatError(sprintf(first, a.slice(1)));
+  },
   warning: async (a, _n, env) => { if (a.length && isMat(a[0]) && (a[0] as Mat).isChar) env.output('Warning: ' + sprintf(asString(a[0]), a.slice(1)) + '\n'); return []; },
   abort: async () => { throw new MatError('aborted'); },
   input: async (a, _n, env) => {
@@ -4589,6 +4624,21 @@ function digamma(x: number): number {
   const f = 1 / (x * x);
   r += Math.log(x) - 1 / (2 * x) - f * (1 / 12 - f * (1 / 120 - f * (1 / 252 - f / 240)));
   return r;
+}
+
+/** Polygamma function ψ^(n)(x): n-th derivative of digamma (n=0 is digamma itself). */
+function polygamma(n: number, x: number): number {
+  if (n === 0) return digamma(x);
+  if (x <= 0 && x === Math.floor(x)) return n % 2 === 0 ? NaN : Infinity; // poles at non-positive integers
+  const fact = (m: number) => gammaFn(m + 1);
+  const sgnRec = n % 2 === 0 ? -1 : 1; // (-1)^(n+1)
+  let acc = 0, y = x;
+  while (y < 10) { acc += sgnRec * fact(n) / Math.pow(y, n + 1); y += 1; }
+  const sign = n % 2 === 1 ? 1 : -1; // (-1)^(n-1)
+  let asym = fact(n - 1) / Math.pow(y, n) + fact(n) / (2 * Math.pow(y, n + 1));
+  const B2 = [1 / 6, -1 / 30, 1 / 42, -1 / 30, 5 / 66, -691 / 2730, 7 / 6];
+  for (let k = 1; k <= B2.length; k++) asym += B2[k - 1] * fact(2 * k + n - 1) / (fact(2 * k) * Math.pow(y, 2 * k + n));
+  return acc + sign * asym;
 }
 
 /** Exponential integral E₁(x) for x>0 (series for x≤1, continued fraction for x>1). */
@@ -6751,6 +6801,17 @@ function plotGraph(env: Env, g: Graph): void {
 
 // ── Geometry-object helpers (triangulation / polyshape / alphaShape) ──────
 function gGeom(v: Value, name = 'argument'): Geom { if (!isGeom(v)) throw new MatError(`${name}: expected a geometry object`); return v; }
+/** Split a polyshape vertex list (NaN-separated boundaries) into separate boundary loops. */
+function polyBoundariesOf(points: number[][]): number[][][] {
+  const bnds: number[][][] = []; let cur: number[][] = [];
+  for (const p of points) { if (Number.isNaN(p[0])) { if (cur.length) { bnds.push(cur); cur = []; } } else cur.push(p); }
+  if (cur.length) bnds.push(cur);
+  return bnds;
+}
+/** Signed area of a closed boundary (positive = counterclockwise/solid, negative = clockwise/hole). */
+function polyBoundarySignedArea(b: number[][]): number {
+  let a = 0; for (let i = 0; i < b.length; i++) { const p = b[i], q = b[(i + 1) % b.length]; a += p[0] * q[1] - q[0] * p[1]; } return a / 2;
+}
 // ── Greiner–Hormann polygon clipping (union / intersect / difference) ──
 interface GHv { x: number; y: number; next: GHv; prev: GHv; inter: boolean; entry: boolean; visited: boolean; neighbor: GHv | null; alpha: number; }
 function ghBuild(poly: number[][]): GHv {

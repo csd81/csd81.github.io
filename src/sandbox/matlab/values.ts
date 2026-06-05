@@ -132,7 +132,10 @@ export interface MapV { kind: 'map'; keyKind: 'char' | 'double'; valType: string
 export interface DictV { kind: 'dict'; keyKind: 'char' | 'double'; valType: string; store: Map<string | number, Value>; }
 export type Value = Mat | Handle | GObj | Cell | StructV | Sparse | Str | Graph | Geom | Quantum | Temporal | Table | Sym | Categorical | MapV | DictV;
 
-export class MatError extends Error {}
+export class MatError extends Error {
+  identifier?: string;
+  constructor(message: string, identifier?: string) { super(message); this.identifier = identifier; }
+}
 
 // ── Constructors ───────────────────────────────────────────────────────
 export function mat(rows: number, cols: number, data: Float64Array): Mat {

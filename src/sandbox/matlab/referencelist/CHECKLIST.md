@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **780 / 1170** audited.
+Progress: **880 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -789,3 +789,103 @@ Progress: **780 / 1170** audited.
 | 778 | `planerot` | ✅ | Givens rotation → [5;0] |
 | 779 | `plot` | 🟡 | 2-D line plot (graphics) |
 | 780 | `plot3` | 🟡 | 3-D line plot (graphics) |
+| 781 | `plotmatrix` | 🟡 | scatter-plot matrix (graphics) |
+| 782 | `plus` | ✅ | addition operator |
+| 783 | `pointLocation` | ✅ | enclosing simplex |
+| 784 | `pol2cart` | ✅ | polar → Cartesian |
+| 785 | `polaraxes` | 🟡 | polar axes (graphics) |
+| 786 | `polarhistogram` | 🟡 | polar histogram (graphics) |
+| 787 | `polarplot` | 🟡 | polar line plot (graphics) |
+| 788 | `polarscatter` | 🟡 | polar scatter (graphics) |
+| 789 | `poly` | ✅ | roots → coefficients |
+| 790 | `polyarea` | ✅ | polygon area (shoelace) |
+| 791 | `polybuffer` | ✅ | buffer polyshape |
+| 792 | `polyder` | ✅ | polynomial derivative |
+| 793 | `polydiv` | ✅ | polynomial division |
+| 794 | `polyeig` | ✅ | polynomial eigenvalues |
+| 795 | `polyfit` | ✅ | least-squares fit |
+| 796 | `polyint` | ✅ | polynomial integral |
+| 797 | `polyshape` | ✅ | 2-D polygon object |
+| 798 | `polyval` | ✅ | evaluate polynomial |
+| 799 | `polyvalm` | ✅ | matrix-argument polynomial |
+| 800 | `pow2` | ✅ | **fixed**: 2-arg pow2(F,E) form |
+| 801 | `ppval` | ✅ | evaluate piecewise poly |
+| 802 | `prctile` | ✅ | percentiles |
+| 803 | `predecessors` | ✅ | digraph predecessors |
+| 804 | `primes` | ✅ | primes ≤ n |
+| 805 | `prism` | ✅ | prism colormap |
+| 806 | `probability` | ✅ | quantum measurement probs |
+| 807 | `prod` | ✅ | product (dim/all) |
+| 808 | `psi` | ✅ | **fixed**: polygamma psi(k,x) |
+| 809 | `qaoa` | ✅ | **fixed**: clean error guard |
+| 810 | `qftGate` | ✅ | QFT gate |
+| 811 | `qmr` | ✅ | QMR solver → A\\b |
+| 812 | `qr` | ✅ | QR factorization |
+| 813 | `qrdelete` | ✅ | QR column/row delete |
+| 814 | `qrinsert` | ✅ | QR column/row insert |
+| 815 | `qrupdate` | ✅ | QR rank-1 update |
+| 816 | `quad` | ✅ | adaptive Simpson → 1/3 |
+| 817 | `quad2d` | ✅ | 2-D quadrature → 0.25 |
+| 818 | `quadgk` | ✅ | Gauss-Kronrod → 1/3 |
+| 819 | `quadl` | ✅ | adaptive Lobatto → 1/3 |
+| 820 | `quadv` | ✅ | vectorized quadrature |
+| 821 | `quantile` | ✅ | quantiles → median |
+| 822 | `quantumCircuit` | ✅ | quantum circuit object |
+| 823 | `qubo` | 🟡 | QUBO problem (struct model) |
+| 824 | `qubo2ising` | ✅ | QUBO → Ising |
+| 825 | `quboResult2knapsack` | ✅ | decode knapsack |
+| 826 | `quboResult2tsp` | ✅ | decode TSP tour |
+| 827 | `querystates` | ✅ | basis-state labels |
+| 828 | `quiver` | 🟡 | 2-D vector field (graphics) |
+| 829 | `quiver3` | 🟡 | 3-D vector field (graphics) |
+| 830 | `qz` | ✅ | QZ decomposition (reconstructs) |
+| 831 | `r1Gate` | ✅ | R1 phase gate |
+| 832 | `rad2deg` | ✅ | radians → degrees |
+| 833 | `rand` | ✅ | uniform random |
+| 834 | `randi` | ✅ | random integers |
+| 835 | `randn` | ✅ | normal random |
+| 836 | `randperm` | ✅ | random permutation |
+| 837 | `randsample` | ✅ | random sample |
+| 838 | `rank` | ✅ | matrix rank |
+| 839 | `rat` | ✅ | rational approximation |
+| 840 | `rats` | ✅ | rational display |
+| 841 | `rcond` | ✅ | reciprocal condition number |
+| 842 | `readcell` | ✅ | read file → cell |
+| 843 | `readmatrix` | ✅ | read file → matrix |
+| 844 | `readtable` | ✅ | read file → table |
+| 845 | `readtimetable` | ✅ | read file → timetable |
+| 846 | `readvars` | ✅ | read file → variables |
+| 847 | `real` | ✅ | real part |
+| 848 | `reallog` | ✅ | real log (errors on neg) |
+| 849 | `realpow` | ✅ | **fixed**: errors on complex result |
+| 850 | `realsqrt` | ✅ | real sqrt (errors on neg) |
+| 851 | `rectangle` | 🟡 | rectangle (graphics) |
+| 852 | `rectint` | ✅ | rectangle intersection area |
+| 853 | `regexp` | ✅ | regex match |
+| 854 | `regexpi` | ✅ | case-insensitive regex |
+| 855 | `regexprep` | ✅ | regex replace |
+| 856 | `regexptranslate` | ✅ | escape/wildcard → regex |
+| 857 | `regions` | ✅ | **fixed**: split polyshape regions |
+| 858 | `rem` | ✅ | remainder (sign of dividend) |
+| 859 | `remove` | ✅ | dictionary remove |
+| 860 | `removecats` | ✅ | drop categorical categories |
+| 861 | `removevars` | ✅ | delete table variables |
+| 862 | `renamecats` | ✅ | rename categories |
+| 863 | `renamevars` | ✅ | rename table variables |
+| 864 | `reordercats` | ✅ | reorder categories |
+| 865 | `reordernodes` | ✅ | reorder graph nodes |
+| 866 | `repelem` | ✅ | repeat elements |
+| 867 | `replace` | ✅ | substring replace |
+| 868 | `replaceBetween` | ✅ | **fixed**: numeric-position form |
+| 869 | `repmat` | ✅ | tile array |
+| 870 | `rescale` | ✅ | scale to range |
+| 871 | `reshape` | ✅ | reshape array |
+| 872 | `residue` | ✅ | partial-fraction expansion |
+| 873 | `resize` | ✅ | resize/pad array |
+| 874 | `rethrow` | ✅ | **fixed**: preserves identifier |
+| 875 | `reverse` | ✅ | reverse string chars |
+| 876 | `rgb2gray` | ✅ | RGB → grayscale |
+| 877 | `rgb2hex` | ✅ | RGB → hex |
+| 878 | `rgb2hsv` | ✅ | RGB → HSV |
+| 879 | `rgbplot` | 🟡 | colormap RGB plot (graphics) |
+| 880 | `ribbon` | 🟡 | ribbon plot (graphics) |

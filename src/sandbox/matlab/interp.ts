@@ -348,7 +348,8 @@ export class Interpreter implements Env {
           if (e instanceof ReturnSignal || e instanceof BreakSignal || e instanceof ContinueSignal) throw e;
           if (stmt.catchVar) {
             const msg = e instanceof MatError ? e.message : (e as Error)?.message ?? String(e);
-            const fields = new Map<string, Value[]>([['identifier', [str('')]], ['message', [str(msg)]], ['stack', [empty()]]]);
+            const id = e instanceof MatError ? (e.identifier ?? '') : '';
+            const fields = new Map<string, Value[]>([['identifier', [str(id)]], ['message', [str(msg)]], ['stack', [empty()]]]);
             scope.vars.set(stmt.catchVar, { kind: 'struct', rows: 1, cols: 1, fields });
           }
           await this.runStmts(stmt.catchBody, scope);

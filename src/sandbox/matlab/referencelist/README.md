@@ -1386,3 +1386,131 @@ All 25 already existed. **One fix**; the computable functions all verified; grap
 - `pcg` matches the direct solve `A\b`; `pchip` interpolates shape-preservingly (6.34 at x=2.5 for y=x²); `planerot` produces a Givens rotation zeroing the second component (norm preserved); `pascal`/`perms`/`permute`/`pinv` exact.
 
 - Rich ≥10-line help added for all 25 functions (12 new structured entries + 10 expanded in place; peaks/plot/plot3 already structured). Help verified via esbuild; **full build + push at this 780 boundary**.
+
+## Batch 55 — functions 781–805 (25-fn batch; polynomials · polar graphics · percentiles)
+
+All 25 already existed. **Two fixes** (one a fulfilled dependency); all polynomial functions verified.
+
+| Function | Status | Notes |
+|---|---|---|
+| `plotmatrix`/`polaraxes`/`polarhistogram`/`polarplot`/`polarscatter` | 🟡 | graphics — stub without error; help documents API |
+| `plus` | ✅ | addition operator (+ implicit expansion) |
+| `pointLocation` | ✅ | enclosing triangle/tetra |
+| `pol2cart` | ✅ | `pol2cart(0,5)` → x=5 |
+| `poly` | ✅ | `poly([1 2 3])` → [1 -6 11 -6] |
+| `polyarea` | ✅ | unit square → 1 |
+| `polybuffer` | ✅ | buffer a polyshape |
+| `polyder`/`polyint` | ✅ | derivative/integral of polynomials |
+| `polydiv` | ✅ | `polydiv([1 0 0],[1 1])` → q=[1 -1], r=1 |
+| `polyeig` | ✅ | polynomial eigenvalue problem |
+| `polyfit` | ✅ | `polyfit([1 2 3],[1 4 9],2)` → [1 0 0] |
+| `polyshape` | ✅ | 2-D polygon object |
+| `polyval` | ✅ | Horner evaluation |
+| `polyvalm` | ✅ | `polyvalm([1 0 0],[2 0;0 3])` → A² |
+| `pow2` | ✅ | **fixed** (see below) |
+| `ppval` | ✅ | evaluate piecewise poly |
+| `prctile` | ✅ | `prctile(1:5,50)` → 3 |
+| `predecessors` | ✅ | digraph predecessors → 2 |
+| `primes` | ✅ | `primes(20)` → 2 3 5 7 11 13 17 19 |
+| `prism` | ✅ | prism colormap |
+
+### Implementation notes
+- **`pow2` two-argument form**: `pow2` was registered as a single-argument elementwise `2.^E`, so `pow2(F,E)` silently ignored E and returned `2.^F`. Now it returns `F .* 2.^E` for the two-argument form while keeping the one-argument form. Verified `pow2(0.5,3)` → 4.
+- **`log2` `[F,E]` form (fulfilled dependency)**: the canonical `pow2` example is `[F,E]=log2(X); pow2(F,E)`, but `log2` had no two-output (frexp) form. Added it: `[F,E]=log2(X)` returns the fraction F in [0.5,1) and integer exponent E with X = F·2^E. Verified the round-trip `pow2(log2([1 2 8 100]))` recovers the input. The single-output `log2` is unchanged.
+
+- Rich ≥10-line help added for all 25 functions (14 new structured entries + 8 expanded in place; plotmatrix/polarhistogram/polybuffer already structured). Help verified via esbuild; full build deferred to 880.
+
+## Batch 56 — functions 806–830 (25-fn batch; quadrature · QR/QZ updates · quantum/QUBO · polygamma)
+
+All 25 already existed. **Three fixes** (one new special function); quadrature and linalg all verified.
+
+| Function | Status | Notes |
+|---|---|---|
+| `probability`/`querystates` | ✅ | quantum measurement probs + labels |
+| `prod` | ✅ | product (dim/all; empty → 1) |
+| `psi` | ✅ | **fixed**: polygamma `psi(k,x)` (see below) |
+| `qaoa` | ✅ | **fixed**: clean error when no QUBO (was JS crash) |
+| `qftGate` | ✅ | QFT gate |
+| `qmr` | ✅ | `qmr([4 1;1 3],[1;2])` → A\\b |
+| `qr` | ✅ | Q·R reconstructs |
+| `qrdelete`/`qrinsert`/`qrupdate` | ✅ | QR up/down-dates |
+| `quad`/`quadgk`/`quadl`/`quadv` | ✅ | ∫x² over [0,1] = 1/3 |
+| `quad2d` | ✅ | `quad2d(@(x,y)x.*y,0,1,0,1)` → 0.25 |
+| `quantile` | ✅ | `quantile(1:5,0.5)` → 3 |
+| `quantumCircuit` | ✅ | object; `class` now reports correctly (see below) |
+| `qubo` | 🟡 | QUBO problem (struct model) |
+| `qubo2ising` | ✅ | QUBO → Ising (h,J,c) |
+| `quboResult2knapsack`/`quboResult2tsp` | ✅ | decoders |
+| `quiver`/`quiver3` | 🟡 | vector-field graphics (stub) |
+| `qz` | ✅ | `Q·AA·Zᵀ` reconstructs A |
+
+### Implementation notes
+- **`psi(k,x)` polygamma**: `psi` was single-argument digamma only, so `psi(1,1)` wrongly returned the digamma value (-0.5772) instead of the trigamma π²/6. Added a `polygamma(n,x)` helper (recurrence to large argument + Bernoulli asymptotic expansion) and wired the two-argument form. Verified: `psi(1,1)`→1.6449, `psi(1,2)`→0.6449, `psi(2,1)`→-2.4041 (=-2ζ(3)), with broadcasting over x.
+- **`qaoa` guard**: bare `qaoa` (no QUBO) crashed with an internal "reading 'fields' of undefined" JS error; now throws a clean `qaoa: a QUBO problem (from qubo) is required`.
+- **`class` for quantum objects**: `class()` fell through to 'double' for quantum values; added cases so `class(quantumCircuit(2))` → "quantumCircuit" and simulated states → "quantum.gate.QuantumState". Benefits the whole quantum-builtin family (regression-checked against double/int).
+
+- Rich ≥10-line help added for all 25 functions (5 new structured entries + 15 expanded in place; prod/qr/quantumCircuit/qubo/quiver already structured). Help verified via esbuild; full build deferred to 880.
+
+## Batch 57 — functions 831–855 (25-fn batch; random · file readers · real-valued math · regex)
+
+All 25 already existed. **One fix**; everything else verified including the CSV file-reader round-trips.
+
+| Function | Status | Notes |
+|---|---|---|
+| `r1Gate` | ✅ | R1 phase gate |
+| `rad2deg` | ✅ | `rad2deg(pi)` → 180 |
+| `rand`/`randi`/`randn`/`randperm`/`randsample` | ✅ | rng-seeded determinism verified |
+| `rank` | ✅ | `rank([1 2;2 4])` → 1 |
+| `rat`/`rats` | ✅ | `rat(0.75)` → "3/4" |
+| `rcond` | ✅ | `rcond(eye(3))` → 1 |
+| `readcell`/`readmatrix`/`readtable`/`readvars` | ✅ | write→read round-trips via VFS |
+| `readtimetable` | ✅ | time-indexed table reader |
+| `real` | ✅ | `real(3+4i)` → 3 |
+| `reallog`/`realsqrt` | ✅ | error on negative input |
+| `realpow` | ✅ | **fixed** (see below) |
+| `rectangle` | 🟡 | graphics (stub) |
+| `rectint` | ✅ | `rectint([0 0 2 2],[1 1 2 2])` → 1 |
+| `regexp`/`regexpi`/`regexprep` | ✅ | match/tokens/replace verified |
+
+### Implementation note
+- **`realpow` complex-result error**: `realpow(-2,0.5)` returned NaN instead of erroring. MATLAB's realpow requires a real result and errors otherwise. Now it throws `realpow: realpow produced complex result` when `Math.pow` yields NaN for finite inputs (negative base with non-integer exponent), while keeping valid cases like `realpow(-2,3)` → -8 and `realpow(4,0.5)` → 2.
+
+### Verified
+- File readers: `writematrix→readmatrix`, `writecell→readcell`, `writetable→readtable` all round-trip correctly through the in-memory VFS. Regex: start indices, token capture, case-insensitive, and `$n` backreference substitution all correct.
+
+- Rich ≥10-line help added for all 25 functions (21 new structured entries + 1 expanded in place; rand/randsample/rank already structured). Help verified via esbuild; full build deferred to 880.
+
+## Batch 58 — functions 856–880 (25-fn batch; cat/table/dict ops · array reshaping · color · exceptions) — **100-boundary build at 880**
+
+All 25 already existed. **Four fixes**, two of them broad interpreter-wide improvements.
+
+| Function | Status | Notes |
+|---|---|---|
+| `regexptranslate` | ✅ | `escape("a.b")` → "a\\.b" |
+| `regions` | ✅ | **fixed** (see below) |
+| `rem` | ✅ | `rem(-23,5)` → -3 (sign of dividend) |
+| `remove` | ✅ | dictionary key removal |
+| `removecats`/`renamecats`/`reordercats` | ✅ | categorical category ops |
+| `removevars`/`renamevars` | ✅ | table variable ops |
+| `reordernodes` | ✅ | graph node permutation |
+| `repelem`/`repmat` | ✅ | element / array tiling |
+| `replace` | ✅ | substring replace |
+| `replaceBetween` | ✅ | **fixed**: numeric-position form |
+| `rescale` | ✅ | `rescale([1 2 3 4 5])` → 0..1 |
+| `reshape` | ✅ | with `[]` auto-dimension |
+| `residue` | ✅ | partial-fraction expansion |
+| `resize` | ✅ | pad/trim to size |
+| `rethrow` | ✅ | **fixed**: preserves identifier |
+| `reverse` | ✅ | reverse string characters |
+| `rgb2gray`/`rgb2hex`/`rgb2hsv` | ✅ | color-space conversions |
+| `rgbplot`/`ribbon` | 🟡 | graphics (stub) |
+
+### Implementation notes
+- **`regions`/`numRegions` (polyshape)**: both were stubs that always returned 1. They now split the polyshape vertex list into boundary loops, count solid (positive signed-area) boundaries as regions, and attach holes to the containing region. A polyshape with two disjoint solid boundaries now reports 2 regions, and `regions` returns the two pieces; single polygons and alpha shapes are unaffected.
+- **Exception identifiers (broad fix)**: `error` never parsed a message identifier and `catch` hard-coded `ex.identifier` to "". Now `MatError` carries an `identifier`; `error("comp:id","msg",...)` sets it (only when the first arg matches the `id` syntax and a message follows, so `error("ratio 3:1")` stays a message); the `error(struct)` form is supported; `catch` populates `ex.identifier`; and **`rethrow` preserves both identifier and message**. This fixes exception handling across the whole interpreter.
+- **`replaceBetween` numeric form**: added `replaceBetween(str,startPos,endPos,newText)` (replace characters startPos..endPos inclusive) alongside the existing substring-delimiter form. `replaceBetween("hello",2,4,"XX")` → "hXXo".
+
+### Known limitation
+- `union` of two **disjoint** polyshapes still collapses to a single region (the Greiner-Hormann clipping keeps one component); overlapping unions are correct (area additive). `regions`/`numRegions` themselves are now correct on any properly-formed multi-region polyshape.
+
+- Rich ≥10-line help added for all 25 functions (11 new structured entries + 13 expanded in place; repelem already structured). Help verified via esbuild; **full build + push at this 880 boundary**.
