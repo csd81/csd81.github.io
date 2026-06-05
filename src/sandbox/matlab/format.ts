@@ -191,7 +191,7 @@ function graphLines(v: { directed: boolean; n: number; edges: { s: number; t: nu
 /** Summary display of a geometry object (Points / ConnectivityList / Vertices / Alpha). */
 function geomLines(v: { gkind: string; points: number[][]; conn?: number[][]; alpha?: number; dim: number }): string[] {
   const np = v.points.length, d = v.dim;
-  if (v.gkind === 'polyshape') return [`    Vertices: [${np}×2 double]`, `    NumRegions: ${v.points.length ? 1 : 0}`];
+  if (v.gkind === 'polyshape') return [`      Vertices: [${np}×2 double]`, `    NumRegions: ${v.points.length ? 1 : 0}`, `      NumHoles: 0`];
   if (v.gkind === 'alphaShape') return [`    Points: [${np}×${d} double]`, `    Alpha: ${v.alpha ?? 0}`];
   return [`    Points: [${np}×${d} double]`, `    ConnectivityList: [${(v.conn ?? []).length}×${d + 1} double]`];
 }

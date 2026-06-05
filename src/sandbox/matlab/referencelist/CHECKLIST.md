@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **10 / 1170** audited.
+Progress: **20 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -15,3 +15,13 @@ Progress: **10 / 1170** audited.
 | 8 | `accumarray` | ✅ | rewritten: matrix subs, sz, fun, fillval, sparse |
 | 9 | `acos` | ✅ | complex branch fixed |
 | 10 | `acosd` | ✅ | complex out-of-domain fixed |
+| 11 | `acosh` | ✅ | complex branch |
+| 12 | `acot` | ✅ | complex branch (imag-axis fix) |
+| 13 | `acotd` | ✅ | complex, degrees |
+| 14 | `acoth` | ✅ | complex branch |
+| 15 | `acsc` | ✅ | complex branch |
+| 16 | `acscd` | ✅ | complex, degrees |
+| 17 | `acsch` | ✅ | complex branch |
+| 18 | `addboundary` | 🟡 | NumHoles added; multi-region + array-plot pending |
+| 19 | `addcats` | 🟡 | append OK; 2-D categorical pending |
+| 20 | `addedge` | 🟡 | named-node auto-add fixed; edge-table pending |

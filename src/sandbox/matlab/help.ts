@@ -5,7 +5,7 @@
  *  - BASE_REF / DOUBLE_REF + docUrl: MathWorks documentation links
  *  - builtinHelp: renders the MATLAB-style help block for a name
  */
-interface HelpEntry { summary: string; syntax: string[]; seealso?: string[] }
+interface HelpEntry { summary: string; syntax: string[]; seealso?: string[]; description?: string[]; examples?: string[] }
 
 /** Structured help for common built-ins (rendered MATLAB-style by `help`). */
 const HELP: Record<string, HelpEntry> = {
@@ -19,7 +19,50 @@ const HELP: Record<string, HelpEntry> = {
   log10: { summary: 'Base-10 logarithm (element-wise)', syntax: ['Y = log10(X)'], seealso: ['log', 'log2'] },
   log2: { summary: 'Base-2 logarithm (element-wise)', syntax: ['Y = log2(X)'], seealso: ['log', 'log10'] },
   sqrt: { summary: 'Square root (element-wise)', syntax: ['Y = sqrt(X)'], seealso: ['nthroot', 'power', 'exp'] },
-  abs: { summary: 'Absolute value (element-wise)', syntax: ['Y = abs(X)'], seealso: ['sign', 'norm'] },
+  abs: { summary: 'Absolute value (element-wise)', syntax: ['Y = abs(X)'],
+    description: ['Y = abs(X) returns the absolute value of each element of X.', 'If X is complex, abs(X) returns the complex magnitude sqrt(re^2+im^2).', 'Works element-wise on arrays of any size and on integer types.', 'For the sign (and complex unit vector) use sign; for vector length use norm.'],
+    examples: ['abs(-5)            % 5', "abs([1.3 -3.56 -5])   % 1.3000  3.5600  5.0000", 'abs(3+4i)          % 5'], seealso: ['sign', 'norm', 'angle', 'hypot'] },
+  // --- reference-list audit batch 1 (converged): inverse trig + accumarray
+  acos: { summary: 'Inverse cosine (radians)', syntax: ['Y = acos(X)'],
+    description: ['Y = acos(X) returns the inverse cosine of the elements of X, in radians.', 'For real X in [-1,1] the result is real and lies in [0, pi].', 'For |X| > 1 or complex X the result is complex (principal branch).', 'cos(acos(X)) == X to within rounding.'],
+    examples: ['acos(0)                % 1.5708 (pi/2)', 'acos(1)                % 0', 'acos(2)                % 0 + 1.3170i'], seealso: ['cos', 'asin', 'acosd', 'acosh'] },
+  acosd: { summary: 'Inverse cosine (degrees)', syntax: ['Y = acosd(X)'],
+    description: ['Y = acosd(X) returns the inverse cosine of X with the result in degrees.', 'acosd(X) = acos(X)*180/pi; real for X in [-1,1] (result in [0,180]).', 'For |X| > 1 or complex X the result is complex.', 'cosd(acosd(X)) == X to within rounding.'],
+    examples: ['acosd(0)               % 90', 'acosd(1)               % 0', 'cosd(acosd([2 3]))     % 2  3'], seealso: ['cosd', 'asind', 'acos'] },
+  accumarray: { summary: 'Construct an array by accumulating values into subscripted bins', syntax: ['A = accumarray(subs,val)', 'A = accumarray(subs,val,sz)', 'A = accumarray(subs,val,sz,fun,fillval)', 'A = accumarray(subs,val,sz,fun,fillval,issparse)'],
+    description: ['A = accumarray(subs,val) groups the elements of val by the subscripts in subs', 'and sums each group: A(subs(i,:)) = A(subs(i,:)) + val(i).', 'subs is an N-by-1 column (vector output) or N-by-K matrix (K-dimensional output).', 'sz sets the output size; fun (default @sum) reduces each group to a scalar;', 'fillval (default 0) fills bins with no entries. With issparse=true the output', 'is a sparse matrix (subs must have two columns).'],
+    examples: ['accumarray([1;3;1],[10;20;30])     % [40;0;20]', 'accumarray([1 1;2 2],[5;7])        % [5 0;0 7]', 'accumarray([1;1;2],[1;2;3],[],@max) % [2;3]'], seealso: ['sum', 'histcounts', 'sparse', 'groupsummary'] },
+  // --- reference-list audit batch 2: inverse hyperbolic / reciprocal trig + graph/poly/categorical
+  acosh: { summary: 'Inverse hyperbolic cosine', syntax: ['Y = acosh(X)'],
+    description: ['Y = acosh(X) returns the inverse hyperbolic cosine of the elements of X.', 'acosh(X) is real for X >= 1; for X < 1 (or complex X) the result is complex,', 'computed on the principal branch (Re(acosh) >= 0) so acosh(-3) = 1.7627 + 3.1416i.', 'cosh(acosh(X)) == X to within rounding.'],
+    examples: ['acosh(1)               % 0', 'acosh([2 -3 1+2i])     % complex row vector', 'cosh(acosh(5))         % 5'], seealso: ['cosh', 'asinh', 'atanh', 'acos'] },
+  acot: { summary: 'Inverse cotangent (radians)', syntax: ['Y = acot(X)'],
+    description: ['Y = acot(X) returns the inverse cotangent of the elements of X, in radians.', 'acot(X) = atan(1./X) with the principal branch; the result lies in (-pi/2, pi/2].', 'For complex input the result is complex; acot(0) returns pi/2.', 'Use acotd for a result in degrees.'],
+    examples: ['acot(1)                % 0.7854 (pi/4)', 'acot(0)                % 1.5708 (pi/2)', 'acot([0.5i 1+3i])      % complex'], seealso: ['cot', 'acotd', 'atan', 'acoth'] },
+  acotd: { summary: 'Inverse cotangent (degrees)', syntax: ['Y = acotd(X)'],
+    description: ['Y = acotd(X) returns the inverse cotangent of X with the result in degrees.', 'acotd(X) = acot(X)*180/pi; the real result lies in (-90, 90].', 'For complex input the result is complex (e.g. acotd(1+i) = 31.7175 - 23.0535i).', 'Use acot for a result in radians.'],
+    examples: ['acotd(1)               % 45', 'acotd(0)               % 90', 'acotd(1+i)             % 31.7175 - 23.0535i'], seealso: ['cotd', 'acot', 'atand'] },
+  acoth: { summary: 'Inverse hyperbolic cotangent', syntax: ['Y = acoth(X)'],
+    description: ['Y = acoth(X) returns the inverse hyperbolic cotangent of the elements of X.', 'acoth(X) = atanh(1./X); it is real for |X| > 1 and complex for |X| < 1 or complex X.', 'acoth(X) has singularities at X = +/-1.', 'coth(acoth(X)) == X to within rounding.'],
+    examples: ['acoth(2)               % 0.5493', 'acoth(-3)              % -0.3466', 'acoth(1+2i)            % 0.1733 - 0.3927i'], seealso: ['coth', 'atanh', 'acsch', 'asech'] },
+  acsc: { summary: 'Inverse cosecant (radians)', syntax: ['Y = acsc(X)'],
+    description: ['Y = acsc(X) returns the inverse cosecant of the elements of X, in radians.', 'acsc(X) = asin(1./X); it is real for |X| >= 1 and complex for |X| < 1 or complex X.', 'The real result lies in [-pi/2, pi/2].', 'Use acscd for a result in degrees.'],
+    examples: ['acsc(1)                % 1.5708 (pi/2)', 'acsc(2)                % 0.5236 (pi/6)', 'acsc([0.5i 1+3i])      % complex'], seealso: ['csc', 'acscd', 'asin', 'acsch'] },
+  acscd: { summary: 'Inverse cosecant (degrees)', syntax: ['Y = acscd(X)'],
+    description: ['Y = acscd(X) returns the inverse cosecant of X with the result in degrees.', 'acscd(X) = acsc(X)*180/pi; real for |X| >= 1, complex otherwise.', 'acscd(1+i) = 25.9136 - 30.4033i.', 'Use acsc for a result in radians.'],
+    examples: ['acscd(1)               % 90', 'acscd(2)               % 30', 'acscd(1+i)             % 25.9136 - 30.4033i'], seealso: ['cscd', 'acsc', 'asind'] },
+  acsch: { summary: 'Inverse hyperbolic cosecant', syntax: ['Y = acsch(X)'],
+    description: ['Y = acsch(X) returns the inverse hyperbolic cosecant of the elements of X.', 'acsch(X) = asinh(1./X) and is defined for all nonzero X (complex for complex X).', 'acsch(X) -> 0 as |X| -> infinity and has a singularity at X = 0.', 'csch(acsch(X)) == X to within rounding.'],
+    examples: ['acsch(1)               % 0.8814', 'acsch(-3)              % -0.3275', 'acsch(1+2i)            % 0.2156 - 0.4016i'], seealso: ['csch', 'asinh', 'acoth', 'asech'] },
+  addboundary: { summary: 'Add a boundary to a polyshape', syntax: ['pg2 = addboundary(pg,x,y)', 'pg2 = addboundary(pg,P)', 'pg2 = addboundary(pg,x,y,Name,Value)'],
+    description: ['pg2 = addboundary(pg,x,y) adds the boundary defined by vertices (x,y) to the', 'polyshape pg and returns the combined polyshape pg2.', 'A boundary enclosed by another becomes a hole; nested boundaries alternate', 'solid/hole. Pass an N-by-2 matrix P instead of separate x,y if convenient.', 'NumRegions and NumHoles of the result reflect the added boundary.'],
+    examples: ['pg = polyshape([0 0 1 1],[0 1 1 0]);', 'pg = addboundary(pg,[2 3 2.5],[2 2 3]);', 'pg.NumRegions          % 2'], seealso: ['polyshape', 'rmboundary', 'regions', 'area'] },
+  addcats: { summary: 'Add categories to a categorical array', syntax: ['B = addcats(A,newcats)', 'B = addcats(A,newcats,"Before",catname)', 'B = addcats(A,newcats,"After",catname)'],
+    description: ['B = addcats(A,newcats) adds the categories newcats to the categorical array A', 'without changing any of its values; the new categories simply have zero counts.', 'By default the categories are appended at the end of the category list.', 'Use the "Before"/"After" options to insert them at a specific position', '(this defines the ordering for ordinal categorical arrays).'],
+    examples: ['A = categorical({"r","b","r"});', 'B = addcats(A,"g");', 'categories(B)          % r; b; g'], seealso: ['categorical', 'categories', 'removecats', 'mergecats'] },
+  addedge: { summary: 'Add edges to a graph or digraph', syntax: ['H = addedge(G,s,t)', 'H = addedge(G,s,t,w)', 'H = addedge(G,EdgeTable)'],
+    description: ['H = addedge(G,s,t) adds edges between source nodes s and target nodes t.', 'H = addedge(G,s,t,w) also sets the edge weights w (scalar or vector).', 'Endpoints may be numeric node indices or node names; named endpoints that do', 'not yet exist in G are added as new nodes automatically.', 'For directed graphs each edge goes from s(i) to t(i).'],
+    examples: ['G = graph([1 2],[2 3]);', 'G = addedge(G,3,1,5);     % weighted edge 3-1', "G = addedge(G,'A','B');   % auto-adds named nodes"], seealso: ['graph', 'digraph', 'rmedge', 'addnode'] },
   sign: { summary: 'Sign function (-1, 0, or 1)', syntax: ['Y = sign(X)'], seealso: ['abs'] },
   nthroot: { summary: 'Real n-th root of X (handles negative X for odd N)', syntax: ['Y = nthroot(X,N)'], seealso: ['sqrt', 'power'] },
   power: { summary: 'Element-wise power, X.^Y', syntax: ['Z = power(X,Y)', 'Z = X.^Y'], seealso: ['sqrt', 'nthroot'] },
@@ -178,7 +221,6 @@ const HELP: Record<string, HelpEntry> = {
   rmholes: { summary: 'Remove holes from a polyshape', syntax: ['pg = rmholes(pgon)'], seealso: ['holes', 'rmboundary'] },
   rmslivers: { summary: 'Remove sliver boundaries from a polyshape', syntax: ['pg = rmslivers(pgon,tol)'], seealso: ['polyshape'] },
   regions: { summary: 'Split a polyshape into its regions', syntax: ['R = regions(pgon)'], seealso: ['polyshape'] },
-  addboundary: { summary: 'Add a boundary to a polyshape', syntax: ['pg = addboundary(pgon,x,y)'], seealso: ['rmboundary', 'polyshape'] },
   rmboundary: { summary: 'Remove a boundary from a polyshape', syntax: ['pg = rmboundary(pgon,k)'], seealso: ['addboundary'] },
   nearestvertex: { summary: 'Nearest polyshape vertex to a point', syntax: ['v = nearestvertex(pgon,x,y)'], seealso: ['polyshape'] },
   boundingbox: { summary: 'Bounding box of a polyshape', syntax: ['bb = boundingbox(pgon)'], seealso: ['polyshape'] },
@@ -599,7 +641,6 @@ const HELP: Record<string, HelpEntry> = {
   numedges: { summary: 'Number of edges in a graph', syntax: ['m = numedges(G)'], seealso: ['numnodes', 'graph'] },
   addnode: { summary: 'Add nodes to a graph', syntax: ['H = addnode(G,N)', 'H = addnode(G,names)'], seealso: ['rmnode', 'addedge'] },
   rmnode: { summary: 'Remove nodes (and incident edges) from a graph', syntax: ['H = rmnode(G,nodes)'], seealso: ['addnode', 'rmedge'] },
-  addedge: { summary: 'Add edges to a graph', syntax: ['H = addedge(G,s,t)', 'H = addedge(G,s,t,w)'], seealso: ['rmedge', 'addnode'] },
   rmedge: { summary: 'Remove edges from a graph', syntax: ['H = rmedge(G,s,t)'], seealso: ['addedge', 'rmnode'] },
   neighbors: { summary: 'Neighbors of a node', syntax: ['N = neighbors(G,node)'], seealso: ['successors', 'predecessors', 'degree'] },
   successors: { summary: 'Successor nodes in a digraph', syntax: ['N = successors(G,node)'], seealso: ['predecessors', 'neighbors'] },
@@ -1317,6 +1358,8 @@ export function builtinHelp(name: string): string | null {
   const e = HELP[name];
   if (e) {
     let s = ` ${name} - ${e.summary}\n\n    Syntax\n` + e.syntax.map((x) => '      ' + x).join('\n');
+    if (e.description?.length) s += `\n\n    Description\n` + e.description.map((x) => '      ' + x).join('\n');
+    if (e.examples?.length) s += `\n\n    Examples\n` + e.examples.map((x) => '      ' + x).join('\n');
     if (e.seealso?.length) s += `\n\n    See also ${e.seealso.join(', ')}`;
     s += `\n\n    Documentation for ${name}\n      ${docUrl(name)}`;
     return s;

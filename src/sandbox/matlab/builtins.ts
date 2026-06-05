@@ -118,6 +118,33 @@ const cAtan = (re: number, im: number): [number, number] => {
   const [l2r, l2i] = clog(1 - im, re);               // log(1 + iz)
   return [-(l1i - l2i) / 2, (l1r - l2r) / 2];        // (i/2)(log(1-iz) - log(1+iz))
 };
+const cAsinh = (re: number, im: number): [number, number] => {
+  const [z2r, z2i] = cmul(re, im, re, im);
+  const [sr, si] = csqrt(z2r + 1, z2i);              // sqrt(z^2 + 1)
+  return clog(re + sr, im + si);
+};
+const cAcosh = (re: number, im: number): [number, number] => {
+  const [s1r, s1i] = csqrt(re - 1, im), [s2r, s2i] = csqrt(re + 1, im);
+  const [pr, pi] = cmul(s1r, s1i, s2r, s2i);          // sqrt(z-1)·sqrt(z+1) (MATLAB branch, Re≥0)
+  return clog(re + pr, im + pi);
+};
+const cAtanh = (re: number, im: number): [number, number] => {
+  const [qr, qi] = cdiv(1 + re, im, 1 - re, -im);     // (1+z)/(1-z)
+  const [lr, li] = clog(qr, qi);
+  return [lr / 2, li / 2];
+};
+const crecip = (re: number, im: number): [number, number] => cdiv(1, 0, re, im);
+const cAcot = (re: number, im: number): [number, number] => { const [r, i] = cAtan(...crecip(re, im)); return [r < -Math.PI / 2 + 1e-12 ? r + Math.PI : r, i]; };
+const cAcsc = (re: number, im: number): [number, number] => cAsin(...crecip(re, im));
+const cAsec = (re: number, im: number): [number, number] => cAcos(...crecip(re, im));
+const cAcoth = (re: number, im: number): [number, number] => cAtanh(...crecip(re, im));
+const cAcsch = (re: number, im: number): [number, number] => cAsinh(...crecip(re, im));
+const cAsech = (re: number, im: number): [number, number] => cAcosh(...crecip(re, im));
+// Complex-aware elementwise builtin: real fn `rf`, complex fn `cf`; switch to the
+// complex branch when the input is complex or any real element triggers `cw`.
+const ewc = (rf: (x: number) => number, cf: (re: number, im: number) => [number, number], cw?: (x: number) => boolean): Builtin =>
+  async (a) => { const A = m(a[0]); return ret(isComplex(A) || (cw ? toArray(A).some(cw) : false) ? cmap(A, cf) : map(A, rf)); };
+const degOf = (cf: (re: number, im: number) => [number, number]) => (re: number, im: number): [number, number] => { const [r, i] = cf(re, im); return [r / DEG, i / DEG]; };
 
 /** Factor a univariate polynomial (ascending coeffs) over ℚ into a list of sym factors:
  *  peel rational roots via synthetic division, leaving any irreducible part as one factor.
@@ -404,9 +431,9 @@ export const BUILTINS: Record<string, Builtin> = {
   // trig / hyperbolic completion (radians)
   sec: ew((x) => 1 / Math.cos(x)), csc: ew((x) => 1 / Math.sin(x)),
   coth: ew((x) => 1 / Math.tanh(x)), sech: ew((x) => 1 / Math.cosh(x)), csch: ew((x) => 1 / Math.sinh(x)),
-  acot: ew((x) => Math.atan(1 / x)), asec: ew((x) => Math.acos(1 / x)), acsc: ew((x) => Math.asin(1 / x)),
-  asinh: ew(Math.asinh), acosh: ew(Math.acosh), atanh: ew(Math.atanh),
-  acoth: ew((x) => Math.atanh(1 / x)), asech: ew((x) => Math.acosh(1 / x)), acsch: ew((x) => Math.asinh(1 / x)),
+  acot: ewc((x) => Math.atan(1 / x), cAcot), asec: ewc((x) => Math.acos(1 / x), cAsec, (x) => Math.abs(x) < 1), acsc: ewc((x) => Math.asin(1 / x), cAcsc, (x) => Math.abs(x) < 1),
+  asinh: ewc(Math.asinh, cAsinh), acosh: ewc(Math.acosh, cAcosh, (x) => x < 1), atanh: ewc(Math.atanh, cAtanh, (x) => Math.abs(x) > 1),
+  acoth: ewc((x) => Math.atanh(1 / x), cAcoth, (x) => Math.abs(x) < 1), asech: ewc((x) => Math.acosh(1 / x), cAsech, (x) => x < 0 || x > 1), acsch: ewc((x) => Math.asinh(1 / x), cAcsch),
   // degree-valued trig
   sind: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmap(A, (re, im) => { const r = re * DEG, i = im * DEG; return [Math.sin(r) * Math.cosh(i), Math.cos(r) * Math.sinh(i)]; }) : map(A, (x) => Math.sin(x * DEG))); },
   cosd: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmap(A, (re, im) => { const r = re * DEG, i = im * DEG; return [Math.cos(r) * Math.cosh(i), -Math.sin(r) * Math.sinh(i)]; }) : map(A, (x) => Math.cos(x * DEG))); },
@@ -415,7 +442,7 @@ export const BUILTINS: Record<string, Builtin> = {
   asind: async (a) => { const A = m(a[0]); return ret(isComplex(A) || toArray(A).some((x) => Math.abs(x) > 1) ? cmap(A, (re, im) => { const [r, i] = cAsin(re, im); return [r / DEG, i / DEG]; }) : map(A, (x) => Math.asin(x) / DEG)); },
   acosd: async (a) => { const A = m(a[0]); return ret(isComplex(A) || toArray(A).some((x) => Math.abs(x) > 1) ? cmap(A, (re, im) => { const [r, i] = cAcos(re, im); return [r / DEG, i / DEG]; }) : map(A, (x) => Math.acos(x) / DEG)); },
   atand: ew((x) => Math.atan(x) / DEG),
-  acotd: ew((x) => Math.atan(1 / x) / DEG),
+  acotd: ewc((x) => Math.atan(1 / x) / DEG, degOf(cAcot)),
   atan2d: async (a) => ret(elementwise(m(a[0]), m(a[1]), (y, x) => Math.atan2(y, x) / DEG)),
   deg2rad: ew((x) => x * DEG), rad2deg: ew((x) => x / DEG),
   // elementary extras
@@ -1272,7 +1299,7 @@ export const BUILTINS: Record<string, Builtin> = {
   sub2ind: async (a) => { const sz = toArray(m(a[0])); const rows = sz[0]; const R = m(a[1]), C = a.length >= 3 ? m(a[2]) : null; return ret(C ? elementwise(R, C, (r, c) => (c - 1) * rows + r) : R); },
   ind2sub: async (a, n) => { const sz = toArray(m(a[0])); const rows = sz[0]; const I = m(a[1]); const rr = map(I, (k) => ((k - 1) % rows) + 1); const cc = map(I, (k) => Math.floor((k - 1) / rows) + 1); return n >= 2 ? [rr, cc] : [rr]; },
   rats: async (a) => { const [n2, d] = ratApprox(asScalar(a[0])); return ret(str(d === 1 ? `${n2}` : `${n2}/${d}`)); },
-  acscd: ew((x) => Math.asin(1 / x) / DEG), asecd: ew((x) => Math.acos(1 / x) / DEG),
+  acscd: ewc((x) => Math.asin(1 / x) / DEG, degOf(cAcsc), (x) => Math.abs(x) < 1), asecd: ewc((x) => Math.acos(1 / x) / DEG, degOf(cAsec), (x) => Math.abs(x) < 1),
   cummax: async (a) => { const A = m(a[0]); const o = zeros(A.rows, A.cols); if (A.rows === 1 || A.cols === 1) { let mx = -Infinity; for (let i = 0; i < A.data.length; i++) { mx = Math.max(mx, A.data[i]); o.data[i] = mx; } } else for (let c = 0; c < A.cols; c++) { let mx = -Infinity; for (let r = 0; r < A.rows; r++) { mx = Math.max(mx, A.data[r + c * A.rows]); o.data[r + c * A.rows] = mx; } } return ret(o); },
   cummin: async (a) => { const A = m(a[0]); const o = zeros(A.rows, A.cols); if (A.rows === 1 || A.cols === 1) { let mn = Infinity; for (let i = 0; i < A.data.length; i++) { mn = Math.min(mn, A.data[i]); o.data[i] = mn; } } else for (let c = 0; c < A.cols; c++) { let mn = Infinity; for (let r = 0; r < A.rows; r++) { mn = Math.min(mn, A.data[r + c * A.rows]); o.data[r + c * A.rows] = mn; } } return ret(o); },
   // ── matrix algebra extras ──
@@ -2371,7 +2398,25 @@ export const BUILTINS: Record<string, Builtin> = {
     const edges = g.edges.filter((e) => !rm.has(e.s) && !rm.has(e.t)).map((e) => ({ s: remap.get(e.s)!, t: remap.get(e.t)!, w: e.w }));
     return ret(makeGraph(g.directed, keep.length, edges, g.names ? keep.map((i) => g.names![i]) : undefined));
   },
-  addedge: async (a) => { const g = gArg(a[0]); const s = nodeIds(g, a[1]), t = nodeIds(g, a[2]); const wv = a.length >= 4 ? toArray(m(a[3])) : null; const ne = s.map((si, i) => ({ s: si, t: t[i], w: wv ? (wv.length === 1 ? wv[0] : wv[i]) : 1 })); const n = Math.max(g.n, ...s, ...t) + (s.length ? 0 : 0); return ret(makeGraph(g.directed, Math.max(g.n, ...s.map((x) => x + 1), ...t.map((x) => x + 1)), [...g.edges, ...ne], g.names)); void n; },
+  addedge: async (a) => {
+    const g = gArg(a[0]);
+    // Named endpoints that don't exist yet are auto-added (MATLAB semantics).
+    const named = !!g.names && (isStr(a[1]) || isCell(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar));
+    const names = g.names ? g.names.slice() : null;
+    const grow = (v: Value): number[] => {
+      const r = (nm: string) => { let i = names!.indexOf(nm); if (i < 0) { i = names!.length; names!.push(nm); } return i; };
+      if (isStr(v)) return v.items.map(r);
+      if (isMat(v) && v.isChar) return [r(asString(v))];
+      if (isCell(v)) return v.items.map((it) => r(asString(it)));
+      return toArray(m(v)).map((x) => Math.round(x) - 1);
+    };
+    const s = named ? grow(a[1]) : nodeIds(g, a[1]);
+    const t = named ? grow(a[2]) : nodeIds(g, a[2]);
+    const wv = a.length >= 4 && isMat(a[3]) ? toArray(m(a[3])) : null;
+    const ne = s.map((si, i) => ({ s: si, t: t[i], w: wv ? (wv.length === 1 ? wv[0] : wv[i]) : 1 }));
+    const newN = Math.max(g.n, ...s.map((x) => x + 1), ...t.map((x) => x + 1), named ? names!.length : 0);
+    return ret(makeGraph(g.directed, newN, [...g.edges, ...ne], named ? names! : g.names));
+  },
   rmedge: async (a) => { const g = gArg(a[0]); const s = nodeIds(g, a[1]), t = nodeIds(g, a[2]); const drop = new Set(s.map((si, i) => `${Math.min(si, t[i])}_${Math.max(si, t[i])}`)); const edges = g.edges.filter((e) => !drop.has(`${Math.min(e.s, e.t)}_${Math.max(e.s, e.t)}`)); return ret(makeGraph(g.directed, g.n, edges, g.names)); },
   neighbors: async (a) => {
     if (isGeom(a[0])) { const g = a[0]; const ti = Math.round(asScalar(a[1])) - 1; const T = g.conn ?? []; const k = T[0]?.length ?? 3; const shares = (x: number[], y: number[]) => x.filter((v) => y.includes(v)).length >= k - 1; const ns: number[] = []; T.forEach((t, j) => { if (j !== ti && shares(t, T[ti])) ns.push(j + 1); }); return ret(rowVec(ns)); }

@@ -37,3 +37,27 @@ Status legend: ✅ converged · 🟡 partial (core works, some variants unsuppor
 - `acosd`, `asind` — complex out-of-domain; `cosd`/`sind` extended to complex arguments (so `cosd(acosd([2 3]))` → `[2 3]`).
 - `accumarray` — full rewrite supporting matrix subscripts, explicit size, function handles via `env.callHandle`, fill value, and sparse output.
 - `var`, `std` — now honor the normalization flag (`var(x,1)` = population variance), found via `accumarray(...,@(x)var(x,1))`.
+
+---
+
+## Batch 2 — functions 11–20
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `acosh` | ✅ | complex inverse hyperbolic cosine (principal branch, `acosh(-3)=1.7627+3.1416i`) | — |
+| `acot` | ✅ | complex inverse cotangent with correct branch on the imaginary axis | — |
+| `acotd` | ✅ | degrees variant, complex (`acotd(1+i)=31.7175-23.0535i`) | — |
+| `acoth` | ✅ | complex inverse hyperbolic cotangent | — |
+| `acsc` | ✅ | complex inverse cosecant | — |
+| `acscd` | ✅ | degrees variant, complex | — |
+| `acsch` | ✅ | complex inverse hyperbolic cosecant | — |
+| `addboundary` | 🟡 | adds a boundary to a polyshape; `NumHoles` now shown | multi-region `NumRegions` tracking and `plot([poly array])` not modeled |
+| `addcats` | 🟡 | append categories to a categorical | 2-D categorical construction from a string matrix unsupported |
+| `addedge` | 🟡 | **fixed**: add by index/name/weight; missing named nodes auto-added | edge-`table` input form and `G.Edges` as a table not modeled |
+
+### Fixes landed in this batch
+- New complex helpers `cAsinh`/`cAcosh`/`cAtanh` + `cAcot`/`cAcsc`/`cAsec`/`cAcoth`/`cAcsch`/`cAsech` and an `ewc` complex-aware elementwise wrapper.
+- `acosh`/`asinh`/`atanh`, `acot`/`acsc`/`asec`, `acoth`/`acsch`/`asech`, `acotd`/`acscd`/`asecd` now return complex on out-of-domain/complex input matching MATLAB branches.
+- `addedge` auto-adds missing named endpoints (MATLAB semantics).
+- polyshape display gained the `NumHoles` line.
+- **Help:** `HelpEntry` extended with `description`/`examples`; rendered help is now ≥10 lines. Rich entries added for all batch-2 functions and for batch-1 `abs`/`acos`/`acosd`/`accumarray`.

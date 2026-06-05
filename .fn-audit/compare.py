@@ -8,6 +8,9 @@ def nums(s):
     s = re.sub(r'\(:,:,\s*\d+\)', ' ', s)
     #  - type-name tokens that contain digits (int8, uint16, float32 …)
     s = re.sub(r'\b(u?int|float)\d+\b', ' ', s)
+    #  - attach a sign to the number it qualifies, so complex display "a - bi"
+    #    (spaced sign) matches the doc's "a -bi" instead of reading +b
+    s = re.sub(r'([+\-])\s+(?=[\d.])', r'\1', s)
     # extract numeric tokens (incl scientific, signs)
     return re.findall(r'-?\d+\.?\d*(?:[eE][-+]?\d+)?', s)
 
