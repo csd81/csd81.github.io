@@ -509,3 +509,25 @@ All 35 batch-8 examples pass.
 - **`csc`, `sec`, `csch`, `sech`, `coth`** are now complex-aware (reciprocals of the complex `sin`/`cos`/`sinh`/`cosh`).
 - **`cscd`, `secd`, `cotd`** are complex-aware too, and the degree functions now use exact zeros at multiples of 90/180, so `cscd(180)` and `secd(90)` return `Inf` (and `sind(180)`/`cosd(90)` return exactly 0) instead of huge finite values.
 - Rich ≥10-line help added for all batch-21 functions.
+
+---
+
+## Batch 22 — functions 211–220
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `csvread` | 🟡 | reads a CSV file via the VFS | doc examples reference files not present |
+| `csvwrite` | 🟡 | writes a CSV file to the VFS | nothing to diff against the doc |
+| `ctranspose` | ✅ | conjugate transpose | — |
+| `cummax` | ✅ | **fixed**: `dim`, `'reverse'`, `'omitnan'` | doc examples use random data |
+| `cummin` | ✅ | **fixed**: `dim`, `'reverse'`, `'omitnan'` | doc examples use random data |
+| `cumprod` | ✅ | **fixed**: `'reverse'`, `'omitnan'` | random-data examples |
+| `cumsum` | ✅ | **fixed**: `'reverse'`, `'omitnan'` | random-data examples |
+| `cumtrapz` | ✅ | cumulative trapezoidal integral | — |
+| `curl` | 🟡 | curl of a vector field | doc examples need the `wind` dataset |
+| `cxGate` | 🟡 | CNOT gate object | `getMatrix`/vectorized gates pending |
+
+### Fixes landed in this batch
+- **`cumsum` / `cumprod` / `cummax` / `cummin`** now honor the `'reverse'` direction and the `'omitnan'` flag (in addition to the dimension argument), via a unified cumulative helper and a reverse-capable scan. `cumsum([1 2 3 4],"reverse")` → `[10 9 7 4]`; `cumsum([1 NaN 3],"omitnan")` → `[1 1 4]`. Defaults (forward, NaN-propagating) are unchanged.
+- **`randi([imin imax], ...)`** range form now works (previously only `randi(imax,...)` was accepted) — used throughout the cumulative-function examples.
+- Rich ≥10-line help added for all batch-22 functions.

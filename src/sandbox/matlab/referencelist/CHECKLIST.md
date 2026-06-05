@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **210 / 1170** audited.
+Progress: **220 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -215,3 +215,13 @@ Progress: **210 / 1170** audited.
 | 208 | `csc` | ✅ | complex fixed |
 | 209 | `cscd` | ✅ | complex + exact zeros |
 | 210 | `csch` | ✅ | complex fixed |
+| 211 | `csvread` | 🟡 | VFS read; no doc files |
+| 212 | `csvwrite` | 🟡 | VFS write |
+| 213 | `ctranspose` | ✅ | conjugate transpose |
+| 214 | `cummax` | ✅ | reverse/omitnan/dim fixed |
+| 215 | `cummin` | ✅ | reverse/omitnan/dim fixed |
+| 216 | `cumprod` | ✅ | reverse/omitnan fixed |
+| 217 | `cumsum` | ✅ | reverse/omitnan fixed |
+| 218 | `cumtrapz` | ✅ | cumulative trapz |
+| 219 | `curl` | 🟡 | needs wind dataset |
+| 220 | `cxGate` | 🟡 | gate object; getMatrix n/a |

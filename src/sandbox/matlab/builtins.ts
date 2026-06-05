@@ -285,7 +285,7 @@ function reduceAlongDim(A: Mat, dim: number, f: (fiber: number[]) => number | [n
   return { v: makeND(outDims, vd), idx: makeND(outDims, id) };
 }
 /** Cumulative scan (cumsum/cumprod) along `dim`, preserving shape. */
-function scanAlongDim(A: Mat, dim: number, init: number, f: (acc: number, x: number) => number): Mat {
+function scanAlongDim(A: Mat, dim: number, init: number, f: (acc: number, x: number) => number, reverse = false): Mat {
   const dims = ndSize(A);
   const out = makeND(dims, new Float64Array(A.data.length), { isChar: A.isChar });
   if (dim > dims.length) { out.data.set(A.data); return out; }
@@ -295,9 +295,22 @@ function scanAlongDim(A: Mat, dim: number, init: number, f: (acc: number, x: num
   const ostride: number[] = []; { let s = 1; for (let k = 0; k < dims.length; k++) { ostride.push(s); s *= outerDims[k]; } }
   for (let o = 0; o < outer; o++) {
     let base = 0; for (let k = 0; k < dims.length; k++) base += (Math.floor(o / ostride[k]) % outerDims[k]) * stride[k];
-    let acc = init; for (let t = 0; t < n; t++) { const i = base + t * stride[dim - 1]; acc = f(acc, A.data[i]); out.data[i] = acc; }
+    let acc = init;
+    for (let u = 0; u < n; u++) { const t = reverse ? n - 1 - u : u; const i = base + t * stride[dim - 1]; acc = f(acc, A.data[i]); out.data[i] = acc; }
   }
   return out;
+}
+/** cumsum/cumprod/cummax/cummin: honor a dim, the 'reverse'/'forward' direction, and 'omitnan'. */
+function cumulative(a: Value[], init: number, f: (s: number, x: number) => number): Mat {
+  const A = m(a[0]); let dim: number | undefined, reverse = false, omit = false;
+  for (let i = 1; i < a.length; i++) {
+    const v = a[i];
+    if (isStr(v) || (isMat(v) && (v as Mat).isChar)) { const s = asString(v).toLowerCase(); if (s === 'reverse') reverse = true; else if (s === 'omitnan') omit = true; }
+    else if (isMat(v) && numel(v) > 0) dim = Math.round(asScalar(v));
+  }
+  const d = dim ?? firstNonSingleton(ndSize(A));
+  const ff = omit ? (s: number, x: number) => (Number.isNaN(x) ? s : f(s, x)) : f;
+  return scanAlongDim(A, d, init, ff, reverse);
 }
 
 /** Complex reduction along a dim (vector / dim-1 / dim-2), carrying real+imag parts.
@@ -513,11 +526,7 @@ export const BUILTINS: Record<string, Builtin> = {
   cumprod: async (a) => {
     const A = m(a[0]); const dim = dimArg(a, 1);
     if (isComplex(A)) return ret(ccum(A, dim, true));
-    if (A.nd || dim !== undefined) return ret(scanAlongDim(A, dim ?? firstNonSingleton(ndSize(A)), 1, (p, x) => p * x));
-    const o = zeros(A.rows, A.cols);
-    if (A.rows === 1 || A.cols === 1) { let p = 1; for (let i = 0; i < A.data.length; i++) { p *= A.data[i]; o.data[i] = p; } }
-    else for (let c = 0; c < A.cols; c++) { let p = 1; for (let r = 0; r < A.rows; r++) { p *= A.data[r + c * A.rows]; o.data[r + c * A.rows] = p; } }
-    return ret(o);
+    return ret(cumulative(a, 1, (p, x) => p * x));
   },
   expm1: ew(Math.expm1), log1p: ew(Math.log1p),
   sinpi: ew((x) => Math.sin(Math.PI * x)), cospi: ew((x) => Math.cos(Math.PI * x)),
@@ -736,11 +745,7 @@ export const BUILTINS: Record<string, Builtin> = {
   cumsum: async (a) => {
     const A = m(a[0]); const dim = dimArg(a, 1);
     if (isComplex(A)) return ret(ccum(A, dim, false));
-    if (A.nd || dim !== undefined) return ret(scanAlongDim(A, dim ?? firstNonSingleton(ndSize(A)), 0, (s, x) => s + x));
-    const out = zeros(A.rows, A.cols);
-    if (A.rows === 1 || A.cols === 1) { let s = 0; for (let i = 0; i < A.data.length; i++) { s += A.data[i]; out.data[i] = s; } }
-    else for (let c = 0; c < A.cols; c++) { let s = 0; for (let r = 0; r < A.rows; r++) { s += A.data[r + c * A.rows]; out.data[r + c * A.rows] = s; } }
-    return ret(out);
+    return ret(cumulative(a, 0, (s, x) => s + x));
   },
   max: async (a, n) => minmax(a, n, (x, y) => x > y || Number.isNaN(y)),
   min: async (a, n) => minmax(a, n, (x, y) => x < y || Number.isNaN(y)),
@@ -1426,8 +1431,8 @@ export const BUILTINS: Record<string, Builtin> = {
   ind2sub: async (a, n) => { const sz = toArray(m(a[0])); const rows = sz[0]; const I = m(a[1]); const rr = map(I, (k) => ((k - 1) % rows) + 1); const cc = map(I, (k) => Math.floor((k - 1) / rows) + 1); return n >= 2 ? [rr, cc] : [rr]; },
   rats: async (a) => { const [n2, d] = ratApprox(asScalar(a[0])); return ret(str(d === 1 ? `${n2}` : `${n2}/${d}`)); },
   acscd: ewc((x) => Math.asin(1 / x) / DEG, degOf(cAcsc), (x) => Math.abs(x) < 1), asecd: ewc((x) => Math.acos(1 / x) / DEG, degOf(cAsec), (x) => Math.abs(x) < 1),
-  cummax: async (a) => { const A = m(a[0]); const o = zeros(A.rows, A.cols); if (A.rows === 1 || A.cols === 1) { let mx = -Infinity; for (let i = 0; i < A.data.length; i++) { mx = Math.max(mx, A.data[i]); o.data[i] = mx; } } else for (let c = 0; c < A.cols; c++) { let mx = -Infinity; for (let r = 0; r < A.rows; r++) { mx = Math.max(mx, A.data[r + c * A.rows]); o.data[r + c * A.rows] = mx; } } return ret(o); },
-  cummin: async (a) => { const A = m(a[0]); const o = zeros(A.rows, A.cols); if (A.rows === 1 || A.cols === 1) { let mn = Infinity; for (let i = 0; i < A.data.length; i++) { mn = Math.min(mn, A.data[i]); o.data[i] = mn; } } else for (let c = 0; c < A.cols; c++) { let mn = Infinity; for (let r = 0; r < A.rows; r++) { mn = Math.min(mn, A.data[r + c * A.rows]); o.data[r + c * A.rows] = mn; } } return ret(o); },
+  cummax: async (a) => ret(cumulative(a, -Infinity, Math.max)),
+  cummin: async (a) => ret(cumulative(a, Infinity, Math.min)),
   // ── matrix algebra extras ──
   polyvalm: async (a) => { const p = toArray(m(a[0])); const A = m(a[1]); const n = A.rows; let R = zeros(n, n); for (const c of p) { R = matmul(A, R); R.data[0] += 0; for (let i = 0; i < n; i++) R.data[i + i * n] += c; } return ret(R); },
   isposdef: async (a) => { const A = m(a[0]); if (!isSymmetric(A)) return ret(bool(false)); const { values } = jacobiEigSym(A); return ret(bool(values.every((v) => v > 1e-12))); },
@@ -3089,7 +3094,17 @@ export const BUILTINS: Record<string, Builtin> = {
     return n >= 2 ? [X, Y] : [X];
   },
   randn: async (a) => { const d = dimsN(a); const data = new Float64Array(d.reduce((p, x) => p * x, 1)); for (let i = 0; i < data.length; i++) { const u = rngNext() || 1e-12, w = rngNext(); data[i] = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * w); } return ret(makeND(d, data)); },
-  randi: async (a) => { const hi = Math.round(asScalar(a[0])); const r = a.length >= 2 ? Math.round(asScalar(a[1])) : 1; const c = a.length >= 3 ? Math.round(asScalar(a[2])) : r; const o = zeros(r, c); for (let i = 0; i < o.data.length; i++) o.data[i] = 1 + Math.floor(rngNext() * hi); return ret(o); },
+  randi: async (a) => {
+    // randi(imax,...) or randi([imin imax],...) ; trailing size args / class string.
+    const first = toArray(m(a[0]));
+    const lo = first.length >= 2 ? Math.round(first[0]) : 1;
+    const hi = first.length >= 2 ? Math.round(first[1]) : Math.round(first[0]);
+    const d = dimsN(a.slice(1));
+    const total = d.reduce((p, x) => p * x, 1);
+    const data = new Float64Array(total); const range = hi - lo + 1;
+    for (let i = 0; i < total; i++) data[i] = lo + Math.floor(rngNext() * range);
+    return ret(makeND(d, data));
+  },
   nnz: async (a) => ret(scalar(isSparse(a[0]) ? a[0].values.length : toArray(m(a[0])).filter((x) => x !== 0).length)),
   // ── array rearrangement ──
   blkdiag: async (a) => {

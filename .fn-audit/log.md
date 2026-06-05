@@ -101,3 +101,7 @@ Build green; 1420 builtins, 0 without help. *** 200/1170 audited (20 batches) **
 Fixed: csc/sec/csch/sech/coth complex; cscd/secd/cotd complex + degree exact-zeros (cscd(180)=Inf,
 sind(180)=0). cross verified (random examples). Remaining: quantum gate getMatrix/vectorized, cputime timing.
 Build green; 1420 builtins, 0 without help.
+## Batch 22 (fns 211-220): csvread csvwrite ctranspose cummax cummin cumprod cumsum cumtrapz curl cxGate
+Fixed: cumsum/cumprod/cummax/cummin honor 'reverse' + 'omitnan' (unified cumulative helper, reverse-capable
+scanAlongDim); randi([imin imax],...) range form. Remaining: random-data examples, datasets (curl/wind),
+files (csvread), quantum getMatrix. Build green; 1420 builtins, 0 without help.
