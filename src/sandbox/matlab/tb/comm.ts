@@ -4,11 +4,26 @@
 // match without the toolbox. See plan §7.
 import type { Builtin } from '../builtins';
 import {
-  type Value, type Mat, isMat, scalar, colVec, zeros, toArray, asScalar, asString, toMat as m,
+  type Value, type Mat, isMat, scalar, colVec, zeros, toArray, asScalar, asString, toMat as m, map, mat,
 } from '../values';
 import type { ToolboxModule } from './types';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
+// ── special functions for the Q-function (Numerical Recipes erfcc ~1.2e-7; erfinv via Newton) ──
+function erfc(x: number): number {
+  const z = Math.abs(x), t = 1 / (1 + 0.5 * z);
+  const ans = t * Math.exp(-z * z - 1.26551223 + t * (1.00002368 + t * (0.37409196 + t * (0.09678418 + t * (-0.18628806 + t * (0.27886807 + t * (-1.13520398 + t * (1.48851587 + t * (-0.82215223 + t * 0.17087277)))))))));
+  return x >= 0 ? ans : 2 - ans;
+}
+const erf = (x: number) => 1 - erfc(x);
+function erfinv(y: number): number {
+  if (y <= -1) return -Infinity; if (y >= 1) return Infinity; if (y === 0) return 0;
+  const a = 0.147, ln = Math.log(1 - y * y), t1 = 2 / (Math.PI * a) + ln / 2;
+  let w = Math.sign(y) * Math.sqrt(Math.sqrt(t1 * t1 - ln / a) - t1);
+  for (let i = 0; i < 4; i++) w -= (erf(w) - y) / (2 / Math.sqrt(Math.PI) * Math.exp(-w * w)); // Newton refine
+  return w;
+}
+const SQRT2 = Math.sqrt(2);
 /** Rows of a matrix as number[][]. */
 function rows(M: Mat): number[][] { const o: number[][] = []; for (let r = 0; r < M.rows; r++) { const row: number[] = []; for (let c = 0; c < M.cols; c++) row.push(M.data[r + c * M.rows]); o.push(row); } return o; }
 const bitWidth = (v: number) => Math.max(1, Math.floor(Math.log2(Math.max(1, v))) + 1);
@@ -29,6 +44,33 @@ export const COMM: ToolboxModule = {
   name: 'Communications Toolbox',
   docBase: 'https://www.mathworks.com/help/comm/',
   builtins: {
+    // ── Q-function (Gaussian tail) — qfunc(x)=0.5*erfc(x/√2), qfuncinv(p)=√2*erfinv(1−2p) ──
+    qfunc: (a) => ret(map(m(a[0]), (x) => 0.5 * erfc(x / SQRT2))),
+    qfuncinv: (a) => ret(map(m(a[0]), (p) => SQRT2 * erfinv(1 - 2 * p))),
+    // ── oct2dec: interpret each value's decimal digits as octal ──
+    oct2dec: (a) => ret(map(m(a[0]), (x) => parseInt(Math.round(x).toString(), 8))),
+    // ── vec2mat(v,c[,pad]): row-major reshape into ceil(n/c)×c, padding the last row ──
+    vec2mat: (a) => {
+      const v = toArray(m(a[0])), c = Math.round(asScalar(a[1])), n = v.length, rows = Math.max(1, Math.ceil(n / c));
+      const pad = a.length > 2 ? asScalar(a[2]) : 0, data = new Float64Array(rows * c).fill(pad);
+      for (let i = 0; i < n; i++) data[Math.floor(i / c) + (i % c) * rows] = v[i];
+      return ret(mat(rows, c, data));
+    },
+    // ── compand: μ-law / A-law companding (compressor & expander) ──
+    compand: (a) => {
+      const param = asScalar(a[1]), V = asScalar(a[2]), method = asString(a[3]).toLowerCase();
+      const comp = method.includes('compressor'), isA = method.startsWith('a');
+      const lnA = Math.log(param);
+      return ret(map(m(a[0]), (x) => {
+        const s = Math.sign(x), u = Math.abs(x) / V;
+        if (!isA) { // μ-law
+          return comp ? s * V * Math.log(1 + param * u) / Math.log(1 + param)
+                      : s * (V / param) * ((1 + param) ** (Math.abs(x) / V) - 1);
+        }
+        if (comp) return s * V * (u < 1 / param ? param * u / (1 + lnA) : (1 + Math.log(param * u)) / (1 + lnA));
+        return s * V * (u < 1 / (1 + lnA) ? u * (1 + lnA) / param : Math.exp(u * (1 + lnA) - 1) / param);
+      }));
+    },
     /** de2bi(d[,n][,base][,flag]) — decimal→binary digits, LSB-first ('right-msb', default). */
     de2bi: (a) => {
       const d = toArray(m(a[0])).map((x) => Math.round(x));
@@ -99,6 +141,9 @@ export const COMM: ToolboxModule = {
     },
   },
   help: {
+    qfunc: 'Q function (Gaussian tail probability)', qfuncinv: 'Inverse Q function',
+    oct2dec: 'Convert octal to decimal numbers', vec2mat: 'Convert vector into matrix (row-major, padded)',
+    compand: 'Source code mu-law or A-law compressor or expander',
     de2bi: 'Convert decimal numbers to binary digits', bi2de: 'Convert binary digits to decimal numbers',
     symerr: 'Count symbol errors and compute symbol error rate', biterr: 'Count bit errors and compute bit error rate',
     bin2gray: 'Convert positive integers to Gray-encoded integers', gray2bin: 'Convert Gray-encoded integers to positive integers',
