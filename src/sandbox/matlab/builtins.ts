@@ -1975,7 +1975,7 @@ export const BUILTINS: Record<string, Builtin> = {
     const parts = a.length >= 2 ? s.split(delim) : s.split(/\s+/).filter((x) => x.length);
     return ret(makeCell(1, parts.length, parts.map((p) => str(p))));
   },
-  strjoin: async (a) => { const C = a[0]; if (!isCell(C)) throw new MatError('strjoin: first argument must be a cell array of strings'); const delim = a.length >= 2 ? asString(a[1]) : ' '; return ret(str(C.items.map((it) => asString(it)).join(delim))); },
+  strjoin: async (a) => { const C = a[0]; const parts = isCell(C) ? C.items.map((it) => asString(it)) : isStr(C) ? (C as Str).items.slice() : null; if (!parts) throw new MatError('strjoin: first argument must be a cell array of character vectors or a string array'); const delim = a.length >= 2 ? asString(a[1]) : ' '; return ret(str(parts.join(delim))); },
 
   // ── Structs ──
   struct: async (a) => {

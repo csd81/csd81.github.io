@@ -832,3 +832,107 @@ No code changes this batch.
 
 ### V801–V900 commit
 Build green (tsc+vite); fixes pushed (staged explicitly — `builtins.ts`, `linalg.ts`, `format.ts`, `VALIDATION.md`, `validate_progress.json` — excluding `toolboxes/`). **7 bugs** caught by live-MATLAB cross-validation in functions 801–900: **`qmr` multi-output, `qr` R structural zeros** (V33); **`rank` SVD accuracy, `rat` continued-fraction string, `qz` eigenvector outputs** (V34); **`disp` scalar-string quotes, `regexpi` options** (V35). V36 was clean.
+
+## V37 — functions 900–924 (rtickangle … setdiff) — **clean (0 bugs)**
+
+Validated against MATLAB R2026a. **All values matched.**
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `rtickangle`/`rticklabels`/`rticks` | 🟡 | polar-axis graphics (exist) |
+| `rxGate`/`rxxGate`/`ryGate`/`ryyGate`/`rzGate`/`rzzGate`/`sGate` | 🟡 | quantum gates (exist in sandbox; `exist`=0 in this MATLAB) |
+| `save` | ✅ | workspace save (VFS) |
+| `scale`/`scatter`/`scatter3`/`semilogx`/`semilogy` | 🟡 | polyshape/graphics (exist) |
+| `scatteredInterpolant` | ✅ | linear scattered interp; center of unit square (vals 0,1,1,2) → 1 |
+| `schur` | ✅ | `schur([2 1;0 3])`→`[2 1;0 3]`; symmetric → diagonal `[1 0;0 3]` |
+| `sec`/`secd`/`sech` | ✅ | `sec(π/3)`→2, `secd(60)`→2, `sech(0)`→1 |
+| `second` | ✅ | `second(datetime(…,45))`→45 |
+| `seconds` | ✅ | `seconds(minutes(2))`→120, `seconds(seconds(1.5))`→1.5 |
+| `set` | 🟡 | object property setter |
+| `setdiff` | ✅ | `setdiff([1 2 3 4 5],[2 4])`→`[1 3 5]`; `[c,ia]` indices match (`c=[1 2 5]`, `ia=[2;4;1]`) |
+
+No code changes this batch.
+
+## V38 — functions 925–949 (setfield … sortregions) — **clean (0 bugs)**
+
+Validated against MATLAB R2026a. **All values matched.**
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `setfield` | ✅ | `setfield(struct('a',1),'b',2)` → fields `a,b` |
+| `setxor` | ✅ | `setxor([1 2 3],[2 3 4])`→`[1 4]` |
+| `sgtitle`/`shading`/`sky`/`slice` | 🟡 | graphics (exist) |
+| `shiftdim` | ✅ | `shiftdim(reshape(1:6,[1 2 3]))` → 2×3 |
+| `shortestpath`/`shortestpathtree` | ✅ | `shortestpath(G,1,3)`→`[1 2 3]` |
+| `siGate`/`simulate` | 🟡 | quantum (exist in sandbox) |
+| `sign` | ✅ | `sign([-3 0 5 -0.5])`→`[-1 0 1 -1]` |
+| `simplify` (graph) | ✅ | removes multi-edges/self-loops |
+| `sin`/`sind`/`sinh` | ✅ | `sin(π/2)`→1, `sind(30)`→0.5, `sinh(0)`→0 |
+| `sinpi` | ✅ | `sinpi(0.5)`→1, `sinpi(1)`→0 (exact at integers/halves) |
+| `single` | ✅ | class `single`; `single(pi)`≈3.14159 |
+| `size` | ✅ | `size(zeros(3,4))`→`[3 4]`; `[r,c]` form matches |
+| `smoothdata` | ✅ | `smoothdata([1 5 2 8 3],'movmean',3)` matches (`[3 2.667 5 4.333 5.5]`) |
+| `smoothdata2` | 🟡 | 2-D smoothing (exists) |
+| `solve` (ode) | ✅ | ode-object solve (validated in V29) |
+| `sort` | ✅ | `sort([3 1 2 5 4])`→`[1 2 3 4 5]`; `[s,i]` indices and `'descend'` match |
+| `sortboundaries`/`sortregions` | ✅ | polyshape ordering |
+
+No code changes this batch.
+
+## V39 — functions 950–974 (sortrows … sqrtm) — **1 bug fixed**
+
+Validated against MATLAB R2026a.
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `sortrows` | ✅ | `sortrows([3 1;1 2;2 0])`→`[1 2;2 0;3 1]` |
+| `spalloc`/`spaugment`/`spconvert`/`spparms` | 🟡 | sparse allocation/params (exist) |
+| `sparse` | ✅ | `full(sparse([1 2],[2 1],[3 4],2,2))`→`[0 3;4 0]` |
+| `spdiags`/`speye`/`spones` | ✅ | diagonal/identity/pattern sparse → correct full forms |
+| `spfun` | ✅ | `spfun(@(x)x.^2, …)` applies to nonzeros only |
+| `sph2cart` | ✅ | `(0,0,1)`→`(1,0,0)` |
+| `sphere` | ✅ | unit-sphere coordinate grids |
+| `spline` | ✅ | `spline(1:4,(1:4).^2,2.5)`→6.25 |
+| `split` | ✅ | `split("a,b,c",",")`→3×1 string array (display bug surfaced `strjoin` — see below) |
+| `splitapply` | ✅ | `splitapply(@sum,[1 2 3 4]',[1 1 2 2]')`→`[3;7]` |
+| `splitlines` | ✅ | newline-split → string column |
+| `sprand`/`sprandn`/`sprandsym` | ✅ | random sparse (size/density/symmetry properties) |
+| `sprank` | ✅ | structural rank `sprank(speye(3))`→3 |
+| `spring`/`spy` | 🟡 | colormap / sparsity plot (exist) |
+| `sprintf` | ✅ | `sprintf('%d-%d',1,2)`→`1-2` |
+| `sqrt` | ✅ | `sqrt(16)`→4, `sqrt(-4)`→`0+2i` |
+| `sqrtm` | ✅ | matrix square root `sqrtm([4 0;0 9])`→`[2 0;0 3]` |
+
+### Fix
+- **`strjoin` rejected string arrays**: only accepted a cell array of char vectors, so `strjoin(["a" "b" "c"],"|")` errored — and `strjoin(split(...))` / `strjoin(splitlines(...))` failed even though `split`/`splitlines` correctly return string arrays. MATLAB's `strjoin` accepts both a cell array of character vectors **and** a string array. Now handles both: `strjoin(["a" "b" "c"],"|")`→`a|b|c`, default-space delimiter works, and cell input is unchanged. (`split`/`splitlines` themselves were already correct — class `string`, right shape/values.)
+
+## V40 — functions 975–999 (squeeze … strlength) — **clean (0 bugs)** — **V1000 boundary: built + pushed**
+
+Validated against MATLAB R2026a. **All values matched.**
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `squeeze` | ✅ | `squeeze(reshape(1:6,[1 2 3]))` → 2×3 |
+| `ss2tf` | ✅ | state-space→TF: `[b,a]`=`[0 2 5]`/`[1 5 6]` for the 2-pole system |
+| `sscanf` | ✅ | `sscanf('1 2 3 4','%d')`→`[1;2;3;4]` |
+| `stairs`/`stem`/`stem3`/`stream2`/`stream3`/`streamline` | 🟡 | graphics (exist) |
+| `standardizeMissing` | ✅ | `standardizeMissing([1 5 99 2],99)`→`[1 5 NaN 2]` |
+| `startsWith` | ✅ | `he`→true, `lo`→false |
+| `std` | ✅ | `std([2 4 6])`→2 (N−1), `std(…,1)`→1.633 (N) |
+| `str2double`/`str2func`/`str2num` | ✅ | `'3.14'`→3.14; `str2func('sin')(0)`→0; `'[1 2 3]'`→`[1 2 3]` |
+| `strcat` | ✅ | `strcat('foo','bar')`→`foobar` |
+| `strcmp`/`strcmpi` | ✅ | exact / case-insensitive equality |
+| `strfind` | ✅ | `strfind('abcabc','bc')`→`[2 5]` |
+| `string` | ✅ | `string(42)`→`"42"` |
+| `strings` | ✅ | `strings(1,3)` → 3 empty strings |
+| `strip` | ✅ | `strip("  hi  ")`→`hi` |
+| `strjoin` | ✅ | string-array support (fixed V39) — `strjoin(["a" "b" "c"],"-")`→`a-b-c` |
+| `strjust` | ✅ | char-matrix justification |
+| `strlength` | ✅ | `strlength("hello")`→5 |
+
+No code changes this batch.
+
+---
+
+### V901–V1000 commit
+Build green (tsc+vite); fix pushed (staged explicitly — `builtins.ts`, `VALIDATION.md`, `validate_progress.json` — excluding `toolboxes/`). **1 bug** caught by live-MATLAB cross-validation in functions 901–1000: **`strjoin` string-array input** (V39). V37, V38, V40 were clean. The earlier reference-list audit had already covered most of this numeric/string/sparse range well — the live-MATLAB pass is now finding far fewer regressions in the back half (1 per 100 vs ~3 earlier).
