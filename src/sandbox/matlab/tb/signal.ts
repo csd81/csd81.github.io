@@ -3,7 +3,7 @@
 // bartlett/sinc) and closed-form definitions. See plan §7 and tb/signal.VALIDATION.md.
 import type { Builtin } from '../builtins';
 import {
-  type Value, type Mat, isMat, isStr, scalar, colVec, rowVec, toArray, map, zeros,
+  type Value, type Mat, isMat, isStr, scalar, colVec, rowVec, toArray, map, zeros, mat,
   asString, asScalar, toMat as m,
 } from '../values';
 import type { ToolboxModule } from './types';
@@ -351,6 +351,37 @@ export const SIGNAL: ToolboxModule = {
       const interpFreq = (thr: number) => { let i1 = cumPwr.findIndex((c) => c >= thr); if (i1 <= 0) i1 = 1; return cumF[i1 - 1] + (cumF[i1] - cumF[i1 - 1]) * (thr - cumPwr[i1 - 1]) / (cumPwr[i1] - cumPwr[i1 - 1]); };
       return ret(scalar(interpFreq(phiLim) - interpFreq(ploLim)));
     },
+    // ── DCT-II matrix: dctmtx(n) — row 0 = sqrt(1/n); row i>0 = sqrt(2/n)·cos(π(2j+1)i/2n) ──
+    dctmtx: (a) => {
+      const n = Math.round(asScalar(a[0])), d = new Float64Array(n * n);
+      for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) d[i + j * n] = i === 0 ? Math.sqrt(1 / n) : Math.sqrt(2 / n) * Math.cos(Math.PI * (2 * j + 1) * i / (2 * n));
+      return ret(mat(n, n, d));
+    },
+    // ── Welch PSD: pwelch(x[,window][,noverlap][,nfft][,fs]) — default 8 segments, 50% overlap, hamming ──
+    pwelch: (a, nargout) => {
+      const x = toArray(m(a[0])), N = x.length;
+      const wa = a.length > 1 && isMat(a[1]) && m(a[1]).rows * m(a[1]).cols > 0 ? m(a[1]) : null;
+      let L: number, w: number[];
+      if (wa && wa.rows * wa.cols > 1) { w = toArray(wa); L = w.length; }
+      else if (wa) { L = Math.round(asScalar(a[1])); w = hammingWin(L); }
+      else { L = Math.floor(N / 4.5); w = hammingWin(L); }
+      const has = (i: number) => a.length > i && isMat(a[i]) && m(a[i]).rows * m(a[i]).cols > 0;
+      const nov = has(2) ? Math.round(asScalar(a[2])) : Math.floor(L / 2);
+      const nfft = has(3) ? Math.round(asScalar(a[3])) : Math.max(256, 2 ** Math.ceil(Math.log2(L)));
+      const fs = has(4) ? asScalar(a[4]) : null, Fs = fs ?? 2 * Math.PI, half = Math.floor(nfft / 2);
+      const sw2 = w.reduce((s, v) => s + v * v, 0), step = L - nov, Pxx = new Array(half + 1).fill(0);
+      let nseg = 0;
+      for (let start = 0; start + L <= N; start += step) {
+        nseg++;
+        for (let k = 0; k <= half; k++) {
+          let re = 0, im = 0;
+          for (let nn = 0; nn < L; nn++) { const ang = -2 * Math.PI * k * nn / nfft, xv = x[start + nn] * w[nn]; re += xv * Math.cos(ang); im += xv * Math.sin(ang); }
+          let p = (re * re + im * im) / (Fs * sw2); if (k > 0 && k < half) p *= 2; Pxx[k] += p;
+        }
+      }
+      const P = Pxx.map((v) => v / Math.max(1, nseg)), f = P.map((_, k) => (fs ? k * fs / nfft : k * 2 * Math.PI / nfft));
+      return Promise.resolve(nargout >= 2 ? [colVec(P), colVec(f)] : [colVec(P)]);
+    },
     // ── equivalent noise bandwidth of a window: enbw(w)=N*Σw²/(Σw)²; enbw(w,fs)=fs*Σw²/(Σw)² ──
     enbw: (a) => {
       const w = toArray(m(a[0])), sw = w.reduce((s, v) => s + v, 0), sw2 = w.reduce((s, v) => s + v * v, 0);
@@ -508,7 +539,7 @@ export const SIGNAL: ToolboxModule = {
     risetime: 'Rise time of positive-going bilevel waveform transitions', falltime: 'Fall time of negative-going bilevel waveform transitions', slewrate: 'Slew rate of bilevel waveform transitions',
     overshoot: 'Overshoot metrics of bilevel waveform transitions', undershoot: 'Undershoot metrics of bilevel waveform transitions',
     settlingtime: 'Settling time for bilevel waveform transitions', enbw: 'Equivalent noise bandwidth of a window',
-    periodogram: 'Periodogram power spectral density estimate',
+    periodogram: 'Periodogram power spectral density estimate', dctmtx: 'Discrete cosine transform matrix', pwelch: "Welch's power spectral density estimate",
     meanfreq: 'Mean frequency of power spectrum', medfreq: 'Median frequency of power spectrum', bandpower: 'Band power of signal',
     powerbw: 'Power bandwidth (3 dB)', obw: 'Occupied bandwidth (99% power)',
     mag2db: 'Convert magnitude to decibels', db2mag: 'Convert decibels to magnitude', pow2db: 'Convert power to decibels', db2pow: 'Convert decibels to power',
