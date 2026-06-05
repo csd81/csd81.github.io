@@ -457,3 +457,78 @@ Validated against MATLAB R2026a. **No bugs — all functions matched.**
 
 ### V401–V500 commit
 Build green (tsc+vite); fixes pushed (staged explicitly to exclude `toolboxes/`). Bugs caught by live-MATLAB cross-validation in functions 401–500: **`holes` (was empty stub), `rgb2gray`/`im2gray` truecolor images, `interp1` methods (spline/pchip/previous/next + nearest tie)**. (V17 and V20 were clean — the special-matrix/predicate territory is solid.)
+
+## V21 — functions 501–525 (ischar … islocalmin)
+
+Validated against MATLAB R2026a. **No bugs — all functions matched.**
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `ischar`/`iscolumn`/`isempty`/`isfield`/`isfloat`/`isinteger` | ✅ | type/shape predicates |
+| `isdag` | ✅ | DAG test (acyclic vs cyclic digraph) |
+| `isdiag`/`ishermitian` | ✅ | matrix-structure predicates (complex Hermitian) |
+| `isequal`/`isequaln` | ✅ | NaN handling differs correctly (false vs true) |
+| `isfinite`/`isinf` | ✅ | elementwise |
+| `iskeyword`/`isletter` | ✅ | keyword test, per-char letters |
+| `islocalmax`/`islocalmin` | ✅ | local extrema masks |
+| `isisomorphic` | ✅ | graph isomorphism → true |
+| `isdatetime`/`isduration`/`isenum`/`isgraphics`/`ishole`/`isinterior`/`isjava` | ✅ | type / geometry predicates |
+
+## V22 — functions 526–550 (islogical … isstruct)
+
+Validated against MATLAB R2026a. **No bugs — all functions matched.**
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `ismember` | ✅ | membership + `[tf,loc]` index form → [0 2 1] |
+| `ismembertol` | ✅ | tolerance membership |
+| `ismultigraph` | ✅ | parallel-edge detection |
+| `isoutlier` | ✅ | MAD outlier mask |
+| `isprime` | ✅ | elementwise primality |
+| `isreal` | ✅ | `isreal(3+0i)`→true, `isreal(3+4i)`→false |
+| `issorted`/`issortedrows` | ✅ | sortedness predicates |
+| `isspace`/`isstrprop` | ✅ | per-character class tests |
+| `isomorphism` | ✅ | graph isomorphism permutation |
+| `islogical`/`ismatrix`/`isnan`/`isnat`/`isnumeric`/`isobject`/`isrow`/`isscalar`/`issparse`/`isstring`/`isstruct`/`ismissing`/`isosurface`/`issimplified` | ✅ | type / structure predicates |
+
+## V23 — functions 551–575 (issymmetric … lcm)
+
+Validated against MATLAB R2026a. **3 bugs found and fixed:**
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `issymmetric`/`istril`/`istriu`/`isvector` | ✅ | matrix-structure predicates |
+| `isvarname` | ✅ | **fixed** (see below) |
+| `kron` | ✅ | Kronecker product |
+| `lcm` | ✅ | scalar + elementwise |
+| `laplacian` | ✅ | graph Laplacian matrix |
+| `join` | ✅ | string join (default + delimiter) |
+| `jsonencode`/`jsondecode` | ✅ | JSON round-trip (arrays + structs) |
+| `keys`/`values` | ✅ | **fixed** (see below) |
+| `isuniform`/`istable`/`istabular`/`istimetable` | ✅ | spacing / type predicates |
+| `jet`/`kde`/`labeledge`/`labelnode`/`layout`/`knapsack2qubo` | 🟡 | graphics / object |
+
+### Fixes
+- **`isvarname` string argument**: only accepted a char array, not a string scalar, so `isvarname("x1")` returned false (6th instance of the char-vs-string pattern). Now accepts string scalars. `isvarname("x1")`→true, `isvarname("1x")`→false.
+- **`keys`/`values` on a dictionary**: both always returned a cell array. For a `dictionary` MATLAB returns the keys/values as their native array type (a string array for string keys, a numeric column for numeric values), reserving the cell form for `containers.Map`. Now `keys(dict)`→string/numeric array, `values(dict)`→numeric/string array, while `keys(Map)`/`values(Map)` still return cells. Verified `class(keys(d))`→"string", `class(values(d))`→"double".
+
+## V24 — functions 576–600 (ldl … lsqminnorm) — **V600 boundary: built + pushed**
+
+Validated against MATLAB R2026a. **No bugs — all functions matched.**
+
+| Function | MATLAB-validated | Notes |
+|---|---|---|
+| `log`/`log10`/`log1p`/`log2` | ✅ | incl. complex `log(-1)`→πi and `[F,E]=log2` frexp |
+| `logical` | ✅ | nonzero → true |
+| `length`/`linspace`/`logspace` | ✅ | sizing / spacing |
+| `legendre` | ✅ | associated Legendre `P_2(0.5)`→[-0.125;-1.299;2.25] |
+| `logm` | ✅ | matrix logarithm |
+| `linsolve`/`lscov`/`lsqminnorm` | ✅ | linear solve, weighted LS, min-norm LS |
+| `ldl` | ✅ | `L*D*L'` reconstructs A |
+| `lower`/`lookup` | ✅ | lowercase, dictionary lookup |
+| `legend`/`lighting`/`line`/`lines`/`linkaxes`/`loglog`/`lookfor`/`ls`/`load` | 🟡 | graphics / I/O |
+
+---
+
+### V501–V600 commit
+Build green (tsc+vite); fixes pushed (staged explicitly to exclude `toolboxes/`). Bugs caught by live-MATLAB cross-validation in functions 501–600: **`isvarname` string arg, `keys`/`values` dictionary native-array return**. (V21, V22, V24 were clean — the predicate/log/linear-algebra territory is very solid.)
