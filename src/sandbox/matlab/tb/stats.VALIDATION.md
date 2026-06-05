@@ -36,3 +36,11 @@ hypothesis tests (`ttest`/`anova1`), regression (`fitlm`/`fitglm`), `*rnd` rando
 **Caveat:** `kmeans` uses a seeded xorshift PRNG, so cluster *labels* may permute vs MATLAB
 (cluster assignments/sizes are correct). `pdist`/`linkage` ordering follows MATLAB's i<j upper-
 triangle convention.
+
+## Gap functions added (validated vs live MATLAB Statistics Toolbox)
+
+Weibull (`wblpdf`/`wblcdf`/`wblinv`), Rayleigh (`raylpdf`/`raylcdf`/`raylinv`), distribution
+statistics (`normstat`/`expstat`/`poisstat`/`binostat`/`unifstat`/`gamstat`/`betastat`/`chi2stat`/
+`tstat`/`fstat`/`lognstat`/`geostat`/`raylstat`/`wblstat`), `moment`, `trimmean`. All match live
+MATLAB to display precision — e.g. `wblcdf(2,2,3)`=0.632121, `[m,v]=gamstat(2,3)`=`[6 18]`,
+`lognstat(0,1)`=`[1.64872 4.67077]`, `moment([1 2 3 4 5],2)`=2, `trimmean([1 2 3 4 100],40)`=3.

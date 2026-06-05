@@ -89,6 +89,8 @@ function invCdf(target: number, cdf: (x: number) => number, lo: number, hi: numb
 // ─────────────────────── distribution dispatch helper ───────────────────────
 /** Map a per-element function f(x, ...params) over the first arg; later args are scalar params
  *  (with defaults filled in when omitted). Covers the common `fn(X)` / `fn(X,p1,p2)` forms. */
+/** Return [M] or [M,V] for a distribution *stat function depending on nargout. */
+function statRet(n: number, mean: number, variance: number): Promise<Value[]> { return n >= 2 ? Promise.resolve([scalar(mean), scalar(variance)]) : Promise.resolve([scalar(mean)]); }
 function dist(a: Value[], defs: number[], f: (x: number, ...p: number[]) => number): Promise<Value[]> {
   const X = m(a[0]);
   const p = defs.map((dft, i) => (a.length > i + 1 && isMat(a[i + 1]) && numel(m(a[i + 1])) > 0 ? asScalar(a[i + 1]) : dft));
@@ -197,6 +199,36 @@ export const STATS: ToolboxModule = {
     // ── Geometric (# failures before first success) ──
     geopdf: (a) => dist(a, [0.5], (k, p) => { k = Math.round(k); return k < 0 ? 0 : p * (1 - p) ** k; }),
     geocdf: (a) => dist(a, [0.5], (k, p) => { k = Math.floor(k); return k < 0 ? 0 : 1 - (1 - p) ** (k + 1); }),
+    // ── Weibull (scale a, shape b) ──
+    wblpdf: (a) => dist(a, [1, 1], (x, A, B) => x < 0 ? 0 : (B / A) * (x / A) ** (B - 1) * Math.exp(-((x / A) ** B))),
+    wblcdf: (a) => dist(a, [1, 1], (x, A, B) => x < 0 ? 0 : 1 - Math.exp(-((x / A) ** B))),
+    wblinv: (a) => dist(a, [1, 1], (p, A, B) => A * (-Math.log(1 - p)) ** (1 / B)),
+    // ── Rayleigh (scale b) ──
+    raylpdf: (a) => dist(a, [1], (x, b) => x < 0 ? 0 : (x / (b * b)) * Math.exp(-(x * x) / (2 * b * b))),
+    raylcdf: (a) => dist(a, [1], (x, b) => x < 0 ? 0 : 1 - Math.exp(-(x * x) / (2 * b * b))),
+    raylinv: (a) => dist(a, [1], (p, b) => b * Math.sqrt(-2 * Math.log(1 - p))),
+
+    // ── distribution statistics [M,V] = *stat(params) ──
+    normstat: (a, n) => statRet(n, asScalar(a[0]), (a.length >= 2 ? asScalar(a[1]) : 1) ** 2),
+    expstat: (a, n) => { const mu = asScalar(a[0]); return statRet(n, mu, mu * mu); },
+    poisstat: (a, n) => { const l = asScalar(a[0]); return statRet(n, l, l); },
+    binostat: (a, n) => { const N = asScalar(a[0]), p = asScalar(a[1]); return statRet(n, N * p, N * p * (1 - p)); },
+    unifstat: (a, n) => { const lo = asScalar(a[0]), hi = asScalar(a[1]); return statRet(n, (lo + hi) / 2, (hi - lo) ** 2 / 12); },
+    gamstat: (a, n) => { const k = asScalar(a[0]), th = a.length >= 2 ? asScalar(a[1]) : 1; return statRet(n, k * th, k * th * th); },
+    betastat: (a, n) => { const p = asScalar(a[0]), q = asScalar(a[1]); return statRet(n, p / (p + q), (p * q) / ((p + q) ** 2 * (p + q + 1))); },
+    chi2stat: (a, n) => { const k = asScalar(a[0]); return statRet(n, k, 2 * k); },
+    tstat: (a, n) => { const v = asScalar(a[0]); return statRet(n, 0, v > 2 ? v / (v - 2) : NaN); },
+    fstat: (a, n) => { const d1 = asScalar(a[0]), d2 = asScalar(a[1]); return statRet(n, d2 > 2 ? d2 / (d2 - 2) : NaN, d2 > 4 ? (2 * d2 * d2 * (d1 + d2 - 2)) / (d1 * (d2 - 2) ** 2 * (d2 - 4)) : NaN); },
+    lognstat: (a, n) => { const mu = asScalar(a[0]), s = a.length >= 2 ? asScalar(a[1]) : 1; return statRet(n, Math.exp(mu + s * s / 2), (Math.exp(s * s) - 1) * Math.exp(2 * mu + s * s)); },
+    geostat: (a, n) => { const p = asScalar(a[0]); return statRet(n, (1 - p) / p, (1 - p) / (p * p)); },
+    raylstat: (a, n) => { const b = asScalar(a[0]); return statRet(n, b * Math.sqrt(Math.PI / 2), (4 - Math.PI) / 2 * b * b); },
+    wblstat: (a, n) => { const A = asScalar(a[0]), B = asScalar(a[1]); const g1 = Math.exp(logGamma(1 + 1 / B)), g2 = Math.exp(logGamma(1 + 2 / B)); return statRet(n, A * g1, A * A * (g2 - g1 * g1)); },
+
+    // ── moments ──
+    /** moment(X,order) — central moment of the given order (along columns / vector). */
+    moment: (a) => ret(colReduceNan(m(a[0]), (c) => { const k = Math.round(asScalar(a[1])); const mu = mean_(c); return c.reduce((s, x) => s + (x - mu) ** k, 0) / c.length; })),
+    /** trimmean(X,percent) — mean after trimming percent/2 % from each tail. */
+    trimmean: (a) => ret(colReduceNan(m(a[0]), (c) => { const p = asScalar(a[1]) / 100; const s = c.slice().sort((x, y) => x - y); const k = Math.floor((s.length * p) / 2); const t = s.slice(k, s.length - k); return t.reduce((q, x) => q + x, 0) / t.length; })),
 
     // ── descriptive (NaN-aware + extras) ──
     nanmean: (a) => ret(colReduceNan(m(a[0]), (c) => mean_(noNan(c)))),
@@ -313,6 +345,12 @@ export const STATS: ToolboxModule = {
     binopdf: 'Binomial probability density function', binocdf: 'Binomial cumulative distribution function', binoinv: 'Binomial inverse cumulative distribution function',
     poisspdf: 'Poisson probability density function', poisscdf: 'Poisson cumulative distribution function', poissinv: 'Poisson inverse cumulative distribution function',
     geopdf: 'Geometric probability density function', geocdf: 'Geometric cumulative distribution function',
+    wblpdf: 'Weibull probability density function', wblcdf: 'Weibull cumulative distribution function', wblinv: 'Weibull inverse cumulative distribution function',
+    raylpdf: 'Rayleigh probability density function', raylcdf: 'Rayleigh cumulative distribution function', raylinv: 'Rayleigh inverse cumulative distribution function',
+    normstat: 'Normal mean and variance', expstat: 'Exponential mean and variance', poisstat: 'Poisson mean and variance', binostat: 'Binomial mean and variance',
+    unifstat: 'Uniform mean and variance', gamstat: 'Gamma mean and variance', betastat: 'Beta mean and variance', chi2stat: 'Chi-square mean and variance',
+    tstat: "Student's t mean and variance", fstat: 'F mean and variance', lognstat: 'Lognormal mean and variance', geostat: 'Geometric mean and variance',
+    raylstat: 'Rayleigh mean and variance', wblstat: 'Weibull mean and variance', moment: 'Central moment of a sample', trimmean: 'Trimmed mean',
     nanmean: 'Mean, ignoring NaN values', nansum: 'Sum, ignoring NaN values', nanstd: 'Standard deviation, ignoring NaN values', nanvar: 'Variance, ignoring NaN values',
     nanmedian: 'Median, ignoring NaN values', nanmax: 'Maximum, ignoring NaN values', nanmin: 'Minimum, ignoring NaN values',
     range: 'Range of values (max − min)', tabulate: 'Frequency table',
