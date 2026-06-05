@@ -17,9 +17,10 @@ import { COMM } from './comm';
 import { IMAGES } from './images';
 import { CONTROL } from './control';
 import { MAPPING } from './mapping';
+import { AEROSPACE } from './aerospace';
 
 /** All registered toolboxes, in precedence order (first wins on inter-toolbox collision). */
-export const TOOLBOXES: ToolboxModule[] = [SYMBOLIC, STATS, SIGNAL, SIMULINK, FINANCIAL, WAVELET, CURVEFIT, COMM, IMAGES, CONTROL, MAPPING];
+export const TOOLBOXES: ToolboxModule[] = [SYMBOLIC, STATS, SIGNAL, SIMULINK, FINANCIAL, WAVELET, CURVEFIT, COMM, IMAGES, CONTROL, MAPPING, AEROSPACE];
 
 export const TOOLBOX_BUILTINS: Record<string, Builtin> = {};
 export const TOOLBOX_CONSTANTS: Record<string, () => Value> = {};
