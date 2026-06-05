@@ -400,6 +400,25 @@ export const STATS: ToolboxModule = {
       for (let it = 0; it < 100; it++) { const f = Math.log(ah) - digamma(ah) - s, df = 1 / ah - trigamma(ah), an = ah - f / df; if (Math.abs(an - ah) < 1e-13) { ah = an; break; } ah = an; }
       return ret(rowVec([ah, meanx / ah]));
     },
+    // ── multivariate normal pdf via Cholesky: (2π)^(-d/2)|Σ|^(-1/2) exp(-½(x-μ)Σ⁻¹(x-μ)ᵀ) ──
+    mvnpdf: (a) => {
+      const Xm = m(a[0]), d = Xm.cols, rowsX = matRows(Xm);
+      const mu = a.length > 1 && isMat(a[1]) && m(a[1]).rows * m(a[1]).cols > 0 ? toArray(m(a[1])) : new Array(d).fill(0);
+      let S: number[][];
+      if (a.length > 2 && isMat(a[2]) && m(a[2]).rows * m(a[2]).cols > 0) { const Sm = m(a[2]); if (Sm.rows === 1 || Sm.cols === 1) { const dv = toArray(Sm); S = Array.from({ length: d }, (_, i) => Array.from({ length: d }, (_, j) => (i === j ? dv[i] : 0))); } else S = matRows(Sm); }
+      else S = Array.from({ length: d }, (_, i) => Array.from({ length: d }, (_, j) => (i === j ? 1 : 0)));
+      const L = Array.from({ length: d }, () => new Array(d).fill(0)); let logdet = 0;
+      for (let i = 0; i < d; i++) for (let j = 0; j <= i; j++) { let s = S[i][j]; for (let k = 0; k < j; k++) s -= L[i][k] * L[j][k]; if (i === j) { L[i][j] = Math.sqrt(s); logdet += 2 * Math.log(L[i][j]); } else L[i][j] = s / L[j][j]; }
+      const c = -0.5 * d * Math.log(2 * Math.PI) - 0.5 * logdet;
+      const out = rowsX.map((x) => { const dx = x.map((v, i) => v - mu[i]), y = new Array(d); for (let i = 0; i < d; i++) { let s = dx[i]; for (let k = 0; k < i; k++) s -= L[i][k] * y[k]; y[i] = s / L[i][i]; } return Math.exp(c - 0.5 * y.reduce((acc, v) => acc + v * v, 0)); });
+      return ret(out.length === 1 ? scalar(out[0]) : colVec(out));
+    },
+    // ── copulastat: rank correlation of a copula (Kendall default; Spearman via 'type') ──
+    copulastat: (a) => {
+      const rho = asScalar(a[1]); let type = 'kendall';
+      for (let i = 2; i + 1 < a.length; i++) if (isMat(a[i]) && (a[i] as Mat).isChar && asString(a[i]).toLowerCase() === 'type') type = asString(a[i + 1]).toLowerCase();
+      return ret(scalar(type === 'spearman' ? (6 / Math.PI) * Math.asin(rho / 2) : (2 / Math.PI) * Math.asin(rho)));
+    },
     // ── descriptive: skewness/kurtosis (population, flag=1 default; flag=0 bias-corrected) ──
     skewness: (a) => {
       const x = toArray(m(a[0])), flag = a.length > 1 && isMat(a[1]) && m(a[1]).rows * m(a[1]).cols > 0 ? asScalar(a[1]) : 1, N = x.length;
@@ -552,6 +571,7 @@ export const STATS: ToolboxModule = {
     expfit: 'Exponential parameter estimate (MLE)', poissfit: 'Poisson parameter estimate (MLE)', raylfit: 'Rayleigh parameter estimate (MLE)', normfit: 'Normal parameter estimates (mean, std)', unifit: 'Uniform parameter estimates (min, max)',
     binofit: 'Binomial proportion estimate', wblfit: 'Weibull parameter estimates (MLE)', skewness: 'Sample skewness', kurtosis: 'Sample kurtosis',
     lognfit: 'Lognormal parameter estimates (MLE)', gamfit: 'Gamma parameter estimates (MLE)',
+    mvnpdf: 'Multivariate normal probability density function', copulastat: 'Copula rank correlation',
     nanmean: 'Mean, ignoring NaN values', nansum: 'Sum, ignoring NaN values', nanstd: 'Standard deviation, ignoring NaN values', nanvar: 'Variance, ignoring NaN values',
     nanmedian: 'Median, ignoring NaN values', nanmax: 'Maximum, ignoring NaN values', nanmin: 'Minimum, ignoring NaN values',
     range: 'Range of values (max − min)', tabulate: 'Frequency table',
