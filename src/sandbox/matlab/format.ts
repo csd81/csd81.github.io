@@ -265,7 +265,9 @@ export function fmtTemporal(tkind: string, val: number, fmt?: string): string {
     if (perDay[fmt]) { const q = val / perDay[fmt]; const qs = Number.isInteger(q) ? String(q) : String(+q.toFixed(4)); const [one, many] = label[fmt]; return `${qs} ${q === 1 ? one : many}`; }
   }
   // duration → HH:MM:SS (days converted to hours) — MATLAB default 'hh:mm:ss'
-  const totalSec = val * 86400; const neg = totalSec < 0; const t = Math.abs(totalSec);
+  const totalSec = val * 86400; const neg = totalSec < 0;
+  // round to the nearest millisecond first, so float error like 5579.9999 doesn't render as 32:60
+  const t = Math.round(Math.abs(totalSec) * 1000) / 1000;
   const hh = Math.floor(t / 3600), mm = Math.floor((t % 3600) / 60), ss = t % 60;
   const p2 = (x: number) => String(Math.floor(x)).padStart(2, '0');
   return `${neg ? '-' : ''}${p2(hh)}:${p2(mm)}:${ss % 1 ? ss.toFixed(3) : p2(ss)}`;

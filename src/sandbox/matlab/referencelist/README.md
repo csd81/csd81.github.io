@@ -640,3 +640,25 @@ All 35 batch-8 examples pass.
 - **`discretize`** rewritten: a scalar second argument N now builds N uniform bins over `[min(X),max(X)]`; the second output `[Y,E]` returns the bin edges; a numeric third argument relabels bins with arbitrary `values`. Previously only an explicit `edges` vector was accepted and the `E` output threw "not enough output arguments".
 - Verified `digraph`, `disp`, `distances`, `divergence`, `dlmread`, `dlmwrite`, `dmperm`, `dir` against their doc examples (graph distance `d(1,10)=5`, `dlmwrite(magic(3))` → comma rows, etc.).
 - Rich ≥10-line help added for all batch-27 functions (incl. new structured `dir`/`dlmread`/`dlmwrite` entries).
+
+## Batch 28 — functions 271–280 (dot/double core · duration ctor · triangulation/graph queries)
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `doc` | ✅ | shows the in-REPL help text | no separate doc browser in the sandbox |
+| `donutchart` | 🟡 | draws a proportional ring chart | visual only; nothing numeric to assert |
+| `dot` | ✅ | **fixed**: column-wise for matrices, optional `dim`; conj for complex → `dot([1 2;3 4],[5 6;7 8])=[26 44]` | — |
+| `double` | ✅ | `double(true)=1`, `double('A')=65` | — |
+| `drawnow` | ✅ | yields control / flush | rendering handled by host (effective no-op) |
+| `dsearchn` | ✅ | **fixed**: `[k,dist]` second output (nearest-neighbor distance) | — |
+| `duration` | ✅ | **fixed**: `duration(H,MI,S[,MS])` component constructor; `01:30:00` display | — |
+| `edgeAttachments` | ✅ | triangles/tetrahedra sharing an edge (cell array) | — |
+| `edgecount` | ✅ | **fixed**: scalar/vector node args broadcast → `edgecount(G,1,1:n)=[0;3;1;0;0]` | — |
+| `edges` | ✅ | unique triangulation edges (vertex-index pairs) | — |
+
+### Fixes landed in this batch
+- **`dot`** now matches MATLAB for matrices: it contracts along the first non-singleton dimension (column-wise → a row vector) instead of flattening both inputs to one scalar; added the optional `dim` argument and kept the `conj(A).*B` rule for complex inputs.
+- **`duration(H,MI,S)` / `duration(H,MI,S,MS)`**: the multi-argument component constructor was unimplemented — `duration(1,30,0)` returned `24:00:00`. It now broadcasts the hours/minutes/seconds(/milliseconds) parts correctly.
+- **Duration `hh:mm:ss` display rounding**: the seconds were decomposed from a float that could be `…59.9999`, rendering as `01:32:60.000`; the formatter now rounds to the nearest millisecond first.
+- **`dsearchn`** returns the optional `[k,dist]` nearest-neighbor distance; **`edgecount`** broadcasts a scalar source/target against a vector of nodes (was returning a single value).
+- Rich ≥10-line help added for all batch-28 functions (incl. new structured `doc`/`donutchart`/`double`/`drawnow`).

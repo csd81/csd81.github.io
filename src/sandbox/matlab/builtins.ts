@@ -1041,9 +1041,18 @@ export const BUILTINS: Record<string, Builtin> = {
   trace: async (a) => { const A = m(a[0]); let sr = 0, si = 0; const n = Math.min(A.rows, A.cols); for (let i = 0; i < n; i++) { sr += A.data[i + i * A.rows]; if (A.idata) si += A.idata[i + i * A.rows]; } return ret(A.idata ? cscalar(sr, si) : scalar(sr)); },
   transpose: async (a) => ret(transpose(m(a[0]))),
   dot: async (a) => {
+    // Scalar dot product for vectors; column-wise (along the first non-singleton dim) for matrices.
+    // conj(x)·y for complex inputs. An optional 3rd argument selects the dimension.
     const X = m(a[0]), Y = m(a[1]);
-    if (isComplex(X) || isComplex(Y)) { const xr = toArray(X), xi = X.idata ? Array.from(X.idata) : xr.map(() => 0), yr = toArray(Y), yi = Y.idata ? Array.from(Y.idata) : yr.map(() => 0); let sr = 0, si = 0; for (let i = 0; i < xr.length; i++) { sr += xr[i] * yr[i] + xi[i] * yi[i]; si += xr[i] * yi[i] - xi[i] * yr[i]; } return ret(cscalar(sr, si)); }   // conj(x)·y
-    const x = toArray(X), y = toArray(Y); let s = 0; for (let i = 0; i < x.length; i++) s += x[i] * y[i]; return ret(scalar(s));
+    const cplx = isComplex(X) || isComplex(Y);
+    const Xr = X.data, Xi = X.idata, Yr = Y.data, Yi = Y.idata;
+    const cdot = (idxs: number[]): [number, number] => { let sr = 0, si = 0; for (const i of idxs) { const xr = Xr[i], xi = Xi ? Xi[i] : 0, yr = Yr[i], yi = Yi ? Yi[i] : 0; sr += xr * yr + xi * yi; si += xr * yi - xi * yr; } return [sr, si]; };
+    const vector = X.rows === 1 || X.cols === 1;
+    const dim = a.length >= 3 ? Math.round(asScalar(a[2])) : (vector ? 0 : 1);
+    if (dim === 0) { const idxs = Array.from({ length: X.data.length }, (_, i) => i); const [sr, si] = cdot(idxs); return ret(cplx ? cscalar(sr, si) : scalar(sr)); }
+    const R = X.rows, C = X.cols;
+    if (dim === 1) { const o = zeros(1, C); if (cplx) o.idata = new Float64Array(C); for (let c = 0; c < C; c++) { const idxs: number[] = []; for (let r = 0; r < R; r++) idxs.push(r + c * R); const [sr, si] = cdot(idxs); o.data[c] = sr; if (cplx) o.idata![c] = si; } return ret(o); }
+    const o = zeros(R, 1); if (cplx) o.idata = new Float64Array(R); for (let r = 0; r < R; r++) { const idxs: number[] = []; for (let c = 0; c < C; c++) idxs.push(r + c * R); const [sr, si] = cdot(idxs); o.data[r] = sr; if (cplx) o.idata![r] = si; } return ret(o);
   },
   cross: async (a) => {
     const A = m(a[0]), Bv = m(a[1]); const x = toArray(A), y = toArray(Bv);
@@ -2431,7 +2440,19 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(makeTemporal('datetime', n, 1, out));
   },
   NaT: async () => ret(makeTemporal('datetime', 1, 1, Float64Array.of(NaN))),
-  duration: async (a) => { const M = m(a[0]); if (M.cols >= 3) { const out = new Float64Array(M.rows); for (let r = 0; r < M.rows; r++) out[r] = (M.data[r] + M.data[r + M.rows] / 60 + M.data[r + 2 * M.rows] / 3600) / 24; return ret(makeTemporal('duration', M.rows, 1, out)); } return ret(makeTemporal('duration', M.rows, M.cols, new Float64Array(M.data))); },
+  duration: async (a) => {
+    // duration(H,MI,S) or duration(H,MI,S,MS): component form; each part may be an array (broadcast).
+    if (a.length >= 3 && isMat(a[0]) && isMat(a[1]) && isMat(a[2])) {
+      const H = m(a[0]), MI = m(a[1]), S = m(a[2]); const MS = a.length >= 4 && isMat(a[3]) && !(a[3] as Mat).isChar ? m(a[3]) : null;
+      const rows = Math.max(H.rows, MI.rows, S.rows, MS ? MS.rows : 1); const cols = Math.max(H.cols, MI.cols, S.cols, MS ? MS.cols : 1); const n = rows * cols;
+      const pick = (X: Mat, i: number) => (X.data.length === 1 ? X.data[0] : X.data[i]);
+      const out = new Float64Array(n);
+      for (let i = 0; i < n; i++) out[i] = pick(H, i) / 24 + pick(MI, i) / 1440 + pick(S, i) / 86400 + (MS ? pick(MS, i) / 86400000 : 0);
+      return ret(makeTemporal('duration', rows, cols, out));
+    }
+    // duration(M) with an N×3 matrix of [H MI S], or pass-through of an existing duration
+    const M = m(a[0]); if (M.cols >= 3) { const out = new Float64Array(M.rows); for (let r = 0; r < M.rows; r++) out[r] = (M.data[r] + M.data[r + M.rows] / 60 + M.data[r + 2 * M.rows] / 3600) / 24; return ret(makeTemporal('duration', M.rows, 1, out)); } return ret(makeTemporal('duration', M.rows, M.cols, new Float64Array(M.data)));
+  },
   years: async (a) => ret(durUnit(a[0], 365.2425, 'y')),
   days: async (a) => ret(durUnit(a[0], 1, 'd')),
   hours: async (a) => ret(durUnit(a[0], 1 / 24, 'h')),
@@ -2854,7 +2875,12 @@ export const BUILTINS: Record<string, Builtin> = {
     throw new MatError(`centrality: unsupported type '${type}'`);
   },
   flipedge: async (a) => { const g = gArg(a[0]); return ret(makeGraph(g.directed, g.n, g.edges.map((e) => ({ s: e.t, t: e.s, w: e.w })), g.names)); },
-  edgecount: async (a) => { const g = gArg(a[0]); const s = nodeIds(g, a[1]), t = nodeIds(g, a[2]); return ret(colVec(s.map((si, i) => { const ti = t[i]; return g.edges.filter((e) => (e.s === si && e.t === ti) || (!g.directed && e.s === ti && e.t === si)).length; }))); },
+  edgecount: async (a) => {
+    const g = gArg(a[0]); const s = nodeIds(g, a[1]), t = nodeIds(g, a[2]); const n = Math.max(s.length, t.length);
+    const count = (si: number, ti: number) => g.edges.filter((e) => (e.s === si && e.t === ti) || (!g.directed && e.s === ti && e.t === si)).length;
+    const out = Array.from({ length: n }, (_, i) => count(s.length === 1 ? s[0] : s[i], t.length === 1 ? t[0] : t[i]));
+    return ret(out.length === 1 ? scalar(out[0]) : colVec(out));
+  },
   outedges: async (a) => { const g = gArg(a[0]); const i = nodeIds(g, a[1])[0]; const idx: number[] = []; g.edges.forEach((e, k) => { if (e.s === i || (!g.directed && e.t === i)) idx.push(k + 1); }); return ret(colVec(idx)); },
   inedges: async (a) => { const g = gArg(a[0]); const i = nodeIds(g, a[1])[0]; const idx: number[] = []; g.edges.forEach((e, k) => { if (e.t === i || (!g.directed && e.s === i)) idx.push(k + 1); }); return ret(colVec(idx)); },
   nearest: async (a, n) => { const g = gArg(a[0]); const src = nodeIds(g, a[1])[0]; const d = asScalar(a[2]); const { dist } = dijkstra(g, src); const nodes: number[] = [], ds: number[] = []; for (let i = 0; i < g.n; i++) if (i !== src && dist[i] <= d + 1e-12) { nodes.push(i + 1); ds.push(dist[i]); } return n >= 2 ? [colVec(nodes), colVec(ds)] : [colVec(nodes)]; },
@@ -3893,12 +3919,13 @@ export const BUILTINS: Record<string, Builtin> = {
     for (let r = 0; r < A.rows; r++) { let s = ''; for (let c = 0; c < A.cols; c++) s += String.fromCharCode(A.data[r + c * A.rows]); items.push(str(s.replace(/\s+$/, ''))); }
     return ret(makeCell(A.rows, 1, items));
   },
-  dsearchn: async (a) => {
+  dsearchn: async (a, n) => {
     // dsearchn(P, PQ) or dsearchn(P, T, PQ): nearest point in P to each query row.
+    // [k,dist] = dsearchn(...) also returns the Euclidean distance to that nearest point.
     const P = m(a[0]); const PQ = m(a[a.length >= 3 ? 2 : 1]); const dcols = P.cols;
-    const idx = new Float64Array(PQ.rows);
-    for (let q = 0; q < PQ.rows; q++) { let best = 0, bd = Infinity; for (let p = 0; p < P.rows; p++) { let d = 0; for (let c = 0; c < dcols; c++) { const diff = PQ.data[q + c * PQ.rows] - P.data[p + c * P.rows]; d += diff * diff; } if (d < bd) { bd = d; best = p; } } idx[q] = best + 1; }
-    return ret(mat(PQ.rows, 1, idx));
+    const idx = new Float64Array(PQ.rows); const dst = new Float64Array(PQ.rows);
+    for (let q = 0; q < PQ.rows; q++) { let best = 0, bd = Infinity; for (let p = 0; p < P.rows; p++) { let d = 0; for (let c = 0; c < dcols; c++) { const diff = PQ.data[q + c * PQ.rows] - P.data[p + c * P.rows]; d += diff * diff; } if (d < bd) { bd = d; best = p; } } idx[q] = best + 1; dst[q] = Math.sqrt(bd); }
+    return n >= 2 ? [mat(PQ.rows, 1, idx), mat(PQ.rows, 1, dst)] : [mat(PQ.rows, 1, idx)];
   },
   box: async () => [],
   view: async (a, _n, env) => { env.graphics.command('view', a); return []; },

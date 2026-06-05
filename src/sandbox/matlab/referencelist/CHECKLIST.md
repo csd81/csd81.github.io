@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **270 / 1170** audited.
+Progress: **280 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -275,3 +275,13 @@ Progress: **270 / 1170** audited.
 | 268 | `dlmread` | ✅ | delimited numeric read from VFS |
 | 269 | `dlmwrite` | ✅ | delimited write to VFS |
 | 270 | `dmperm` | ✅ | Dulmage-Mendelsohn / max matching perm |
+| 271 | `doc` | ✅ | shows in-REPL help (no browser in sandbox) |
+| 272 | `donutchart` | 🟡 | renders a ring chart; visual only |
+| 273 | `dot` | ✅ | **fixed**: column-wise for matrices + `dim` arg |
+| 274 | `double` | ✅ | convert to double; `double('A')`=65 |
+| 275 | `drawnow` | ✅ | yields/flush (no-op render in sandbox) |
+| 276 | `dsearchn` | ✅ | **fixed**: 2nd output `dist` |
+| 277 | `duration` | ✅ | **fixed**: `duration(H,MI,S[,MS])` constructor + hh:mm:ss rounding |
+| 278 | `edgeAttachments` | ✅ | triangles attached to an edge (cell) |
+| 279 | `edgecount` | ✅ | **fixed**: scalar/vector broadcast over node pairs |
+| 280 | `edges` | ✅ | unique triangulation edges |
