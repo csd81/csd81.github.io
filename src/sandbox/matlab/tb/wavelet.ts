@@ -96,12 +96,37 @@ export const WAVELET: ToolboxModule = {
       for (let i = dets.length - 1; i >= 0; i--) cur = invHaarStep(cur, dets[i]);
       return ret(rowVec(cur));
     },
+    /** detcoef(C,L,n) — extract level-n detail coefficients from a wavedec result. */
+    detcoef: (a) => {
+      const C = toArray(m(a[0])), L = toArray(m(a[1])).map((v) => Math.round(v)); const n = Math.round(asScalar(a[2]));
+      const nlev = L.length - 2, k = nlev - n + 1; let off = L[0]; for (let i = 1; i < k; i++) off += L[i];
+      return ret(rowVec(C.slice(off, off + L[k])));
+    },
+    /** appcoef(C,L,wname[,n]) — level-n approximation (default coarsest), reconstructing if n<nlevels. */
+    appcoef: (a) => {
+      const C = toArray(m(a[0])), L = toArray(m(a[1])).map((v) => Math.round(v));
+      const wname = a.length >= 3 && isMat(a[2]) && (a[2] as Mat).isChar ? asString(a[2]) : 'haar';
+      const nlev = L.length - 2; let n = nlev;
+      for (let i = 2; i < a.length; i++) if (isMat(a[i]) && !(a[i] as Mat).isChar) n = Math.round(asScalar(a[i]));
+      let cur = C.slice(0, L[0]); if (n >= nlev) return ret(rowVec(cur));
+      const { lo, hi } = wfilters(wname); let off = L[0];
+      for (let lev = nlev; lev > n; lev--) { const dl = L[nlev - lev + 1]; const cD = C.slice(off, off + dl); off += dl; cur = idwt1(cur, cD, lo, hi); }
+      return ret(rowVec(cur));
+    },
+    /** dyaddown(x[,p]) — downsample by 2 (default keeps even-indexed; p odd keeps odd-indexed). */
+    dyaddown: (a) => { const x = toArray(m(a[0])); const p = a.length >= 2 ? Math.round(asScalar(a[1])) : 0; const start = p % 2 === 1 ? 0 : 1; const o: number[] = []; for (let i = start; i < x.length; i += 2) o.push(x[i]); return ret(asRow(m(a[0]), o)); },
+    /** dyadup(x[,p]) — upsample by 2 inserting zeros (default zero-bracketed; p=0 starts with x). */
+    dyadup: (a) => { const x = toArray(m(a[0])); const p = a.length >= 2 ? Math.round(asScalar(a[1])) : 1; const o: number[] = []; if (p % 2 === 0) { for (let i = 0; i < x.length; i++) { o.push(x[i]); if (i < x.length - 1) o.push(0); } } else { o.push(0); for (const v of x) { o.push(v); o.push(0); } } return ret(asRow(m(a[0]), o)); },
+    /** wrev(x) — flip (reverse) a vector. */
+    wrev: (a) => ret(asRow(m(a[0]), toArray(m(a[0])).reverse())),
   },
   help: {
     dct: 'Discrete cosine transform (DCT-II, orthonormal)', idct: 'Inverse discrete cosine transform',
     dwt: 'Single-level discrete 1-D wavelet transform', idwt: 'Single-level inverse discrete 1-D wavelet transform',
     wavedec: 'Multilevel 1-D wavelet decomposition', waverec: 'Multilevel 1-D wavelet reconstruction',
     haart: 'Haar 1-D wavelet transform', ihaart: 'Inverse Haar 1-D wavelet transform',
+    detcoef: 'Extract 1-D detail coefficients', appcoef: 'Extract 1-D approximation coefficients',
+    dyaddown: 'Dyadic downsampling', dyadup: 'Dyadic upsampling', wrev: 'Flip vector',
   },
 };
 

@@ -31,3 +31,11 @@ Daubechies/Symlet/Coiflet families, and non-periodic ('sym'/'zpd') boundary mode
 
 `haart`/`ihaart` use the normalized Haar (`(x₂ₖ±x₂ₖ₊₁)/√2`); multilevel detail `d` is a cell
 array (finest first), a vector for single-level — matching the MATLAB output shape.
+
+## Decomposition utilities (added, validated vs live MATLAB Wavelet Toolbox)
+
+`detcoef(C,L,n)`→level-n details, `appcoef(C,L,wname[,n])`→approximation (reconstructs for n<nlev),
+`dyaddown`/`dyadup` (decimate/interpolate by 2), `wrev` (flip). For `wavedec([1..8],2,'haar')`:
+`detcoef(C,L,1)`=`[-0.707×4]`, `detcoef(C,L,2)`=`[-2 -2]`, `appcoef(...)`=`[5 13]`,
+`appcoef(...,1)`=`[2.12132 4.94975 7.77817 10.6066]`; `dyaddown([1..6])`=`[2 4 6]`,
+`dyadup([1 2 3])`=`[0 1 0 2 0 3 0]`, `wrev([1 2 3 4])`=`[4 3 2 1]` — all exact.

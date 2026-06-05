@@ -2,7 +2,7 @@
 // `smooth` (moving-average and Savitzky-Golay data smoothing). See plan §7.
 import type { Builtin } from '../builtins';
 import {
-  type Value, type Mat, isMat, rowVec, colVec, toArray, asString, asScalar, toMat as m,
+  type Value, type Mat, type StructV, isMat, rowVec, colVec, scalar, toArray, asString, asScalar, toMat as m,
 } from '../values';
 import type { ToolboxModule } from './types';
 
@@ -29,8 +29,16 @@ export const CURVEFIT: ToolboxModule = {
       const out = movingSmooth(y, Math.max(1, span));
       return ret(src.rows === 1 ? rowVec(out) : colVec(out));
     },
+    /** datastats(x) — summary statistics struct (num/max/min/mean/median/range/std). */
+    datastats: (a) => {
+      const x = toArray(m(a[0])).filter((v) => !Number.isNaN(v)); const n = x.length; const s = x.slice().sort((p, q) => p - q);
+      const mean = x.reduce((p, q) => p + q, 0) / n; const variance = x.reduce((p, q) => p + (q - mean) ** 2, 0) / Math.max(1, n - 1);
+      const median = n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; const mn = Math.min(...x), mx = Math.max(...x);
+      const fields = new Map<string, Value[]>([['num', [scalar(n)]], ['max', [scalar(mx)]], ['min', [scalar(mn)]], ['mean', [scalar(mean)]], ['median', [scalar(median)]], ['range', [scalar(mx - mn)]], ['std', [scalar(Math.sqrt(variance))]]]);
+      return ret({ kind: 'struct', rows: 1, cols: 1, fields } as StructV);
+    },
   },
   help: {
-    smooth: 'Smooth response data (moving average)',
+    smooth: 'Smooth response data (moving average)', datastats: 'Statistics of data',
   },
 };
