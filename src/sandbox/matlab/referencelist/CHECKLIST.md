@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **50 / 1170** audited.
+Progress: **60 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -55,3 +55,13 @@ Progress: **50 / 1170** audited.
 | 48 | `asec` | ✅ | complex |
 | 49 | `asecd` | ✅ | complex, degrees |
 | 50 | `asech` | ✅ | complex |
+| 51 | `asin` | ✅ | complex |
+| 52 | `asind` | ✅ | complex; tiny-imag display nit |
+| 53 | `asinh` | ✅ | real & complex |
+| 54 | `assert` | ✅ | sprintf messages + default text |
+| 55 | `atan` | ✅ | complex |
+| 56 | `atan2` | ✅ | four-quadrant |
+| 57 | `atan2d` | ✅ | four-quadrant, degrees |
+| 58 | `atand` | ✅ | complex-aware (fixed) |
+| 59 | `atanh` | ✅ | branch sign fixed |
+| 60 | `autumn` | ✅ | colormap |

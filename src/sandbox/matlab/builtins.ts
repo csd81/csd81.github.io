@@ -129,6 +129,13 @@ const cAcosh = (re: number, im: number): [number, number] => {
   return clog(re + pr, im + pi);
 };
 const cAtanh = (re: number, im: number): [number, number] => {
+  // Real input: pick MATLAB's branch on the cut |x|>1 (Im = -sign(x)·π/2); the general
+  // complex formula loses the sign of the zero imaginary part there.
+  if (im === 0) {
+    if (re > 1) return [Math.atanh(1 / re), Math.PI / 2];
+    if (re < -1) return [Math.atanh(1 / re), -Math.PI / 2];
+    return [Math.atanh(re), 0];
+  }
   const [qr, qi] = cdiv(1 + re, im, 1 - re, -im);     // (1+z)/(1-z)
   const [lr, li] = clog(qr, qi);
   return [lr / 2, li / 2];
@@ -453,7 +460,7 @@ export const BUILTINS: Record<string, Builtin> = {
   cotd: ew((x) => 1 / Math.tan(x * DEG)), secd: ew((x) => 1 / Math.cos(x * DEG)), cscd: ew((x) => 1 / Math.sin(x * DEG)),
   asind: async (a) => { const A = m(a[0]); return ret(isComplex(A) || toArray(A).some((x) => Math.abs(x) > 1) ? cmap(A, (re, im) => { const [r, i] = cAsin(re, im); return [r / DEG, i / DEG]; }) : map(A, (x) => Math.asin(x) / DEG)); },
   acosd: async (a) => { const A = m(a[0]); return ret(isComplex(A) || toArray(A).some((x) => Math.abs(x) > 1) ? cmap(A, (re, im) => { const [r, i] = cAcos(re, im); return [r / DEG, i / DEG]; }) : map(A, (x) => Math.acos(x) / DEG)); },
-  atand: ew((x) => Math.atan(x) / DEG),
+  atand: ewc((x) => Math.atan(x) / DEG, degOf(cAtan)),
   acotd: ewc((x) => Math.atan(1 / x) / DEG, degOf(cAcot)),
   atan2d: async (a) => ret(elementwise(m(a[0]), m(a[1]), (y, x) => Math.atan2(y, x) / DEG)),
   deg2rad: ew((x) => x * DEG), rad2deg: ew((x) => x / DEG),
@@ -1808,7 +1815,14 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   stream2: async (a) => { const ms = a.filter((x): x is Mat => isMat(x) && !(x as Mat).isChar); const seg = streamlines2(ms[0], ms[1], ms[2], ms[3], toArray(ms[4]), toArray(ms[5])); return ret(splitStreamCell(seg.x, seg.y)); },
   stream3: async (a) => { const ms = a.filter((x): x is Mat => isMat(x) && !(x as Mat).isChar); const seg = streamlines3(ms[0], ms[1], ms[2], ms[3], ms[4], ms[5], toArray(ms[6]), toArray(ms[7]), toArray(ms[8])); return ret(splitStreamCell(seg.x, seg.y, seg.z)); },
-  assert: async (a) => { if (!truthy(a[0])) throw new MatError(a.length >= 2 && isMat(a[1]) && (a[1] as Mat).isChar ? asString(a[1]) : 'assert: condition failed'); return []; },
+  assert: async (a) => {
+    if (truthy(a[0])) return [];
+    // assert(cond, msg, A1, A2, ...) → message is sprintf-formatted with the extra args.
+    if (a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar))) {
+      throw new MatError(a.length > 2 ? sprintf(asString(a[1]), a.slice(2)) : asString(a[1]));
+    }
+    throw new MatError('Assertion failed.');
+  },
   narginchk: async () => [], nargoutchk: async () => [], nargchk: async () => ret(str('')),
   validateattributes: async () => [],
   // ── arguments-block validators (mustBe*) — error on violation, else no output ──

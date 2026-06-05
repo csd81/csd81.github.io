@@ -31,3 +31,8 @@ arrayfun rewrite (struct arrays, UniformOutput, multi-output, complex); append s
 anymissing multi-type (string/cat/cell/table/datetime). asec/asecd/asech converged (batch-2 complex).
 Harness: extract.py tags examples with h2/h3 section. 14/61 remaining (rand/plot/table-display/cross-ex).
 Build green; 1412 builtins, 0 without help.
+## Batch 6 (fns 51-60): asin asind asinh assert atan atan2 atan2d atand atanh autumn
+Fixed: atanh branch sign on |x|>1 (x>1->+pi/2 i, x<-1->-pi/2 i); atand complex-aware;
+assert sprintf-formatted messages + 'Assertion failed.' default. Comparator: expected-error
+examples (assert failures) count as pass. 31/33 pass (asind tiny-imag, autumn groot default).
+Build green; 1412 builtins, 0 without help.

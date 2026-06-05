@@ -136,3 +136,27 @@ Status legend: ✅ converged · 🟡 partial (core works, some variants unsuppor
 - `asec`/`asecd`/`asech` already converged via the batch-2 complex inverse-trig work.
 - Audit harness: examples are now tagged with their doc section (`<h2>`/`<h3>`), available for future cross-example isolation.
 - Rich ≥10-line help added for all batch-5 functions.
+
+---
+
+## Batch 6 — functions 51–60
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `asin` | ✅ | complex inverse sine | — |
+| `asind` | ✅ | complex inverse sine (degrees) | `sind(asind([2 3]))` leaves a ~1e-16 imaginary part (value correct, display shows complex) |
+| `asinh` | ✅ | inverse hyperbolic sine (real & complex) | — |
+| `assert` | ✅ | **improved**: sprintf-formatted messages, "Assertion failed." default | — |
+| `atan` | ✅ | complex inverse tangent | — |
+| `atan2` | ✅ | four-quadrant inverse tangent | — |
+| `atan2d` | ✅ | four-quadrant, degrees | — |
+| `atand` | ✅ | **fixed**: now complex-aware (`atand(10+i)`) | — |
+| `atanh` | ✅ | **fixed**: correct MATLAB branch on `|x|>1` (`atanh(2)=0.5493+1.5708i`) | — |
+| `autumn` | ✅ | red-orange-yellow colormap matrix | one example sets a `groot` default colormap (graphics root) |
+
+### Fixes landed in this batch
+- `atanh`: real inputs on the branch cut `|x|>1` now use MATLAB's sign convention (`x>1` → `+πi/2`, `x<-1` → `-πi/2`); the general complex formula was losing the sign of the zero imaginary part. Also corrects `acoth`/`acsch` round-trips.
+- `atand`: complex-aware (via the `ewc`/`cAtan` machinery), matching `atan`.
+- `assert`: supports `assert(cond,fmt,A1,...)` sprintf message formatting and MATLAB's default "Assertion failed." text.
+- Audit harness: the comparator now recognizes examples whose documented output **is** an error (e.g. `assert` failures), so a correct error counts as a pass.
+- Rich ≥10-line help added for all batch-6 functions.

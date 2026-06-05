@@ -41,6 +41,12 @@ if __name__ == "__main__":
         for i, (inp, exp) in enumerate(zip(blocks, exps)):
             got = outs[i] if i < len(outs) else ''
             err = errs[i] if i < len(errs) else None
+            exp_is_error = exp.lstrip().lower().startswith('error')
+            if exp_is_error:        # the doc output IS an error → erroring is correct
+                ok = err is not None
+                status = 'OK(err)' if ok else 'DIFF(expected error)'
+                report.append({'fn':name,'i':i,'in':inp,'exp':exp,'got':got,'err':err,'status':status,'ok':ok})
+                continue
             if exp.strip() == '':   # plot/no-output example
                 status = 'ERR' if err else 'skip(noout)'
                 ok = err is None
