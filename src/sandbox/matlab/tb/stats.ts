@@ -426,6 +426,35 @@ export const STATS: ToolboxModule = {
       for (let i = 0; i < N; i++) { if (i > 0 && x[i] === x[i - 1]) continue; xv.push(x[i]); let cnt = 0; for (let j = 0; j < N; j++) if (x[j] <= x[i]) cnt++; fv.push(cnt / N); }
       return Promise.resolve([colVec(fv), colVec(xv)]);
     },
+    // ── betafit: MLE of Beta(a,b). Solve ψ(a)-ψ(a+b)=mean(log x), ψ(b)-ψ(a+b)=mean(log(1-x)). ──
+    betafit: (a) => {
+      const x = toArray(m(a[0])), N = x.length;
+      const L1 = x.reduce((s, v) => s + Math.log(v), 0) / N, L2 = x.reduce((s, v) => s + Math.log(1 - v), 0) / N;
+      const mu = x.reduce((s, v) => s + v, 0) / N, vr = x.reduce((s, v) => s + (v - mu) ** 2, 0) / N, t = mu * (1 - mu) / vr - 1;
+      let ah = Math.max(mu * t, 1e-3), bh = Math.max((1 - mu) * t, 1e-3);
+      for (let it = 0; it < 200; it++) {
+        const psiab = digamma(ah + bh), trab = trigamma(ah + bh);
+        const g1 = digamma(ah) - psiab - L1, g2 = digamma(bh) - psiab - L2;
+        const j11 = trigamma(ah) - trab, j12 = -trab, j22 = trigamma(bh) - trab;
+        const det = j11 * j22 - j12 * j12, da = (j22 * g1 - j12 * g2) / det, db = (j11 * g2 - j12 * g1) / det;
+        ah = Math.max(ah - da, 1e-6); bh = Math.max(bh - db, 1e-6);
+        if (Math.abs(da) + Math.abs(db) < 1e-12) break;
+      }
+      return ret(rowVec([ah, bh]));
+    },
+    // ── nbinfit: MLE of negative binomial NB(r,p). Profile p=r/(r+x̄); Newton on dispersion r. ──
+    nbinfit: (a) => {
+      const x = toArray(m(a[0])), N = x.length, xbar = x.reduce((s, v) => s + v, 0) / N;
+      const vr = x.reduce((s, v) => s + (v - xbar) ** 2, 0) / N;
+      let r = vr > xbar ? xbar * xbar / (vr - xbar) : 100;
+      for (let it = 0; it < 200; it++) {
+        let g = N * Math.log(r / (r + xbar)), gp = N * xbar / (r * (r + xbar));
+        for (const xi of x) { g += digamma(r + xi) - digamma(r); gp += trigamma(r + xi) - trigamma(r); }
+        const rn = r - g / gp; if (!isFinite(rn) || rn <= 0) { r = r / 2; continue; }
+        if (Math.abs(rn - r) < 1e-10) { r = rn; break; } r = rn;
+      }
+      return ret(rowVec([r, r / (r + xbar)]));
+    },
     // ── descriptive: skewness/kurtosis (population, flag=1 default; flag=0 bias-corrected) ──
     skewness: (a) => {
       const x = toArray(m(a[0])), flag = a.length > 1 && isMat(a[1]) && m(a[1]).rows * m(a[1]).cols > 0 ? asScalar(a[1]) : 1, N = x.length;
@@ -580,6 +609,7 @@ export const STATS: ToolboxModule = {
     lognfit: 'Lognormal parameter estimates (MLE)', gamfit: 'Gamma parameter estimates (MLE)',
     mvnpdf: 'Multivariate normal probability density function', copulastat: 'Copula rank correlation',
     ecdf: 'Empirical cumulative distribution function',
+    betafit: 'Beta distribution parameter estimates (MLE)', nbinfit: 'Negative binomial parameter estimates (MLE)',
     nanmean: 'Mean, ignoring NaN values', nansum: 'Sum, ignoring NaN values', nanstd: 'Standard deviation, ignoring NaN values', nanvar: 'Variance, ignoring NaN values',
     nanmedian: 'Median, ignoring NaN values', nanmax: 'Maximum, ignoring NaN values', nanmin: 'Minimum, ignoring NaN values',
     range: 'Range of values (max − min)', tabulate: 'Frequency table',
