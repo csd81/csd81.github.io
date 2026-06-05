@@ -8,9 +8,10 @@ import type { HelpEntry } from '../help';
 import type { ToolboxModule } from './types';
 import { SYMBOLIC } from './symbolic';
 import { STATS } from './stats';
+import { SIGNAL } from './signal';
 
 /** All registered toolboxes, in precedence order (first wins on inter-toolbox collision). */
-export const TOOLBOXES: ToolboxModule[] = [SYMBOLIC, STATS];
+export const TOOLBOXES: ToolboxModule[] = [SYMBOLIC, STATS, SIGNAL];
 
 export const TOOLBOX_BUILTINS: Record<string, Builtin> = {};
 export const TOOLBOX_CONSTANTS: Record<string, () => Value> = {};
