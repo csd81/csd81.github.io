@@ -102,6 +102,33 @@ function postShoots(x: number[], t: number[]): { os: number; us: number }[] {
   }
   return out;
 }
+/** Settling time per transition (signal.internal.getSettling): time from the 50% crossing until
+ *  the signal last exits the ±Tolerance·amplitude band around the final state, within seek dur d. */
+function settling(x: number[], t: number[], d: number, tol = 2): number[] {
+  const [L, U] = stateLevelsOf(x), amp = U - L, band = amp * tol / 100, a = (U - L) / 100;
+  const lwr = L + 2 * a, upr = L + 98 * a, mid = L + 50 * a;
+  const iState: number[] = []; for (let i = 0; i < x.length; i++) if (x[i] < lwr || x[i] > upr) iState.push(i);
+  const trans: { p: number; iA: number; iB: number; tMid: number }[] = [];
+  for (let k = 0; k + 1 < iState.length; k++) {
+    const iA = iState[k], iB = iState[k + 1];
+    if (!((x[iA] < lwr && x[iB] > upr) || (x[iA] > upr && x[iB] < lwr))) continue;
+    const p = x[iA] < lwr ? 1 : -1;
+    let iRMid = -1; for (let i = iA; i < iB; i++) if (p > 0 ? (x[i] <= mid && mid < x[i + 1]) : (x[i] >= mid && mid > x[i + 1])) { iRMid = i; break; }
+    if (iRMid < 0) continue;
+    trans.push({ p, iA, iB, tMid: t[iRMid] + (t[iRMid + 1] - t[iRMid]) * (mid - x[iRMid]) / (x[iRMid + 1] - x[iRMid]) });
+  }
+  const out: number[] = [];
+  for (let ti = 0; ti < trans.length; ti++) {
+    const tr = trans[ti], postRef = tr.p > 0 ? U : L, tFinal = tr.tMid + d;
+    let iStop = -1; for (let j = tr.iB; j < x.length; j++) if (t[j] > tFinal) { iStop = j; break; }
+    if (iStop < 0 || (ti + 1 < trans.length && iStop > trans[ti + 1].iA) || tFinal < t[tr.iB]) { out.push(NaN); continue; }
+    let iLast = -1; for (let i = tr.iA; i <= iStop; i++) if (Math.abs(x[i] - postRef) > band) iLast = i;
+    if (iLast < 0 || iLast === iStop || iLast + 1 >= x.length) { out.push(NaN); continue; }
+    const intercept = Math.sign(x[iLast] - postRef) * band, yp = x[iLast] - postRef, yq = x[iLast + 1] - postRef;
+    out.push(t[iLast] + (t[iLast + 1] - t[iLast]) * (intercept - yp) / (yq - yp) - tr.tMid);
+  }
+  return out;
+}
 /** Resolve the time base: t-vector, scalar Fs, or default sample numbers 1..n. */
 function timeBase(a: Value[], n: number): number[] {
   if (a.length > 1 && isMat(a[1])) { const M = m(a[1]); if (M.rows * M.cols === 1) { const Fs = asScalar(a[1]); return Array.from({ length: n }, (_, i) => i / Fs); } return toArray(M); }
@@ -267,6 +294,12 @@ export const SIGNAL: ToolboxModule = {
     slewrate: (a) => { const x = toArray(m(a[0])); return ret(colVec(transitions(x, timeBase(a, x.length)).map((d) => d.slew))); },
     overshoot: (a) => { const x = toArray(m(a[0])); return ret(colVec(postShoots(x, timeBase(a, x.length)).map((s) => s.os))); },
     undershoot: (a) => { const x = toArray(m(a[0])); return ret(colVec(postShoots(x, timeBase(a, x.length)).map((s) => s.us))); },
+    settlingtime: (a) => {
+      const x = toArray(m(a[0]));
+      const t = a.length >= 3 ? timeBase(a, x.length) : Array.from({ length: x.length }, (_, i) => i + 1);
+      const d = asScalar(a[a.length >= 3 ? 2 : 1]);
+      return ret(colVec(settling(x, t, d)));
+    },
     barthannwin: (a) => window(a, 1, (n, N) => { const r = n / N - 0.5; return 0.62 - 0.48 * Math.abs(r) + 0.38 * Math.cos(2 * Math.PI * r); }),
     gausswin: (a) => { const L = Math.round(asScalar(a[0])); const alpha = a.length >= 2 ? asScalar(a[1]) : 2.5; const N = L - 1; const w: number[] = []; for (let n = 0; n < L; n++) { const x = (n - N / 2) / (N / 2); w.push(Math.exp(-0.5 * (alpha * x) ** 2)); } return ret(colVec(L === 1 ? [1] : w)); },
     kaiser: (a) => { const L = Math.round(asScalar(a[0])); const beta = a.length >= 2 ? asScalar(a[1]) : 0.5; const N = L - 1; const i0b = besselI0(beta); const w: number[] = []; for (let n = 0; n < L; n++) { const r = (2 * n) / N - 1; w.push(besselI0(beta * Math.sqrt(1 - r * r)) / i0b); } return ret(colVec(L === 1 ? [1] : w)); },
@@ -349,6 +382,7 @@ export const SIGNAL: ToolboxModule = {
     pulsewidth: 'Bilevel waveform pulse width', pulseperiod: 'Bilevel waveform pulse period', dutycycle: 'Duty cycle of pulse waveform',
     risetime: 'Rise time of positive-going bilevel waveform transitions', falltime: 'Fall time of negative-going bilevel waveform transitions', slewrate: 'Slew rate of bilevel waveform transitions',
     overshoot: 'Overshoot metrics of bilevel waveform transitions', undershoot: 'Undershoot metrics of bilevel waveform transitions',
+    settlingtime: 'Settling time for bilevel waveform transitions',
     mag2db: 'Convert magnitude to decibels', db2mag: 'Convert decibels to magnitude', pow2db: 'Convert power to decibels', db2pow: 'Convert decibels to power',
     sinc: 'Normalized sinc function', chirp: 'Swept-frequency cosine', medfilt1: '1-D median filtering',
     freqz: 'Digital filter frequency response', freqs: 'Analog filter frequency response', fir1: 'Window-based FIR filter design',
