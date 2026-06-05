@@ -102,7 +102,25 @@ function tableToCsv(t: Table): string {
 const ew = (f: (x: number) => number): Builtin => async (a) => ret(map(m(a[0]), f));
 // Like ew, but also rounds the imaginary part (floor/ceil/fix of complex applies to both parts).
 const ewRound = (f: (x: number) => number): Builtin => async (a) => { const A = m(a[0]); const o = map(A, f); if (A.idata) o.idata = A.idata.map(f); return ret(o); };
+/** Element-wise round/floor/ceil/fix on a numeric (complex-aware) argument. */
+function ewRoundApply(a: Value[], f: (x: number) => number): Value[] { const A = m(a[0]); const o = map(A, f); if (A.idata) o.idata = A.idata.map(f); if (A.itype) (o as Mat).itype = A.itype; return [o]; }
+/** Round a duration toward a unit (default seconds): floor/ceil/round/fix of hours/minutes/etc. */
+function durRound(v: Temporal, f: (x: number) => number, args: Value[]): Value {
+  const perDay: Record<string, number> = { years: 365.2425, days: 1, hours: 1 / 24, minutes: 1 / 1440, seconds: 1 / 86400, milliseconds: 1 / 86400000 };
+  const unit = args.length >= 2 && (isStr(args[1]) || (isMat(args[1]) && (args[1] as Mat).isChar)) ? asString(args[1]).toLowerCase() : 'seconds';
+  const u = perDay[unit] ?? perDay.seconds;
+  const o = makeTemporal('duration', v.rows, v.cols, Float64Array.from(v.data, (x) => f(x / u) * u));
+  if (v.fmt) (o as Temporal).fmt = v.fmt; return o;
+}
 
+/** Reverse a value along dimension `dim` (1 = rows, 2 = cols), for matrices, cells, and strings. */
+function flipValue(v: Value, dim: number): Value {
+  if (isCell(v)) { const R = v.rows, C = v.cols, it = new Array(R * C); for (let c = 0; c < C; c++) for (let r = 0; r < R; r++) { const rr = dim === 1 ? R - 1 - r : r, cc = dim === 2 ? C - 1 - c : c; it[rr + cc * R] = v.items[r + c * R]; } return makeCell(R, C, it); }
+  if (isStr(v)) { const R = v.rows, C = v.cols, it = new Array(R * C); for (let c = 0; c < C; c++) for (let r = 0; r < R; r++) { const rr = dim === 1 ? R - 1 - r : r, cc = dim === 2 ? C - 1 - c : c; it[rr + cc * R] = v.items[r + c * R]; } return makeStrArr(R, C, it); }
+  const A = m(v); const o = zeros(A.rows, A.cols); if (A.idata) o.idata = new Float64Array(o.data.length);
+  for (let c = 0; c < A.cols; c++) for (let r = 0; r < A.rows; r++) { const rr = dim === 1 ? A.rows - 1 - r : r, cc = dim === 2 ? A.cols - 1 - c : c; o.data[rr + cc * A.rows] = A.data[r + c * A.rows]; if (A.idata) o.idata![rr + cc * A.rows] = A.idata[r + c * A.rows]; }
+  o.isChar = A.isChar; o.isBool = A.isBool; o.itype = A.itype; return o;
+}
 /** Build a char matrix whose rows are the given strings, right-padded with spaces (MATLAB char). */
 function charMatRows(strs: string[]): Mat {
   const w = strs.reduce((mx, s) => Math.max(mx, s.length), 0);
@@ -504,9 +522,13 @@ export const BUILTINS: Record<string, Builtin> = {
   angle: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmapReal(A, (re, im) => Math.atan2(im, re)) : map(A, (x) => (x < 0 ? Math.PI : 0))); },
   complex: async (a) => { const A = m(a[0]); const B = a.length >= 2 ? m(a[1]) : zeros(A.rows, A.cols); const re = new Float64Array(A.data); const im = new Float64Array(A.data.length); for (let i = 0; i < im.length; i++) im[i] = B.data.length === 1 ? B.data[0] : B.data[i]; return ret({ kind: 'num', rows: A.rows, cols: A.cols, data: re, idata: im }); },
   iscomplex: async (a) => ret(bool(isComplex(m(a[0])))),
-  floor: ewRound(Math.floor), ceil: ewRound(Math.ceil),
-  round: async (a) => { const A = m(a[0]); const nd = a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar ? Math.round(asScalar(a[1])) : 0; const f = Math.pow(10, nd); const r = (x: number) => Math.sign(x) * Math.round(Math.abs(x) * f) / f; const o = map(A, r); if (A.idata) o.idata = A.idata.map(r); return ret(o); },
-  fix: ewRound(Math.trunc),
+  floor: async (a) => (isTemporal(a[0]) && a[0].tkind === 'duration' ? [durRound(a[0], Math.floor, a)] : ewRoundApply(a, Math.floor)),
+  ceil: async (a) => (isTemporal(a[0]) && a[0].tkind === 'duration' ? [durRound(a[0], Math.ceil, a)] : ewRoundApply(a, Math.ceil)),
+  round: async (a) => {
+    if (isTemporal(a[0]) && a[0].tkind === 'duration') return [durRound(a[0], Math.round, a)];
+    const A = m(a[0]); const nd = a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar ? Math.round(asScalar(a[1])) : 0; const f = Math.pow(10, nd); const r = (x: number) => Math.sign(x) * Math.round(Math.abs(x) * f) / f; const o = map(A, r); if (A.idata) o.idata = A.idata.map(r); return ret(o);
+  },
+  fix: async (a) => (isTemporal(a[0]) && a[0].tkind === 'duration' ? [durRound(a[0], Math.trunc, a)] : ewRoundApply(a, Math.trunc)),
   atan2: async (a) => ret(elementwise(m(a[0]), m(a[1]), Math.atan2)),
   mod: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, y) => (y === 0 ? x : ((x % y) + y) % y))),
   rem: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, y) => (y === 0 ? NaN : x % y))),
@@ -934,25 +956,9 @@ export const BUILTINS: Record<string, Builtin> = {
     tf.isBool = true;
     return n >= 2 ? [tf, loc] : [tf];
   },
-  fliplr: async (a) => {
-    const A = m(a[0]); const o = zeros(A.rows, A.cols); if (A.idata) o.idata = new Float64Array(o.data.length);
-    for (let c = 0; c < A.cols; c++) for (let r = 0; r < A.rows; r++) { const dst = r + (A.cols - 1 - c) * A.rows, src = r + c * A.rows; o.data[dst] = A.data[src]; if (A.idata) o.idata![dst] = A.idata[src]; }
-    o.isChar = A.isChar; return ret(o);
-  },
-  flipud: async (a) => {
-    const A = m(a[0]); const o = zeros(A.rows, A.cols); if (A.idata) o.idata = new Float64Array(o.data.length);
-    for (let c = 0; c < A.cols; c++) for (let r = 0; r < A.rows; r++) { const dst = (A.rows - 1 - r) + c * A.rows, src = r + c * A.rows; o.data[dst] = A.data[src]; if (A.idata) o.idata![dst] = A.idata[src]; }
-    o.isChar = A.isChar; return ret(o);
-  },
-  flip: async (a) => {
-    const A = m(a[0]); const dim = a.length >= 2 ? Math.round(asScalar(a[1])) : (A.rows > 1 ? 1 : 2);
-    const o = zeros(A.rows, A.cols); if (A.idata) o.idata = new Float64Array(o.data.length);
-    for (let c = 0; c < A.cols; c++) for (let r = 0; r < A.rows; r++) {
-      const rr = dim === 1 ? A.rows - 1 - r : r; const cc = dim === 2 ? A.cols - 1 - c : c;
-      o.data[rr + cc * A.rows] = A.data[r + c * A.rows]; if (A.idata) o.idata![rr + cc * A.rows] = A.idata[r + c * A.rows];
-    }
-    o.isChar = A.isChar; return ret(o);
-  },
+  fliplr: async (a) => ret(flipValue(a[0], 2)),
+  flipud: async (a) => ret(flipValue(a[0], 1)),
+  flip: async (a) => { const dim = a.length >= 2 ? Math.round(asScalar(a[1])) : (dimsOf(a[0])[0] > 1 ? 1 : 2); return ret(flipValue(a[0], dim)); },
   cat: async (a) => {
     const dim = Math.round(asScalar(a[0])); const parts = a.slice(1).map((v) => m(v));
     if (dim <= 2 && !parts.some((p) => p.nd)) return ret(dim === 1 ? vertcat(parts) : horzcat(parts));
@@ -2293,14 +2299,15 @@ export const BUILTINS: Record<string, Builtin> = {
     for (let i = 0; i < 200; i++) { const mid = (alo + ahi) / 2; const fm = await F(mid); if (Math.abs(fm) < 1e-14 || (ahi - alo) / 2 < 1e-14) return ret(scalar(mid)); if (flo * fm < 0) { ahi = mid; fhi = fm; } else { alo = mid; flo = fm; } }
     return ret(scalar((alo + ahi) / 2));
   },
-  fminbnd: async (a, _n, env) => {
+  fminbnd: async (a, n, env) => {
     const f = handle(a[0], 'fminbnd'); const F = (x: number) => callScalar(env, f, x);
     let lo = asScalar(a[1]), hi = asScalar(a[2]); const gr = (Math.sqrt(5) - 1) / 2;
     let x1 = hi - gr * (hi - lo), x2 = lo + gr * (hi - lo); let f1 = await F(x1), f2 = await F(x2);
     for (let i = 0; i < 200 && hi - lo > 1e-10; i++) { if (f1 < f2) { hi = x2; x2 = x1; f2 = f1; x1 = hi - gr * (hi - lo); f1 = await F(x1); } else { lo = x1; x1 = x2; f1 = f2; x2 = lo + gr * (hi - lo); f2 = await F(x2); } }
-    return ret(scalar((lo + hi) / 2));
+    const xmin = (lo + hi) / 2; const fval = await F(xmin);
+    return n >= 2 ? [scalar(xmin), scalar(fval), scalar(1)] : [scalar(xmin)];   // [x, fval, exitflag]
   },
-  fminsearch: async (a, _n, env) => {
+  fminsearch: async (a, nout, env) => {
     const f = handle(a[0], 'fminsearch'); const x0 = toArray(m(a[1])); const n = x0.length;
     const F = async (v: number[]) => { const r = await env.callHandle(f, [colVec(v)], 1); return r.length && isMat(r[0]) ? asScalar(r[0]) : NaN; };
     const simplex: number[][] = [x0.slice()]; for (let i = 0; i < n; i++) { const p = x0.slice(); p[i] += (p[i] !== 0 ? 0.05 * p[i] : 0.00025); simplex.push(p); }
@@ -2319,7 +2326,8 @@ export const BUILTINS: Record<string, Builtin> = {
       else { const xc = add(cen, sub(simplex[n], cen), 0.5); const fc = await F(xc); if (fc < fv[n]) { simplex[n] = xc; fv[n] = fc; } else { for (let i = 1; i <= n; i++) { simplex[i] = add(simplex[0], sub(simplex[i], simplex[0]), 0.5); fv[i] = await F(simplex[i]); } } }
     }
     let bi = 0; for (let i = 1; i <= n; i++) if (fv[i] < fv[bi]) bi = i;
-    return ret(m(a[1]).rows === 1 ? rowVec(simplex[bi]) : colVec(simplex[bi]));
+    const xmin = m(a[1]).rows === 1 ? rowVec(simplex[bi]) : colVec(simplex[bi]);
+    return nout >= 2 ? [xmin, scalar(fv[bi]), scalar(1)] : [xmin];   // [x, fval, exitflag]
   },
   interp1: async (a) => {
     const x = toArray(m(a[0])), v = toArray(m(a[1])), xq = m(a[2]); const method = a.length >= 4 ? asString(a[3]) : 'linear';

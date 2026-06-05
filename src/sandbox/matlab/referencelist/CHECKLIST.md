@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **360 / 1170** audited.
+Progress: **370 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -365,3 +365,13 @@ Progress: **360 / 1170** audited.
 | 358 | `flip` | ✅ | reverse along dim (incl. char) |
 | 359 | `flipdim` | ✅ | legacy flip along dim |
 | 360 | `flipedge` | ✅ | reverse digraph edges |
+| 361 | `fliplr` | ✅ | **fixed**: cell/string arrays |
+| 362 | `flipud` | ✅ | **fixed**: cell/string arrays |
+| 363 | `floor` | ✅ | **fixed**: duration rounding (+ unit arg) |
+| 364 | `fmesh` | 🟡 | renders function mesh |
+| 365 | `fminbnd` | ✅ | **fixed**: `[x,fval,exitflag]` outputs |
+| 366 | `fminsearch` | ✅ | **fixed**: `[x,fval]` output; Nelder-Mead |
+| 367 | `fontname` | 🟡 | bulk font setter (graphics) |
+| 368 | `fontsize` | 🟡 | bulk font-size setter (graphics) |
+| 369 | `format` | ✅ | display style (short/long/rat/hex…) |
+| 370 | `formula` | 🟡 | quantum-state ket formula; depends on simulate |

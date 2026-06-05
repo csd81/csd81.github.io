@@ -833,3 +833,25 @@ All 35 batch-8 examples pass.
 - **`flintmax("single")`** now returns `2^24 = 16777216` with class `single`; it had ignored the class argument and always returned the double value `2^53`.
 - Verified `findgroups`, `findnode`, `findstr`, `fix` (real+complex), `flip`/`flipdim` (incl. character vectors), `flipedge`.
 - Rich ≥10-line help added for all batch-36 functions (incl. new structured `findgroups`/`flag`/`flintmax`).
+
+## Batch 37 — functions 361–370 (flip on cells · duration rounding · optimizers · format)
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `fliplr` | ✅ | **fixed**: now flips cell/string arrays, not just numeric | — |
+| `flipud` | ✅ | **fixed**: now flips cell/string arrays | — |
+| `floor` | ✅ | **fixed**: duration rounding `floor(D,unit)` → `floor(8h30m1.23s)=08:30:01` | — |
+| `fmesh` | 🟡 | renders a function mesh | visual only |
+| `fminbnd` | ✅ | **fixed**: `[x,fval,exitflag]` outputs → `fminbnd(@sin,0,2*pi)=4.7124` | — |
+| `fminsearch` | ✅ | **fixed**: `[x,fval]` output; Nelder-Mead → Rosenbrock min `[1 1]` | — |
+| `fontname` | 🟡 | bulk font setter | graphics only |
+| `fontsize` | 🟡 | bulk font-size setter | graphics only |
+| `format` | ✅ | display style short/long/shortG/rat/hex | — |
+| `formula` | 🟡 | quantum-state ket formula | output depends on the (approximate) quantum `simulate` |
+
+### Fixes landed in this batch
+- **`fliplr`/`flipud`/`flip` on cells and strings**: they only handled numeric matrices and threw "expected a numeric value" on a cell array. Added a generic `flipValue` helper that reverses matrices, cell arrays, and string arrays along a dimension; `flip` now derives its default dimension from any value's shape.
+- **Duration rounding**: `floor`, `ceil`, `round`, and `fix` now accept a `duration` (and an optional unit like `"hours"`/`"minutes"`/`"seconds"`), so `floor(hours(8)+minutes(30)+seconds(1.23))` gives `08:30:01` and `floor(...,"hours")` gives `08:00:00`. Numeric/complex rounding is unchanged.
+- **`fminbnd`/`fminsearch` extra outputs**: both now return `[x,fval]` (and an exitflag), which a `[xm,fv]=fminbnd(...)` call needs — previously it errored "not enough output arguments".
+- Verified `format`, `floor` numeric/complex; `fmesh`/`fontname`/`fontsize` are graphics-only; `formula` reads the quantum state (its value depends on the simulator).
+- Rich ≥10-line help added for all batch-37 functions (incl. new structured `fontname`/`fontsize`/`format`).
