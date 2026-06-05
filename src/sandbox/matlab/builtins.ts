@@ -2777,7 +2777,15 @@ export const BUILTINS: Record<string, Builtin> = {
   today: async () => ret(scalar(Math.floor(Date.now() / 86400000) + 719529)),
   clock: async () => { const v = dvec(Date.now() / 86400000 + 719529); return ret(rowVec(v)); },
   date: async () => ret(str(dstr(Math.floor(Date.now() / 86400000) + 719529, 'dd-mmm-yyyy'))),
-  weekday: async (a) => { const n = m(a[0]); const o = map(n, (x) => (new Date((x - 719529) * 86400000).getUTCDay()) + 1); return ret(o); },
+  weekday: async (a, nargout) => {
+    const n = m(a[0]); const o = map(n, (x) => (new Date((x - 719529) * 86400000).getUTCDay()) + 1);
+    if (nargout < 2) return [o];
+    const longForm = a.some((x) => (isStr(x) || (isMat(x) && (x as Mat).isChar)) && asString(x).toLowerCase() === 'long');
+    const names = longForm
+      ? ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+      : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    return [o, charMatRows(Array.from(o.data, (x) => names[Math.round(x) - 1]))];
+  },
   eomday: async (a) => ret(elementwise(m(a[0]), m(a[1]), (y, mo) => [31, (y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][mo - 1] ?? NaN)),
   etime: async (a) => { const t2 = toArray(m(a[0])), t1 = toArray(m(a[1])); return ret(scalar((dnum(t2[0], t2[1], t2[2], t2[3], t2[4], t2[5]) - dnum(t1[0], t1[1], t1[2], t1[3], t1[4], t1[5])) * 86400)); },
   addtodate: async (a) => { const n = asScalar(m(a[0])), q = asScalar(m(a[1])), unit = asString(a[2]); const v = dvec(n); const idx = { year: 0, month: 1, day: 2, hour: 3, minute: 4, second: 5 }[unit] ?? 2; v[idx] += q; return ret(scalar(dnum(v[0], v[1], v[2], v[3], v[4], v[5]))); },
