@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **70 / 1170** audited.
+Progress: **80 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -75,3 +75,13 @@ Progress: **70 / 1170** audited.
 | 68 | `barycentricToCartesian` | ✅ | triangulation coords |
 | 69 | `base2dec` | ✅ | string-array support fixed |
 | 70 | `bctree` | 🟡 | tree built; node tables/2nd output pending |
+| 71 | `beep` | ✅ | accepted; silent (no audio) |
+| 72 | `besselh` | ✅ | Hankel kinds + scaled |
+| 73 | `besseli` | ✅ | modified I |
+| 74 | `besselj` | ✅ | first kind |
+| 75 | `besselk` | ✅ | modified K |
+| 76 | `bessely` | ✅ | second kind |
+| 77 | `beta` | ✅ | + format rat display |
+| 78 | `betainc` | ✅ | vectorized + upper tail |
+| 79 | `betaincinv` | ✅ | inverse incomplete beta |
+| 80 | `betaln` | ✅ | large-arg overflow fixed |

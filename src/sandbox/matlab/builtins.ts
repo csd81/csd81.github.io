@@ -1362,7 +1362,12 @@ export const BUILTINS: Record<string, Builtin> = {
   erfcx: async (a) => ret(map(m(a[0]), (x) => Math.exp(x * x) * (1 - erfFn(x)))),
   erfcinv: async (a) => ret(map(m(a[0]), (y) => erfinvFn(1 - y))),
   gammainc: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, p) => gammainc(x, p))),
-  betainc: async (a) => { const X = m(a[0]); const A2 = asScalar(a[1]), B2 = asScalar(a[2]); return ret(map(X, (x) => betainc(x, A2, B2))); },
+  betainc: async (a) => {
+    // Vectorize over all three arguments (scalars broadcast); optional 'upper'/'lower' tail.
+    const tail = a.length >= 4 && (isStr(a[3]) || (isMat(a[3]) && (a[3] as Mat).isChar)) ? asString(a[3]).toLowerCase() : 'lower';
+    const f = (x: number, p: number, q: number) => { const v = betainc(x, p, q); return tail === 'upper' ? 1 - v : v; };
+    return ret(broadcast3(m(a[0]), m(a[1]), m(a[2]), f));
+  },
   // ── coordinate transforms ──
   cart2pol: async (a, n) => { const X = m(a[0]), Y = m(a[1]); const th = elementwise(Y, X, (y, x) => Math.atan2(y, x)); const r = elementwise(X, Y, (x, y) => Math.hypot(x, y)); return n >= 2 ? [th, r] : [th]; },
   pol2cart: async (a, n) => { const TH = m(a[0]), R = m(a[1]); const x = elementwise(R, TH, (r, t) => r * Math.cos(t)); const y = elementwise(R, TH, (r, t) => r * Math.sin(t)); return n >= 2 ? [x, y] : [x]; },
@@ -3888,7 +3893,28 @@ function gammaFn(x: number): number {
   for (let i = 1; i < g + 2; i++) a += c[i] / (x + i);
   return Math.sqrt(2 * Math.PI) * Math.pow(t, x + 0.5) * Math.exp(-t) * a;
 }
-function logGamma(x: number): number { return Math.log(Math.abs(gammaFn(x))); }
+/** Element-wise function of three arrays, with scalar broadcasting (shape from the largest). */
+function broadcast3(A: Mat, B: Mat, C: Mat, f: (x: number, y: number, z: number) => number): Mat {
+  const shape = [A, B, C].reduce((s, M) => (numel(M) > numel(s) ? M : s), A);
+  const n = numel(shape);
+  const at = (M: Mat, i: number) => (M.data.length === 1 ? M.data[0] : M.data[i]);
+  const out = zeros(shape.rows, shape.cols); if (shape.nd) out.nd = shape.nd.slice();
+  for (let i = 0; i < n; i++) out.data[i] = f(at(A, i), at(B, i), at(C, i));
+  return out;
+}
+// Log-gamma computed directly (Lanczos) so it doesn't overflow the way log(gamma(x))
+// does for x ≳ 171 — fixes gammaln/betaln/etc. on large arguments.
+const LGAMMA_C = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+function logGamma(x: number): number {
+  if (Number.isNaN(x)) return NaN;
+  if (x <= 0 && x === Math.floor(x)) return Infinity;              // poles at 0, -1, -2, ...
+  if (x < 0.5) return Math.log(Math.abs(Math.PI / Math.sin(Math.PI * x))) - logGamma(1 - x);  // reflection
+  x -= 1;
+  let a = LGAMMA_C[0];
+  const t = x + 7.5;
+  for (let i = 1; i < 9; i++) a += LGAMMA_C[i] / (x + i);
+  return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a);
+}
 
 /** Error function (Abramowitz & Stegun 7.1.26). */
 function erfFn(x: number): number {

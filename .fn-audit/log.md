@@ -41,3 +41,7 @@ Fixed: bandwidth 'lower'/'upper' option; base2dec string/char-matrix arrays; add
 (gem/glow palettes) + rgb2hex matrix->hex string array (unblocks bar/barh/animatedline palette examples).
 Remaining: bar-chart handle-object property edits + bctree node-tables (graphics/graph-table). 13/130.
 Build green; 1413 builtins, 0 without help.
+## Batch 8 (fns 71-80): beep besselh besseli besselj besselk bessely beta betainc betaincinv betaln
+Fixed: logGamma/gammaln OVERFLOW for x>=171 (was log(abs(gamma(x)))->Inf/NaN; now Lanczos direct) —
+broad fix for betaln & stats; betainc vectorized over (X,Z,W) + 'upper' tail; format rat (p/q display).
+All 35 examples pass. Build green; 1413 builtins, 0 without help.

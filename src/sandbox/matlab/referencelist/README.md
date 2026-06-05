@@ -183,3 +183,28 @@ Status legend: ✅ converged · 🟡 partial (core works, some variants unsuppor
 - `base2dec` handles string arrays and multi-row char arrays, returning one value per element.
 - `orderedcolors(name)` **added** (gem/glow palettes; default 7-color order) and `rgb2hex` now converts an N×3 RGB matrix to a string array of `#RRGGBB` codes. These unblock bar/barh/animatedline examples that build a palette.
 - Rich ≥10-line help added for all batch-7 functions.
+
+---
+
+## Batch 8 — functions 71–80 (special functions)
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `beep` | ✅ | accepted (on/off) | no audio device in the sandbox (silent) |
+| `besselh` | ✅ | Hankel H^(1)/H^(2), scaled form | — |
+| `besseli` | ✅ | modified Bessel I, scaled form | — |
+| `besselj` | ✅ | Bessel J (real & complex) | — |
+| `besselk` | ✅ | modified Bessel K, scaled form | — |
+| `bessely` | ✅ | Bessel Y / Neumann | — |
+| `beta` | ✅ | beta function; now displays under `format rat` | — |
+| `betainc` | ✅ | **fixed**: vectorized over all 3 args; `'upper'` tail | — |
+| `betaincinv` | ✅ | inverse incomplete beta | — |
+| `betaln` | ✅ | **fixed**: accurate for large args (no overflow) | — |
+
+### Fixes landed in this batch (one is broad)
+- **`logGamma`/`gammaln` overflow fixed**: it was computed as `log(abs(gamma(x)))`, which returns `Inf`/`NaN` for `x ≳ 171`. Reimplemented directly via Lanczos, so `gammaln`, `betaln`, and any statistics code using log-gamma now work for large arguments (`betaln(510,510) = -708.8616`).
+- `betainc` now broadcasts over `(X,Z,W)` element-wise and supports the `'upper'` tail.
+- `format rat` implemented: numbers display as continued-fraction `p/q` approximations (`beta((1:10)',3)` → `1/3 1/12 1/30 ...`).
+- Rich ≥10-line help added for all batch-8 functions.
+
+All 35 batch-8 examples pass.

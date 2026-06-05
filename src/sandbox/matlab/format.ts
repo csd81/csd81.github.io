@@ -20,7 +20,7 @@ function complexMatrixLines(m: Mat): string[] {
 
 // ── Number / matrix display ────────────────────────────────────────────
 /** Display precision, set by the `format` command (short = default). */
-let fmtMode: 'short' | 'long' | 'shorte' | 'longe' | 'shortg' | 'longg' = 'short';
+let fmtMode: 'short' | 'long' | 'shorte' | 'longe' | 'shortg' | 'longg' | 'rat' = 'short';
 export function setFormatMode(m: string): void {
   const k = m.toLowerCase().replace(/\s+/g, '');
   if (k === '' || k === 'short') fmtMode = 'short';
@@ -29,13 +29,31 @@ export function setFormatMode(m: string): void {
   else if (k === 'longe') fmtMode = 'longe';
   else if (k === 'shortg') fmtMode = 'shortg';
   else if (k === 'longg') fmtMode = 'longg';
-  // other format options (compact/loose/hex/bank/rat…) are accepted but don't change numeric precision
+  else if (k === 'rat' || k === 'rational') fmtMode = 'rat';
+  // other format options (compact/loose/hex/bank…) are accepted but don't change numeric precision
+}
+/** MATLAB `format rat`: approximate x by a fraction p/q via continued fractions. */
+function toRational(x: number): string {
+  if (Number.isNaN(x)) return '*';
+  if (!Number.isFinite(x)) return x > 0 ? '1/0' : '-1/0';
+  if (x === 0) return '0';
+  const neg = x < 0; let b = Math.abs(x);
+  let h1 = 1, h0 = 0, k1 = 0, k0 = 1; const tol = 1e-6 * Math.abs(x);
+  for (let i = 0; i < 25; i++) {
+    const a = Math.floor(b);
+    [h1, h0] = [a * h1 + h0, h1]; [k1, k0] = [a * k1 + k0, k1];
+    if (Math.abs(h1 / k1 - Math.abs(x)) <= tol || b === a || k1 > 1e9) break;
+    b = 1 / (b - a);
+  }
+  const s = k1 === 1 ? `${h1}` : `${h1}/${k1}`;
+  return neg ? `-${s}` : s;
 }
 const z2 = (s: string) => s.replace(/e([+-])(\d)$/, 'e$10$2');   // MATLAB pads the exponent to ≥2 digits
 export function formatScalar(x: number): string {
-  if (Number.isNaN(x)) return 'NaN';
-  if (x === Infinity) return 'Inf';
-  if (x === -Infinity) return '-Inf';
+  if (Number.isNaN(x)) return fmtMode === 'rat' ? '*' : 'NaN';
+  if (x === Infinity) return fmtMode === 'rat' ? '1/0' : 'Inf';
+  if (x === -Infinity) return fmtMode === 'rat' ? '-1/0' : '-Inf';
+  if (fmtMode === 'rat') return toRational(x);
   if (Number.isInteger(x) && Math.abs(x) < 1e15) return String(x);
   const a = Math.abs(x);
   switch (fmtMode) {
