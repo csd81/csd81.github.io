@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **100 / 1170** audited.
+Progress: **110 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -105,3 +105,13 @@ Progress: **100 / 1170** audited.
 | 98 | `boundaryFacets` | 🟡 | facets; 2-output pending |
 | 99 | `boundaryshape` | 🟡 | tri->polyshape |
 | 100 | `boundingbox` | 🟡 | bbox; holes pending |
+| 101 | `bounds` | ✅ | dim/vecdim/'all'/N-D |
+| 102 | `box` | ✅ | axes outline |
+| 103 | `brighten` | ✅ | colormap brighten |
+| 104 | `bsxfun` | ✅ | implicit expansion |
+| 105 | `bvp4c` | 🟡 | solver; page-local fns/plots |
+| 106 | `bvp5c` | 🟡 | solver; page-local fns/plots |
+| 107 | `bvpget` | ✅ | read BVP option |
+| 108 | `bvpinit` | 🟡 | guess struct; chains to bvp4c |
+| 109 | `bvpset` | ✅ | BVP options struct |
+| 110 | `bvpxtend` | ✅ | extend BVP solution |

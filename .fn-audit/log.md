@@ -55,3 +55,7 @@ Fixed: dec2bin/dec2hex/dec2base vectorization (char matrix); MULTI-ROW CHAR DISP
 vertcat preserves isChar (['ab';'cd']); bitshift/bitset assumedtype masking + bitset vectorize;
 boundary matrix/3-D input (area/volume). 40/47. Remaining: int-type tracking, groot, polyshape-holes.
 Build green; 1415 builtins, 0 without help. *** 100/1170 functions audited (10 batches) ***
+## Batch 11 (fns 101-110): bounds box brighten bsxfun bvp4c bvp5c bvpget bvpinit bvpset bvpxtend
+Fixed: bounds dim/vecdim/'all'/N-D (mirrors all/any). box/brighten/bsxfun/bvpget/bvpset/bvpxtend pass.
+bvp4c/bvp5c/bvpinit examples blocked by page-local functions (@guess/@bvpfcn) harness can't resolve.
+bounds N-D "failures" are cross-example leaks (work in isolation). Build green; 1415 builtins, 0 without help.

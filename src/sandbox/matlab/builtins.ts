@@ -3038,7 +3038,19 @@ export const BUILTINS: Record<string, Builtin> = {
   var: async (a) => { const w = a.length >= 2 && isMat(a[1]) && toArray(a[1]).length === 1 ? asScalar(a[1]) : 0; return ret(colReduce(m(a[0]), (c) => variance(c, w))); },
   mode: async (a) => ret(colReduce(m(a[0]), modeOf)),
   iqr: async (a) => ret(colReduce(m(a[0]), (c) => { const s = [...c].sort((x, y) => x - y); return pctile(s, 75) - pctile(s, 25); })),
-  bounds: async (a, n) => { const A = m(a[0]); const lo = colReduce(A, (c) => Math.min(...c)); const hi = colReduce(A, (c) => Math.max(...c)); return n >= 2 ? [lo, hi] : [lo]; },
+  bounds: async (a, n) => {
+    const A = m(a[0]);
+    const opt = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar)) ? asString(a[1]).toLowerCase() : null;
+    const fmin = (s: number, x: number) => Math.min(s, x), fmax = (s: number, x: number) => Math.max(s, x);
+    let lo: Mat, hi: Mat;
+    if (opt === 'all') { const arr = toArray(A); lo = scalar(Math.min(...arr)); hi = scalar(Math.max(...arr)); }
+    else if (a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar && numel(a[1]) > 0) {
+      const dims = toArray(a[1]).map((x) => Math.round(x));
+      lo = dims.reduce((acc, d) => reduce(acc, d, Infinity, fmin), A);
+      hi = dims.reduce((acc, d) => reduce(acc, d, -Infinity, fmax), A);
+    } else { lo = reduce(A, undefined, Infinity, fmin); hi = reduce(A, undefined, -Infinity, fmax); }
+    return n >= 2 ? [lo, hi] : [lo];
+  },
   mink: async (a) => { const A = m(a[0]); const k = Math.round(asScalar(a[1])); const s = toArray(A).sort((x, y) => x - y).slice(0, k); return ret(A.rows === 1 ? rowVec(s) : colVec(s)); },
   maxk: async (a) => { const A = m(a[0]); const k = Math.round(asScalar(a[1])); const s = toArray(A).sort((x, y) => y - x).slice(0, k); return ret(A.rows === 1 ? rowVec(s) : colVec(s)); },
   prctile: async (a) => { const A = m(a[0]); const s = toArray(A).sort((x, y) => x - y); const P = m(a[1]); const out = map(P, (p) => pctile(s, p)); return ret(out); },

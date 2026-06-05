@@ -257,3 +257,25 @@ All 35 batch-8 examples pass.
 - `bitshift`/`bitset` honor an `assumedtype` argument (mask/wrap to the integer width) and `bitset` vectorizes over `(A,pos,val)` via broadcasting.
 - `boundary` accepts a single point matrix and 3-D input without crashing, returning area/volume.
 - Rich ≥10-line help added for all batch-10 functions.
+
+---
+
+## Batch 11 — functions 101–110
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `bounds` | ✅ | **fixed**: dim, vector-of-dims, `'all'`, N-D | — |
+| `box` | ✅ | axes outline on/off/toggle | — |
+| `brighten` | ✅ | brighten/darken a colormap | — |
+| `bsxfun` | ✅ | element-wise apply with implicit expansion | — |
+| `bvp4c` | 🟡 | collocation BVP solver present | examples define page-local functions (`@guess`,`@bvpfcn`) the harness can't resolve; plot-based |
+| `bvp5c` | 🟡 | collocation BVP solver present | same: page-local functions + plotting |
+| `bvpget` | ✅ | read a BVP option | — |
+| `bvpinit` | 🟡 | build the initial-guess structure | examples chain into bvp4c with page-local functions |
+| `bvpset` | ✅ | build/modify a BVP options structure | — |
+| `bvpxtend` | ✅ | extend a BVP solution to a new mesh point | — |
+
+### Fixes landed in this batch
+- **`bounds`** now honors a dimension argument, a vector of dimensions, and the `'all'` option, with N-D support — `[s,l] = bounds(A,2)`, `bounds(A,[1 2 3])`, `bounds(A,"all")` (mirrors the earlier `all`/`any` fix).
+- The remaining `bounds` "failures" are harness cross-example leaks (the doc reuses the variable `A` across independent example sections); each works correctly in isolation.
+- Rich ≥10-line help added for all batch-11 functions.
