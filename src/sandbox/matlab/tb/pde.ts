@@ -14,7 +14,7 @@
 // All MATLAB indices are 1-based; the wrappers translate to/from 0-based here.
 import type { Builtin } from '../builtins';
 import {
-  type Value, type Mat, isMat, rowVec, colVec,
+  type Value, type Mat, isMat, rowVec, colVec, MatError,
   zeros, mat, toArray, asString, asScalar, toMat as m, sparseFromTriplets,
 } from '../values';
 import type { ToolboxModule } from './types';
@@ -88,6 +88,16 @@ function pdesdtCore(t: number[][], sdl?: number[]): number[] {
   return out;
 }
 
+/** Expand a PDE coefficient row (constant scalar, or per-triangle 1×nt) to length nt.
+ *  Throws on the text-expression form, which would need a MATLAB expression evaluator. */
+function coefRow(M: Mat, rowIdx: number, nrows: number, nt: number): number[] {
+  if (M.isChar) throw new MatError('pde: text-expression coefficients are not supported in the sandbox — pass numeric (constant or 1×nt) coefficients');
+  const cols = M.cols;
+  if (cols === 1) return new Array<number>(nt).fill(M.data[rowIdx]);
+  if (cols === nt) { const out = new Array<number>(nt); for (let j = 0; j < nt; j++) out[j] = M.data[rowIdx + j * nrows]; return out; }
+  throw new MatError(`pde: coefficient must be a scalar or have ${nt} columns (one per triangle), got ${nrows}×${cols}`);
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 //  1-D discrete sine transform (DST-I) — backing poicalc
 // ════════════════════════════════════════════════════════════════════════════
@@ -116,6 +126,59 @@ function tridiagSolve(d: number[], e: number[], rhs: number[]): number[] {
 // ════════════════════════════════════════════════════════════════════════════
 
 const builtins: Record<string, Builtin> = {
+  /** [K,M,F]=assema(p,t,c,a,f) — assemble FEM stiffness K, mass M and load F for a scalar
+   *  2-D PDE -div(c·grad u)+a·u=f. c may have 1-4 rows (isotropic, diagonal, symmetric, or
+   *  full 2×2 tensor); a and f are scalar. Coefficients are numeric (constant or 1×nt). */
+  assema: async (a) => {
+    const p = rowsOf(m(a[0])), t = rowsOf(m(a[1])); const cM = m(a[2]), aM = m(a[3]), fM = m(a[4]);
+    const np = p[0].length, nt = t[0].length;
+    const g = pdetrgCore(p, t);
+    const it1 = t[0], it2 = t[1], it3 = t[2];
+    // ── stiffness K (pdeasmc) ──
+    const nrc = cM.rows; const cc = Array.from({ length: nrc }, (_, k) => coefRow(cM, k, nrc, nt));
+    const ki: number[] = [], kj: number[] = [], kv: number[] = [];
+    const kadd = (i: number[], j: number[], v: number[]) => { for (let e = 0; e < nt; e++) { ki.push(i[e]); kj.push(j[e]); kv.push(v[e]); } };
+    const dot = (ax: number[], ay: number[], bx: number[], by: number[], e: number) => ax[e] * bx[e] + ay[e] * by[e];
+    if (nrc >= 1 && nrc <= 3) {
+      const c1 = new Array<number>(nt), c2 = new Array<number>(nt), c3 = new Array<number>(nt);
+      for (let e = 0; e < nt; e++) {
+        const ar = g.ar[e];
+        if (nrc === 1) { const c = cc[0][e]; c3[e] = c * dot(g.g1x, g.g1y, g.g2x, g.g2y, e) * ar; c1[e] = c * dot(g.g2x, g.g2y, g.g3x, g.g3y, e) * ar; c2[e] = c * dot(g.g3x, g.g3y, g.g1x, g.g1y, e) * ar; }
+        else if (nrc === 2) { const a1 = cc[0][e], a2 = cc[1][e]; c3[e] = (a1 * g.g1x[e] * g.g2x[e] + a2 * g.g1y[e] * g.g2y[e]) * ar; c1[e] = (a1 * g.g2x[e] * g.g3x[e] + a2 * g.g2y[e] * g.g3y[e]) * ar; c2[e] = (a1 * g.g3x[e] * g.g1x[e] + a2 * g.g3y[e] * g.g1y[e]) * ar; }
+        else { const a1 = cc[0][e], a2 = cc[1][e], a3 = cc[2][e]; c3[e] = (a1 * g.g1x[e] * g.g2x[e] + a2 * (g.g1x[e] * g.g2y[e] + g.g1y[e] * g.g2x[e]) + a3 * g.g1y[e] * g.g2y[e]) * ar; c1[e] = (a1 * g.g2x[e] * g.g3x[e] + a2 * (g.g2x[e] * g.g3y[e] + g.g2y[e] * g.g3x[e]) + a3 * g.g2y[e] * g.g3y[e]) * ar; c2[e] = (a1 * g.g3x[e] * g.g1x[e] + a2 * (g.g3x[e] * g.g1y[e] + g.g3y[e] * g.g1x[e]) + a3 * g.g3y[e] * g.g1y[e]) * ar; }
+      }
+      kadd(it1, it2, c3); kadd(it2, it1, c3);    // K + K.' (symmetric)
+      kadd(it2, it3, c1); kadd(it3, it2, c1);
+      kadd(it3, it1, c2); kadd(it1, it3, c2);
+      kadd(it1, it1, c2.map((v, e) => -v - c3[e])); kadd(it2, it2, c3.map((v, e) => -v - c1[e])); kadd(it3, it3, c1.map((v, e) => -v - c2[e]));
+    } else if (nrc === 4) {
+      const c12 = new Array<number>(nt), c23 = new Array<number>(nt), c31 = new Array<number>(nt), c21 = new Array<number>(nt), c32 = new Array<number>(nt), c13 = new Array<number>(nt);
+      const ten = (gax: number, gay: number, gbx: number, gby: number, e: number) => cc[0][e] * gax * gbx + cc[1][e] * gay * gbx + cc[2][e] * gax * gby + cc[3][e] * gay * gby;
+      for (let e = 0; e < nt; e++) {
+        const ar = g.ar[e];
+        c12[e] = ten(g.g1x[e], g.g1y[e], g.g2x[e], g.g2y[e], e) * ar; c23[e] = ten(g.g2x[e], g.g2y[e], g.g3x[e], g.g3y[e], e) * ar; c31[e] = ten(g.g3x[e], g.g3y[e], g.g1x[e], g.g1y[e], e) * ar;
+        c21[e] = ten(g.g2x[e], g.g2y[e], g.g1x[e], g.g1y[e], e) * ar; c32[e] = ten(g.g3x[e], g.g3y[e], g.g2x[e], g.g2y[e], e) * ar; c13[e] = ten(g.g1x[e], g.g1y[e], g.g3x[e], g.g3y[e], e) * ar;
+      }
+      kadd(it1, it2, c12); kadd(it2, it3, c23); kadd(it3, it1, c31); kadd(it2, it1, c21); kadd(it3, it2, c32); kadd(it1, it3, c13);
+      kadd(it1, it1, c12.map((v, e) => -v - c13[e])); kadd(it2, it2, c23.map((v, e) => -v - c21[e])); kadd(it3, it3, c31.map((v, e) => -v - c32[e]));
+    } else throw new MatError(`pde: assema expects c with 1-4 rows for a scalar PDE, got ${nrc}`);
+    const K = sparseFromTriplets(np, np, ki, kj, kv);
+    // ── mass M (pdeasma): aod=a·ar/12, ad=2·aod ──
+    const av = coefRow(aM, 0, aM.rows, nt);
+    const mi: number[] = [], mj: number[] = [], mv: number[] = [];
+    for (let e = 0; e < nt; e++) {
+      const aod = av[e] * g.ar[e] / 12, ad = 2 * aod;
+      mi.push(it1[e], it2[e], it2[e], it3[e], it3[e], it1[e], it1[e], it2[e], it3[e]);
+      mj.push(it2[e], it1[e], it3[e], it2[e], it1[e], it3[e], it1[e], it2[e], it3[e]);
+      mv.push(aod, aod, aod, aod, aod, aod, ad, ad, ad);
+    }
+    const Mmat = sparseFromTriplets(np, np, mi, mj, mv);
+    // ── load F (pdeasmf): f·ar/3 lumped to the 3 corners ──
+    const fv = coefRow(fM, 0, fM.rows, nt); const F = zeros(np, 1);
+    for (let e = 0; e < nt; e++) { const fe = fv[e] * g.ar[e] / 3; F.data[it1[e] - 1] += fe; F.data[it2[e] - 1] += fe; F.data[it3[e] - 1] += fe; }
+    return [K, Mmat, F];
+  },
+
   /** [ar,g1x,g1y,g2x,g2y,g3x,g3y]=pdetrg(p,t) | [ar,a1,a2,a3]=pdetrg(p,t) (nargout==4). */
   pdetrg: async (a, nargout) => {
     const p = rowsOf(m(a[0])), t = rowsOf(m(a[1])); const g = pdetrgCore(p, t);
@@ -352,6 +415,7 @@ export const Pde: ToolboxModule = {
   docBase: 'https://www.mathworks.com/help/pde/ref/',
   builtins,
   help: {
+    assema: 'Assemble area integral contributions (stiffness, mass, load) for a scalar PDE',
     pdetrg: 'Triangle geometry data (area, base-function gradients or cotangents)',
     pdetriq: 'Triangle quality measure',
     pdeintrp: 'Interpolate from node data to triangle-midpoint data',

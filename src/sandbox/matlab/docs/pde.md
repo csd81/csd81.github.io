@@ -222,6 +222,7 @@ oracle-exact against live MATLAB.
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
+| ✅ | `assema` | Assemble FEM stiffness/mass/load (`[K,M,F]`) for a scalar PDE (numeric c with 1–4 rows, a, f) |
 | ✅ | `pdetrg` | Triangle geometry data (area + base-function gradients or cotangents) |
 | ✅ | `pdetriq` | Triangle quality measure |
 | ✅ | `pdeintrp` | Interpolate from node data to triangle-midpoint data |
