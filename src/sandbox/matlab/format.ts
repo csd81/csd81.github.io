@@ -90,13 +90,14 @@ function allIntegers(m: Mat): boolean {
 export function matrixLines(m: Mat): string[] {
   if (numel(m) === 0) return ['[]'];
   const ints = allIntegers(m);
+  const isInt = !!m.itype && m.itype !== 'single' && m.itype !== 'double';   // integer class → always full integer
   const cells: string[][] = [];
   let width = 0;
   for (let r = 0; r < m.rows; r++) {
     const row: string[] = [];
     for (let c = 0; c < m.cols; c++) {
       const v = m.data[r + c * m.rows];
-      const s = ints && Math.abs(v) < 1e15 ? String(v) : formatScalar(v);
+      const s = isInt ? String(Math.round(v)) : ints && Math.abs(v) < 1e15 ? String(v) : formatScalar(v);
       row.push(s);
       width = Math.max(width, s.length);
     }

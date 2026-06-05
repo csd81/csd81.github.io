@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **320 / 1170** audited.
+Progress: **330 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -325,3 +325,13 @@ Progress: **320 / 1170** audited.
 | 318 | `eye` | ✅ | **fixed**: `eye(n,classname)` type argument |
 | 319 | `ezcontour` | 🟡 | renders contour |
 | 320 | `ezcontourf` | 🟡 | renders filled contour |
+| 321 | `ezmesh` | 🟡 | renders 3-D mesh |
+| 322 | `ezmeshc` | 🟡 | renders mesh + contour |
+| 323 | `ezplot` | 🟡 | renders function/implicit curve |
+| 324 | `ezplot3` | 🟡 | renders 3-D parametric curve |
+| 325 | `ezpolar` | 🟡 | renders polar curve |
+| 326 | `ezsurf` | 🟡 | renders 3-D surface |
+| 327 | `ezsurfc` | 🟡 | renders surface + contour |
+| 328 | `faceNormal` | ✅ | unit face normals (3-D triangulation) |
+| 329 | `factor` | ✅ | **fixed**: preserves integer class of input |
+| 330 | `factorial` | ✅ | **fixed**: preserves integer class; full-integer display for int types |

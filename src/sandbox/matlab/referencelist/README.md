@@ -747,3 +747,25 @@ All 35 batch-8 examples pass.
 - **`extractAfter`/`extractBefore`/`extractBetween`**: added the numeric-position forms (`extractAfter(str,pos)`, etc.) and fixed per-element boundary arrays — a string-array boundary is now applied element-by-element instead of collapsing to the first boundary (which made the 2nd element return `""`).
 - **`eye(n,classname)`**: the trailing class-name argument (`"uint32"`, `"single"`, …) is now stripped from the dimension parsing and applied to the result, instead of erroring.
 - Rich ≥10-line help added for all batch-32 functions (incl. new structured `expm`/`expm1`/`expmv`/`extract`/`ezcontourf`).
+
+## Batch 33 — functions 321–330 (ez* plotters · triangulation normals · factor/factorial)
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `ezmesh` | 🟡 | renders a 3-D wireframe mesh | visual only |
+| `ezmeshc` | 🟡 | renders mesh + contour | visual only |
+| `ezplot` | 🟡 | renders a function / implicit / parametric curve | visual only |
+| `ezplot3` | 🟡 | renders a 3-D parametric curve | visual only |
+| `ezpolar` | 🟡 | renders a polar curve | visual only |
+| `ezsurf` | 🟡 | renders a shaded 3-D surface | visual only |
+| `ezsurfc` | 🟡 | renders surface + contour | visual only |
+| `faceNormal` | ✅ | unit face normals of a 3-D triangulation → `faceNormal` of an xy triangle = `[0 0 1]` | 2-D (planar) triangulation has no normal |
+| `factor` | ✅ | **fixed**: preserves the integer class of the input → `factor(uint16(138))` stays uint16 | — |
+| `factorial` | ✅ | **fixed**: preserves integer class; integer-typed values display in full → `factorial(uint64(20))=2432902008176640000` | values past `~21!` lose exactness as double |
+
+### Fixes landed in this batch
+- **`factor` and `factorial` preserve the integer class** of their input (`uint16`, `uint64`, …) instead of always returning double, matching MATLAB.
+- **Integer-typed matrix display**: `matrixLines` now renders integer-class matrices as full integers regardless of magnitude (was switching to `2.4329e+18` exponential past `1e15`), so `factorial(uint64([5 10 15 20]))` shows `… 2432902008176640000`. Double/single display is unchanged.
+- Verified `faceNormal` gives correct unit normals for 3-D surface triangulations.
+- The seven `ez*` plotters are graphics-only (render verified, nothing numeric to assert).
+- Rich ≥10-line help added for all batch-33 functions (incl. new structured `ezmeshc`/`ezsurfc`/`factor`/`factorial`).

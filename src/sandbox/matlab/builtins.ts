@@ -553,7 +553,7 @@ export const BUILTINS: Record<string, Builtin> = {
   // number theory
   gcd: async (a) => ret(elementwise(m(a[0]), m(a[1]), gcd2)),
   lcm: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, y) => (x === 0 || y === 0 ? 0 : Math.abs(x * y) / gcd2(x, y)))),
-  factorial: ew((x) => factorialN(Math.round(x))),
+  factorial: async (a) => { const A = m(a[0]); const r = map(A, (x) => factorialN(Math.round(x))); return ret(A.itype ? applyClass(r, A.itype) : r); },
   nchoosek: async (a) => {
     const n = Math.round(asScalar(a[0])); const k = Math.round(asScalar(a[1]));
     if (k < 0 || k > n) return ret(scalar(0));
@@ -582,10 +582,11 @@ export const BUILTINS: Record<string, Builtin> = {
       const fac = factorSymExpr(s.exprs[0]);            // univariate + multivariate (content + quotient)
       return ret(makeSym(1, fac.length, fac));
     }
-    let n = Math.round(asScalar(a[0])); const orig = n; const out: number[] = [];
+    const A0 = m(a[0]); let n = Math.round(asScalar(A0)); const orig = n; const out: number[] = [];
     for (let d = 2; d * d <= n; d++) while (n % d === 0) { out.push(d); n /= d; }
     if (n > 1) out.push(n);
-    return ret(rowVec(out.length ? out : [orig]));
+    const res = rowVec(out.length ? out : [orig]);
+    return ret(A0.itype ? applyClass(res, A0.itype) : res);   // preserve the integer class of the input
   },
   // ═══════════════════ SPECIAL FUNCTIONS & NUMBER THEORY ═══════════════════
   gamma: ew(gammaFn), gammaln: ew(logGamma),
