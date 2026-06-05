@@ -19,6 +19,7 @@ import { type SymExpr, sN, sV, sAdd, sSub, sMul, sDiv, sPow, sFn, simplifyExpr, 
 const SYM_ELEMENTARY = new Set(['sin', 'cos', 'tan', 'cot', 'sec', 'csc', 'asin', 'acos', 'atan', 'acot', 'asec', 'acsc', 'sinh', 'cosh', 'tanh', 'coth', 'sech', 'csch', 'asinh', 'acosh', 'atanh', 'exp', 'log', 'log10', 'log2', 'sqrt', 'abs', 'sign', 'cbrt', 'gamma', 'gammaln', 'erf', 'erfc', 'factorial', 'conj', 'real', 'imag', 'zeta', 'psi', 'sinc', 'erfi', 'dawson', 'fresnelc', 'fresnels', 'ei', 'logint', 'sinhint', 'coshint', 'ssinint', 'dilog', 'wrightOmega']);
 import { det, inv, mldivide } from './linalg';
 import { BUILTINS, CONSTANTS, builtinHelp, docUrl, type Env } from './builtins';
+import { TOOLBOX_METHODS, METHOD_NAMES } from './tb';
 import { displayValue, dispValue } from './format';
 import { Graphics } from './graphics';
 
@@ -740,6 +741,13 @@ export class Interpreter implements Env {
     }
     // symbolic overload of elementary functions: f(sym) → sFn(f, …)
     if (args.length === 1 && isSym(args[0]) && SYM_ELEMENTARY.has(name)) { const s = args[0]; return [makeSym(s.rows, s.cols, s.exprs.map((e) => simplifyExpr(sFn(name, e))))]; }
+    // OOP method dispatch: a call whose first argument is a class instance routes to that class's
+    // overload (if any), so e.g. `series(tf,…)` → Control while `series(sym,…)` → Symbolic.
+    if (args.length > 0 && METHOD_NAMES.has(name)) {
+      const a0 = args[0]; const cls = a0.kind === 'object' ? a0.className : a0.kind === 'sym' ? 'sym' : a0.kind === 'graph' ? (a0.directed ? 'digraph' : 'graph') : a0.kind === 'geom' ? a0.gkind : undefined;
+      const meth = cls ? TOOLBOX_METHODS.get(cls)?.[name] : undefined;
+      if (meth) return meth(args, nargout, this);
+    }
     if (name in BUILTINS) return BUILTINS[name](args, nargout, this);
     if (args.length === 0 && name in CONSTANTS) return [CONSTANTS[name]()];
     throw new MatError(`undefined function or variable '${name}'`);

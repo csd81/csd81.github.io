@@ -20,4 +20,9 @@ export interface ToolboxModule {
   constants?: Record<string, () => Value>;
   /** Help entries (structured HelpEntry or a one-line summary string) keyed by function name. */
   help: Record<string, HelpEntry | string>;
+  /** Class-method overloads for OOP-style type dispatch: className → (fnName → impl). When a
+   *  function name is owned by multiple toolboxes (e.g. Control `series` vs Symbolic `series`),
+   *  a call whose first argument is of `className` routes here instead of the global builtin —
+   *  matching MATLAB's method dispatch. See tb/index.ts (TOOLBOX_METHODS) + interp.ts. */
+  methods?: Record<string, Record<string, Builtin>>;
 }

@@ -16,20 +16,31 @@ import { CURVEFIT } from './curvefit';
 import { COMM } from './comm';
 import { IMAGES } from './images';
 import { CONTROL } from './control';
+import { MAPPING } from './mapping';
 
 /** All registered toolboxes, in precedence order (first wins on inter-toolbox collision). */
-export const TOOLBOXES: ToolboxModule[] = [SYMBOLIC, STATS, SIGNAL, SIMULINK, FINANCIAL, WAVELET, CURVEFIT, COMM, IMAGES, CONTROL];
+export const TOOLBOXES: ToolboxModule[] = [SYMBOLIC, STATS, SIGNAL, SIMULINK, FINANCIAL, WAVELET, CURVEFIT, COMM, IMAGES, CONTROL, MAPPING];
 
 export const TOOLBOX_BUILTINS: Record<string, Builtin> = {};
 export const TOOLBOX_CONSTANTS: Record<string, () => Value> = {};
 export const TOOLBOX_HELP: Record<string, HelpEntry | string> = {};
 /** Function name → owning toolbox (recorded even when a base builtin later shadows the name). */
 export const FUNC_TOOLBOX = new Map<string, ToolboxModule>();
+/** Class-method dispatch table: className → (fnName → impl). Lets a typed first argument route
+ *  to a toolbox-specific overload (OOP dispatch) instead of the globally-registered builtin. */
+export const TOOLBOX_METHODS = new Map<string, Record<string, Builtin>>();
+/** Set of all method names — a fast guard so the interpreter only type-checks args when relevant. */
+export const METHOD_NAMES = new Set<string>();
 
 for (const tb of TOOLBOXES) {
   for (const [name, fn] of Object.entries(tb.builtins)) {
     if (!(name in TOOLBOX_BUILTINS)) TOOLBOX_BUILTINS[name] = fn;
     if (!FUNC_TOOLBOX.has(name)) FUNC_TOOLBOX.set(name, tb);
+  }
+  if (tb.methods) for (const [cls, table] of Object.entries(tb.methods)) {
+    const existing = TOOLBOX_METHODS.get(cls) ?? {};
+    for (const [fn, impl] of Object.entries(table)) { if (!(fn in existing)) existing[fn] = impl; METHOD_NAMES.add(fn); if (!FUNC_TOOLBOX.has(fn)) FUNC_TOOLBOX.set(fn, tb); }
+    TOOLBOX_METHODS.set(cls, existing);
   }
   if (tb.constants) for (const [k, v] of Object.entries(tb.constants)) if (!(k in TOOLBOX_CONSTANTS)) TOOLBOX_CONSTANTS[k] = v;
   for (const [k, h] of Object.entries(tb.help)) if (!(k in TOOLBOX_HELP)) TOOLBOX_HELP[k] = h;
