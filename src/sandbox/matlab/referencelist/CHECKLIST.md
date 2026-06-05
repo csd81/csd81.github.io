@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **140 / 1170** audited.
+Progress: **150 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -145,3 +145,13 @@ Progress: **140 / 1170** audited.
 | 138 | `cla` | 🟡 | accepted; not rendered |
 | 139 | `class` | ✅ | class-name |
 | 140 | `clc` | ✅ | clear window |
+| 141 | `clear` | 🟡 | removes vars; whos format |
+| 142 | `clearpoints` | ✅ | clear animated line |
+| 143 | `clf` | 🟡 | accepted; not rendered |
+| 144 | `clim` | 🟡 | setter; not rendered |
+| 145 | `clip` | ✅ | array bounds via broadcast |
+| 146 | `clock` | 🟡 | live clock (non-deterministic) |
+| 147 | `close` | 🟡 | accepted; not rendered |
+| 148 | `cmap2gray` | 🟡 | needs image dataset |
+| 149 | `cnotGate` | 🟡 | gate object |
+| 150 | `colamd` | 🟡 | needs west0479 dataset |

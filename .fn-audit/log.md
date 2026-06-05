@@ -73,3 +73,7 @@ Build green; 1419 builtins, 0 without help.
 Fixed: chol 'lower' factor + [R,flag] non-erroring 2-output; circshift dim argument; char string/cellstr/
 multi-arg -> char matrix. cgs/circumcenter dataset-blocked; class java/clc rand non-matchable.
 Build green; 1419 builtins, 0 without help.
+## Batch 15 (fns 141-150): clear clearpoints clf clim clip clock close cmap2gray cnotGate colamd
+Fixed: clip vector/array bounds; broadcast3 upgraded to 2-D implicit expansion (benefits betainc/bitset/clip).
+Remaining mostly graphics (clf/clim/close/clear), non-deterministic clock, datasets (cmap2gray/colamd), quantum.
+Build green; 1419 builtins, 0 without help. *** 150/1170 audited (15 batches) ***

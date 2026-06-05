@@ -353,3 +353,25 @@ All 35 batch-8 examples pass.
 - **`circshift(A,K,dim)`** honors the dimension argument (was ignoring it and shifting dim 1).
 - **`char`** accepts string arrays, cellstr, multi-row numeric input, and multiple stacked arguments, building a space-padded char matrix.
 - Rich ≥10-line help added for all batch-14 functions.
+
+---
+
+## Batch 15 — functions 141–150
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `clear` | 🟡 | remove workspace variables | `whos` byte report format |
+| `clearpoints` | ✅ | clear an animated line | — |
+| `clf` | 🟡 | clear-figure accepted | nothing rendered to verify |
+| `clim` | 🟡 | color-limit setter accepted | not rendered |
+| `clip` | ✅ | **fixed**: vector/array `lower`/`upper` via implicit expansion | table `DataVariables` form pending |
+| `clock` | 🟡 | current time as 1×6 | output is the live clock (non-deterministic) |
+| `close` | 🟡 | close-figure accepted | nothing rendered to verify |
+| `cmap2gray` | 🟡 | colormap→grayscale | doc examples need `clown.mat` image data |
+| `cnotGate` | 🟡 | CNOT gate object | gate-matrix display detail |
+| `colamd` | 🟡 | column min-degree ordering | doc examples need `west0479` dataset |
+
+### Fixes landed in this batch
+- **`clip`** now accepts vector/array `lower` and `upper` bounds, broadcasting them against `X`.
+- **`broadcast3` upgraded to 2-D implicit expansion** (singleton rows/columns broadcast, not just scalars) — this also benefits `betainc` and `bitset`, e.g. `clip(X,[1 2 3 4],6)` clips each column to its own lower bound.
+- Rich ≥10-line help added for all batch-15 functions.

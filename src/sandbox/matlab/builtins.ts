@@ -1289,7 +1289,7 @@ export const BUILTINS: Record<string, Builtin> = {
   smoothdata2: async (a) => { const A = m(a[0]); const k = a.length >= 2 ? Math.round(asScalar(a[1])) : 3; return ret(smooth2(A, k)); },
   normalize: async (a) => { const method = a.length >= 2 && isMat(a[1]) && (a[1] as Mat).isChar ? asString(a[1]) : 'zscore'; return ret(colMap(m(a[0]), (c) => normalizeVec(c, method))); },
   rescale: async (a) => { const A = m(a[0]); const lo = a.length >= 2 ? asScalar(a[1]) : 0, hi = a.length >= 3 ? asScalar(a[2]) : 1; const mn = Math.min(...toArray(A)), mx = Math.max(...toArray(A)); const d = mx - mn || 1; return ret(map(A, (x) => lo + (hi - lo) * (x - mn) / d)); },
-  clip: async (a) => { const lo = asScalar(a[1]), hi = asScalar(a[2]); return ret(map(m(a[0]), (x) => Math.min(hi, Math.max(lo, x)))); },
+  clip: async (a) => ret(broadcast3(m(a[0]), m(a[1]), m(a[2]), (x, lo, hi) => Math.min(hi, Math.max(lo, x)))),
   isoutlier: async (a) => { const A = m(a[0]); const r = colMap(A, (c) => outlierMask(c)); r.isBool = true; return [r]; },
   filloutliers: async (a) => { const A = m(a[0]); const fillNum = a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar ? asScalar(a[1]) : null; return ret(colMap(A, (c) => fillOutliersVec(c, fillNum))); },
   rmoutliers: async (a) => { const c = toArray(m(a[0])); const mask = outlierMask(c); const kept = c.filter((_, i) => mask[i] === 0); return ret(m(a[0]).cols === 1 ? colVec(kept) : rowVec(kept)); },
@@ -4014,13 +4014,12 @@ function gammaFn(x: number): number {
   for (let i = 1; i < g + 2; i++) a += c[i] / (x + i);
   return Math.sqrt(2 * Math.PI) * Math.pow(t, x + 0.5) * Math.exp(-t) * a;
 }
-/** Element-wise function of three arrays, with scalar broadcasting (shape from the largest). */
+/** Element-wise function of three arrays with 2-D implicit expansion (singleton dims broadcast). */
 function broadcast3(A: Mat, B: Mat, C: Mat, f: (x: number, y: number, z: number) => number): Mat {
-  const shape = [A, B, C].reduce((s, M) => (numel(M) > numel(s) ? M : s), A);
-  const n = numel(shape);
-  const at = (M: Mat, i: number) => (M.data.length === 1 ? M.data[0] : M.data[i]);
-  const out = zeros(shape.rows, shape.cols); if (shape.nd) out.nd = shape.nd.slice();
-  for (let i = 0; i < n; i++) out.data[i] = f(at(A, i), at(B, i), at(C, i));
+  const R = Math.max(A.rows, B.rows, C.rows), Cc = Math.max(A.cols, B.cols, C.cols);
+  const at = (M: Mat, r: number, c: number) => M.data[(M.rows === 1 ? 0 : r) + (M.cols === 1 ? 0 : c) * M.rows];
+  const out = zeros(R, Cc);
+  for (let c = 0; c < Cc; c++) for (let r = 0; r < R; r++) out.data[r + c * R] = f(at(A, r, c), at(B, r, c), at(C, r, c));
   return out;
 }
 // Log-gamma computed directly (Lanczos) so it doesn't overflow the way log(gamma(x))
