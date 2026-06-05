@@ -63,6 +63,8 @@ function betainc(x: number, a: number, b: number): number {
 function erf(x: number): number { return x < 0 ? -gammainc(x * x, 0.5) : gammainc(x * x, 0.5); }
 function erfc(x: number): number { return 1 - erf(x); }
 function nCk(n: number, k: number): number { if (k < 0 || k > n) return 0; return Math.exp(logGamma(n + 1) - logGamma(k + 1) - logGamma(n - k + 1)); }
+/** log of n-choose-k (log-domain, safe for large populations). */
+function lchoose(n: number, k: number): number { return logGamma(n + 1) - logGamma(k + 1) - logGamma(n - k + 1); }
 /** Standard-normal inverse CDF (Acklam) + one Halley refinement. */
 function norminvStd(p: number): number {
   if (p <= 0) return -Infinity; if (p >= 1) return Infinity;
@@ -224,6 +226,72 @@ export const STATS: ToolboxModule = {
     raylstat: (a, n) => { const b = asScalar(a[0]); return statRet(n, b * Math.sqrt(Math.PI / 2), (4 - Math.PI) / 2 * b * b); },
     wblstat: (a, n) => { const A = asScalar(a[0]), B = asScalar(a[1]); const g1 = Math.exp(logGamma(1 + 1 / B)), g2 = Math.exp(logGamma(1 + 2 / B)); return statRet(n, A * g1, A * A * (g2 - g1 * g1)); },
 
+    // ── Type-1 extreme value (Gumbel, minima): evpdf(x,mu,sigma) — z=(x-mu)/sigma ──
+    evpdf: (a) => dist(a, [0, 1], (x, mu, s) => (s <= 0 ? NaN : (() => { const z = (x - mu) / s; return Math.exp(z - Math.exp(z)) / s; })())),
+    evcdf: (a) => dist(a, [0, 1], (x, mu, s) => (s <= 0 ? NaN : -Math.expm1(-Math.exp((x - mu) / s)))),
+    evinv: (a) => dist(a, [0, 1], (p, mu, s) => mu + s * Math.log(-Math.log(1 - p))),
+    evstat: (a, n) => { const mu = asScalar(a[0]), s = asScalar(a[1]); return statRet(n, mu - 0.5772156649015329 * s, (Math.PI * s) ** 2 / 6); },
+
+    // ── generalized extreme value: gevpdf(x,k,sigma,mu) — note param order (k,sigma,mu) ──
+    gevpdf: (a) => dist(a, [0, 1, 0], (x, k, s, mu) => {
+      if (s <= 0) return NaN; const z = (x - mu) / s;
+      if (k === 0) return Math.exp(-Math.exp(-z) - z) / s;
+      const t = k * z; if (1 + t <= 0) return 0; const lt = Math.log1p(t);
+      return Math.exp(-Math.exp(-(1 / k) * lt) - (1 + 1 / k) * lt) / s;
+    }),
+    gevcdf: (a) => dist(a, [0, 1, 0], (x, k, s, mu) => {
+      if (s <= 0) return NaN; const z = (x - mu) / s;
+      if (k === 0) return Math.exp(-Math.exp(-z));
+      const t = k * z; if (1 + t <= 0) return k > 0 ? 0 : 1;
+      return Math.exp(-Math.exp(-(1 / k) * Math.log1p(t)));
+    }),
+    gevinv: (a) => dist(a, [0, 1, 0], (p, k, s, mu) => {
+      if (s <= 0) return NaN;
+      const z = k === 0 ? -Math.log(-Math.log(p)) : Math.expm1(-k * Math.log(-Math.log(p))) / k;
+      return mu + s * z;
+    }),
+    gevstat: (a, n) => {
+      const k = asScalar(a[0]), s = asScalar(a[1]), mu = asScalar(a[2]);
+      const mm = Math.abs(k) < 1e-8 ? 0.5772156649015329 : (k < 1 ? Math.expm1(logGamma(1 - k)) / k : Infinity);
+      const vv = Math.abs(k) < 5e-6 ? Math.PI ** 2 / 6 : (k < 0.5 ? (Math.expm1(logGamma(1 - 2 * k)) - Math.expm1(2 * logGamma(1 - k))) / (k * k) : Infinity);
+      return statRet(n, mu + s * mm, s * s * vv);
+    },
+
+    // ── generalized Pareto: gppdf(x,k,sigma,theta) — param order (k,sigma,theta) ──
+    gppdf: (a) => dist(a, [0, 1, 0], (x, k, s, th) => {
+      if (s <= 0) return NaN; const z = (x - th) / s; if (z < 0) return 0;
+      if (k === 0) return Math.exp(-z) / s;
+      const t = k * z; if (1 + t <= 0) return 0;
+      return Math.exp((-1 - 1 / k) * Math.log1p(t)) / s;
+    }),
+    gpcdf: (a) => dist(a, [0, 1, 0], (x, k, s, th) => {
+      if (s <= 0) return NaN; const z = (x - th) / s; if (z < 0) return 0;
+      if (k === 0) return -Math.expm1(-z);
+      const t = k * z; if (1 + t <= 0) return 1;
+      return -Math.expm1((-1 / k) * Math.log1p(t));
+    }),
+    gpinv: (a) => dist(a, [0, 1, 0], (p, k, s, th) => {
+      if (s <= 0) return NaN;
+      const z = k === 0 ? -Math.log1p(-p) : Math.expm1(-k * Math.log1p(-p)) / k;
+      return th + s * z;
+    }),
+    gpstat: (a, n) => {
+      const k = asScalar(a[0]), s = asScalar(a[1]), th = asScalar(a[2]);
+      return statRet(n, th + s * (k < 1 ? 1 / (1 - k) : Infinity), s * s * (k < 0.5 ? 1 / ((1 - k) ** 2 * (1 - 2 * k)) : Infinity));
+    },
+
+    // ── negative binomial: nbinpdf(x,r,p) ──
+    nbinpdf: (a) => dist(a, [1, 0.5], (x, r, p) => (x < 0 || x !== Math.round(x) ? 0 : Math.exp(logGamma(r + x) - logGamma(r) - logGamma(x + 1) + r * Math.log(p) + x * Math.log1p(-p)))),
+    nbincdf: (a) => dist(a, [1, 0.5], (x, r, p) => { x = Math.floor(x); return x < 0 ? 0 : betainc(p, r, x + 1); }),
+    nbininv: (a) => dist(a, [1, 0.5], (pr, r, p) => { if (pr <= 0) return 0; if (pr >= 1) return Infinity; let x = 0; while (betainc(p, r, x + 1) < pr - 1e-12 && x < 1e7) x++; return x; }),
+    nbinstat: (a, n) => { const r = asScalar(a[0]), p = asScalar(a[1]); return statRet(n, r * (1 - p) / p, r * (1 - p) / (p * p)); },
+
+    // ── hypergeometric: hygepdf(x,M,K,N) — M pop, K successes, N draws ──
+    hygepdf: (a) => dist(a, [10, 5, 5], (x, M, K, N) => { x = Math.round(x); if (x < Math.max(0, N - (M - K)) || x > Math.min(K, N)) return 0; return Math.exp(lchoose(K, x) + lchoose(M - K, N - x) - lchoose(M, N)); }),
+    hygecdf: (a) => dist(a, [10, 5, 5], (x, M, K, N) => { x = Math.floor(x); const lo = Math.max(0, N - (M - K)), hi = Math.min(K, N); if (x < lo) return 0; if (x >= hi) return 1; let s = 0; for (let i = lo; i <= x; i++) s += Math.exp(lchoose(K, i) + lchoose(M - K, N - i) - lchoose(M, N)); return Math.min(1, s); }),
+    hygeinv: (a) => dist(a, [10, 5, 5], (pr, M, K, N) => { const lo = Math.max(0, N - (M - K)), hi = Math.min(K, N); if (pr <= 0) return lo; let s = 0; for (let x = lo; x <= hi; x++) { s += Math.exp(lchoose(K, x) + lchoose(M - K, N - x) - lchoose(M, N)); if (s >= pr - 1e-12) return x; } return hi; }),
+    hygestat: (a, n) => { const M = asScalar(a[0]), K = asScalar(a[1]), N = asScalar(a[2]); return statRet(n, N * K / M, N * (K / M) * ((M - K) / M) * ((M - N) / (M - 1))); },
+
     // ── moments ──
     /** moment(X,order) — central moment of the given order (along columns / vector). */
     moment: (a) => ret(colReduceNan(m(a[0]), (c) => { const k = Math.round(asScalar(a[1])); const mu = mean_(c); return c.reduce((s, x) => s + (x - mu) ** k, 0) / c.length; })),
@@ -351,6 +419,11 @@ export const STATS: ToolboxModule = {
     unifstat: 'Uniform mean and variance', gamstat: 'Gamma mean and variance', betastat: 'Beta mean and variance', chi2stat: 'Chi-square mean and variance',
     tstat: "Student's t mean and variance", fstat: 'F mean and variance', lognstat: 'Lognormal mean and variance', geostat: 'Geometric mean and variance',
     raylstat: 'Rayleigh mean and variance', wblstat: 'Weibull mean and variance', moment: 'Central moment of a sample', trimmean: 'Trimmed mean',
+    evpdf: 'Extreme value probability density function', evcdf: 'Extreme value cumulative distribution function', evinv: 'Extreme value inverse cumulative distribution function', evstat: 'Extreme value mean and variance',
+    gevpdf: 'Generalized extreme value probability density function', gevcdf: 'Generalized extreme value cumulative distribution function', gevinv: 'Generalized extreme value inverse cumulative distribution function', gevstat: 'Generalized extreme value mean and variance',
+    gppdf: 'Generalized Pareto probability density function', gpcdf: 'Generalized Pareto cumulative distribution function', gpinv: 'Generalized Pareto inverse cumulative distribution function', gpstat: 'Generalized Pareto mean and variance',
+    nbinpdf: 'Negative binomial probability density function', nbincdf: 'Negative binomial cumulative distribution function', nbininv: 'Negative binomial inverse cumulative distribution function', nbinstat: 'Negative binomial mean and variance',
+    hygepdf: 'Hypergeometric probability density function', hygecdf: 'Hypergeometric cumulative distribution function', hygeinv: 'Hypergeometric inverse cumulative distribution function', hygestat: 'Hypergeometric mean and variance',
     nanmean: 'Mean, ignoring NaN values', nansum: 'Sum, ignoring NaN values', nanstd: 'Standard deviation, ignoring NaN values', nanvar: 'Variance, ignoring NaN values',
     nanmedian: 'Median, ignoring NaN values', nanmax: 'Maximum, ignoring NaN values', nanmin: 'Minimum, ignoring NaN values',
     range: 'Range of values (max − min)', tabulate: 'Frequency table',

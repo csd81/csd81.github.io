@@ -28,3 +28,4 @@ public/videos/
 
 # function-audit scratch harnesses
 /_audit_*.ts
+scratch/
