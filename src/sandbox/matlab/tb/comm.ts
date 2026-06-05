@@ -12,6 +12,17 @@ const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
 /** Rows of a matrix as number[][]. */
 function rows(M: Mat): number[][] { const o: number[][] = []; for (let r = 0; r < M.rows; r++) { const row: number[] = []; for (let c = 0; c < M.cols; c++) row.push(M.data[r + c * M.rows]); o.push(row); } return o; }
 const bitWidth = (v: number) => Math.max(1, Math.floor(Math.log2(Math.max(1, v))) + 1);
+const bin2gray = (v: number) => v ^ (v >>> 1);
+const gray2bin = (v: number) => { let b = 0; for (let t = v; t > 0; t >>>= 1) b ^= t; return b; };
+/** Build a complex Mat (re+im) matching the orientation of src. */
+function cplx(src: Mat, re: number[], im: number[]): Mat { const col = src.cols === 1 && src.rows !== 1; const n = re.length; const o = { kind: 'num' as const, rows: col ? n : 1, cols: col ? 1 : n, data: Float64Array.from(re), idata: Float64Array.from(im) }; return o as Mat; }
+function sameShape(src: Mat, vals: number[]): Mat { const col = src.cols === 1 && src.rows !== 1; const n = vals.length; return { kind: 'num' as const, rows: col ? n : 1, cols: col ? 1 : n, data: Float64Array.from(vals) } as Mat; }
+/** Square-QAM constellation point (I,Q) for symbol s (MATLAB Gray, no UnitAveragePower). */
+function qamPoint(s: number, side: number, kHalf: number): [number, number] { const iIdx = s >>> kHalf, qIdx = s & (side - 1); return [-(side - 1) + 2 * bin2gray(iIdx), (side - 1) - 2 * bin2gray(qIdx)]; }
+/** Modified Bessel I0 (series). */
+function besselI0(x: number): number { let s = 1, t = 1; for (let k = 1; k < 80; k++) { t *= (x / (2 * k)) ** 2; s += t; if (t < s * 1e-16) break; } return s; }
+/** Modified Bessel I_n (series, integer n≥0). */
+function besselIn(n: number, x: number): number { if (n === 0) return besselI0(x); let nf = 1; for (let i = 2; i <= n; i++) nf *= i; let t = (x / 2) ** n / nf, s = t; for (let k = 1; k < 100; k++) { t *= (x * x / 4) / (k * (n + k)); s += t; if (Math.abs(t) < Math.abs(s) * 1e-16) break; } return s; }
 
 export const COMM: ToolboxModule = {
   id: 'comm',
@@ -54,11 +65,45 @@ export const COMM: ToolboxModule = {
     /** bin2gray(x) / gray2bin(x) — integer binary-reflected Gray code (element-wise). */
     bin2gray: (a) => ret(map2(m(a[0]), (v) => v ^ (v >>> 1))),
     gray2bin: (a) => ret(map2(m(a[0]), (v) => { let b = 0; for (let x = v; x; x >>>= 1) b ^= x; return b; })),
+
+    // ── modulation (square QAM + PSK, MATLAB Gray mapping, default scaling) ──
+    qammod: (a) => { const x = toArray(m(a[0])).map((v) => Math.round(v)); const M = Math.round(asScalar(a[1])); const side = Math.round(Math.sqrt(M)), kHalf = Math.round(Math.log2(side)); const re: number[] = [], im: number[] = []; for (const xi of x) { const [I, Q] = qamPoint(xi, side, kHalf); re.push(I); im.push(Q); } return ret(cplx(m(a[0]), re, im)); },
+    pskmod: (a) => { const x = toArray(m(a[0])).map((v) => Math.round(v)); const M = Math.round(asScalar(a[1])); const off = a.length >= 3 && isMat(a[2]) && !(a[2] as Mat).isChar ? asScalar(a[2]) : 0; const re: number[] = [], im: number[] = []; for (const xi of x) { const th = (2 * Math.PI * gray2bin(xi)) / M + off; re.push(Math.cos(th)); im.push(Math.sin(th)); } return ret(cplx(m(a[0]), re, im)); },
+    qamdemod: (a) => {
+      const y = m(a[0]); const M = Math.round(asScalar(a[1])); const side = Math.round(Math.sqrt(M)), kHalf = Math.round(Math.log2(side));
+      const cre: number[] = [], cim: number[] = []; for (let s = 0; s < M; s++) { const [I, Q] = qamPoint(s, side, kHalf); cre.push(I); cim.push(Q); }
+      const yre = toArray(y), yim = y.idata ? Array.from(y.idata) : new Array(yre.length).fill(0);
+      return ret(sameShape(y, yre.map((r, i) => { let best = 0, bd = Infinity; for (let s = 0; s < M; s++) { const d = (r - cre[s]) ** 2 + (yim[i] - cim[s]) ** 2; if (d < bd) { bd = d; best = s; } } return best; })));
+    },
+    pskdemod: (a) => {
+      const y = m(a[0]); const M = Math.round(asScalar(a[1])); const off = a.length >= 3 && isMat(a[2]) && !(a[2] as Mat).isChar ? asScalar(a[2]) : 0;
+      const cre: number[] = [], cim: number[] = []; for (let s = 0; s < M; s++) { const th = (2 * Math.PI * gray2bin(s)) / M + off; cre.push(Math.cos(th)); cim.push(Math.sin(th)); }
+      const yre = toArray(y), yim = y.idata ? Array.from(y.idata) : new Array(yre.length).fill(0);
+      return ret(sameShape(y, yre.map((r, i) => { let best = 0, bd = Infinity; for (let s = 0; s < M; s++) { const d = (r - cre[s]) ** 2 + (yim[i] - cim[s]) ** 2; if (d < bd) { bd = d; best = s; } } return best; })));
+    },
+    /** marcumq(a,b[,m]) — generalized Marcum Q-function (numerical integration). */
+    marcumq: (a) => {
+      const A = asScalar(a[0]), B = asScalar(a[1]); const mm = a.length >= 3 && isMat(a[2]) ? Math.round(asScalar(a[2])) : 1;
+      // Q_m(a,b) = ∫_b^∞ x (x/a)^{m-1} exp(-(x²+a²)/2) I_{m-1}(a x) dx ; Simpson on [b, a+b+30].
+      const lo = B, hi = A + B + 30, N = 4000, h = (hi - lo) / N;
+      const f = (x: number) => x * (A > 0 ? (x / A) ** (mm - 1) : (mm === 1 ? 1 : 0)) * Math.exp(-(x * x + A * A) / 2) * (mm === 1 ? besselI0(A * x) : besselIn(mm - 1, A * x));
+      let s = f(lo) + f(hi); for (let i = 1; i < N; i++) s += (i % 2 ? 4 : 2) * f(lo + i * h);
+      return ret(scalar((h / 3) * s));
+    },
+    /** finddelay(x,y) — estimate the delay between signals via cross-correlation. */
+    finddelay: (a) => {
+      const x = toArray(m(a[0])), y = toArray(m(a[1])); const n = Math.max(x.length, y.length);
+      let bestLag = 0, bestC = -Infinity;
+      for (let lag = -(n - 1); lag <= n - 1; lag++) { let c = 0; for (let i = 0; i < x.length; i++) { const j = i - lag; if (j >= 0 && j < y.length) c += x[i] * y[j]; } if (c > bestC + 1e-12 || (Math.abs(c - bestC) <= 1e-12 && Math.abs(lag) < Math.abs(bestLag))) { bestC = c; bestLag = lag; } }
+      return ret(scalar(-bestLag));   // MATLAB convention: delay of y relative to x
+    },
   },
   help: {
     de2bi: 'Convert decimal numbers to binary digits', bi2de: 'Convert binary digits to decimal numbers',
     symerr: 'Count symbol errors and compute symbol error rate', biterr: 'Count bit errors and compute bit error rate',
     bin2gray: 'Convert positive integers to Gray-encoded integers', gray2bin: 'Convert Gray-encoded integers to positive integers',
+    qammod: 'Quadrature amplitude modulation', qamdemod: 'Quadrature amplitude demodulation', pskmod: 'Phase shift keying modulation', pskdemod: 'Phase shift keying demodulation',
+    marcumq: 'Generalized Marcum Q-function', finddelay: 'Estimate delay between signals',
   },
 };
 
