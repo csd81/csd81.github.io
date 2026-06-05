@@ -130,7 +130,12 @@ export interface Categorical {
 export interface MapV { kind: 'map'; keyKind: 'char' | 'double'; valType: string; store: Map<string | number, Value>; }
 /** dictionary: a value (copy-on-assign) object mapping char/double keys to values. */
 export interface DictV { kind: 'dict'; keyKind: 'char' | 'double'; valType: string; store: Map<string | number, Value>; }
-export type Value = Mat | Handle | GObj | Cell | StructV | Sparse | Str | Graph | Geom | Quantum | Temporal | Table | Sym | Categorical | MapV | DictV;
+/** Generic toolbox object: a class instance identified by `className`, holding named
+ *  properties. Used by toolbox modules (Control `tf`/`ss`, Curve Fitting `cfit`, Statistics
+ *  distribution objects, …) so each new object family needs no new Value-union member.
+ *  Methods are ordinary builtins that branch on `isObject(v) && v.className === '<name>'`. */
+export interface ClassV { kind: 'object'; className: string; props: Map<string, Value>; rows?: number; cols?: number; }
+export type Value = Mat | Handle | GObj | Cell | StructV | Sparse | Str | Graph | Geom | Quantum | Temporal | Table | Sym | Categorical | MapV | DictV | ClassV;
 
 export class MatError extends Error {
   identifier?: string;
@@ -205,6 +210,10 @@ export function makeMap(keyKind: 'char' | 'double', valType: string): MapV { ret
 export function mapNormKey(m: MapV | DictV, k: Value): string | number { return m.keyKind === 'char' ? asString(k) : asScalar(k); }
 export function isDict(v: Value): v is DictV { return v.kind === 'dict'; }
 export function makeDict(keyKind: 'char' | 'double', valType: string): DictV { return { kind: 'dict', keyKind, valType, store: new Map() }; }
+export function isObject(v: Value): v is ClassV { return v.kind === 'object'; }
+export function makeObject(className: string, props: Record<string, Value> | Map<string, Value>, rows = 1, cols = 1): ClassV {
+  return { kind: 'object', className, props: props instanceof Map ? props : new Map(Object.entries(props)), rows, cols };
+}
 export function cloneDict(d: DictV): DictV { return { kind: 'dict', keyKind: d.keyKind, valType: d.valType, store: new Map(d.store) }; }
 /** Dimensions of any value. */
 export function dimsOf(v: Value): [number, number] {

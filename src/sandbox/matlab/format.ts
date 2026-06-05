@@ -124,6 +124,7 @@ function brief(v: Value): string {
   if (v.kind === 'map') return `[${v.store.size}×1 containers.Map]`;
   if (v.kind === 'dict') return `[${v.store.size}×1 dictionary]`;
   if (v.kind === 'sym') return v.rows * v.cols === 1 ? exprToStr(v.exprs[0]) : `[${v.rows}×${v.cols} sym]`;
+  if (v.kind === 'object') return `[${v.className}]`;
   if (v.isChar) return `'${asString(v)}'`;
   if (numel(v) === 0) return '[]';
   if (isScalar(v)) return `[${isComplex(v) ? fmtC(v.data[0], v.idata![0]) : formatScalar(v.data[0])}]`;
@@ -144,6 +145,10 @@ function structLines(v: { rows: number; cols: number; fields: Map<string, Value[
   if (v.rows === 1 && v.cols === 1) return [...v.fields.entries()].map(([k, vals]) => `    ${k}: ${brief(vals[0])}`);
   return [`  ${v.rows}×${v.cols} struct array with fields:`, ...[...v.fields.keys()].map((k) => `    ${k}`)];
 }
+/** Generic toolbox-object display: `className with properties:` then `name: brief(value)`. */
+function objectLines(v: { className: string; props: Map<string, Value> }): string[] {
+  return [`  ${v.className} with properties:`, '', ...[...v.props.entries()].map(([k, val]) => `    ${k}: ${brief(val)}`)];
+}
 /** MATLAB-style sparse display: a column-major list of `(i,j)  value` lines. */
 function sparseLines(v: { rows: number; cols: number; colptr: Int32Array; rowind: Int32Array; values: Float64Array }): string[] {
   if (v.values.length === 0) return [`   All zero sparse: ${v.rows}×${v.cols}`];
@@ -160,6 +165,7 @@ export function dispValue(v: Value): string {
   if (v.kind === 'graph') return graphLines(v).join('\n');
   if (v.kind === 'geom') return geomLines(v).join('\n');
   if (v.kind === 'quantum') return quantumLines(v).join('\n');
+  if (v.kind === 'object') return objectLines(v).join('\n');
   if (v.kind === 'temporal') return temporalLines(v).join('\n');
   if (v.kind === 'table') return tableLines(v).join('\n');
   if (v.kind === 'categorical') return categoricalLines(v).join('\n');
@@ -185,6 +191,7 @@ export function displayValue(name: string, v: Value): string {
   if (v.kind === 'graph') return `${name} =\n\n  ${v.directed ? 'digraph' : 'graph'} with properties:\n${graphLines(v).join('\n')}\n`;
   if (v.kind === 'geom') return `${name} =\n\n  ${v.gkind} with properties:\n${geomLines(v).join('\n')}\n`;
   if (v.kind === 'quantum') return `${name} =\n\n  quantum.${v.qkind} with properties:\n${quantumLines(v).join('\n')}\n`;
+  if (v.kind === 'object') return `${name} =\n\n${objectLines(v).join('\n')}\n`;
   if (v.kind === 'temporal') return `${name} =\n\n${temporalLines(v).join('\n')}\n`;
   if (v.kind === 'table') return `${name} =\n\n  ${v.nrows}×${v.vars.length} ${v.isTimetable ? 'timetable' : 'table'}\n\n${tableLines(v).join('\n')}\n`;
   if (v.kind === 'categorical') return `${name} =\n\n${categoricalLines(v).join('\n')}\n`;
@@ -338,7 +345,7 @@ function buildStream(args: Value[]): Array<{ s: string } | { n: number }> {
     if (a.kind === 'temporal') { for (const x of a.data) stream.push({ s: fmtTemporal(a.tkind, x, a.fmt) }); continue; }
     if (a.kind === 'sym') { for (const e of a.exprs) stream.push({ s: exprToStr(e) }); continue; }
     if (a.kind === 'categorical') { for (const c of a.codes) stream.push({ s: c ? a.categories[c - 1] : '<undefined>' }); continue; }
-    if (a.kind === 'cell' || a.kind === 'struct' || a.kind === 'graph' || a.kind === 'geom' || a.kind === 'quantum' || a.kind === 'table' || a.kind === 'map' || a.kind === 'dict') { stream.push({ s: brief(a) }); continue; }
+    if (a.kind === 'cell' || a.kind === 'struct' || a.kind === 'graph' || a.kind === 'geom' || a.kind === 'quantum' || a.kind === 'object' || a.kind === 'table' || a.kind === 'map' || a.kind === 'dict') { stream.push({ s: brief(a) }); continue; }
     if (a.kind === 'str') { for (const s of a.items) stream.push({ s }); continue; }
     if (a.kind === 'sparse') { for (const v of a.values) stream.push({ n: v }); continue; }
     if (a.isChar) { stream.push({ s: asString(a) }); continue; }

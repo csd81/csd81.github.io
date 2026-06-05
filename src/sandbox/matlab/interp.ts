@@ -230,6 +230,7 @@ export class Interpreter implements Env {
       if (v.kind === 'graph') { out.push({ name, size: '1x1', klass: v.directed ? 'digraph' : 'graph', preview: `${v.n} nodes, ${v.edges.length} edges` }); continue; }
       if (v.kind === 'geom') { out.push({ name, size: '1x1', klass: v.gkind, preview: `${v.points.length} pts${v.conn ? `, ${v.conn.length} simplices` : ''}` }); continue; }
       if (v.kind === 'quantum') { out.push({ name, size: '1x1', klass: `quantum.${v.qkind}`, preview: v.qkind === 'gate' ? `${v.gate}Gate` : v.qkind === 'circuit' ? `${v.numQubits} qubits, ${v.gates?.length ?? 0} gates` : `${v.numQubits} qubits` }); continue; }
+      if (v.kind === 'object') { out.push({ name, size: `${v.rows ?? 1}x${v.cols ?? 1}`, klass: v.className, preview: [...v.props.keys()].slice(0, 4).join(', ') }); continue; }
       if (v.kind === 'temporal') { out.push({ name, size: `${v.rows}x${v.cols}`, klass: v.tkind, preview: dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) }); continue; }
       if (v.kind === 'table') { out.push({ name, size: `${v.nrows}x${v.vars.length}`, klass: v.isTimetable ? 'timetable' : 'table', preview: v.vars.join(', ').slice(0, 40) }); continue; }
       if (v.kind === 'sym') { out.push({ name, size: `${v.rows}x${v.cols}`, klass: 'sym', preview: dispValue(v).replace(/\s+/g, ' ').trim().slice(0, 40) }); continue; }
@@ -611,6 +612,7 @@ export class Interpreter implements Env {
         if (t.kind === 'graph') return [graphProperty(t, e.name)];
         if (t.kind === 'geom') return [geomProperty(t, e.name)];
         if (t.kind === 'quantum') return [quantumProperty(t, e.name)];
+        if (t.kind === 'object') { const p = t.props.get(e.name); if (p === undefined) throw new MatError(`No appropriate method, property, or field '${e.name}' for class '${t.className}'.`); return [p]; }
         if (t.kind === 'temporal') return [temporalProperty(t, e.name)];
         if (t.kind === 'table') { const i = t.vars.indexOf(e.name); if (i >= 0) return [t.cols[i]]; if (e.name === 'Properties') return [scalar(0)]; if (t.isTimetable && (e.name === 'Time' || e.name === t.rowDimName) && t.rowTimes) return [t.rowTimes]; throw new MatError(`unrecognized table variable '${e.name}'`); }
         throw new MatError(`cannot read field '.${e.name}'`);

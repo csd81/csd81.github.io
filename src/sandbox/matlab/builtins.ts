@@ -17,6 +17,7 @@ import {
   type Sym, isSym, makeSym,
   type Categorical, isCategorical, makeCategorical,
   type MapV, isMap, makeMap, mapNormKey, type DictV, isDict, makeDict, cloneDict,
+  type ClassV, isObject, makeObject,
   toMat as m, factorialN, INT_LIMITS, applyClass,
 } from './values';
 import { type SymExpr, sN, sV, sAdd, sSub, sMul, sPow, sFn, sNeg, sDiv, simplifyExpr, diffExpr, subsExpr, evalExpr as symEval, exprToStr, symVars } from './sym';
@@ -37,7 +38,7 @@ import {
   laplaceExpr, ztransExpr, ilaplaceExpr, iztransExpr, fourierExpr, ifourierExpr,
   simplifyAssume,
 } from './sym-ops';
-import { SYM_BUILTINS } from './sym-builtins';
+import { TOOLBOX_BUILTINS, TOOLBOX_CONSTANTS, TOOLBOXES, FUNC_TOOLBOX } from './tb';
 
 /** Services the interpreter exposes to builtins. */
 export interface Env {
@@ -569,7 +570,8 @@ function nthroot(x: number, n: number): number {
 }
 
 export const BUILTINS: Record<string, Builtin> = {
-  ...SYM_BUILTINS,
+  // Toolbox functions first so base MATLAB entries below always take precedence on a name clash.
+  ...TOOLBOX_BUILTINS,
   // ═══════════════════════════ ELEMENTARY MATH ═══════════════════════════
   sin: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmap(A, (re, im) => [Math.sin(re) * Math.cosh(im), Math.cos(re) * Math.sinh(im)]) : map(A, Math.sin)); },
   cos: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? cmap(A, (re, im) => [Math.cos(re) * Math.cosh(im), -Math.sin(re) * Math.sinh(im)]) : map(A, Math.cos)); },
@@ -1943,8 +1945,8 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(scalar(conv(asString(a[0]))));
   },
   // ── class / regexp / sscanf ──
-  class: async (a) => { const v = a[0]; if (isMap(v)) return ret(str('containers.Map')); if (isDict(v)) return ret(str('dictionary')); if (isHandle(v)) return ret(str('function_handle')); if (v.kind === 'gobj') return ret(str(v.gtype)); if (isGraph(v)) return ret(str((v as Graph).directed ? 'digraph' : 'graph')); if (isGeom(v)) return ret(str((v as Geom).gkind)); if (v.kind === 'quantum') return ret(str(v.qkind === 'circuit' ? 'quantumCircuit' : v.qkind === 'state' ? 'quantum.gate.QuantumState' : 'quantum.gate.SimpleGate')); if (isStr(v)) return ret(str('string')); if (isCell(v)) return ret(str('cell')); if (isStruct(v)) return ret(str('struct')); if (isTable(v)) return ret(str(v.isTimetable ? 'timetable' : 'table')); if (isCategorical(v)) return ret(str('categorical')); if (isSym(v)) return ret(str('sym')); if ((v as Mat).isChar) return ret(str('char')); if ((v as Mat).isBool) return ret(str('logical')); return ret(str((v as Mat).itype ?? 'double')); },
-  isa: async (a) => { const v = a[0]; const ty = asString(a[1]); const M = v as Mat; const cls = isHandle(v) ? 'function_handle' : M.isChar ? 'char' : M.isBool ? 'logical' : (M.itype ?? 'double'); if (ty === cls) return ret(bool(true)); const isInt = isMat(v) && !!M.itype && M.itype !== 'single'; const isFlt = isMat(v) && !M.isChar && !M.isBool && (!M.itype || M.itype === 'single'); if (ty === 'numeric' && isMat(v) && !M.isChar && !M.isBool) return ret(bool(true)); if (ty === 'float' && isFlt) return ret(bool(true)); if (ty === 'integer' && isInt) return ret(bool(true)); return ret(bool(false)); },
+  class: async (a) => { const v = a[0]; if (isObject(v)) return ret(str(v.className)); if (isMap(v)) return ret(str('containers.Map')); if (isDict(v)) return ret(str('dictionary')); if (isHandle(v)) return ret(str('function_handle')); if (v.kind === 'gobj') return ret(str(v.gtype)); if (isGraph(v)) return ret(str((v as Graph).directed ? 'digraph' : 'graph')); if (isGeom(v)) return ret(str((v as Geom).gkind)); if (v.kind === 'quantum') return ret(str(v.qkind === 'circuit' ? 'quantumCircuit' : v.qkind === 'state' ? 'quantum.gate.QuantumState' : 'quantum.gate.SimpleGate')); if (isStr(v)) return ret(str('string')); if (isCell(v)) return ret(str('cell')); if (isStruct(v)) return ret(str('struct')); if (isTable(v)) return ret(str(v.isTimetable ? 'timetable' : 'table')); if (isCategorical(v)) return ret(str('categorical')); if (isSym(v)) return ret(str('sym')); if ((v as Mat).isChar) return ret(str('char')); if ((v as Mat).isBool) return ret(str('logical')); return ret(str((v as Mat).itype ?? 'double')); },
+  isa: async (a) => { const v = a[0]; const ty = asString(a[1]); if (isObject(v)) return ret(bool(ty === v.className || ty === 'object')); const M = v as Mat; const cls = isHandle(v) ? 'function_handle' : M.isChar ? 'char' : M.isBool ? 'logical' : (M.itype ?? 'double'); if (ty === cls) return ret(bool(true)); const isInt = isMat(v) && !!M.itype && M.itype !== 'single'; const isFlt = isMat(v) && !M.isChar && !M.isBool && (!M.itype || M.itype === 'single'); if (ty === 'numeric' && isMat(v) && !M.isChar && !M.isBool) return ret(bool(true)); if (ty === 'float' && isFlt) return ret(bool(true)); if (ty === 'integer' && isInt) return ret(bool(true)); return ret(bool(false)); },
   regexp: async (a, n) => regexpImpl(a, n, false),
   regexpi: async (a, n) => regexpImpl(a, n, true),   // case-insensitive; supports the same option/output set as regexp
   regexptranslate: async (a) => { const op = asString(a[0]).toLowerCase(); const s = asString(a[1]); if (op === 'wildcard') return ret(str(s.replace(/[.+^$|()[\]{}\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.'))); return ret(str(s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))); },
@@ -2190,6 +2192,24 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   histc: async (a) => { const x = toArray(m(a[0])); const e = toArray(m(a[1])); const counts = new Array(e.length).fill(0); for (const v of x) { for (let i = 0; i < e.length - 1; i++) if (v >= e[i] && v < e[i + 1]) { counts[i]++; break; } if (v === e[e.length - 1]) counts[e.length - 1]++; } return ret(rowVec(counts)); },
   exist: async (a, _n, env) => { const nm = asString(a[0]); const kind = a.length >= 2 ? asString(a[1]).toLowerCase() : ''; if (kind === 'file' || kind === 'dir') return ret(scalar(env.hasFile(nm) ? 2 : 0)); if (env.workspaceVars().some((v) => v.name === nm)) return ret(scalar(1)); if (nm in BUILTINS || nm in CONSTANTS) return ret(scalar(5)); if (env.hasFile(nm)) return ret(scalar(2)); return ret(scalar(0)); },
+  // Toolbox discovery.
+  ver: async (a, _n, env) => {
+    if (a.length) { const id = asString(a[0]).toLowerCase(); const tb = TOOLBOXES.find((t) => t.id === id || t.name.toLowerCase() === id); env.output(tb ? `${tb.name}\n` : `'${asString(a[0])}' not found.\n`); return []; }
+    let s = '----------------------------------------------------------------------------------------------------\nMATLAB sandbox (TypeScript interpreter)\n';
+    for (const t of TOOLBOXES) s += `${t.name}\n`;
+    env.output(s + '----------------------------------------------------------------------------------------------------\n');
+    return [];
+  },
+  which: async (a, n, env) => {
+    const nm = asString(a[0]); const tb = FUNC_TOOLBOX.get(nm);
+    let msg: string;
+    if (env.workspaceVars().some((v) => v.name === nm)) msg = `${nm} is a variable.`;
+    else if (nm in BUILTINS || nm in CONSTANTS) msg = tb ? `built-in (${nm}) — ${tb.name}` : `built-in (${nm})`;
+    else if (env.hasFile(nm)) msg = `${nm} (user file)`;
+    else msg = `'${nm}' not found.`;
+    if (n >= 1) return ret(str(msg));
+    env.output(msg + '\n'); return [];
+  },
   // Error/exception helpers (work with try/catch).
   MException: async (a) => { const id = a.length ? asString(a[0]) : ''; const msg = a.length >= 2 ? sprintf(asString(a[1]), a.slice(2)) : ''; const fields = new Map<string, Value[]>([['identifier', [str(id)]], ['message', [str(msg)]], ['stack', [zeros(0, 0)]]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields } as StructV); },
   rethrow: async (a) => { const e = a[0]; if (!isStruct(e)) throw new MatError('rethrow: not an error struct'); const f = (e as StructV).fields; const mv = f.get('message')?.[0]; const iv = f.get('identifier')?.[0]; const msg = mv ? asString(mv) : 'rethrow: not an error struct'; throw new MatError(msg, iv ? asString(iv) : undefined); },
@@ -2232,7 +2252,7 @@ export const BUILTINS: Record<string, Builtin> = {
   native2unicode: async (a) => ret(str(toArray(m(a[0])).map((x) => String.fromCharCode(Math.round(x))).join(''))),
   unicode2native: async (a) => ret(rowVec(asString(a[0]).split('').map((c) => c.charCodeAt(0)))),
   // type predicates / introspection
-  isobject: async () => ret(bool(false)),
+  isobject: async (a) => ret(bool(isObject(a[0]))),
   isjava: async () => ret(bool(false)),
   isenum: async () => ret(bool(false)),
   isgraphics: async (a) => ret(bool(!isMat(a[0]) && (a[0] as { kind?: string }).kind === 'gobj')),
@@ -7965,6 +7985,7 @@ function hermiteStep(y0: number[], y1: number[], f0: number[], f1: number[], h: 
 
 /** Numeric constants exposed as bare identifiers. */
 export const CONSTANTS: Record<string, () => Value> = {
+  ...TOOLBOX_CONSTANTS,   // toolbox constants (base ones below win on a clash)
   pi: () => scalar(Math.PI),
   e: () => scalar(Math.E),
   eps: () => scalar(Number.EPSILON),
