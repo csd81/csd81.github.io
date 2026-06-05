@@ -4,7 +4,7 @@
 // the live Mapping Toolbox (see mapping.VALIDATION.md). Note deg2nm (=60, definitional) is NOT the
 // inverse of nm2deg (=1852/R·180/π) — matching MATLAB's asymmetric arcminute vs. radius behaviour.
 import type { Builtin } from '../builtins';
-import { type Value, type Mat, map, toMat as m, asScalar, colVec, scalar } from '../values';
+import { type Value, type Mat, map, toMat as m, asScalar, asString, toArray, colVec, rowVec, scalar } from '../values';
 import type { ToolboxModule } from './types';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
@@ -38,6 +38,71 @@ function wrapSigned(P: number): Builtin {
 function wrapPositive(P: number): Builtin {
   return (a) => ret(map(m(a[0]), (x) => { let y = ((x % P) + P) % P; if (y === 0 && x > 0) y = P; return y; }));
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+//  Geodesy — coordinate-frame transforms and spheroid math
+//  (ported from R2026a shared/geodesy + map/mapgeodesy). Scalar inputs.
+//  The spheroid argument is a [semimajorAxis, eccentricity] 2-vector (e.g.
+//  wgs84Ellipsoid). angleUnit is an optional trailing 'degrees'/'radians' arg.
+// ════════════════════════════════════════════════════════════════════════════
+/** true unless an explicit 'radian…' angleUnit is given (degrees is the default). */
+function inDeg(v: Value | undefined): boolean { if (v === undefined) return true; try { return !/^r/i.test(asString(v).trim()); } catch { return true; } }
+const SIN = (x: number, d: boolean) => (d ? Math.sin(x * D2R) : Math.sin(x));
+const COS = (x: number, d: boolean) => (d ? Math.cos(x * D2R) : Math.cos(x));
+const ATAN2 = (y: number, x: number, d: boolean) => (d ? Math.atan2(y, x) * R2D : Math.atan2(y, x));
+/** Parse a [semimajor, eccentricity] spheroid vector into {a, f} (flattening). */
+function ellipAF(v: Value): { a: number; f: number } {
+  const arr = toArray(m(v));
+  if (arr.length < 2) throw new Error('spheroid must be a [semimajorAxis, eccentricity] vector (e.g. wgs84Ellipsoid)');
+  const a = arr[0], e2 = arr[1] * arr[1];
+  return { a, f: e2 / (1 + Math.sqrt(1 - e2)) };
+}
+/** geodetic (lat,lon,h) → geocentric ECEF (x,y,z). */
+function g2e(a: number, f: number, phi: number, lam: number, h: number, d: boolean): [number, number, number] {
+  const e2 = f * (2 - f), sp = SIN(phi, d), cp = COS(phi, d);
+  const N = a / Math.sqrt(1 - e2 * sp * sp), rho = (N + h) * cp, z = (N * (1 - e2) + h) * sp;
+  return [rho * COS(lam, d), rho * SIN(lam, d), z];
+}
+/** ECEF (x,y,z) → geodetic (lat,lon,h) via the iterative Bowring/MATLAB cylindrical2geodetic. */
+function e2g(a: number, f: number, x: number, y: number, z: number, d: boolean): [number, number, number] {
+  const rho = Math.hypot(x, y), lam = ATAN2(y, x, d);
+  if (f === 0) { const phi = ATAN2(z, rho, d); return [phi, lam, Math.hypot(z, rho) - a]; }
+  const b = (1 - f) * a, e2 = f * (2 - f), ae2 = a * e2, bep2 = b * e2 / (1 - e2), r = Math.hypot(rho, z);
+  let u = a * rho, v = b * z * (1 + bep2 / r);
+  let cosb = Math.sign(u) / Math.hypot(1, v / u), sinb = Math.sign(v) / Math.hypot(1, u / v);
+  for (let c = 0; c < 5; c++) {
+    const cp = cosb, sp = sinb;
+    u = rho - ae2 * cosb ** 3; v = z + bep2 * sinb ** 3; const au = a * u, bv = b * v;
+    cosb = Math.sign(au) / Math.hypot(1, bv / au); sinb = Math.sign(bv) / Math.hypot(1, au / bv);
+    if (Math.hypot(cosb - cp, sinb - sp) <= Number.EPSILON) break;
+  }
+  const phiR = Math.atan2(v, u), sphi = Math.sin(phiR), cphi = Math.cos(phiR);
+  const N = a / Math.sqrt(1 - e2 * sphi * sphi);
+  const h = rho * cphi + (z + e2 * N * sphi) * sphi - N;
+  return [d ? phiR * R2D : phiR, lam, h];
+}
+/** ECEF vector → local ENU (east, north, up) at origin (lat0,lon0). */
+function ecef2enuv(u: number, v: number, w: number, lat0: number, lon0: number, d: boolean): [number, number, number] {
+  const cp = COS(lat0, d), sp = SIN(lat0, d), cl = COS(lon0, d), sl = SIN(lon0, d);
+  const t = cl * u + sl * v, e = -sl * u + cl * v, up = cp * t + sp * w, n = -sp * t + cp * w;
+  return [e, n, up];
+}
+/** Local ENU vector → ECEF vector at origin (lat0,lon0). */
+function enu2ecefv(e: number, n: number, up: number, lat0: number, lon0: number, d: boolean): [number, number, number] {
+  const cp = COS(lat0, d), sp = SIN(lat0, d), cl = COS(lon0, d), sl = SIN(lon0, d);
+  const t = cp * up - sp * n, w = sp * up + cp * n, u = cl * t - sl * e, v = sl * t + cl * e;
+  return [u, v, w];
+}
+function aer2enu(az: number, el: number, slant: number, d: boolean): [number, number, number] {
+  const up = slant * SIN(el, d), rr = slant * COS(el, d);
+  return [rr * SIN(az, d), rr * COS(az, d), up];
+}
+function enu2aer(e: number, n: number, up: number, d: boolean): [number, number, number] {
+  const r = Math.hypot(e, n), slant = Math.hypot(r, up), el = ATAN2(up, r, d);
+  const period = d ? 360 : 2 * Math.PI; let az = ATAN2(e, n, d) % period; if (az < 0) az += period;
+  return [az, el, slant];
+}
+const out3 = (vals: [number, number, number], nargout: number): Promise<Value[]> => Promise.resolve([scalar(vals[0]), scalar(vals[1]), scalar(vals[2])].slice(0, Math.max(1, nargout)));
 
 export const MAPPING: ToolboxModule = {
   id: 'map',
@@ -74,6 +139,68 @@ export const MAPPING: ToolboxModule = {
     // angle wrapping
     wrapTo180: wrapSigned(360), wrapTo360: wrapPositive(360),
     wrapToPi: wrapSigned(2 * Math.PI), wrapTo2Pi: wrapPositive(2 * Math.PI),
+
+    // ── reference spheroids ──
+    /** wgs84Ellipsoid([lengthUnit]) — [semimajorAxis, eccentricity] of WGS84 (default metres). */
+    wgs84Ellipsoid: (a) => {
+      const f = 1 / 298.257223563, ecc = Math.sqrt(f * (2 - f)); let aMeters = 6378137;
+      if (a.length >= 1) { const u = asString(a[0]).toLowerCase(); const s: Record<string, number> = { meter: 1, meters: 1, metre: 1, m: 1, kilometer: 1e-3, kilometers: 1e-3, km: 1e-3, 'nautical mile': 1 / 1852, 'kilometre': 1e-3 }; aMeters *= (s[u] ?? 1); }
+      return ret(rowVec([aMeters, ecc]));
+    },
+    /** earthRadius([lengthUnit]) — mean Earth radius (default 6371000 metres). */
+    earthRadius: (a) => { let r = 6371000; if (a.length >= 1) { const u = asString(a[0]).toLowerCase(); const s: Record<string, number> = { meter: 1, m: 1, kilometer: 1e-3, km: 1e-3, 'nautical mile': 1 / 1852, nm: 1 / 1852 }; r *= (s[u] ?? 1); } return ret(scalar(r)); },
+
+    // ── spheroid scalar parameter conversions (elementwise) ──
+    ecc2flat: (a) => ret(map(m(a[0]), (e) => { const e2 = e * e; return e2 / (1 + Math.sqrt(1 - e2)); })),
+    flat2ecc: (a) => ret(map(m(a[0]), (f) => Math.sqrt(f * (2 - f)))),
+    ecc2n: (a) => ret(map(m(a[0]), (e) => { const e2 = e * e; return e2 / (1 + Math.sqrt(1 - e2)) ** 2; })),
+    n2ecc: (a) => ret(map(m(a[0]), (n) => Math.sqrt(4 * n / (1 + n) ** 2))),
+    /** majaxis(semiminor,ecc) | majaxis([semiminor ecc]) — semimajor axis. */
+    majaxis: (a) => { const v = a.length >= 2 ? [asScalar(a[0]), asScalar(a[1])] : toArray(m(a[0])); return ret(scalar(v[0] / Math.sqrt(1 - v[1] * v[1]))); },
+    /** minaxis(semimajor,ecc) | minaxis([semimajor ecc]) — semiminor axis. */
+    minaxis: (a) => { const v = a.length >= 2 ? [asScalar(a[0]), asScalar(a[1])] : toArray(m(a[0])); return ret(scalar(v[0] * Math.sqrt(1 - v[1] * v[1]))); },
+
+    // ── auxiliary latitudes (phi, f[, angleUnit]) ──
+    geocentricLatitude: (a) => { const phi = asScalar(a[0]), f = asScalar(a[1]), d = inDeg(a[2]); if (f === 0) return ret(scalar(phi)); const t = (1 - f) ** 2; return ret(scalar(ATAN2(t * SIN(phi, d), COS(phi, d), d))); },
+    parametricLatitude: (a) => { const phi = asScalar(a[0]), f = asScalar(a[1]), d = inDeg(a[2]); if (f === 0) return ret(scalar(phi)); return ret(scalar(ATAN2((1 - f) * SIN(phi, d), COS(phi, d), d))); },
+
+    /** meridianarc(phi1,phi2,ellipsoid) — meridian arc length (phi in RADIANS). */
+    meridianarc: (a) => {
+      const phi1 = asScalar(a[0]), phi2 = asScalar(a[1]), el = toArray(m(a[2]));
+      const ecc = el[1], e2 = ecc * ecc, n = e2 / (1 + Math.sqrt(1 - e2)) ** 2, n2 = n * n, aa = el[0];
+      const r = aa * (1 - n) * (1 - n2) * (1 + ((9 / 4) + (225 / 64) * n2) * n2);
+      const f1 = (3 / 2 - (9 / 16) * n2) * n, f2 = (15 / 16 - (15 / 32) * n2) * n2, f3 = (35 / 48) * n * n2, f4 = (315 / 512) * n2 * n2;
+      const mu = (p: number) => p - f1 * Math.sin(2 * p) + f2 * Math.sin(4 * p) - f3 * Math.sin(6 * p) + f4 * Math.sin(8 * p);
+      return ret(scalar(r * (mu(phi2) - mu(phi1))));
+    },
+
+    // ── ECEF ↔ geodetic ──
+    geodetic2ecef: (a, n) => { const { a: A, f } = ellipAF(a[0]); return out3(g2e(A, f, asScalar(a[1]), asScalar(a[2]), asScalar(a[3]), inDeg(a[4])), n); },
+    ecef2geodetic: (a, n) => { const { a: A, f } = ellipAF(a[0]); return out3(e2g(A, f, asScalar(a[1]), asScalar(a[2]), asScalar(a[3]), inDeg(a[4])), n); },
+
+    // ── ECEF ↔ ENU / NED (origin lat0,lon0,h0; spheroid at arg 6) ──
+    ecef2enu: (a, n) => { const { a: A, f } = ellipAF(a[6]); const d = inDeg(a[7]); const [x0, y0, z0] = g2e(A, f, asScalar(a[3]), asScalar(a[4]), asScalar(a[5]), d); return out3(ecef2enuv(asScalar(a[0]) - x0, asScalar(a[1]) - y0, asScalar(a[2]) - z0, asScalar(a[3]), asScalar(a[4]), d), n); },
+    enu2ecef: (a, n) => { const { a: A, f } = ellipAF(a[6]); const d = inDeg(a[7]); const lat0 = asScalar(a[3]), lon0 = asScalar(a[4]); const [x0, y0, z0] = g2e(A, f, lat0, lon0, asScalar(a[5]), d); const [dx, dy, dz] = enu2ecefv(asScalar(a[0]), asScalar(a[1]), asScalar(a[2]), lat0, lon0, d); return out3([x0 + dx, y0 + dy, z0 + dz], n); },
+    ecef2ned: (a, n) => { const { a: A, f } = ellipAF(a[6]); const d = inDeg(a[7]); const [x0, y0, z0] = g2e(A, f, asScalar(a[3]), asScalar(a[4]), asScalar(a[5]), d); const [e, no, up] = ecef2enuv(asScalar(a[0]) - x0, asScalar(a[1]) - y0, asScalar(a[2]) - z0, asScalar(a[3]), asScalar(a[4]), d); return out3([no, e, -up], n); },
+    ned2ecef: (a, n) => { const { a: A, f } = ellipAF(a[6]); const d = inDeg(a[7]); const lat0 = asScalar(a[3]), lon0 = asScalar(a[4]); const [x0, y0, z0] = g2e(A, f, lat0, lon0, asScalar(a[5]), d); const [dx, dy, dz] = enu2ecefv(asScalar(a[1]), asScalar(a[0]), -asScalar(a[2]), lat0, lon0, d); return out3([x0 + dx, y0 + dy, z0 + dz], n); },
+
+    // ── geodetic ↔ ENU / NED ──
+    geodetic2enu: (a, n) => { const { a: A, f } = ellipAF(a[6]); const d = inDeg(a[7]); const lat0 = asScalar(a[3]), lon0 = asScalar(a[4]); const [x, y, z] = g2e(A, f, asScalar(a[0]), asScalar(a[1]), asScalar(a[2]), d); const [x0, y0, z0] = g2e(A, f, lat0, lon0, asScalar(a[5]), d); return out3(ecef2enuv(x - x0, y - y0, z - z0, lat0, lon0, d), n); },
+    enu2geodetic: (a, n) => { const { a: A, f } = ellipAF(a[6]); const d = inDeg(a[7]); const lat0 = asScalar(a[3]), lon0 = asScalar(a[4]); const [x0, y0, z0] = g2e(A, f, lat0, lon0, asScalar(a[5]), d); const [dx, dy, dz] = enu2ecefv(asScalar(a[0]), asScalar(a[1]), asScalar(a[2]), lat0, lon0, d); return out3(e2g(A, f, x0 + dx, y0 + dy, z0 + dz, d), n); },
+    geodetic2ned: (a, n) => { const { a: A, f } = ellipAF(a[6]); const d = inDeg(a[7]); const lat0 = asScalar(a[3]), lon0 = asScalar(a[4]); const [x, y, z] = g2e(A, f, asScalar(a[0]), asScalar(a[1]), asScalar(a[2]), d); const [x0, y0, z0] = g2e(A, f, lat0, lon0, asScalar(a[5]), d); const [e, no, up] = ecef2enuv(x - x0, y - y0, z - z0, lat0, lon0, d); return out3([no, e, -up], n); },
+    ned2geodetic: (a, n) => { const { a: A, f } = ellipAF(a[6]); const d = inDeg(a[7]); const lat0 = asScalar(a[3]), lon0 = asScalar(a[4]); const [x0, y0, z0] = g2e(A, f, lat0, lon0, asScalar(a[5]), d); const [dx, dy, dz] = enu2ecefv(asScalar(a[1]), asScalar(a[0]), -asScalar(a[2]), lat0, lon0, d); return out3(e2g(A, f, x0 + dx, y0 + dy, z0 + dz, d), n); },
+
+    // ── AER (azimuth/elevation/range) local spherical frame ──
+    aer2enu: (a, n) => out3(aer2enu(asScalar(a[0]), asScalar(a[1]), asScalar(a[2]), inDeg(a[3])), n),
+    enu2aer: (a, n) => out3(enu2aer(asScalar(a[0]), asScalar(a[1]), asScalar(a[2]), inDeg(a[3])), n),
+    aer2ned: (a, n) => { const [e, no, up] = aer2enu(asScalar(a[0]), asScalar(a[1]), asScalar(a[2]), inDeg(a[3])); return out3([no, e, -up], n); },
+    ned2aer: (a, n) => out3(enu2aer(asScalar(a[1]), asScalar(a[0]), -asScalar(a[2]), inDeg(a[3])), n),
+
+    // ── geodetic/ECEF ↔ AER (origin lat0,lon0,h0; spheroid at arg 6) ──
+    geodetic2aer: (a, n) => { const { a: A, f } = ellipAF(a[6]); const d = inDeg(a[7]); const lat0 = asScalar(a[3]), lon0 = asScalar(a[4]); const [x, y, z] = g2e(A, f, asScalar(a[0]), asScalar(a[1]), asScalar(a[2]), d); const [x0, y0, z0] = g2e(A, f, lat0, lon0, asScalar(a[5]), d); const [e, no, up] = ecef2enuv(x - x0, y - y0, z - z0, lat0, lon0, d); return out3(enu2aer(e, no, up, d), n); },
+    aer2geodetic: (a, n) => { const { a: A, f } = ellipAF(a[6]); const d = inDeg(a[7]); const lat0 = asScalar(a[3]), lon0 = asScalar(a[4]); const [e, no, up] = aer2enu(asScalar(a[0]), asScalar(a[1]), asScalar(a[2]), d); const [dx, dy, dz] = enu2ecefv(e, no, up, lat0, lon0, d); const [x0, y0, z0] = g2e(A, f, lat0, lon0, asScalar(a[5]), d); return out3(e2g(A, f, x0 + dx, y0 + dy, z0 + dz, d), n); },
+    ecef2aer: (a, n) => { const { a: A, f } = ellipAF(a[6]); const d = inDeg(a[7]); const lat0 = asScalar(a[3]), lon0 = asScalar(a[4]); const [x0, y0, z0] = g2e(A, f, lat0, lon0, asScalar(a[5]), d); const [e, no, up] = ecef2enuv(asScalar(a[0]) - x0, asScalar(a[1]) - y0, asScalar(a[2]) - z0, lat0, lon0, d); return out3(enu2aer(e, no, up, d), n); },
+    aer2ecef: (a, n) => { const { a: A, f } = ellipAF(a[6]); const d = inDeg(a[7]); const lat0 = asScalar(a[3]), lon0 = asScalar(a[4]); const [e, no, up] = aer2enu(asScalar(a[0]), asScalar(a[1]), asScalar(a[2]), d); const [dx, dy, dz] = enu2ecefv(e, no, up, lat0, lon0, d); const [x0, y0, z0] = g2e(A, f, lat0, lon0, asScalar(a[5]), d); return out3([x0 + dx, y0 + dy, z0 + dz], n); },
   },
   help: {
     km2rad: 'Convert distance from kilometers to radians', rad2km: 'Convert distance from radians to kilometers',
@@ -90,5 +217,20 @@ export const MAPPING: ToolboxModule = {
     antipode: 'Point on opposite side of globe', wrapTo180: 'Wrap angle in degrees to [-180, 180]',
     wrapTo360: 'Wrap angle in degrees to [0, 360]', wrapToPi: 'Wrap angle in radians to [-pi, pi]',
     wrapTo2Pi: 'Wrap angle in radians to [0, 2*pi]',
+    wgs84Ellipsoid: 'Reference ellipsoid for WGS84 ([semimajor, eccentricity])', earthRadius: 'Mean radius of planet',
+    ecc2flat: 'Flattening of ellipse from eccentricity', flat2ecc: 'Eccentricity of ellipse from flattening',
+    ecc2n: 'Third flattening of ellipse from eccentricity', n2ecc: 'Eccentricity of ellipse from third flattening',
+    majaxis: 'Semimajor axis from semiminor axis and eccentricity', minaxis: 'Semiminor axis from semimajor axis and eccentricity',
+    geocentricLatitude: 'Convert geodetic to geocentric latitude', parametricLatitude: 'Convert geodetic to parametric latitude',
+    meridianarc: 'Ellipsoidal distance along meridian',
+    geodetic2ecef: 'Transform geodetic to geocentric (ECEF) coordinates', ecef2geodetic: 'Transform geocentric (ECEF) to geodetic coordinates',
+    ecef2enu: 'Transform geocentric (ECEF) to local east-north-up', enu2ecef: 'Transform local east-north-up to geocentric (ECEF)',
+    ecef2ned: 'Transform geocentric (ECEF) to local north-east-down', ned2ecef: 'Transform local north-east-down to geocentric (ECEF)',
+    geodetic2enu: 'Transform geodetic to local east-north-up', enu2geodetic: 'Transform local east-north-up to geodetic',
+    geodetic2ned: 'Transform geodetic to local north-east-down', ned2geodetic: 'Transform local north-east-down to geodetic',
+    aer2enu: 'Transform azimuth-elevation-range to east-north-up', enu2aer: 'Transform east-north-up to azimuth-elevation-range',
+    aer2ned: 'Transform azimuth-elevation-range to north-east-down', ned2aer: 'Transform north-east-down to azimuth-elevation-range',
+    geodetic2aer: 'Transform geodetic to local azimuth-elevation-range', aer2geodetic: 'Transform local azimuth-elevation-range to geodetic',
+    ecef2aer: 'Transform geocentric (ECEF) to local azimuth-elevation-range', aer2ecef: 'Transform local azimuth-elevation-range to geocentric (ECEF)',
   },
 };
