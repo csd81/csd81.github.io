@@ -683,3 +683,24 @@ All 35 batch-8 examples pass.
 - **`entries(d)`** returns a proper two-variable table (`Key`, `Value`) and supports `entries(d,"struct")` for a struct array — previously it returned a raw 2-column cell, so `E.Key` failed.
 - **Pre-existing bugs fixed as a side effect**: (1) indexing a struct array, `s(2)`, threw "expected a numeric value" — added a struct-array paren-indexing branch in the interpreter; (2) the `struct('f',{...})` constructor ignored cell-valued fields and only ever made a 1×1 struct — it now builds an N-D struct array (with `{}`→0×0), so `struct('a',{1,2}); s(2).a` works.
 - Rich ≥10-line help added for all batch-29 functions (incl. new structured `edit`/`eigs`/`entries`/`eq`).
+
+## Batch 30 — functions 291–300 (error functions · string erasing · error handling)
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `equilibrate` | ✅ | `[P,R,C]` row/column scaling for conditioning | — |
+| `erase` | ✅ | delete substrings (single or array of matches) | `pattern`-object args not modeled |
+| `eraseBetween` | ✅ | **fixed**: numeric `startPos,endPos` form (was string-only → errored) | — |
+| `erf` | ✅ | `erf(0.76)=0.7175` | — |
+| `erfc` | ✅ | `erfc(0.35)=0.6206` | — |
+| `erfcinv` | ✅ | **fixed**: NaN outside `[0,2]` → `erfcinv(-10)=NaN`, `erfcinv(Inf)=NaN` | — |
+| `erfcx` | ✅ | **fixed**: Chebyshev approx → `erfcx(35)=0.0161` (was NaN from `exp(x²)*erfc` overflow) | — |
+| `erfinv` | ✅ | **fixed**: NaN outside `[-1,1]` → `erfinv([-2 -1 1 2])=[NaN -Inf Inf NaN]` | — |
+| `error` | ✅ | id + sprintf-format message; caught via try/catch | — |
+| `errorbar` | 🟡 | renders error bars (vertical/horizontal/both) | visual; nothing numeric to assert |
+
+### Fixes landed in this batch
+- **`erfinv`/`erfcinv` domain**: out-of-range inputs now return NaN (and exact `±1`/`{0,2}` give `±Inf`). Previously `erfinv(±2)` returned `±Inf` and `erfcinv` of out-of-range values gave wrong infinities.
+- **`erfcx` accuracy**: replaced the naive `exp(x²)·erfc(x)` (which overflows × underflows to NaN for large x) with a Numerical-Recipes Chebyshev fit evaluated as `t·exp(poly)`. Now matches MATLAB across `erfcx(5)=0.1107`, `erfcx(10)=0.0561`, `erfcx(35)=0.0161`, `erfcx(±Inf)`.
+- **`eraseBetween` numeric positions**: `eraseBetween(str,startPos,endPos)` with numeric indices now deletes the inclusive character range (was "expected a string"); the text-boundary form is unchanged.
+- Rich ≥10-line help added for all batch-30 functions (incl. new structured `erf`/`erfc`/`erfcinv`/`erfcx`/`erfinv`).

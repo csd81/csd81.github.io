@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **290 / 1170** audited.
+Progress: **300 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -295,3 +295,13 @@ Progress: **290 / 1170** audited.
 | 288 | `entries` | ✅ | **fixed**: returns table (or struct array w/ `"struct"`) |
 | 289 | `eomday` | ✅ | last day of month; leap-year aware |
 | 290 | `eq` | ✅ | element-wise equality (==) |
+| 291 | `equilibrate` | ✅ | row/col scaling perm P,R,C |
+| 292 | `erase` | ✅ | delete substrings (array of matches) |
+| 293 | `eraseBetween` | ✅ | **fixed**: numeric `startPos,endPos` positions |
+| 294 | `erf` | ✅ | error function |
+| 295 | `erfc` | ✅ | complementary error function |
+| 296 | `erfcinv` | ✅ | **fixed**: NaN outside [0,2] domain |
+| 297 | `erfcx` | ✅ | **fixed**: accurate Chebyshev (no overflow for large x) |
+| 298 | `erfinv` | ✅ | **fixed**: NaN outside [-1,1] domain |
+| 299 | `error` | ✅ | throw error w/ id + sprintf format |
+| 300 | `errorbar` | 🟡 | renders; vertical/horizontal/both |

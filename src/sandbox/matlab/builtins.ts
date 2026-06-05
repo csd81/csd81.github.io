@@ -1531,7 +1531,7 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   odeget: async () => ret(zeros(0, 0)),
   // ── special functions ──
-  erfcx: async (a) => ret(map(m(a[0]), (x) => Math.exp(x * x) * (1 - erfFn(x)))),
+  erfcx: async (a) => ret(map(m(a[0]), erfcxFn)),
   erfcinv: async (a) => ret(map(m(a[0]), (y) => erfinvFn(1 - y))),
   gammainc: async (a) => ret(elementwise(m(a[0]), m(a[1]), (x, p) => gammainc(x, p))),
   betainc: async (a) => {
@@ -2000,7 +2000,15 @@ export const BUILTINS: Record<string, Builtin> = {
   // string edits
   insertAfter: async (a) => ret(mapStrArr(a[0], (x) => { const p = asString(a[1]); const i = x.indexOf(p); return i < 0 ? x : x.slice(0, i + p.length) + asString(a[2]) + x.slice(i + p.length); })),
   insertBefore: async (a) => ret(mapStrArr(a[0], (x) => { const i = x.indexOf(asString(a[1])); return i < 0 ? x : x.slice(0, i) + asString(a[2]) + x.slice(i); })),
-  eraseBetween: async (a) => ret(mapStrArr(a[0], (x) => { const l = asString(a[1]), r = asString(a[2]); const i = x.indexOf(l); if (i < 0) return x; const j = x.indexOf(r, i + l.length); return j < 0 ? x : x.slice(0, i + l.length) + x.slice(j); })),
+  eraseBetween: async (a) => {
+    // Numeric positions eraseBetween(str,startPos,endPos): delete characters startPos..endPos inclusive.
+    if (isMat(a[1]) && !(a[1] as Mat).isChar && isMat(a[2]) && !(a[2] as Mat).isChar) {
+      const sp = Math.round(asScalar(a[1])), ep = Math.round(asScalar(a[2]));
+      return ret(mapStrArr(a[0], (x) => (sp < 1 || ep > x.length || sp > ep ? x : x.slice(0, sp - 1) + x.slice(ep))));
+    }
+    // Text boundaries: delete the text strictly between the start and end boundaries (boundaries kept).
+    return ret(mapStrArr(a[0], (x) => { const l = asString(a[1]), r = asString(a[2]); const i = x.indexOf(l); if (i < 0) return x; const j = x.indexOf(r, i + l.length); return j < 0 ? x : x.slice(0, i + l.length) + x.slice(j); }));
+  },
   replaceBetween: async (a) => ret(mapStrArr(a[0], (x) => { const l = asString(a[1]), r = asString(a[2]); const i = x.indexOf(l); if (i < 0) return x; const j = x.indexOf(r, i + l.length); return j < 0 ? x : x.slice(0, i + l.length) + asString(a[3]) + x.slice(j); })),
   convertStringsToChars: async (a, n) => { const conv = (v: Value) => (isStr(v) ? (v.items.length === 1 ? str(v.items[0]) : v) : v); return a.slice(0, Math.max(1, n)).map(conv); },
   convertCharsToStrings: async (a, n) => { const conv = (v: Value) => (isMat(v) && (v as Mat).isChar ? makeStr(asString(v)) : v); return a.slice(0, Math.max(1, n)).map(conv); },
@@ -5374,11 +5382,26 @@ function fillOutliersVec(c: number[], fillNum: number | null): number[] {
 }
 /** Inverse error function (Winitzki approximation + one Newton step). */
 function erfinvFn(y: number): number {
-  if (y <= -1) return -Infinity; if (y >= 1) return Infinity; if (y === 0) return 0;
+  if (Number.isNaN(y) || y < -1 || y > 1) return NaN;   // erf range is (-1,1); outside → NaN
+  if (y === -1) return -Infinity; if (y === 1) return Infinity; if (y === 0) return 0;
   const a = 0.147; const ln = Math.log(1 - y * y); const t1 = 2 / (Math.PI * a) + ln / 2;
   let x = Math.sign(y) * Math.sqrt(Math.sqrt(t1 * t1 - ln / a) - t1);
   x -= (erfFn(x) - y) / (2 / Math.sqrt(Math.PI) * Math.exp(-x * x)); // Newton refine
   return x;
+}
+/** Scaled complementary error function erfcx(x) = exp(x²)·erfc(x), accurate for all x
+ *  via the Numerical-Recipes Chebyshev fit (no overflow for large x). */
+const ERFC_COF = [-1.3026537197817094, 6.4196979235649026e-1, 1.9476473204185836e-2, -9.561514786808631e-3, -9.46595344482036e-4, 3.66839497852761e-4, 4.2523324806907e-5, -2.0278578112534e-5, -1.624290004647e-6, 1.303655835580e-6, 1.5626441722e-8, -8.5238095915e-8, 6.529054439e-9, 5.059343495e-9, -9.91364156e-10, -2.27365122e-10, 9.6467911e-11, 2.394038e-12, -6.886027e-12, 8.94487e-13, 3.13092e-13, -1.12708e-13, 3.81e-16, 7.106e-15];
+function erfccheb(z: number): number {   // erfc(z) for z ≥ 0, evaluated as t·exp(−z²+poly)
+  let d = 0, dd = 0; const t = 2 / (2 + z); const ty = 4 * t - 2;
+  for (let j = ERFC_COF.length - 1; j > 0; j--) { const tmp = d; d = ty * d - dd + ERFC_COF[j]; dd = tmp; }
+  return t * Math.exp(-z * z + 0.5 * (ERFC_COF[0] + ty * d) - dd);
+}
+function erfcxFn(x: number): number {
+  if (Number.isNaN(x)) return NaN;
+  if (x >= 0) { if (x === Infinity) return 0; let d = 0, dd = 0; const t = 2 / (2 + x); const ty = 4 * t - 2; for (let j = ERFC_COF.length - 1; j > 0; j--) { const tmp = d; d = ty * d - dd + ERFC_COF[j]; dd = tmp; } return t * Math.exp(0.5 * (ERFC_COF[0] + ty * d) - dd); }
+  if (x === -Infinity) return Infinity;
+  return 2 * Math.exp(x * x) - erfcxFn(-x);   // erfcx(−x) = 2e^{x²} − erfcx(x)
 }
 
 // ── Statistics helpers ────────────────────────────────────────────────────
