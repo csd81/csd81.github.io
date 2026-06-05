@@ -148,6 +148,14 @@ function psdWin(x: number[], w: number[], fs?: number): { Pxx: number[]; f: numb
   return { Pxx, f };
 }
 const hammingWin = (N: number): number[] => (N === 1 ? [1] : Array.from({ length: N }, (_, n) => 0.54 - 0.46 * Math.cos(2 * Math.PI * n / (N - 1))));
+/** Natural-order Walsh-Hadamard transform (unnormalized, in-place butterfly). */
+function whtNat(v: number[]): number[] {
+  const N = v.length, a = v.slice();
+  for (let len = 1; len < N; len <<= 1) for (let i = 0; i < N; i += len << 1) for (let j = i; j < i + len; j++) { const x = a[j], y = a[j + len]; a[j] = x + y; a[j + len] = x - y; }
+  return a;
+}
+const bitrev = (x: number, L: number): number => { let r = 0; for (let i = 0; i < L; i++) { r = (r << 1) | (x & 1); x >>= 1; } return r; };
+const nextPow2Pad = (x: number[]): number[] => { const N2 = 2 ** Math.ceil(Math.log2(Math.max(1, x.length))); const o = x.slice(); while (o.length < N2) o.push(0); return o; };
 /** Resolve the time base: t-vector, scalar Fs, or default sample numbers 1..n. */
 function timeBase(a: Value[], n: number): number[] {
   if (a.length > 1 && isMat(a[1])) { const M = m(a[1]); if (M.rows * M.cols === 1) { const Fs = asScalar(a[1]); return Array.from({ length: n }, (_, i) => i / Fs); } return toArray(M); }
@@ -394,6 +402,30 @@ export const SIGNAL: ToolboxModule = {
       const lr = Math.log(10 ** (-6 / 20)), av = -((Math.PI * fc * bw) ** 2) / (4 * lr);   // bwr = -6 dB
       return ret(map(m(a[0]), (t) => Math.exp(-av * t * t) * Math.cos(2 * Math.PI * fc * t)));
     },
+    // ── Walsh-Hadamard transform: fwht/ifwht (sequency default; also hadamard/dyadic ordering) ──
+    fwht: (a) => {
+      const M = m(a[0]), x = nextPow2Pad(toArray(M)), N = x.length, L = Math.round(Math.log2(N));
+      const order = a.length > 2 ? asString(a[2]).toLowerCase() : 'sequency', t = whtNat(x).map((v) => v / N);
+      const out = new Array(N);
+      for (let i = 0; i < N; i++) out[i] = order === 'hadamard' ? t[i] : order === 'dyadic' ? t[bitrev(i, L)] : t[bitrev(i ^ (i >> 1), L)];
+      return ret(M.rows === 1 ? rowVec(out) : colVec(out));
+    },
+    ifwht: (a) => {
+      const M = m(a[0]), y = nextPow2Pad(toArray(M)), N = y.length, L = Math.round(Math.log2(N));
+      const order = a.length > 2 ? asString(a[2]).toLowerCase() : 'sequency', ynat = new Array(N);
+      for (let i = 0; i < N; i++) ynat[order === 'hadamard' ? i : order === 'dyadic' ? bitrev(i, L) : bitrev(i ^ (i >> 1), L)] = y[i];
+      const out = whtNat(ynat);
+      return ret(M.rows === 1 ? rowVec(out) : colVec(out));
+    },
+    // ── hilbert(x): analytic signal x + i·H{x} via the one-sided spectrum ──
+    hilbert: (a) => {
+      const M = m(a[0]), x = toArray(M), N = x.length, Hr = new Array(N), Hi = new Array(N);
+      for (let k = 0; k < N; k++) { let re = 0, im = 0; for (let n = 0; n < N; n++) { const ang = -2 * Math.PI * k * n / N; re += x[n] * Math.cos(ang); im += x[n] * Math.sin(ang); } const mult = k === 0 || (N % 2 === 0 && k === N / 2) ? 1 : k < N / 2 ? 2 : 0; Hr[k] = re * mult; Hi[k] = im * mult; }
+      const yr = new Float64Array(N), yi = new Float64Array(N);
+      for (let n = 0; n < N; n++) { let re = 0, im = 0; for (let k = 0; k < N; k++) { const ang = 2 * Math.PI * k * n / N, c = Math.cos(ang), s = Math.sin(ang); re += Hr[k] * c - Hi[k] * s; im += Hr[k] * s + Hi[k] * c; } yr[n] = re / N; yi[n] = im / N; }
+      const col = M.rows !== 1;
+      return ret({ kind: 'num', rows: col ? N : 1, cols: col ? 1 : N, data: yr, idata: yi } as Mat);
+    },
     // ── multirate: upsample/downsample/intdump/upfirdn ──
     upsample: (a) => {
       const M = m(a[0]), x = toArray(M), n = Math.round(asScalar(a[1])), ph = a.length > 2 ? Math.round(asScalar(a[2])) : 0;
@@ -577,6 +609,7 @@ export const SIGNAL: ToolboxModule = {
     periodogram: 'Periodogram power spectral density estimate', dctmtx: 'Discrete cosine transform matrix', pwelch: "Welch's power spectral density estimate",
     rectpuls: 'Sampled aperiodic rectangle', tripuls: 'Sampled aperiodic triangle', sawtooth: 'Sawtooth or triangle wave', gauspuls: 'Gaussian-modulated sinusoidal RF pulse',
     upsample: 'Increase sample rate by integer factor', downsample: 'Decrease sample rate by integer factor', intdump: 'Integrate and dump', upfirdn: 'Upsample, FIR filter, downsample',
+    fwht: 'Fast Walsh-Hadamard transform', ifwht: 'Inverse fast Walsh-Hadamard transform', hilbert: 'Discrete-time analytic signal via Hilbert transform',
     meanfreq: 'Mean frequency of power spectrum', medfreq: 'Median frequency of power spectrum', bandpower: 'Band power of signal',
     powerbw: 'Power bandwidth (3 dB)', obw: 'Occupied bandwidth (99% power)',
     mag2db: 'Convert magnitude to decibels', db2mag: 'Convert decibels to magnitude', pow2db: 'Convert power to decibels', db2pow: 'Convert decibels to power',
