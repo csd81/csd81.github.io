@@ -363,6 +363,13 @@ export const STATS: ToolboxModule = {
       return statRet(n, mean, varr);
     },
 
+    // ── MLE distribution fits (closed-form) ──
+    expfit: (a) => { const x = toArray(m(a[0])); return ret(scalar(x.reduce((s, v) => s + v, 0) / x.length)); },
+    poissfit: (a) => { const x = toArray(m(a[0])); return ret(scalar(x.reduce((s, v) => s + v, 0) / x.length)); },
+    raylfit: (a) => { const x = toArray(m(a[0])); return ret(scalar(Math.sqrt(x.reduce((s, v) => s + v * v, 0) / (2 * x.length)))); },
+    normfit: (a, n) => { const x = toArray(m(a[0])), N = x.length, mu = x.reduce((s, v) => s + v, 0) / N; const sd = Math.sqrt(x.reduce((s, v) => s + (v - mu) ** 2, 0) / (N - 1)); return n >= 2 ? Promise.resolve([scalar(mu), scalar(sd)]) : ret(scalar(mu)); },
+    unifit: (a, n) => { const x = toArray(m(a[0])), lo = Math.min(...x), hi = Math.max(...x); return n >= 2 ? Promise.resolve([scalar(lo), scalar(hi)]) : ret(scalar(lo)); },
+
     // ── moments ──
     /** moment(X,order) — central moment of the given order (along columns / vector). */
     moment: (a) => ret(colReduceNan(m(a[0]), (c) => { const k = Math.round(asScalar(a[1])); const mu = mean_(c); return c.reduce((s, x) => s + (x - mu) ** k, 0) / c.length; })),
@@ -498,6 +505,7 @@ export const STATS: ToolboxModule = {
     ncx2pdf: 'Noncentral chi-square probability density function', ncx2cdf: 'Noncentral chi-square cumulative distribution function', ncx2inv: 'Noncentral chi-square inverse cumulative distribution function', ncx2stat: 'Noncentral chi-square mean and variance',
     ncfpdf: 'Noncentral F probability density function', ncfcdf: 'Noncentral F cumulative distribution function', ncfinv: 'Noncentral F inverse cumulative distribution function', ncfstat: 'Noncentral F mean and variance',
     nctpdf: 'Noncentral t probability density function', nctcdf: 'Noncentral t cumulative distribution function', nctinv: 'Noncentral t inverse cumulative distribution function', nctstat: 'Noncentral t mean and variance',
+    expfit: 'Exponential parameter estimate (MLE)', poissfit: 'Poisson parameter estimate (MLE)', raylfit: 'Rayleigh parameter estimate (MLE)', normfit: 'Normal parameter estimates (mean, std)', unifit: 'Uniform parameter estimates (min, max)',
     nanmean: 'Mean, ignoring NaN values', nansum: 'Sum, ignoring NaN values', nanstd: 'Standard deviation, ignoring NaN values', nanvar: 'Variance, ignoring NaN values',
     nanmedian: 'Median, ignoring NaN values', nanmax: 'Maximum, ignoring NaN values', nanmin: 'Minimum, ignoring NaN values',
     range: 'Range of values (max − min)', tabulate: 'Frequency table',
