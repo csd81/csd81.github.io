@@ -673,6 +673,16 @@ export class Interpreter implements Env {
       const r = subs.length === 2 && subs[0] !== 'colon' ? (subs[0] as number[]).length : (base.cols === 1 ? codes.length : 1);
       return [makeCategorical(r, codes.length / (r || 1), codes, base.categories, base.ordinal)];
     }
+    if (isStruct(base)) {
+      // S(...) on a struct array → a sub-struct-array (same column-major linear-index logic as cells)
+      const total = base.rows * base.cols;
+      const subs = await this.evalSubsN(e.args, base.rows, base.cols, total, scope);
+      const lin = this.cellLinear(subs, base.rows, base.cols, total);
+      const fields = new Map<string, Value[]>();
+      for (const [k, vals] of base.fields) fields.set(k, lin.map((i) => vals[i - 1]));
+      const r = subs.length === 2 && subs[0] !== 'colon' ? (subs[0] as number[]).length : (base.cols === 1 ? lin.length : 1);
+      return [{ kind: 'struct', rows: r, cols: lin.length / (r || 1), fields } as StructV];
+    }
     const mbase = asMat(base);
     const subs = await this.evalSubs(e.args, mbase, scope);
     return [indexGet(mbase, subs)];

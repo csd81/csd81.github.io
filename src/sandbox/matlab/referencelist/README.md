@@ -662,3 +662,24 @@ All 35 batch-8 examples pass.
 - **Duration `hh:mm:ss` display rounding**: the seconds were decomposed from a float that could be `…59.9999`, rendering as `01:32:60.000`; the formatter now rounds to the nearest millisecond first.
 - **`dsearchn`** returns the optional `[k,dist]` nearest-neighbor distance; **`edgecount`** broadcasts a scalar source/target against a vector of nodes (was returning a single value).
 - Rich ≥10-line help added for all batch-28 functions (incl. new structured `doc`/`donutchart`/`double`/`drawnow`).
+
+## Batch 29 — functions 281–290 (eig/eigs · elliptic functions · dictionary entries · struct arrays)
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `edit` | ✅ | opens a VFS file in the editor buffer | no real editor window (sandbox) |
+| `eig` | ✅ | **fixed**: `eig(A,"matrix")` returns eigenvalues as a diagonal matrix | — |
+| `eigs` | 🟡 | iterative subset of eigenvalues (Krylov) | approximate — values can differ from MATLAB and duplicate on clustered spectra |
+| `ellipj` | ✅ | Jacobi sn/cn/dn → `ellipj(0.5,0.25)=[0.4751 0.8799 0.9714]` | — |
+| `ellipke` | ✅ | complete elliptic integrals → `ellipke(0.5)=[1.8541 1.3506]` | — |
+| `ellipsoid` | ✅ | `(n+1)×(n+1)` surface coordinate grids | — |
+| `endsWith` | ✅ | suffix test over string/cellstr arrays | `pattern`-object args (lettersPattern) not modeled |
+| `entries` | ✅ | **fixed**: returns a Key/Value table (or struct array with `"struct"`) | — |
+| `eomday` | ✅ | last day of month, leap-year aware → `eomday(2020,2)=29` | — |
+| `eq` | ✅ | element-wise equality `==` | — |
+
+### Fixes landed in this batch
+- **`eig(A,"matrix")`** now returns the eigenvalues as a diagonal matrix (matching the two-output `D`) instead of a column vector.
+- **`entries(d)`** returns a proper two-variable table (`Key`, `Value`) and supports `entries(d,"struct")` for a struct array — previously it returned a raw 2-column cell, so `E.Key` failed.
+- **Pre-existing bugs fixed as a side effect**: (1) indexing a struct array, `s(2)`, threw "expected a numeric value" — added a struct-array paren-indexing branch in the interpreter; (2) the `struct('f',{...})` constructor ignored cell-valued fields and only ever made a 1×1 struct — it now builds an N-D struct array (with `{}`→0×0), so `struct('a',{1,2}); s(2).a` works.
+- Rich ≥10-line help added for all batch-29 functions (incl. new structured `edit`/`eigs`/`entries`/`eq`).

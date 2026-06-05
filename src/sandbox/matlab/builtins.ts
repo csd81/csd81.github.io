@@ -1133,6 +1133,8 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   eig: async (a, n) => {
     let A = m(a[0]);
+    // eig(A,"matrix"): with one output, return eigenvalues as a diagonal matrix instead of a column.
+    const wantMatrix = a.some((x) => (isStr(x) || (isMat(x) && (x as Mat).isChar)) && asString(x).toLowerCase() === 'matrix');
     // Generalized problem eig(A,B): eigenvalues of B⁻¹A (B given as a non-char matrix).
     if (a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar && numel(a[1]) > 1) A = mldivide(m(a[1]), A);
     // Symmetric real → Jacobi (accurate, ascending). Otherwise charpoly + Durand-Kerner.
@@ -1145,6 +1147,7 @@ export const BUILTINS: Record<string, Builtin> = {
         const D = zeros(A.rows, A.rows); ev.forEach((v, i) => { D.data[i + i * A.rows] = v; });
         return [Vs, D];
       }
+      if (wantMatrix) { const D = zeros(A.rows, A.rows); ev.forEach((v, i) => { D.data[i + i * A.rows] = v; }); return [D]; }
       return [colVec(ev)];
     }
     const N = A.rows; const { D, V } = generalEig(A, n >= 2);
@@ -1153,6 +1156,7 @@ export const BUILTINS: Record<string, Builtin> = {
       for (let i = 0; i < N; i++) { Dre[i + i * N] = D.re[i]; Dim[i + i * N] = D.im[i]; }
       return [V!, finishComplex(N, N, Dre, Dim)];
     }
+    if (wantMatrix) { const Dre = new Float64Array(N * N), Dim = new Float64Array(N * N); for (let i = 0; i < N; i++) { Dre[i + i * N] = D.re[i]; Dim[i + i * N] = D.im[i]; } return [finishComplex(N, N, Dre, Dim)]; }
     return [finishComplex(N, 1, Float64Array.from(D.re), Float64Array.from(D.im))];
   },
   // structure predicates
@@ -1235,7 +1239,19 @@ export const BUILTINS: Record<string, Builtin> = {
   isKey: async (a) => { const mp = a[0] as MapV | DictV; if (!isMap(mp) && !isDict(mp)) throw new MatError('isKey: expected a containers.Map or dictionary'); if (isCell(a[1])) return ret({ kind: 'num', rows: 1, cols: a[1].items.length, data: Float64Array.from(a[1].items.map((it) => (mp.store.has(mapNormKey(mp, it)) ? 1 : 0))), isBool: true }); return ret(bool(mp.store.has(mapNormKey(mp, a[1])))); },
   remove: async (a) => { const mp = a[0] as MapV | DictV; if (isDict(mp)) { const nd = cloneDict(mp); const ks = isCell(a[1]) ? a[1].items : [a[1]]; for (const k of ks) nd.store.delete(mapNormKey(mp, k)); return ret(nd); } if (!isMap(mp)) throw new MatError('remove: expected a containers.Map or dictionary'); const ks = isCell(a[1]) ? a[1].items : [a[1]]; for (const k of ks) mp.store.delete(mapNormKey(mp, k)); return ret(mp); },
   dictionary: async (a) => ret(buildDict(a)),
-  entries: async (a) => { const d = a[0] as DictV; if (!isDict(d)) throw new MatError('entries: expected a dictionary'); const ks = mapKeysSorted(d); const n = ks.length; const items: Value[] = new Array(n * 2); for (let i = 0; i < n; i++) { items[i] = d.keyKind === 'char' ? str(ks[i] as string) : scalar(ks[i] as number); items[i + n] = d.store.get(ks[i])!; } return ret(makeCell(n, 2, items)); },
+  entries: async (a) => {
+    const d = a[0] as DictV; if (!isDict(d)) throw new MatError('entries: expected a dictionary');
+    const ks = mapKeysSorted(d); const n = ks.length;
+    const keyVals: Value[] = ks.map((k) => (d.keyKind === 'char' ? str(k as string) : scalar(k as number)));
+    const valVals: Value[] = ks.map((k) => d.store.get(k)!);
+    // entries(d,"struct") → n×1 struct array with fields Key and Value
+    if (a.length >= 2 && asString(a[1]).toLowerCase() === 'struct') {
+      const fields = new Map<string, Value[]>(); fields.set('Key', keyVals); fields.set('Value', valVals);
+      return ret({ kind: 'struct', rows: n, cols: 1, fields } as StructV);
+    }
+    // default → n×2 table with variables Key and Value
+    return ret({ kind: 'table', vars: ['Key', 'Value'], cols: [stackColumn(keyVals), stackColumn(valVals)], nrows: n } as Table);
+  },
   lookup: async (a) => { const d = a[0] as DictV; if (!isDict(d)) throw new MatError('lookup: expected a dictionary'); const k = mapNormKey(d, a[1]); if (!d.store.has(k)) throw new MatError('lookup: key not found'); return ret(d.store.get(k)!); },
   insert: async (a) => { const d = a[0] as DictV; if (!isDict(d)) throw new MatError('insert: expected a dictionary'); const nd = cloneDict(d); nd.store.set(mapNormKey(d, a[1]), a[2]); return ret(nd); },
   numEntries: async (a) => ret(scalar(isDict(a[0]) ? (a[0] as DictV).store.size : 0)),
@@ -1753,13 +1769,17 @@ export const BUILTINS: Record<string, Builtin> = {
 
   // ── Structs ──
   struct: async (a) => {
+    // A non-scalar cell value sets the struct-array size; 1×1 cells and plain values broadcast.
+    let rows = 1, cols = 1;
+    for (let i = 0; i + 1 < a.length; i += 2) { const v = a[i + 1]; if (isCell(v) && v.items.length !== 1) { rows = v.rows; cols = v.cols; } }
+    const total = rows * cols;
     const fields = new Map<string, Value[]>();
     for (let i = 0; i + 1 < a.length; i += 2) {
-      const name = asString(a[i]); const v = a[i + 1];
-      // struct('f', {…}) would build a struct array; we support scalar structs (cell value → first element)
-      fields.set(name, [isCell(v) ? (v.items[0] ?? zeros(0, 0)) : v]);
+      const name = asString(a[i]); const v = a[i + 1]; const vals: Value[] = [];
+      for (let k = 0; k < total; k++) vals.push(isCell(v) ? (v.items.length === 1 ? (v.items[0] ?? zeros(0, 0)) : (v.items[k] ?? zeros(0, 0))) : v);
+      fields.set(name, vals);
     }
-    return ret({ kind: 'struct', rows: 1, cols: 1, fields } as StructV);
+    return ret({ kind: 'struct', rows, cols, fields } as StructV);
   },
   isstruct: async (a) => ret(bool(isStruct(a[0]))),
   isfield: async (a) => {

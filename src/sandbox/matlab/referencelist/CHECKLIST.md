@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **280 / 1170** audited.
+Progress: **290 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -285,3 +285,13 @@ Progress: **280 / 1170** audited.
 | 278 | `edgeAttachments` | ✅ | triangles attached to an edge (cell) |
 | 279 | `edgecount` | ✅ | **fixed**: scalar/vector broadcast over node pairs |
 | 280 | `edges` | ✅ | unique triangulation edges |
+| 281 | `edit` | ✅ | opens VFS file in editor buffer |
+| 282 | `eig` | ✅ | **fixed**: `eig(A,"matrix")` → diagonal matrix |
+| 283 | `eigs` | 🟡 | iterative subset; approximate, can differ/duplicate |
+| 284 | `ellipj` | ✅ | Jacobi sn/cn/dn via AGM |
+| 285 | `ellipke` | ✅ | complete elliptic integrals K,E |
+| 286 | `ellipsoid` | ✅ | surface coords (n+1)×(n+1) |
+| 287 | `endsWith` | ✅ | suffix test over string arrays |
+| 288 | `entries` | ✅ | **fixed**: returns table (or struct array w/ `"struct"`) |
+| 289 | `eomday` | ✅ | last day of month; leap-year aware |
+| 290 | `eq` | ✅ | element-wise equality (==) |
