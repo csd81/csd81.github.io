@@ -15,9 +15,10 @@ import { WAVELET } from './wavelet';
 import { CURVEFIT } from './curvefit';
 import { COMM } from './comm';
 import { IMAGES } from './images';
+import { CONTROL } from './control';
 
 /** All registered toolboxes, in precedence order (first wins on inter-toolbox collision). */
-export const TOOLBOXES: ToolboxModule[] = [SYMBOLIC, STATS, SIGNAL, SIMULINK, FINANCIAL, WAVELET, CURVEFIT, COMM, IMAGES];
+export const TOOLBOXES: ToolboxModule[] = [SYMBOLIC, STATS, SIGNAL, SIMULINK, FINANCIAL, WAVELET, CURVEFIT, COMM, IMAGES, CONTROL];
 
 export const TOOLBOX_BUILTINS: Record<string, Builtin> = {};
 export const TOOLBOX_CONSTANTS: Record<string, () => Value> = {};
