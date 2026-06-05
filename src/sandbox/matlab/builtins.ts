@@ -798,7 +798,15 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   Inf: async (a) => ret(makeND(dimsN(a), new Float64Array(dimsN(a).reduce((p, x) => p * x, 1)).fill(Infinity))),
   inf: async (a) => ret(makeND(dimsN(a), new Float64Array(dimsN(a).reduce((p, x) => p * x, 1)).fill(Infinity))),
-  eye: async (a) => { const [r, c] = dims2(a); return ret(eye(r, c)); },
+  eye: async (a) => {
+    // strip a trailing class name (eye(n,"uint32"), eye(2,3,"single"), eye(sz,"like",p))
+    const isCharArg = (v: Value) => isStr(v) || (isMat(v) && (v as Mat).isChar);
+    const cls = a.find((v) => isCharArg(v) && /^(double|single|int8|uint8|int16|uint16|int32|uint32|int64|uint64|logical)$/.test(asString(v).toLowerCase()));
+    const [r, c] = dims2(a.filter((v) => isMat(v) && !(v as Mat).isChar));
+    let I = eye(r, c);
+    if (cls) I = applyClass(I, asString(cls).toLowerCase());
+    return ret(I);
+  },
   rand: async (a) => { const d = dimsN(a); const data = new Float64Array(d.reduce((p, x) => p * x, 1)); for (let i = 0; i < data.length; i++) data[i] = rngNext(); return ret(makeND(d, data)); },
   linspace: async (a) => {
     const A = m(a[0]), Bm = m(a[1]); const n = a.length >= 3 ? Math.round(asScalar(a[2])) : 100;
@@ -1182,7 +1190,7 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(bool(true));
   },
   // ── more decompositions / matrix functions ──
-  expm: async (a) => ret(expmFn(m(a[0]))),
+  expm: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? expmComplexMat(A) : expmFn(A)); },
   logm: async (a) => ret(logmFn(m(a[0]))),
   sqrtm: async (a) => ret(sqrtmFn(m(a[0]))),
   hess: async (a, n) => { const { P, H } = hessFn(m(a[0])); return n >= 2 ? [P, H] : [H]; },
@@ -1899,9 +1907,20 @@ export const BUILTINS: Record<string, Builtin> = {
     }
     return ret(makeStr(a.map((v) => asString(v)).join('')));
   },
-  extractBefore: async (a) => ret(mapStrArr(a[0], (x) => { const i = x.indexOf(asString(a[1])); return i < 0 ? '' : x.slice(0, i); })),
-  extractAfter: async (a) => ret(mapStrArr(a[0], (x) => { const p = asString(a[1]); const i = x.indexOf(p); return i < 0 ? '' : x.slice(i + p.length); })),
-  extractBetween: async (a) => { const str = asString(a[0]); const l = asString(a[1]), r = asString(a[2]); const i = str.indexOf(l); if (i < 0) return ret(makeStr('')); const j = str.indexOf(r, i + l.length); return ret(makeStr(j < 0 ? '' : str.slice(i + l.length, j))); },
+  extractBefore: async (a) => {
+    const A = asStrArr(a[0]); const numeric = isMat(a[1]) && !(a[1] as Mat).isChar; const pos = numeric ? toArray(m(a[1])) : null; const B = numeric ? null : asStrArr(a[1]);
+    return ret(makeStrArr(A.rows, A.cols, A.items.map((x, i) => { if (pos) { const p = Math.round(pos.length === 1 ? pos[0] : pos[i]); return x.slice(0, Math.max(0, p - 1)); } const b = B!.items.length === 1 ? B!.items[0] : B!.items[i]; const k = x.indexOf(b); return k < 0 ? '' : x.slice(0, k); })));
+  },
+  extractAfter: async (a) => {
+    const A = asStrArr(a[0]); const numeric = isMat(a[1]) && !(a[1] as Mat).isChar; const pos = numeric ? toArray(m(a[1])) : null; const B = numeric ? null : asStrArr(a[1]);
+    return ret(makeStrArr(A.rows, A.cols, A.items.map((x, i) => { if (pos) { const p = Math.round(pos.length === 1 ? pos[0] : pos[i]); return x.slice(p); } const b = B!.items.length === 1 ? B!.items[0] : B!.items[i]; const k = x.indexOf(b); return k < 0 ? '' : x.slice(k + b.length); })));
+  },
+  extractBetween: async (a) => {
+    const A = asStrArr(a[0]); const numeric = isMat(a[1]) && !(a[1] as Mat).isChar && isMat(a[2]) && !(a[2] as Mat).isChar;
+    if (numeric) { const sp = toArray(m(a[1])), ep = toArray(m(a[2])); return ret(makeStrArr(A.rows, A.cols, A.items.map((x, i) => x.slice(Math.round(sp.length === 1 ? sp[0] : sp[i]) - 1, Math.round(ep.length === 1 ? ep[0] : ep[i]))))); }
+    const L = asStrArr(a[1]), R = asStrArr(a[2]);
+    return ret(makeStrArr(A.rows, A.cols, A.items.map((x, i) => { const l = L.items.length === 1 ? L.items[0] : L.items[i]; const r = R.items.length === 1 ? R.items[0] : R.items[i]; const k = x.indexOf(l); if (k < 0) return ''; const j = x.indexOf(r, k + l.length); return j < 0 ? '' : x.slice(k + l.length, j); })));
+  },
   matches: async (a) => { const s = asStrArr(a[0]); const p = asString(a[1]); const o = zeros(s.rows, s.cols); o.isBool = true; s.items.forEach((x, i) => { o.data[i] = x === p ? 1 : 0; }); return [o]; },
 
   // ── Batch H: bitwise + legacy string/data (MATLAB v6 reference) ──
@@ -2197,7 +2216,14 @@ export const BUILTINS: Record<string, Builtin> = {
   // linear algebra / math additions
   sylvester: async (a) => ret(sylvesterSolve(m(a[0]), m(a[1]), m(a[2]))),
   lsqminnorm: async (a) => ret(matmul(pinvFn(m(a[0])), m(a[1]))),
-  expmv: async (a) => ret(matmul(expmFn(m(a[0])), m(a[1]))),
+  expmv: async (a) => {
+    // expmv(A,b,t) = expm(t*A)*b (t defaults to 1)
+    const A = m(a[0]); const b = m(a[1]); const t = a.length >= 3 ? asScalar(a[2]) : 1;
+    let tA = A;
+    if (t !== 1) { tA = mat(A.rows, A.cols, Float64Array.from(A.data, (v) => v * t)); if (A.idata) tA.idata = Float64Array.from(A.idata, (v) => v * t); }
+    const E = isComplex(tA) ? expmComplexMat(tA) : expmFn(tA);
+    return ret(isComplex(E) || isComplex(b) ? cmatmul(E, b) : matmul(E, b));
+  },
   idivide: async (a) => { const op = a.length >= 3 ? asString(a[2]).toLowerCase() : 'fix'; const rnd = op === 'floor' ? Math.floor : op === 'ceil' ? Math.ceil : op === 'round' ? Math.round : Math.trunc; return ret(elementwise(m(a[0]), m(a[1]), (x, y) => rnd(x / y))); },
   polydiv: async (a, n) => { const [q, r] = polyDivide(toArray(m(a[0])), toArray(m(a[1]))); return n >= 2 ? [rowVec(q), rowVec(r)] : [rowVec(q)]; },
   ordeig: async (a) => { const e = schurEigFn(m(a[0])); return ret(finishComplex(e.re.length, 1, Float64Array.from(e.re), Float64Array.from(e.im))); },
@@ -4336,6 +4362,26 @@ function expintE1(x: number): number {
   let sum = -EULER_GAMMA - Math.log(x), xk = 1, kfact = 1;
   for (let k = 1; k <= 200; k++) { xk *= x; kfact *= k; const term = (k % 2 ? 1 : -1) * xk / (k * kfact); sum += term; if (Math.abs(term) < 1e-16 * Math.abs(sum)) break; }
   return sum;
+}
+/** Matrix exponential of a complex matrix via scaling-and-squaring with a Taylor series
+ *  (complex-aware; the real linalg expm drops imaginary parts). */
+function expmComplexMat(A: Mat): Mat {
+  const n = A.rows; const ar = A.data, ai = A.idata ?? new Float64Array(n * n);
+  let nrm = 0; for (let i = 0; i < n; i++) { let s = 0; for (let j = 0; j < n; j++) s += Math.hypot(ar[i + j * n], ai[i + j * n]); nrm = Math.max(nrm, s); }
+  nrm = nrm || 1; const sgrid = Math.max(0, Math.ceil(Math.log2(nrm))); const sc = Math.pow(2, sgrid);
+  const cmm = (Xr: Float64Array, Xi: Float64Array, Yr: Float64Array, Yi: Float64Array): [Float64Array, Float64Array] => {
+    const Rr = new Float64Array(n * n), Ri = new Float64Array(n * n);
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { let sr = 0, si = 0; for (let k = 0; k < n; k++) { const xr = Xr[i + k * n], xi = Xi[i + k * n], yr = Yr[k + j * n], yi = Yi[k + j * n]; sr += xr * yr - xi * yi; si += xr * yi + xi * yr; } Rr[i + j * n] = sr; Ri[i + j * n] = si; }
+    return [Rr, Ri];
+  };
+  const Br = Float64Array.from(ar, (v) => v / sc), Bi = Float64Array.from(ai, (v) => v / sc);
+  const Er = new Float64Array(n * n), Ei = new Float64Array(n * n);
+  let Tr: Float64Array = new Float64Array(n * n), Ti: Float64Array = new Float64Array(n * n);
+  for (let i = 0; i < n; i++) { Er[i + i * n] = 1; Tr[i + i * n] = 1; }
+  for (let k = 1; k <= 20; k++) { [Tr, Ti] = cmm(Tr, Ti, Br, Bi); for (let i = 0; i < Tr.length; i++) { Tr[i] /= k; Ti[i] /= k; Er[i] += Tr[i]; Ei[i] += Ti[i]; } }
+  let er: Float64Array = Er, ei: Float64Array = Ei;
+  for (let t = 0; t < sgrid; t++) [er, ei] = cmm(er, ei, er, ei);
+  const out = mat(n, n, er); out.idata = ei; return out;
 }
 /** Complex exponential integral E1(z): power series for small |z| / Re(z)≤0, continued
  *  fraction (Numerical Recipes) for the right half-plane. */

@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **310 / 1170** audited.
+Progress: **320 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -315,3 +315,13 @@ Progress: **310 / 1170** audited.
 | 308 | `exp` | ✅ | exponential (real+complex) |
 | 309 | `expand` | ✅ | symbolic expansion |
 | 310 | `expint` | ✅ | **fixed**: complex E1(z) support |
+| 311 | `expm` | ✅ | **fixed**: complex matrix exponential (was dropping imaginary parts) |
+| 312 | `expm1` | ✅ | accurate exp(x)-1 |
+| 313 | `expmv` | ✅ | **fixed**: honors `t` → expm(t*A)*b; complex |
+| 314 | `extract` | 🟡 | literal/regex matches work; pattern objects (digitsPattern) not modeled |
+| 315 | `extractAfter` | ✅ | **fixed**: numeric position + per-element boundary array |
+| 316 | `extractBefore` | ✅ | **fixed**: numeric position + per-element boundary array |
+| 317 | `extractBetween` | ✅ | **fixed**: numeric positions + per-element boundaries |
+| 318 | `eye` | ✅ | **fixed**: `eye(n,classname)` type argument |
+| 319 | `ezcontour` | 🟡 | renders contour |
+| 320 | `ezcontourf` | 🟡 | renders filled contour |

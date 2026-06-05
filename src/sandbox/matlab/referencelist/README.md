@@ -725,3 +725,25 @@ All 35 batch-8 examples pass.
 - **`evalc`** now captures the output of commands that return nothing (it used to error "expression produced no value" on `evalc('disp(42)')`); it runs with display enabled and collects the text.
 - **`expint` complex**: added a complex `E1(z)` (power series for small `|z|`/left half-plane, Numerical-Recipes continued fraction elsewhere) → `expint(1+2i)` now matches MATLAB instead of returning the real-part value.
 - Rich ≥10-line help added for all batch-31 functions (incl. new structured `evalc`).
+
+## Batch 32 — functions 311–320 (matrix exponential · string extraction · identity)
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `expm` | ✅ | **fixed**: complex matrix exponential → `expm(0.25*A)` matches MATLAB | — |
+| `expm1` | ✅ | accurate `exp(x)-1` near 0 | — |
+| `expmv` | ✅ | **fixed**: `expmv(A,b,t)=expm(t*A)*b` (was ignoring `t`); complex-aware | function-handle `A` form not modeled |
+| `extract` | 🟡 | literal/regex matches → `extract("a1b2c3","\d")` | `pattern` objects (`digitsPattern`, `lettersPattern`) not implemented |
+| `extractAfter` | ✅ | **fixed**: numeric position + per-element boundary array | — |
+| `extractBefore` | ✅ | **fixed**: numeric position + per-element boundary array | — |
+| `extractBetween` | ✅ | **fixed**: numeric positions + per-element boundaries | — |
+| `eye` | ✅ | **fixed**: `eye(n,classname)` typed identity → `eye(3,"uint32")` | — |
+| `ezcontour` | 🟡 | renders contour of a function | visual only |
+| `ezcontourf` | 🟡 | renders filled contour | visual only |
+
+### Fixes landed in this batch
+- **Complex matrix exponential**: `expm` (and the underlying linalg routine) was real-only and silently dropped imaginary parts, so `expm(0.25*A)` for a complex `A` gave a wrong real diagonal. Added a complex scaling-and-squaring Taylor routine (`expmComplexMat`); `expm` now dispatches to it for complex input and matches MATLAB.
+- **`expmv` honors `t`**: it computed `expm(A)*b`, ignoring the time argument. Now `expmv(A,b,t)=expm(t*A)*b` (complex-aware), so `norm(expmv(A,b,0.25)-expm(0.25*A)*b)` is 0 and the QUBO-style doc example matches.
+- **`extractAfter`/`extractBefore`/`extractBetween`**: added the numeric-position forms (`extractAfter(str,pos)`, etc.) and fixed per-element boundary arrays — a string-array boundary is now applied element-by-element instead of collapsing to the first boundary (which made the 2nd element return `""`).
+- **`eye(n,classname)`**: the trailing class-name argument (`"uint32"`, `"single"`, …) is now stripped from the dimension parsing and applied to the result, instead of erroring.
+- Rich ≥10-line help added for all batch-32 functions (incl. new structured `expm`/`expm1`/`expmv`/`extract`/`ezcontourf`).
