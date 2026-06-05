@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **250 / 1170** audited.
+Progress: **260 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -255,3 +255,13 @@ Progress: **250 / 1170** audited.
 | 248 | `degree` | ✅ | **fixed via** cell-transpose: node-name lookup `degree(G,{...}')` |
 | 249 | `del2` | ✅ | **fixed**: boundary linear-extrapolation (last elt was wrong) |
 | 250 | `delaunay` | 🟡 | triangulation built; exact triangles depend on RNG/order |
+| 251 | `delaunayTriangulation` | 🟡 | connectivity list built; no object/property model |
+| 252 | `delaunayn` | ✅ | N-D simplex index list |
+| 253 | `delete` | ✅ | VFS files + graphics handles |
+| 254 | `det` | ✅ | determinant via LU |
+| 255 | `detrend` | ✅ | constant/linear/poly trend removal |
+| 256 | `deval` | ✅ | evaluate ODE/BVP/DDE sol struct |
+| 257 | `dfsearch` | ✅ | depth-first order; allevents table |
+| 258 | `diag` | ✅ | **fixed**: `k` offset (place/extract); preserves complex |
+| 259 | `dictionary` | ✅ | key→value map, insert/lookup/numEntries |
+| 260 | `diff` | ✅ | **fixed**: order `n` and `dim` args honored |

@@ -830,14 +830,25 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   diff: async (a) => {
     if (isSym(a[0])) { const s = a[0]; const vr = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar)) ? asString(a[1]) : (symVarsOf(s)[0] ?? 'x'); const order = a.length >= 3 ? Math.round(asScalar(a[2])) : (a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar ? Math.round(asScalar(a[1])) : 1); const out = makeSym(s.rows, s.cols, s.exprs.map((e) => { let d = e; for (let k = 0; k < order; k++) d = simplifyExpr(diffExpr(d, vr)); return d; })); if (s.fnArgs) out.fnArgs = s.fnArgs; return ret(out); }
-    const A = m(a[0]); const di = A.idata;
-    if (A.rows === 1 || A.cols === 1) {
-      const v = toArray(A); const out: number[] = []; const oi: number[] = [];
-      for (let i = 1; i < v.length; i++) { out.push(v[i] - v[i - 1]); if (di) oi.push(di[i] - di[i - 1]); }
-      const M = A.cols === 1 ? colVec(out) : rowVec(out); if (di) M.idata = Float64Array.from(oi); return ret(M);
-    }
-    const out = zeros(A.rows - 1, A.cols); if (di) out.idata = new Float64Array(out.data.length);
-    for (let c = 0; c < A.cols; c++) for (let r = 1; r < A.rows; r++) { const d = (r - 1) + c * out.rows; out.data[d] = A.data[r + c * A.rows] - A.data[(r - 1) + c * A.rows]; if (di) out.idata![d] = di[r + c * A.rows] - di[(r - 1) + c * A.rows]; }
+    const A0 = m(a[0]);
+    const order = a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar && numel(a[1]) > 0 ? Math.round(asScalar(a[1])) : 1;
+    const dim = a.length >= 3 ? Math.round(asScalar(a[2])) : (A0.rows === 1 ? 2 : 1);
+    // one first-difference pass along `d` (1 = down rows, 2 = across cols), complex-aware
+    const diffOnce = (M: Mat, d: number): Mat => {
+      const di = M.idata;
+      if (d === 1) {
+        if (M.rows <= 1) { const e = zeros(0, M.cols); if (di) e.idata = new Float64Array(0); return e; }
+        const o = zeros(M.rows - 1, M.cols); if (di) o.idata = new Float64Array(o.data.length);
+        for (let c = 0; c < M.cols; c++) for (let r = 1; r < M.rows; r++) { const k = (r - 1) + c * o.rows; o.data[k] = M.data[r + c * M.rows] - M.data[(r - 1) + c * M.rows]; if (di) o.idata![k] = di[r + c * M.rows] - di[(r - 1) + c * M.rows]; }
+        return o;
+      }
+      if (M.cols <= 1) { const e = zeros(M.rows, 0); if (di) e.idata = new Float64Array(0); return e; }
+      const o = zeros(M.rows, M.cols - 1); if (di) o.idata = new Float64Array(o.data.length);
+      for (let c = 1; c < M.cols; c++) for (let r = 0; r < M.rows; r++) { const k = r + (c - 1) * o.rows; o.data[k] = M.data[r + c * M.rows] - M.data[r + (c - 1) * M.rows]; if (di) o.idata![k] = di[r + c * M.rows] - di[r + (c - 1) * M.rows]; }
+      return o;
+    };
+    let out = A0;
+    for (let p = 0; p < order; p++) out = diffOnce(out, dim);
     return ret(out);
   },
   sort: async (a, n) => {
@@ -1011,7 +1022,22 @@ export const BUILTINS: Record<string, Builtin> = {
   heaviside: async (a) => { if (isSym(a[0])) return ret(makeSym(a[0].rows, a[0].cols, a[0].exprs.map((e) => simplifyExpr(sFn('heaviside', e))))); return ret(map(m(a[0]), (x) => (x > 0 ? 1 : x < 0 ? 0 : 0.5))); },
   dirac: async (a) => { if (isSym(a[0])) return ret(makeSym(a[0].rows, a[0].cols, a[0].exprs.map((e) => simplifyExpr(sFn('dirac', e))))); return ret(map(m(a[0]), (x) => (x === 0 ? Infinity : 0))); },
   mldivide: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
-  diag: async (a) => ret(diag(m(a[0]))),
+  diag: async (a) => {
+    const A = m(a[0]); const k = a.length >= 2 ? Math.round(asScalar(a[1])) : 0;
+    if (k === 0) return ret(diag(A));
+    const cplx = isComplex(A);
+    if (A.rows === 1 || A.cols === 1) {
+      // vector → place on the k-th diagonal of a square zero matrix
+      const v = toArray(A); const n = v.length; const N = n + Math.abs(k); const out = zeros(N, N);
+      if (cplx) out.idata = new Float64Array(N * N);
+      for (let i = 0; i < n; i++) { const r = k >= 0 ? i : i - k; const c = k >= 0 ? i + k : i; out.data[r + c * N] = A.data[i]; if (cplx) out.idata![r + c * N] = A.idata![i]; }
+      return ret(out);
+    }
+    // matrix → extract the k-th diagonal
+    const vals: number[] = []; const ivals: number[] = [];
+    for (let i = 0; ; i++) { const r = k >= 0 ? i : i - k; const c = k >= 0 ? i + k : i; if (r >= A.rows || c >= A.cols) break; vals.push(A.data[r + c * A.rows]); if (cplx) ivals.push(A.idata![r + c * A.rows]); }
+    const out = colVec(vals); if (cplx) out.idata = Float64Array.from(ivals); return ret(out);
+  },
   trace: async (a) => { const A = m(a[0]); let sr = 0, si = 0; const n = Math.min(A.rows, A.cols); for (let i = 0; i < n; i++) { sr += A.data[i + i * A.rows]; if (A.idata) si += A.idata[i + i * A.rows]; } return ret(A.idata ? cscalar(sr, si) : scalar(sr)); },
   transpose: async (a) => ret(transpose(m(a[0]))),
   dot: async (a) => {

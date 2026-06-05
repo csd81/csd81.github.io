@@ -600,3 +600,23 @@ All 35 batch-8 examples pass.
 - **`del2` boundaries**: interior uses the central second difference; borders now use MATLAB's linear extrapolation `L(1)=2*L(2)-L(3)` (both 1-D and 2-D), fixing the wrong last element.
 - **Cell / string-array transpose** (`{...}'`, `S'`): the postfix `'`/`.'` operators now rearrange cell and string arrays instead of throwing "expected a numeric value" — this is what unblocked `degree(G,{'a','c','e'}')`.
 - Rich ≥10-line help added for all batch-25 functions.
+
+## Batch 26 — functions 251–260 (triangulation · det/diag/diff core linalg · graph DFS · dictionary)
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `delaunayTriangulation` | 🟡 | builds the triangle/tetra connectivity list | returns a plain matrix — no object, `ConnectivityList`/`Points` property access |
+| `delaunayn` | ✅ | N-D Delaunay simplex index list (n+1 cols) | — |
+| `delete` | ✅ | removes VFS files and graphics handles | — |
+| `det` | ✅ | `det([1 -2 4;-5 2 0;1 0 3])=-32`, `det(eye(10)*1e-4)=1e-40` | — |
+| `detrend` | ✅ | `detrend(A,'constant')` column-mean removal; linear/poly | — |
+| `deval` | ✅ | evaluates ODE/BVP/DDE solution structures | — |
+| `dfsearch` | ✅ | depth-first discovery order; `'allevents'` table | — |
+| `diag` | ✅ | **fixed**: `diag(v,k)` / `diag(A,k)` offset diagonals; complex preserved | — |
+| `dictionary` | ✅ | key→value map; lookup, insert, `numEntries` | — |
+| `diff` | ✅ | **fixed**: `diff(X,n)` order and `diff(X,n,dim)` dimension | — |
+
+### Fixes landed in this batch
+- **`diag` k-offset**: the second argument was ignored — `diag(v,1)`/`diag(A,-1)` now place/extract the k-th super/sub-diagonal (was always the main diagonal). The core `linalg.diag` also now preserves the imaginary part, so `diag([1+2i 3-1i])` keeps its complex values.
+- **`diff` order and dimension**: `diff(X,n)` was applying only a single first difference and `diff(X,n,dim)` ignored `dim` (always worked down columns). Rewrote with a complex-aware `diffOnce(M,dim)` applied `n` times → `diff([0 5 15 30 50 75 105],2)=[5 5 5 5 5]`, `diff(X,1,2)` works across rows. Default dimension is the first non-singleton.
+- Rich ≥10-line help added for all batch-26 functions (incl. new structured `delete`/`detrend`/`dictionary` entries).

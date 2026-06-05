@@ -598,16 +598,19 @@ export function generalEig(A: Mat, wantVec: boolean): { D: { re: number[]; im: n
 }
 
 export function diag(a: Mat): Mat {
+  const ai = a.idata;
   if (a.rows === 1 || a.cols === 1) {
     // vector → diagonal matrix
     const n = numel(a);
     const out = zeros(n, n);
-    for (let i = 0; i < n; i++) out.data[i + i * n] = a.data[i];
+    if (ai) out.idata = new Float64Array(n * n);
+    for (let i = 0; i < n; i++) { out.data[i + i * n] = a.data[i]; if (ai) out.idata![i + i * n] = ai[i]; }
     return out;
   }
   const n = Math.min(a.rows, a.cols);
   const out = zeros(n, 1);
-  for (let i = 0; i < n; i++) out.data[i] = a.data[i + i * a.rows];
+  if (ai) out.idata = new Float64Array(n);
+  for (let i = 0; i < n; i++) { out.data[i] = a.data[i + i * a.rows]; if (ai) out.idata![i] = ai[i + i * a.rows]; }
   return out;
 }
 
