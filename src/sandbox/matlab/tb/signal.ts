@@ -394,6 +394,29 @@ export const SIGNAL: ToolboxModule = {
       const lr = Math.log(10 ** (-6 / 20)), av = -((Math.PI * fc * bw) ** 2) / (4 * lr);   // bwr = -6 dB
       return ret(map(m(a[0]), (t) => Math.exp(-av * t * t) * Math.cos(2 * Math.PI * fc * t)));
     },
+    // ── multirate: upsample/downsample/intdump/upfirdn ──
+    upsample: (a) => {
+      const M = m(a[0]), x = toArray(M), n = Math.round(asScalar(a[1])), ph = a.length > 2 ? Math.round(asScalar(a[2])) : 0;
+      const out = new Array(n * x.length).fill(0); for (let i = 0; i < x.length; i++) out[i * n + ph] = x[i];
+      return ret(M.rows === 1 ? rowVec(out) : colVec(out));
+    },
+    downsample: (a) => {
+      const M = m(a[0]), x = toArray(M), n = Math.round(asScalar(a[1])), ph = a.length > 2 ? Math.round(asScalar(a[2])) : 0;
+      const out: number[] = []; for (let j = ph; j < x.length; j += n) out.push(x[j]);
+      return ret(M.rows === 1 ? rowVec(out) : colVec(out));
+    },
+    intdump: (a) => {
+      const M = m(a[0]), x = toArray(M), ns = Math.round(asScalar(a[1])), out: number[] = [];
+      for (let i = 0; i + ns <= x.length; i += ns) { let s = 0; for (let j = 0; j < ns; j++) s += x[i + j]; out.push(s / ns); }
+      return ret(M.rows === 1 ? rowVec(out) : colVec(out));
+    },
+    upfirdn: (a) => {
+      const M = m(a[0]), x = toArray(M), h = toArray(m(a[1])), p = a.length > 2 ? Math.round(asScalar(a[2])) : 1, q = a.length > 3 ? Math.round(asScalar(a[3])) : 1;
+      const upLen = (x.length - 1) * p + 1, up = new Array(upLen).fill(0); for (let i = 0; i < x.length; i++) up[i * p] = x[i];
+      const y = new Array(upLen + h.length - 1).fill(0); for (let i = 0; i < upLen; i++) for (let k = 0; k < h.length; k++) y[i + k] += up[i] * h[k];
+      const out: number[] = []; for (let j = 0; j < y.length; j += q) out.push(y[j]);
+      return ret(M.rows === 1 ? rowVec(out) : colVec(out));
+    },
     // ── equivalent noise bandwidth of a window: enbw(w)=N*Σw²/(Σw)²; enbw(w,fs)=fs*Σw²/(Σw)² ──
     enbw: (a) => {
       const w = toArray(m(a[0])), sw = w.reduce((s, v) => s + v, 0), sw2 = w.reduce((s, v) => s + v * v, 0);
@@ -553,6 +576,7 @@ export const SIGNAL: ToolboxModule = {
     settlingtime: 'Settling time for bilevel waveform transitions', enbw: 'Equivalent noise bandwidth of a window',
     periodogram: 'Periodogram power spectral density estimate', dctmtx: 'Discrete cosine transform matrix', pwelch: "Welch's power spectral density estimate",
     rectpuls: 'Sampled aperiodic rectangle', tripuls: 'Sampled aperiodic triangle', sawtooth: 'Sawtooth or triangle wave', gauspuls: 'Gaussian-modulated sinusoidal RF pulse',
+    upsample: 'Increase sample rate by integer factor', downsample: 'Decrease sample rate by integer factor', intdump: 'Integrate and dump', upfirdn: 'Upsample, FIR filter, downsample',
     meanfreq: 'Mean frequency of power spectrum', medfreq: 'Median frequency of power spectrum', bandpower: 'Band power of signal',
     powerbw: 'Power bandwidth (3 dB)', obw: 'Occupied bandwidth (99% power)',
     mag2db: 'Convert magnitude to decibels', db2mag: 'Convert decibels to magnitude', pow2db: 'Convert power to decibels', db2pow: 'Convert decibels to power',
