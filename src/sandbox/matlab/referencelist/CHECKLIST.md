@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **30 / 1170** audited.
+Progress: **40 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -35,3 +35,13 @@ Progress: **30 / 1170** audited.
 | 28 | `allcycles` | ✅ | edge output + MaxNum/length options |
 | 29 | `allfinite` | ✅ | any-dim finite test |
 | 30 | `allpaths` | ✅ | edge output + MaxNum/length options |
+| 31 | `allunique` | ✅ | NaN/strings/'rows' fixed |
+| 32 | `alpha` | 🟡 | transparency setter; graphics |
+| 33 | `alphaShape` | 🟡 | 2D/3D; large-3D guarded; default-alpha differs |
+| 34 | `alphaSpectrum` | ✅ | alpha spectrum |
+| 35 | `alphaTriangulation` | 🟡 | small OK; large-3D returns empty |
+| 36 | `alphamap` | 🟡 | presets accepted; not rendered |
+| 37 | `amd` | ✅ | greedy min-degree; examples need dataset |
+| 38 | `angle` | ✅ | phase angle; command-label parse fixed |
+| 39 | `animatedline` | 🟡 | create/add/get; datetime pending |
+| 40 | `annotation` | 🟡 | objects accepted; not rendered |

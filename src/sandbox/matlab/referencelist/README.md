@@ -87,3 +87,26 @@ Status legend: ✅ converged · 🟡 partial (core works, some variants unsuppor
 - **Cell/struct display** shows a small real vector inline, e.g. `{[1 2 3 6 5 4]}` (converged allcycles/allpaths).
 - `allpaths`/`allcycles` gained second (edge-index) outputs and the MaxNum*/Min/MaxLength options.
 - Rich ≥10-line help added for all batch-3 functions.
+
+---
+
+## Batch 4 — functions 31–40
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `allunique` | ✅ | **fixed**: NaN treated as unique, string arrays, `'rows'` | `allunique(table)` and RowNames table display not modeled |
+| `alpha` | 🟡 | transparency setter accepted | no visual transparency to verify (graphics) |
+| `alphaShape` | 🟡 | 2-D/3-D alpha shapes, `Alpha`, area/volume | default-alpha heuristic differs; large 3-D sets not triangulated (guarded); boundaryFacets/stlwrite/trisurf chains pending |
+| `alphaSpectrum` | ✅ | sorted alpha spectrum | — |
+| `alphaTriangulation` | 🟡 | simplices of an alpha shape | large 3-D point sets return empty (hull too slow in JS) |
+| `alphamap` | 🟡 | accepts alpha-map presets/vectors | figure alpha map not rendered |
+| `amd` | ✅(algo) | greedy minimum-degree permutation | doc examples need the `barbellgraph` dataset |
+| `angle` | ✅ | phase angle in (-pi,pi]; **command-form labels now parse** | — |
+| `animatedline` | 🟡 | create/add/get points | datetime/duration lines, `orderedcolors`/`rgb2hex` examples pending |
+| `annotation` | 🟡 | annotation objects accepted | floating annotations not rendered |
+
+### Fixes landed in this batch (two are important robustness fixes)
+- **Infinite-loop hang fixed**: `alphaShape`/N-D Delaunay over large 3-D point sets (~1250 pts) hung the interpreter; the pure-JS hull now bails above ~600 points (MATLAB uses Qhull). This had been freezing the whole audit run.
+- **Lexer/command-syntax fix**: `'` after a value followed by a space is now a string, not transpose — so `ylabel 'Phase / \pi'`, `disp 'hi'`, `[3 'ab']` parse correctly (previously a parse error on `\`). Added xlabel/ylabel/zlabel/title/legend/disp/… to command syntax. Transpose (`A'`, `[1 2 3]'`) is unchanged.
+- `allunique`: NaN/missing treated as unique; string-array and `'rows'` support.
+- Rich ≥10-line help added for all batch-4 functions.

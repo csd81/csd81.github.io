@@ -20,3 +20,8 @@ datenum string parsing; datetime ConvertFrom; sparse display header (m×n sparse
 cell/struct inline small-vector display; allpaths/allcycles edge outputs + MaxNum*/Min/MaxLength opts.
 Converged: addtodate adjacency airy all allcycles allfinite allpaths. Partial: addnode addpoints.
 Data-blocked: addvars (patients dataset). 37→ build green; 1412 builtins, 0 without help.
+## Batch 4 (fns 31-40): allunique alpha alphaShape alphaSpectrum alphaTriangulation alphamap amd angle animatedline annotation
+Fixed: alphaShape/N-D Delaunay INFINITE-LOOP HANG (size guard >600 pts 3-D); lexer transpose-vs-string
+(value+space+' => string, fixes ylabel/disp 'str' command form, was parse error on backslash); added
+label/title/disp to COMMAND_FNS; allunique NaN-unique + string arrays + 'rows'. angle converged.
+19/80 remaining (plot/dataset/advanced-geometry). Build green; 1412 builtins, 0 without help.

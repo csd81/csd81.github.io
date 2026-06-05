@@ -1895,7 +1895,16 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   isbetween: async (a) => { const A = m(a[0]); const lo = asScalar(a[1]), hi = asScalar(a[2]); return [{ ...map(A, (x) => (x >= lo && x <= hi ? 1 : 0)), isBool: true }]; },
   isuniform: async (a, n) => { const v = toArray(m(a[0])); if (v.length < 2) return n >= 2 ? [bool(true), scalar(0)] : [bool(true)]; const step = v[1] - v[0]; let ok = true; for (let i = 2; i < v.length; i++) if (Math.abs((v[i] - v[i - 1]) - step) > 1e-12 * (1 + Math.abs(step))) { ok = false; break; } return n >= 2 ? [bool(ok), scalar(ok ? step : NaN)] : [bool(ok)]; },
-  allunique: async (a) => { const v = toArray(m(a[0])); return ret(bool(new Set(v).size === v.length)); },
+  allunique: async (a) => {
+    // String arrays: compare by text. NaN/missing are each treated as unique.
+    if (isStr(a[0])) { const items = a[0].items; const seen = new Set<string>(); for (const s of items) { if (seen.has(s)) return ret(bool(false)); seen.add(s); } return ret(bool(true)); }
+    const M = m(a[0]);
+    const byRows = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar)) && asString(a[1]).toLowerCase() === 'rows';
+    if (byRows) { const seen = new Set<string>(); for (const r of matRows(M)) { const k = r.join(','); if (k.includes('NaN')) continue; if (seen.has(k)) return ret(bool(false)); seen.add(k); } return ret(bool(true)); }
+    const v = toArray(M); const seen = new Set<number>();
+    for (const x of v) { if (Number.isNaN(x)) continue; if (seen.has(x)) return ret(bool(false)); seen.add(x); }
+    return ret(bool(true));
+  },
   numunique: async (a) => ret(scalar(new Set(toArray(m(a[0]))).size)),
   uniquetol: async (a) => {
     const v = [...toArray(m(a[0]))].sort((x, y) => x - y); const tol = a.length >= 2 ? asScalar(a[1]) : 1e-6;
@@ -5427,6 +5436,9 @@ function matRank(rows: number[][]): number {
  *  A tiny deterministic joggle breaks exact cocircular/cospherical degeneracies (cf. Qhull 'QJ'). */
 function delaunaynd(P: number[][]): number[][] {
   const d = P[0].length;
+  // The pure-JS incremental hull is O(points × facets); above this size it would
+  // effectively hang (MATLAB uses Qhull). Bail gracefully on very large 3-D+ sets.
+  if (P.length > 600 && d >= 3) return [];
   const jit = (i: number, j: number) => 1e-9 * ((((i + 1) * 2654435761 + (j + 1) * 40503) >>> 0) / 2 ** 32 - 0.5);
   const lifted = P.map((pt, i) => { const q = pt.map((v, j) => v + jit(i, j)); return [...q, q.reduce((s, v) => s + v * v, 0)]; });
   const facets = convhullnd(lifted);
