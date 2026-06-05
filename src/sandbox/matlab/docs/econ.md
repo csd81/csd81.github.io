@@ -3,7 +3,7 @@
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
 | ✅ | `adftest` | Augmented Dickey-Fuller test for a unit root (Model `AR`/`ARD`/`TS`, Test `t1`/`t2`; numeric vector input) |
-|   | `pptest` | Phillips-Perron test for a unit root |
+| ✅ | `pptest` | Phillips-Perron test for a unit root |
 |   | `kpsstest` | KPSS test for stationarity |
 |   | `lmctest` | Leybourne-McCabe stationarity test |
 |   | `vratiotest` | Variance ratio test |
