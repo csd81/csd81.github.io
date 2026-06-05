@@ -26,6 +26,17 @@ import {
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
 
+/** Module-level VPA precision state (MATLAB `digits`); default 32 significant digits. */
+let VPA_DIGITS = 32;
+
+/** Binomial coefficient C(n,k) for non-negative integer n,k. */
+function binom(n: number, k: number): number {
+  if (k < 0 || k > n) return 0;
+  let r = 1;
+  for (let i = 0; i < k; i++) r = (r * (n - i)) / (i + 1);
+  return Math.round(r);
+}
+
 /** Faulhaber power sum P_j(m) = Σ_{k=1}^{m} k^j as a symbolic polynomial in m (j ≤ 5). */
 function powerSum(j: number, m: SymExpr): SymExpr | null {
   const m1 = sAdd(m, sN(1)), m2 = sPow(m, sN(2)), m1sq = sPow(m1, sN(2)), twoM1 = sAdd(sMul(sN(2), m), sN(1));
@@ -110,7 +121,7 @@ export const SYM_BUILTINS: Record<string, Builtin> = {
     if (out.exprs.every((e) => symVars(e).length === 0)) { const M = zeros(s.rows, s.cols); out.exprs.forEach((e, i) => { M.data[i] = symEval(e, new Map()); }); return ret(M); }
     return ret(out);
   },
-  vpa: async (a) => { const s = symArg(a[0]); const M = zeros(s.rows, s.cols); let allNum = true; s.exprs.forEach((e, i) => { const v = symEval(e, new Map()); M.data[i] = v; if (!Number.isFinite(v)) allNum = false; }); return ret(allNum ? M : a[0]); },
+  vpa: async (a) => { const s = symArg(a[0]); const d = a.length >= 2 ? Math.round(asScalar(a[1])) : VPA_DIGITS; const M = zeros(s.rows, s.cols); let allNum = true; s.exprs.forEach((e, i) => { const v = symEval(e, new Map()); M.data[i] = v !== 0 && Number.isFinite(v) ? Number(v.toPrecision(Math.max(1, Math.min(100, d)))) : v; if (!Number.isFinite(v)) allNum = false; }); return ret(allNum ? M : a[0]); },
   latex: async (a) => ret(str(symArg(a[0]).exprs.map(exprToLatex).join(', '))),
   texlabel: async (a) => {
     const s = (isStr(a[0]) || (isMat(a[0]) && (a[0] as Mat).isChar)) ? parseSym(asString(a[0])) : symArg(a[0]);
@@ -257,5 +268,92 @@ export const SYM_BUILTINS: Record<string, Builtin> = {
   },
   assume: async (a) => { if (a.length >= 2) { const name = isSym(a[0]) ? (symVarsOf(a[0])[0] ?? asString(a[0])) : asString(a[0]); assumeVar(name, asString(a[1])); } else if (a.length === 1 && isSym(a[0])) { clearAssumptions(symVarsOf(a[0])[0]); } return []; },
   assumeAlso: async (a) => { if (a.length >= 2) { const name = isSym(a[0]) ? (symVarsOf(a[0])[0] ?? asString(a[0])) : asString(a[0]); assumeVar(name, asString(a[1])); } return []; },
-  assumptions: async () => ret(makeSym(0, 0, [])), sympref: async () => [], digits: async () => ret(scalar(32)),
+  assumptions: async () => ret(makeSym(0, 0, [])), sympref: async () => [],
+  digits: async (a) => { if (a.length >= 1) { VPA_DIGITS = Math.round(asScalar(a[0])); return []; } return ret(scalar(VPA_DIGITS)); },
+
+  // nth Bernstein polynomial: B = Σ_{k=0}^n f(k/n)·C(n,k)·t^k·(1-t)^(n-k).
+  bernstein: async (a) => {
+    const f = symArg(a[0]); const n = Math.round(asScalar(a[1]));
+    const tSym = symArg(a[2]); const tName = symVarsOf(tSym)[0] ?? 'x';
+    const fVar = symVarsOf(f)[0] ?? 'x';
+    const t = sV(tName); const oneMinusT = sSub(sN(1), t);
+    const terms: SymExpr[] = [];
+    for (let k = 0; k <= n; k++) {
+      const fk = subsExpr(f.exprs[0], fVar, sN(n === 0 ? 0 : k / n));
+      terms.push(sMul(fk, sN(binom(n, k)), sPow(t, sN(k)), sPow(oneMinusT, sN(n - k))));
+    }
+    return ret(makeSym(1, 1, [simplifyExpr(sAdd(...terms))]));
+  },
+
+  // Rewrite an expression replacing its most common nontrivial repeated subexpression with sigma.
+  subexpr: async (a, n) => {
+    const s = symArg(a[0]); const sigmaName = a.length >= 2 ? asString(a[1]) : 'sigma';
+    const counts = new Map<string, { e: SymExpr; c: number }>();
+    const visit = (x: SymExpr) => {
+      if (x.t === 'add' || x.t === 'mul' || x.t === 'fn' || x.t === 'pow') {
+        const key = exprToStr(x); const prev = counts.get(key);
+        if (prev) prev.c++; else counts.set(key, { e: x, c: 1 });
+      }
+      if (x.t === 'add' || x.t === 'mul' || x.t === 'fn') x.args.forEach(visit);
+      else if (x.t === 'pow') { visit(x.base); visit(x.exp); }
+    };
+    s.exprs.forEach((e) => visit(e));
+    // Choose the repeated subexpression (count>=2) with the smallest string form (MATLAB favours the atomic one, e.g. a^2).
+    let best: { e: SymExpr; key: string } | null = null;
+    for (const { e, c } of counts.values()) {
+      if (c < 2) continue;
+      const key = exprToStr(e);
+      if (!best || key.length < best.key.length) best = { e, key };
+    }
+    if (!best) { const r = makeSym(s.rows, s.cols, s.exprs.slice()); return n >= 2 ? [r, makeSym(0, 0, [])] : [r]; }
+    const target = best.key;
+    const replace = (x: SymExpr): SymExpr => {
+      if (exprToStr(x) === target) return sV(sigmaName);
+      if (x.t === 'add') return sAdd(...x.args.map(replace));
+      if (x.t === 'mul') return sMul(...x.args.map(replace));
+      if (x.t === 'fn') return sFn(x.name, ...x.args.map(replace));
+      if (x.t === 'pow') return sPow(replace(x.base), replace(x.exp));
+      return x;
+    };
+    const shorter = makeSym(s.rows, s.cols, s.exprs.map((e) => simplifyExpr(replace(e))));
+    const sigma = makeSym(1, 1, [best.e]);
+    return n >= 2 ? [shorter, sigma] : [shorter];
+  },
+
+  // Univariate polynomial reduction: [remainder, quotient] of p divided by a single divisor.
+  polynomialReduce: async (a, n) => {
+    const p = symArg(a[0]); const dv = symArg(a[1]);
+    if (dv.rows * dv.cols !== 1) throw new MatError('polynomialReduce: only a single scalar divisor is supported (divisor vectors are not implemented)');
+    const varNames = a.length >= 3
+      ? (isSym(a[2]) ? symVarsOf(a[2]) : [asString(a[2])])
+      : [...new Set([...symVarsOf(p), ...symVarsOf(dv)])];
+    if (varNames.length !== 1) throw new MatError('polynomialReduce: only univariate (single-variable) reduction is supported');
+    const v = varNames[0];
+    const cP = polyCoeffs(p.exprs[0], v).slice().reverse();   // high→low
+    const cD = polyCoeffs(dv.exprs[0], v).slice().reverse();
+    while (cD.length && Math.abs(cD[0]) < 1e-12) cD.shift();
+    if (!cD.length) throw new MatError('polynomialReduce: divisor is zero');
+    const q: number[] = []; const rem = cP.slice();
+    while (rem.length >= cD.length) {
+      const c = rem[0] / cD[0]; q.push(c);
+      for (let i = 0; i < cD.length; i++) rem[i] -= c * cD[i];
+      rem.shift();
+    }
+    while (rem.length && Math.abs(rem[0]) < 1e-12) rem.shift();
+    // Rebuild syms from high→low coefficient arrays.
+    const build = (coeffs: number[]): SymExpr => {
+      const deg = coeffs.length - 1; const terms: SymExpr[] = [];
+      coeffs.forEach((c, i) => { if (Math.abs(c) < 1e-12) return; const power = deg - i; const cn = Number(c.toPrecision(12)); terms.push(power === 0 ? sN(cn) : power === 1 ? sMul(sN(cn), sV(v)) : sMul(sN(cn), sPow(sV(v), sN(power)))); });
+      return terms.length ? simplifyExpr(sAdd(...terms)) : sN(0);
+    };
+    const rSym = makeSym(1, 1, [build(rem.length ? rem : [0])]);
+    const qSym = makeSym(1, 1, [build(q.length ? q : [0])]);
+    return n >= 2 ? [rSym, qSym] : [rSym];
+  },
+
+  isVariable: async (a) => ret(bool(symArg(a[0]).exprs[0].t === 'v')),
+  isCondition: async (a) => { const e = symArg(a[0]).exprs[0]; return ret(bool(e.t === 'fn' && ['lt', 'le', 'gt', 'ge', 'eq', 'ne'].includes(e.name))); },
+  isDistinctVariable: async (a) => { const s = symArg(a[0]); const allV = s.exprs.every((e) => e.t === 'v'); const names = s.exprs.map((e) => (e as { name?: string }).name ?? ''); return ret(bool(allV && new Set(names).size === names.length)); },
+  symFunType: async (a) => ret(str(symTypeName(symArg(a[0]).exprs[0]))),
+  charToFunction: async (a) => { const name = asString(a[0]); return ret(makeSym(1, 1, [sV(name)])); },
 };
