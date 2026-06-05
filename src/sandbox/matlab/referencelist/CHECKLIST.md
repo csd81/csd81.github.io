@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **340 / 1170** audited.
+Progress: **350 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -345,3 +345,13 @@ Progress: **340 / 1170** audited.
 | 338 | `fftshift` | ✅ | **fixed**: odd-length shift (floor vs ceil) |
 | 339 | `fftw` | ✅ | planner no-op (compat) |
 | 340 | `fieldnames` | ✅ | struct field names cell |
+| 341 | `figure` | 🟡 | creates figure target (host-rendered) |
+| 342 | `fileparts` | ✅ | **fixed**: backslash separators + dotfile/`.cshrc` extension |
+| 343 | `filesep` | ✅ | platform separator |
+| 344 | `fillmissing` | ✅ | **fixed**: per-column `'constant'` vector |
+| 345 | `filloutliers` | 🟡 | detect + replace; interp values approximate |
+| 346 | `filter` | ✅ | IIR/FIR 1-D digital filter |
+| 347 | `filter2` | ✅ | 2-D FIR (correlation) |
+| 348 | `fimplicit` | 🟡 | renders implicit curve |
+| 349 | `fimplicit3` | 🟡 | renders implicit surface |
+| 350 | `find` | ✅ | nonzero indices; `[r,c,v]`; first-n |

@@ -791,3 +791,24 @@ All 35 batch-8 examples pass.
 - **`fftshift` odd-length**: it shifted by `ceil(n/2)`, giving `[4 5 6 7 1 2 3]` for a 7-vector instead of MATLAB's `[5 6 7 1 2 3 4]`. Swapped so `fftshift` uses `floor(n/2)` and `ifftshift` uses `ceil(n/2)` (equal for even n), so `ifftshift(fftshift(x))` is the identity.
 - Verified `fft`/`fft2`, `featureEdges`, `fieldnames`; `fcontour`/`feather`/`fftw` are graphics/compat-only.
 - Rich ≥10-line help added for all batch-34 functions (incl. new structured `feather`/`fft`/`fft2`/`fftn`/`fftshift`).
+
+## Batch 35 — functions 341–350 (path parsing · missing/outlier filling · digital filters · find)
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `figure` | 🟡 | creates a figure drawing target | host-rendered (sandbox) |
+| `fileparts` | ✅ | **fixed**: backslash separators + dotfile extension → `fileparts(".cshrc")` gives `ext=".cshrc"` | — |
+| `filesep` | ✅ | platform path separator | — |
+| `fillmissing` | ✅ | **fixed**: `"constant"` with a per-column vector → `fillmissing([1 NaN;NaN 2],"constant",[100 1000])` | `SamplePoints`/spline/pchip partial |
+| `filloutliers` | 🟡 | detects (median-MAD) and replaces outliers | interpolated fill values are approximate |
+| `filter` | ✅ | IIR/FIR 1-D filter → `filter([1 1],1,1:4)=[1 3 5 7]` | timeseries input form not modeled |
+| `filter2` | ✅ | 2-D FIR correlation; `"same"`/`"full"`/`"valid"` | — |
+| `fimplicit` | 🟡 | renders implicit curve `f(x,y)=0` | visual only |
+| `fimplicit3` | 🟡 | renders implicit surface `f(x,y,z)=0` | visual only |
+| `find` | ✅ | nonzero indices, `[r,c]`/`[r,c,v]`, first/last n | — |
+
+### Fixes landed in this batch
+- **`fileparts` separators**: it split only on `/`, so a Windows path `H:\user4\matlab\myfile.txt` was not parsed and a dotfile like `.cshrc` came out as `name=".cshrc"`. It now splits on both `/` and `\`, and treats a leading-dot file as all-extension (`name=""`, `ext=".cshrc"`), matching MATLAB.
+- **`fillmissing` per-column constant**: `fillmissing(A,"constant",[100 1000])` errored ("expected a scalar"). It now accepts a vector of one fill value per column (and still handles a scalar constant).
+- Verified `filter`, `filter2`, `find` (incl. `[r,c,v]` and first-n), `filesep`; `figure`/`fimplicit`/`fimplicit3`/`filloutliers` are graphics or approximate.
+- Rich ≥10-line help added for all batch-35 functions (incl. new structured `figure`/`fileparts`/`filesep`/`filloutliers`/`filter`/`filter2`/`fimplicit3`).

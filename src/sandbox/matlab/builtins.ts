@@ -2105,7 +2105,7 @@ export const BUILTINS: Record<string, Builtin> = {
   filesep: async () => ret(str('/')),
   pathsep: async () => ret(str(':')),
   fullfile: async (a) => ret(str(a.map((x) => asString(x)).filter((s) => s.length).join('/').replace(/\/+/g, '/'))),
-  fileparts: async (a, n) => { const p = asString(a[0]); const slash = p.lastIndexOf('/'); const dir = slash >= 0 ? p.slice(0, slash) : ''; const base = slash >= 0 ? p.slice(slash + 1) : p; const dot = base.lastIndexOf('.'); const name = dot > 0 ? base.slice(0, dot) : base; const ext = dot > 0 ? base.slice(dot) : ''; return n >= 2 ? [str(dir), str(name), str(ext)] : [str(dir)]; },
+  fileparts: async (a, n) => { const p = asString(a[0]); const slash = Math.max(p.lastIndexOf('/'), p.lastIndexOf('\\')); const dir = slash >= 0 ? p.slice(0, slash) : ''; const base = slash >= 0 ? p.slice(slash + 1) : p; const dot = base.lastIndexOf('.'); const name = dot >= 0 ? base.slice(0, dot) : base; const ext = dot >= 0 ? base.slice(dot) : ''; return n >= 2 ? [str(dir), str(name), str(ext)] : [str(dir)]; },
   cputime: async () => ret(scalar((typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000)),
   beep: async () => [],
   inputname: async () => ret(str('')),
@@ -2171,8 +2171,16 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   fillmissing: async (a) => {
     const A = m(a[0]); const method = isMat(a[1]) && (a[1] as Mat).isChar ? asString(a[1]).toLowerCase() : 'constant';
-    const fill = method === 'constant' ? asScalar(a[a.length - 1]) : 0;
-    return ret(colMap(A, (c) => fillVec(c, method, fill)));
+    if (method === 'constant') {
+      const fv = toArray(m(a[a.length - 1]));   // scalar, or one fill value per column
+      if (A.rows !== 1 && A.cols !== 1 && fv.length === A.cols) {
+        const o = zeros(A.rows, A.cols);
+        for (let c = 0; c < A.cols; c++) for (let r = 0; r < A.rows; r++) { const x = A.data[r + c * A.rows]; o.data[r + c * A.rows] = Number.isNaN(x) ? fv[c] : x; }
+        return ret(o);
+      }
+      return ret(colMap(A, (c) => fillVec(c, 'constant', fv[0])));
+    }
+    return ret(colMap(A, (c) => fillVec(c, method, 0)));
   },
   isbetween: async (a) => { const A = m(a[0]); const lo = asScalar(a[1]), hi = asScalar(a[2]); return [{ ...map(A, (x) => (x >= lo && x <= hi ? 1 : 0)), isBool: true }]; },
   isuniform: async (a, n) => { const v = toArray(m(a[0])); if (v.length < 2) return n >= 2 ? [bool(true), scalar(0)] : [bool(true)]; const step = v[1] - v[0]; let ok = true; for (let i = 2; i < v.length; i++) if (Math.abs((v[i] - v[i - 1]) - step) > 1e-12 * (1 + Math.abs(step))) { ok = false; break; } return n >= 2 ? [bool(ok), scalar(ok ? step : NaN)] : [bool(ok)]; },
