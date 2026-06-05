@@ -1610,7 +1610,13 @@ export const BUILTINS: Record<string, Builtin> = {
   lower: async (a) => ret(str(asString(a[0]).toLowerCase())),
   upper: async (a) => ret(str(asString(a[0]).toUpperCase())),
   strtrim: async (a) => ret(str(asString(a[0]).trim())),
-  deblank: async (a) => ret(str(asString(a[0]).replace(/\s+$/, ''))),
+  deblank: async (a) => {
+    const trim = (s: string) => s.replace(/[\s\0]+$/, '');
+    const v = a[0];
+    if (isCell(v)) return ret(makeCell(v.rows, v.cols, v.items.map((it) => str(trim(asString(it))))));
+    if (isStr(v)) return ret(makeStrArr(v.rows, v.cols, v.items.map(trim)));
+    return ret(str(trim(asString(v))));
+  },
   strcmp: async (a) => ret(bool(getStr(a[0]) !== null && getStr(a[0]) === getStr(a[1]))),
   strcmpi: async (a) => { const x = getStr(a[0]), y = getStr(a[1]); return ret(bool(x !== null && y !== null && x.toLowerCase() === y.toLowerCase())); },
   strncmp: async (a) => { const x = getStr(a[0]), y = getStr(a[1]); const k = Math.round(asScalar(a[2])); return ret(bool(x !== null && y !== null && x.slice(0, k) === y.slice(0, k) && x.length >= k && y.length >= k)); },
@@ -2354,15 +2360,34 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   NaT: async () => ret(makeTemporal('datetime', 1, 1, Float64Array.of(NaN))),
   duration: async (a) => { const M = m(a[0]); if (M.cols >= 3) { const out = new Float64Array(M.rows); for (let r = 0; r < M.rows; r++) out[r] = (M.data[r] + M.data[r + M.rows] / 60 + M.data[r + 2 * M.rows] / 3600) / 24; return ret(makeTemporal('duration', M.rows, 1, out)); } return ret(makeTemporal('duration', M.rows, M.cols, new Float64Array(M.data))); },
-  years: async (a) => ret(durUnit(a[0], 365.2425)),
-  days: async (a) => ret(durUnit(a[0], 1)),
-  hours: async (a) => ret(durUnit(a[0], 1 / 24)),
-  minutes: async (a) => ret(durUnit(a[0], 1 / 1440)),
-  seconds: async (a) => ret(durUnit(a[0], 1 / 86400)),
-  milliseconds: async (a) => ret(durUnit(a[0], 1 / 86400000)),
+  years: async (a) => ret(durUnit(a[0], 365.2425, 'y')),
+  days: async (a) => ret(durUnit(a[0], 1, 'd')),
+  hours: async (a) => ret(durUnit(a[0], 1 / 24, 'h')),
+  minutes: async (a) => ret(durUnit(a[0], 1 / 1440, 'm')),
+  seconds: async (a) => ret(durUnit(a[0], 1 / 86400, 's')),
+  milliseconds: async (a) => ret(durUnit(a[0], 1 / 86400000, 'ms')),
   year: async (a) => ret(dtCompMat(a[0], 0)),
   month: async (a) => ret(dtCompMat(a[0], 1)),
-  day: async (a) => ret(dtCompMat(a[0], 2)),
+  day: async (a) => {
+    const kind = a.length >= 2 ? asString(a[1]).toLowerCase() : 'dayofmonth';
+    if (kind === 'dayofmonth') return ret(dtCompMat(a[0], 2));
+    const v = a[0]; const data = isTemporal(v) ? v.data : m(v).data; const [r, c] = isTemporal(v) ? [v.rows, v.cols] : [m(v).rows, m(v).cols];
+    const WD = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const WDS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    if (kind === 'name' || kind === 'shortname') {
+      const items: string[] = []; const tbl = kind === 'name' ? WD : WDS;
+      for (let i = 0; i < data.length; i++) { const ms = Math.round((data[i] - 719529) * 86400000); items.push(tbl[new Date(ms).getUTCDay()]); }
+      return ret(makeStrArr(r, c, items));
+    }
+    const o = zeros(r, c);
+    for (let i = 0; i < data.length; i++) {
+      const ms = Math.round((data[i] - 719529) * 86400000); const dt = new Date(ms);
+      if (kind === 'dayofweek') o.data[i] = dt.getUTCDay() + 1;
+      else if (kind === 'dayofyear') { const start = Date.UTC(dt.getUTCFullYear(), 0, 1); o.data[i] = Math.floor((Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate()) - start) / 86400000) + 1; }
+      else o.data[i] = dvec(data[i])[2];
+    }
+    return ret(o);
+  },
   hour: async (a) => ret(dtCompMat(a[0], 3)),
   minute: async (a) => ret(dtCompMat(a[0], 4)),
   second: async (a) => ret(dtCompMat(a[0], 5)),
@@ -4057,9 +4082,9 @@ function dnum(y: number, mo: number, d: number, h = 0, mi = 0, s = 0): number {
   return dt.getTime() / 86400000 + 719529;
 }
 /** duration unit helper: numeric → duration (days); duration → count in that unit. */
-function durUnit(v: Value, daysPerUnit: number): Value {
+function durUnit(v: Value, daysPerUnit: number, fmt?: string): Value {
   if (isTemporal(v) && v.tkind === 'duration') { const o = zeros(v.rows, v.cols); for (let i = 0; i < v.data.length; i++) o.data[i] = v.data[i] / daysPerUnit; return o; }
-  const M = m(v); return makeTemporal('duration', M.rows, M.cols, Float64Array.from(M.data, (x) => x * daysPerUnit));
+  const M = m(v); const t = makeTemporal('duration', M.rows, M.cols, Float64Array.from(M.data, (x) => x * daysPerUnit)); if (fmt) (t as Temporal).fmt = fmt; return t;
 }
 /** datetime component (0=Y..5=S) of a datetime (or serial-number Mat). */
 function dtCompMat(v: Value, idx: number): Mat {

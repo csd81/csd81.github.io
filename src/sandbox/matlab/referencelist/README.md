@@ -556,3 +556,25 @@ All 35 batch-8 examples pass.
 - **`datestr`** accepts a `[Y M D H MI S]` date vector (and N×6), a datetime array, and returns a multi-row char array for several dates.
 - Noted major gap: the `datetime` type still needs constructor text-parsing (cellstr/`InputFormat`/name-value), type-preserving concatenation, and custom format strings; many of this batch's examples are also non-deterministic (`datetime("now")`, `date`, `clock`).
 - Rich ≥10-line help added for all batch-23 functions.
+
+## Batch 24 — functions 231–240 (duration/datetime accessors · DDE solvers · deal/deblank)
+
+| Function | Status | Implemented / verified | Not possible (and why) |
+|---|---|---|---|
+| `day` | ✅ | **fixed**: `dayType` argument — `dayofmonth` (default), `dayofweek` (1=Sun..7=Sat), `dayofyear`, `name`/`shortname` (string array) | — |
+| `days` | ✅ | **fixed**: a `days(x)` duration now displays as `"N days"` instead of `hh:mm:ss`; `days(duration)` extracts the day count | — |
+| `dblquad` | ✅ | double integral over a rectangle, forwarded to `integral2`; verified to 1e-6 | — |
+| `dde23` | ✅ | constant-delay DDE solver; `sol.x`/`sol.y` + `deval` | — |
+| `ddeget` | ✅ | reads a DDE option with optional default | — |
+| `ddensd` | ✅ | neutral DDE solver (delayed `y` and `y'`) | — |
+| `ddesd` | ✅ | state-dependent-delay DDE solver | — |
+| `ddeset` | ✅ | builds/overrides a DDE options struct (RelTol/AbsTol/MaxStep/…) | — |
+| `deal` | ✅ | **fixed**: `[C{:}] = deal(...)` now expands into cell contents; `[a,b,c]=deal(x)` and positional form verified | `@(x)deal(...)` anon edge cases niche |
+| `deblank` | ✅ | **fixed**: trims trailing whitespace per element of a cell/string array (not just a char row) | — |
+
+### Fixes landed in this batch
+- **Duration display format**: `durUnit` now tags the duration with a unit hint (`y`/`d`/`h`/`m`/`s`/`ms`) and `fmtTemporal` honors it, so `days(magic(2))`, `hours(2)`, `minutes(5)`, `seconds(10)`, `years(1)` print `"1 day  3 days …"`, `"2 hr"`, `"5 min"`, etc. instead of always `hh:mm:ss`.
+- **`day(t,dayType)`**: the second argument is now read; `dayofweek`/`dayofyear`/`name`/`shortname` were previously ignored (always returned day-of-month).
+- **`[C{:}] = deal(...)`**: the multiassign handler expands a `C{:}` LHS into the cell's elements so several outputs land in one cell.
+- **`deblank`** handles cell arrays and string arrays element-wise.
+- Rich ≥10-line help added for all batch-24 functions (incl. new structured entries for `ddensd` and `deblank`).

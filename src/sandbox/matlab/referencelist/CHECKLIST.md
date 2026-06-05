@@ -1,7 +1,7 @@
 # Master checklist — reference-list conformance
 
 Per-function audit status. ✅ converged · 🟡 partial · ⛔ not feasible · ⬜ not yet audited.
-Progress: **230 / 1170** audited.
+Progress: **240 / 1170** audited.
 
 | # | Function | Status | Note |
 |---|---|---|---|
@@ -235,3 +235,13 @@ Progress: **230 / 1170** audited.
 | 228 | `datestr` | 🟡 | date-vector/datetime improved |
 | 229 | `datetime` | 🟡 | string/props improved; major gap |
 | 230 | `datevec` | 🟡 | number/datetime; string parse pending |
+| 231 | `day` | ✅ | **fixed**: `dayType` (dayofweek/dayofyear/name/shortname) |
+| 232 | `days` | ✅ | **fixed**: displays as "N days" not hh:mm:ss |
+| 233 | `dblquad` | ✅ | forwards to integral2; verified |
+| 234 | `dde23` | ✅ | constant-delay DDE solver |
+| 235 | `ddeget` | ✅ | read DDE option w/ default |
+| 236 | `ddensd` | ✅ | neutral DDE solver |
+| 237 | `ddesd` | ✅ | state-dependent-delay DDE solver |
+| 238 | `ddeset` | ✅ | DDE options struct |
+| 239 | `deal` | ✅ | **fixed**: `[C{:}]=deal(...)` cell-content expansion |
+| 240 | `deblank` | ✅ | **fixed**: cell/string-array trimming |

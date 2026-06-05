@@ -117,7 +117,7 @@ function brief(v: Value): string {
   if (v.kind === 'graph') return `[${v.directed ? 'digraph' : 'graph'}]`;
   if (v.kind === 'geom') return `[${v.gkind}]`;
   if (v.kind === 'quantum') return `[quantum ${v.qkind}]`;
-  if (v.kind === 'temporal') return v.rows * v.cols === 1 ? fmtTemporal(v.tkind, v.data[0]) : `[${v.rows}×${v.cols} ${v.tkind}]`;
+  if (v.kind === 'temporal') return v.rows * v.cols === 1 ? fmtTemporal(v.tkind, v.data[0], v.fmt) : `[${v.rows}×${v.cols} ${v.tkind}]`;
   if (v.kind === 'table') return `[${v.nrows}×${v.vars.length} ${v.isTimetable ? 'timetable' : 'table'}]`;
   if (v.kind === 'categorical') return v.rows * v.cols === 1 ? (v.codes[0] ? v.categories[v.codes[0] - 1] : '<undefined>') : `[${v.rows}×${v.cols} categorical]`;
   if (v.kind === 'map') return `[${v.store.size}×1 containers.Map]`;
@@ -229,7 +229,7 @@ function geomLines(v: { gkind: string; points: number[][]; conn?: number[][]; al
 /** One cell of a table column, formatted as text. */
 function tableCell(col: Value, row: number): string {
   if (col.kind === 'str') return `"${col.items[row] ?? ''}"`;
-  if (col.kind === 'temporal') return fmtTemporal(col.tkind, col.data[row]);
+  if (col.kind === 'temporal') return fmtTemporal(col.tkind, col.data[row], (col as any).fmt);
   if (col.kind === 'num') { const k = col.cols; if (k <= 1) return col.isChar ? String.fromCharCode(col.data[row]) : formatScalar(col.data[row]); const parts: string[] = []; for (let c = 0; c < k; c++) parts.push(formatScalar(col.data[row + c * col.rows])); return parts.join(' '); }
   if (col.kind === 'cell') return brief(col.items[row]);
   return brief(col);
@@ -250,7 +250,7 @@ function tableLines(v: { vars: string[]; cols: Value[]; nrows: number; isTimetab
 
 /** Format one datetime (serial datenum) or duration (days) value. */
 const TMONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-export function fmtTemporal(tkind: string, val: number): string {
+export function fmtTemporal(tkind: string, val: number, fmt?: string): string {
   if (Number.isNaN(val)) return tkind === 'datetime' ? 'NaT' : 'NaN';
   if (tkind === 'datetime') {
     const ms = Math.round((val - 719529) * 86400000); const d = new Date(ms); const p2 = (x: number) => String(x).padStart(2, '0');
@@ -258,15 +258,21 @@ export function fmtTemporal(tkind: string, val: number): string {
     const h = d.getUTCHours(), mi = d.getUTCMinutes(), s = d.getUTCSeconds();
     return (h || mi || s) ? `${date} ${p2(h)}:${p2(mi)}:${p2(s)}` : date;
   }
+  // duration with a single-unit format (set by days/hours/minutes/seconds/years): "N days" etc.
+  if (fmt && fmt !== 'hh:mm:ss') {
+    const perDay: Record<string, number> = { y: 365.2425, d: 1, h: 1 / 24, m: 1 / 1440, s: 1 / 86400, ms: 1 / 86400000 };
+    const label: Record<string, [string, string]> = { y: ['yr', 'yrs'], d: ['day', 'days'], h: ['hr', 'hr'], m: ['min', 'min'], s: ['sec', 'sec'], ms: ['ms', 'ms'] };
+    if (perDay[fmt]) { const q = val / perDay[fmt]; const qs = Number.isInteger(q) ? String(q) : String(+q.toFixed(4)); const [one, many] = label[fmt]; return `${qs} ${q === 1 ? one : many}`; }
+  }
   // duration → HH:MM:SS (days converted to hours) — MATLAB default 'hh:mm:ss'
   const totalSec = val * 86400; const neg = totalSec < 0; const t = Math.abs(totalSec);
   const hh = Math.floor(t / 3600), mm = Math.floor((t % 3600) / 60), ss = t % 60;
   const p2 = (x: number) => String(Math.floor(x)).padStart(2, '0');
   return `${neg ? '-' : ''}${p2(hh)}:${p2(mm)}:${ss % 1 ? ss.toFixed(3) : p2(ss)}`;
 }
-function temporalLines(v: { tkind: string; rows: number; cols: number; data: Float64Array }): string[] {
-  if (v.rows * v.cols === 1) return ['   ' + fmtTemporal(v.tkind, v.data[0])];
-  const strs: string[] = []; for (let i = 0; i < v.data.length; i++) strs.push(fmtTemporal(v.tkind, v.data[i]));
+function temporalLines(v: { tkind: string; rows: number; cols: number; data: Float64Array; fmt?: string }): string[] {
+  if (v.rows * v.cols === 1) return ['   ' + fmtTemporal(v.tkind, v.data[0], v.fmt)];
+  const strs: string[] = []; for (let i = 0; i < v.data.length; i++) strs.push(fmtTemporal(v.tkind, v.data[i], v.fmt));
   let w = 0; for (const s of strs) w = Math.max(w, s.length); const lines: string[] = [];
   for (let r = 0; r < v.rows; r++) { const row: string[] = []; for (let c = 0; c < v.cols; c++) row.push(strs[r + c * v.rows].padStart(w)); lines.push('   ' + row.join('   ')); }
   return lines;
@@ -326,7 +332,7 @@ function buildStream(args: Value[]): Array<{ s: string } | { n: number }> {
   for (const a of args) {
     if (isHandle(a)) { stream.push({ s: a.name ?? '@fn' }); continue; }
     if (a.kind === 'gobj') { stream.push({ s: `<${a.gtype}>` }); continue; }
-    if (a.kind === 'temporal') { for (const x of a.data) stream.push({ s: fmtTemporal(a.tkind, x) }); continue; }
+    if (a.kind === 'temporal') { for (const x of a.data) stream.push({ s: fmtTemporal(a.tkind, x, a.fmt) }); continue; }
     if (a.kind === 'sym') { for (const e of a.exprs) stream.push({ s: exprToStr(e) }); continue; }
     if (a.kind === 'categorical') { for (const c of a.codes) stream.push({ s: c ? a.categories[c - 1] : '<undefined>' }); continue; }
     if (a.kind === 'cell' || a.kind === 'struct' || a.kind === 'graph' || a.kind === 'geom' || a.kind === 'quantum' || a.kind === 'table' || a.kind === 'map' || a.kind === 'dict') { stream.push({ s: brief(a) }); continue; }

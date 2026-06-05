@@ -257,14 +257,34 @@ export class Interpreter implements Env {
         return;
       }
       case 'multiassign': {
-        const n = stmt.lhs.length;
-        const vals = await this.evalValues(stmt.e, scope, n);
-        for (let i = 0; i < stmt.lhs.length; i++) {
-          const lv = stmt.lhs[i];
-          if (!lv) continue;
-          if (i >= vals.length) throw new MatError('not enough output arguments');
-          await this.assignLValue(lv, vals[i], scope);
-          if (!stmt.suppressed) this.displayAssigned(lv, scope);
+        // A cell-content target `C{...}` on the LHS expands to one output per selected cell,
+        // so `[C{:}] = deal(a,b,c)` fills C with the three values.
+        const targets: { lv: LValue | null; cellName?: string; indices?: number[] }[] = [];
+        let total = 0;
+        for (const lv of stmt.lhs) {
+          if (lv && lv.t === 'cell' && lv.target.t === 'ident') {
+            const cur = scope.vars.get(lv.target.name);
+            if (cur && isCell(cur)) {
+              const subs = await this.evalSubsN(lv.args, cur.rows, cur.cols, cur.items.length, scope);
+              const lin = this.cellLinear(subs, cur.rows, cur.cols, cur.items.length);
+              targets.push({ lv, cellName: lv.target.name, indices: lin }); total += lin.length; continue;
+            }
+          }
+          targets.push({ lv }); total += 1;
+        }
+        const vals = await this.evalValues(stmt.e, scope, total);
+        let k = 0;
+        for (const t of targets) {
+          if (t.indices) {
+            const cur = scope.vars.get(t.cellName!) as Cell; const items = cur.items.slice();
+            for (const idx of t.indices) { if (k >= vals.length) throw new MatError('not enough output arguments'); items[idx - 1] = vals[k++]; }
+            scope.vars.set(t.cellName!, makeCell(cur.rows, cur.cols, items));
+            if (!stmt.suppressed) this.displayAssigned({ t: 'ident', name: t.cellName! }, scope);
+          } else if (t.lv) {
+            if (k >= vals.length) throw new MatError('not enough output arguments');
+            await this.assignLValue(t.lv, vals[k++], scope);
+            if (!stmt.suppressed) this.displayAssigned(t.lv, scope);
+          } else k++;
         }
         return;
       }
