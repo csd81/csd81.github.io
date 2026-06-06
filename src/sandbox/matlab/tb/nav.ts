@@ -668,6 +668,9 @@ export const NAV: ToolboxModule = {
     quat2rotm: ((args: Value[]) => ret(quat2rotmImpl(args))) as Builtin,
     rotm2quat: ((args: Value[]) => ret(rotm2quatImpl(args))) as Builtin,
     quat2axang: ((args: Value[]) => ret(quat2axangImpl(args))) as Builtin,
+    quat2tform: ((args: Value[]) => ret(rotm2tformImpl([quat2rotmImpl(args)]))) as Builtin,
+    tform2quat: ((args: Value[]) => ret(rotm2quatImpl([tform2rotmImpl(args)]))) as Builtin,
+    rotm2axang: ((args: Value[]) => ret(quat2axangImpl([rotm2quatImpl(args)]))) as Builtin,
   },
   constants: {
     WGS84_A: () => rowVec([WGS84_A]),
@@ -698,5 +701,8 @@ export const NAV: ToolboxModule = {
     quat2rotm: 'Convert quaternion [w x y z] to rotation matrix.',
     rotm2quat: 'Convert rotation matrix to quaternion [w x y z].',
     quat2axang: 'Convert quaternion [w x y z] to axis-angle.',
+    quat2tform: 'Convert quaternion [w x y z] to homogeneous transform.',
+    tform2quat: 'Extract quaternion [w x y z] from homogeneous transform.',
+    rotm2axang: 'Convert rotation matrix to axis-angle.',
   },
 };
