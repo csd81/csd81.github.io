@@ -24,6 +24,7 @@ import { MAPPING } from './mapping';
 import { NAV } from './nav';
 import { Pde } from './pde';
 import { RADAR } from './radar';
+import { RF } from './rf';
 import { SIGNAL } from './signal';
 import { SIMULINK } from './simulink';
 import { STATS } from './stats';
@@ -33,7 +34,7 @@ import { WAVELET } from './wavelet';
 /** All registered toolboxes, in precedence order (first wins on inter-toolbox collision). */
 export const TOOLBOXES: ToolboxModule[] = [
   AEROSPACE, AUDIO, COMM, CONTROL, CURVEFIT, ECON, FINANCIAL, FUZZY, IMAGES,
-  MAPPING, NAV, Pde, RADAR, SIGNAL, SIMULINK, STATS, SYMBOLIC, WAVELET,
+  MAPPING, NAV, Pde, RADAR, RF, SIGNAL, SIMULINK, STATS, SYMBOLIC, WAVELET,
 ];
 
 export const TOOLBOX_BUILTINS: Record<string, Builtin> = {};

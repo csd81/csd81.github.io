@@ -4,7 +4,7 @@
 // the live Mapping Toolbox (see mapping.VALIDATION.md). Note deg2nm (=60, definitional) is NOT the
 // inverse of nm2deg (=1852/R·180/π) — matching MATLAB's asymmetric arcminute vs. radius behaviour.
 import type { Builtin } from '../builtins';
-import { type Value, type Mat, map, toMat as m, asScalar, asString, toArray, colVec, rowVec, scalar } from '../values';
+import { type Value, type Mat, map, toMat as m, asScalar, asString, toArray, colVec, rowVec, scalar, str, mat, fromRows, isStr } from '../values';
 import type { ToolboxModule } from './types';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
@@ -104,6 +104,123 @@ function enu2aer(e: number, n: number, up: number, d: boolean): [number, number,
 }
 const out3 = (vals: [number, number, number], nargout: number): Promise<Value[]> => Promise.resolve([scalar(vals[0]), scalar(vals[1]), scalar(vals[2])].slice(0, Math.max(1, nargout)));
 
+// ════════════════════════════════════════════════════════════════════════════
+//  Angle unit conversion + formatting (map/mapgeodesy)
+//  degrees2dms / degrees2dm / dms2degrees / dm2degrees: closed-form sexagesimal
+//  conversions. interpm: densify lat/lon vertices (default 'lin' = independent
+//  linear spacing). angl2str: format angles as character matrices.
+// ════════════════════════════════════════════════════════════════════════════
+
+// MATLAB fix (truncate toward zero) and rem (sign of dividend).
+const fix = (x: number) => (x < 0 ? Math.ceil(x) : Math.floor(x));
+const rem = (x: number, y: number) => x - fix(x / y) * y;
+// MATLAB round(x,n): round half away from zero at 10^-n.
+function roundN(x: number, n: number): number {
+  if (!isFinite(x)) return x;
+  const f = Math.pow(10, n), t = x * f;
+  return Math.sign(t) * Math.round(Math.abs(t)) / f;
+}
+
+// degrees2dms(angle) → [fix(d) fix(m) s] with consistent sign per row.
+function deg2dmsRow(x: number): [number, number, number] {
+  const minutes = 60 * rem(x, 1);
+  let d = fix(x), mn = fix(minutes), s = 60 * rem(minutes, 1);
+  if (d < 0 || mn < 0) s = -s;   // flip seconds sign if degrees or minutes negative
+  if (d < 0) mn = -mn;           // flip minutes sign if degrees negative
+  return [d, mn, s];
+}
+function deg2dmRow(x: number): [number, number] {
+  let d = fix(x), mn = 60 * rem(x, 1);
+  if (d < 0) mn = -mn;
+  return [d, mn];
+}
+
+// roundedDMS / roundedDM: decompose |X| into D, M, (S) with seconds/minutes
+// rounded to N digits (N >= -2). Returns nonneg D,M,S and sign.
+function roundedDMS(X: number, N: number): { D: number; M: number; S: number; sgn: number } {
+  let D: number, M: number, S: number;
+  if (N >= -1) {
+    let t = roundN(Math.abs(3600 * X), N);
+    S = rem(t, 60);
+    t = Math.round(t - S) / 60;
+    M = rem(t, 60);
+    D = Math.floor(t / 60);
+  } else { // N === -2
+    S = 0;
+    const t = Math.round(Math.abs(60 * X));
+    M = rem(t, 60);
+    D = Math.floor(t / 60);
+    if (!isFinite(X)) { D = NaN; S = NaN; }
+  }
+  let sgn = Math.sign(X);
+  if (D + (M + S / 60) / 60 === 0) sgn = 0;
+  return { D, M, S, sgn };
+}
+function roundedDM(X: number, N: number): { D: number; M: number; sgn: number } {
+  let D: number, M: number;
+  if (N >= -1) {
+    let t = roundN(Math.abs(60 * X), N);
+    if (!isFinite(X)) t = NaN;
+    M = rem(t, 60);
+    D = Math.floor(t / 60);
+  } else { // N === -2
+    M = 0;
+    D = Math.round(Math.abs(X));
+    if (!isFinite(X)) { D = NaN; M = NaN; }
+  }
+  let sgn = Math.sign(X);
+  if (D + M / 60 === 0) sgn = 0;
+  return { D, M, sgn };
+}
+
+const DEGSYM = '^{\\circ}';
+// num2str(x,'%0W.Rf')-style fixed-point with zero padding to total width W.
+function padFixed(x: number, R: number): string {
+  const W = R > 0 ? 3 + R : 2 + R;            // formatstr(): totaldigits
+  let s = x.toFixed(R);
+  while (s.length < W) s = '0' + s;
+  return s;
+}
+// formatstr digits → rightdigits used by seconds/minutes formatting.
+const rightDigits = (digits: number) => Math.abs(Math.min(-digits, 0));
+
+// Build the "middle" string for one angle value given units + (round-style) digits.
+function angleMiddle(x: number, units: string, digits: number): string {
+  if (units === 'degrees2dms') {
+    const { D, M, S } = roundedDMS(x, Math.max(digits, -2));
+    const dStr = `${D}`;                          // num2str(d,'%4g') then strtrim
+    const mStr = M < 10 ? `0${M}` : `${M}`;        // '%02g'
+    const sStr = padFixed(S, rightDigits(digits)); // formatstr
+    return `${dStr}${DEGSYM}*${mStr}'*${sStr}"`;
+  }
+  if (units === 'degrees2dm') {
+    const { D, M } = roundedDM(x, Math.max(digits, -2));
+    const dStr = `${D}`;
+    const mStr = padFixed(M, rightDigits(digits));
+    return `${dStr}${DEGSYM}*${mStr}'`;
+  }
+  if (units === 'radians') {
+    const r = rightDigits(digits);
+    return `${Math.abs(roundN(x, digits)).toFixed(r)}*R`;
+  }
+  // 'degrees'
+  const r = rightDigits(digits);
+  return `${Math.abs(roundN(x, digits)).toFixed(r)}${DEGSYM}`;
+}
+
+// True for a char value (a 'str' value or an isChar numeric Mat).
+const isCharVal = (v: Value | undefined): boolean => v !== undefined && (isStr(v) || (v.kind === 'num' && v.isChar === true));
+
+// Resolve angl2str UNITS: exact 'degrees2dm(s)' or a (partial) match to degrees/radians.
+function checkUnits(u: string): string {
+  const s = u.toLowerCase();
+  if (s === 'dms' || s === 'dm') throw new Error('Obsolete UNITS string; use degrees2dms/degrees2dm.');
+  if (s === 'degrees2dms' || s === 'degrees2dm') return s;
+  if ('degrees'.startsWith(s) && s.length > 0) return 'degrees';
+  if ('radians'.startsWith(s) && s.length > 0) return 'radians';
+  throw new Error(`Unrecognized UNITS string: ${u}`);
+}
+
 export const MAPPING: ToolboxModule = {
   id: 'map',
   name: 'Mapping Toolbox',
@@ -201,6 +318,108 @@ export const MAPPING: ToolboxModule = {
     aer2geodetic: (a, n) => { const { a: A, f } = ellipAF(a[6]); const d = inDeg(a[7]); const lat0 = asScalar(a[3]), lon0 = asScalar(a[4]); const [e, no, up] = aer2enu(asScalar(a[0]), asScalar(a[1]), asScalar(a[2]), d); const [dx, dy, dz] = enu2ecefv(e, no, up, lat0, lon0, d); const [x0, y0, z0] = g2e(A, f, lat0, lon0, asScalar(a[5]), d); return out3(e2g(A, f, x0 + dx, y0 + dy, z0 + dz, d), n); },
     ecef2aer: (a, n) => { const { a: A, f } = ellipAF(a[6]); const d = inDeg(a[7]); const lat0 = asScalar(a[3]), lon0 = asScalar(a[4]); const [x0, y0, z0] = g2e(A, f, lat0, lon0, asScalar(a[5]), d); const [e, no, up] = ecef2enuv(asScalar(a[0]) - x0, asScalar(a[1]) - y0, asScalar(a[2]) - z0, lat0, lon0, d); return out3(enu2aer(e, no, up, d), n); },
     aer2ecef: (a, n) => { const { a: A, f } = ellipAF(a[6]); const d = inDeg(a[7]); const lat0 = asScalar(a[3]), lon0 = asScalar(a[4]); const [e, no, up] = aer2enu(asScalar(a[0]), asScalar(a[1]), asScalar(a[2]), d); const [dx, dy, dz] = enu2ecefv(e, no, up, lat0, lon0, d); const [x0, y0, z0] = g2e(A, f, lat0, lon0, asScalar(a[5]), d); return out3([x0 + dx, y0 + dy, z0 + dz], n); },
+
+    // ── degrees ↔ degrees-minutes-seconds ──
+    /** degrees2dms(angleInDegrees) — N-by-1 column → N-by-3 [deg min sec]. */
+    degrees2dms: (a) => { const x = toArray(m(a[0])); return ret(fromRows(x.map(deg2dmsRow))); },
+    /** degrees2dm(angleInDegrees) — N-by-1 column → N-by-2 [deg min]. */
+    degrees2dm: (a) => { const x = toArray(m(a[0])); return ret(fromRows(x.map(deg2dmRow))); },
+    /** dms2degrees(DMS) — N-by-3 [deg min sec] → N-by-1 decimal degrees. */
+    dms2degrees: (a) => {
+      const M = m(a[0]), N = M.rows;
+      if (M.cols !== 3) throw new Error('DMS input array must be N-by-3.');
+      const out: number[] = [];
+      for (let r = 0; r < N; r++) {
+        const D = M.data[r], Mi = M.data[r + N], S = M.data[r + 2 * N];
+        const sgn = (D < 0 || Mi < 0 || S < 0) ? -1 : 1;
+        out.push(sgn * (Math.abs(D) + (Math.abs(Mi) + Math.abs(S) / 60) / 60));
+      }
+      return ret(colVec(out));
+    },
+    /** dm2degrees(DM) — N-by-2 [deg min] → N-by-1 decimal degrees. */
+    dm2degrees: (a) => {
+      const M = m(a[0]), N = M.rows;
+      if (M.cols !== 2) throw new Error('DM input array must be N-by-2.');
+      const out: number[] = [];
+      for (let r = 0; r < N; r++) {
+        const D = M.data[r], Mi = M.data[r + N];
+        const sgn = (D < 0 || Mi < 0) ? -1 : 1;
+        out.push(sgn * (Math.abs(D) + Math.abs(Mi) / 60));
+      }
+      return ret(colVec(out));
+    },
+
+    // ── densify lat/lon sampling (default 'lin': independent linear spacing) ──
+    /** interpm(lat,lon,maxsep[,method[,angleunit]]) — insert vertices where adjacent
+     *  separation exceeds maxsep. Only 'lin' method supported (linear in lat & lon). */
+    interpm: (a, nargout) => {
+      const lat = toArray(m(a[0])), lon = toArray(m(a[1])), maxsep = asScalar(a[2]);
+      if (lat.length !== lon.length) throw new Error('interpm: LAT and LON must have the same size.');
+      const method = isCharVal(a[3]) ? asString(a[3]).toLowerCase() : 'lin';
+      if (method !== 'lin') throw new Error("interpm: only the default 'lin' method is supported in this sandbox.");
+      const olat: number[] = [], olon: number[] = [];
+      for (let k = 0; k < lat.length; k++) {
+        olat.push(lat[k]); olon.push(lon[k]);
+        if (k < lat.length - 1) {
+          const sep = Math.max(Math.abs(lat[k + 1] - lat[k]), Math.abs(lon[k + 1] - lon[k]));
+          if (sep > maxsep) {
+            const steps = Math.ceil(sep / maxsep);
+            for (let i = 1; i < steps; i++) {
+              olat.push((lat[k + 1] - lat[k]) / steps * i + lat[k]);
+              olon.push((lon[k + 1] - lon[k]) / steps * i + lon[k]);
+            }
+          }
+        }
+      }
+      return Promise.resolve(nargout >= 2 ? [colVec(olat), colVec(olon)] : [colVec(olat)]);
+    },
+
+    // ── format angles as character matrices ──
+    /** angl2str(angle[,signcode[,units[,N]]]) — format angles (degrees by default). */
+    angl2str: (a) => {
+      const ang = toArray(m(a[0]));
+      let signcode = 'none', units = 'degrees', digits = -2;
+      if (a.length >= 2) signcode = asString(a[1]).toLowerCase();
+      if (a.length === 3) {
+        // third arg is UNITS (char) or N (numeric)
+        if (isCharVal(a[2])) units = checkUnits(asString(a[2]));
+        else digits = asScalar(a[2]);
+      } else if (a.length >= 4) {
+        units = checkUnits(asString(a[2]));
+        digits = asScalar(a[3]);
+      }
+      digits = -digits;  // switch to round()'s right-of-decimal convention
+      const rows = ang.map((x) => {
+        const middle = angleMiddle(x, units, digits);
+        let prefix = '', suffix = '';
+        switch (signcode) {
+          case 'ns': suffix = x > 0 ? '*N' : x < 0 ? '*S' : '**'; break;
+          case 'ew': suffix = x > 0 ? '*E' : x < 0 ? '*W' : '**'; break;
+          case 'pm': prefix = x > 0 ? '+' : x < 0 ? '-' : ' '; break;
+          case 'none': prefix = x < 0 ? '-' : ' '; break;
+          default: throw new Error('Unrecognized SIGNCODE string');
+        }
+        return prefix + middle + suffix;
+      });
+      // Right-justify the matrix (strjust), strip all-space border columns (strtrim),
+      // replace hold chars, and pad with a leading/trailing space.
+      const W = Math.max(0, ...rows.map((r) => r.length));
+      const just = rows.map((r) => ' '.repeat(W - r.length) + r);
+      // strtrim on the matrix: trim leading/trailing columns that are blank in every row.
+      const blankCol = (c: number) => just.every((r) => r[c] === ' ');
+      let lo = 0, hi = W;
+      while (lo < hi && blankCol(lo)) lo++;
+      while (hi > lo && blankCol(hi - 1)) hi--;
+      const trimmed = just.map((r) => r.slice(lo, hi).replace(/\*/g, ' '));
+      const finalW = hi - lo;
+      const items = trimmed.map((r) => ' ' + r + ' ');
+      if (items.length === 1) return ret(str(items[0]));
+      // N-by-(finalW+2) char matrix.
+      const cols = finalW + 2, M = mat(items.length, cols, new Float64Array(items.length * cols));
+      M.isChar = true;
+      for (let r = 0; r < items.length; r++) for (let c = 0; c < cols; c++) M.data[r + c * items.length] = items[r].charCodeAt(c);
+      return ret(M);
+    },
   },
   help: {
     km2rad: 'Convert distance from kilometers to radians', rad2km: 'Convert distance from radians to kilometers',
@@ -232,5 +451,8 @@ export const MAPPING: ToolboxModule = {
     aer2ned: 'Transform azimuth-elevation-range to north-east-down', ned2aer: 'Transform north-east-down to azimuth-elevation-range',
     geodetic2aer: 'Transform geodetic to local azimuth-elevation-range', aer2geodetic: 'Transform local azimuth-elevation-range to geodetic',
     ecef2aer: 'Transform geocentric (ECEF) to local azimuth-elevation-range', aer2ecef: 'Transform local azimuth-elevation-range to geocentric (ECEF)',
+    degrees2dms: 'Convert degrees to degrees-minutes-seconds', degrees2dm: 'Convert degrees to degrees-minutes',
+    dms2degrees: 'Convert degrees-minutes-seconds to degrees', dm2degrees: 'Convert degrees-minutes to degrees',
+    interpm: 'Densify latitude-longitude sampling in lines or polygons', angl2str: 'Format angle strings',
   },
 };

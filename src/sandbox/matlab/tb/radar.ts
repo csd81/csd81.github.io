@@ -13,6 +13,12 @@
 //   radareqpow(0.03,1000,10,1e-6)   = 8.82812275113955
 //   radareqrng(0.03,10,1000,1e-6)   = 3262.36770450521
 //   steervec([0 .5 1 1.5],[30;20]) imag = [0; .995516410229549; .188329782854213; -.959888562465857]
+//   aperture2gain(3,0.1)              = 35.7633111874176
+//   grnd2slantrange(1000,30)          = 1154.70053837925
+//   mtifactor(4,300e6,200)            = 55.398613519649
+//   mtifactor(2,300e6,200)            = 21.0372493339378
+//   mtifactor(3,1e9,1000)             = 46.0735336863138  (small-sigmaz branch)
+//   sarnoiserefl(16e9,16.7e9,30,db2pow(-25)) = -55.1859648849166
 //
 // Discarded (hallucinated, do not exist in MATLAB): range2tof, dopplerFreq, radarEquation, cfar1d,
 // phased_steeringVector. The radareq* functions accept name/value options (RCS, Ts, Gain, Loss,
@@ -81,6 +87,83 @@ function radareqrng(a: Value[]): Promise<Value[]> {
 }
 
 // ── steervec(pos,ang) : array steering vector ──
+// ── aperture/gain, SAR & MTI converters (closed-form, MATLAB defaults) ──
+
+// aperture2gain(A,lambda) = pow2db(4*pi*A/lambda^2)  → gain in dBi (A vector, lambda scalar).
+const aperture2gain = (a: Value[]) => {
+  const lam = num(a[1], 'LAMBDA');
+  return ret(elementwise(a[0], (Ae) => pow2db((4 * Math.PI * Ae) / (lam * lam))));
+};
+
+// grnd2slantrange(grndrng,grazang) = grndrng./cosd(grazang)  (grazang scalar deg, in [0,90)).
+const grnd2slantrange = (a: Value[]) => {
+  const grazDeg = num(a[1], 'GRAZANG');
+  const cg = Math.cos((grazDeg * Math.PI) / 180);
+  return ret(elementwise(a[0], (g) => g / cg));
+};
+
+// sarnoiserefl(freq,freqref,imgsnr,sigmaref[,n]) → noise-equiv reflectivity (dB).
+// neq = pow2db(sigmaref*(freq/freqref).^n / db2pow(imgsnr)). freq (J×1) × imgsnr (1×K) → J×K.
+function sarnoiserefl(a: Value[]): Promise<Value[]> {
+  const freqM = m(a[0], 'FREQ');
+  const freqref = num(a[1], 'FREQREF');
+  const snrM = m(a[2], 'IMGSNR');
+  const sigmaref = num(a[3], 'SIGMAREF');
+  const n = a[4] != null ? num(a[4], 'N') : 1;
+  const freq = Array.from(freqM.data);          // J entries (vector, any orientation)
+  const snr = Array.from(snrM.data);            // K entries
+  const J = freq.length, K = snr.length;
+  const out = new Float64Array(J * K);          // J×K, column-major
+  for (let k = 0; k < K; k++) {
+    const snrInv = 1 / db2pow(snr[k]);
+    for (let j = 0; j < J; j++) {
+      const ratio = (freq[j] / freqref) ** n;
+      out[j + k * J] = pow2db(sigmaref * ratio * snrInv);
+    }
+  }
+  return ret({ kind: 'num', rows: J, cols: K, data: out });
+}
+
+// mtifactor(M,FREQ,PRF[,name/value]) → MTI improvement factor (dB), 1×K.
+// Basic positional form: coherent, ClutterStandardDeviation=2, NullVelocity=0, ClutterVelocity=0.
+function mtifactor(a: Value[]): Promise<Value[]> {
+  const mM = Math.round(num(a[0], 'M'));        // 2..4
+  const freqM = m(a[1], 'FREQ'), prfM = m(a[2], 'PRF');
+  const freq = Array.from(freqM.data), prf = Array.from(prfM.data);
+  const sigmaV = 2, v0f = 0, v0 = 0;            // defaults (coherent)
+  const K = Math.max(freq.length, prf.length);
+  const fAt = (i: number) => (freq.length === 1 ? freq[0] : freq[i]);
+  const pAt = (i: number) => (prf.length === 1 ? prf[0] : prf[i]);
+  const sigmazSmall = 0.1;
+  const out = new Float64Array(K);
+  for (let i = 0; i < K; i++) {
+    const vb = (C * pAt(i)) / (2 * fAt(i));      // blind speed (monostatic)
+    const vzf = (2 * Math.PI * v0f) / vb;
+    const vz = (2 * Math.PI * v0) / vb;
+    const sigmaz = (2 * Math.PI * sigmaV) / vb;
+    const aboutEqual = Math.abs(vz - vzf) <= Math.sqrt(Number.EPSILON);
+    const d = vz - vzf;
+    let Im: number;
+    if (mM === 4) {
+      Im = 1 / (1 - (3 / 2) * Math.exp(-(sigmaz ** 2) / 2) * Math.cos(d)
+        + (3 / 5) * Math.exp(-2 * sigmaz ** 2) * Math.cos(2 * d)
+        - (1 / 10) * Math.exp(-(9 / 2) * sigmaz ** 2) * Math.cos(3 * d));
+      if (sigmaz < sigmazSmall && aboutEqual) Im = 4 / (3 * sigmaz ** 6);
+    } else if (mM === 3) {
+      Im = 1 / (1 - (4 / 3) * Math.exp(-(sigmaz ** 2) / 2) * Math.cos(d)
+        + (1 / 3) * Math.exp(-2 * sigmaz ** 2) * Math.cos(2 * d));
+      if (sigmaz < sigmazSmall && aboutEqual) Im = 2 / sigmaz ** 4;
+    } else { // m = 2 (single delay canceler)
+      Im = 1 / (1 - Math.exp(-(sigmaz ** 2) / 2) * Math.cos(d));
+      if (sigmaz < sigmazSmall) Im = 2 / sigmaz ** 2;
+    }
+    if (Im <= 0) Im = 1e30;
+    out[i] = pow2db(Im);
+  }
+  return ret({ kind: 'num', rows: 1, cols: K, data: out });
+}
+
+// ── steervec(pos,ang) : array steering vector ──
 // pos: 1×N (y-coords), 2×N (x,y) or 3×N (x,y,z) sensor positions in wavelengths.
 // ang: 1×M azimuth (el=0) or 2×M [az;el] in degrees.
 // sv(n,m) = exp(1i*2*pi * pos(:,n) · u(:,m)),  u = [cos(el)cos(az); cos(el)sin(az); sin(el)].
@@ -144,6 +227,10 @@ export const RADAR: ToolboxModule = {
     radareqsnr,
     radareqpow,
     radareqrng,
+    aperture2gain,
+    grnd2slantrange,
+    sarnoiserefl,
+    mtifactor,
     steervec,
   },
   help: {
@@ -155,6 +242,10 @@ export const RADAR: ToolboxModule = {
     radareqsnr: 'radareqsnr(lambda,RNG,Pt,tau): SNR (dB) from the radar range equation (defaults RCS=1, Ts=290, Gain=20).',
     radareqpow: 'radareqpow(lambda,RNG,SNR,tau): peak transmit power (W) from the radar range equation.',
     radareqrng: 'radareqrng(lambda,SNR,Pt,tau): maximum detection range (m) from the radar range equation.',
+    aperture2gain: 'aperture2gain(A,lambda): convert effective aperture A (m^2) to gain (dBi) = pow2db(4*pi*A/lambda^2).',
+    grnd2slantrange: 'grnd2slantrange(grndrng,grazang): slant range (m) from ground range and grazing angle (deg) = grndrng/cosd(grazang).',
+    sarnoiserefl: 'sarnoiserefl(freq,freqref,imgsnr,sigmaref[,n]): SAR noise-equivalent reflectivity (dB) = pow2db(sigmaref*(freq/freqref)^n/db2pow(imgsnr)).',
+    mtifactor: 'mtifactor(M,freq,prf): MTI improvement factor (dB) for an (M-1)-delay canceler (coherent, sigmaV=2, v0=0 defaults).',
     steervec: 'steervec(pos,ang): array steering vector exp(1i*2*pi*pos·u) for sensor positions (in wavelengths) and az/el angles (deg).',
   },
 };

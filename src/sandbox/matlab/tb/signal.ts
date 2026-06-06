@@ -3,7 +3,7 @@
 // bartlett/sinc) and closed-form definitions. See plan §7 and tb/signal.VALIDATION.md.
 import type { Builtin } from '../builtins';
 import {
-  type Value, type Mat, isMat, isStr, scalar, colVec, rowVec, toArray, map, zeros, mat,
+  type Value, type Mat, type Cell, isMat, isStr, isCell, scalar, colVec, rowVec, toArray, map, zeros, mat,
   asString, asScalar, toMat as m,
 } from '../values';
 import type { ToolboxModule } from './types';
@@ -206,6 +206,24 @@ function sgolayMat(order: number, F: number): number[][] {
 
 /** Modified Bessel function I0(x) (series), for the Kaiser window. */
 function besselI0(x: number): number { let s = 1, t = 1; for (let k = 1; k < 60; k++) { t *= (x / (2 * k)) ** 2; s += t; if (t < s * 1e-16) break; } return s; }
+
+/** Build an r×c real Mat (column-major) from an array of equal-length rows. */
+function rowsToMat(rows: number[][]): Mat {
+  const r = rows.length, c = r ? rows[0].length : 0, d = new Float64Array(r * c);
+  for (let i = 0; i < r; i++) for (let j = 0; j < c; j++) d[i + j * r] = rows[i][j];
+  return mat(r, c, d);
+}
+/** kaiserBeta(atten): Kaiser β for a stopband attenuation atten (dB) — signal.internal.kaiserBeta. */
+function kaiserBeta(atten: number): number {
+  return 0.1102 * (atten - 8.7) * (atten > 50 ? 1 : 0)
+    + (0.5842 * Math.pow(atten - 21, 0.4) + 0.07886 * (atten - 21)) * (atten >= 21 && atten <= 50 ? 1 : 0);
+}
+/** kaislpord: FIR lowpass length estimate L and Kaiser β from band edges (normalized) + deviations. */
+function kaislpord(freq1: number, freq2: number, delta1: number, delta2: number): { L: number; bta: number } {
+  const delta = Math.min(delta1, delta2), atten = -20 * Math.log10(delta);
+  const D = (atten - 7.95) / (2 * Math.PI * 2.285), df = Math.abs(freq2 - freq1);
+  return { L: D / df + 1, bta: kaiserBeta(atten) };
+}
 
 /** Build a length-L window column from a sample function g(n, N) where N is the symmetric span.
  *  'periodic'/'symmetric' (default) selects N = L (periodic) or L-1 (symmetric). */
@@ -517,6 +535,7 @@ export const SIGNAL: ToolboxModule = {
     tukeywin: (a) => { const L = Math.round(asScalar(a[0])); const r = a.length >= 2 ? asScalar(a[1]) : 0.5; const N = L - 1; const w: number[] = []; for (let n = 0; n < L; n++) { const x = n / N; if (x < r / 2) w.push(0.5 * (1 + Math.cos(Math.PI * (2 * x / r - 1)))); else if (x <= 1 - r / 2) w.push(1); else w.push(0.5 * (1 + Math.cos(Math.PI * (2 * x / r - 2 / r + 1)))); } return ret(colVec(L === 1 ? [1] : r <= 0 ? new Array(L).fill(1) : w)); },
 
     // ── dB / magnitude / power conversions ──
+    db: (a) => ret(map(m(a[0]), (x) => 20 * Math.log10(Math.abs(x)))),
     mag2db: (a) => ret(map(m(a[0]), (x) => 20 * Math.log10(x))),
     db2mag: (a) => ret(map(m(a[0]), (x) => 10 ** (x / 20))),
     pow2db: (a) => ret(map(m(a[0]), (x) => 10 * Math.log10(x))),
@@ -592,6 +611,100 @@ export const SIGNAL: ToolboxModule = {
       const h = new Array(n + 1); for (let k = 0; k <= n; k++) { const x = k - M; h[k] = (x === 0 ? Wn : Math.sin(Wn * Math.PI * x) / (Math.PI * x)) * (0.54 - 0.46 * Math.cos((2 * Math.PI * k) / n)); }
       const s = h.reduce((p, q) => p + q, 0); return ret(rowVec(h.map((v) => v / s)));
     },
+    /** filternorm(b,a[,pnorm]) — Lp norm of a digital filter (FIR/stable IIR). pnorm = 2 (def) or Inf. */
+    filternorm: (a) => {
+      const b = toArray(m(a[0])), den = a.length >= 2 && isMat(a[1]) && m(a[1]).rows * m(a[1]).cols ? toArray(m(a[1])) : [1];
+      const pnorm = a.length >= 3 && isMat(a[2]) ? asScalar(a[2]) : 2;
+      const tol = a.length >= 4 && isMat(a[3]) ? asScalar(a[3]) : 1e-8;
+      const isFIR = den.length === 1 || den.slice(1).every((v) => v === 0);
+      if (!isFinite(pnorm)) {
+        // inf-norm = max magnitude of freqz over 1024 points on [0,π)
+        const N = 1024; let mx = 0;
+        for (let k = 0; k < N; k++) { const w = k * Math.PI / N, nz = cpoly(b, w), dz = cpoly(den, w); const dn = dz[0] * dz[0] + dz[1] * dz[1]; const hr = (nz[0] * dz[0] + nz[1] * dz[1]) / dn, hi = (nz[1] * dz[0] - nz[0] * dz[1]) / dn; const mag = Math.hypot(hr, hi); if (mag > mx) mx = mag; }
+        return ret(scalar(mx));
+      }
+      // pnorm = 2
+      if (isFIR) return ret(scalar(Math.sqrt(b.reduce((s, v) => s + v * v, 0))));
+      // IIR: sum-of-squares of a finite impulse-response approximation (impz, length via tol)
+      const a0 = den[0], bn = b.map((v) => v / a0), an = den.map((v) => v / a0);
+      // impulse response via direct-form recursion; run until tail energy negligible
+      let acc = 0, maxLen = 200000, h: number[] = [], stableTail = 0;
+      for (let nIdx = 0; nIdx < maxLen; nIdx++) {
+        let y = nIdx < bn.length ? bn[nIdx] : 0;
+        for (let i = 1; i < an.length; i++) if (nIdx - i >= 0) y -= an[i] * h[nIdx - i];
+        h.push(y); acc += y * y;
+        if (nIdx > bn.length && Math.abs(y) < tol * Math.sqrt(Math.max(acc, 1e-300))) { stableTail++; if (stableTail > an.length + 5) break; } else stableTail = 0;
+      }
+      return ret(scalar(Math.sqrt(acc)));
+    },
+    /** [s,g] = cell2sos(c) — cell array of {b,a} sections → L×6 second-order-section matrix. */
+    cell2sos: (a, nargout) => {
+      const C = a[0]; if (!isCell(C)) return ret(zeros(0, 6));
+      let items = (C as Cell).items.slice(); let g = 1;
+      if (nargout >= 2) {
+        const c1 = items[0]; if (isCell(c1)) { const inner = (c1 as Cell).items; const bb = m(inner[0]), aa = m(inner[1]); if (bb.rows * bb.cols === 1 && aa.rows * aa.cols === 1) { g = asScalar(inner[0]) / asScalar(inner[1]); items = items.slice(1); } }
+      }
+      const rows: number[][] = [];
+      for (const it of items) { if (!isCell(it)) continue; const inner = (it as Cell).items; const b = toArray(m(inner[0])).slice(0, 3), av = toArray(m(inner[1])).slice(0, 3); while (b.length < 3) b.push(0); while (av.length < 3) av.push(0); rows.push([...b, ...av]); }
+      const s = rowsToMat(rows);
+      return Promise.resolve(nargout >= 2 ? [s, scalar(g)] : [s]);
+    },
+    /** [b,a] = sos2ctf(sos[,g]) — second-order sections → cascaded transfer-function numerators/denominators. */
+    sos2ctf: (a, nargout) => {
+      const S = m(a[0]), K = S.rows;
+      const bU: number[][] = [], aRows: number[][] = [];
+      for (let i = 0; i < K; i++) { bU.push([S.data[i], S.data[i + K], S.data[i + 2 * K]]); aRows.push([S.data[i + 3 * K], S.data[i + 4 * K], S.data[i + 5 * K]]); }
+      let b = bU;
+      if (a.length >= 2 && isMat(a[1])) {
+        const sv = toArray(m(a[1]));
+        if (!sv.every((v) => v === 1)) {
+          const p = K;
+          if (sv.length === 1) {
+            const s0 = sv[0], f = Math.pow(Math.abs(s0), 1 / p);
+            b = bU.map((row) => row.map((v) => v * f));
+            const sgn = Math.sign(s0); b[K - 1] = b[K - 1].map((v) => v * sgn);
+          } else {
+            const last = sv[K], fl = Math.pow(Math.abs(last), 1 / p);
+            b = bU.map((row, i) => row.map((v) => fl * sv[i] * v));
+            const sgn = Math.sign(last); b[K - 1] = b[K - 1].map((v) => v * sgn);
+          }
+        }
+      }
+      return Promise.resolve(nargout >= 2 ? [rowsToMat(b), rowsToMat(aRows)] : [rowsToMat(b)]);
+    },
+    /** [N,Wn,beta,ftype] = kaiserord(fcuts,mags,devs[,fs]) — Kaiser-window FIR order estimate. */
+    kaiserord: (a, nargout) => {
+      const fcuts = toArray(m(a[0])), mags = toArray(m(a[1])), devs0 = toArray(m(a[2]));
+      const fsamp = a.length >= 4 && isMat(a[3]) ? asScalar(a[3]) : 2;
+      const fc = fcuts.map((v) => v / fsamp);                 // normalize
+      const mf = fc.length, nbands = mags.length;
+      const stop = mags.map((v) => (v === 0 ? 1 : 0));
+      const devs = devs0.map((d, i) => d / (stop[i] + mags[i]));
+      const f1: number[] = [], f2: number[] = [];
+      for (let i = 0; i < mf - 1; i += 2) f1.push(fc[i]);
+      for (let i = 1; i < mf; i += 2) f2.push(fc[i]);
+      let L = 0, bta = 0;
+      if (nbands === 2) { const r = kaislpord(f1[0], f2[0], devs[0], devs[1]); L = r.L; bta = r.bta; }
+      else {
+        for (let i = 1; i < nbands - 1; i++) {
+          const r1 = kaislpord(f1[i - 1], f2[i - 1], devs[i], devs[i - 1]);
+          const r2 = kaislpord(f1[i], f2[i], devs[i], devs[i + 1]);
+          if (r1.L > L) { bta = r1.bta; L = r1.L; }
+          if (r2.L > L) { bta = r2.bta; L = r2.L; }
+        }
+      }
+      let N = Math.ceil(L) - 1;
+      const Wn = f1.map((v, i) => 2 * (v + f2[i]) / 2);
+      let ftype = 'low';
+      if (nbands === 2 && mags[0] === 0) ftype = 'high';
+      else if (nbands === 3 && mags[1] === 0) ftype = 'stop';
+      else if (nbands >= 3 && mags[0] === 0) ftype = 'DC-0';
+      else if (nbands >= 3 && mags[0] === 1) ftype = 'DC-1';
+      if (N % 2 === 1 && mags[mags.length - 1] !== 0) N += 1;
+      const WnV = Wn.length === 1 ? scalar(Wn[0]) : rowVec(Wn);
+      const ft: Value = { kind: 'num', rows: 1, cols: ftype.length, data: Float64Array.from([...ftype].map((c) => c.charCodeAt(0))), isChar: true };
+      return Promise.resolve(nargout >= 4 ? [scalar(N), WnV, scalar(bta), ft] : nargout >= 3 ? [scalar(N), WnV, scalar(bta)] : nargout >= 2 ? [scalar(N), WnV] : [scalar(N)]);
+    },
 
     // ── linear prediction (LPC) ──
     /** [a,e,k] = levinson(r[,p]) — Levinson-Durbin solution of the normal equations. */
@@ -604,6 +717,10 @@ export const SIGNAL: ToolboxModule = {
     poly2rc: (a) => ret(colVec(stepDown(toArray(m(a[0]))).k)),
     /** a = rc2poly(k) — reflection coefficients → prediction polynomial (step-up). */
     rc2poly: (a) => ret(rowVec(stepUp(toArray(m(a[0]))))),
+    /** [k,R0] = ac2rc(R) — autocorrelation → reflection coefficients (via levinson) and R0. */
+    ac2rc: (a, nargout) => { const R = toArray(m(a[0])); const { k } = levinsonDurbin(R, R.length - 1); return Promise.resolve(nargout >= 2 ? [colVec(k), scalar(R[0])] : [colVec(k)]); },
+    /** rc2is(k) — reflection coefficients → inverse sine parameters: (2/π)·asin(k). */
+    rc2is: (a) => ret(map(m(a[0]), (k) => (2 / Math.PI) * Math.asin(k))),
 
     // ── Savitzky-Golay ──
     /** B = sgolay(order,framelen) — Savitzky-Golay FIR projection matrix. */
@@ -643,6 +760,10 @@ export const SIGNAL: ToolboxModule = {
     goertzel: 'Discrete Fourier transform with second-order Goertzel algorithm', czt: 'Chirp Z-transform',
     levinson: 'Levinson-Durbin recursion', ac2poly: 'Autocorrelation to prediction polynomial', poly2ac: 'Prediction polynomial to autocorrelation',
     poly2rc: 'Prediction polynomial to reflection coefficients', rc2poly: 'Reflection coefficients to prediction polynomial',
+    ac2rc: 'Autocorrelation sequence to reflection coefficients', rc2is: 'Reflection coefficients to inverse sine parameters',
+    db: 'Convert energy or power measurements to decibels', filternorm: '2-norm or infinity-norm of a digital filter',
+    cell2sos: 'Convert second-order-sections cell array to matrix', sos2ctf: 'Convert second-order sections to cascaded transfer functions',
+    kaiserord: 'Kaiser window FIR filter design estimation parameters',
     sgolay: 'Savitzky-Golay FIR smoothing matrix', sgolayfilt: 'Savitzky-Golay filtering',
   },
 };

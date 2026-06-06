@@ -4,7 +4,7 @@
 // match without the toolbox. See plan §7.
 import type { Builtin } from '../builtins';
 import {
-  type Value, type Mat, type StructV, isMat, scalar, colVec, zeros, toArray, asScalar, asString, toMat as m, map, mat,
+  type Value, type Mat, type StructV, isMat, scalar, colVec, rowVec, zeros, toArray, asScalar, asString, toMat as m, map, mat,
 } from '../values';
 import type { ToolboxModule } from './types';
 
@@ -71,6 +71,80 @@ function hammHG(mm: number): { H: number[][]; G: number[][]; n: number; k: numbe
   const G: number[][] = []; for (let r = 0; r < k; r++) { const row: number[] = []; for (let cc = 0; cc < mm; cc++) row.push(H[cc][mm + r]); for (let cc = 0; cc < k; cc++) row.push(cc === r ? 1 : 0); G.push(row); }
   return { H, G, n, k };
 }
+
+// ── Galois-field GF(2^m) helpers (for primpoly / gfminpol / gftrunc) ──
+/** MATLAB gfprimdf: default monic primitive polynomial for GF(2^m), ascending powers (GF(2)). */
+const GFPRIMDF: Record<number, number[]> = {
+  1: [1, 1], 2: [1, 1, 1], 3: [1, 1, 0, 1], 4: [1, 1, 0, 0, 1], 5: [1, 0, 1, 0, 0, 1],
+  6: [1, 1, 0, 0, 0, 0, 1], 7: [1, 0, 0, 1, 0, 0, 0, 1], 8: [1, 0, 1, 1, 1, 0, 0, 0, 1],
+  9: [1, 0, 0, 0, 1, 0, 0, 0, 0, 1], 10: [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1],
+  11: [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1], 12: [1, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1],
+  13: [1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1], 14: [1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1],
+  15: [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], 16: [1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+};
+/** PRIMPOLY default ('one') primitive polynomial per degree m (decimal), m=1..16. */
+const PRIMPOLY_ONE = [3, 7, 11, 19, 37, 67, 137, 285, 529, 1033, 2053, 4179, 8219, 17475, 32771, 69643];
+/** Build the GF(2^m) exponential field table: field[e] = m-tuple (bitmask) of alpha^e, e=0..2^m-2. */
+function gfField(mm: number): { field: number[]; q: number; m: number; expOf: Map<number, number> } {
+  const prim = GFPRIMDF[mm], q = 1 << mm, reduceMask = 1 << mm;
+  let primInt = 0; for (let i = 0; i < prim.length; i++) primInt |= prim[i] << i;
+  const field: number[] = []; let cur = 1;
+  for (let e = 0; e <= q - 2; e++) { field.push(cur); cur <<= 1; if (cur & reduceMask) cur ^= primInt; }
+  const expOf = new Map<number, number>(); for (let e = 0; e < q - 1; e++) expOf.set(field[e], e);
+  return { field, q, m: mm, expOf };
+}
+/** Cyclotomic cosets mod 2^m-1 over GF(2) (MATLAB gfcosets); first coset is {0}. */
+function gfcosets2(mm: number): number[][] {
+  const n = (1 << mm) - 1, cs: number[][] = [], ind = new Array(n).fill(1);
+  let i: number | null = mm === 1 ? null : 1;
+  while (i !== null) {
+    ind[i] = 0; const s = i, v = [s]; let pk = (2 * s) % n;
+    while (pk > s) { ind[pk] = 0; v.push(pk); pk = (pk * 2) % n; }
+    cs.push(v); i = null; for (let j = 1; j < n; j++) { if (ind[j] === 1) { i = j; break; } }
+  }
+  cs.unshift([0]); return cs;
+}
+/** GFTRUNC: drop trailing (highest-order) zero coefficients (keep at least one element). */
+function gftruncArr(a: number[]): number[] { let last = a.length - 1; while (last > 0 && a[last] === 0) last--; return a.slice(0, last + 1); }
+/** Is `poly` (decimal, bit m + bit 0 set) a primitive polynomial of degree m over GF(2)? */
+function isPrimitivePoly(poly: number, mm: number): boolean {
+  const n = (1 << mm) - 1, mask = 1 << mm;
+  const mul = (a0: number, b0: number) => { let res = 0, a = a0, b = b0; while (b) { if (b & 1) res ^= a; b >>= 1; a <<= 1; if (a & mask) a ^= poly; } return res; };
+  const powx = (e0: number) => { let r = 1, b = 2, e = e0; while (e > 0) { if (e & 1) r = mul(r, b); b = mul(b, b); e >>= 1; } return r; };
+  if (powx(n) !== 1) return false;
+  let nn = n; const ps: number[] = []; for (let d = 2; d * d <= nn; d++) { if (nn % d === 0) { ps.push(d); while (nn % d === 0) nn /= d; } } if (nn > 1) ps.push(nn);
+  for (const p of ps) if (powx(n / p) === 1) return false;
+  return true;
+}
+/** All primitive polynomials of degree m over GF(2), ascending decimal (== MATLAB gfprimpoly{m}'). */
+function allPrimpolys(mm: number): number[] { const out: number[] = []; for (let p = (1 << mm) + 1; p < (1 << (mm + 1)); p += 2) if (isPrimitivePoly(p, mm)) out.push(p); return out; }
+/** popcount (polynomial weight). */
+const popcount = (x0: number) => { let x = x0, c = 0; while (x) { c += x & 1; x >>= 1; } return c; };
+/** GFMINPOL row for one exponent k over GF(2^m): GF(2) coefficients, ascending, length m+1. */
+function gfminpolRow(k: number, F: ReturnType<typeof gfField>, cosets: number[][]): number[] {
+  const q = F.q, mm = F.m, mul = (a: number, b: number) => (a === 0 || b === 0 ? 0 : F.field[(F.expOf.get(a)! + F.expOf.get(b)!) % (q - 1)]);
+  let coeffs: number[];
+  if (k < 0) coeffs = [0, F.field[0]];                       // x
+  else if (k === 0) coeffs = [F.field[0], F.field[0]];       // x + 1 (MinusOne = alpha^0 = 1 in GF(2))
+  else {
+    const kk = ((k % (q - 1)) + (q - 1)) % (q - 1);
+    const conj = cosets.find((c) => c.includes(kk))!;
+    const roots = conj.map((j) => F.field[j]);                // alpha^j
+    coeffs = [roots[0], F.field[0]];                          // (x + alpha^{root0})
+    for (let j = 1; j < roots.length; j++) {                  // multiply by (x + root_j)
+      const r = roots[j], nc = new Array(coeffs.length + 1).fill(0);
+      for (let i = 0; i < coeffs.length; i++) { nc[i] ^= mul(coeffs[i], r); nc[i + 1] ^= coeffs[i]; }
+      coeffs = nc;
+    }
+  }
+  const row = new Array(mm + 1).fill(0);
+  for (let i = 0; i < coeffs.length; i++) row[i] = coeffs[i] & 1; // each coeff is 0 or alpha^0=1
+  return row;
+}
+/** Pack rows (number[][]) as a Mat, column-major. */
+function rowsToMat(R: number[][]): Mat { const r = R.length, c = R[0].length, d = new Float64Array(r * c); for (let i = 0; i < r; i++) for (let j = 0; j < c; j++) d[i + j * r] = R[i][j]; return mat(r, c, d); }
+/** deintrlv scatter: out[elements[i]] = data[i] (1-based elements). Works row-wise on column data. */
+function deintrlvRows(data: number[][], elements: number[]): number[][] { const out: number[][] = new Array(data.length); for (let i = 0; i < data.length; i++) out[elements[i] - 1] = data[i]; return out; }
 
 export const COMM: ToolboxModule = {
   id: 'comm',
@@ -257,6 +331,120 @@ export const COMM: ToolboxModule = {
       if (nargout === 2) return Promise.resolve([HM, GM]);
       return ret(HM);
     },
+
+    // ── Galois-field utilities ──
+    /** primpoly(m[,opt][,'nodisplay']) — primitive polynomial(s) for GF(2^m), as decimal column vector. */
+    primpoly: (a) => {
+      const mm = Math.round(asScalar(a[0]));
+      // parse opt: 'min'|'max'|'all'|'one'|number L  (ignore 'nodisplay')
+      let opt: string | number = 'one';
+      for (const arg of a.slice(1)) {
+        if (isMat(arg) && (arg as Mat).isChar) { const s = asString(arg).toLowerCase(); if (s !== 'nodisplay') opt = s; }
+        else if (isMat(arg)) opt = Math.round(asScalar(arg));
+      }
+      if (opt === 'one') return ret(scalar(PRIMPOLY_ONE[mm - 1]));
+      const prims = allPrimpolys(mm);
+      if (opt === 'all') return ret(colVec(prims));
+      if (opt === 'min') return ret(scalar(Math.min(...prims)));
+      if (opt === 'max') return ret(scalar(Math.max(...prims)));
+      // numeric weight L: keep polys whose (m+1)-bit representation has weight L
+      const L = opt as number, sel = prims.filter((p) => popcount(p) === L);
+      return ret(sel.length ? colVec(sel) : (mat(0, 0, new Float64Array(0))));
+    },
+    /** gfminpol(k,m[,p]) — minimal polynomial(s) over GF(2^m) for exponents k (ascending coeffs, GF(2)). */
+    gfminpol: (a) => {
+      const K = toArray(m(a[0])).map((v) => Math.round(v));
+      // second arg is m (scalar) or a prim_poly vector; we read m = round(scalar) or (len-1) of a vector.
+      const arg2 = m(a[1]); const mm = arg2.data.length > 1 ? arg2.data.length - 1 : Math.round(asScalar(a[1]));
+      const F = gfField(mm), cosets = gfcosets2(mm);
+      const R = K.map((k) => gfminpolRow(k, F, cosets));
+      if (R.length === 1) return ret(rowVec(gftruncArr(R[0]))); // single → high-order zeros removed
+      return ret(rowsToMat(R));
+    },
+    /** gftrunc(a) — remove highest-order zero coefficients of a GF(p) polynomial (ascending). */
+    gftrunc: (a) => ret(rowVec(gftruncArr(toArray(m(a[0])).map((v) => Math.round(v))))),
+
+    // ── I/Q imbalance ──
+    /** [ampDB,phaseDeg] = iqcoef2imbal(c) — imbalance a compensator coefficient corrects. */
+    iqcoef2imbal: (a, nargout) => {
+      const C = m(a[0]); const cre = toArray(C), cim = C.idata ? Array.from(C.idata) : new Array(cre.length).fill(0);
+      const amp: number[] = [], ph: number[] = [];
+      for (let i = 0; i < cre.length; i++) {
+        const re = cre[i], im = cim[i];
+        if (im === 0) {
+          const c = re;
+          if (Math.abs(c) <= 1) { amp.push(20 * Math.log10((1 - c) / (1 + c))); ph.push(0); }
+          else { amp.push(20 * Math.log10((c + 1) / (c - 1))); ph.push(180); }
+        } else {
+          const R11 = 1 + re, R22 = 1 - re, R21 = im, R12 = im;
+          // K0 = [R22 -R21; -R12 R11]
+          const k11 = R22, k12 = -R21, k21 = -R12, k22 = R11;
+          let av = 0;
+          if (R11 !== 1) {
+            const C1 = -k11 * k12 + k22 * k21, C2 = k12 * k12 + k21 * k21 - k11 * k11 - k22 * k22;
+            const absC = Math.hypot(re, im);
+            av = absC <= 1 ? (-C2 - Math.sqrt(C2 * C2 + 4 * C1 * C1)) / (2 * C1)
+                           : (-C2 + Math.sqrt(C2 * C2 + 4 * C1 * C1)) / (2 * C1);
+          }
+          // K = K0 * [1 -av; av 1]
+          const K11 = k11 * 1 + k12 * av, K21 = k21 * 1 + k22 * av;
+          const K22 = k21 * (-av) + k22 * 1;
+          amp.push(20 * Math.log10(K11 / K22));
+          ph.push(-2 * Math.atan(K21 / K11) / Math.PI * 180);
+        }
+      }
+      const ampM = cre.length === 1 ? scalar(amp[0]) : sameShape(C, amp);
+      const phM = cre.length === 1 ? scalar(ph[0]) : sameShape(C, ph);
+      return nargout >= 2 ? Promise.resolve([ampM, phM]) : ret(ampM);
+    },
+
+    // ── frequency modulation ──
+    /** fmmod(x,Fc,Fs,freqdev[,ini_phase]) — analog frequency modulation. */
+    fmmod: (a) => {
+      const X = m(a[0]); const x = toArray(X);
+      const Fc = asScalar(a[1]), Fs = asScalar(a[2]), freqdev = asScalar(a[3]);
+      const iniPhase = a.length >= 5 && isMat(a[4]) && (a[4] as Mat).data.length ? asScalar(a[4]) : 0;
+      // int_x = cumsum(x)/Fs ; y = cos(2*pi*Fc*t + 2*pi*freqdev*int_x + ini_phase)
+      const y: number[] = []; let acc = 0;
+      for (let i = 0; i < x.length; i++) { acc += x[i]; const t = i / Fs; const intx = acc / Fs; y.push(Math.cos(2 * Math.PI * Fc * t + 2 * Math.PI * freqdev * intx + iniPhase)); }
+      return ret(sameShape(X, y));
+    },
+
+    // ── interleavers (deinterleave) ──
+    /** matdeintrlv(data,Nrows,Ncols) — column-fill / row-empty deinterleaver. */
+    matdeintrlv: (a) => {
+      const D = m(a[0]); const isRow = D.rows === 1;
+      const Nrows = Math.round(asScalar(a[1])), Ncols = Math.round(asScalar(a[2]));
+      // int_table = reshape(reshape(1:prd,Ncols,Nrows)',[],1): transpose of a col-major Ncols×Nrows fill,
+      // read column-major → entry (col c, row r) = c + r*Ncols + 1.
+      const intTable: number[] = [];
+      for (let c = 0; c < Ncols; c++) for (let r = 0; r < Nrows; r++) intTable.push(c + r * Ncols + 1);
+      // data as rows of column vectors (column-major signal: each "symbol" is a row across columns)
+      const dataRows = isRow ? toArray(D).map((v) => [v]) : rows(D);
+      const out = deintrlvRows(dataRows, intTable);
+      return ret(isRow ? rowVec(out.map((r) => r[0])) : rowsToMat(out));
+    },
+    /** algdeintrlv(data,num,type,...) — algebraic deinterleaver (Takeshita-Costello / Welch-Costas). */
+    algdeintrlv: (a) => {
+      const D = m(a[0]); const isRow = D.rows === 1; const num = Math.round(asScalar(a[1]));
+      const type = asString(a[2]).toLowerCase();
+      let intTable: number[] = [];
+      if (type === 'takeshita-costello') {
+        const k = Math.round(asScalar(a[3])), h = Math.round(asScalar(a[4]));
+        const c: number[] = []; for (let mIdx = 0; mIdx < num; mIdx++) c.push(((k * mIdx * (mIdx + 1) / 2) % num) + 1);
+        const d = [...c.slice(1), c[0]];
+        const v = c.map((_, i) => i).sort((p, q) => c[p] - c[q]); // sort indices by c value (stable)
+        intTable = v.map((vi) => d[vi]);
+        if (h > 0) intTable = [...intTable.slice(h), ...intTable.slice(0, h)];
+      } else { // welch-costas: y(1)=1, y(i)=mod(y(i-1)*alpha, num+1)
+        const alpha = Math.round(asScalar(a[3])); const y = [1];
+        for (let i = 1; i < num; i++) y.push((y[i - 1] * alpha) % (num + 1));
+        intTable = y;
+      }
+      const dataRows = isRow ? toArray(D).map((v) => [v]) : rows(D);
+      const out = deintrlvRows(dataRows, intTable);
+      return ret(isRow ? rowVec(out.map((r) => r[0])) : rowsToMat(out));
+    },
   },
   help: {
     qfunc: 'Q function (Gaussian tail probability)', quantiz: 'Produce a quantization index and quantized output value', qfuncinv: 'Inverse Q function',
@@ -270,6 +458,10 @@ export const COMM: ToolboxModule = {
     dpskmod: 'Differential phase shift keying modulation', dpskdemod: 'Differential phase shift keying demodulation',
     poly2trellis: 'Convert convolutional code polynomials to trellis description', convenc: 'Convolutionally encode binary data',
     istrellis: 'Check if input is a valid trellis structure', hammgen: 'Produce parity-check and generator matrices for Hamming code',
+    primpoly: 'Find primitive polynomials for a Galois field', gfminpol: 'Find the minimal polynomial of an element of a Galois field',
+    gftrunc: 'Minimize the length of a polynomial representation', iqcoef2imbal: 'Convert compensator coefficient to amplitude and phase imbalance',
+    fmmod: 'Frequency modulation', matdeintrlv: 'Restore ordering of symbols using a matrix interleaver',
+    algdeintrlv: 'Restore ordering of symbols using an algebraically derived interleaver',
   },
 };
 

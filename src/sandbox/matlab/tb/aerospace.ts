@@ -137,6 +137,53 @@ function atmosOut(M: Mat, f: (h: number) => number[], nargout: number): Value[] 
   return cols.slice(0, Math.max(1, nargout)).map(wrap);
 }
 
+// ---- isentropic flow (NACA 1135 / James Gas Dynamics) ------------------------------------------
+/** Isentropic ratios from Mach: returns [T, P, rho, A] (static/stagnation + sonic area ratio). */
+function isentropicRatios(g: number, mach: number): [number, number, number, number] {
+  const f = 1 + (g - 1) / 2 * mach * mach;
+  const T = 1 / f;
+  const P = 1 / Math.pow(f, g / (g - 1));
+  const rho = Math.pow(f, -1 / (g - 1));
+  const b = (g + 1) / (2 * (1 - g));
+  let A: number;
+  if (!isFinite(mach)) {
+    // rearranged form for mach==inf (avoids NaN)
+    A = Math.pow((g + 1) / 2, b) * Math.pow(Math.pow(mach, -2) + (g - 1) / 2, -b) * Math.pow(mach, -2 * b - 1);
+  } else {
+    A = Math.pow((g + 1) / 2, b) / (mach * Math.pow(f, b));
+  }
+  return [T, P, rho, A];
+}
+/** Area-ratio → Mach via Brent/bisection on A(mach)=areaRatio; branch chosen by subsonic/supersonic. */
+function machFromArea(g: number, areaRatio: number, supersonic: boolean): number {
+  if (!isFinite(areaRatio)) return supersonic ? Infinity : 0;
+  const areaOf = (mach: number): number => {
+    const f = 1 + (g - 1) / 2 * mach * mach;
+    const b = (g + 1) / (2 * (1 - g));
+    return Math.pow((g + 1) / 2, b) / (mach * Math.pow(f, b));
+  };
+  // f(mach) = areaRatio - areaOf(mach); root-find on chosen branch
+  const fn = (mach: number) => areaRatio - areaOf(mach);
+  let lo: number, hi: number;
+  if (!supersonic) { lo = 1e-12; hi = 1; }      // subsonic branch in (0,1)
+  else { lo = 1; hi = 1e6; }                     // supersonic branch in (1,inf)
+  // areaOf(1)=1; for areaRatio>=1 the sign of fn at the sonic end is <=0
+  let flo = fn(lo), fhi = fn(hi);
+  if (flo === 0) return lo;
+  if (fhi === 0) return hi;
+  // expand supersonic upper bound until bracketed
+  let guard = 0;
+  while (flo * fhi > 0 && supersonic && guard < 60) { hi *= 4; fhi = fn(hi); guard++; }
+  // bisection
+  for (let it = 0; it < 200; it++) {
+    const mid = 0.5 * (lo + hi);
+    const fm = fn(mid);
+    if (fm === 0 || (hi - lo) < 1e-15 * Math.max(1, mid)) return mid;
+    if (flo * fm < 0) { hi = mid; fhi = fm; } else { lo = mid; flo = fm; }
+  }
+  return 0.5 * (lo + hi);
+}
+
 // ---- quaternion builtin helpers ----------------------------------------------------------------
 const qElem = (fn: (q: number[]) => number[]): Builtin => (a) => ret(fromRows(rowsOf(m(a[0])).map(fn)));
 const qScalarCol = (fn: (q: number[]) => number): Builtin => (a) => { const v = rowsOf(m(a[0])).map(fn); return ret(v.length === 1 ? scalar(v[0]) : colVec(v)); };
@@ -251,6 +298,92 @@ export const AEROSPACE: ToolboxModule = {
     atmosisa: (a, nargout) => ret(atmosOut(m(a[0]), isa1976, nargout)),
     atmoscoesa: (a, nargout) => ret(atmosOut(m(a[0]), isa1976, nargout)),
     atmospalt: (a) => ret(map(m(a[0]), (P) => (288.15 / 0.0065) * (1 - (P / 101325) ** (0.0065 * RAIR / G0)))),
+    // --- flight parameters ---
+    airspeed: (a) => {
+      const v = rowsOf(m(a[0])).map((r) => Math.hypot(r[0], r[1], r[2]));
+      return ret(v.length === 1 ? scalar(v[0]) : colVec(v));
+    },
+    // [alpha,beta] = alphabeta(vel): alpha=atan2(vz,vx); beta=asin(vy/airspeed)
+    alphabeta: (a) => {
+      const rows = rowsOf(m(a[0]));
+      const alpha: number[] = [], beta: number[] = [];
+      for (const r of rows) {
+        const sp = Math.hypot(r[0], r[1], r[2]);
+        alpha.push(Math.atan2(r[2], r[0]));
+        beta.push(sp > Number.EPSILON ? Math.asin(r[1] / sp) : 0);
+      }
+      const wrap = (c: number[]): Value => (c.length === 1 ? scalar(c[0]) : colVec(c));
+      return ret([wrap(alpha), wrap(beta)]);
+    },
+    // [alpha,beta] = dcm2alphabeta(dcm): beta=asin(dcm(1,2)); alpha=asin(-dcm(3,1))
+    dcm2alphabeta: (a) => {
+      const C = read3(m(a[0]));
+      return ret([scalar(Math.asin(-C[2][0])), scalar(Math.asin(C[0][1]))]);
+    },
+    // q = dpressure(vel,rho) = 0.5*rho.*airspeed(vel)^2
+    dpressure: (a) => {
+      const v = rowsOf(m(a[0])).map((r) => Math.hypot(r[0], r[1], r[2]));
+      const rhoData = Array.from(m(a[1]).data);
+      const n = Math.max(v.length, rhoData.length);
+      const out: number[] = [];
+      for (let i = 0; i < n; i++) {
+        const rho = rhoData.length === 1 ? rhoData[0] : rhoData[i];
+        const vv = v.length === 1 ? v[0] : v[i];
+        out.push(0.5 * rho * vv * vv);
+      }
+      return ret(out.length === 1 ? scalar(out[0]) : colVec(out));
+    },
+    // [mach,T,P,rho,A] = flowisentropic(gamma, var, mtype)
+    flowisentropic: (a, nargout) => {
+      const gMat = m(a[0]);
+      const vMat = m(a[1]);
+      const gArr = Array.from(gMat.data);
+      const vArr = Array.from(vMat.data);
+      if (gArr.some((g) => g <= 1)) throw new Error('aero:flowisentropic: gamma must be greater than 1');
+      let mtype = 'mach';
+      if (a[2] !== undefined) {
+        const s = asString(a[2]).toLowerCase();
+        if (s === 'mach') mtype = 'mach';
+        else if (s.startsWith('temp')) mtype = 'tempratio';
+        else if (s.startsWith('pres')) mtype = 'pressratio';
+        else if (s.startsWith('dens')) mtype = 'densityratio';
+        else if (s.startsWith('sub')) mtype = 'subsonicarearatio';
+        else if (s.startsWith('sup')) mtype = 'supersonicarearatio';
+        else throw new Error('aero:flowisentropic:paramSelectWrongInput');
+      }
+      // broadcast gamma & var
+      const n = Math.max(gArr.length, vArr.length);
+      const gAt = (i: number) => (gArr.length === 1 ? gArr[0] : gArr[i]);
+      const vAt = (i: number) => (vArr.length === 1 ? vArr[0] : vArr[i]);
+      // determine output shape: same as the array input (var preferred, else gamma)
+      const shapeMat = vArr.length >= gArr.length ? vMat : gMat;
+      const machArr: number[] = [], TArr: number[] = [], PArr: number[] = [], rhoArr: number[] = [], AArr: number[] = [];
+      for (let i = 0; i < n; i++) {
+        const g = gAt(i), v = vAt(i);
+        let mach: number;
+        switch (mtype) {
+          case 'mach': mach = v; break;
+          case 'tempratio': mach = Math.sqrt(2 / (g - 1) * (1 / v - 1)); break;
+          case 'pressratio': mach = Math.sqrt(2 / (g - 1) * (Math.pow(v, (1 - g) / g) - 1)); break;
+          case 'densityratio': mach = Math.sqrt(2 / (g - 1) * (Math.pow(v, 1 - g) - 1)); break;
+          case 'subsonicarearatio': mach = machFromArea(g, v, false); break;
+          case 'supersonicarearatio': mach = machFromArea(g, v, true); break;
+          default: mach = v;
+        }
+        const [T, P, rho, A] = isentropicRatios(g, mach);
+        machArr.push(mach); TArr.push(T); PArr.push(P); rhoArr.push(rho); AArr.push(A);
+      }
+      // overwrite the user-supplied quantity with the exact input (MATLAB does this)
+      if (mtype === 'mach') for (let i = 0; i < n; i++) machArr[i] = vAt(i);
+      if (mtype === 'tempratio') for (let i = 0; i < n; i++) TArr[i] = vAt(i);
+      if (mtype === 'pressratio') for (let i = 0; i < n; i++) PArr[i] = vAt(i);
+      if (mtype === 'densityratio') for (let i = 0; i < n; i++) rhoArr[i] = vAt(i);
+      if (mtype === 'subsonicarearatio' || mtype === 'supersonicarearatio') for (let i = 0; i < n; i++) AArr[i] = vAt(i);
+      const wrap = (c: number[]): Value =>
+        c.length === 1 ? scalar(c[0]) : mat(shapeMat.rows, shapeMat.cols, Float64Array.from(c));
+      const outs = [machArr, TArr, PArr, rhoArr, AArr].map(wrap);
+      return ret(outs.slice(0, Math.max(1, nargout)));
+    },
   },
   help: {
     convlength: 'Convert from length units to desired length units',
@@ -278,6 +411,11 @@ export const AEROSPACE: ToolboxModule = {
     rod2dcm: 'Convert Euler-Rodrigues vector to direction cosine matrix', dcm2rod: 'Convert direction cosine matrix to Euler-Rodrigues vector',
     atmosisa: 'International Standard Atmosphere model', atmoscoesa: 'COESA 1976 standard atmosphere model',
     atmospalt: 'Calculate pressure altitude based on ambient pressure',
+    airspeed: 'Compute airspeed from velocity vector',
+    alphabeta: 'Compute incidence and sideslip angles',
+    dcm2alphabeta: 'Convert direction cosine matrix to angle of attack and sideslip angle',
+    dpressure: 'Compute dynamic pressure from velocity vector and density',
+    flowisentropic: 'Calculate isentropic flow ratios',
   },
 };
 
