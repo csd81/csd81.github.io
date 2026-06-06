@@ -137,6 +137,15 @@ export const IMAGES: ToolboxModule = {
       }
       return ret(mat(N, 3, out));
     },
+    /** measerr(X,Xapp[,Bps]) → [psnr, mse, maxerr, L2rat] approximation-quality metrics. */
+    measerr: (a, nargout) => {
+      const X = toArray(m(a[0])), Y = toArray(m(a[1])), bps = a.length > 2 ? asScalar(a[2]) : 8;
+      let mse = 0, maxerr = 0, sa = 0, sb = 0;
+      for (let i = 0; i < X.length; i++) { const d = Math.abs(X[i] - Y[i]); mse += d * d; if (d > maxerr) maxerr = d; sa += X[i] * X[i]; sb += Y[i] * Y[i]; }
+      mse /= X.length;
+      const psnr = 20 * Math.log10((2 ** bps - 1) / Math.sqrt(mse));
+      return Promise.resolve([scalar(psnr), scalar(mse), scalar(maxerr), scalar(sb / sa)].slice(0, Math.max(1, nargout)));
+    },
     /** ind2rgb(X,MAP) — indexed image + colormap → M×N×3 double RGB. Mirrors ind2rgb.m. */
     ind2rgb: (a) => {
       const A = m(a[0]), cm = m(a[1]);
@@ -264,6 +273,7 @@ export const IMAGES: ToolboxModule = {
   },
   help: {
     ind2rgb: { summary: 'Converts the indexed image X and corresponding colormap map to RGB (truecolor) format.', syntax: ['RGB = ind2rgb(X,map)'], seealso: ['image', 'imread', 'rgb2ind'] },
+    measerr: { summary: 'Approximation quality metrics (PSNR, MSE, max error, L2 ratio)', syntax: ['[psnr,mse,maxerr,L2rat] = measerr(X,Xapp)', '[...] = measerr(X,Xapp,Bps)'], seealso: ['psnr', 'immse'] },
     rgb2ntsc: { summary: 'Converts the red, green, and blue values of an RGB image to luminance (Y) and chrominance (I and Q) values of an NTSC image.', syntax: ['YIQ = rgb2ntsc(RGB)'], seealso: ['ntsc2rgb', 'rgb2ycbcr', 'rgb2lab', 'rgb2xyz', 'rgb2hsv'] },
     xyz2lab: { summary: 'Converts CIE 1931 XYZ values (2° observer) to CIE 1976 L*a*b* values.', syntax: ['lab = xyz2lab(xyz)', 'lab = xyz2lab(xyz,\'WhitePoint\',whitePoint)'], seealso: ['rgb2lab', 'xyz2rgb', 'lab2xyz'] },
     rgb2xyz: { summary: 'Converts the red, green, and blue values of an sRGB image to CIE 1931 XYZ values (2° observer).', syntax: ['XYZ = rgb2xyz(RGB)', 'XYZ = rgb2xyz(RGB,Name=Value)'], seealso: ['xyz2rgb', 'rgb2lab', 'lab2xyz', 'lin2rgb', 'rgbwide2xyz'] },

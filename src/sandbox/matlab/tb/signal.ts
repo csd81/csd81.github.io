@@ -455,6 +455,8 @@ export const SIGNAL: ToolboxModule = {
   docBase: 'https://www.mathworks.com/help/signal/ref/',
   builtins: {
     lin2mu: (a) => ret(map(m(a[0]), lin2muOne)),
+    // qmf(x[,p]): quadrature mirror filter — reverse, then negate alternate taps.
+    qmf: (a) => { const X = m(a[0]), y = toArray(X).reverse(), p = a.length > 1 ? asScalar(a[1]) : 0; for (let i = 1 - (((p % 2) + 2) % 2); i < y.length; i += 2) y[i] = -y[i]; return ret(X.cols === 1 && X.rows > 1 ? colVec(y) : rowVec(y)); },
     // xcorr2(a[,b]): 2-D cross-correlation = conv2(a, rot180(b)), full (ar+br-1)×(ac+bc-1).
     xcorr2: (a) => {
       const A = m(a[0]), B = a.length > 1 ? m(a[1]) : A;
@@ -1328,6 +1330,7 @@ export const SIGNAL: ToolboxModule = {
   help: {
     lin2mu: { summary: 'Convert linear to mu-law compressed values (G.711)', syntax: ['y = lin2mu(x)'], seealso: ['mu2lin'] },
     xcorr2: { summary: '2-D cross-correlation', syntax: ['c = xcorr2(a,b)', 'c = xcorr2(a)'], seealso: ['xcorr', 'conv2'] },
+    qmf: { summary: 'Quadrature mirror filter', syntax: ['y = qmf(x)', 'y = qmf(x,p)'], seealso: ['wfilters'] },
     lar2rc: { summary: 'Returns the reflection coefficients, k, from the log area ratio parameters g.', syntax: ['k = lar2rc(g)'], seealso: ['ac2rc', 'is2rc', 'poly2rc', 'rc2lar'] },
     is2rc: { summary: 'Returns the reflection coefficients, k, from the inverse sine parameters isin.', syntax: ['k = is2rc(isin)'], seealso: ['ac2rc', 'lar2rc', 'poly2rc', 'rc2is'] },
     vco: { summary: 'Creates a signal that oscillates at a frequency determined by the real input vector or matrix x with sample rate Fs.', syntax: ['y = vco(x,Fc,Fs)', 'y = vco(x,[Fmin Fmax],Fs)'], seealso: ['demod', 'modulate'] },

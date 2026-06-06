@@ -231,6 +231,14 @@ export const MAPPING: ToolboxModule = {
     deg2nm: conv(60), nm2km: conv(NM), km2nm: conv(1 / NM), nm2sm: conv(NM / SM), sm2nm: conv(SM / NM),
     km2sm: conv(1 / SM), sm2km: conv(SM), deg2sm: conv(D2R * R / SM), sm2deg: conv(SM / R * R2D),
     nm2deg: conv(NM / R * R2D), rad2nm: conv(R / NM), nm2rad: conv(NM / R), rad2sm: conv(R / SM), sm2rad: conv(SM / R),
+    // ingeoquad(lat,lon,latlim,lonlim): true for points inside/on a lat-lon quadrangle.
+    ingeoquad: (a) => {
+      const lat = toArray(m(a[0])), lon = toArray(m(a[1])), latlim = toArray(m(a[2])), lonlim = toArray(m(a[3]));
+      const w360 = (x: number) => { const r = ((x % 360) + 360) % 360; return r === 0 && x > 0 ? 360 : r; };
+      const londiff = w360(lonlim[1] - lonlim[0]);
+      const out = Float64Array.from(lat.map((la, i) => (latlim[0] <= la && la <= latlim[1] && w360(lon[i] - lonlim[0]) <= londiff) ? 1 : 0));
+      const r = mat(m(a[0]).rows, m(a[0]).cols, out) as Mat; r.isBool = true; return ret(r);
+    },
     // changem(A,newval,oldval): substitute oldval(k)→newval(k) element-wise in A.
     changem: (a) => {
       const A = m(a[0]), nv = toArray(m(a[1])), ov = toArray(m(a[2])), out = Float64Array.from(A.data);
@@ -466,6 +474,7 @@ export const MAPPING: ToolboxModule = {
     sm2rad: { summary: 'Convert distance from statute miles to radians', syntax: ['rad = sm2rad(sm)'], seealso: ['rad2sm', 'sm2km'] },
     meanm: { summary: 'Mean location of geographic coordinates', syntax: ['[latm,lonm] = meanm(lat,lon)'], seealso: ['distance', 'azimuth'] },
     changem: { summary: 'Substitute values in array', syntax: ['B = changem(A,newval,oldval)'], seealso: ['ismember'] },
+    ingeoquad: { summary: 'True for points inside or on lat-lon quadrangle', syntax: ['tf = ingeoquad(lat,lon,latlim,lonlim)'], seealso: ['inpolygon'] },
     ecef2enuv: { summary: 'Rotate ECEF vector to local ENU', syntax: ['[uE,vN,wU] = ecef2enuv(U,V,W,lat0,lon0)'], seealso: ['enu2ecefv', 'ecef2enu'] },
     enu2ecefv: { summary: 'Rotate local ENU vector to ECEF', syntax: ['[U,V,W] = enu2ecefv(uE,vN,wU,lat0,lon0)'], seealso: ['ecef2enuv', 'enu2ecef'] },
     ecef2nedv: { summary: 'Rotate ECEF vector to local NED', syntax: ['[uN,vE,wD] = ecef2nedv(U,V,W,lat0,lon0)'], seealso: ['ned2ecefv', 'ecef2ned'] },
