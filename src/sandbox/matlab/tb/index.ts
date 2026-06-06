@@ -44,9 +44,9 @@ import { FIXEDPOINT } from './fixedpoint';
 import { PARALLEL } from './parallel';
 import { FUSION } from './fusion';
 import { ROBOTICS } from './robotics';
-// OPTIM unregistered: 11/14 fns are dead code (shadowed by correct base builtins); the rest
-// (fgoalattain/optimvar/optimproblem) are broken/object-stubs. Re-enable once it adds real value.
-// import { OPTIM } from './optim';
+// OPTIM registered for fgoalattain ONLY (no base equivalent); the other 13 builtins are
+// quarantined inside optim.ts (11 duplicate correct base builtins, optimvar/optimproblem stubs).
+import { OPTIM } from './optim';
 import { NNET } from './nnet';
 import { TEXTANALYTICS } from './textanalytics';
 import { VISION } from './vision';
@@ -55,7 +55,7 @@ import { VISION } from './vision';
 export const TOOLBOXES: ToolboxModule[] = [
   AEROSPACE, ANTENNA, AUDIO, BIOINFO, COMM, CONTROL, CURVEFIT, DSP, ECON, FINANCIAL, FININST, FIXEDPOINT,
   LIDAR,
-  FUSION, FUZZY, GADS, IDENT, IMAGES, MAPPING, NAV, NNET, PARALLEL, Pde, RADAR, RL, RF,
+  FUSION, FUZZY, GADS, IDENT, IMAGES, MAPPING, NAV, NNET, OPTIM, PARALLEL, Pde, RADAR, RL, RF,
   ROBOTICS, SIGNAL, SIMULINK, STATS, SYMBOLIC, TEXTANALYTICS, VISION, WAVELET,
 ];
 

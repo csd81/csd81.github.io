@@ -528,9 +528,9 @@ async function lsqcurvefit(args: Value[]): Promise<Value[]> {
   // Wrap: residualFn(coeff) = F(coeff, xdata) - ydata
   const wrappedFn = {
     kind: 'handle' as const,
-    fn: async (cArgs: Value[]) => {
-      const h = fn as unknown as { fn: (a: Value[]) => Promise<Value[]> };
-      const res = await h.fn([cArgs[0], rowVec(xdata)]);
+    call: async (cArgs: Value[], _nargout: number) => {
+      const h = fn as unknown as { call: (a: Value[], nargout: number) => Promise<Value[]> };
+      const res = await h.call([cArgs[0], rowVec(xdata)], 1);
       const predicted = toArray(m(res[0]));
       const residuals = predicted.map((v, i) => v - (ydata[i] ?? 0));
       return [rowVec(residuals)];
@@ -694,7 +694,7 @@ async function fgoalattain(args: Value[]): Promise<Value[]> {
   // Augment: [x; gamma]
   const augFn = {
     kind: 'handle' as const,
-    fn: async (a: Value[]) => {
+    call: async (a: Value[], _nargout: number) => {
       const xgamma = toArray(m(a[0]));
       return [scalar(xgamma[n])]; // minimise gamma
     },
@@ -702,31 +702,47 @@ async function fgoalattain(args: Value[]): Promise<Value[]> {
   // Nonlinear constraint: F(x) - weight*gamma <= goal
   const nlconFn = {
     kind: 'handle' as const,
-    fn: async (a: Value[]) => {
+    call: async (a: Value[], _nargout: number) => {
       const xgamma = toArray(m(a[0]));
       const xOnly = xgamma.slice(0, n);
       const gamma = xgamma[n];
-      const h = fn as unknown as { fn: (ar: Value[]) => Promise<Value[]> };
-      const res = await h.fn([rowVec(xOnly)]);
+      const h = fn as unknown as { call: (ar: Value[], nargout: number) => Promise<Value[]> };
+      const res = await h.call([rowVec(xOnly)], 1);
       const Fv = toArray(m(res[0]));
       const c = Fv.map((fi, i) => fi - (weight[i] ?? 1) * gamma - (goal[i] ?? 0));
       return [rowVec(c)]; // c <= 0
     },
   };
-  const x0aug = [...x0, 0];
-  const [xaugV, faugV, exitV] = await fmincon([
+  // Initial gamma = worst current attainment, so [x0; gamma0] starts feasible.
+  const hUser = fn as unknown as { call: (ar: Value[], nargout: number) => Promise<Value[]> };
+  const F0 = toArray(m((await hUser.call([rowVec(x0)], 1))[0]));
+  const gamma0 = Math.max(0, ...F0.map((fi, i) => (fi - (goal[i] ?? 0)) / (weight[i] || 1)));
+  // Forward the user's linear/bound constraints, augmenting for the extra gamma variable
+  // (which gets a zero coefficient in linear constraints and an unbounded range).
+  const np = n + 1;
+  const augRows = (A: Value | undefined): Value => {
+    if (!A || !isMat(A) || m(A).rows === 0) return zeros(0, np);
+    const Am = m(A), r = Am.rows, c = Am.cols, d = new Float64Array(r * np);
+    for (let j = 0; j < Math.min(c, n); j++) for (let i = 0; i < r; i++) d[i + j * r] = Am.data[i + j * r];
+    return mat(r, np, d);
+  };
+  const passVec = (idx: number): Value => (args.length > idx && isMat(args[idx]) ? args[idx] : rowVec([]));
+  const bnd = (idx: number, fill: number): Value => {
+    const u = args.length > idx && isMat(args[idx]) && m(args[idx]).rows * m(args[idx]).cols ? toArray(m(args[idx])) : [];
+    return rowVec([...Array.from({ length: n }, (_, i) => (u[i] ?? fill)), fill]);
+  };
+  const x0aug = [...x0, gamma0];
+  const [xaugV, , exitV] = await fmincon([
     augFn as unknown as Value,
     rowVec(x0aug),
-    zeros(0, n + 1), rowVec([]),
-    zeros(0, n + 1), rowVec([]),
-    rowVec(Array(n + 1).fill(-Infinity)),
-    rowVec(Array(n + 1).fill(Infinity)),
+    augRows(args[4]), passVec(5),
+    augRows(args[6]), passVec(7),
+    bnd(8, -Infinity), bnd(9, Infinity),
     nlconFn as unknown as Value,
   ]);
   const xaug = toArray(m(xaugV));
   const xOut = xaug.slice(0, n);
-  const h2 = fn as unknown as { fn: (ar: Value[]) => Promise<Value[]> };
-  const fRes = await h2.fn([rowVec(xOut)]);
+  const fRes = await hUser.call([rowVec(xOut)], 1);
   return [rowVec(xOut), rowVec(toArray(m(fRes[0]))), scalar(xaug[n]), exitV];
 }
 
@@ -735,19 +751,11 @@ export const OPTIM: ToolboxModule = {
   name: 'Optimization Toolbox',
   docBase: 'https://www.mathworks.com/help/optim/',
   builtins: {
-    linprog,
-    quadprog,
-    fminunc,
-    fmincon,
-    fsolve,
-    lsqnonlin,
-    lsqcurvefit,
-    lsqlin,
-    intlinprog,
-    optimoptions,
-    optimset,
-    optimvar,
-    optimproblem,
+    // QUARANTINED: these duplicate correct base builtins (base wins → they were dead code),
+    // and optimvar/optimproblem are object-framework stubs. Only fgoalattain (no base
+    // equivalent) is exposed. The implementations remain below for future use.
+    // linprog, quadprog, fminunc, fmincon, fsolve, lsqnonlin, lsqcurvefit, lsqlin,
+    // intlinprog, optimoptions, optimset, optimvar, optimproblem,
     fgoalattain,
   },
   help: {
