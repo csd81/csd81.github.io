@@ -231,6 +231,16 @@ export const MAPPING: ToolboxModule = {
     deg2nm: conv(60), nm2km: conv(NM), km2nm: conv(1 / NM), nm2sm: conv(NM / SM), sm2nm: conv(SM / NM),
     km2sm: conv(1 / SM), sm2km: conv(SM), deg2sm: conv(D2R * R / SM), sm2deg: conv(SM / R * R2D),
     nm2deg: conv(NM / R * R2D), rad2nm: conv(R / NM), nm2rad: conv(NM / R), rad2sm: conv(R / SM), sm2rad: conv(SM / R),
+    // meanm(lat,lon[,units]) — geographic mean (unit-vector sum on a sphere). Mirrors meanm.m.
+    meanm: (a, nargout) => {
+      const latArr = toArray(m(a[0])), lonArr = toArray(m(a[1]));
+      const rad = a.length > 2 && isStr(a[2]) && asString(a[2]).toLowerCase().startsWith('rad');
+      const toR = (x: number) => (rad ? x : x * D2R), fromR = (x: number) => (rad ? x : x * R2D);
+      let X = 0, Y = 0, Z = 0;
+      for (let i = 0; i < latArr.length; i++) { const la = toR(latArr[i]), lo = toR(lonArr[i]); X += Math.cos(la) * Math.cos(lo); Y += Math.cos(la) * Math.sin(lo); Z += Math.sin(la); }
+      const latbar = fromR(Math.atan2(Z, Math.hypot(X, Y))), lonbar = fromR(Math.atan2(Y, X));
+      return nargout >= 2 ? Promise.resolve([scalar(latbar), scalar(lonbar)]) : ret(rowVec([latbar, lonbar]));
+    },
     // spherical geometry
     distance: (a, nargout) => {
       const lat1 = asScalar(a[0]), lon1 = asScalar(a[1]), lat2 = asScalar(a[2]), lon2 = asScalar(a[3]);
@@ -431,6 +441,7 @@ export const MAPPING: ToolboxModule = {
     sm2deg: 'Convert distance from statute miles to degrees', nm2deg: 'Convert distance from nautical miles to degrees',
     rad2nm: 'Convert distance from radians to nautical miles', nm2rad: 'Convert distance from nautical miles to radians',
     rad2sm: 'Convert distance from radians to statute miles', sm2rad: 'Convert distance from statute miles to radians',
+    meanm: 'Mean location of geographic coordinates',
     distance: 'Distance between points on sphere or ellipsoid', azimuth: 'Azimuth between points on sphere or ellipsoid',
     reckon: 'Point at specified azimuth, range on sphere or ellipsoid', departure: 'Longitude distance between two meridians at given latitudes',
     antipode: 'Point on opposite side of globe', wrapTo180: 'Wrap angle in degrees to [-180, 180]',
