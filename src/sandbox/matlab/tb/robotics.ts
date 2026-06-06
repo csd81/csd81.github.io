@@ -69,8 +69,8 @@ async function cart2hom(args: Value[]): Promise<Value[]> {
   const rows = c.rows, cols = c.cols;
   const out = zeros(rows, cols + 1);
   for (let r = 0; r < rows; r++) {
-    for (let col = 0; col < cols; col++) out.data[r * (cols + 1) + col] = c.data[r * cols + col];
-    out.data[r * (cols + 1) + cols] = 1;
+    for (let col = 0; col < cols; col++) out.data[r + col * rows] = c.data[r + col * rows];   // column-major
+    out.data[r + cols * rows] = 1;
   }
   return [out];
 }
@@ -83,8 +83,8 @@ async function hom2cart(args: Value[]): Promise<Value[]> {
   const rows = c.rows, cols = c.cols - 1;
   const out = zeros(rows, cols);
   for (let r = 0; r < rows; r++) {
-    const w = c.data[r * (cols + 1) + cols] || 1;
-    for (let col = 0; col < cols; col++) out.data[r * cols + col] = c.data[r * (cols + 1) + col] / w;
+    const w = c.data[r + cols * rows] || 1;   // last (homogeneous) column, column-major
+    for (let col = 0; col < cols; col++) out.data[r + col * rows] = c.data[r + col * rows] / w;
   }
   return [out];
 }
@@ -110,18 +110,20 @@ async function rotm2quat(args: Value[]): Promise<Value[]> {
   const d = R.data;
   const trace = d[0] + d[4] + d[8];
   let w: number, x: number, y: number, z: number;
+  // Column-major d: (r,c) at d[r + 3c]. q antisymmetric parts use (Rij−Rji): x∝R21−R12=d[5]−d[7],
+  // y∝R02−R20=d[6]−d[2], z∝R10−R01=d[1]−d[3] (the previous code had these negated).
   if (trace > 0) {
     const s = 0.5 / Math.sqrt(trace + 1);
-    w = 0.25 / s; x = (d[7] - d[5]) * s; y = (d[2] - d[6]) * s; z = (d[3] - d[1]) * s;
+    w = 0.25 / s; x = (d[5] - d[7]) * s; y = (d[6] - d[2]) * s; z = (d[1] - d[3]) * s;
   } else if (d[0] > d[4] && d[0] > d[8]) {
     const s = 2 * Math.sqrt(1 + d[0] - d[4] - d[8]);
-    w = (d[7] - d[5]) / s; x = 0.25 * s; y = (d[1] + d[3]) / s; z = (d[2] + d[6]) / s;
+    w = (d[5] - d[7]) / s; x = 0.25 * s; y = (d[1] + d[3]) / s; z = (d[2] + d[6]) / s;
   } else if (d[4] > d[8]) {
     const s = 2 * Math.sqrt(1 + d[4] - d[0] - d[8]);
-    w = (d[2] - d[6]) / s; x = (d[1] + d[3]) / s; y = 0.25 * s; z = (d[5] + d[7]) / s;
+    w = (d[6] - d[2]) / s; x = (d[1] + d[3]) / s; y = 0.25 * s; z = (d[5] + d[7]) / s;
   } else {
     const s = 2 * Math.sqrt(1 + d[8] - d[0] - d[4]);
-    w = (d[3] - d[1]) / s; x = (d[2] + d[6]) / s; y = (d[5] + d[7]) / s; z = 0.25 * s;
+    w = (d[1] - d[3]) / s; x = (d[2] + d[6]) / s; y = (d[5] + d[7]) / s; z = 0.25 * s;
   }
   return [rowVec([w, x, y, z])];
 }
