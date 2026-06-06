@@ -4786,8 +4786,32 @@ const BASE_REF = new Set<string>((
 ).split(/\s+/));
 
 /** Functions documented under the numeric-class method page ref/double.<name>.html
- *  (the plain ref/<name>.html 404s for these). */
-const DOUBLE_REF = new Set<string>('min max mink maxk'.split(/\s+/));
+ *  (the plain ref/<name>.html 404s for these — they're overloaded across the
+ *  double/sym/… classes). The symbolic variant lives at symbolic/sym.<name>.html.
+ *  Verified against R2026a; special-function singletons (gamma/hypot/factorial/
+ *  real/imag/conj) and mpower keep their plain ref/<name>.html page and are NOT here. */
+const DOUBLE_REF = new Set<string>((
+  'min max mink maxk ' +
+  'abs sign sqrt nthroot realsqrt ceil floor round fix mod rem ' +
+  'sin sind cos cosd tan tand asin asind acos acosd atan atand atan2 atan2d ' +
+  'sec secd csc cscd cot cotd asec asecd acsc acscd acot acotd ' +
+  'sinh cosh tanh asinh acosh atanh sech csch coth asech acsch acoth ' +
+  'exp expm1 log log2 log10 log1p pow2 ' +
+  'sum prod cumsum cumprod diff ' +
+  'plus minus times mtimes rdivide ldivide mrdivide mldivide power uminus uplus transpose ctranspose'
+).split(/\s+/));
+
+/** Overloaded functions that have BOTH a numeric page and a Symbolic Math Toolbox
+ *  method page (symbolic/sym.<name>.html). `help <name>` shows the numeric page but
+ *  cross-links to `sym.<name>`. Verified against R2026a — note the symbolic doc set is
+ *  irregular: sqrt/exp/floor/ceil/round/fix/sum/prod/uplus have NO sym page and are
+ *  intentionally absent (linking them would 404). */
+const SYM_OVERLOAD = new Set<string>((
+  'abs sign mod rem nthroot ' +
+  'sin cos tan asin acos atan atan2 sinh cosh tanh ' +
+  'log log2 log10 cumsum cumprod diff ' +
+  'plus minus times rdivide mtimes mrdivide mldivide power transpose ctranspose uminus'
+).split(/\s+/));
 
 /** Symbolic-Math-Toolbox-primary functions: documented at /help/symbolic/<name>.html,
  *  NOT /help/matlab/ref/ (which 404s for e.g. `sym`). Checked before BASE_REF so the
@@ -4817,6 +4841,10 @@ const SYM_REF = new Set<string>((
 ).split(/\s+/));
 
 export function docUrl(name: string): string {
+  // Class-qualified request (MATLAB `help sym/asin` / `help sym.asin`) → the
+  // Symbolic Math Toolbox method page, even for functions whose default page is numeric.
+  const symQual = name.match(/^sym[./](\w+)$/);
+  if (symQual) { const b = symQual[1]; return `https://www.mathworks.com/help/symbolic/${b === 'sym' ? 'sym' : `sym.${b.toLowerCase()}`}.html`; }
   const low = name.toLowerCase();
   // Direct reference page for base functions; doc-search for toolbox/aliases
   // (prctile/quantile/iqr → Statistics; xcorr/xcov → Signal; etc. would 404 under ref/).
@@ -5302,15 +5330,35 @@ const EXTRA_SYNTAX: Record<string, string[]> = {
 
 /** MATLAB-style help block for a built-in, or null if unknown. */
 export function builtinHelp(name: string): string | null {
+  // Class-qualified symbolic help: `help sym/asin` / `help sym.asin` → the symbolic
+  // overload's page, even when the bare name defaults to the numeric (double) page.
+  const symQual = name.match(/^sym[./](\w+)$/);
+  if (symQual) {
+    const base = symQual[1];
+    const se = HELP[base] ?? (typeof TOOLBOX_HELP[base] === 'object' ? TOOLBOX_HELP[base] as HelpEntry : undefined);
+    const summary = se?.summary ?? EXTRA_HELP[base] ?? (typeof TOOLBOX_HELP[base] === 'string' ? TOOLBOX_HELP[base] as string : `Symbolic overload of ${base}`);
+    let s = ` sym/${base} - ${summary}\n\n    Symbolic Math Toolbox (symbolic overload of ${base})`;
+    if (se?.syntax?.length) s += `\n\n    Syntax\n` + se.syntax.map((x) => '      ' + x).join('\n');
+    s += `\n\n    Documentation for sym/${base}\n      ${docUrl(name)}`;
+    return s;
+  }
   const tb = FUNC_TOOLBOX.get(name);
   const tag = tb ? `\n\n    Toolbox: ${tb.name}` : '';
+  // Overloaded (numeric + symbolic) functions cross-link to their symbolic page.
+  const overloaded = SYM_OVERLOAD.has(name.toLowerCase());
+  const withSym = (sa: string[] | undefined) => {
+    const list = sa ? [...sa] : [];
+    if (overloaded && !list.includes(`sym.${name}`)) list.push(`sym.${name}`);
+    return list;
+  };
   const entry = HELP[name] ?? (typeof TOOLBOX_HELP[name] === 'object' ? TOOLBOX_HELP[name] as HelpEntry : undefined);
   if (entry) {
     const e = entry;
     let s = ` ${name} - ${e.summary}\n\n    Syntax\n` + e.syntax.map((x) => '      ' + x).join('\n');
     if (e.description?.length) s += `\n\n    Description\n` + e.description.map((x) => '      ' + x).join('\n');
     if (e.examples?.length) s += `\n\n    Examples\n` + e.examples.map((x) => '      ' + x).join('\n');
-    if (e.seealso?.length) s += `\n\n    See also ${e.seealso.join(', ')}`;
+    const sa = withSym(e.seealso);
+    if (sa.length) s += `\n\n    See also ${sa.join(', ')}`;
     s += tag + `\n\n    Documentation for ${name}\n      ${docUrl(name)}`;
     return s;
   }
@@ -5319,6 +5367,8 @@ export function builtinHelp(name: string): string | null {
     let s = ` ${name} - ${one}`;
     const syn = EXTRA_SYNTAX[name];
     if (syn?.length) s += `\n\n    Syntax\n` + syn.map((x) => '      ' + x).join('\n');
+    const sa = withSym(undefined);
+    if (sa.length) s += `\n\n    See also ${sa.join(', ')}`;
     s += tag + `\n\n    Documentation for ${name}\n      ${docUrl(name)}`;
     return s;
   }
