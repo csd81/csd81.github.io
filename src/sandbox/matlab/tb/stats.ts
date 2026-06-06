@@ -8,7 +8,7 @@ import {
   asString, asScalar, toMat as m, MatError, mat, fromRows, isCell, isStr, makeCell, bool,
 } from '../values';
 import type { ToolboxModule } from './types';
-import { inv } from '../linalg';
+import { inv, det } from '../linalg';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
 /** Rows of a matrix as number[][] (local copy of the builtins.ts helper, kept self-contained). */
@@ -542,6 +542,64 @@ export const STATS: ToolboxModule = {
   builtins: {
     tiedrank: (a, nargout) => Promise.resolve(tiedrankImpl(a, nargout)),
     partialcorr: (a) => ret(partialcorrImpl(a)),
+    // ── geometric inverse cdf: smallest k with cdf≥p ──
+    geoinv: (a) => dist(a, [0.5], (p, P) => {
+      if (P <= 0 || P > 1 || p < 0 || p > 1) return NaN;
+      if (p <= 0) return 0; if (p >= 1) return Infinity;
+      return Math.max(0, Math.ceil(Math.log(1 - p) / Math.log(1 - P) - 1e-12) - 1);
+    }),
+    // ── multinomial pdf: n!/∏xᵢ! · ∏pᵢ^xᵢ (row-wise for N×k count matrices) ──
+    mnpdf: (a) => {
+      const X = m(a[0]), P = toArray(m(a[1]));
+      const rows = X.rows === 1 ? [toArray(X)] : matRows(X);
+      const out = rows.map((x) => {
+        const n = x.reduce((s, v) => s + v, 0);
+        let lg = logGamma(n + 1); for (let i = 0; i < x.length; i++) lg += x[i] * Math.log(P[i]) - logGamma(x[i] + 1);
+        return Math.exp(lg);
+      });
+      return ret(out.length === 1 ? scalar(out[0]) : colVec(out));
+    },
+    // ── ff2n(n): full two-level factorial design, 2^n × n (column 1 = MSB) ──
+    ff2n: (a) => {
+      const n = Math.round(asScalar(a[0])), rows = 2 ** n, data = new Float64Array(rows * n);
+      for (let i = 0; i < rows; i++) for (let j = 0; j < n; j++) data[i + j * rows] = (i >> (n - 1 - j)) & 1;
+      return ret(mat(rows, n, data));
+    },
+    // ── fullfact(levels): full factorial design (first factor varies fastest) ──
+    fullfact: (a) => {
+      const lv = toArray(m(a[0])).map(Math.round), k = lv.length, total = lv.reduce((x, y) => x * y, 1);
+      const data = new Float64Array(total * k);
+      for (let i = 0; i < total; i++) { let idx = i; for (let j = 0; j < k; j++) { data[i + j * total] = (idx % lv[j]) + 1; idx = Math.floor(idx / lv[j]); } }
+      return ret(mat(total, k, data));
+    },
+    // ── hougen(beta,x): Hougen-Watson reaction-rate model (row-wise for N×3 X) ──
+    hougen: (a) => {
+      const b = toArray(m(a[0])), X = m(a[1]);
+      const rows = X.rows === 1 ? [toArray(X)] : matRows(X);
+      const out = rows.map((x) => (b[0] * x[1] - x[2] / b[4]) / (1 + b[1] * x[0] + b[2] * x[1] + b[3] * x[2]));
+      return ret(out.length === 1 ? scalar(out[0]) : colVec(out));
+    },
+    // ── combnk(v,k): all k-combinations of v (MATLAB order = reverse-lexicographic) ──
+    combnk: (a) => {
+      const v = toArray(m(a[0])), k = Math.round(asScalar(a[1])), combos: number[][] = [];
+      const rec = (start: number, cur: number[]) => { if (cur.length === k) { combos.push(cur.map((i) => v[i])); return; } for (let i = start; i < v.length; i++) rec(i + 1, [...cur, i]); };
+      rec(0, []); combos.reverse();
+      const data = new Float64Array(combos.length * k);
+      for (let r = 0; r < combos.length; r++) for (let c = 0; c < k; c++) data[r + c * combos.length] = combos[r][c];
+      return ret(mat(combos.length, k, data));
+    },
+    // ── mvtpdf(X,C,df): multivariate Student-t density (correlation matrix C) ──
+    mvtpdf: (a) => {
+      const X = m(a[0]), C = m(a[1]), nu = asScalar(a[2]), d = C.rows;
+      const Ci = inv(C), detC = det(C);
+      const rows = X.rows === 1 && X.cols === d ? [toArray(X)] : matRows(X);
+      const coef = logGamma((nu + d) / 2) - logGamma(nu / 2) - (d / 2) * Math.log(nu * Math.PI) - 0.5 * Math.log(detC);
+      const out = rows.map((x) => {
+        let q = 0; for (let i = 0; i < d; i++) for (let j = 0; j < d; j++) q += x[i] * Ci.data[i + j * d] * x[j];
+        return Math.exp(coef - ((nu + d) / 2) * Math.log(1 + q / nu));
+      });
+      return ret(out.length === 1 ? scalar(out[0]) : colVec(out));
+    },
     // ── hypothesis tests ──
     /** [h,p,ci,stats]=ttest(x[,m][,'Alpha',a][,'Tail',t]) — one-sample/paired t-test. */
     ttest: (a, nargout) => {
@@ -1779,6 +1837,9 @@ export const STATS: ToolboxModule = {
     range: 'Range of values (max − min)', tabulate: 'Frequency table',
     pdist: 'Pairwise distance between observations', squareform: 'Format distance matrix', linkage: 'Agglomerative hierarchical cluster tree', kmeans: 'k-means clustering',
     tiedrank: 'Ranks of a sample, adjusting for ties', partialcorr: 'Linear or partial correlation coefficients',
+    geoinv: 'Geometric inverse cumulative distribution function', mnpdf: 'Multinomial probability density function',
+    ff2n: 'Two-level full factorial design', fullfact: 'Full factorial design', hougen: 'Hougen-Watson model function',
+    combnk: 'Enumerate combinations of n choose k', mvtpdf: 'Multivariate Student-t probability density function',
     explike: 'Exponential negative log-likelihood',
     unidpdf: 'Discrete uniform probability density function', unidcdf: 'Discrete uniform cumulative distribution function',
     unidinv: 'Discrete uniform inverse cumulative distribution function', unidstat: 'Discrete uniform mean and variance',
