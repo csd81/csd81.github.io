@@ -951,6 +951,10 @@ export const BUILTINS: Record<string, Builtin> = {
   sum: async (a) => {
     if (isSym(a[0])) return ret(symVecReduce(a[0] as Sym, (x, y) => sAdd(x, y), sN(0)));
     const A = m(a[0]); const dim = dimArg(a, 1); const omit = hasFlag(a, 'omitnan');
+    if (hasFlag(a, 'all')) {   // sum over every element → scalar (works for N-D)
+      if (!isComplex(A)) { let s = 0; for (const x of A.data) if (!(omit && Number.isNaN(x))) s += x; return ret(scalar(s)); }
+      let sr = 0, si = 0; for (let i = 0; i < A.data.length; i++) { const xr = A.data[i], xi = A.idata![i]; if (omit && (Number.isNaN(xr) || Number.isNaN(xi))) continue; sr += xr; si += xi; } return ret(cscalar(sr, si));
+    }
     if (!isComplex(A)) return ret(reduce(A, dim, 0, omit ? (s, x) => s + (Number.isNaN(x) ? 0 : x) : (s, x) => s + x));
     // complex: omit a term if EITHER its real or imaginary part is NaN (the whole value is NaN)
     let reSrc = A.data, imSrc = A.idata!;
@@ -959,9 +963,26 @@ export const BUILTINS: Record<string, Builtin> = {
     const im = reduce({ kind: 'num', rows: A.rows, cols: A.cols, data: imSrc, nd: A.nd }, dim, 0, (s, x) => s + x);
     return ret({ kind: 'num', rows: re.rows, cols: re.cols, data: re.data, idata: im.data, nd: re.nd });
   },
-  prod: async (a) => { if (isSym(a[0])) return ret(symVecReduce(a[0] as Sym, (x, y) => sMul(x, y), sN(1))); const A = m(a[0]); const dim = dimArg(a, 1); if (!isComplex(A)) return ret(reduce(A, dim, 1, (s, x) => s * x)); return ret(creduce(A, dim, 1, 0, (ar, aii, xr, xi) => cmul(ar, aii, xr, xi))); },
+  prod: async (a) => {
+    if (isSym(a[0])) return ret(symVecReduce(a[0] as Sym, (x, y) => sMul(x, y), sN(1)));
+    const A = m(a[0]); const dim = dimArg(a, 1);
+    if (hasFlag(a, 'all')) {   // product over every element → scalar
+      if (!isComplex(A)) { let p = 1; for (const x of A.data) p *= x; return ret(scalar(p)); }
+      let pr = 1, pi = 0; for (let i = 0; i < A.data.length; i++) { const [nr, ni] = cmul(pr, pi, A.data[i], A.idata![i]); pr = nr; pi = ni; } return ret(cscalar(pr, pi));
+    }
+    if (!isComplex(A)) return ret(reduce(A, dim, 1, (s, x) => s * x));
+    return ret(creduce(A, dim, 1, 0, (ar, aii, xr, xi) => cmul(ar, aii, xr, xi)));
+  },
   mean: async (a) => {
     const A = m(a[0]); const dim = dimArg(a, 1);
+    if (hasFlag(a, 'all')) {   // mean over every element → scalar
+      const nEl = A.data.length;
+      if (!isComplex(A)) {
+        if (hasFlag(a, 'omitnan')) { let s = 0, c = 0; for (const x of A.data) if (!Number.isNaN(x)) { s += x; c++; } return ret(scalar(c ? s / c : NaN)); }
+        let s = 0; for (const x of A.data) s += x; return ret(scalar(s / (nEl || 1)));
+      }
+      let sr = 0, si = 0; for (let i = 0; i < nEl; i++) { sr += A.data[i]; si += A.idata![i]; } return ret(cscalar(sr / (nEl || 1), si / (nEl || 1)));
+    }
     if (!isComplex(A)) {
       if (hasFlag(a, 'omitnan')) { const s = reduce(A, dim, 0, (acc, x) => acc + (Number.isNaN(x) ? 0 : x)); const c = reduce(A, dim, 0, (acc, x) => acc + (Number.isNaN(x) ? 0 : 1)); return ret(elementwise(s, c, (sv, cv) => (cv === 0 ? NaN : sv / cv))); }
       return ret(reduce(A, dim, 0, (s, x) => s + x, (s, n) => s / n));
@@ -1862,7 +1883,7 @@ export const BUILTINS: Record<string, Builtin> = {
   isnumeric: async (a) => ret(bool(isMat(a[0]) && !(a[0] as Mat).isChar)),
   ischar: async (a) => ret(bool(isMat(a[0]) && !!(a[0] as Mat).isChar)),
   isfloat: async (a) => ret(bool(isMat(a[0]) && !(a[0] as Mat).isChar && !(a[0] as Mat).isBool && (!(a[0] as Mat).itype || (a[0] as Mat).itype === 'single'))),
-  double: async (a) => { if (isSym(a[0])) { const s = a[0]; const M = zeros(s.rows, s.cols); s.exprs.forEach((e, i) => { M.data[i] = symEval(e, new Map()); }); return ret(M); } if (isStr(a[0])) { const s = a[0]; const data = Float64Array.from(s.items, (x) => { const t = x.trim(); return t === '' ? NaN : Number(t); }); return ret({ kind: 'num', rows: s.rows, cols: s.cols, data }); } const A = m(a[0]); return ret({ kind: 'num', rows: A.rows, cols: A.cols, data: Float64Array.from(A.data), idata: A.idata ? Float64Array.from(A.idata) : undefined }); },
+  double: async (a) => { if (isObject(a[0])) { const d = a[0].props.get('data') ?? a[0].props.get('Value') ?? a[0].props.get('value'); if (d !== undefined) { const D = m(d); return ret({ kind: 'num', rows: D.rows, cols: D.cols, data: Float64Array.from(D.data), idata: D.idata ? Float64Array.from(D.idata) : undefined, nd: D.nd }); } } if (isSym(a[0])) { const s = a[0]; const M = zeros(s.rows, s.cols); s.exprs.forEach((e, i) => { M.data[i] = symEval(e, new Map()); }); return ret(M); } if (isStr(a[0])) { const s = a[0]; const data = Float64Array.from(s.items, (x) => { const t = x.trim(); return t === '' ? NaN : Number(t); }); return ret({ kind: 'num', rows: s.rows, cols: s.cols, data }); } const A = m(a[0]); return ret({ kind: 'num', rows: A.rows, cols: A.cols, data: Float64Array.from(A.data), idata: A.idata ? Float64Array.from(A.idata) : undefined }); },
   single: async (a) => ret(applyClass(m(a[0]), 'single')),
   char: async (a) => {
     // char(string)/char(cellstr) → char; several inputs stack as rows of a char matrix.
