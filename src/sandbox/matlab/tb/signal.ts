@@ -4,7 +4,7 @@
 import type { Builtin } from '../builtins';
 import {
   type Value, type Mat, type Cell, isMat, isStr, isCell, scalar, colVec, rowVec, toArray, map, zeros, mat,
-  asString, asScalar, toMat as m,
+  asString, asScalar, toMat as m, applyClass,
 } from '../values';
 import type { ToolboxModule } from './types';
 
@@ -430,6 +430,25 @@ function mu2linOne(muv: number): number {
   return SCALE * (1 - 2 * sig) * (MU2LIN_ETAB[e - 1] + y);
 }
 
+// diric(x,N) — Dirichlet (periodic sinc). Mirrors diric.m.
+function diricOne(x: number, N: number): number {
+  const tol = 2.220446049250313e-16 * 1e4;
+  const s = Math.sin(0.5 * x);
+  return Math.abs(s) > tol ? Math.sin(N * 0.5 * x) / (N * s) : Math.sign(Math.cos(x * (N + 1) * 0.5));
+}
+// square(t,duty) — square wave. Mirrors square.m.
+function squareOne(t: number, w0: number): number {
+  const tmp = ((t % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+  return tmp < w0 ? 1 : -1;
+}
+// gmonopuls(t,fc) — Gaussian monopulse. Mirrors gmonopuls.m.
+const TWO_SQRT_E = 2 * Math.exp(0.5);
+function gmonopulsOne(t: number, fc: number): number {
+  const u = Math.PI * t * fc; return TWO_SQRT_E * u * Math.exp(-2 * u * u);
+}
+/** Integer class name for a given bit width and signedness. */
+const intClass = (nbits: number, signed: boolean) => (signed ? 'int' : 'uint') + (nbits <= 8 ? '8' : nbits <= 16 ? '16' : '32');
+
 export const SIGNAL: ToolboxModule = {
   id: 'signal',
   name: 'Signal Processing Toolbox',
@@ -437,6 +456,37 @@ export const SIGNAL: ToolboxModule = {
   builtins: {
     lin2mu: (a) => ret(map(m(a[0]), lin2muOne)),
     mu2lin: (a) => ret(map(m(a[0]), mu2linOne)),
+    diric: (a) => { const N = asScalar(a[1]); return ret(map(m(a[0]), (x) => diricOne(x, N))); },
+    square: (a) => { const duty = a.length > 1 ? asScalar(a[1]) : 50; const w0 = 2 * Math.PI * duty / 100; return ret(map(m(a[0]), (t) => squareOne(t, w0))); },
+    gmonopuls: (a) => {
+      const fc = a.length > 1 && !isStr(a[1]) && !(isMat(a[1]) && (a[1] as Mat).isChar) ? asScalar(a[1]) : 1e3;
+      if (isStr(a[0]) || (isMat(a[0]) && (a[0] as Mat).isChar)) return ret(scalar(1 / (Math.PI * fc)));  // 'cutoff'
+      return ret(map(m(a[0]), (t) => gmonopulsOne(t, fc)));
+    },
+    uencode: (a) => {
+      const nbits = asScalar(a[1]); const V = a.length > 2 && isMat(a[2]) && (a[2] as Mat).rows ? asScalar(a[2]) : 1;
+      const signed = a.length > 3 && asString(a[3]).toLowerCase().startsWith('s');
+      const Q = 2 ** nbits - 1, T = (Q + 1) / (2 * V), sMax = 2 ** (nbits - 1) - 1, sMin = -(sMax + 1);
+      const out = map(m(a[0]), (u) => {
+        let v = Math.floor((u + V) * T);
+        if (signed) { v -= sMax + 1; v = Math.min(Math.max(v, sMin), sMax); } else { v = Math.min(Math.max(v, 0), Q); }
+        return v;
+      });
+      return ret(applyClass(out, intClass(nbits, signed)));
+    },
+    udecode: (a) => {
+      const U = m(a[0]); const N = asScalar(a[1]); const V = a.length > 2 && isMat(a[2]) && (a[2] as Mat).rows ? asScalar(a[2]) : 1;
+      const sat = !(a.length > 3 && asString(a[3]).toLowerCase().startsWith('w'));     // default 'saturate'
+      const signed = !!U.itype && U.itype.startsWith('int') && !U.itype.startsWith('uint');
+      const W = signed ? 2 ** (N - 1) : 0, T = V * 2 ** (1 - N);
+      const upper = signed ? 2 ** (N - 1) - 1 : 2 ** N - 1, lower = signed ? -(2 ** (N - 1)) : 0, P = 2 ** N;
+      return ret(map(U, (u) => {
+        let uu = u;
+        if (sat) uu = Math.min(Math.max(uu, lower), upper);
+        else uu = signed ? (((uu - lower) % P) + P) % P + lower : ((uu % P) + P) % P;
+        return (uu + W) * T - V;
+      }));
+    },
     // ── window functions (return L×1 columns, MATLAB convention) ──
     rectwin: (a) => ret(colVec(new Array(Math.max(0, Math.round(asScalar(a[0])))).fill(1))),
     hann: (a) => window(a, 1, (n, N) => 0.5 - 0.5 * Math.cos((2 * Math.PI * n) / N)),
@@ -1217,6 +1267,8 @@ export const SIGNAL: ToolboxModule = {
   },
   help: {
     lin2mu: 'Convert linear audio signal to mu-law encoding', mu2lin: 'Convert mu-law encoding to linear signal',
+    diric: 'Dirichlet or periodic sinc function', square: 'Square wave', gmonopuls: 'Gaussian monopulse',
+    uencode: 'Quantize and encode to integer values', udecode: 'Decode 2^n-level quantized integers to floating point',
     rectwin: 'Rectangular window', hann: 'Hann (Hanning) window', hanning: 'Hann window (symmetric)', hamming: 'Hamming window',
     blackman: 'Blackman window', blackmanharris: 'Minimum 4-term Blackman-Harris window', nuttallwin: 'Nuttall-defined 4-term Blackman-Harris window',
     flattopwin: 'Flat top weighted window', bartlett: 'Bartlett (triangular, zero endpoints) window', triang: 'Triangular window', barthannwin: 'Modified Bartlett-Hann window',
