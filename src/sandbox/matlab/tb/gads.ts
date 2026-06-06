@@ -254,7 +254,7 @@ export const GADS: ToolboxModule = {
   id: 'gads',
   name: 'Global Optimization Toolbox',
   docBase: 'https://www.mathworks.com/help/gads/',
-  builtins: { ga, simulannealbnd, patternsearch, particleswarm, gamultiobj },
+  builtins: { ga, simulannealbnd, patternsearch, particleswarm, gamultiobj, paretosearch: gamultiobj },
   help: {
     ga: {
       summary: 'Find minimum of function using genetic algorithm',

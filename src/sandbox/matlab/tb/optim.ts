@@ -2,7 +2,7 @@
 // fmincon (SQP), fsolve (LM), lsqnonlin/lsqcurvefit (LM), lsqlin, intlinprog (B&B),
 // optimoptions/optimset.
 import {
-  type Value, scalar, rowVec, colVec, toArray, asScalar, toMat as m, isMat, MatError,
+  type Value, type Cell, scalar, rowVec, colVec, toArray, asScalar, toMat as m, isMat, isObject, isCell, MatError,
   mat, zeros, makeObject, fromRows, str, bool,
 } from '../values';
 import type { ToolboxModule } from './types';
@@ -755,6 +755,79 @@ async function fgoalattain(args: Value[]): Promise<Value[]> {
   return [rowVec(xOut), rowVec(toArray(m(fRes[0]))), scalar(xaug[n]), exitV];
 }
 
+// fminimax: minimise max_i F_i(x). Reformulate as min γ s.t. F_i(x) ≤ γ (and user constraints),
+// solved with fmincon over the augmented variable [x; γ].
+async function fminimax(args: Value[]): Promise<Value[]> {
+  if (args.length < 2) throw new MatError('fminimax: requires fun and x0');
+  const fn = args[0]; const x0 = toArray(m(args[1])); const n = x0.length;
+  const hUser = fn as unknown as { call: (ar: Value[], nargout: number) => Promise<Value[]> };
+  const F0 = toArray(m((await hUser.call([rowVec(x0)], 1))[0]));
+  const userNon = args.length > 8 && isFn(args[8]) ? (args[8] as unknown as { call: (ar: Value[], nargout: number) => Promise<Value[]> }) : null;
+  const augFn = { kind: 'handle' as const, call: async (a: Value[]) => { const xg = toArray(m(a[0])); return [scalar(xg[n])]; } };
+  const nlconFn = { kind: 'handle' as const, call: async (a: Value[]) => {
+    const xg = toArray(m(a[0])); const xOnly = xg.slice(0, n); const gamma = xg[n];
+    const Fv = toArray(m((await hUser.call([rowVec(xOnly)], 1))[0]));
+    const c = Fv.map((fi) => fi - gamma);
+    if (userNon) { const ur = await userNon.call([rowVec(xOnly)], 2); if (ur.length && isMat(ur[0])) c.push(...toArray(m(ur[0]))); }
+    return [rowVec(c), rowVec([])];
+  } };
+  const np = n + 1;
+  const augRows = (A: Value | undefined): Value => { if (!A || !isMat(A) || m(A).rows === 0) return zeros(0, np); const Am = m(A), r = Am.rows, c = Am.cols, d = new Float64Array(r * np); for (let j = 0; j < Math.min(c, n); j++) for (let i = 0; i < r; i++) d[i + j * r] = Am.data[i + j * r]; return mat(r, np, d); };
+  const passVec = (idx: number): Value => (args.length > idx && isMat(args[idx]) ? args[idx] : rowVec([]));
+  const bnd = (idx: number, fill: number): Value => { const u = args.length > idx && isMat(args[idx]) && m(args[idx]).rows * m(args[idx]).cols ? toArray(m(args[idx])) : []; return rowVec([...Array.from({ length: n }, (_, i) => (u[i] ?? fill)), fill]); };
+  const [xaugV, , exitV] = await fmincon([augFn as unknown as Value, rowVec([...x0, Math.max(...F0)]), augRows(args[2]), passVec(3), augRows(args[4]), passVec(5), bnd(6, -Infinity), bnd(7, Infinity), nlconFn as unknown as Value]);
+  const xaug = toArray(m(xaugV)); const xOut = xaug.slice(0, n);
+  const Fres = toArray(m((await hUser.call([rowVec(xOut)], 1))[0]));
+  return [rowVec(xOut), rowVec(Fres), scalar(Math.max(...Fres)), exitV];
+}
+
+// secondordercone(A,b,d,gamma): cone ‖A·x − b‖ ≤ dᵀx − gamma.
+function secondordercone(args: Value[]): Value[] {
+  const props = new Map<string, Value>();
+  props.set('A', args[0]); props.set('b', args[1] ?? rowVec([])); props.set('d', args[2] ?? rowVec([])); props.set('gamma', scalar(args.length > 3 ? asScalar(args[3]) : 0));
+  return [makeObject('secondordercone', props)];
+}
+// coneprog: min fᵀx s.t. second-order cone constraints + linear/bounds. Solved as an NLP via fmincon.
+async function coneprog(args: Value[]): Promise<Value[]> {
+  const f = toArray(m(args[0])); const n = f.length;
+  const cones: { A: number[][]; b: number[]; d: number[]; g: number }[] = [];
+  const matRows = (M: ReturnType<typeof m>): number[][] => { const o: number[][] = []; for (let r = 0; r < M.rows; r++) { const row: number[] = []; for (let c = 0; c < M.cols; c++) row.push(M.data[r + c * M.rows]); o.push(row); } return o; };
+  const addCone = (v: Value) => { if (isObject(v) && (v as { className: string }).className === 'secondordercone') { const p = (v as { props: Map<string, Value> }).props; cones.push({ A: matRows(m(p.get('A')!)), b: toArray(m(p.get('b')!)), d: toArray(m(p.get('d')!)), g: asScalar(p.get('gamma')!) }); } };
+  if (isCell(args[1])) (args[1] as Cell).items.forEach(addCone); else if (args[1]) addCone(args[1]);
+  const objFn = { kind: 'handle' as const, call: async (a: Value[]) => { const x = toArray(m(a[0])); return [scalar(dot(f, x))]; } };
+  const nlconFn = { kind: 'handle' as const, call: async (a: Value[]) => {
+    const x = toArray(m(a[0])); const c: number[] = [];
+    for (const cn of cones) { const Ax = cn.A.map((row, i) => dot(row, x) - (cn.b[i] ?? 0)); const nrm = Math.sqrt(Ax.reduce((s, v) => s + v * v, 0)); c.push(nrm - (dot(cn.d, x) - cn.g)); }
+    return [rowVec(c), rowVec([])];
+  } };
+  const passA = (idx: number): Value => (args.length > idx && isMat(args[idx]) && m(args[idx]).rows > 0 ? args[idx] : zeros(0, n));   // empty ⇒ 0 rows (no phantom constraint)
+  const passV = (idx: number): Value => (args.length > idx && isMat(args[idx]) ? args[idx] : rowVec([]));
+  const [xV, , exitV] = await fmincon([objFn as unknown as Value, colVec(new Array(n).fill(0)), passA(2), passV(3), passA(4), passV(5), passV(6), passV(7), nlconFn as unknown as Value]);
+  const x = toArray(m(xV));
+  return [rowVec(x), scalar(dot(f, x)), exitV];
+}
+
+// fseminf: semi-infinite constrained minimisation. The semi-infinite constraints are discretised
+// on a fixed grid (per parameter) and enforced as ordinary inequalities in fmincon.
+async function fseminf(args: Value[]): Promise<Value[]> {
+  if (args.length < 4) throw new MatError('fseminf: requires fun, x0, ntheta, seminfcon');
+  const fn = args[0]; const x0 = toArray(m(args[1])); const n = x0.length; const ntheta = Math.round(asScalar(args[2]));
+  const seminf = args[3] as unknown as { call: (ar: Value[], nargout: number) => Promise<Value[]> };
+  const NPTS = 30; const S = mat(ntheta, 2, Float64Array.from(Array.from({ length: ntheta }, () => [1 / NPTS, 0]).flat()));
+  const nlconFn = { kind: 'handle' as const, call: async (a: Value[]) => {
+    // seminfcon returns [c, ceq, K1, …, Kntheta, S]; enforce c ≤ 0 and every sampled K ≤ 0.
+    const r = await seminf.call([a[0], S], ntheta + 3);
+    const cAll: number[] = [];
+    if (r.length && isMat(r[0]) && (m(r[0]).rows * m(r[0]).cols)) cAll.push(...toArray(m(r[0])));
+    for (let k = 0; k < ntheta; k++) { const Kk = r[2 + k]; if (Kk && isMat(Kk)) cAll.push(...toArray(m(Kk))); }
+    return [rowVec(cAll), rowVec([])];
+  } };
+  const passA = (idx: number): Value => (args.length > idx && isMat(args[idx]) && m(args[idx]).rows > 0 ? args[idx] : zeros(0, n));
+  const passV = (idx: number): Value => (args.length > idx && isMat(args[idx]) ? args[idx] : rowVec([]));
+  const [xV, fV, exitV] = await fmincon([fn, rowVec(x0), passA(4), passV(5), passA(6), passV(7), passV(8), passV(9), nlconFn as unknown as Value]);
+  return [xV, fV, exitV];
+}
+
 export const OPTIM: ToolboxModule = {
   id: 'optim',
   name: 'Optimization Toolbox',
@@ -766,6 +839,10 @@ export const OPTIM: ToolboxModule = {
     // linprog, quadprog, fminunc, fmincon, fsolve, lsqnonlin, lsqcurvefit, lsqlin,
     // intlinprog, optimoptions, optimset, optimvar, optimproblem,
     fgoalattain,
+    fminimax,
+    fseminf,
+    coneprog,
+    secondordercone: async (a) => secondordercone(a),
   },
   help: {
     linprog: {
@@ -954,6 +1031,50 @@ export const OPTIM: ToolboxModule = {
         'Internally reduces to a fmincon problem with gamma as an extra variable.',
       ],
       seealso: ['fmincon', 'fminimax', 'gamultiobj', 'optimoptions'],
+    },
+    fminimax: {
+      summary: 'Solve minimax constraint problems',
+      syntax: [
+        'x = fminimax(fun,x0)',
+        '[x,fval,maxfval,exitflag] = fminimax(fun,x0,A,b,Aeq,beq,lb,ub,nonlcon)',
+      ],
+      description: [
+        'x = fminimax(fun,x0) finds x that minimises the worst-case value max_i F_i(x), where F = fun(x).',
+        'Reduces to a fmincon problem with an extra variable gamma and constraints F_i(x) <= gamma.',
+      ],
+      seealso: ['fmincon', 'fgoalattain', 'fseminf', 'optimoptions'],
+    },
+    fseminf: {
+      summary: 'Solve semi-infinitely constrained minimisation problems',
+      syntax: [
+        'x = fseminf(fun,x0,ntheta,seminfcon)',
+        '[x,fval,exitflag] = fseminf(fun,x0,ntheta,seminfcon,A,b,Aeq,beq,lb,ub)',
+      ],
+      description: [
+        'Minimises fun(x) subject to ntheta semi-infinite constraints returned by seminfcon, which are sampled on a grid and enforced as ordinary inequalities.',
+        'seminfcon has the form [c,ceq,K1,...,Kntheta,S] = seminfcon(x,S).',
+      ],
+      seealso: ['fmincon', 'fminimax', 'optimoptions'],
+    },
+    coneprog: {
+      summary: 'Second-order cone programming solver',
+      syntax: [
+        'x = coneprog(f,socConstraints)',
+        '[x,fval,exitflag] = coneprog(f,socConstraints,A,b,Aeq,beq,lb,ub)',
+      ],
+      description: [
+        "Minimises f'*x subject to the second-order cone constraints ||Asc*x - bsc|| <= dsc'*x - gamma, plus optional linear constraints and bounds.",
+        'Build cone constraints with secondordercone. Solved here by reformulating the cones as nonlinear constraints for fmincon.',
+      ],
+      seealso: ['secondordercone', 'linprog', 'quadprog', 'fmincon'],
+    },
+    secondordercone: {
+      summary: 'Create second-order cone constraint for coneprog',
+      syntax: ['socc = secondordercone(A,b,d,gamma)'],
+      description: [
+        "secondordercone(A,b,d,gamma) defines the cone ||A*x - b|| <= d'*x - gamma for use with coneprog.",
+      ],
+      seealso: ['coneprog'],
     },
   },
 };
