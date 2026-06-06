@@ -8,6 +8,7 @@ import {
   asString, asScalar, toMat as m, MatError, mat, fromRows, isCell, isStr, makeCell, bool,
 } from '../values';
 import type { ToolboxModule } from './types';
+import { inv } from '../linalg';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
 /** Rows of a matrix as number[][] (local copy of the builtins.ts helper, kept self-contained). */
@@ -259,6 +260,64 @@ function tiedrank(x: number[]): { ranks: number[]; tieadj: number } {
   for (let i = 0; i < n;) { let j = i; while (j + 1 < n && x[idx[j + 1]] === x[idx[i]]) j++; const avg = (i + j) / 2 + 1; const t = j - i + 1; for (let k = i; k <= j; k++) ranks[idx[k]] = avg; tieadj += (t * t * t - t) / 2; i = j + 1; }
   return { ranks, tieadj };
 }
+/** NaN-aware single-column tiedrank: average ranks for ties, NaN→NaN. Mirrors statslib tr(). */
+function tiedrankCol(x: number[]): { ranks: number[]; tieadj: number } {
+  const n = x.length;
+  const idx = x.map((_, i) => i).sort((i, j) => {
+    const a = x[i], b = x[j];
+    if (Number.isNaN(a) && Number.isNaN(b)) return 0;
+    if (Number.isNaN(a)) return 1; if (Number.isNaN(b)) return -1;
+    return a - b;
+  });
+  const xLen = x.reduce((c, v) => c + (Number.isNaN(v) ? 0 : 1), 0);
+  const ranks = new Array<number>(n); let tieadj = 0;
+  for (let k = xLen; k < n; k++) ranks[idx[k]] = NaN;
+  for (let i = 0; i < xLen;) {
+    let j = i; while (j + 1 < xLen && x[idx[j + 1]] === x[idx[i]]) j++;
+    const avg = (i + j) / 2 + 1, t = j - i + 1;
+    for (let k = i; k <= j; k++) ranks[idx[k]] = avg;
+    tieadj += (t * t * t - t) / 2; i = j + 1;
+  }
+  return { ranks, tieadj };
+}
+/** tiedrank(X) — ranks adjusting for ties; column-wise for matrices. */
+function tiedrankImpl(args: Value[], nargout: number): Value[] {
+  const A = m(args[0]);
+  const isVec = A.rows === 1 || A.cols === 1;
+  if (isVec) {
+    const { ranks, tieadj } = tiedrankCol(toArray(A));
+    const R = A.rows === 1 ? rowVec(ranks) : colVec(ranks);
+    return nargout >= 2 ? [R, scalar(tieadj)] : [R];
+  }
+  const R = zeros(A.rows, A.cols); const adj: number[] = [];
+  for (let c = 0; c < A.cols; c++) {
+    const col: number[] = []; for (let r = 0; r < A.rows; r++) col.push(A.data[r + c * A.rows]);
+    const { ranks, tieadj } = tiedrankCol(col);
+    for (let r = 0; r < A.rows; r++) R.data[r + c * A.rows] = ranks[r];
+    adj.push(tieadj);
+  }
+  return nargout >= 2 ? [R, rowVec(adj)] : [R];
+}
+/** partialcorr(X) — pairwise partial correlation controlling for all other columns, via the
+ *  precision matrix P=inv(cov(X)): rho(i,j) = -P(i,j)/sqrt(P(i,i)·P(j,j)), diagonal 1. */
+function partialcorrImpl(args: Value[]): Value {
+  const X = m(args[0]); const nr = X.rows, p = X.cols;
+  const col = (c: number) => { const v: number[] = []; for (let r = 0; r < nr; r++) v.push(X.data[r + c * nr]); return v; };
+  const means = Array.from({ length: p }, (_, c) => col(c).reduce((s, v) => s + v, 0) / nr);
+  const S = zeros(p, p);                                   // sample covariance (÷ nr-1)
+  for (let i = 0; i < p; i++) for (let j = 0; j < p; j++) {
+    const ci = col(i), cj = col(j); let s = 0;
+    for (let r = 0; r < nr; r++) s += (ci[r] - means[i]) * (cj[r] - means[j]);
+    S.data[i + j * p] = s / (nr - 1);
+  }
+  const P = inv(S);
+  const R = zeros(p, p);
+  for (let i = 0; i < p; i++) for (let j = 0; j < p; j++) {
+    R.data[i + j * p] = i === j ? 1 : -P.data[i + j * p] / Math.sqrt(P.data[i + i * p] * P.data[j + j * p]);
+  }
+  return R;
+}
+
 /** Exact signed-rank null distribution: counts[k] = #{sign subsets with positive-rank-sum k},
  *  ranks scaled to integers (×2 if half-integer ties). Returns {counts, scale, total}. */
 function signedRankDist(ranks: number[]): { counts: number[]; scale: number; total: number } {
@@ -481,6 +540,8 @@ export const STATS: ToolboxModule = {
   name: 'Statistics and Machine Learning Toolbox',
   docBase: 'https://www.mathworks.com/help/stats/',
   builtins: {
+    tiedrank: (a, nargout) => Promise.resolve(tiedrankImpl(a, nargout)),
+    partialcorr: (a) => ret(partialcorrImpl(a)),
     // ── hypothesis tests ──
     /** [h,p,ci,stats]=ttest(x[,m][,'Alpha',a][,'Tail',t]) — one-sample/paired t-test. */
     ttest: (a, nargout) => {
@@ -1697,6 +1758,7 @@ export const STATS: ToolboxModule = {
     nanmedian: 'Median, ignoring NaN values', nanmax: 'Maximum, ignoring NaN values', nanmin: 'Minimum, ignoring NaN values',
     range: 'Range of values (max − min)', tabulate: 'Frequency table',
     pdist: 'Pairwise distance between observations', squareform: 'Format distance matrix', linkage: 'Agglomerative hierarchical cluster tree', kmeans: 'k-means clustering',
+    tiedrank: 'Ranks of a sample, adjusting for ties', partialcorr: 'Linear or partial correlation coefficients',
     regress: 'Multiple linear regression', pca: 'Principal component analysis', anova1: 'One-way analysis of variance',
     glmfit: 'Generalized linear model regression',
     makedist: 'Create a probability distribution object', pdf: 'Probability density function', cdf: 'Cumulative distribution function', icdf: 'Inverse cumulative distribution function',
