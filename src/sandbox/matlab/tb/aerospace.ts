@@ -396,6 +396,41 @@ export const AEROSPACE: ToolboxModule = {
       const outs = [machArr, TArr, PArr, rhoArr, AArr].map(wrap);
       return ret(outs.slice(0, Math.max(1, nargout)));
     },
+    // flowprandtlmeyer(gamma,mach[,'mach']) → [mach, nu(deg), mu(deg)] (forward/mach mode).
+    flowprandtlmeyer: (a, nargout) => {
+      const gArr = Array.from(m(a[0]).data), vMat = m(a[1]), vArr = Array.from(vMat.data);
+      if (a[2] !== undefined && asString(a[2]).toLowerCase() !== 'mach') throw new Error('aero:flowprandtlmeyer: only mach mode supported');
+      const n = Math.max(gArr.length, vArr.length);
+      const gAt = (i: number) => (gArr.length === 1 ? gArr[0] : gArr[i]); const vAt = (i: number) => (vArr.length === 1 ? vArr[0] : vArr[i]);
+      const machA: number[] = [], nuA: number[] = [], muA: number[] = [];
+      for (let i = 0; i < n; i++) {
+        const g = gAt(i), M = vAt(i);
+        const nu = (Math.sqrt((g + 1) / (g - 1)) * Math.atan(Math.sqrt((g - 1) / (g + 1) * (M * M - 1))) - Math.atan(Math.sqrt(M * M - 1))) * 180 / Math.PI;
+        machA.push(M); nuA.push(nu); muA.push(Math.asin(1 / M) * 180 / Math.PI);
+      }
+      const wrap = (c: number[]): Value => (c.length === 1 ? scalar(c[0]) : mat(vMat.rows, vMat.cols, Float64Array.from(c)));
+      return ret([machA, nuA, muA].map(wrap).slice(0, Math.max(1, nargout)));
+    },
+    // flownormalshock(gamma,mach[,'mach']) → [M, T, P, rho, M2, P0, P1] (forward/mach mode).
+    flownormalshock: (a, nargout) => {
+      const gArr = Array.from(m(a[0]).data), vMat = m(a[1]), vArr = Array.from(vMat.data);
+      if (a[2] !== undefined && asString(a[2]).toLowerCase() !== 'mach') throw new Error('aero:flownormalshock: only mach mode supported');
+      const n = Math.max(gArr.length, vArr.length);
+      const gAt = (i: number) => (gArr.length === 1 ? gArr[0] : gArr[i]); const vAt = (i: number) => (vArr.length === 1 ? vArr[0] : vArr[i]);
+      const M_: number[] = [], T_: number[] = [], P_: number[] = [], rho_: number[] = [], M2_: number[] = [], P0_: number[] = [], P1_: number[] = [];
+      for (let i = 0; i < n; i++) {
+        const g = gAt(i), M = vAt(i), M2 = M * M;
+        const T = (2 + (g - 1) * M2) * (2 * g * M2 - (g - 1)) / ((g + 1) * (g + 1) * M2);
+        const P = (2 * g * M2 - (g - 1)) / (g + 1);
+        const rho = (g + 1) * M2 / ((g - 1) * M2 + 2);
+        const Md = Math.sqrt((M2 + 2 / (g - 1)) / (2 * g / (g - 1) * M2 - 1));
+        const P0 = ((g + 1) * M2 / ((g - 1) * M2 + 2)) ** (g / (g - 1)) * ((g + 1) / (2 * g * M2 - (g - 1))) ** (1 / (g - 1));
+        const P1 = (1 + (g - 1) / 2 * M2) ** (-g / (g - 1)) / P0;
+        M_.push(M); T_.push(T); P_.push(P); rho_.push(rho); M2_.push(Md); P0_.push(P0); P1_.push(P1);
+      }
+      const wrap = (c: number[]): Value => (c.length === 1 ? scalar(c[0]) : mat(vMat.rows, vMat.cols, Float64Array.from(c)));
+      return ret([M_, T_, P_, rho_, M2_, P0_, P1_].map(wrap).slice(0, Math.max(1, nargout)));
+    },
     // mach = machnumber(vel,a) = airspeed(vel)./a (vel rows are velocity vectors)
     machnumber: (a) => {
       const v = rowsOf(m(a[0])).map((r) => Math.hypot(r[0], r[1], r[2]));
@@ -441,6 +476,8 @@ export const AEROSPACE: ToolboxModule = {
     dcm2alphabeta: 'Convert direction cosine matrix to angle of attack and sideslip angle',
     dpressure: 'Compute dynamic pressure from velocity vector and density',
     machnumber: 'Compute Mach number from velocity and speed of sound',
+    flowprandtlmeyer: 'Prandtl-Meyer expansion: [mach, nu, mu] from Mach (degrees)',
+    flownormalshock: 'Normal shock relations: [M, T, P, rho, M2, P0, P1] from Mach',
     rrdelta: 'Compute relative pressure ratio', rrtheta: 'Compute relative temperature ratio', rrsigma: 'Compute relative density ratio',
     flowisentropic: 'Calculate isentropic flow ratios',
   },
