@@ -38,7 +38,7 @@ import {
   laplaceExpr, ztransExpr, ilaplaceExpr, iztransExpr, fourierExpr, ifourierExpr,
   simplifyAssume,
 } from './sym-ops';
-import { TOOLBOX_BUILTINS, TOOLBOX_CONSTANTS, TOOLBOXES, FUNC_TOOLBOX } from './tb';
+import { TOOLBOX_BUILTINS, TOOLBOX_CONSTANTS, TOOLBOXES, FUNC_TOOLBOX, TOOLBOX_BY_ID } from './tb';
 
 /** Services the interpreter exposes to builtins. */
 export interface Env {
@@ -67,6 +67,12 @@ export interface Env {
   currentNargin(): number | null;
   /** nargout of the currently executing user function, or null at base/script level. */
   currentNargout(): number | null;
+  /** Bump a toolbox id to the front of the resolution order (MATLAB path reordering). */
+  useToolbox(id: string): void;
+  /** Owning toolbox ids for a name (active-priority first, then default order); [] if none. */
+  toolboxOwners(name: string): string[];
+  /** Currently active toolbox priority list (front = highest). */
+  toolboxPriority(): string[];
 }
 
 export type Builtin = (args: Value[], nargout: number, env: Env) => Promise<Value[]>;
@@ -2370,14 +2376,29 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   which: async (a, n, env) => {
     const nm = asString(a[0]); const tb = FUNC_TOOLBOX.get(nm);
+    const all = a.length >= 2 && asString(a[1]).toLowerCase() === '-all';
+    const owners = env.toolboxOwners(nm);   // active-priority first, then registry order
+    if (all) {
+      // which(name,'-all'): every owner in precedence order (mirrors MATLAB `which -all`).
+      const lines: string[] = [];
+      if (env.workspaceVars().some((v) => v.name === nm)) lines.push(`${nm} is a variable.`);
+      for (const id of owners) lines.push(`${nm} is the ${id} toolbox function (use ${id}.${nm} to force).`);
+      if (!owners.length && (nm in BUILTINS || nm in CONSTANTS)) lines.push(`built-in (${nm})`);
+      if (env.hasFile(nm)) lines.push(`${nm} (user file)`);
+      if (!lines.length) lines.push(`'${nm}' not found.`);
+      if (n >= 1) return ret(makeCell(lines.length, 1, lines.map((s) => str(s))));
+      env.output(lines.join('\n') + '\n'); return [];
+    }
     let msg: string;
     if (env.workspaceVars().some((v) => v.name === nm)) msg = `${nm} is a variable.`;
+    else if (owners.length) msg = `built-in (${nm}) — ${TOOLBOX_BY_ID.get(owners[0])?.name ?? owners[0]}`;
     else if (nm in BUILTINS || nm in CONSTANTS) msg = tb ? `built-in (${nm}) — ${tb.name}` : `built-in (${nm})`;
     else if (env.hasFile(nm)) msg = `${nm} (user file)`;
     else msg = `'${nm}' not found.`;
     if (n >= 1) return ret(str(msg));
     env.output(msg + '\n'); return [];
   },
+  useToolbox: async (a, _n, env) => { env.useToolbox(asString(a[0])); return []; },
   // Error/exception helpers (work with try/catch).
   MException: async (a) => { const id = a.length ? asString(a[0]) : ''; const msg = a.length >= 2 ? sprintf(asString(a[1]), a.slice(2)) : ''; const fields = new Map<string, Value[]>([['identifier', [str(id)]], ['message', [str(msg)]], ['stack', [zeros(0, 0)]]]); return ret({ kind: 'struct', rows: 1, cols: 1, fields } as StructV); },
   rethrow: async (a) => { const e = a[0]; if (!isStruct(e)) throw new MatError('rethrow: not an error struct'); const f = (e as StructV).fields; const mv = f.get('message')?.[0]; const iv = f.get('identifier')?.[0]; const msg = mv ? asString(mv) : 'rethrow: not an error struct'; throw new MatError(msg, iv ? asString(iv) : undefined); },

@@ -86,6 +86,44 @@ function albersheim(args: Value[]): Promise<Value[]> {
   return ret(scalar(snr));
 }
 
+// ── aperture2gain(A,lambda): G(dBi) = 10*log10(4*pi*A/lambda^2) ──────────────────────────
+// (Also owned by radar, which wins the default pick; reach this one via phased.aperture2gain
+//  or useToolbox('phased').)
+function aperture2gain(args: Value[]): Promise<Value[]> {
+  return ret(ew2(args[0], args[1], (A, lambda) => 10 * Math.log10((4 * Math.PI * A) / (lambda * lambda))));
+}
+
+// ── steervec(pos,ang): N×M complex steering vectors, exp(+i*2*pi*(p·u)) ──────────────────
+// pos: 1×N (y), 2×N ([y;z]) or 3×N ([x;y;z]) element positions in wavelengths.
+// ang: 1×M azimuth or 2×M [az;el] in degrees. (cbfweights = steervec/N.) Correct for all
+// position shapes — radar.steervec had a 2×N axis bug; this one is reachable via phased.steervec.
+function steervec(args: Value[]): Promise<Value[]> {
+  const posM = m(args[0], 'POS'), angM = m(args[1], 'ANG');
+  const N = posM.cols, posRows = posM.rows;
+  const xyz: [number, number, number][] = [];
+  for (let c = 0; c < N; c++) {
+    let x = 0, y = 0, z = 0;
+    if (posRows === 1)      { y = posM.data[c]; }
+    else if (posRows === 2) { y = posM.data[0 + c * 2]; z = posM.data[1 + c * 2]; }
+    else                    { x = posM.data[0 + c * 3]; y = posM.data[1 + c * 3]; z = posM.data[2 + c * 3]; }
+    xyz.push([x, y, z]);
+  }
+  const M2 = angM.cols, angRows = angM.rows;
+  const re = new Float64Array(N * M2), im = new Float64Array(N * M2);
+  for (let mi = 0; mi < M2; mi++) {
+    const az = angM.data[0 + mi * angRows] * D2R;
+    const el = (angRows >= 2 ? angM.data[1 + mi * angRows] : 0) * D2R;
+    const ux = Math.cos(el) * Math.cos(az), uy = Math.cos(el) * Math.sin(az), uz = Math.sin(el);
+    for (let n = 0; n < N; n++) {
+      const [px, py, pz] = xyz[n];
+      const phase = 2 * Math.PI * (px * ux + py * uy + pz * uz);
+      const idx = n + mi * N;
+      re[idx] = Math.cos(phase); im[idx] = Math.sin(phase);
+    }
+  }
+  return ret({ kind: 'num', rows: N, cols: M2, data: re, idata: im });
+}
+
 // ── az2broadside(az, el=0) ─────────────────────────────────────────────────────────────
 // BSANG = asind(sind(AZ) .* cosd(EL))
 // AZ and EL can be scalars or same-size vectors. EL defaults to 0.
@@ -222,6 +260,8 @@ export const PHASED: ToolboxModule = {
     azel2uv,
     uv2azel,
     cbfweights,
+    steervec,
+    aperture2gain,
     physconst,
     freq2wavelen,
     wavelen2freq,
@@ -283,6 +323,27 @@ export const PHASED: ToolboxModule = {
         'w = steervec(pos,ang) / N.',
       ],
       seealso: ['steervec', 'mvdrweights', 'az2broadside', 'azel2uv'],
+    },
+    steervec: {
+      summary: 'Steering vector for a sensor array',
+      syntax: ['sv = steervec(pos,ang)', 'sv = phased.steervec(pos,ang)'],
+      description: [
+        'sv = steervec(pos,ang) returns the N×M complex steering-vector matrix for a sensor array.',
+        'pos: 1×N (y), 2×N ([y;z]) or 3×N ([x;y;z]) element positions in units of signal wavelength.',
+        'ang: 1×M azimuth angles or 2×M [azimuth;elevation] in degrees. cbfweights = steervec/N.',
+        'Note: the name is also owned by the radar toolbox (default pick). Use phased.steervec(...)',
+        "or useToolbox('phased') to force this implementation.",
+      ],
+      seealso: ['cbfweights', 'az2broadside', 'azel2uv', 'useToolbox'],
+    },
+    aperture2gain: {
+      summary: 'Convert effective aperture to antenna gain',
+      syntax: ['g = aperture2gain(a,lambda)', 'g = phased.aperture2gain(a,lambda)'],
+      description: [
+        'g = aperture2gain(a,lambda) returns the antenna gain in dBi for effective aperture a (m^2):',
+        'g = 10*log10(4*pi*a/lambda^2). Inputs may be vectors (a scalar broadcasts).',
+      ],
+      seealso: ['gain2aperture', 'freq2wavelen'],
     },
     physconst: {
       summary: 'Physical constants',

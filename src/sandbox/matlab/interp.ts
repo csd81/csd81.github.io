@@ -19,7 +19,7 @@ import { type SymExpr, sN, sV, sAdd, sSub, sMul, sDiv, sPow, sFn, simplifyExpr, 
 const SYM_ELEMENTARY = new Set(['sin', 'cos', 'tan', 'cot', 'sec', 'csc', 'asin', 'acos', 'atan', 'acot', 'asec', 'acsc', 'sinh', 'cosh', 'tanh', 'coth', 'sech', 'csch', 'asinh', 'acosh', 'atanh', 'exp', 'log', 'log10', 'log2', 'sqrt', 'abs', 'sign', 'cbrt', 'gamma', 'gammaln', 'erf', 'erfc', 'factorial', 'conj', 'real', 'imag', 'zeta', 'psi', 'sinc', 'erfi', 'dawson', 'fresnelc', 'fresnels', 'ei', 'logint', 'sinhint', 'coshint', 'ssinint', 'dilog', 'wrightOmega']);
 import { det, inv, mldivide } from './linalg';
 import { BUILTINS, CONSTANTS, builtinHelp, docUrl, type Env } from './builtins';
-import { TOOLBOX_METHODS, METHOD_NAMES } from './tb';
+import { TOOLBOX_METHODS, METHOD_NAMES, TOOLBOX_BY_ID, NAME_OWNERS, TOOLBOX_BUILTINS } from './tb';
 import { displayValue, dispValue } from './format';
 import { Graphics } from './graphics';
 
@@ -80,6 +80,9 @@ export class Interpreter implements Env {
   private onTickCb: () => void | Promise<void>;
   private ticks = 0;
   base = new Scope();
+  /** Toolbox ids bumped to the front of the resolution order by useToolbox(...), most-recent
+   *  first. Arbitrates toolbox-vs-toolbox name collisions; base builtins are never overridden. */
+  activeToolboxPriority: string[] = [];
 
   constructor(opts: InterpOptions) {
     this.onOutputCb = opts.onOutput;
@@ -96,6 +99,18 @@ export class Interpreter implements Env {
   output(text: string) { this.onOutputCb(text); }
   requestInput(prompt: string) { return this.requestInputCb(prompt); }
   clearConsole() { this.clearConsoleCb(); }
+  /** useToolbox(id): bump a toolbox to the front of the resolution order (path reordering). */
+  useToolbox(id: string) {
+    if (!TOOLBOX_BY_ID.has(id)) throw new MatError(`useToolbox: unknown toolbox '${id}'`);
+    this.activeToolboxPriority = [id, ...this.activeToolboxPriority.filter((x) => x !== id)];
+  }
+  /** Owning toolbox ids for a name, active-priority first, then default registry order. */
+  toolboxOwners(name: string): string[] {
+    const owners = NAME_OWNERS.get(name); if (!owners) return [];
+    const active = this.activeToolboxPriority.filter((id) => owners.includes(id));
+    return [...active, ...owners.filter((id) => !active.includes(id))];
+  }
+  toolboxPriority(): string[] { return this.activeToolboxPriority.slice(); }
   currentNargin() { return this.funcScope ? this.funcScope.nargin : null; }
   currentNargout() { return this.funcScope ? this.funcScope.nargout : null; }
   callHandle(h: Handle, args: Value[], nargout: number) { return h.call(args, nargout); }
@@ -630,6 +645,12 @@ export class Interpreter implements Env {
       const args = await this.evalArgs(e.args, scope);
       return this.resolveCall(target.name, args, nargout);
     }
+    // fully-qualified toolbox call, e.g. phased.steervec(...) — addresses a specific owner,
+    // bypassing the default precedence pick (MATLAB package-namespace form). Always unambiguous.
+    if (target.t === 'field' && target.target.t === 'ident' && !scope.vars.has(target.target.name)) {
+      const tb = TOOLBOX_BY_ID.get(target.target.name);
+      if (tb && target.name in tb.builtins) { const args = await this.evalArgs(e.args, scope); return tb.builtins[target.name](args, nargout, this); }
+    }
     // namespaced builtin call, e.g. containers.Map(...)
     if (target.t === 'field' && target.target.t === 'ident' && !scope.vars.has(target.target.name)) {
       const dotted = `${target.target.name}.${target.name}`;
@@ -747,6 +768,15 @@ export class Interpreter implements Env {
       const a0 = args[0]; const cls = a0.kind === 'object' ? a0.className : a0.kind === 'sym' ? 'sym' : a0.kind === 'graph' ? (a0.directed ? 'digraph' : 'graph') : a0.kind === 'geom' ? a0.gkind : undefined;
       const meth = cls ? TOOLBOX_METHODS.get(cls)?.[name] : undefined;
       if (meth) return meth(args, nargout, this);
+    }
+    // Active-scope toolbox override (useToolbox): only for toolbox-owned names that base did
+    // NOT shadow (base builtins stay protected — BUILTINS[name] === TOOLBOX_BUILTINS[name]
+    // means the default pick is a toolbox function, so reordering is safe).
+    if (this.activeToolboxPriority.length && NAME_OWNERS.has(name) && BUILTINS[name] === TOOLBOX_BUILTINS[name]) {
+      const owners = NAME_OWNERS.get(name)!;
+      for (const id of this.activeToolboxPriority) {
+        if (owners.includes(id)) { const fn = TOOLBOX_BY_ID.get(id)!.builtins[name]; if (fn) return fn(args, nargout, this); }
+      }
     }
     if (name in BUILTINS) return BUILTINS[name](args, nargout, this);
     if (args.length === 0 && name in CONSTANTS) return [CONSTANTS[name]()];

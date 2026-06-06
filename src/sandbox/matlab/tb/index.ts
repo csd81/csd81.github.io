@@ -74,9 +74,17 @@ export const FUNC_TOOLBOX = new Map<string, ToolboxModule>();
 export const TOOLBOX_METHODS = new Map<string, Record<string, Builtin>>();
 /** Set of all method names — a fast guard so the interpreter only type-checks args when relevant. */
 export const METHOD_NAMES = new Set<string>();
+/** Toolbox id → module, so a fully-qualified call (e.g. phased.steervec) or useToolbox(id)
+ *  can address a specific owner — nothing is discarded on a name collision. */
+export const TOOLBOX_BY_ID = new Map<string, ToolboxModule>();
+/** Builtin name → list of owning toolbox ids, in registry (precedence) order. Mirrors
+ *  MATLAB's `which -all`: every owner is retained, not just the first-wins default pick. */
+export const NAME_OWNERS = new Map<string, string[]>();
 
 for (const tb of TOOLBOXES) {
+  TOOLBOX_BY_ID.set(tb.id, tb);
   for (const [name, fn] of Object.entries(tb.builtins)) {
+    const owners = NAME_OWNERS.get(name); if (owners) owners.push(tb.id); else NAME_OWNERS.set(name, [tb.id]);
     if (!(name in TOOLBOX_BUILTINS)) TOOLBOX_BUILTINS[name] = fn;
     if (!FUNC_TOOLBOX.has(name)) FUNC_TOOLBOX.set(name, tb);
   }
