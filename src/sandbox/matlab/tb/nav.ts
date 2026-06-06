@@ -33,6 +33,44 @@ function trvec2tformImpl(args: Value[]): Value {
   for (let i = 0; i < N; i++) data.set(make(i), i * 16);
   return makeND([4, 4, N], data);
 }
+/** rotm2tform(R): 3×3 (or 3×3×N) rotation → 4×4 homogeneous transform (zero translation). */
+function rotm2tformImpl(args: Value[]): Value {
+  const R = m(args[0]); const N = R.nd && R.nd.length === 3 ? R.nd[2] : 1;
+  const make = (i: number) => { const d = new Float64Array(16); d[15] = 1; const ro = i * 9; for (let c = 0; c < 3; c++) for (let r = 0; r < 3; r++) d[r + c * 4] = R.data[ro + r + c * 3]; return d; };
+  if (N === 1) return mat(4, 4, make(0));
+  const data = new Float64Array(16 * N); for (let i = 0; i < N; i++) data.set(make(i), i * 16); return makeND([4, 4, N], data);
+}
+/** tform2rotm(T): 4×4 (or 4×4×N) → 3×3 rotation block(s). */
+function tform2rotmImpl(args: Value[]): Value {
+  const T = m(args[0]); const N = T.nd && T.nd.length === 3 ? T.nd[2] : 1;
+  const make = (i: number) => { const d = new Float64Array(9); const to = i * 16; for (let c = 0; c < 3; c++) for (let r = 0; r < 3; r++) d[r + c * 3] = T.data[to + r + c * 4]; return d; };
+  if (N === 1) return mat(3, 3, make(0));
+  const data = new Float64Array(9 * N); for (let i = 0; i < N; i++) data.set(make(i), i * 9); return makeND([3, 3, N], data);
+}
+/** axang2rotm([x y z θ]): axis-angle → 3×3 rotation via Rodrigues' formula. */
+function axang2rotmImpl(args: Value[]): Value {
+  const A = m(args[0]); const N = A.rows;
+  const make = (i: number) => {
+    const x = A.data[i + 0 * N], y = A.data[i + 1 * N], z = A.data[i + 2 * N], th = A.data[i + 3 * N];
+    const n = Math.hypot(x, y, z) || 1, ux = x / n, uy = y / n, uz = z / n;
+    const c = Math.cos(th), s = Math.sin(th), t = 1 - c; const d = new Float64Array(9);
+    d[0] = t * ux * ux + c; d[1] = t * ux * uy + s * uz; d[2] = t * ux * uz - s * uy;
+    d[3] = t * ux * uy - s * uz; d[4] = t * uy * uy + c; d[5] = t * uy * uz + s * ux;
+    d[6] = t * ux * uz + s * uy; d[7] = t * uy * uz - s * ux; d[8] = t * uz * uz + c; return d;
+  };
+  if (N === 1) return mat(3, 3, make(0));
+  const data = new Float64Array(9 * N); for (let i = 0; i < N; i++) data.set(make(i), i * 9); return makeND([3, 3, N], data);
+}
+/** axang2quat([x y z θ]): axis-angle → quaternion [w x y z]. */
+function axang2quatImpl(args: Value[]): Value {
+  const A = m(args[0]); const N = A.rows; const out = new Float64Array(N * 4);
+  for (let i = 0; i < N; i++) {
+    const x = A.data[i + 0 * N], y = A.data[i + 1 * N], z = A.data[i + 2 * N], th = A.data[i + 3 * N];
+    const n = Math.hypot(x, y, z) || 1, h = th / 2, sh = Math.sin(h);
+    out[i + 0 * N] = Math.cos(h); out[i + 1 * N] = sh * x / n; out[i + 2 * N] = sh * y / n; out[i + 3 * N] = sh * z / n;
+  }
+  return N === 1 ? rowVec([out[0], out[1], out[2], out[3]]) : mat(N, 4, out);
+}
 /** tform2trvec(T): 4×4 (or 4×4×N) → translation row vectors (N×3). */
 function tform2trvecImpl(args: Value[]): Value {
   const T = m(args[0]); const N = T.nd && T.nd.length === 3 ? T.nd[2] : 1;
@@ -565,6 +603,10 @@ export const NAV: ToolboxModule = {
     hom2cart: ((args: Value[]) => ret(hom2cartImpl(args))) as Builtin,
     trvec2tform: ((args: Value[]) => ret(trvec2tformImpl(args))) as Builtin,
     tform2trvec: ((args: Value[]) => ret(tform2trvecImpl(args))) as Builtin,
+    rotm2tform: ((args: Value[]) => ret(rotm2tformImpl(args))) as Builtin,
+    tform2rotm: ((args: Value[]) => ret(tform2rotmImpl(args))) as Builtin,
+    axang2rotm: ((args: Value[]) => ret(axang2rotmImpl(args))) as Builtin,
+    axang2quat: ((args: Value[]) => ret(axang2quatImpl(args))) as Builtin,
   },
   constants: {
     WGS84_A: () => rowVec([WGS84_A]),
@@ -585,5 +627,9 @@ export const NAV: ToolboxModule = {
     hom2cart: 'Convert homogeneous coordinates to Cartesian coordinates (divide by last column).',
     trvec2tform: 'Convert translation vectors to 4-by-4 homogeneous transforms.',
     tform2trvec: 'Extract translation vectors from homogeneous transforms.',
+    rotm2tform: 'Convert rotation matrices to homogeneous transforms.',
+    tform2rotm: 'Extract rotation matrices from homogeneous transforms.',
+    axang2rotm: 'Convert axis-angle rotation to rotation matrix.',
+    axang2quat: 'Convert axis-angle rotation to quaternion [w x y z].',
   },
 };
