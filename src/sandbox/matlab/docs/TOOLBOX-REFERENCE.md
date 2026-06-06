@@ -4,7 +4,7 @@ Consolidated coverage tables for 48 toolboxes. The **Implemented** column (✅) 
 functions available in the TypeScript sandbox interpreter. Generated from the former per-toolbox
 docs/*.md files.
 
-**Overall: 2465 / 17245 functions implemented across 48 toolboxes.**
+**Overall: 2481 / 17245 functions implemented across 48 toolboxes.**
 
 Also see [Base MATLAB reference-list validation](#base-validation) — 705 converged / 905 audited base builtins.
 
@@ -15,27 +15,27 @@ Also see [Base MATLAB reference-list validation](#base-validation) — 705 conve
 | :--- | ---: | ---: | ---: |
 | [core_referencelist (core list)](#0core_referencelist) | 1145 | 3094 | 37% |
 | [Symbolic Math Toolbox](#symbolic) | 355 | 415 | 86% |
-| [Stats Toolbox](#stats) | 159 | 861 | 18% |
+| [Stats Toolbox](#stats) | 163 | 861 | 19% |
 | [Signal Toolbox](#signal) | 138 | 397 | 35% |
 | [Map Toolbox](#map) | 90 | 399 | 23% |
 | [Fixedpoint Toolbox](#fixedpoint) | 87 | 335 | 26% |
 | [Aerotbx Toolbox](#aerotbx) | 45 | 223 | 20% |
 | [Control Toolbox](#control) | 45 | 352 | 13% |
 | [Comm Toolbox](#comm) | 40 | 409 | 10% |
-| [Finance Toolbox](#finance) | 36 | 383 | 9% |
-| [Images Toolbox](#images) | 32 | 651 | 5% |
+| [Finance Toolbox](#finance) | 39 | 383 | 10% |
+| [Images Toolbox](#images) | 36 | 651 | 6% |
 | [simulink (core list)](#0simulink) | 26 | 889 | 3% |
 | [Pde Toolbox](#pde) | 25 | 191 | 13% |
 | [Ident Toolbox](#ident) | 19 | 261 | 7% |
 | [Rf Toolbox](#rf) | 19 | 205 | 9% |
-| [Wavelet Toolbox](#wavelet) | 18 | 211 | 9% |
+| [Wavelet Toolbox](#wavelet) | 19 | 211 | 9% |
 | [Antenna Toolbox](#antenna) | 17 | 279 | 6% |
 | [Bioinfo Toolbox](#bioinfo) | 13 | 334 | 4% |
 | [Deeplearning Toolbox](#deeplearning) | 13 | 402 | 3% |
 | [Driving Toolbox](#driving) | 13 | 539 | 2% |
+| [Radar Toolbox](#radar) | 13 | 271 | 5% |
+| [Audio Toolbox](#audio) | 12 | 180 | 7% |
 | [Fusion Toolbox](#fusion) | 12 | 266 | 5% |
-| [Audio Toolbox](#audio) | 11 | 180 | 6% |
-| [Radar Toolbox](#radar) | 11 | 271 | 4% |
 | [Nav Toolbox](#nav) | 10 | 248 | 4% |
 | [Medical-imaging Toolbox](#medical-imaging) | 8 | 164 | 5% |
 | [Slrealtime Toolbox](#slrealtime) | 8 | 217 | 4% |
@@ -46,11 +46,11 @@ Also see [Base MATLAB reference-list validation](#base-validation) — 705 conve
 | [Slrequirements Toolbox](#slrequirements) | 6 | 224 | 3% |
 | [Systemcomposer Toolbox](#systemcomposer) | 6 | 371 | 2% |
 | [Ecoder Toolbox](#ecoder) | 5 | 491 | 1% |
+| [Vision Toolbox](#vision) | 5 | 410 | 1% |
 | [Coder Toolbox](#coder) | 4 | 219 | 2% |
 | [Fault-analyzer Toolbox](#fault-analyzer) | 4 | 108 | 4% |
 | [Reinforcement-learning Toolbox](#reinforcement-learning) | 4 | 150 | 3% |
 | [Rptgen Toolbox](#rptgen) | 4 | 292 | 1% |
-| [Vision Toolbox](#vision) | 4 | 410 | 1% |
 | [Fininst Toolbox](#fininst) | 2 | 534 | 0% |
 | [Slcontrol Toolbox](#slcontrol) | 2 | 131 | 2% |
 | [Hdlcoder Toolbox](#hdlcoder) | 1 | 154 | 1% |
@@ -5127,7 +5127,7 @@ _17 / 279 implemented_
 <a id="audio"></a>
 ## Audio Toolbox  
 
-_11 / 180 implemented_
+_12 / 180 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -5270,7 +5270,7 @@ _11 / 180 implemented_
 |   | `sofawrite` | Write SOFA files(Since R2023b) |
 |   | `acousticRoomResponse` | Synthesize room impulse response(Since R2025a) |
 |   | `impzest` | Estimate impulse response of audio system |
-|   | `mls` | Maximum length sequence |
+| ✅ | `mls` | Maximum length sequence |
 |   | `multitone` | Generate sparse multitone signal(Since R2025a) |
 |   | `stipaExcitation` | Generate STI and STIPA test signals(Since R2026a) |
 |   | `sweeptone` | Exponential swept sine |
@@ -9111,7 +9111,7 @@ _4 / 108 implemented_
 <a id="finance"></a>
 ## Finance Toolbox  
 
-_36 / 383 implemented_
+_39 / 383 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -9213,7 +9213,7 @@ Association (PSA) compliant) |
 |   | `medprice` | Median price from the series of high and low prices |
 |   | `movavg` | Moving average of a financial time series |
 |   | `onbalvol` | On-Balance Volume (OBV) |
-|   | `prcroc` | Price rate of change |
+| ✅ | `prcroc` | Price rate of change |
 |   | `pvtrend` | Price and Volume Trend (PVT) |
 |   | `typprice` | Typical price |
 |   | `volroc` | Volume rate of change |
@@ -9309,7 +9309,7 @@ Association (PSA) compliant) |
 |   | `covarianceShrinkage` | Estimate covariance matrix using shrinkage estimators(Since R2023a) |
 |   | `geom2arith` | Geometric to arithmetic moments of asset returns |
 |   | `holdings2weights` | Portfolio holdings into weights |
-|   | `nearcorr` | Compute nearest correlation matrix by minimizing Frobenius distance |
+| ✅ | `nearcorr` | Compute nearest correlation matrix by minimizing Frobenius distance |
 |   | `weights2holdings` | Portfolio values and weights into holdings |
 |   | `lifetableconv` | Convert life table series into life tables with forced termination |
 |   | `lifetablefit` | Calibrate life table from survival data with parametric models |
@@ -9478,7 +9478,7 @@ swap market quotes |
 |   | `prdisc` | Price of discounted security |
 |   | `prmat` | Price with interest at maturity |
 |   | `prtbill` | Price of Treasury bill |
-|   | `acrubond` | Accrued interest of security with periodic interest payments |
+| ✅ | `acrubond` | Accrued interest of security with periodic interest payments |
 |   | `acrudisc` | Accrued interest of discount security paying at maturity |
 |   | `beytbill` | Bond equivalent yield for Treasury bill |
 |   | `bndyield` | Yield to maturity for fixed-income security |
@@ -11506,7 +11506,7 @@ regression method |
 <a id="images"></a>
 ## Images Toolbox  
 
-_32 / 651 implemented_
+_36 / 651 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -11821,10 +11821,10 @@ images |
 |   | `imgaborfilt` | Apply Gabor filter or filter bank to 2-D image |
 |   | `bwareafilt` | Extract objects from binary image by size |
 |   | `bwpropfilt` | Extract objects from binary image using properties |
-|   | `integralBoxFilter` | 2-D box filtering of integral images |
-|   | `integralBoxFilter3` | 3-D box filtering of 3-D integral images |
-|   | `integralImage` | Calculate 2-D integral image |
-|   | `integralImage3` | Calculate 3-D integral image |
+| ✅ | `integralBoxFilter` | 2-D box filtering of integral images |
+| ✅ | `integralBoxFilter3` | 3-D box filtering of 3-D integral images |
+| ✅ | `integralImage` | Calculate 2-D integral image |
+| ✅ | `integralImage3` | Calculate 3-D integral image |
 |   | `convmtx2` | 2-D convolution matrix |
 |   | `freqspace` | Frequency spacing for frequency response |
 |   | `freqz2` | 2-D frequency response |
@@ -13516,7 +13516,7 @@ oracle-exact against live MATLAB.
 <a id="radar"></a>
 ## Radar Toolbox  
 
-_11 / 271 implemented_
+_13 / 271 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -13570,7 +13570,7 @@ probability |
 |   | `refractiveidx` | Calculates the refractive index |
 |   | `tropopl` | Slant-path loss due to atmosphere gaseous absorption |
 |   | `billingsleyicm` | Billingsley’s intrinsic clutter motion (ICM) model |
-|   | `bistaticSurfaceReflectivityLand` | Normalized bistatic reflectivity of land surface(Since R2026a) |
+| ✅ | `bistaticSurfaceReflectivityLand` | Normalized bistatic reflectivity of land surface(Since R2026a) |
 |   | `clutterGenerator` | Add clutter generator for radar(Since R2022a) |
 |   | `clutterSurfaceRangeDopplerRCS` | Surface RCS as a function of range and Doppler(Since R2022b) |
 |   | `clutterSurfaceRCS` | Surface clutter radar cross section |
@@ -13613,7 +13613,7 @@ probability |
 |   | `aperture2swath` | Swath extent for radar on ground plane |
 | ✅ | `grnd2slantrange` | Convert ground range projection to slant range |
 |   | `grnd2slantrngres` | Convert ground range resolution to slant range resolution(Since R2021b) |
-|   | `sarbeamcompratio` | SAR beam compression ratio |
+| ✅ | `sarbeamcompratio` | SAR beam compression ratio |
 |   | `sarbeamwidth` | Synthetic aperture azimuth beamwidth |
 |   | `sardispgrazang` | Display grazing angle for SAR data collection |
 |   | `sarintang` | Coherent integration angle for SAR |
@@ -16995,7 +16995,7 @@ _1 / 112 implemented_
 <a id="stats"></a>
 ## Stats Toolbox  
 
-_159 / 861 implemented_
+_163 / 861 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -17038,7 +17038,7 @@ _159 / 861 implemented_
 |   | `cholcov` | Cholesky-like covariance decomposition |
 | ✅ | `corr` | Linear or rank correlation |
 | ✅ | `corrcov` | Convert covariance matrix to correlation matrix |
-|   | `nearcorr` | Compute nearest correlation matrix by minimizing Frobenius distance |
+| ✅ | `nearcorr` | Compute nearest correlation matrix by minimizing Frobenius distance |
 |   | `partialcorr` | Linear or rank partial correlation coefficients |
 |   | `partialcorri` | Partial correlation coefficients adjusted for internal
 variables |
@@ -17317,7 +17317,7 @@ bivariate data |
 |   | `dwtest` | Durbin-Watson test with residual inputs |
 |   | `fishertest` | Fisher’s exact test |
 |   | `jbtest` | Jarque-Bera test |
-|   | `knntest` | Two-sample multivariate hypothesis test usingk-nearest neighbors
+| ✅ | `knntest` | Two-sample multivariate hypothesis test usingk-nearest neighbors
       (KNN)(Since R2025a) |
 |   | `kstest` | One-sample Kolmogorov-Smirnov test |
 |   | `kstest2` | Two-sample Kolmogorov-Smirnov test |
@@ -17329,11 +17329,11 @@ bivariate data |
 |   | `kruskalwallis` | Kruskal-Wallis test |
 |   | `multcompare` | Multiple comparison test |
 | ✅ | `ranksum` | Wilcoxon rank sum test |
-|   | `sampsizepwr` | Sample size and power of test |
+| ✅ | `sampsizepwr` | Sample size and power of test |
 | ✅ | `signrank` | Wilcoxon signed rank test |
 |   | `signtest` | Sign test |
 |   | `ztest` | z-test |
-|   | `ansaribradley` | Ansari-Bradley test |
+| ✅ | `ansaribradley` | Ansari-Bradley test |
 |   | `barttest` | Bartlett’s test |
 |   | `vartest` | Chi-square variance test |
 |   | `vartest2` | Two-sampleF-test for equal variances |
@@ -18349,7 +18349,7 @@ _6 / 371 implemented_
 <a id="vision"></a>
 ## Vision Toolbox  
 
-_4 / 410 implemented_
+_5 / 410 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -18501,7 +18501,7 @@ _4 / 410 implemented_
 |   | `centerCropWindow2d` | Create rectangular center cropping window |
 |   | `imcrop` | Crop image |
 | ✅ | `imresize` | Resize image |
-|   | `integralImage` | Calculate 2-D integral image |
+| ✅ | `integralImage` | Calculate 2-D integral image |
 |   | `randomAffine2d` | Create randomized 2-D affine transformation |
 |   | `randomWindow2d` | Randomly select rectangular region in image |
 |   | `estimateAnchorBoxes` | Estimate anchor boxes for deep learning object detectors |
@@ -18809,7 +18809,7 @@ images |
 <a id="wavelet"></a>
 ## Wavelet Toolbox  
 
-_18 / 211 implemented_
+_19 / 211 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -18909,7 +18909,7 @@ maximal overlap discrete wavelet transform (MODWT) |
 |   | `haart2` | 2-D Haar wavelet transform |
 |   | `idddtree2` | Inverse dual-tree and double-density 2-D wavelet transform |
 |   | `idualtree2` | Kingsbury Q-shift 2-D inverse dual-tree complex wavelet transform |
-|   | `ihaart2` | Inverse 2-D Haar wavelet transform |
+| ✅ | `ihaart2` | Inverse 2-D Haar wavelet transform |
 |   | `wavedec2` | Multilevel 2-D discrete wavelet transform |
 |   | `waverec2` | Multilevel 2-D discrete wavelet transform reconstruction |
 |   | `wrcoef2` | Reconstruct single branch from 2-D wavelet coefficients |
