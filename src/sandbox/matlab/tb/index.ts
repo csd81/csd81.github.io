@@ -34,6 +34,7 @@ import { STATS } from './stats';
 import { SYMBOLIC } from './symbolic';
 import { WAVELET } from './wavelet';
 import { DSP } from './dsp';
+import { LIDAR } from './lidar';
 import { GADS } from './gads';
 // MPC removed (tb/mpc.ts deleted): every function was a stub — mpcmove hardcoded (ref-ym)/10,
 // ignoring the plant/horizons/weights/constraints; the real QP solver was dead code.
@@ -53,6 +54,7 @@ import { VISION } from './vision';
 /** All registered toolboxes, in precedence order (first wins on inter-toolbox collision). */
 export const TOOLBOXES: ToolboxModule[] = [
   AEROSPACE, ANTENNA, AUDIO, BIOINFO, COMM, CONTROL, CURVEFIT, DSP, ECON, FINANCIAL, FININST, FIXEDPOINT,
+  LIDAR,
   FUSION, FUZZY, GADS, IDENT, IMAGES, MAPPING, NAV, NNET, PARALLEL, Pde, RADAR, RL, RF,
   ROBOTICS, SIGNAL, SIMULINK, STATS, SYMBOLIC, TEXTANALYTICS, VISION, WAVELET,
 ];
