@@ -231,6 +231,12 @@ export const MAPPING: ToolboxModule = {
     deg2nm: conv(60), nm2km: conv(NM), km2nm: conv(1 / NM), nm2sm: conv(NM / SM), sm2nm: conv(SM / NM),
     km2sm: conv(1 / SM), sm2km: conv(SM), deg2sm: conv(D2R * R / SM), sm2deg: conv(SM / R * R2D),
     nm2deg: conv(NM / R * R2D), rad2nm: conv(R / NM), nm2rad: conv(NM / R), rad2sm: conv(R / SM), sm2rad: conv(SM / R),
+    // changem(A,newval,oldval): substitute oldval(k)→newval(k) element-wise in A.
+    changem: (a) => {
+      const A = m(a[0]), nv = toArray(m(a[1])), ov = toArray(m(a[2])), out = Float64Array.from(A.data);
+      for (let i = 0; i < out.length; i++) for (let k = 0; k < nv.length; k++) if (A.data[i] === ov[k]) { out[i] = nv[k]; break; }
+      return ret(mat(A.rows, A.cols, out));
+    },
     // toDegrees/fromDegrees(units,x): convert angles to/from degrees ('radians' scales, else identity).
     toDegrees: (a) => { const rad = asString(a[0]).toLowerCase().startsWith('rad'); return ret(map(m(a[1]), (v) => (rad ? v * R2D : v))); },
     fromDegrees: (a) => { const rad = asString(a[0]).toLowerCase().startsWith('rad'); return ret(map(m(a[1]), (v) => (rad ? v * D2R : v))); },
@@ -454,6 +460,7 @@ export const MAPPING: ToolboxModule = {
     rad2sm: { summary: 'Convert distance from radians to statute miles', syntax: ['sm = rad2sm(rad)'], seealso: ['sm2rad', 'rad2km'] },
     sm2rad: { summary: 'Convert distance from statute miles to radians', syntax: ['rad = sm2rad(sm)'], seealso: ['rad2sm', 'sm2km'] },
     meanm: { summary: 'Mean location of geographic coordinates', syntax: ['[latm,lonm] = meanm(lat,lon)'], seealso: ['distance', 'azimuth'] },
+    changem: { summary: 'Substitute values in array', syntax: ['B = changem(A,newval,oldval)'], seealso: ['ismember'] },
     toDegrees: { summary: 'Convert angles to degrees', syntax: ['deg = toDegrees(angleUnits,angles)'], description: ["deg = toDegrees('radians',angles) converts angles from any angular unit ('radians', 'degrees') to degrees."], seealso: ['fromDegrees', 'deg2rad'] },
     fromDegrees: { summary: 'Convert angles from degrees', syntax: ['angles = fromDegrees(angleUnits,deg)'], description: ["angles = fromDegrees('radians',deg) converts angles in degrees to the specified angular unit."], seealso: ['toDegrees', 'deg2rad'] },
     distance: { summary: 'Angular or surface distance between two geographic points', syntax: ['d = distance(pt1,pt2)', 'd = distance(lat1,lon1,lat2,lon2)'], seealso: ['azimuth', 'reckon', 'departure'] },

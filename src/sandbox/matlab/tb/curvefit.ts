@@ -490,6 +490,16 @@ export const CURVEFIT: ToolboxModule = {
   docBase: 'https://www.mathworks.com/help/curvefit/',
   builtins: {
     ...SPLINE_BUILTINS,
+    // franke(x,y): Franke's bivariate test surface (element-wise).
+    franke: (a) => {
+      const X = m(a[0]), x = toArray(X), y = toArray(m(a[1]));
+      const out = x.map((xi, i) => { const yi = y[i];
+        return 0.75 * Math.exp(-((9 * xi - 2) ** 2 + (9 * yi - 2) ** 2) / 4)
+          + 0.75 * Math.exp(-((9 * xi + 1) ** 2) / 49 - (9 * yi + 1) / 10)
+          + 0.5 * Math.exp(-((9 * xi - 7) ** 2 + (9 * yi - 3) ** 2) / 4)
+          - 0.2 * Math.exp(-((9 * xi - 4) ** 2) - ((9 * yi - 7) ** 2)); });
+      return ret(out.length === 1 ? scalar(out[0]) : mat(X.rows, X.cols, Float64Array.from(out)));
+    },
     /** smooth(y[,span][,method]) — 'moving' (default). y stays the same orientation. */
     smooth: (a) => {
       const src = m(a[0]); const y = toArray(src);
@@ -528,6 +538,7 @@ export const CURVEFIT: ToolboxModule = {
   },
   help: {
     ...SPLINE_HELP,
+    franke: { summary: "Franke's bivariate test function", syntax: ['z = franke(x,y)'], seealso: ['peaks'] },
     smooth: { summary: 'Smooths the response data in column vector y using a moving average filter.', syntax: ['yy = smooth(y)', 'yy = smooth(y,span)', 'yy = smooth(y,method)', 'yy = smooth(y,span,method)'], seealso: ['smoothdata', 'fit', 'sort'] },
     datastats: { summary: 'Returns statistics for the column vector x to the structure xds.', syntax: ['xds = datastats(x) [xds,yds] = datastats(x,y)'], seealso: ['excludedata', 'smooth'] },
     polyfit2: { summary: 'Polynomial curve fit (alias for polyfit with curve-fitting syntax)', syntax: ['p = polyfit2(x,y,n)'], seealso: ['polyfit', 'polyval'] },

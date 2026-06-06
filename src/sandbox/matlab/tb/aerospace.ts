@@ -4,7 +4,7 @@
 // MATLAB's quaternion-to-DCM map is the coordinate-transformation (transposed) form, quatnorm is
 // the SUM of squares (not its root), and quatdivide(q,r) = r⁻¹⊗q. See aerospace.VALIDATION.md.
 import type { Builtin } from '../builtins';
-import { type Value, type Mat, mat, map, toMat as m, asScalar, asString, scalar, colVec } from '../values';
+import { type Value, type Mat, mat, map, toMat as m, asScalar, asString, scalar, colVec, makeND } from '../values';
 import type { ToolboxModule } from './types';
 
 const ret = (v: Value | Value[]): Promise<Value[]> => Promise.resolve(Array.isArray(v) ? v : [v]);
@@ -214,6 +214,15 @@ export const AEROSPACE: ToolboxModule = {
   name: 'Aerospace Toolbox',
   docBase: 'https://www.mathworks.com/help/aerotbx/ug/',
   builtins: {
+    // geocradius(latGeocentric_deg): radius of WGS-84 ellipsoid at a geocentric latitude.
+    geocradius: (a) => { const R = 6378137, f = 1 / 298.257223563, k = 1 / ((1 - f) * (1 - f)) - 1; return ret(map(m(a[0]), (lat) => { const s = Math.sin(lat * D2R); return Math.sqrt(R * R / (1 + k * s * s)); })); },
+    // dcmbody2stability(alpha): body→stability DCM (rotation about y by alpha, radians).
+    dcmbody2stability: (a) => {
+      const al = Array.from(m(a[0]).data), N = al.length;
+      const make = (ang: number) => { const c = Math.cos(ang), s = Math.sin(ang); return new Float64Array([c, 0, -s, 0, 1, 0, s, 0, c]); };
+      if (N === 1) return ret(mat(3, 3, make(al[0])));
+      const data = new Float64Array(9 * N); for (let i = 0; i < N; i++) data.set(make(al[i]), i * 9); return ret(makeND([3, 3, N], data));
+    },
     // --- unit conversions ---
     convlength: makeConv(F_LEN, 'length'), convvel: makeConv(F_VEL, 'velocity'),
     convmass: makeConv(F_MASS, 'mass'), convforce: makeConv(F_FORCE, 'force'),
@@ -529,6 +538,8 @@ export const AEROSPACE: ToolboxModule = {
     dcm2alphabeta: { summary: 'Convert direction cosine matrix to angle of attack and sideslip', syntax: ['[alpha,beta] = dcm2alphabeta(dcm)'], description: ['[alpha,beta] = dcm2alphabeta(dcm) extracts the angle of attack and sideslip angle from a body-to-wind direction cosine matrix.'], seealso: ['alphabeta', 'angle2dcm', 'dcm2angle'] },
     dpressure: { summary: 'Compute dynamic pressure from velocity and density', syntax: ['q = dpressure(v,rho)'], description: ['q = dpressure(v,rho) returns the dynamic pressure q = 0.5*rho*|v|^2 where v is the velocity vector and rho is air density.'], seealso: ['machnumber', 'airspeed', 'atmosisa'] },
     machnumber: { summary: 'Compute Mach number from velocity and speed of sound', syntax: ['M = machnumber(v,a)'], description: ['M = machnumber(v,a) returns the Mach number as |v|/a where v is the velocity vector and a is the speed of sound.'], seealso: ['airspeed', 'dpressure', 'atmosisa'] },
+    geocradius: { summary: 'Radius of ellipsoid planet at geocentric latitude', syntax: ['r = geocradius(lat)'], seealso: ['geoc2geod', 'geod2geoc'] },
+    dcmbody2stability: { summary: 'Body to stability axes direction cosine matrix', syntax: ['dcm = dcmbody2stability(alpha)'], seealso: ['dcmbody2wind'] },
     flowprandtlmeyer: { summary: 'Prandtl-Meyer expansion flow relations', syntax: ['[M,nu,mu] = flowprandtlmeyer(gamma,x,mtype)'], description: ["flowprandtlmeyer computes Prandtl-Meyer expansion relations for supersonic flow. By default x is Mach number; specify mtype='nu' or 'mu' to use Prandtl-Meyer angle or Mach angle."], seealso: ['flowisentropic', 'flownormalshock'] },
     flownormalshock: { summary: 'Normal shock relations for compressible flow', syntax: ['[M2,T,P,rho,P0,TotalP] = flownormalshock(gamma,M)'], description: ['flownormalshock(gamma,M) returns flow property ratios across a normal shock for upstream Mach number M and specific heat ratio gamma.', 'Outputs: downstream Mach M2, static temperature ratio T2/T1, static pressure ratio P2/P1, density ratio, and total pressure ratio.'], seealso: ['flowisentropic', 'flowrayleigh', 'flowfanno'] },
     flowfanno: { summary: 'Fanno line (adiabatic duct with friction) flow relations', syntax: ['[M,T,P,rho,V,P0,F] = flowfanno(gamma,M)'], description: ['flowfanno(gamma,M) computes Fanno line flow ratios relative to the critical (M=1) state for a given upstream Mach number M.', 'Assumes adiabatic, constant-area duct with friction; returns temperature, pressure, density, velocity, total pressure ratios, and Fanno parameter.'], seealso: ['flownormalshock', 'flowrayleigh', 'flowisentropic'] },

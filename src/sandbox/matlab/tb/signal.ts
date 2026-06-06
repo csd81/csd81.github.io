@@ -455,6 +455,18 @@ export const SIGNAL: ToolboxModule = {
   docBase: 'https://www.mathworks.com/help/signal/ref/',
   builtins: {
     lin2mu: (a) => ret(map(m(a[0]), lin2muOne)),
+    // xcorr2(a[,b]): 2-D cross-correlation = conv2(a, rot180(b)), full (ar+br-1)×(ac+bc-1).
+    xcorr2: (a) => {
+      const A = m(a[0]), B = a.length > 1 ? m(a[1]) : A;
+      const ar = A.rows, ac = A.cols, br = B.rows, bc = B.cols, cr = ar + br - 1, cc = ac + bc - 1;
+      const out = new Float64Array(cr * cc);
+      for (let i = 0; i < cr; i++) for (let j = 0; j < cc; j++) {
+        let s = 0;
+        for (let mm = 0; mm < ar; mm++) { const bi = i - mm; if (bi < 0 || bi >= br) continue; for (let nn = 0; nn < ac; nn++) { const bj = j - nn; if (bj < 0 || bj >= bc) continue; s += A.data[mm + nn * ar] * B.data[(br - 1 - bi) + (bc - 1 - bj) * br]; } }
+        out[i + j * cr] = s;
+      }
+      return ret(mat(cr, cc, out));
+    },
     mu2lin: (a) => ret(map(m(a[0]), mu2linOne)),
     // ── LPC parameter conversions (element-wise closed forms) ──
     lar2rc: (a) => ret(map(m(a[0]), (g) => Math.tanh(g / 2))),
@@ -1315,6 +1327,7 @@ export const SIGNAL: ToolboxModule = {
   },
   help: {
     lin2mu: { summary: 'Convert linear to mu-law compressed values (G.711)', syntax: ['y = lin2mu(x)'], seealso: ['mu2lin'] },
+    xcorr2: { summary: '2-D cross-correlation', syntax: ['c = xcorr2(a,b)', 'c = xcorr2(a)'], seealso: ['xcorr', 'conv2'] },
     lar2rc: { summary: 'Returns the reflection coefficients, k, from the log area ratio parameters g.', syntax: ['k = lar2rc(g)'], seealso: ['ac2rc', 'is2rc', 'poly2rc', 'rc2lar'] },
     is2rc: { summary: 'Returns the reflection coefficients, k, from the inverse sine parameters isin.', syntax: ['k = is2rc(isin)'], seealso: ['ac2rc', 'lar2rc', 'poly2rc', 'rc2is'] },
     vco: { summary: 'Creates a signal that oscillates at a frequency determined by the real input vector or matrix x with sample rate Fs.', syntax: ['y = vco(x,Fc,Fs)', 'y = vco(x,[Fmin Fmax],Fs)'], seealso: ['demod', 'modulate'] },

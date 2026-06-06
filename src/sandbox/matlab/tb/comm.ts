@@ -216,6 +216,16 @@ export const COMM: ToolboxModule = {
   builtins: {
     // ── gen2par: swap between standard-form generator [I|P] and parity [P'|I] over GF(2) ──
     gen2par: (a) => ret(gen2parImpl(m(a[0]))),
+    // oct2poly(oct[,ord]): binary coefficients of an octal-interpreted number (MSB-first default).
+    oct2poly: (a) => {
+      const dec = parseInt(String(Math.round(asScalar(a[0]))), 8);
+      const nb = Math.max(1, Math.ceil(Math.log2(dec + 1)));
+      const msb: number[] = []; for (let i = nb - 1; i >= 0; i--) msb.push((dec >> i) & 1);
+      const asc = a.length > 1 && asString(a[1]).toLowerCase().startsWith('a');
+      return ret(rowVec(asc ? msb.slice().reverse() : msb));
+    },
+    // fspl(R,lambda): free-space path loss in dB = 20*log10(max(4*pi*R/lambda, 1)).
+    fspl: (a) => { const lam = asScalar(a[1]); return ret(map(m(a[0]), (r) => 20 * Math.log10(Math.max(4 * Math.PI * r / lam, 1)))); },
     // ── GF(2) polynomial / matrix arithmetic (default field; no GF(2^m) arg) ──
     gfadd: (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])), n = Math.max(x.length, y.length), o: number[] = []; for (let i = 0; i < n; i++) o.push(((x[i] || 0) ^ (y[i] || 0)) & 1); return ret(rowVec(o)); },
     gfsub: (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])), n = Math.max(x.length, y.length), o: number[] = []; for (let i = 0; i < n; i++) o.push(((x[i] || 0) ^ (y[i] || 0)) & 1); return ret(rowVec(o)); },
@@ -564,6 +574,8 @@ export const COMM: ToolboxModule = {
     gfadd: { summary: 'Adds two GF(2) polynomials, a and b.', syntax: ['c = gfadd(a,b)', 'c = gfadd(a,b,p)', 'c = gfadd(a,b,p,len)', 'c = gfadd(a,b,field)'], seealso: ['gfsub', 'gfconv', 'gfmul', 'gfdeconv', 'gfdiv'] },
     gfdiv: { summary: 'Divides b by a in GF(2) element-by-element.', syntax: ['quot = gfdiv(b,a)', 'quot = gfdiv(b,a,p)', 'quot = gfdiv(b,a,field)'], seealso: ['gfmul', 'gfdeconv', 'gfconv', 'gftuple'] },
     cyclpoly: { summary: 'Returns the row vector representing one nontrivial generator polynomial for a cyclic code with codeword length N and message length K.', syntax: ['pol = cyclpoly(N,K)', 'pol = cyclpoly(N,K,opt)'], seealso: ['cyclgen', 'encode', 'gfprimfd'] },
+    oct2poly: { summary: 'Convert octal number to binary polynomial coefficients', syntax: ['p = oct2poly(oct)', 'p = oct2poly(oct,ord)'], seealso: ['poly2trellis', 'oct2dec'] },
+    fspl: { summary: 'Free space path loss', syntax: ['L = fspl(R,lambda)'], seealso: ['fogpl', 'gaspl', 'rainpl'] },
     cyclgen: { summary: 'Produce parity-check and generator matrices for a cyclic code', syntax: ['h = cyclgen(n,p)', 'h = cyclgen(n,p,opt)', '[h,g] = cyclgen(___)', '[h,g,k] = cyclgen(___)'], description: ['h = cyclgen(n,p) produces an (n-k)-by-n parity-check matrix for a systematic binary cyclic code of codeword length n with generator polynomial p.', '[h,g] = cyclgen(...) also returns the k-by-n generator matrix g corresponding to h.', '[h,g,k] = cyclgen(...) additionally returns k, the message length of the code.'], seealso: ['encode', 'decode', 'bchgenpoly', 'cyclpoly'] },
     qfunc: { summary: 'Q function (Gaussian tail probability)', syntax: ['y = qfunc(x)'], description: ['y = qfunc(x) returns the Q function value for each element of real-valued x.', 'The Q function is Q(x) = (1/sqrt(2*pi)) * integral from x to Inf of exp(-t^2/2) dt.', 'It equals 0.5*erfc(x/sqrt(2)) and represents the probability that a standard normal random variable exceeds x.'], seealso: ['qfuncinv', 'erfc'] },
     quantiz: { summary: 'Produce a quantization index and quantized output value', syntax: ['index = quantiz(sig,partition)', '[index,quants] = quantiz(sig,partition,codebook)', '[index,quants,distor] = quantiz(sig,partition,codebook)'], description: ['index = quantiz(sig,partition) returns quantization indices for sig using the scalar quantization boundary vector partition.', '[index,quants,distor] = quantiz(sig,partition,codebook) also maps indices through codebook to get quantized values and returns mean-square distortion.', 'partition is a length-(n-1) vector defining n quantization regions; codebook has n values, one per region.'], seealso: ['lloyds'] },
