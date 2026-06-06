@@ -294,7 +294,7 @@ function factorSymExpr(e0: SymExpr): SymExpr[] {
 
 const prodOf = (a: number[]): number => a.reduce((p, x) => p * x, 1);
 /** First dimension whose size is > 1 (MATLAB's default reduction dim), 1-based. */
-function firstNonSingleton(dims: number[]): number { for (let k = 0; k < dims.length; k++) if (dims[k] > 1) return k + 1; return 1; }
+function firstNonSingleton(dims: number[]): number { for (let k = 0; k < dims.length; k++) if (dims[k] !== 1) return k + 1; return 1; } // MATLAB: first dim whose size != 1 (incl. 0)
 /** Apply `f` to every 1-D fiber of A along `dim` (1-based), collapsing that dim to 1.
  *  `f` returns the reduced value, or `[value, index]` (1-based) for min/max. Works for
  *  any rank via the `nd` layout; returns both the value array and a matching index array. */
@@ -384,9 +384,46 @@ function reduce(a: Mat, dim: number | undefined, init: number, f: (acc: number, 
   return out;
 }
 
+// Complex max/min: pick by |z|, tie-break by phase angle atan2(im,re). Covers element-wise
+// max(A,B), vector reduction, and 2-D reduction along a dim (default 1).
+function minmaxComplex(A: Mat, args: Value[], nargout: number, pick: (a: number, b: number) => boolean, isEW: boolean): Value[] {
+  const better = (r1: number, i1: number, r2: number, i2: number): boolean => {
+    const m1 = Math.hypot(r1, i1), m2 = Math.hypot(r2, i2);
+    if (Math.abs(m1 - m2) > 1e-12 * Math.max(m1, m2, 1)) return pick(m1, m2);
+    return pick(Math.atan2(i1, r1), Math.atan2(i2, r2));
+  };
+  if (isEW) {
+    const B = m(args[1]); const sa = numel(A) === 1, sb = numel(B) === 1;
+    const rows = sa ? B.rows : A.rows, cols = sa ? B.cols : A.cols, N = rows * cols;
+    const ar = A.data, ai = A.idata ?? new Float64Array(A.data.length), br = B.data, bi = B.idata ?? new Float64Array(B.data.length);
+    const re = new Float64Array(N), im = new Float64Array(N);
+    for (let k = 0; k < N; k++) { const ka = sa ? 0 : k, kb = sb ? 0 : k; if (better(ar[ka], ai[ka], br[kb], bi[kb])) { re[k] = ar[ka]; im[k] = ai[ka]; } else { re[k] = br[kb]; im[k] = bi[kb]; } }
+    return [finishComplex(rows, cols, re, im)];
+  }
+  const re = A.data, im = A.idata ?? new Float64Array(A.data.length);
+  const reduce = (idxs: number[]): [number, number, number] => { let b = 0; for (let t = 1; t < idxs.length; t++) if (better(re[idxs[t]], im[idxs[t]], re[idxs[b]], im[idxs[b]])) b = t; return [re[idxs[b]], im[idxs[b]], b + 1]; };
+  if (A.rows === 1 || A.cols === 1) {
+    if (numel(A) === 0) return [zeros(0, 0)];
+    const [vr, vi, ix] = reduce(Array.from({ length: numel(A) }, (_, i) => i));
+    return nargout >= 2 ? [cscalar(vr, vi), scalar(ix)] : [cscalar(vr, vi)];
+  }
+  const dim2d = args.length >= 3 && isMat(args[2]) && numel(args[2]) > 0 ? Math.round(asScalar(args[2])) : 1;
+  if (dim2d === 2) {
+    const oRe = new Float64Array(A.rows), oIm = new Float64Array(A.rows), idx = zeros(A.rows, 1);
+    for (let r = 0; r < A.rows; r++) { const [vr, vi, ix] = reduce(Array.from({ length: A.cols }, (_, c) => r + c * A.rows)); oRe[r] = vr; oIm[r] = vi; idx.data[r] = ix; }
+    return nargout >= 2 ? [finishComplex(A.rows, 1, oRe, oIm), idx] : [finishComplex(A.rows, 1, oRe, oIm)];
+  }
+  const oRe = new Float64Array(A.cols), oIm = new Float64Array(A.cols), idx = zeros(1, A.cols);
+  for (let c = 0; c < A.cols; c++) { const [vr, vi, ix] = reduce(Array.from({ length: A.rows }, (_, r) => r + c * A.rows)); oRe[c] = vr; oIm[c] = vi; idx.data[c] = ix; }
+  return nargout >= 2 ? [finishComplex(1, A.cols, oRe, oIm), idx] : [finishComplex(1, A.cols, oRe, oIm)];
+}
+
 function minmax(args: Value[], nargout: number, pick: (a: number, b: number) => boolean): Value[] {
   const A = m(args[0]);
-  if (args.length >= 2 && isMat(args[1]) && numel(args[1]) > 0) {
+  const otherEW = args.length >= 2 && isMat(args[1]) && numel(args[1]) > 0;
+  // Complex max/min: compare by magnitude, tie-break by phase angle (MATLAB convention).
+  if (!A.nd && (isComplex(A) || (otherEW && isComplex(args[1] as Mat)))) return minmaxComplex(A, args, nargout, pick, otherEW);
+  if (otherEW) {
     // element-wise max/min of two arrays
     return [elementwise(A, args[1] as Mat, (x, y) => (pick(x, y) ? x : y))];
   }
@@ -661,7 +698,7 @@ export const BUILTINS: Record<string, Builtin> = {
     const G = elementwise(A, B, gcd2); return ret(A.itype ? applyClass(G, A.itype) : G);
   },
   lcm: async (a) => { const A = m(a[0]); const L = elementwise(A, m(a[1]), (x, y) => (x === 0 || y === 0 ? 0 : Math.abs(x * y) / gcd2(x, y))); return ret(A.itype ? applyClass(L, A.itype) : L); },
-  factorial: async (a) => { const A = m(a[0]); const r = map(A, (x) => factorialN(Math.round(x))); return ret(A.itype ? applyClass(r, A.itype) : r); },
+  factorial: async (a) => { const A = m(a[0]); const r = map(A, (x) => { if (x < 0 || !Number.isInteger(x)) throw new MatError('factorial: N must be an array of real non-negative integers.'); return factorialN(x); }); return ret(A.itype ? applyClass(r, A.itype) : r); },
   nchoosek: async (a) => {
     const v = m(a[0]); const k = Math.round(asScalar(a[1]));
     if (numel(v) > 1) {
@@ -938,11 +975,13 @@ export const BUILTINS: Record<string, Builtin> = {
     const lo = A.data[0], hi = Bm.data[0];
     if (isComplex(A) || isComplex(Bm)) {
       const loi = A.idata ? A.idata[0] : 0, hii = Bm.idata ? Bm.idata[0] : 0;
+      if (n < 1) return ret(rowVec([]));            // linspace(a,b,0) → 1x0 empty
       if (n < 2) return ret(cscalar(hi, hii));
       const re = new Float64Array(n), im = new Float64Array(n);
       for (let i = 0; i < n; i++) { const t = i / (n - 1); re[i] = lo + (hi - lo) * t; im[i] = loi + (hii - loi) * t; }
       return ret(finishComplex(1, n, re, im));
     }
+    if (n < 1) return ret(rowVec([]));            // linspace(a,b,0) → 1x0 empty
     if (n < 2) return ret(rowVec([hi]));
     const out: number[] = []; for (let i = 0; i < n; i++) out.push(lo + (hi - lo) * i / (n - 1));
     return ret(rowVec(out));
@@ -1041,7 +1080,9 @@ export const BUILTINS: Record<string, Builtin> = {
       let rowsOut = order.slice(); if (!stable) rowsOut.sort((x, y) => { for (let c = 0; c < A.cols; c++) { const d = A.data[x + c * A.rows] - A.data[y + c * A.rows]; if (d) return d; } return 0; });
       const out = zeros(rowsOut.length, A.cols); rowsOut.forEach((r, i) => { for (let c = 0; c < A.cols; c++) out.data[i + c * rowsOut.length] = A.data[r + c * A.rows]; });
       const ia = rowsOut.map((r) => firstIdx.get(keyOf(r))! + 1);
-      return n >= 2 ? [out, colVec(ia)] : [out];
+      const posR = new Map(rowsOut.map((r, i) => [keyOf(r), i])); // 3rd output ic: each original row → its unique-row index
+      const ic = Array.from({ length: A.rows }, (_, r) => posR.get(keyOf(r))! + 1);
+      return n >= 3 ? [out, colVec(ia), colVec(ic)] : n >= 2 ? [out, colVec(ia)] : [out];
     }
     const arr = toArray(A); const order: number[] = []; const firstIdx = new Map<number, number>();
     arr.forEach((v, i) => { if (!firstIdx.has(v)) { firstIdx.set(v, i); order.push(v); } else if (last) firstIdx.set(v, i); });
