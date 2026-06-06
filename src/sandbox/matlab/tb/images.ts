@@ -4,12 +4,24 @@
 import type { Builtin } from '../builtins';
 import {
   type Value, type Mat, type StructV, isMat, scalar, colVec, zeros, toArray, asScalar, asString, toMat as m, applyClass,
-  ndSize, makeND,
+  ndSize, makeND, mat,
 } from '../values';
 import type { ToolboxModule } from './types';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
+// NTSC/YIQ base matrix T (rows) and its transpose, from rgb2ntsc.m / ntsc2rgb.m.
+const NTSC_T = [[1.0, 0.956, 0.621], [1.0, -0.272, -0.647], [1.0, -1.106, 1.703]];
+const NTSC_Tt = [[1.0, 1.0, 1.0], [0.956, -0.272, -1.106], [0.621, -0.647, 1.703]];
+/** Inverse of a 3×3 matrix (row-major). */
+function mat3inv(M: number[][]): number[][] {
+  const [a, b, c] = M[0], [d, e, f] = M[1], [g, h, i] = M[2];
+  const A = e * i - f * h, B = -(d * i - f * g), C = d * h - e * g;
+  const det = a * A + b * B + c * C;
+  return [[A / det, -(b * i - c * h) / det, (b * f - c * e) / det],
+    [B / det, (a * i - c * g) / det, -(a * f - c * d) / det],
+    [C / det, -(a * h - b * g) / det, (a * e - b * d) / det]];
+}
 /** Scale of an integer image type (max representable value). */
 const typeMax = (t?: string) => (t === 'uint8' ? 255 : t === 'uint16' ? 65535 : t === 'int16' ? 32767 : 1);
 /** Read an image Mat to double-in-[0,1] (honoring its integer class), for internal computation. */
@@ -44,6 +56,26 @@ export const IMAGES: ToolboxModule = {
   name: 'Image Processing Toolbox',
   docBase: 'https://www.mathworks.com/help/images/',
   builtins: {
+    /** rgb2ntsc(A) — RGB → NTSC/YIQ via yiq = rgb·inv(T'). Mirrors rgb2ntsc.m (N×3 colormap). */
+    rgb2ntsc: (a) => {
+      const A = m(a[0]), N = A.rows;
+      const Minv = mat3inv(NTSC_Tt);                                   // inv(T')
+      const out = new Float64Array(N * 3);
+      for (let r = 0; r < N; r++) for (let j = 0; j < 3; j++) { let s = 0; for (let k = 0; k < 3; k++) s += A.data[r + k * N] * Minv[k][j]; out[r + j * N] = s; }
+      return ret(mat(N, 3, out));
+    },
+    /** ntsc2rgb(A) — NTSC/YIQ → RGB via rgb = yiq·T', clamped to [0,1] with >1 row-normalize. */
+    ntsc2rgb: (a) => {
+      const A = m(a[0]), N = A.rows; const out = new Float64Array(N * 3);
+      for (let r = 0; r < N; r++) {
+        const row = [0, 0, 0];
+        for (let j = 0; j < 3; j++) { let s = 0; for (let k = 0; k < 3; k++) s += A.data[r + k * N] * NTSC_T[j][k]; row[j] = Math.max(0, s); }
+        const mx = Math.max(row[0], row[1], row[2]);
+        if (mx > 1) for (let j = 0; j < 3; j++) row[j] /= mx;
+        for (let j = 0; j < 3; j++) out[r + j * N] = row[j];
+      }
+      return ret(mat(N, 3, out));
+    },
     /** ind2rgb(X,MAP) — indexed image + colormap → M×N×3 double RGB. Mirrors ind2rgb.m. */
     ind2rgb: (a) => {
       const A = m(a[0]), cm = m(a[1]);
@@ -171,6 +203,7 @@ export const IMAGES: ToolboxModule = {
   },
   help: {
     ind2rgb: 'Convert indexed image to RGB image',
+    rgb2ntsc: 'Convert RGB to NTSC (YIQ) color values', ntsc2rgb: 'Convert NTSC (YIQ) to RGB color values',
     im2double: 'Convert image to double precision [0,1]', im2uint8: 'Convert image to uint8', im2uint16: 'Convert image to uint16',
     mat2gray: 'Scale matrix values to grayscale [0,1]', imcomplement: 'Complement (negative) of an image', imadjust: 'Adjust image intensity values',
     graythresh: 'Global image threshold (Otsu method)', imbinarize: 'Binarize image by thresholding',
