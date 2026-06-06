@@ -2864,19 +2864,28 @@ export const BUILTINS: Record<string, Builtin> = {
     return nout >= 2 ? [xmin, scalar(fv[bi]), scalar(1)] : [xmin];   // [x, fval, exitflag]
   },
   interp1: async (a) => {
-    const x = toArray(m(a[0])), v = toArray(m(a[1])), xq = m(a[2]); const method = (a.length >= 4 ? asString(a[3]) : 'linear').toLowerCase(); const L = x.length - 1;
-    if (method === 'spline') { const C = splineCoefs(x, v); const at = (q: number) => { let i = 0; while (i < L - 1 && q >= x[i + 1]) i++; const t = q - x[i]; let val = 0; for (let j = 0; j < 4; j++) val = val * t + C.data[i + j * L]; return val; }; return ret(map(xq, at)); }
-    if (method === 'makima') { const d = akimaSlopes(x, v); return ret(map(xq, (q) => hermiteEval(x, v, d, q))); }
-    if (method === 'pchip' || method === 'cubic') { const d = pchipSlopes(x, v); return ret(map(xq, (q) => hermiteEval(x, v, d, q))); }
-    const interp = (q: number) => {
-      if (method === 'previous') { let i = 0; while (i < L && q >= x[i + 1]) i++; return q < x[0] ? NaN : v[i]; }
-      if (method === 'next') { let i = L; while (i > 0 && q <= x[i - 1]) i--; return q > x[L] ? NaN : v[i]; }
-      if (q <= x[0]) return method === 'nearest' ? v[0] : v[0] + (v[1] - v[0]) * (q - x[0]) / (x[1] - x[0]);
-      let i = 0; while (i < x.length - 2 && q > x[i + 1]) i++;
-      if (method === 'nearest') return Math.abs(q - x[i]) < Math.abs(q - x[i + 1]) ? v[i] : v[i + 1];   // tie → next (MATLAB)
-      return v[i] + (v[i + 1] - v[i]) * (q - x[i]) / (x[i + 1] - x[i]);
+    const x = toArray(m(a[0])); const Vm = m(a[1]); const xq = m(a[2]); const L = x.length - 1; const x0 = x[0], xL = x[L];
+    const method = (a.length >= 4 && (isStr(a[3]) || (isMat(a[3]) && (a[3] as Mat).isChar)) ? asString(a[3]) : 'linear').toLowerCase();
+    // Extrapolation: 'extrap' → use the method; a numeric value → that value outside the domain.
+    let extrap: 'default' | 'extrap' | number = 'default';
+    if (a.length >= 5) extrap = (isStr(a[4]) || (isMat(a[4]) && (a[4] as Mat).isChar)) ? (asString(a[4]).toLowerCase() === 'extrap' ? 'extrap' : 'default') : asScalar(a[4]);
+    // spline/pchip/makima/cubic extrapolate by default; linear/nearest/previous/next return NaN outside.
+    const selfExtrap = method === 'spline' || method === 'pchip' || method === 'cubic' || method === 'makima';
+    const rawEval = (v: number[]): ((q: number) => number) => {
+      if (method === 'spline') { const C = splineCoefs(x, v); return (q) => { let i = 0; while (i < L - 1 && q >= x[i + 1]) i++; const t = q - x[i]; let val = 0; for (let j = 0; j < 4; j++) val = val * t + C.data[i + j * L]; return val; }; }
+      if (method === 'makima') { const d = akimaSlopes(x, v); return (q) => hermiteEval(x, v, d, q); }
+      if (method === 'pchip' || method === 'cubic') { const d = pchipSlopes(x, v); return (q) => hermiteEval(x, v, d, q); }
+      if (method === 'previous') return (q) => { if (q < x0) return v[0]; let i = 0; while (i < L && q >= x[i + 1]) i++; return v[i]; };
+      if (method === 'next') return (q) => { if (q > xL) return v[L]; let i = L; while (i > 0 && q <= x[i - 1]) i--; return v[i]; };
+      if (method === 'nearest') return (q) => { if (q <= x0) return v[0]; if (q >= xL) return v[L]; let i = 0; while (i < L - 1 && q > x[i + 1]) i++; return Math.abs(q - x[i]) < Math.abs(q - x[i + 1]) ? v[i] : v[i + 1]; };
+      return (q) => { let i = 0; while (i < L - 1 && q > x[i + 1]) i++; return v[i] + (v[i + 1] - v[i]) * (q - x[i]) / (x[i + 1] - x[i]); }; // linear
     };
-    return ret(map(xq, interp));
+    const makeEval = (v: number[]) => { const f = rawEval(v); return (q: number) => (q < x0 || q > xL) ? (extrap === 'extrap' ? f(q) : typeof extrap === 'number' ? extrap : selfExtrap ? f(q) : NaN) : f(q); };
+    // Vector v → result shaped like xq; matrix V (rows = numel(x)) → interpolate each column → numel(xq) × cols.
+    if (Vm.rows === 1 || Vm.cols === 1) return ret(map(xq, makeEval(toArray(Vm))));
+    const nc = Vm.cols, xqa = toArray(xq), nq = xqa.length, out = zeros(nq, nc);
+    for (let c = 0; c < nc; c++) { const col: number[] = []; for (let r = 0; r <= L; r++) col.push(Vm.data[r + c * Vm.rows]); const f = makeEval(col); for (let k = 0; k < nq; k++) out.data[k + c * nq] = f(xqa[k]); }
+    return ret(out);
   },
   spline: async (a) => {
     const x = toArray(m(a[0])), y = toArray(m(a[1])); const C = splineCoefs(x, y); const L = x.length - 1;
@@ -7579,7 +7588,15 @@ function pchipSlopes(x: number[], y: number[]): number[] {
   for (let i = 0; i < n - 1; i++) { h.push(x[i + 1] - x[i]); del.push((y[i + 1] - y[i]) / (x[i + 1] - x[i])); }
   const d = new Array(n).fill(0);
   for (let i = 1; i < n - 1; i++) { if (del[i - 1] * del[i] > 0) { const w1 = 2 * h[i] + h[i - 1], w2 = h[i] + 2 * h[i - 1]; d[i] = (w1 + w2) / (w1 / del[i - 1] + w2 / del[i]); } }
-  d[0] = del[0]; d[n - 1] = del[n - 2];
+  // Shape-preserving endpoint slopes (noncentered 3-point difference with limiting), as in MATLAB pchip.
+  const endSlope = (h0: number, h1: number, d0: number, d1: number): number => {
+    let s = ((2 * h0 + h1) * d0 - h0 * d1) / (h0 + h1);
+    if (Math.sign(s) !== Math.sign(d0)) s = 0;
+    else if (Math.sign(d0) !== Math.sign(d1) && Math.abs(s) > Math.abs(3 * d0)) s = 3 * d0;
+    return s;
+  };
+  if (n === 2) { d[0] = del[0]; d[1] = del[0]; }
+  else { d[0] = endSlope(h[0], h[1], del[0], del[1]); d[n - 1] = endSlope(h[n - 2], h[n - 3], del[n - 2], del[n - 3]); }
   return d;
 }
 /** Modified Akima (makima) slopes. */
