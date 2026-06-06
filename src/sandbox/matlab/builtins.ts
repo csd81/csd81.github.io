@@ -402,6 +402,22 @@ function minmaxComplex(A: Mat, args: Value[], nargout: number, pick: (a: number,
   }
   const re = A.data, im = A.idata ?? new Float64Array(A.data.length);
   const reduce = (idxs: number[]): [number, number, number] => { let b = 0; for (let t = 1; t < idxs.length; t++) if (better(re[idxs[t]], im[idxs[t]], re[idxs[b]], im[idxs[b]])) b = t; return [re[idxs[b]], im[idxs[b]], b + 1]; };
+  if (A.nd) {                                                   // N-D reduction along a dim (default first non-singleton)
+    const dims = ndSize(A);
+    const dim = args.length >= 3 && isMat(args[2]) && numel(args[2]) > 0 ? Math.round(asScalar(args[2])) : firstNonSingleton(dims);
+    if (dim > dims.length || dims[dim - 1] === 1) return nargout >= 2 ? [A, makeND(dims, new Float64Array(A.data.length).fill(1))] : [A];
+    const n = dims[dim - 1], outDims = dims.slice(); outDims[dim - 1] = 1;
+    const stride: number[] = []; { let s = 1; for (let k = 0; k < dims.length; k++) { stride.push(s); s *= dims[k]; } }
+    const ostride: number[] = []; { let s = 1; for (let k = 0; k < dims.length; k++) { ostride.push(s); s *= outDims[k]; } }
+    const outTotal = prodOf(outDims), oRe = new Float64Array(outTotal), oIm = new Float64Array(outTotal), oIdx = new Float64Array(outTotal);
+    for (let o = 0; o < outTotal; o++) {
+      let base = 0; for (let k = 0; k < dims.length; k++) base += (Math.floor(o / ostride[k]) % outDims[k]) * stride[k];
+      const fib = Array.from({ length: n }, (_, t) => base + t * stride[dim - 1]);
+      const [vr, vi, ix] = reduce(fib); oRe[o] = vr; oIm[o] = vi; oIdx[o] = ix;
+    }
+    const vmat = makeND(outDims, oRe, { idata: oIm });
+    return nargout >= 2 ? [vmat, makeND(outDims, oIdx)] : [vmat];
+  }
   if (A.rows === 1 || A.cols === 1) {
     if (numel(A) === 0) return [zeros(0, 0)];
     const [vr, vi, ix] = reduce(Array.from({ length: numel(A) }, (_, i) => i));
@@ -422,7 +438,7 @@ function minmax(args: Value[], nargout: number, pick: (a: number, b: number) => 
   const A = m(args[0]);
   const otherEW = args.length >= 2 && isMat(args[1]) && numel(args[1]) > 0;
   // Complex max/min: compare by magnitude, tie-break by phase angle (MATLAB convention).
-  if (!A.nd && (isComplex(A) || (otherEW && isComplex(args[1] as Mat)))) return minmaxComplex(A, args, nargout, pick, otherEW);
+  if (isComplex(A) || (otherEW && isComplex(args[1] as Mat))) return minmaxComplex(A, args, nargout, pick, otherEW);
   if (otherEW) {
     // element-wise max/min of two arrays
     return [elementwise(A, args[1] as Mat, (x, y) => (pick(x, y) ? x : y))];
@@ -734,7 +750,7 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   factor: async (a) => {
     if (isSym(a[0])) {
-      const s = a[0] as Sym; const vars = symVarsOf(s);
+      const s = a[0] as Sym; if (s.rows * s.cols > 1) throw new MatError('factor: First argument must be scalar.'); const vars = symVarsOf(s);
       if (vars.length === 0) {                          // constant sym → integer factorization
         const nval = Math.round(symEval(s.exprs[0], new Map())); if (!Number.isFinite(nval) || Math.abs(nval) < 2) return ret(s);
         let nn = Math.abs(nval); const primes: number[] = []; for (let d = 2; d * d <= nn; d++) while (nn % d === 0) { primes.push(d); nn /= d; } if (nn > 1) primes.push(nn);
