@@ -542,6 +542,42 @@ export const STATS: ToolboxModule = {
   builtins: {
     tiedrank: (a, nargout) => Promise.resolve(tiedrankImpl(a, nargout)),
     partialcorr: (a) => ret(partialcorrImpl(a)),
+    // ── grp2idx(s): group indices + sorted string labels (numeric input) ──
+    grp2idx: (a, nargout) => {
+      const x = toArray(m(a[0]));
+      const uniq = [...new Set(x)].sort((p, q) => p - q);
+      const idx = new Map(uniq.map((v, i) => [v, i + 1]));
+      const g = colVec(x.map((v) => idx.get(v)!));
+      if (nargout < 2) return ret(g);
+      const labels = makeCell(uniq.length, 1, uniq.map((v) => str(String(v))));
+      return Promise.resolve(nargout >= 3 ? [g, labels, makeCell(uniq.length, 1, uniq.map((v) => str(String(v))))] : [g, labels]);
+    },
+    // ── crosstab(v1,v2): cross-tabulation count matrix ──
+    crosstab: (a) => {
+      const x1 = toArray(m(a[0])), x2 = toArray(m(a[1]));
+      const u1 = [...new Set(x1)].sort((p, q) => p - q), u2 = [...new Set(x2)].sort((p, q) => p - q);
+      const i1 = new Map(u1.map((v, i) => [v, i])), i2 = new Map(u2.map((v, i) => [v, i]));
+      const r = u1.length, c = u2.length, data = new Float64Array(r * c);
+      for (let k = 0; k < x1.length; k++) data[i1.get(x1[k])! + i2.get(x2[k])! * r]++;
+      return ret(mat(r, c, data));
+    },
+    // ── x2fx(X[,model]): design matrix. model = linear|interaction|quadratic|purequadratic ──
+    x2fx: (a) => {
+      const X = m(a[0]), p = X.cols;
+      const isText = a.length > 1 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar));
+      const model = isText ? asString(a[1]).toLowerCase() : 'linear';
+      const inter = model === 'interaction' || model === 'quadratic';
+      const square = model === 'quadratic' || model === 'purequadratic';
+      const rows = matRows(X).map((v) => {
+        const t = [1, ...v];
+        if (inter) for (let i = 0; i < p; i++) for (let j = i + 1; j < p; j++) t.push(v[i] * v[j]);
+        if (square) for (let i = 0; i < p; i++) t.push(v[i] * v[i]);
+        return t;
+      });
+      const nc = rows[0].length, data = new Float64Array(X.rows * nc);
+      for (let r = 0; r < X.rows; r++) for (let c = 0; c < nc; c++) data[r + c * X.rows] = rows[r][c];
+      return ret(mat(X.rows, nc, data));
+    },
     // ── geometric inverse cdf: smallest k with cdf≥p ──
     geoinv: (a) => dist(a, [0.5], (p, P) => {
       if (P <= 0 || P > 1 || p < 0 || p > 1) return NaN;
@@ -1837,6 +1873,7 @@ export const STATS: ToolboxModule = {
     range: 'Range of values (max − min)', tabulate: 'Frequency table',
     pdist: 'Pairwise distance between observations', squareform: 'Format distance matrix', linkage: 'Agglomerative hierarchical cluster tree', kmeans: 'k-means clustering',
     tiedrank: 'Ranks of a sample, adjusting for ties', partialcorr: 'Linear or partial correlation coefficients',
+    grp2idx: 'Create index vector from grouping variable', crosstab: 'Cross-tabulation', x2fx: 'Convert predictors to design matrix',
     geoinv: 'Geometric inverse cumulative distribution function', mnpdf: 'Multinomial probability density function',
     ff2n: 'Two-level full factorial design', fullfact: 'Full factorial design', hougen: 'Hougen-Watson model function',
     combnk: 'Enumerate combinations of n choose k', mvtpdf: 'Multivariate Student-t probability density function',
