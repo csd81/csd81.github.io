@@ -4,7 +4,7 @@ Consolidated coverage tables for 48 toolboxes. The **Implemented** column (✅) 
 functions available in the TypeScript sandbox interpreter. Generated from the former per-toolbox
 docs/*.md files.
 
-**Overall: 2524 / 17245 functions implemented across 48 toolboxes.**
+**Overall: 2532 / 17245 functions implemented across 48 toolboxes.**
 
 Also see [Base MATLAB reference-list validation](#base-validation) — 705 converged / 905 audited base builtins.
 
@@ -13,15 +13,15 @@ Also see [Base MATLAB reference-list validation](#base-validation) — 705 conve
 
 | Toolbox | Implemented | Total | % |
 | :--- | ---: | ---: | ---: |
-| [core_referencelist (core list)](#0core_referencelist) | 1145 | 3094 | 37% |
+| [core_referencelist (core list)](#0core_referencelist) | 1150 | 3094 | 37% |
 | [Symbolic Math Toolbox](#symbolic) | 355 | 415 | 86% |
 | [Stats Toolbox](#stats) | 172 | 861 | 20% |
-| [Signal Toolbox](#signal) | 148 | 397 | 37% |
+| [Signal Toolbox](#signal) | 149 | 397 | 38% |
 | [Map Toolbox](#map) | 90 | 399 | 23% |
 | [Fixedpoint Toolbox](#fixedpoint) | 87 | 335 | 26% |
 | [Control Toolbox](#control) | 53 | 352 | 15% |
 | [Aerotbx Toolbox](#aerotbx) | 45 | 223 | 20% |
-| [Images Toolbox](#images) | 43 | 651 | 7% |
+| [Images Toolbox](#images) | 45 | 651 | 7% |
 | [Comm Toolbox](#comm) | 40 | 409 | 10% |
 | [Finance Toolbox](#finance) | 39 | 383 | 10% |
 | [simulink (core list)](#0simulink) | 26 | 889 | 3% |
@@ -67,7 +67,7 @@ Also see [Base MATLAB reference-list validation](#base-validation) — 705 conve
 <a id="0core_referencelist"></a>
 ## core_referencelist (core list)  
 
-_1145 / 3094 implemented_
+_1150 / 3094 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -95,7 +95,7 @@ _1145 / 3094 implemented_
 | ✅ | `true` | Logical 1 (true) |
 | ✅ | `vertcat` | Concatenate arrays vertically |
 | ✅ | `zeros` | Create array of all zeros |
-|   | `freqspace` | Frequency spacing for frequency response |
+| ✅ | `freqspace` | Frequency spacing for frequency response |
 | ✅ | `linspace` | Generate linearly spaced vector |
 | ✅ | `logspace` | Generate logarithmically spaced vector |
 | ✅ | `meshgrid` | 2-D and 3-D grids |
@@ -284,7 +284,7 @@ _1145 / 3094 implemented_
 | ✅ | `day` | Day number or name of input date and time |
 | ✅ | `days` | Duration in days |
 | ✅ | `duration` | Lengths of time in fixed-length units |
-|   | `eomdate` | (Not recommended; usedateshift) Last date of
+| ✅ | `eomdate` | (Not recommended; usedateshift) Last date of
             month |
 | ✅ | `eomday` | Last day of month |
 | ✅ | `etime` | (Not recommended; usedatetimevalues orbetween)
@@ -800,7 +800,7 @@ Format (CDF) file |
 | ✅ | `jsondecode` | Decode JSON-formatted text |
 | ✅ | `jsonencode` | Create JSON-formatted text from structuredMATLABdata |
 |   | `jsonImportOptions` | Import options object for JSON files(Since R2026a) |
-|   | `lin2mu` | Convert linear audio signal to mu-law |
+| ✅ | `lin2mu` | Convert linear audio signal to mu-law |
 |   | `matlab.io.fits.closeFile` | Close FITS file |
 |   | `matlab.io.fits.copyHDU` | Copy current HDU from one file to another |
 |   | `matlab.io.fits.createFile` | Create FITS file |
@@ -917,7 +917,7 @@ Format (CDF) file |
 |   | `matlab.io.xml.xpath.Evaluator` | XPath expression evaluator |
 |   | `matlab.io.xml.xpath.PrefixResolver` | Abstract base class for namespace prefix resolvers |
 |   | `mmfileinfo` | Information about multimedia file |
-|   | `mu2lin` | Convert mu-law audio signal to linear |
+| ✅ | `mu2lin` | Convert mu-law audio signal to linear |
 |   | `multibandread` | Read band-interleaved data from binary file |
 |   | `multibandwrite` | Write band-interleaved data to file |
 |   | `nccreate` | Create variable in netCDF file |
@@ -2222,7 +2222,7 @@ objects |
 |   | `getrangefromclass` | Default display range of image based on its class |
 | ✅ | `im2double` | Convert image to double precision |
 | ✅ | `im2gray` | Convert RGB image to grayscale |
-|   | `ind2rgb` | Convert indexed image to RGB image |
+| ✅ | `ind2rgb` | Convert indexed image to RGB image |
 | ✅ | `rgb2gray` | Convert RGB image or colormap to grayscale |
 |   | `rgb2ind` | Convert RGB image to indexed image |
 |   | `cmpermute` | Rearrange colors in colormap |
@@ -11506,7 +11506,7 @@ regression method |
 <a id="images"></a>
 ## Images Toolbox  
 
-_43 / 651 implemented_
+_45 / 651 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -11584,7 +11584,7 @@ _43 / 651 implemented_
 | ✅ | `im2gray` | Convert RGB image to grayscale |
 |   | `imsplit` | Split multichannel image into its individual channels |
 |   | `ind2gray` | Convert indexed image to grayscale image |
-|   | `ind2rgb` | Convert indexed image to RGB image |
+| ✅ | `ind2rgb` | Convert indexed image to RGB image |
 |   | `label2rgb` | Convert label matrix into RGB image |
 | ✅ | `mat2gray` | Convert matrix to grayscale image |
 | ✅ | `rgb2gray` | Convert RGB image or colormap to grayscale |
@@ -11826,7 +11826,7 @@ images |
 | ✅ | `integralImage` | Calculate 2-D integral image |
 | ✅ | `integralImage3` | Calculate 3-D integral image |
 |   | `convmtx2` | 2-D convolution matrix |
-|   | `freqspace` | Frequency spacing for frequency response |
+| ✅ | `freqspace` | Frequency spacing for frequency response |
 |   | `freqz2` | 2-D frequency response |
 |   | `fsamp2` | 2-D FIR filter using frequency sampling |
 | ✅ | `fspecial` | Create predefined 2-D filter |
@@ -15291,7 +15291,7 @@ model |
 <a id="signal"></a>
 ## Signal Toolbox  
 
-_148 / 397 implemented_
+_149 / 397 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -15593,7 +15593,7 @@ sections form |
 | ✅ | `upsample` | Increase sample rate by integer factor |
 |   | `besself` | Bessel analog filter design |
 | ✅ | `freqs` | Frequency response of analog filters |
-|   | `freqspace` | Frequency spacing for frequency response |
+| ✅ | `freqspace` | Frequency spacing for frequency response |
 |   | `besselap` | Bessel analog lowpass filter prototype |
 |   | `bilinear` | Bilinear transformation method for analog-to-digital filter conversion |
 | ✅ | `buttap` | Butterworth analog lowpass filter prototype |
