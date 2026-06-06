@@ -1199,7 +1199,19 @@ export class Solver {
 
                 const x = contStates.get(block.name)!;
                 const xd = discStates.get(block.name)!;
-                const y = block.computeOutputs(t, x, xd, u);
+                // Vector (bus) propagation: a STATELESS block fed an array on any input is applied
+                // element-wise (scalars broadcast), so Gain/Sum/Product/Math/… work on buses.
+                // Mux/Demux handle buses themselves; stateful blocks keep scalar semantics.
+                const busW = u.reduce((w: number, v: unknown) => Array.isArray(v) ? Math.max(w, v.length) : w, 0);
+                let y: number[];
+                if (busW > 0 && x.length === 0 && xd.length === 0 && !(block instanceof Mux) && !(block instanceof Demux)) {
+                    const perElem: number[][] = [];
+                    for (let e = 0; e < busW; e++) { const ue = u.map((v) => Array.isArray(v) ? (v[e] ?? 0) : v); perElem.push(block.computeOutputs(t, x, xd, ue as number[])); }
+                    const nOut = perElem[0]?.length ?? 0;
+                    y = []; for (let p = 0; p < nOut; p++) (y as unknown as unknown[])[p] = perElem.map((o) => o[p]);
+                } else {
+                    y = block.computeOutputs(t, x, xd, u);
+                }
                 blockOutputs.set(block.name, y);
             }
 
