@@ -51,14 +51,16 @@ import { NNET } from './nnet';
 import { TEXTANALYTICS } from './textanalytics';
 import { VISION } from './vision';
 import { PHASED } from './phased';
-import { UAV } from './uav';
+// UAV quarantined: all 5 functions (uavMinTurningRadius/FlightPathAngle/GroundSpeed/BankAngle/CrossTrackError)
+// do not exist as standalone MATLAB functions — agent extracted formulas from OOP class internals
+// and invented names. Not registerable until real UAV toolbox standalone functions are ported.
 
 /** All registered toolboxes, in precedence order (first wins on inter-toolbox collision). */
 export const TOOLBOXES: ToolboxModule[] = [
   AEROSPACE, ANTENNA, AUDIO, BIOINFO, COMM, CONTROL, CURVEFIT, DSP, ECON, FINANCIAL, FININST, FIXEDPOINT,
   LIDAR,
   FUSION, FUZZY, GADS, IDENT, IMAGES, MAPPING, NAV, NNET, OPTIM, PARALLEL, Pde, RADAR, RL, RF,
-  PHASED, ROBOTICS, SIGNAL, SIMULINK, STATS, SYMBOLIC, TEXTANALYTICS, UAV, VISION, WAVELET,
+  PHASED, ROBOTICS, SIGNAL, SIMULINK, STATS, SYMBOLIC, TEXTANALYTICS, VISION, WAVELET,
 ];
 
 export const TOOLBOX_BUILTINS: Record<string, Builtin> = {};
