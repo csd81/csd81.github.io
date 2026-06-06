@@ -4,10 +4,42 @@
 // All validated against live MATLAB R2026a.
 
 import type { Builtin } from '../builtins';
-import { type Value, type Mat, rowVec, toMat as m, isMat } from '../values';
+import { type Value, type Mat, rowVec, toMat as m, isMat, mat, makeND } from '../values';
 import type { ToolboxModule } from './types';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
+
+/** cart2hom(C): append a column of ones (N×D → N×(D+1)). */
+function cart2homImpl(args: Value[]): Value {
+  const C = m(args[0]); const N = C.rows, D = C.cols;
+  const out = new Float64Array(N * (D + 1));
+  out.set(C.data.subarray(0, N * D));
+  for (let r = 0; r < N; r++) out[r + D * N] = 1;
+  return mat(N, D + 1, out);
+}
+/** hom2cart(H): divide by the last column and drop it (N×(D+1) → N×D). */
+function hom2cartImpl(args: Value[]): Value {
+  const H = m(args[0]); const N = H.rows, D = H.cols - 1;
+  const out = new Float64Array(N * D);
+  for (let r = 0; r < N; r++) { const w = H.data[r + D * N]; for (let c = 0; c < D; c++) out[r + c * N] = H.data[r + c * N] / w; }
+  return mat(N, D, out);
+}
+/** trvec2tform(t): translation vectors (N×3) → 4×4 (or 4×4×N) homogeneous transforms. */
+function trvec2tformImpl(args: Value[]): Value {
+  const T = m(args[0]); const N = T.rows;
+  const make = (i: number) => { const d = new Float64Array(16); d[0] = d[5] = d[10] = d[15] = 1; d[0 + 3 * 4] = T.data[i + 0 * N]; d[1 + 3 * 4] = T.data[i + 1 * N]; d[2 + 3 * 4] = T.data[i + 2 * N]; return d; };
+  if (N === 1) return mat(4, 4, make(0));
+  const data = new Float64Array(16 * N);
+  for (let i = 0; i < N; i++) data.set(make(i), i * 16);
+  return makeND([4, 4, N], data);
+}
+/** tform2trvec(T): 4×4 (or 4×4×N) → translation row vectors (N×3). */
+function tform2trvecImpl(args: Value[]): Value {
+  const T = m(args[0]); const N = T.nd && T.nd.length === 3 ? T.nd[2] : 1;
+  const out = new Float64Array(N * 3);
+  for (let i = 0; i < N; i++) for (let k = 0; k < 3; k++) out[i + k * N] = T.data[i * 16 + k + 3 * 4];
+  return N === 1 ? rowVec([out[0], out[1], out[2]]) : mat(N, 3, out);
+}
 
 const DEG2RAD = Math.PI / 180;
 const RAD2DEG = 180 / Math.PI;
@@ -529,6 +561,10 @@ export const NAV: ToolboxModule = {
     eul2rotm: ((args: Value[]) => ret(eul2rotmImpl(args))) as Builtin,
     rotm2eul: ((args: Value[]) => ret(rotm2eulImpl(args))) as Builtin,
     eul2tform: ((args: Value[]) => ret(eul2tformImpl(args))) as Builtin,
+    cart2hom: ((args: Value[]) => ret(cart2homImpl(args))) as Builtin,
+    hom2cart: ((args: Value[]) => ret(hom2cartImpl(args))) as Builtin,
+    trvec2tform: ((args: Value[]) => ret(trvec2tformImpl(args))) as Builtin,
+    tform2trvec: ((args: Value[]) => ret(tform2trvecImpl(args))) as Builtin,
   },
   constants: {
     WGS84_A: () => rowVec([WGS84_A]),
@@ -545,5 +581,9 @@ export const NAV: ToolboxModule = {
     eul2rotm: "Convert N-by-3 Euler angles (radians) to a 3-by-3-by-N rotation matrix array. eul2rotm(eul,seq); default sequence 'ZYX'.",
     rotm2eul: "Convert a 3-by-3-by-N rotation matrix array to N-by-3 Euler angles (radians). rotm2eul(R,seq); default sequence 'ZYX'.",
     eul2tform: "Convert N-by-3 Euler angles (radians) to a 4-by-4-by-N homogeneous transform array. eul2tform(eul,seq); default sequence 'ZYX'.",
+    cart2hom: 'Convert Cartesian coordinates to homogeneous coordinates (append ones column).',
+    hom2cart: 'Convert homogeneous coordinates to Cartesian coordinates (divide by last column).',
+    trvec2tform: 'Convert translation vectors to 4-by-4 homogeneous transforms.',
+    tform2trvec: 'Extract translation vectors from homogeneous transforms.',
   },
 };
