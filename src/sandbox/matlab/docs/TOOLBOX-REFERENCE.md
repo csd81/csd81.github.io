@@ -4,7 +4,7 @@ Consolidated coverage tables for 48 toolboxes. The **Implemented** column (✅) 
 functions available in the TypeScript sandbox interpreter. Generated from the former per-toolbox
 docs/*.md files.
 
-**Overall: 2532 / 17245 functions implemented across 48 toolboxes.**
+**Overall: 2536 / 17245 functions implemented across 48 toolboxes.**
 
 Also see [Base MATLAB reference-list validation](#base-validation) — 705 converged / 905 audited base builtins.
 
@@ -13,14 +13,14 @@ Also see [Base MATLAB reference-list validation](#base-validation) — 705 conve
 
 | Toolbox | Implemented | Total | % |
 | :--- | ---: | ---: | ---: |
-| [core_referencelist (core list)](#0core_referencelist) | 1150 | 3094 | 37% |
+| [core_referencelist (core list)](#0core_referencelist) | 1153 | 3094 | 37% |
 | [Symbolic Math Toolbox](#symbolic) | 355 | 415 | 86% |
 | [Stats Toolbox](#stats) | 172 | 861 | 20% |
 | [Signal Toolbox](#signal) | 149 | 397 | 38% |
 | [Map Toolbox](#map) | 90 | 399 | 23% |
 | [Fixedpoint Toolbox](#fixedpoint) | 87 | 335 | 26% |
 | [Control Toolbox](#control) | 53 | 352 | 15% |
-| [Aerotbx Toolbox](#aerotbx) | 45 | 223 | 20% |
+| [Aerotbx Toolbox](#aerotbx) | 46 | 223 | 21% |
 | [Images Toolbox](#images) | 45 | 651 | 7% |
 | [Comm Toolbox](#comm) | 40 | 409 | 10% |
 | [Finance Toolbox](#finance) | 39 | 383 | 10% |
@@ -67,7 +67,7 @@ Also see [Base MATLAB reference-list validation](#base-validation) — 705 conve
 <a id="0core_referencelist"></a>
 ## core_referencelist (core list)  
 
-_1150 / 3094 implemented_
+_1153 / 3094 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -263,7 +263,7 @@ _1150 / 3094 implemented_
 |   | `between` | Calendar math differences |
 |   | `caldays` | Calendar duration in days |
 |   | `caldiff` | Calendar math successive differences |
-|   | `calendar` | Calendar for specified month |
+| ✅ | `calendar` | Calendar for specified month |
 |   | `calendarDuration` | Lengths of time in variable-length calendar units |
 |   | `calmonths` | Calendar duration in months |
 |   | `calquarters` | Calendar duration in quarters |
@@ -302,7 +302,7 @@ _1150 / 3094 implemented_
 |   | `isregular` | Determine if input times are regular with respect to time or calendar
             unit |
 |   | `isweekend` | Determine weekend elements |
-|   | `juliandate` | ConvertMATLABdatetime to Julian date |
+| ✅ | `juliandate` | ConvertMATLABdatetime to Julian date |
 |   | `leapseconds` | List all leap seconds supported bydatetimedata
       type |
 |   | `lweekdate` | (Not recommended; usedateshift) Date of last occurrence of
@@ -333,7 +333,7 @@ _1150 / 3094 implemented_
 |   | `tzoffset` | Time zone offset from UTC |
 |   | `week` | Week number of input date and time |
 | ✅ | `weekday` | Day of week |
-|   | `weeknum` | (Not recommended; useweek) Week in year |
+| ✅ | `weeknum` | (Not recommended; useweek) Week in year |
 |   | `x2mdate` | (Not recommended; usedatetime)Excelserial date number toMATLABserial date number ordatetimevalue |
 | ✅ | `year` | Year number of input date and time |
 | ✅ | `years` | Duration in years |
@@ -4552,7 +4552,7 @@ _0 / 176 implemented_
 <a id="aerotbx"></a>
 ## Aerotbx Toolbox  
 
-_45 / 223 implemented_
+_46 / 223 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -4624,7 +4624,7 @@ to Earth-centered inertial (ECI) coordinates |
 | ✅ | `convtemp` | Convert to desired temperature units |
 | ✅ | `convvel` | Convert from current velocity units to desired velocity units |
 |   | `decyear` | Decimal year calculator |
-|   | `juliandate` | Julian date calculator |
+| ✅ | `juliandate` | Julian date calculator |
 |   | `leapyear` | Determine leap year |
 |   | `mjuliandate` | Modified Julian date calculator |
 |   | `tdbjuliandate` | Convert from Terrestrial time to Barycentric Dynamical Time (TDB) Julian
