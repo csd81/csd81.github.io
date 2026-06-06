@@ -12,7 +12,9 @@ import type { Value } from '../values';
 import type { HelpEntry } from '../help';
 import type { ToolboxModule } from './types';
 import { AEROSPACE } from './aerospace';
+import { ANTENNA } from './antenna';
 import { AUDIO } from './audio';
+import { BIOINFO } from './bioinfo';
 import { COMM } from './comm';
 import { CONTROL } from './control';
 import { CURVEFIT } from './curvefit';
@@ -33,7 +35,7 @@ import { WAVELET } from './wavelet';
 
 /** All registered toolboxes, in precedence order (first wins on inter-toolbox collision). */
 export const TOOLBOXES: ToolboxModule[] = [
-  AEROSPACE, AUDIO, COMM, CONTROL, CURVEFIT, ECON, FINANCIAL, FUZZY, IMAGES,
+  AEROSPACE, ANTENNA, AUDIO, BIOINFO, COMM, CONTROL, CURVEFIT, ECON, FINANCIAL, FUZZY, IMAGES,
   MAPPING, NAV, Pde, RADAR, RF, SIGNAL, SIMULINK, STATS, SYMBOLIC, WAVELET,
 ];
 
