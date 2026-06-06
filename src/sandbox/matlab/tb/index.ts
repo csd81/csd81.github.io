@@ -40,11 +40,12 @@ import { FIXEDPOINT } from './fixedpoint';
 import { PARALLEL } from './parallel';
 import { FUSION } from './fusion';
 import { ROBOTICS } from './robotics';
+import { OPTIM } from './optim';
 
 /** All registered toolboxes, in precedence order (first wins on inter-toolbox collision). */
 export const TOOLBOXES: ToolboxModule[] = [
   AEROSPACE, ANTENNA, AUDIO, BIOINFO, COMM, CONTROL, CURVEFIT, ECON, FINANCIAL, FININST, FIXEDPOINT,
-  FUSION, FUZZY, GADS, IDENT, IMAGES, MAPPING, MPC, NAV, PARALLEL, Pde, RADAR, RF,
+  FUSION, FUZZY, GADS, IDENT, IMAGES, MAPPING, MPC, NAV, OPTIM, PARALLEL, Pde, RADAR, RF,
   ROBOTICS, SIGNAL, SIMULINK, STATS, SYMBOLIC, WAVELET,
 ];
 
