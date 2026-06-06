@@ -922,8 +922,11 @@ export const BUILTINS: Record<string, Builtin> = {
     if (isSym(a[0])) return ret(symVecReduce(a[0] as Sym, (x, y) => sAdd(x, y), sN(0)));
     const A = m(a[0]); const dim = dimArg(a, 1); const omit = hasFlag(a, 'omitnan');
     if (!isComplex(A)) return ret(reduce(A, dim, 0, omit ? (s, x) => s + (Number.isNaN(x) ? 0 : x) : (s, x) => s + x));
-    const re = reduce(A, dim, 0, (s, x) => s + x);
-    const im = reduce({ kind: 'num', rows: A.rows, cols: A.cols, data: A.idata!, nd: A.nd }, dim, 0, (s, x) => s + x);
+    // complex: omit a term if EITHER its real or imaginary part is NaN (the whole value is NaN)
+    let reSrc = A.data, imSrc = A.idata!;
+    if (omit) { reSrc = Float64Array.from(reSrc); imSrc = Float64Array.from(imSrc); for (let i = 0; i < reSrc.length; i++) if (Number.isNaN(reSrc[i]) || Number.isNaN(imSrc[i])) { reSrc[i] = 0; imSrc[i] = 0; } }
+    const re = reduce({ kind: 'num', rows: A.rows, cols: A.cols, data: reSrc, nd: A.nd }, dim, 0, (s, x) => s + x);
+    const im = reduce({ kind: 'num', rows: A.rows, cols: A.cols, data: imSrc, nd: A.nd }, dim, 0, (s, x) => s + x);
     return ret({ kind: 'num', rows: re.rows, cols: re.cols, data: re.data, idata: im.data, nd: re.nd });
   },
   prod: async (a) => { if (isSym(a[0])) return ret(symVecReduce(a[0] as Sym, (x, y) => sMul(x, y), sN(1))); const A = m(a[0]); const dim = dimArg(a, 1); if (!isComplex(A)) return ret(reduce(A, dim, 1, (s, x) => s * x)); return ret(creduce(A, dim, 1, 0, (ar, aii, xr, xi) => cmul(ar, aii, xr, xi))); },
@@ -1592,9 +1595,15 @@ export const BUILTINS: Record<string, Builtin> = {
   // ═══════════════ SIGNAL · STATS · SETS · TYPE TESTS ═══════════════
   // ── digital filtering & signal math ──
   filter: async (a) => {
-    const b = toArray(m(a[0])), aa = toArray(m(a[1])), x = m(a[2]); const xs = toArray(x); const a0 = aa[0]; const y = new Array(xs.length).fill(0);
-    for (let n = 0; n < xs.length; n++) { let acc = 0; for (let k = 0; k < b.length; k++) if (n - k >= 0) acc += b[k] * xs[n - k]; for (let k = 1; k < aa.length; k++) if (n - k >= 0) acc -= aa[k] * y[n - k]; y[n] = acc / a0; }
-    return ret(x.cols === 1 ? colVec(y) : rowVec(y));
+    const b = toArray(m(a[0])), aa = toArray(m(a[1])), x = m(a[2]); const a0 = aa[0];
+    // operate along the first non-singleton dim: row/col vectors → along their length; matrices →
+    // column-by-column (independent filter state per column), preserving shape (like MATLAB).
+    const isVec = x.rows === 1 || x.cols === 1;
+    const filt1 = (xs: number[]): number[] => { const y = new Array(xs.length).fill(0); for (let n = 0; n < xs.length; n++) { let acc = 0; for (let k = 0; k < b.length; k++) if (n - k >= 0) acc += b[k] * xs[n - k]; for (let k = 1; k < aa.length; k++) if (n - k >= 0) acc -= aa[k] * y[n - k]; y[n] = acc / a0; } return y; };
+    if (isVec) { const y = filt1(toArray(x)); return ret(x.cols === 1 ? colVec(y) : rowVec(y)); }
+    const out = zeros(x.rows, x.cols);
+    for (let c = 0; c < x.cols; c++) { const col = Array.from({ length: x.rows }, (_, r) => x.data[r + c * x.rows]); const yc = filt1(col); for (let r = 0; r < x.rows; r++) out.data[r + c * x.rows] = yc[r]; }
+    return ret(out);
   },
   conv2: async (a) => { const shape = a.length >= 3 && isMat(a[2]) && (a[2] as Mat).isChar ? asString(a[2]) : 'full'; return ret(conv2Shape(m(a[0]), m(a[1]), shape)); },
   filter2: async (a) => { const shape = a.length >= 3 && isMat(a[2]) && (a[2] as Mat).isChar ? asString(a[2]) : 'same'; return ret(conv2Shape(m(a[1]), rot90n(m(a[0]), 2), shape)); },
@@ -1837,8 +1846,8 @@ export const BUILTINS: Record<string, Builtin> = {
   // ── coordinate transforms ──
   cart2pol: async (a, n) => { const X = m(a[0]), Y = m(a[1]); const th = elementwise(Y, X, (y, x) => Math.atan2(y, x)); const r = elementwise(X, Y, (x, y) => Math.hypot(x, y)); if (a.length >= 3 && n >= 3) return [th, r, m(a[2])]; return n >= 2 ? [th, r] : [th]; },
   pol2cart: async (a, n) => { const TH = m(a[0]), R = m(a[1]); const x = elementwise(R, TH, (r, t) => r * Math.cos(t)); const y = elementwise(R, TH, (r, t) => r * Math.sin(t)); if (a.length >= 3 && n >= 3) return [x, y, m(a[2])]; return n >= 2 ? [x, y] : [x]; },
-  cart2sph: async (a, n) => { const X = m(a[0]), Y = m(a[1]), Z = m(a[2]); const az = elementwise(Y, X, (y, x) => Math.atan2(y, x)); const el = zeros(X.rows, X.cols), r = zeros(X.rows, X.cols); for (let i = 0; i < el.data.length; i++) { el.data[i] = Math.atan2(Z.data[i], Math.hypot(X.data[i], Y.data[i])); r.data[i] = Math.sqrt(X.data[i] ** 2 + Y.data[i] ** 2 + Z.data[i] ** 2); } return n >= 3 ? [az, el, r] : n >= 2 ? [az, el] : [az]; },
-  sph2cart: async (a, n) => { const AZ = m(a[0]), EL = m(a[1]), R = m(a[2]); const x = zeros(AZ.rows, AZ.cols), y = zeros(AZ.rows, AZ.cols), z = zeros(AZ.rows, AZ.cols); for (let i = 0; i < x.data.length; i++) { const az = AZ.data[i], el = EL.data[i], r = R.data[i]; x.data[i] = r * Math.cos(el) * Math.cos(az); y.data[i] = r * Math.cos(el) * Math.sin(az); z.data[i] = r * Math.sin(el); } return n >= 3 ? [x, y, z] : n >= 2 ? [x, y] : [x]; },
+  cart2sph: async (a, n) => { const X = m(a[0]), Y = m(a[1]), Z = m(a[2]); const sz = [X, Y, Z].reduce((mx, v) => v.data.length > mx.data.length ? v : mx, X); const g = (v: Mat, i: number) => v.data.length === 1 ? v.data[0] : v.data[i]; const az = zeros(sz.rows, sz.cols), el = zeros(sz.rows, sz.cols), r = zeros(sz.rows, sz.cols); for (let i = 0; i < az.data.length; i++) { const x = g(X, i), y = g(Y, i), z = g(Z, i); az.data[i] = Math.atan2(y, x); el.data[i] = Math.atan2(z, Math.hypot(x, y)); r.data[i] = Math.sqrt(x * x + y * y + z * z); } return n >= 3 ? [az, el, r] : n >= 2 ? [az, el] : [az]; },
+  sph2cart: async (a, n) => { const AZ = m(a[0]), EL = m(a[1]), R = m(a[2]); const sz = [AZ, EL, R].reduce((mx, v) => v.data.length > mx.data.length ? v : mx, AZ); const g = (v: Mat, i: number) => v.data.length === 1 ? v.data[0] : v.data[i]; const x = zeros(sz.rows, sz.cols), y = zeros(sz.rows, sz.cols), z = zeros(sz.rows, sz.cols); for (let i = 0; i < x.data.length; i++) { const az = g(AZ, i), el = g(EL, i), r = g(R, i); x.data[i] = r * Math.cos(el) * Math.cos(az); y.data[i] = r * Math.cos(el) * Math.sin(az); z.data[i] = r * Math.sin(el); } return n >= 3 ? [x, y, z] : n >= 2 ? [x, y] : [x]; },
   // ── geometry ──
   polyarea: async (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])); let s = 0; const n = x.length; for (let i = 0; i < n; i++) { const j = (i + 1) % n; s += x[i] * y[j] - x[j] * y[i]; } return ret(scalar(Math.abs(s) / 2)); },
   inpolygon: async (a) => { const xq = m(a[0]), yq = m(a[1]); const xv = toArray(m(a[2])), yv = toArray(m(a[3])); const o = zeros(xq.rows, xq.cols); for (let k = 0; k < xq.data.length; k++) o.data[k] = pointInPoly(xq.data[k], yq.data[k], xv, yv) ? 1 : 0; o.isBool = true; return [o]; },
@@ -4214,6 +4223,7 @@ export const BUILTINS: Record<string, Builtin> = {
     }
     const shapeOf = (v: Value): [number, number] => (isStruct(v) || isCell(v) ? [v.rows, v.cols] : [m(v).rows, m(v).cols]);
     const [rows, cols] = shapeOf(inputs[0]); const total = rows * cols;
+    for (const v of inputs) { const [r, c] = shapeOf(v); if (r * c !== total) throw new MatError('arrayfun: All of the input arguments must be of the same size and shape.'); } // MATLAB does not broadcast
     // element i of an input: a 1×1 struct from a struct array, a cell's content, or a scalar.
     const elemAt = (v: Value, i: number): Value => {
       if (isStruct(v)) { const fields = new Map<string, Value[]>(); for (const [k, arr] of v.fields) fields.set(k, [arr[i] ?? zeros(0, 0)]); return { kind: 'struct', rows: 1, cols: 1, fields }; }
