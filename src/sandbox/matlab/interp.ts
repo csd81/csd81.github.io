@@ -875,7 +875,9 @@ function rdivide(a: Mat, b: Mat): Mat {
 function mpower(a: Mat, b: Mat): Mat {
   if (a.rows === 1 && a.cols === 1 && b.rows === 1 && b.cols === 1) return ewPow(a, b);
   if (b.rows === 1 && b.cols === 1) {
-    let p = Math.round(b.data[0]);
+    const praw = b.data[0];
+    if (Math.abs(praw - Math.round(praw)) > 1e-9) throw new MatError('^: non-integer matrix powers are not supported (use sqrtm/eig for matrix roots)');
+    let p = Math.round(praw);
     if (a.rows !== a.cols) throw new MatError('^: matrix must be square');
     if (p < 0) { return mpower(inv(a), scalar(-p)); }
     let acc = identity(a.rows); let base = a;

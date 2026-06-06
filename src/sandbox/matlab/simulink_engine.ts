@@ -105,17 +105,24 @@ export class Sum extends Block {
         this.parameters['Inputs'] = '++';
     }
 
+    // Normalize the Inputs spec: a number N → N '+' ports; otherwise drop layout spacers
+    // like '|' so '+|-' is two ports (+,-), matching Simulink.
+    private signSpec(): string {
+        const raw = String(this.parameters['Inputs'] ?? '++').trim();
+        if (/^\d+$/.test(raw)) return '+'.repeat(Math.max(1, parseInt(raw, 10)));
+        const s = raw.replace(/[^+-]/g, '');
+        return s.length ? s : '++';
+    }
+
     public setup() {
-        const signs = String(this.parameters['Inputs'] || '++');
-        this.numInputs = signs.length;
+        this.numInputs = this.signSpec().length;
     }
 
     public computeOutputs(t: number, x: number[], xd: number[], u: number[]): number[] {
-        const signs = String(this.parameters['Inputs'] || '++');
+        const signs = this.signSpec();
         let sum = 0;
-        for (let i = 0; i < this.numInputs; i++) {
-            const sign = signs[i] === '-' ? -1 : 1;
-            sum += (u[i] || 0) * sign;
+        for (let i = 0; i < signs.length; i++) {
+            sum += (u[i] || 0) * (signs[i] === '-' ? -1 : 1);
         }
         return [sum];
     }

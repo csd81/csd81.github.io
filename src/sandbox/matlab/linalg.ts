@@ -87,9 +87,11 @@ export function mldivide(a: Mat, b: Mat): Mat {
   if (isScalar(a)) return mat(b.rows, b.cols, b.data.map((v) => v / a.data[0]) as Float64Array);
   if (a.rows !== b.rows) throw new MatError(`\\: row dimensions must agree (${a.rows} vs ${b.rows})`);
   if (a.rows === a.cols) return luSolve(a, b);
-  // Overdetermined / underdetermined → normal equations (AᵀA) x = Aᵀ b.
-  const At = transpose(a);
-  return luSolve(matmul(At, a), matmul(At, b));
+  // Overdetermined (rows > cols) → least squares via normal equations (AᵀA) x = Aᵀ b.
+  if (a.rows > a.cols) { const At = transpose(a); return luSolve(matmul(At, a), matmul(At, b)); }
+  // Underdetermined (rows < cols) → AᵀA is singular; use pinv for the minimum-norm solution
+  // (valid least-squares solution; differs from MATLAB's QR-pivoting basic solution).
+  return matmul(pinv(a), b);
 }
 
 // ── Complex LU (partial pivoting), solve, determinant ──────────────────
