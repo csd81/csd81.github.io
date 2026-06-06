@@ -69,8 +69,9 @@ export function tokenize(src: string): Token[] {
 
     // Block comment: a line whose trimmed content is exactly `%{` ... up to `%}`.
     if ((c === '%' || c === '#') && atLineStartBlock(src, i, '{')) {
+      const blockStart = i;
       i = skipBlockComment(src, i);
-      // recount lines crudely
+      for (let k = blockStart; k < i; k++) if (src[k] === '\n') line++; // keep line counter in sync
       continue;
     }
     // Line comment.
@@ -149,8 +150,9 @@ export function tokenize(src: string): Token[] {
     // Double-quoted string (Octave/newer MATLAB).
     if (c === '"') {
       let j = i + 1; let out = '';
-      while (j < n && src[j] !== '"') {
-        if (src[j] === '\\' && src[j + 1] === '"') { out += '"'; j += 2; continue; }
+      while (j < n) {
+        if (src[j] === '"') { if (src[j + 1] === '"') { out += '"'; j += 2; continue; } break; } // MATLAB "" → "
+        if (src[j] === '\\' && src[j + 1] === '"') { out += '"'; j += 2; continue; }            // Octave \" → "
         out += src[j]; j++;
       }
       toks.push({ kind: 'str', value: out, dq: true, spaceBefore, pos: i, line });

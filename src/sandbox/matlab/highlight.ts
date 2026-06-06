@@ -53,7 +53,12 @@ export function highlightMatlab(src: string): Seg[] {
     }
     if (c === '"') {
       let j = i + 1;
-      while (j < n && src[j] !== '"') { if (src[j] === '\n') break; j++; }
+      while (j < n) {
+        if (src[j] === '"') { if (src[j + 1] === '"') { j += 2; continue; } break; } // MATLAB "" escape
+        if (src[j] === '\\' && src[j + 1] === '"') { j += 2; continue; }              // Octave \" escape
+        if (src[j] === '\n') break;
+        j++;
+      }
       if (src[j] === '"') j++;
       push('string', src.slice(i, j)); i = j; prevValue = true; continue;
     }

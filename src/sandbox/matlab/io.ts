@@ -73,7 +73,7 @@ export function matrixToCsv(M: Mat): string {
 // ── XLSX (OPC zip + XML) ─────────────────────────────────────────────────
 export interface Sheet { name: string; grid: (string | number | null)[][] }
 
-const xmlEntities = (s: string): string => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&#(\d+);/g, (_, d) => String.fromCharCode(+d)).replace(/&amp;/g, '&');
+const xmlEntities = (s: string): string => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCodePoint(parseInt(h, 16))).replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(+d)).replace(/&amp;/g, '&');
 /** Column letters → 0-based index (A→0, Z→25, AA→26, …). */
 function colIdx(ref: string): number { const m = ref.match(/^[A-Z]+/); if (!m) return 0; let n = 0; for (const ch of m[0]) n = n * 26 + (ch.charCodeAt(0) - 64); return n - 1; }
 
