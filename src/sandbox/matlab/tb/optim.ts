@@ -401,9 +401,16 @@ async function fmincon(args: Value[]): Promise<Value[]> {
   let g = await fdGrad(fn, x, f);
 
   const MAXIT = 300;
+  // Augmented-Lagrangian merit φ(x) = f + (μ/2)Σmax(0,g_ineq)² + μΣg_eq² + (μ/2)Σmax(0,c_nl)²
+  // (its gradient is exactly the gAug assembled below), used for the Armijo line search.
+  const meritOf = async (xx: number[], fval: number): Promise<number> => {
+    let p = fval;
+    for (let ci = 0; ci < A_ub.length; ci++) { const v = dot(A_ub[ci], xx) - b_ub[ci]; if (v > 0) p += 0.5 * mu * v * v; }
+    for (let ci = 0; ci < A_eq.length; ci++) { const v = dot(A_eq[ci], xx) - b_eq[ci]; p += mu * v * v; }
+    if (nonlcon) { const r = await callFnVec(nonlcon, xx); for (const c of r) { const v = Math.max(0, c); p += 0.5 * mu * v * v; } }
+    return p;
+  };
   for (let it = 0; it < MAXIT; it++) {
-    if (norm2(g) < 1e-7) break;
-
     // Augmented gradient: add penalty terms for violated constraints
     const gAug = clone(g);
     // Linear inequalities: A*x <= b → penalty for max(0, A*x-b)
@@ -430,18 +437,20 @@ async function fmincon(args: Value[]): Promise<Value[]> {
       }
     }
 
-    // Projected gradient step with backtrack
+    if (norm2(gAug) < 1e-7) break;   // KKT-ish: stationary point of the merit (objective + active penalties)
+
+    // Projected gradient step with Armijo backtracking on the MERIT (not the bare objective),
+    // so a step that increases f while reducing constraint violation can still be accepted.
     const d = gAug.map(v => -v);
-    let step = 1.0;
-    const slope = dot(g, d);
+    const slope = dot(gAug, d);                 // = −‖gAug‖² ≤ 0
+    const meritCur = await meritOf(x, f);
+    let step = 1.0, xNew = x, fNew = f;
     for (let ls = 0; ls < 30; ls++) {
-      const xNew = x.map((xi, i) => clamp(xi + step * d[i], i));
-      const fNew = await callFn(fn, xNew);
-      if (fNew < f + 1e-4 * step * Math.min(slope, 0)) break;
+      xNew = x.map((xi, i) => clamp(xi + step * d[i], i));
+      fNew = await callFn(fn, xNew);
+      if (await meritOf(xNew, fNew) <= meritCur + 1e-4 * step * slope) break;
       step *= 0.5;
     }
-    const xNew = x.map((xi, i) => clamp(xi + step * d[i], i));
-    const fNew = await callFn(fn, xNew);
     const gNew = await fdGrad(fn, xNew, fNew);
     if (norm2(xNew.map((v, i) => v - x[i])) < 1e-10) break;
     x = xNew; f = fNew; g = gNew;
@@ -597,10 +606,10 @@ async function intlinprog(args: Value[]): Promise<Value[]> {
 
     const nodeArgs = [
       args[0], // f
-      ...(args.slice(2, 5)), // A, b, Aeq, beq (if present)
+      ...(args.slice(2, 6)), // A, b, Aeq, beq (if present)
       rowVec(nodeLb), rowVec(nodeUb),
     ].filter((_, i, arr) => i < arr.length);
-    const [xNodeV, fNodeV, exitNodeV] = await linprog([args[0], ...args.slice(2, 5), rowVec(nodeLb), rowVec(nodeUb)]);
+    const [xNodeV, fNodeV, exitNodeV] = await linprog([args[0], ...args.slice(2, 6), rowVec(nodeLb), rowVec(nodeUb)]);
     if (asScalar(m(exitNodeV)) < 0) continue; // infeasible node
     const fNode = asScalar(m(fNodeV));
     if (fNode >= bestF - 1e-8) continue; // pruned
