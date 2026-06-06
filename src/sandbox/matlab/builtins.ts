@@ -3714,6 +3714,9 @@ export const BUILTINS: Record<string, Builtin> = {
     if (type === 'closeness') return ret(colVec(Array.from({ length: g.n }, (_, i) => { const { dist } = dijkstra(g, i); const reach = dist.filter((d) => isFinite(d) && d > 0); const sum = reach.reduce((s, d) => s + d, 0); return sum > 0 ? reach.length / sum * (reach.length / Math.max(1, g.n - 1)) : 0; })));
     if (type === 'betweenness') return ret(colVec(betweenness(g)));
     if (type === 'pagerank') return ret(colVec(pagerank(g)));
+    if (type === 'eigenvector') return ret(colVec(eigenvectorCentrality(g)));
+    if (type === 'hubs') return ret(colVec(hitsCentrality(g).hubs));
+    if (type === 'authorities') return ret(colVec(hitsCentrality(g).auth));
     throw new MatError(`centrality: unsupported type '${type}'`);
   },
   flipedge: async (a) => { const g = gArg(a[0]); return ret(makeGraph(g.directed, g.n, g.edges.map((e) => ({ s: e.t, t: e.s, w: e.w })), g.names)); },
@@ -7446,6 +7449,64 @@ function pagerank(g: Graph, damp = 0.85): number[] {
   return pr;
 }
 /** Strongly-connected components (Kosaraju); comp[node] = 0-based component id. */
+/** Eigenvector centrality (undirected), matching MATLAB centrality(G,'eigenvector'): per
+ *  connected component, principal eigenvector of A (power iteration from ones), abs, normalize
+ *  so the component's scores sum to 1, then scale by ni/n. Single-node components score 1/n. */
+function eigenvectorCentrality(g: Graph, tol = 1e-4, maxit = 100): number[] {
+  const n = g.n; if (n === 0) return [];
+  const A = adjacencyMat(g);                       // column-major: A.data[row + col*n]
+  const bins = connComp(g);                        // 1-based weak component labels
+  const out = new Array(n).fill(0);
+  const nComp = Math.max(0, ...bins);
+  for (let c = 1; c <= nComp; c++) {
+    const idx: number[] = []; for (let i = 0; i < n; i++) if (bins[i] === c) idx.push(i);
+    const ni = idx.length;
+    if (ni === 1) { out[idx[0]] = ni / n; continue; }
+    let v = new Array(ni).fill(1);
+    for (let it = 0; it < maxit; it++) {
+      const w = new Array(ni).fill(0);
+      for (let r = 0; r < ni; r++) { let s = 0; const rr = idx[r]; for (let k = 0; k < ni; k++) s += A.data[rr + idx[k] * n] * v[k]; w[r] = s; }
+      let nrm = 0; for (let r = 0; r < ni; r++) nrm += w[r] * w[r]; nrm = Math.sqrt(nrm);
+      if (nrm === 0) break;
+      for (let r = 0; r < ni; r++) w[r] /= nrm;
+      let diff = 0; for (let r = 0; r < ni; r++) diff = Math.max(diff, Math.abs(Math.abs(w[r]) - Math.abs(v[r])));
+      v = w; if (diff <= tol) break;
+    }
+    let sum = 0; for (let r = 0; r < ni; r++) { v[r] = Math.abs(v[r]); sum += v[r]; }
+    for (let r = 0; r < ni; r++) out[idx[r]] = (sum > 0 ? v[r] / sum : 0) * (ni / n);
+  }
+  return out;
+}
+/** HITS hubs & authorities (digraph), matching MATLAB centrality(D,'hubs'|'authorities'): per
+ *  weak component, MATLAB's hitsIteration on M=A' with L1 normalization each step, inf-norm
+ *  stopping tol; component scores scaled by ni/n. */
+function hitsCentrality(g: Graph, tol = 1e-4, maxit = 100): { hubs: number[]; auth: number[] } {
+  const n = g.n; const hubs = new Array(n).fill(0); const auth = new Array(n).fill(0);
+  if (n === 0) return { hubs, auth };
+  const A = adjacencyMat(g);                       // A.data[row + col*n]
+  const bins = connComp(g); const nComp = Math.max(0, ...bins);
+  for (let c = 1; c <= nComp; c++) {
+    const idx: number[] = []; for (let i = 0; i < n; i++) if (bins[i] === c) idx.push(i);
+    const ni = idx.length;
+    if (ni === 1) { hubs[idx[0]] = ni / n; auth[idx[0]] = ni / n; continue; }
+    const Mv = (x: number[]) => { const y = new Array(ni).fill(0); for (let r = 0; r < ni; r++) { let s = 0; const rr = idx[r]; for (let k = 0; k < ni; k++) s += A.data[idx[k] + rr * n] * x[k]; y[r] = s; } return y; };
+    const Mtv = (x: number[]) => { const y = new Array(ni).fill(0); for (let r = 0; r < ni; r++) { let s = 0; const rr = idx[r]; for (let k = 0; k < ni; k++) s += A.data[rr + idx[k] * n] * x[k]; y[r] = s; } return y; };
+    const l1 = (x: number[]) => { let s = 0; for (const v of x) s += v; return s; };
+    let h = new Array(ni).fill(1); const hs = l1(h); for (let r = 0; r < ni; r++) h[r] /= hs;
+    let a = Mv(h); const as0 = l1(a); if (as0 !== 0) for (let r = 0; r < ni; r++) a[r] /= as0;
+    let chA = Infinity;
+    for (let jj = 0; jj < maxit; jj++) {
+      const nh = Mtv(a); const nhs = l1(nh); if (nhs !== 0) for (let r = 0; r < ni; r++) nh[r] /= nhs;
+      let chH = 0; for (let r = 0; r < ni; r++) chH = Math.max(chH, Math.abs(h[r] - nh[r])); h = nh;
+      if (chA <= tol && chH <= tol) break;
+      const na = Mv(h); const nas = l1(na); if (nas !== 0) for (let r = 0; r < ni; r++) na[r] /= nas;
+      chA = 0; for (let r = 0; r < ni; r++) chA = Math.max(chA, Math.abs(a[r] - na[r])); a = na;
+      if (chA <= tol && chH <= tol) break;
+    }
+    for (let r = 0; r < ni; r++) { hubs[idx[r]] = h[r] * (ni / n); auth[idx[r]] = a[r] * (ni / n); }
+  }
+  return { hubs, auth };
+}
 function sccKosaraju(g: Graph): { comp: number[]; count: number } {
   const out = adjList(g, 'out'); const order: number[] = []; const seen = new Array(g.n).fill(false);
   const dfs1 = (u: number) => { seen[u] = true; for (const { to } of out[u]) if (!seen[to]) dfs1(to); order.push(u); };
