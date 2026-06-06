@@ -167,6 +167,21 @@ const autocorr: Builtin = (a) => {
   const acf: number[] = []; for (let k = 0; k <= nlags; k++) { let s = 0; for (let t = 0; t < N - k; t++) s += d[t] * d[t + k]; acf.push(s / c0); }
   return Promise.resolve([colVec(acf)]);
 };
+/** crosscorr(y1,y2[,NumLags]): sample cross-correlation, lags −L..L (normalized). */
+const crosscorr: Builtin = (a) => {
+  const x = toArray(m(a[0])), y = toArray(m(a[1])), N = x.length;
+  let L = Math.min(20, N - 1);
+  for (let i = 2; i < a.length; i++) {
+    if (isMat(a[i]) && !(a[i] as Mat).isChar && (a[i] as Mat).rows) { L = Math.round(asScalar(a[i])); break; }
+    if (asString(a[i]).toLowerCase().startsWith('numlags') && a[i + 1] !== undefined) { L = Math.round(asScalar(a[i + 1])); break; }
+  }
+  const mx = x.reduce((s, v) => s + v, 0) / N, my = y.reduce((s, v) => s + v, 0) / N;
+  const dx = x.map((v) => v - mx), dy = y.map((v) => v - my);
+  const denom = Math.sqrt(dx.reduce((s, v) => s + v * v, 0) * dy.reduce((s, v) => s + v * v, 0));
+  const xcf: number[] = [];
+  for (let k = -L; k <= L; k++) { let s = 0; for (let t = 0; t < N; t++) { const tk = t + k; if (tk >= 0 && tk < N) s += dx[t] * dy[tk]; } xcf.push(s / denom); }
+  return Promise.resolve([colVec(xcf)]);
+};
 /** aicbic(logL,numParam[,numObs]): Akaike (and Bayesian) information criteria. */
 const aicbic: Builtin = (a, nargout) => { const L = asScalar(a[0]), k = asScalar(a[1]); const outs: Value[] = [scalar(-2 * L + 2 * k)]; if (nargout >= 2) outs.push(scalar(-2 * L + k * Math.log(asScalar(a[2])))); return Promise.resolve(outs); };
 
@@ -174,7 +189,7 @@ export const ECON: ToolboxModule = {
   id: 'econ',
   name: 'Econometrics Toolbox',
   docBase: 'https://www.mathworks.com/help/econ/ref/',
-  builtins: { adftest, pptest, price2ret, ret2price, tick2ret, ret2tick, lagmatrix, aicbic, autocorr },
+  builtins: { adftest, pptest, price2ret, ret2price, tick2ret, ret2tick, lagmatrix, aicbic, autocorr, crosscorr },
   help: {
     adftest: { summary: 'Returns the rejection decision from conducting an augmented Dickey-Fuller test for a unit root in the input univariate time series.', syntax: ['h = adftest(y)', 'StatTbl = adftest(Tbl)', '[ ___ ] = adftest( ___ ,Name=Value)', '[ ___ ,reg] = adftest( ___ )'], seealso: ['kpsstest', 'lmctest', 'pptest', 'vratiotest', 'i10test'] },
     pptest: { summary: 'Returns the rejection decision from conducting the Phillips-Perron test for a unit root in the input univariate time series.', syntax: ['h = pptest(y)', 'StatTbl = pptest(Tbl)', '[ ___ ] = pptest( ___ ,Name=Value)', '[ ___ ,reg] = pptest( ___ )'], seealso: ['adftest', 'kpsstest', 'vratiotest', 'lmctest'] },
