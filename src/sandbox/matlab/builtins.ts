@@ -1381,9 +1381,9 @@ export const BUILTINS: Record<string, Builtin> = {
   // structure predicates
   issymmetric: async (a) => ret(bool(isSymmetric(m(a[0])))),
   ishermitian: async (a) => ret(bool(isSymmetric(m(a[0])))),
-  isdiag: async (a) => { const A = m(a[0]); for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) if (r !== c && A.data[r + c * A.rows] !== 0) return ret(bool(false)); return ret(bool(true)); },
-  istriu: async (a) => { const A = m(a[0]); for (let c = 0; c < A.cols; c++) for (let r = c + 1; r < A.rows; r++) if (A.data[r + c * A.rows] !== 0) return ret(bool(false)); return ret(bool(true)); },
-  istril: async (a) => { const A = m(a[0]); for (let r = 0; r < A.rows; r++) for (let c = r + 1; c < A.cols; c++) if (A.data[r + c * A.rows] !== 0) return ret(bool(false)); return ret(bool(true)); },
+  isdiag: async (a) => { const A = m(a[0]); const nz = (i: number) => A.data[i] !== 0 || (A.idata != null && A.idata[i] !== 0); for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) if (r !== c && nz(r + c * A.rows)) return ret(bool(false)); return ret(bool(true)); },
+  istriu: async (a) => { const A = m(a[0]); const nz = (i: number) => A.data[i] !== 0 || (A.idata != null && A.idata[i] !== 0); for (let c = 0; c < A.cols; c++) for (let r = c + 1; r < A.rows; r++) if (nz(r + c * A.rows)) return ret(bool(false)); return ret(bool(true)); },
+  istril: async (a) => { const A = m(a[0]); const nz = (i: number) => A.data[i] !== 0 || (A.idata != null && A.idata[i] !== 0); for (let r = 0; r < A.rows; r++) for (let c = r + 1; c < A.cols; c++) if (nz(r + c * A.rows)) return ret(bool(false)); return ret(bool(true)); },
   bandwidth: async (a, n) => {
     const A = m(a[0]); let lower = 0, upper = 0;
     for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) if (A.data[r + c * A.rows] !== 0) { if (r > c) lower = Math.max(lower, r - c); else if (c > r) upper = Math.max(upper, c - r); }
@@ -1393,7 +1393,8 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   isbanded: async (a) => {
     const A = m(a[0]); const lo = Math.round(asScalar(a[1])); const up = Math.round(asScalar(a[2]));
-    for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) if (A.data[r + c * A.rows] !== 0 && (r - c > lo || c - r > up)) return ret(bool(false));
+    const nz = (i: number) => A.data[i] !== 0 || (A.idata != null && A.idata[i] !== 0);
+    for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) if (nz(r + c * A.rows) && (r - c > lo || c - r > up)) return ret(bool(false));
     return ret(bool(true));
   },
   // ── more decompositions / matrix functions ──
@@ -1666,8 +1667,8 @@ export const BUILTINS: Record<string, Builtin> = {
     }));
   },
   rmoutliers: async (a) => { const c = toArray(m(a[0])); const mask = outlierMaskWith(c, a); const kept = c.filter((_, i) => mask[i] === 0); return ret(m(a[0]).cols === 1 ? colVec(kept) : rowVec(kept)); },
-  islocalmax: async (a) => { const A = m(a[0]); const v = toArray(A); const o = v.map((_, i) => (i > 0 && i < v.length - 1 && v[i] > v[i - 1] && v[i] > v[i + 1] ? 1 : 0)); const out = A.cols === 1 ? colVec(o) : rowVec(o); out.isBool = true; return [out]; },
-  islocalmin: async (a) => { const A = m(a[0]); const v = toArray(A); const o = v.map((_, i) => (i > 0 && i < v.length - 1 && v[i] < v[i - 1] && v[i] < v[i + 1] ? 1 : 0)); const out = A.cols === 1 ? colVec(o) : rowVec(o); out.isBool = true; return [out]; },
+  islocalmax: async (a) => { const A = m(a[0]); const out = localExtrema(A, (a1, b1) => a1 > b1); return [out]; },
+  islocalmin: async (a) => { const A = m(a[0]); const out = localExtrema(A, (a1, b1) => a1 < b1); return [out]; },
   isapprox: async (a) => { const tol = a.length >= 3 ? asScalar(a[2]) : 1e-6; const r = elementwise(m(a[0]), m(a[1]), (x, y) => (Math.abs(x - y) <= tol + tol * Math.max(Math.abs(x), Math.abs(y)) ? 1 : 0)); return ret({ ...r, isBool: true }); },
   erfinv: async (a) => ret(map(m(a[0]), erfinvFn)),
   // ── set operations ──
@@ -1881,7 +1882,15 @@ export const BUILTINS: Record<string, Builtin> = {
   cart2sph: async (a, n) => { const X = m(a[0]), Y = m(a[1]), Z = m(a[2]); const sz = [X, Y, Z].reduce((mx, v) => v.data.length > mx.data.length ? v : mx, X); const g = (v: Mat, i: number) => v.data.length === 1 ? v.data[0] : v.data[i]; const az = zeros(sz.rows, sz.cols), el = zeros(sz.rows, sz.cols), r = zeros(sz.rows, sz.cols); for (let i = 0; i < az.data.length; i++) { const x = g(X, i), y = g(Y, i), z = g(Z, i); az.data[i] = Math.atan2(y, x); el.data[i] = Math.atan2(z, Math.hypot(x, y)); r.data[i] = Math.sqrt(x * x + y * y + z * z); } return n >= 3 ? [az, el, r] : n >= 2 ? [az, el] : [az]; },
   sph2cart: async (a, n) => { const AZ = m(a[0]), EL = m(a[1]), R = m(a[2]); const sz = [AZ, EL, R].reduce((mx, v) => v.data.length > mx.data.length ? v : mx, AZ); const g = (v: Mat, i: number) => v.data.length === 1 ? v.data[0] : v.data[i]; const x = zeros(sz.rows, sz.cols), y = zeros(sz.rows, sz.cols), z = zeros(sz.rows, sz.cols); for (let i = 0; i < x.data.length; i++) { const az = g(AZ, i), el = g(EL, i), r = g(R, i); x.data[i] = r * Math.cos(el) * Math.cos(az); y.data[i] = r * Math.cos(el) * Math.sin(az); z.data[i] = r * Math.sin(el); } return n >= 3 ? [x, y, z] : n >= 2 ? [x, y] : [x]; },
   // ── geometry ──
-  polyarea: async (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])); let s = 0; const n = x.length; for (let i = 0; i < n; i++) { const j = (i + 1) % n; s += x[i] * y[j] - x[j] * y[i]; } return ret(scalar(Math.abs(s) / 2)); },
+  polyarea: async (a) => {
+    const X = m(a[0]), Y = m(a[1]);
+    const area1 = (x: number[], y: number[]) => { let s = 0; const n = x.length; for (let i = 0; i < n; i++) { const j = (i + 1) % n; s += x[i] * y[j] - x[j] * y[i]; } return Math.abs(s) / 2; };
+    if (X.rows === 1 || X.cols === 1) return ret(scalar(area1(toArray(X), toArray(Y))));
+    // matrix → one polygon per column, result is 1×cols
+    const out = zeros(1, X.cols);
+    for (let c = 0; c < X.cols; c++) { const xc: number[] = [], yc: number[] = []; for (let r = 0; r < X.rows; r++) { xc.push(X.data[r + c * X.rows]); yc.push(Y.data[r + c * Y.rows]); } out.data[c] = area1(xc, yc); }
+    return ret(out);
+  },
   inpolygon: async (a) => { const xq = m(a[0]), yq = m(a[1]); const xv = toArray(m(a[2])), yv = toArray(m(a[3])); const o = zeros(xq.rows, xq.cols); for (let k = 0; k < xq.data.length; k++) o.data[k] = pointInPoly(xq.data[k], yq.data[k], xv, yv) ? 1 : 0; o.isBool = true; return [o]; },
   convhull: async (a, n) => {
     let x: number[], y: number[];
@@ -2783,10 +2792,13 @@ export const BUILTINS: Record<string, Builtin> = {
 
   // ═════════ NUMERICAL METHODS — ODE · BVP · INTERP · OPTIMIZATION ═════════
   trapz: async (a) => {
-    let x: number[], y: number[];
-    if (a.length >= 2) { x = toArray(m(a[0])); y = toArray(m(a[1])); } else { y = toArray(m(a[0])); x = y.map((_, i) => i + 1); }
-    let s = 0; for (let i = 1; i < y.length; i++) s += (x[i] - x[i - 1]) * (y[i] + y[i - 1]) / 2;
-    return ret(scalar(s));
+    const X = a.length >= 2 ? m(a[0]) : null; const Y = m(a.length >= 2 ? a[1] : a[0]);
+    const trap1 = (y: number[], x: number[]) => { let s = 0; for (let i = 1; i < y.length; i++) s += (x[i] - x[i - 1]) * (y[i] + y[i - 1]) / 2; return s; };
+    if (Y.rows === 1 || Y.cols === 1) { const y = toArray(Y); const x = X ? toArray(X) : y.map((_, i) => i + 1); return ret(scalar(trap1(y, x))); }
+    // matrix Y → integrate each column (MATLAB), result is 1×cols
+    const xv = X ? toArray(X) : Array.from({ length: Y.rows }, (_, i) => i + 1); const out = zeros(1, Y.cols);
+    for (let c = 0; c < Y.cols; c++) { const col: number[] = []; for (let r = 0; r < Y.rows; r++) col.push(Y.data[r + c * Y.rows]); out.data[c] = trap1(col, xv); }
+    return ret(out);
   },
   gradient: async (a, nargout) => {
     if (isSym(a[0])) { const s = a[0]; const vars = a.length >= 2 ? symNames(a[1]) : symVarsOf(s); return ret(makeSym(vars.length, 1, vars.map((vn) => simplifyExpr(diffExpr(s.exprs[0], vn))))); }
@@ -2918,6 +2930,7 @@ export const BUILTINS: Record<string, Builtin> = {
   bvp5c: async (a, _n, env) => bvp4cSolve(a, env),
   bvpinit: async (a, _n, env) => {
     const x = toArray(m(a[0]));
+    if (x.length === 0) throw new MatError('bvpinit: the mesh xmesh must be a nonempty vector');
     let Y: Mat;
     if (isHandle(a[1])) { const rows: number[][] = []; for (const xi of x) rows.push(toArray(m((await env.callHandle(a[1] as Handle, [scalar(xi)], 1))[0]))); const neq = rows[0].length; Y = zeros(neq, x.length); for (let i = 0; i < x.length; i++) for (let k = 0; k < neq; k++) Y.data[k + i * neq] = rows[i][k]; }
     else { const yc = toArray(m(a[1])); const neq = yc.length; Y = zeros(neq, x.length); for (let i = 0; i < x.length; i++) for (let k = 0; k < neq; k++) Y.data[k + i * neq] = yc[k]; }
@@ -2982,7 +2995,13 @@ export const BUILTINS: Record<string, Builtin> = {
     const g = a.map((x) => toArray(m(x))); const n = Math.max(...g.map((x) => x.length)); const at = (gi: number, i: number) => g[gi] ? (g[gi].length === 1 ? g[gi][0] : g[gi][i]) : 0;
     const o = zeros(n, 1); for (let i = 0; i < n; i++) o.data[i] = dnum(at(0, i), at(1, i), at(2, i), at(3, i), at(4, i), at(5, i)); return ret(numel(o) === 1 ? scalar(o.data[0]) : o);
   },
-  datevec: async (a) => { const n = isTemporal(a[0]) ? a[0].data[0] : asScalar(m(a[0])); const v = dvec(n); return ret(rowVec(v)); },
+  datevec: async (a) => {
+    const nums = isTemporal(a[0]) ? Array.from(a[0].data as Float64Array) : toArray(m(a[0]));
+    if (nums.length <= 1) return ret(rowVec(dvec(nums[0] ?? 0)));
+    const N = nums.length; const out = zeros(N, 6);   // one date per row
+    for (let i = 0; i < N; i++) { const v = dvec(nums[i]); for (let j = 0; j < 6; j++) out.data[i + j * N] = v[j]; }
+    return ret(out);
+  },
   datestr: async (a) => {
     const fmt = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar)) ? asString(a[1]) : null;
     if (isTemporal(a[0])) { const t = a[0]; return ret(t.data.length === 1 ? str(dstr(t.data[0], fmt)) : charMatRows(Array.from(t.data, (n) => dstr(n, fmt)))); }
@@ -3280,10 +3299,13 @@ export const BUILTINS: Record<string, Builtin> = {
     return [rowVec(uo), rowVec(du)];
   },
   cumtrapz: async (a) => {
-    let x: number[], y: number[];
-    if (a.length >= 2) { x = toArray(m(a[0])); y = toArray(m(a[1])); } else { y = toArray(m(a[0])); x = y.map((_, i) => i + 1); }
-    const out = [0]; for (let i = 1; i < y.length; i++) out.push(out[i - 1] + (x[i] - x[i - 1]) * (y[i] + y[i - 1]) / 2);
-    return ret(m(a[0]).cols === 1 && a.length < 2 ? colVec(out) : (m(a.length >= 2 ? a[1] : a[0]).cols === 1 ? colVec(out) : rowVec(out)));
+    const X = a.length >= 2 ? m(a[0]) : null; const Y = m(a.length >= 2 ? a[1] : a[0]);
+    const cum1 = (y: number[], x: number[]) => { const o = [0]; for (let i = 1; i < y.length; i++) o.push(o[i - 1] + (x[i] - x[i - 1]) * (y[i] + y[i - 1]) / 2); return o; };
+    if (Y.rows === 1 || Y.cols === 1) { const y = toArray(Y); const x = X ? toArray(X) : y.map((_, i) => i + 1); const o = cum1(y, x); return ret(Y.cols === 1 ? colVec(o) : rowVec(o)); }
+    // matrix Y → cumulative integral down each column
+    const xv = X ? toArray(X) : Array.from({ length: Y.rows }, (_, i) => i + 1); const out = zeros(Y.rows, Y.cols);
+    for (let c = 0; c < Y.cols; c++) { const col: number[] = []; for (let r = 0; r < Y.rows; r++) col.push(Y.data[r + c * Y.rows]); const o = cum1(col, xv); for (let r = 0; r < Y.rows; r++) out.data[r + c * Y.rows] = o[r]; }
+    return ret(out);
   },
   del2: async (a) => {
     const U = m(a[0]);
@@ -4092,7 +4114,7 @@ export const BUILTINS: Record<string, Builtin> = {
     else if (X.rows === 1 || X.cols === 1) return ret(scalar(variance(toArray(X), w)));
     return ret(covMatrix(X, w));
   },
-  corrcoef: async (a) => { let X = m(a[0]); if (a.length >= 2) X = horzcat([colvecOf(X), colvecOf(m(a[1]))]); const C = covMatrix(X); const p = C.rows; const R = zeros(p, p); for (let i = 0; i < p; i++) for (let j = 0; j < p; j++) R.data[i + j * p] = C.data[i + j * p] / Math.sqrt(C.data[i + i * p] * C.data[j + j * p]); return ret(R); },
+  corrcoef: async (a) => { let X = m(a[0]); if (a.length >= 2) X = horzcat([colvecOf(X), colvecOf(m(a[1]))]); else if (X.rows === 1 || X.cols === 1) return ret(scalar(1)); const C = covMatrix(X); const p = C.rows; const R = zeros(p, p); for (let i = 0; i < p; i++) for (let j = 0; j < p; j++) R.data[i + j * p] = C.data[i + j * p] / Math.sqrt(C.data[i + i * p] * C.data[j + j * p]); return ret(R); },
   corrcov: async (a) => { const C = m(a[0]); const p = C.rows; const sd = Array.from({ length: p }, (_, i) => Math.sqrt(C.data[i + i * p])); const R = zeros(p, p); for (let i = 0; i < p; i++) for (let j = 0; j < p; j++) R.data[i + j * p] = C.data[i + j * p] / (sd[i] * sd[j]); return ret(R); },
   humps: async (a) => { const x = a.length ? toArray(m(a[0])) : Array.from({ length: 101 }, (_, i) => i / 100); return ret(rowVec(x.map((t) => 1 / ((t - 0.3) ** 2 + 0.01) + 1 / ((t - 0.9) ** 2 + 0.04) - 6))); },
   normpdf: async (a) => { const x = m(a[0]); const mu = a.length >= 2 ? asScalar(a[1]) : 0, sg = a.length >= 3 ? asScalar(a[2]) : 1; return ret(map(x, (t) => Math.exp(-((t - mu) ** 2) / (2 * sg * sg)) / (sg * Math.sqrt(2 * Math.PI)))); },
@@ -6302,6 +6324,14 @@ function erfinvFn(y: number): number {
   let x = Math.sign(y) * Math.sqrt(Math.sqrt(t1 * t1 - ln / a) - t1);
   x -= (erfFn(x) - y) / (2 / Math.sqrt(Math.PI) * Math.exp(-x * x)); // Newton refine
   return x;
+}
+/** Strict local extrema mask (islocalmax/islocalmin): along the single dimension for a
+ *  vector, otherwise down each column for a matrix. Endpoints are never extrema. */
+function localExtrema(A: Mat, cmp: (a: number, b: number) => boolean): Mat {
+  const out = zeros(A.rows, A.cols); out.isBool = true;
+  if (A.rows === 1) { for (let c = 1; c < A.cols - 1; c++) if (cmp(A.data[c], A.data[c - 1]) && cmp(A.data[c], A.data[c + 1])) out.data[c] = 1; return out; }
+  for (let c = 0; c < A.cols; c++) for (let r = 1; r < A.rows - 1; r++) { const i = r + c * A.rows; if (cmp(A.data[i], A.data[i - 1]) && cmp(A.data[i], A.data[i + 1])) out.data[i] = 1; }
+  return out;
 }
 /** Scaled complementary error function erfcx(x) = exp(x²)·erfc(x), accurate for all x
  *  via the Numerical-Recipes Chebyshev fit (no overflow for large x). */
