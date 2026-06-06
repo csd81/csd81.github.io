@@ -7,6 +7,12 @@ import { exprToStr, exprToLatex } from './sym';
 export const TEX_OPEN = '';
 export const TEX_CLOSE = '';
 
+/** Sentinel pair wrapping a `help` page in the output stream; the command window
+ *  renders the enclosed text richly (coloured headers, highlighted .m syntax,
+ *  clickable "See also" links). Plain text everywhere else. */
+export const HELP_OPEN = '';
+export const HELP_CLOSE = '';
+
 /** Format a complex scalar as `a + bi` / `a - bi`. */
 function fmtC(re: number, im: number): string {
   const sign = im < 0 || Object.is(im, -0) ? '-' : '+';

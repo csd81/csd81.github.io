@@ -1,7 +1,8 @@
 /** The interactive command window (REPL scrollback + input line with history). */
 import { Fragment, useEffect, useRef, useState } from 'react';
 import type { ConsoleLine } from './useSandbox';
-import { TEX_OPEN, TEX_CLOSE } from './matlab/format';
+import { TEX_OPEN, TEX_CLOSE, HELP_OPEN, HELP_CLOSE } from './matlab/format';
+import { highlightMatlab } from './matlab/highlight';
 import { Math as Tex } from '../shared/ui/Math';
 
 /** Turn http(s) URLs in console text into clickable links. */
@@ -14,16 +15,95 @@ function linkify(text: string, key: number) {
   );
 }
 
+/** Syntax-highlight a line of .m code (used for Syntax/Examples in help pages). */
+function highlightCode(code: string, key: number) {
+  return highlightMatlab(code).map((s, i) => (
+    <span key={`${key}.${i}`} className={s.t === 'plain' ? undefined : 'tok-' + s.t}>{s.v}</span>
+  ));
+}
+
+/**
+ * Render a `help` page (text between the HELP sentinels) richly: coloured section
+ * headers, syntax-highlighted .m examples, and clickable "See also" links that
+ * open the help for that function. Parses the regular layout emitted by
+ * `Interp.help`/`builtinHelp` (see help.ts).
+ */
+function HelpBlock({ text, onSubmit }: { text: string; onSubmit: (t: string) => void }) {
+  const lines = text.replace(/\n+$/, '').split('\n');
+  const out: React.ReactNode[] = [];
+  let section = ''; // current section: Syntax | Examples | Description | Documentation | ''
+
+  lines.forEach((ln, i) => {
+    // Title line: " name - summary"
+    if (i === 0) {
+      const m = ln.match(/^ (\S[^\n]*?) - ([\s\S]+)$/);
+      if (m) {
+        out.push(
+          <div key={i} className="mlab__help-title">
+            <span className="mlab__help-name">{m[1]}</span> — {m[2]}
+          </div>,
+        );
+      } else {
+        out.push(<div key={i} className="mlab__help-title"><span className="mlab__help-name">{ln.trim()}</span></div>);
+      }
+      return;
+    }
+    if (ln.trim() === '') { out.push(<div key={i} className="mlab__help-gap" />); return; }
+
+    // Section headers (4-space indent).
+    let m = ln.match(/^ {4}(Syntax|Examples|Description)\s*$/);
+    if (m) { section = m[1]; out.push(<div key={i} className="mlab__help-head">{m[1]}</div>); return; }
+    m = ln.match(/^ {4}Documentation for (.+)$/);
+    if (m) { section = 'Documentation'; out.push(<div key={i} className="mlab__help-head">Documentation for {m[1]}</div>); return; }
+    m = ln.match(/^ {4}Toolbox: (.+)$/);
+    if (m) { section = ''; out.push(<div key={i} className="mlab__help-tag">Toolbox: <span className="mlab__help-tbname">{m[1]}</span></div>); return; }
+    m = ln.match(/^ {4}See also (.+)$/);
+    if (m) {
+      const names = m[1].replace(/\.$/, '').split(/,\s*/).filter(Boolean);
+      section = '';
+      out.push(
+        <div key={i} className="mlab__help-seealso">
+          <span className="mlab__help-head mlab__help-head--inline">See also</span>{' '}
+          {names.map((nm, j) => (
+            <Fragment key={j}>
+              {j > 0 && ', '}
+              <button type="button" className="mlab__help-link" onClick={() => onSubmit('help ' + nm)}>{nm}</button>
+            </Fragment>
+          ))}
+        </div>,
+      );
+      return;
+    }
+
+    // Content line (6-space indent, but be lenient).
+    const body = ln.replace(/^ {1,6}/, '');
+    if (section === 'Syntax' || section === 'Examples') {
+      out.push(<div key={i} className="mlab__help-code">{highlightCode(body, i)}</div>);
+    } else {
+      out.push(<div key={i} className="mlab__help-text">{linkify(body, i)}</div>);
+    }
+  });
+
+  return <div className="mlab__help">{out}</div>;
+}
+
 // Symbolic output is wrapped in a sentinel pair carrying a LaTeX fragment; render
 // those with KaTeX inline and leave the surrounding monospace text untouched.
+// Help pages are wrapped in their own sentinel pair and rendered as a rich block.
 const TEX_RE = new RegExp(`${TEX_OPEN}([\\s\\S]*?)${TEX_CLOSE}`, 'g');
-function renderLine(text: string) {
-  const segs = text.split(TEX_RE); // even indices = plain text, odd = LaTeX
-  return segs.map((s, i) =>
-    i % 2 === 1
-      ? <Tex key={i} className="mlab__tex" tex={s} />
-      : <Fragment key={i}>{linkify(s, i)}</Fragment>,
-  );
+const HELP_RE = new RegExp(`${HELP_OPEN}([\\s\\S]*?)${HELP_CLOSE}`, 'g');
+function renderLine(text: string, onSubmit: (t: string) => void) {
+  // Split off any help blocks first (even indices = other text, odd = help page).
+  const hParts = text.split(HELP_RE);
+  return hParts.map((part, hi) => {
+    if (hi % 2 === 1) return <HelpBlock key={`h${hi}`} text={part} onSubmit={onSubmit} />;
+    const segs = part.split(TEX_RE); // even indices = plain text, odd = LaTeX
+    return segs.map((s, i) =>
+      i % 2 === 1
+        ? <Tex key={`${hi}.${i}`} className="mlab__tex" tex={s} />
+        : <Fragment key={`${hi}.${i}`}>{linkify(s, i)}</Fragment>,
+    );
+  });
 }
 
 export default function CommandWindow({
@@ -77,7 +157,7 @@ export default function CommandWindow({
       </div>
       <div className="mlab__scroll" ref={scrollRef} onClick={() => inputRef.current?.focus()}>
         {lines.map((l, i) => (
-          <pre key={i} className={`mlab__line mlab__line--${l.kind}`}>{renderLine(l.kind === 'cmd' ? '>> ' + l.text : l.text)}</pre>
+          <pre key={i} className={`mlab__line mlab__line--${l.kind}`}>{renderLine(l.kind === 'cmd' ? '>> ' + l.text : l.text, onSubmit)}</pre>
         ))}
         <div className="mlab__prompt-row">
           <span className="mlab__caret">{prompt !== null ? '' : '>>'}</span>

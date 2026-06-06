@@ -29,7 +29,7 @@ import {
   balance as balanceFn, rsf2csf as rsf2csfFn, qz as qzFn, ordschur as ordschurFn, ordqz as ordqzFn, schurEig as schurEigFn,
   hermiteFormInt, smithFormInt,
 } from './linalg';
-import { dispValue, sprintf, symTexLines, setFormatMode, fmtTemporal } from './format';
+import { dispValue, sprintf, symTexLines, setFormatMode, fmtTemporal, HELP_OPEN, HELP_CLOSE } from './format';
 import { parseCsv, csvToTable, csvToMatrix, matrixToCsv, xlsxToCsv, parseMat, type Csv } from './io';
 import type { Graphics } from './graphics';
 import {
@@ -4723,8 +4723,8 @@ export const BUILTINS: Record<string, Builtin> = {
   toc: async () => ret(scalar(0)),
 
   // ═══════════════════════ HELP · WORKSPACE ═══════════════════════
-  help: async (a, _n, env) => { env.output((a.length ? env.help(asString(a[0])) : GENERAL_HELP) + '\n'); return []; },
-  doc: async (a, _n, env) => { env.output((a.length ? env.help(asString(a[0])) : GENERAL_HELP) + '\n'); return []; },
+  help: async (a, _n, env) => { env.output((a.length ? HELP_OPEN + env.help(asString(a[0])) + HELP_CLOSE : GENERAL_HELP) + '\n'); return []; },
+  doc: async (a, _n, env) => { env.output((a.length ? HELP_OPEN + env.help(asString(a[0])) + HELP_CLOSE : GENERAL_HELP) + '\n'); return []; },
   lookfor: async (a, _n, env) => { env.output(a.length ? env.help(asString(a[0])) + '\n' : GENERAL_HELP + '\n'); return []; },
   clear: async (a, _n, env) => { env.clearWorkspace(a.map((v) => asString(v))); return []; },
   format: async (a) => { setFormatMode(a.map((v) => asString(v)).join('')); return []; },

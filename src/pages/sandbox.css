@@ -217,6 +217,32 @@
 .mlab__line--prompt { color: #ffd479; }
 .mlab__link { color: #7fd1ff; text-decoration: underline; }
 .mlab__link:hover { color: #aee4ff; }
+
+/* ── Rich `help` pages (coloured headers, highlighted .m syntax, See-also links) ── */
+.mlab__help { display: block; margin: 0.1rem 0 0.5rem; }
+.mlab__help-title { color: #e6ebf5; margin-bottom: 0.35rem; }
+.mlab__help-name { color: #ffd479; font-weight: 700; }
+.mlab__help-head { color: #7fd1ff; font-weight: 700; margin: 0.5rem 0 0.15rem; letter-spacing: 0.02em; }
+.mlab__help-head--inline { display: inline; margin: 0; }
+.mlab__help-code { padding-left: 2ch; white-space: pre-wrap; }
+.mlab__help-text { padding-left: 2ch; color: #c6ccd8; }
+.mlab__help-gap { height: 0.35rem; }
+.mlab__help-tag { margin-top: 0.5rem; color: #9aa3af; }
+.mlab__help-tbname { color: #b9a3e6; }
+.mlab__help-seealso { margin-top: 0.5rem; color: #9aa3af; }
+.mlab__help-link {
+  background: none; border: none; padding: 0; margin: 0; font: inherit; cursor: pointer;
+  color: #7fd1ff; text-decoration: underline; text-underline-offset: 2px;
+}
+.mlab__help-link:hover { color: #aee4ff; }
+/* Highlight tokens inside help code use the dark palette (the scrollback is dark). */
+.mlab__help-code .tok-comment { color: #6a9955; font-style: italic; }
+.mlab__help-code .tok-string  { color: #ce9178; }
+.mlab__help-code .tok-number  { color: #b5cea8; }
+.mlab__help-code .tok-keyword { color: #569cd6; font-weight: 600; }
+.mlab__help-code .tok-builtin { color: #c586c0; }
+.mlab__help-code .tok-op      { color: #9aa3af; }
+
 /* Symbolic results render as inline KaTeX inside the monospace scrollback. */
 .mlab__tex { display: inline-block; vertical-align: middle; }
 .mlab__tex .katex { font-size: 1.06em; }
