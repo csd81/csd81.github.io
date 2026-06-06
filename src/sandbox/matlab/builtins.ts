@@ -1005,6 +1005,32 @@ export const BUILTINS: Record<string, Builtin> = {
     const out: number[] = []; for (let i = 0; i < n; i++) out.push(lo + (hi - lo) * i / (n - 1));
     return ret(rowVec(out));
   },
+  // freqspace(n) | freqspace(n,'whole') | [f1,f2]=freqspace(n) | [f1,f2]=freqspace(n,'meshgrid')
+  freqspace: async (a, nargout) => {
+    const nv = toArray(m(a[0]));
+    const hasFlag = a.length > 1;
+    // colon a:step:b element count, matching MATLAB's tolerance.
+    const colon = (start: number, step: number, stop: number) => {
+      const cnt = Math.floor((stop - start) / step + 1e-10) + 1;
+      const out: number[] = []; for (let k = 0; k < cnt; k++) out.push(start + k * step); return out;
+    };
+    if (nargout > 1) {
+      const n1 = nv[0], n2 = nv.length >= 2 ? nv[1] : nv[0];           // isscalar(n) → [n n]
+      const f1arr: number[] = []; for (let k = 0; k < n2; k++) f1arr.push((k - Math.floor(n2 / 2)) * (2 / n2));
+      const f2arr: number[] = []; for (let k = 0; k < n1; k++) f2arr.push((k - Math.floor(n1 / 2)) * (2 / n1));
+      if (hasFlag) {                                                   // 'meshgrid'
+        const rows = f2arr.length, cols = f1arr.length;
+        const X = new Float64Array(rows * cols), Y = new Float64Array(rows * cols);
+        for (let j = 0; j < cols; j++) for (let i = 0; i < rows; i++) { X[i + j * rows] = f1arr[j]; Y[i + j * rows] = f2arr[i]; }
+        return [mat(rows, cols, X), mat(rows, cols, Y)];
+      }
+      return [rowVec(f1arr), rowVec(f2arr)];
+    }
+    const n = nv[0];
+    if (hasFlag) return ret(rowVec(colon(0, 2 / n, 2 * (n - 1) / n)));  // 'whole'
+    if (n === 0) return ret(rowVec([]));
+    return ret(rowVec(colon(0, 2 / n, 1)));
+  },
   repmat: async (a) => {
     const A = m(a[0]); let mr: number, nc: number;
     if (a.length >= 3) { mr = Math.round(asScalar(a[1])); nc = Math.round(asScalar(a[2])); }

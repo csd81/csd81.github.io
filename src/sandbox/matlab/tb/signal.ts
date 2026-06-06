@@ -400,11 +400,43 @@ function window(a: Value[], optIdx: number, g: (n: number, N: number) => number)
   return ret(colVec(w));
 }
 
+/** frexp: x = f·2^e with f ∈ [0.5,1). Matches MATLAB [f,e] = log2(x). */
+function frexp(x: number): [number, number] {
+  if (x === 0) return [0, 0];
+  let e = Math.floor(Math.log2(Math.abs(x))) + 1;
+  let f = x / 2 ** e;
+  if (Math.abs(f) >= 1) { f /= 2; e += 1; }            // guard log2 rounding at powers of two
+  else if (Math.abs(f) < 0.5) { f *= 2; e -= 1; }
+  return [f, e];
+}
+// lin2mu — linear (−1..1) → mu-law flint (0..255). Transcribed from lin2mu.m.
+function lin2muOne(yv: number): number {
+  const SCALE = 32768, BIAS = 132, CLIP = 32635, OFFSET = 335;
+  const ys = SCALE * yv;
+  const sig = Math.sign(ys) + (ys === 0 ? 1 : 0);
+  const y = Math.min(Math.abs(ys), CLIP);
+  const [f, e] = frexp(y + BIAS);
+  return 64 * sig - 16 * e - Math.trunc(32 * f) + OFFSET;
+}
+// mu2lin — mu-law flint (0..255) → linear. Transcribed from mu2lin.m.
+const MU2LIN_ETAB = [0, 132, 396, 924, 1980, 4092, 8316, 16764];
+function mu2linOne(muv: number): number {
+  const SCALE = 1 / 32768;
+  const mu = 255 - muv;
+  const sig = mu > 127 ? 1 : 0;
+  const e = Math.trunc(mu / 16) - 8 * sig + 1;
+  const f = ((mu % 16) + 16) % 16;
+  const y = f * 2 ** (e + 2);
+  return SCALE * (1 - 2 * sig) * (MU2LIN_ETAB[e - 1] + y);
+}
+
 export const SIGNAL: ToolboxModule = {
   id: 'signal',
   name: 'Signal Processing Toolbox',
   docBase: 'https://www.mathworks.com/help/signal/',
   builtins: {
+    lin2mu: (a) => ret(map(m(a[0]), lin2muOne)),
+    mu2lin: (a) => ret(map(m(a[0]), mu2linOne)),
     // ── window functions (return L×1 columns, MATLAB convention) ──
     rectwin: (a) => ret(colVec(new Array(Math.max(0, Math.round(asScalar(a[0])))).fill(1))),
     hann: (a) => window(a, 1, (n, N) => 0.5 - 0.5 * Math.cos((2 * Math.PI * n) / N)),
@@ -1184,6 +1216,7 @@ export const SIGNAL: ToolboxModule = {
     },
   },
   help: {
+    lin2mu: 'Convert linear audio signal to mu-law encoding', mu2lin: 'Convert mu-law encoding to linear signal',
     rectwin: 'Rectangular window', hann: 'Hann (Hanning) window', hanning: 'Hann window (symmetric)', hamming: 'Hamming window',
     blackman: 'Blackman window', blackmanharris: 'Minimum 4-term Blackman-Harris window', nuttallwin: 'Nuttall-defined 4-term Blackman-Harris window',
     flattopwin: 'Flat top weighted window', bartlett: 'Bartlett (triangular, zero endpoints) window', triang: 'Triangular window', barthannwin: 'Modified Bartlett-Hann window',

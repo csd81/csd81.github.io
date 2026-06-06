@@ -305,6 +305,33 @@ const isLeap = (y: number) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
 function eomday(y: number, m: number): number {
   return [31, isLeap(y) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1];
 }
+
+/** eomdate(N) | eomdate(Y,M) — last (serial) date of the month. Mirrors eomdate.m. */
+function eomdateImpl(args: Value[]): Value {
+  if (args.length === 0) throw new MatError('eomdate: not enough input arguments');
+  if (args.length === 1) {
+    // Date form: serial datenums (numeric Mat) or a date string.
+    const serials = asSerials(args[0], 'eomdate');
+    const out = serials.map((s) => { const [y, mo] = ymd(s); return datenum(y, mo, eomday(y, mo)); });
+    const v = args[0];
+    if (isMat(v) && !v.isChar && v.kind === 'num') return mat(v.rows, v.cols, Float64Array.from(out));
+    return out.length === 1 ? scalar(out[0]) : rowVec(out);
+  }
+  // Year/Month form.
+  const Y = m(args[0]), M = m(args[1]);
+  const ya = toArray(Y), ma = toArray(M);
+  for (const mo of ma) if (mo < 1 || mo > 12) throw new MatError('eomdate: invalid month');
+  const n = Math.max(ya.length, ma.length);
+  if (ya.length !== 1 && ma.length !== 1 && ya.length !== ma.length) throw new MatError('eomdate: nonconformant year/month dimensions');
+  const out: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const y = ya.length === 1 ? ya[0] : ya[i];
+    const mo = ma.length === 1 ? ma[0] : ma[i];
+    out.push(datenum(y, mo, eomday(y, mo)));
+  }
+  const shapeSrc = ya.length === n ? Y : M;
+  return mat(shapeSrc.rows, shapeSrc.cols, Float64Array.from(out));
+}
 const isISMABasis = (b: number) => b === 8 || b === 9 || b === 10 || b === 11;
 
 // dateoffset day-lookup tables for late-in-month reference days (28/29/30/31).
@@ -646,6 +673,7 @@ export const FINANCIAL: ToolboxModule = {
     busdays:   (a) => ret(busdaysImpl(a)),
     datewrkdy: (a) => ret(datewrkdyImpl(a)),
     days252bus: (a) => ret(days252busImpl(a)),
+    eomdate: (a) => ret(eomdateImpl(a)),
 
     // ── more cashflow / fixed-income ──
     payadv: (a) => ret(payadvImpl(a)),
@@ -667,6 +695,7 @@ export const FINANCIAL: ToolboxModule = {
     busdate: 'Next or previous business day', busdays: 'Business days (daily) between two dates',
     datewrkdy: 'Date a number of work days into the future/past',
     days252bus: 'Number of business days between dates',
+    eomdate: 'Last date of the month (serial date number)',
     payadv: 'Periodic payment given number of advance payments',
     tbillyield2disc: 'Discount rates of T-bills from yields',
     acrubond: 'Accrued interest of a bond with periodic interest payments',

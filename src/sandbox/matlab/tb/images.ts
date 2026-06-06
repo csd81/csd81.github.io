@@ -44,6 +44,20 @@ export const IMAGES: ToolboxModule = {
   name: 'Image Processing Toolbox',
   docBase: 'https://www.mathworks.com/help/images/',
   builtins: {
+    /** ind2rgb(X,MAP) — indexed image + colormap → M×N×3 double RGB. Mirrors ind2rgb.m. */
+    ind2rgb: (a) => {
+      const A = m(a[0]), cm = m(a[1]);
+      const isInt = !!A.itype && A.itype !== 'single';      // integer classes are 0-based indices
+      const idx = toArray(A).map((v) => (isInt ? v + 1 : v));
+      const ncol = cm.rows, R = A.rows, C = A.cols, total = R * C;
+      const out = new Float64Array(total * 3);
+      for (let p = 0; p < total; p++) {
+        let i = Math.round(idx[p]);
+        if (i < 1) i = 1; else if (i > ncol) i = ncol;      // clamp to [1, size(MAP,1)]
+        for (let ch = 0; ch < 3; ch++) out[p + ch * total] = cm.data[(i - 1) + ch * ncol];
+      }
+      return ret(makeND([R, C, 3], out));
+    },
     /** im2double(I) — convert image to double in [0,1] (scales integer classes). */
     im2double: (a) => ret(likeShape(m(a[0]), toUnit(m(a[0])))),
     /** im2uint8(I) — convert to uint8 [0,255]. */
@@ -156,6 +170,7 @@ export const IMAGES: ToolboxModule = {
     imclose: (a) => ret(openClose(m(a[0]), seNeighborhood(a[1]), 'close')),
   },
   help: {
+    ind2rgb: 'Convert indexed image to RGB image',
     im2double: 'Convert image to double precision [0,1]', im2uint8: 'Convert image to uint8', im2uint16: 'Convert image to uint16',
     mat2gray: 'Scale matrix values to grayscale [0,1]', imcomplement: 'Complement (negative) of an image', imadjust: 'Adjust image intensity values',
     graythresh: 'Global image threshold (Otsu method)', imbinarize: 'Binarize image by thresholding',
