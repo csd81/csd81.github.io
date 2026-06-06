@@ -203,7 +203,11 @@ export default function CommandWindow({
         <span>Command Window</span>
         <button className="mlab__mini" onClick={onClear} title="Clear">clear</button>
       </div>
-      <div className="mlab__scroll" ref={scrollRef} onClick={() => inputRef.current?.focus()}>
+      <div
+        className="mlab__scroll"
+        ref={scrollRef}
+        onMouseUp={() => { if (!window.getSelection()?.toString()) inputRef.current?.focus(); }}
+      >
         {lines.map((l, i) => (
           <pre key={i} className={`mlab__line mlab__line--${l.kind}`}>{renderLine(l.kind === 'cmd' ? '>> ' + l.text : l.text, onSubmit)}</pre>
         ))}
