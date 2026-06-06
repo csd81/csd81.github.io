@@ -120,8 +120,9 @@ export const IMAGES: ToolboxModule = {
         ur = Math.max(1, Math.min(R, ur)); uc = Math.max(1, Math.min(C, uc));
         if (method === 'nearest') return A[Math.round(ur) - 1][Math.round(uc) - 1];
         const ri = Math.max(0, Math.min(R - 2, Math.floor(ur) - 1)), ci = Math.max(0, Math.min(C - 2, Math.floor(uc) - 1));
+        const ri1 = Math.min(ri + 1, R - 1), ci1 = Math.min(ci + 1, C - 1); // clamp neighbor for 1-D images (R==1 or C==1)
         const fr = ur - 1 - ri, fc = uc - 1 - ci;
-        return (1 - fr) * (1 - fc) * A[ri][ci] + (1 - fr) * fc * A[ri][ci + 1] + fr * (1 - fc) * A[ri + 1][ci] + fr * fc * A[ri + 1][ci + 1];
+        return (1 - fr) * (1 - fc) * A[ri][ci] + (1 - fr) * fc * A[ri][ci1] + fr * (1 - fc) * A[ri1][ci] + fr * fc * A[ri1][ci1];
       };
       for (let i = 0; i < outR; i++) { out[i] = []; const ur = (i + 1) / sr + 0.5 * (1 - 1 / sr); for (let j = 0; j < outC; j++) out[i][j] = samp(ur, (j + 1) / sc + 0.5 * (1 - 1 / sc)); }
       return ret(fromRows(out));

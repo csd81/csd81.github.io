@@ -111,7 +111,7 @@ export const CONTROL: ToolboxModule = {
       const A: number[][] = []; for (let i = 0; i < no; i++) { A[i] = []; for (let j = 0; j < no; j++) A[i][j] = i === 0 ? -den[j + 1] : (i - 1 === j ? 1 : 0); }
       const B = Array.from({ length: no }, (_, i) => [i === 0 ? 1 : 0]); const D = num[0];
       const C = [Array.from({ length: no }, (_, j) => num[j + 1] - D * den[j + 1])];
-      if (n < 2) return ret(fromRows(A.length ? A : [[0]]));
+      if (n < 2) return ret(fromRows(A)); // 0-state (static gain) → 0x0 A, matching MATLAB
       return Promise.resolve([fromRows(A), fromRows(B), fromRows(C), scalar(D)]);
     },
     /** [num,den] = ss2tf(A,B,C,D) — state-space to transfer function (Faddeev-LeVerrier). */
