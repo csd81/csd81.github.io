@@ -456,6 +456,25 @@ export const SIGNAL: ToolboxModule = {
   builtins: {
     lin2mu: (a) => ret(map(m(a[0]), lin2muOne)),
     mu2lin: (a) => ret(map(m(a[0]), mu2linOne)),
+    // pulstran(t,d,func,...args): pulse train y(t)=Σ ampᵢ·func(t−delayᵢ). d vector→delays (amp 1),
+    // d N×2→[delay amp]. Supported func: rectpuls, tripuls, sinc, gauspuls.
+    pulstran: (a) => {
+      const T = m(a[0]), t = toArray(T), D = m(a[1]);
+      const isVec = D.rows === 1 || D.cols === 1;
+      const delays: number[] = [], amps: number[] = [];
+      if (isVec) { for (const d of toArray(D)) { delays.push(d); amps.push(1); } }
+      else { for (let i = 0; i < D.rows; i++) { delays.push(D.data[i]); amps.push(D.data[i + D.rows]); } }
+      const fn = asString(a[2]).toLowerCase(); const args = a.slice(3).map((x) => asScalar(x));
+      const proto = (x: number): number => {
+        if (fn === 'rectpuls') { const w = args[0] ?? 1; return (x >= -w / 2 && x < w / 2) ? 1 : 0; }
+        if (fn === 'tripuls') { const w = args[0] ?? 1; return Math.abs(x) < w / 2 ? 1 - 2 * Math.abs(x) / w : 0; }
+        if (fn === 'sinc') { return x === 0 ? 1 : Math.sin(Math.PI * x) / (Math.PI * x); }
+        if (fn === 'gauspuls') { const fc = args[0] ?? 1000, bw = args[1] ?? 0.5; const r = ((Math.PI * fc * bw) ** 2) / (4 * Math.log(10 ** (-6 / 20))); return Math.exp(r * x * x) * Math.cos(2 * Math.PI * fc * x); }
+        throw new Error(`pulstran: unsupported function '${fn}'`);
+      };
+      const out = t.map((ti) => { let s = 0; for (let k = 0; k < delays.length; k++) s += amps[k] * proto(ti - delays[k]); return s; });
+      return ret(T.cols === 1 && T.rows > 1 ? colVec(out) : rowVec(out));
+    },
     // vco(x,fc,fs): VCO — instantaneous freq from x∈[-1,1]; y=cos(phase). fc scalar→[0,2fc].
     vco: (a) => {
       const X = m(a[0]), x = toArray(X), fc = toArray(m(a[1])), fs = asScalar(a[2]);
@@ -1275,7 +1294,7 @@ export const SIGNAL: ToolboxModule = {
   },
   help: {
     lin2mu: 'Convert linear audio signal to mu-law encoding', mu2lin: 'Convert mu-law encoding to linear signal',
-    vco: 'Voltage-controlled oscillator',
+    vco: 'Voltage-controlled oscillator', pulstran: 'Pulse train generator',
     diric: 'Dirichlet or periodic sinc function', square: 'Square wave', gmonopuls: 'Gaussian monopulse',
     uencode: 'Quantize and encode to integer values', udecode: 'Decode 2^n-level quantized integers to floating point',
     rectwin: 'Rectangular window', hann: 'Hann (Hanning) window', hanning: 'Hann window (symmetric)', hamming: 'Hamming window',
