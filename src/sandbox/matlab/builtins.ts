@@ -2457,6 +2457,13 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(W);
   },
   gallery: async (a) => {
+    // Numeric forms: gallery(3) and gallery(5) are fixed eigenvalue/conditioning test matrices.
+    if (a.length && isMat(a[0]) && !(a[0] as Mat).isChar) {
+      const k = Math.round(asScalar(a[0]));
+      if (k === 3) return ret(fromRows([[-149, -50, -154], [537, 180, 546], [-27, -9, -25]]));
+      if (k === 5) return ret(fromRows([[-9, 11, -21, 63, -252], [70, -69, 141, -421, 1684], [-575, 575, -1149, 3451, -13801], [3891, -3891, 7782, -23345, 93365], [1024, -1024, 2048, -6144, 24572]]));
+      throw new MatError("gallery: only gallery(3) and gallery(5) take a numeric argument; otherwise pass a name, e.g. gallery('minij',5)");
+    }
     if (!a.length || !(isStr(a[0]) || (isMat(a[0]) && (a[0] as Mat).isChar))) throw new MatError("gallery: first argument must be a name, e.g. gallery('minij',5)");
     return ret(galleryMatrix(asString(a[0]).toLowerCase(), a.slice(1)));
   },
