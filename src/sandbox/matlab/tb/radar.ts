@@ -174,7 +174,7 @@ function colVecToXYZ(M: Mat): number[][] {
   for (let c = 0; c < N; c++) {
     let x = 0, y = 0, z = 0;
     if (rows === 1) { y = M.data[c]; }                 // 1×N ⇒ y only
-    else if (rows === 2) { x = M.data[0 + c * 2]; y = M.data[1 + c * 2]; }
+    else if (rows === 2) { y = M.data[0 + c * 2]; z = M.data[1 + c * 2]; }  // 2×N ⇒ [y;z]
     else { x = M.data[0 + c * 3]; y = M.data[1 + c * 3]; z = M.data[2 + c * 3]; }
     out.push([x, y, z]);
   }
