@@ -71,8 +71,9 @@ async function assignmunkres(args: Value[]): Promise<Value[]> {
   const costM = args[0] as any;
   if (!isMat(costM)) throw new MatError('assignmunkres: costmatrix must be a numeric matrix');
   const nR = costM.rows, nC = costM.cols;
+  // Mat storage is column-major: element (i,j) lives at data[i + j*nR].
   const cost: number[][] = Array.from({ length: nR }, (_, i) =>
-    Array.from({ length: nC }, (__, j) => costM.data[i * nC + j]));
+    Array.from({ length: nC }, (__, j) => costM.data[i + j * nR]));
   const cNa = asScalar(m(args[1]));
   const { assign, unRows, unCols } = hungarianAssign(cost, cNa);
   const assignMat = assign.length > 0
@@ -98,21 +99,27 @@ async function allanvar(args: Value[]): Promise<Value[]> {
   if (args.length < 1) throw new MatError('allanvar: requires Omega');
   const omega = toArray(m(args[0]));
   const N = omega.length;
-  // Averaging times m: powers of 2 up to N/4
+  const dt = args.length > 1 ? asScalar(m(args[1])) : 1;
+  // MATLAB allanvar uses octave-spaced cluster sizes m = 1,2,4,8,... while m <= N/2.
   const mVals: number[] = [];
-  for (let mv = 1; mv <= Math.floor(N / 4); mv = mv < 128 ? mv + 1 : Math.floor(mv * 1.2)) mVals.push(mv);
+  for (let mv = 1; mv <= Math.floor(N / 2); mv *= 2) mVals.push(mv);
   const avar: number[] = [];
   const tau: number[] = [];
-  const dt = args.length > 1 ? asScalar(m(args[1])) : 1;
   for (const mv of mVals) {
-    let sum = 0, cnt = 0;
-    for (let k = 0; k + 2 * mv < N; k++) {
-      const d = omega[k + 2 * mv] - 2 * omega[k + mv] + omega[k];
-      sum += d * d; cnt++;
+    // Overlapping Allan variance:
+    //   sigma^2(m) = 1/(2 m^2 (N-2m+1)) * sum_j [ sum_{i=j}^{j+m-1}(y_{i+m}-y_i) ]^2
+    const L = N - 2 * mv + 1;
+    if (L < 1) continue;
+    let sum = 0;
+    for (let j = 0; j < L; j++) {
+      let inner = 0;
+      for (let i = j; i < j + mv; i++) inner += omega[i + mv] - omega[i];
+      sum += inner * inner;
     }
-    if (cnt > 0) { avar.push(sum / (2 * mv * mv * dt * dt * cnt)); tau.push(mv * dt); }
+    avar.push(sum / (2 * mv * mv * L));
+    tau.push(mv * dt);
   }
-  return [rowVec(avar), rowVec(tau)];
+  return [colVec(avar), colVec(tau)];
 }
 
 // ── Constant-velocity motion model ─────────────────────────────────────────────────────
@@ -149,15 +156,16 @@ async function constturn(args: Value[]): Promise<Value[]> {
   if (args.length < 1) throw new MatError('constturn: requires state');
   const state = toArray(m(args[0]));
   const dt = args.length > 1 ? asScalar(m(args[1])) : 1;
-  const [x, vx, y, vy, omega] = state;
-  const om = omega ?? 0;
+  const [x, vx, y, vy, omegaDeg] = state;
+  // MATLAB constturn takes the turn rate (state element 5) in deg/s; convert to rad/s.
+  const om = (omegaDeg ?? 0) * Math.PI / 180;
   const out = om !== 0
     ? [
       x + (vx * Math.sin(om * dt) - vy * (1 - Math.cos(om * dt))) / om,
       vx * Math.cos(om * dt) - vy * Math.sin(om * dt),
       y + (vx * (1 - Math.cos(om * dt)) + vy * Math.sin(om * dt)) / om,
       vx * Math.sin(om * dt) + vy * Math.cos(om * dt),
-      om,
+      omegaDeg ?? 0,
     ]
     : [x + vx * dt, vx, y + vy * dt, vy, 0];
   return [rowVec(out)];
@@ -167,9 +175,11 @@ async function constturn(args: Value[]): Promise<Value[]> {
 async function cameas(args: Value[]): Promise<Value[]> {
   if (args.length < 1) throw new MatError('cameas: requires state');
   const state = toArray(m(args[0]));
-  // Extract position measurements: x and y (indices 0 and 3 for [x,vx,ax,y,vy,ay])
-  const meas = [state[0], state[3] ?? state[0]];
-  return [rowVec(meas)];
+  // MATLAB cameas returns a 3-element [x;y;z] position. The CA state packs each
+  // axis as [pos,vel,acc]; positions sit at indices 0 (x), 3 (y), 6 (z).
+  // Missing axes (2-D state) report 0.
+  const meas = [state[0] ?? 0, state[3] ?? 0, state[6] ?? 0];
+  return [colVec(meas)];
 }
 
 async function constveljac(args: Value[]): Promise<Value[]> {
@@ -203,23 +213,48 @@ async function constaccjac(args: Value[]): Promise<Value[]> {
 async function constturnjac(args: Value[]): Promise<Value[]> {
   const state = args.length > 0 ? toArray(m(args[0])) : [0, 0, 0, 0, 0];
   const dt = args.length > 1 ? asScalar(m(args[1])) : 1;
-  const [, vx, , vy, omega] = state;
-  const om = omega ?? 0;
-  const J = om !== 0
-    ? [[1, Math.sin(om * dt) / om, 0, -(1 - Math.cos(om * dt)) / om, 0],
-      [0, Math.cos(om * dt), 0, -Math.sin(om * dt), 0],
-      [0, (1 - Math.cos(om * dt)) / om, 1, Math.sin(om * dt) / om, 0],
-      [0, Math.sin(om * dt), 0, Math.cos(om * dt), 0],
-      [0, 0, 0, 0, 1]]
-    : [[1, dt, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, dt, 0], [0, 0, 0, 1, 0], [0, 0, 0, 0, 1]];
+  const [, vx, , vy, omegaDeg] = state;
+  // Turn rate (state element 5) is in deg/s; convert to rad/s and apply the
+  // chain-rule factor d(om)/d(omegaDeg) = pi/180 in the omega column.
+  const k = Math.PI / 180;
+  const om = (omegaDeg ?? 0) * k;
+  let J: number[][];
+  if (om !== 0) {
+    const s = Math.sin(om * dt), c = Math.cos(om * dt);
+    // ∂out/∂om (then scaled by k for ∂out/∂omegaDeg)
+    const dnum1 = vx * dt * c - vy * dt * s;
+    const num1 = vx * s - vy * (1 - c);
+    const dCol1 = ((dnum1 * om - num1) / (om * om)) * k;
+    const dCol2 = (-vx * dt * s - vy * dt * c) * k;
+    const dnum3 = vx * dt * s + vy * dt * c;
+    const num3 = vx * (1 - c) + vy * s;
+    const dCol3 = ((dnum3 * om - num3) / (om * om)) * k;
+    const dCol4 = (vx * dt * c - vy * dt * s) * k;
+    J = [
+      [1, s / om, 0, -(1 - c) / om, dCol1],
+      [0, c, 0, -s, dCol2],
+      [0, (1 - c) / om, 1, s / om, dCol3],
+      [0, s, 0, c, dCol4],
+      [0, 0, 0, 0, 1],
+    ];
+  } else {
+    J = [[1, dt, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, dt, 0], [0, 0, 0, 1, 0], [0, 0, 0, 0, 1]];
+  }
   return [fromRows(J)];
 }
 
 async function cameasjac(args: Value[]): Promise<Value[]> {
-  // Jacobian of cameas: [x, vx, ax, y, vy, ay] → [x, y]
-  return [fromRows([[1, 0, 0, 0, 0, 0], [0, 0, 0, 1, 0, 0]])];
+  // Jacobian of cameas (3×N): measurement [x;y;z] picks state indices 0,3,6.
+  const n = args.length > 0 ? toArray(m(args[0])).length : 6;
+  const posIdx = [0, 3, 6];
+  const J: number[][] = posIdx.map(idx =>
+    Array.from({ length: n }, (_, j) => (idx < n && j === idx ? 1 : 0)));
+  return [fromRows(J)];
 }
 
+// QUARANTINED: fabricated interface. This does atan2(y,x) on a 2-D vector, but real
+// MATLAB compassAngle takes quaternion/rotation-matrix orientation objects and returns
+// an N×3 heading matrix. Wrong interface entirely — not registered until reimplemented.
 // ── Compass angle helper ────────────────────────────────────────────────────────────────
 async function compassangle(args: Value[]): Promise<Value[]> {
   if (args.length < 1) throw new MatError('compassangle: requires [x,y] or [[x1,y1];...]');
@@ -228,6 +263,9 @@ async function compassangle(args: Value[]): Promise<Value[]> {
   return [scalar(Math.atan2(y, x))];
 }
 
+// QUARANTINED: self-documented placeholder. Returns A=+avgScale*I / b=0 (MATLAB returns
+// A=-I baseline) and throws on its own documented 6-matrix call form. Not a faithful
+// least-squares 6-position calibration — not registered until reimplemented.
 // ── accelcal: calibrate accelerometer using 6-position test ───────────────────────────
 // Each of the 6 positions points one axis up or down; gravity provides the reference vector.
 // D is an N×3 matrix of raw readings from all positions, or 6 separate N×3 matrices.
@@ -290,8 +328,7 @@ export const FUSION: ToolboxModule = {
     constaccjac,
     constturnjac,
     cameasjac,
-    compassangle,
-    accelcal,
+    // QUARANTINED: compassangle (fabricated interface), accelcal (placeholder) — see fns above.
   },
   help: {
     assignmunkres: {
@@ -355,7 +392,7 @@ export const FUSION: ToolboxModule = {
     cameas: {
       summary: 'Measurement function for constant-acceleration motion model',
       syntax: ['measurement = cameas(state)', 'measurement = cameas(state,frame)'],
-      description: ['cameas(state) returns [x,y] position from the CA state vector [x,vx,ax,y,vy,ay].'],
+      description: ['cameas(state) returns the [x;y;z] position from the CA state vector [x,vx,ax,y,vy,ay,z,vz,az]; missing axes report 0.'],
       seealso: ['constacc', 'cameasjac'],
     },
     constveljac: {
@@ -378,25 +415,6 @@ export const FUSION: ToolboxModule = {
       syntax: ['dhdx = cameasjac(state)'],
       seealso: ['cameas', 'constacc'],
     },
-    compassangle: {
-      summary: 'Compute compass angle from 2D vector',
-      syntax: ['angle = compassangle([x y])'],
-      description: ['compassangle([x,y]) returns atan2(y,x) in radians.'],
-      seealso: ['constvel', 'constturn'],
-    },
-    accelcal: {
-      summary: 'Calibration parameters for accelerometer',
-      syntax: [
-        '[A,b] = accelcal(D)',
-        '[A,b] = accelcal(XUP,XDOWN,YUP,YDOWN,ZUP,ZDOWN)',
-        '[A,b] = accelcal(___,Gravity=g)',
-      ],
-      description: [
-        '[A,b] = accelcal(XUP,XDOWN,YUP,YDOWN,ZUP,ZDOWN) estimates the 3×3 scale/misalignment matrix A and 3×1 bias b from 6-position accelerometer data.',
-        'Each position dataset is an N×3 matrix of raw accelerometer readings with one axis aligned to gravity.',
-        'Apply calibration: acc_cal = A * acc_raw - b.',
-      ],
-      seealso: ['imuSensor', 'allanvar'],
-    },
+    // QUARANTINED: compassangle, accelcal — help entries removed with their builtins.
   },
 };

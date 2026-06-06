@@ -29,15 +29,40 @@ function asSerial(v: Value): number {
   if (isMat(v)) return asScalar(m(v));
   throw new MatError('fininst: expected date serial number');
 }
+function isLeap(y: number): boolean {
+  return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+}
 function yearFrac(t1: number, t2: number, basis = 0): number {
-  const d1 = fromSerial(t1), d2 = fromSerial(t2);
   const days = (t2 - t1);
-  if (basis === 0) return days / 360;
-  if (basis === 1) return days / 365;
-  if (basis === 2) return days / 360;
-  if (basis === 3) return days / 365;
-  if (basis === 4) return days / 360;
+  // 0 = actual/actual (ISDA): sum fractional years per calendar year.
+  if (basis === 0) {
+    if (t2 < t1) return -yearFrac(t2, t1, 0);
+    if (t2 === t1) return 0;
+    const d1 = fromSerial(t1), d2 = fromSerial(t2);
+    const y1 = d1.getUTCFullYear(), y2 = d2.getUTCFullYear();
+    if (y1 === y2) return days / (isLeap(y1) ? 366 : 365);
+    let frac = 0;
+    // first partial year
+    const endY1 = toSerial(new Date(Date.UTC(y1 + 1, 0, 1)));
+    frac += (endY1 - t1) / (isLeap(y1) ? 366 : 365);
+    // whole middle years
+    for (let y = y1 + 1; y < y2; y++) frac += 1;
+    // last partial year
+    const startY2 = toSerial(new Date(Date.UTC(y2, 0, 1)));
+    frac += (t2 - startY2) / (isLeap(y2) ? 366 : 365);
+    return frac;
+  }
+  if (basis === 1) return days / 365;        // 30/360 SIA (approx)
+  if (basis === 2) return days / 360;        // actual/360
+  if (basis === 3) return days / 365;        // actual/365
+  if (basis === 4) return days / 360;        // 30/360 PSA (approx)
   return days / 365;
+}
+// Discount factor for a continuously/periodically compounded zero rate.
+function discFactor(rate: number, t: number, compounding: number): number {
+  if (compounding === -1 || compounding === 0) return Math.exp(-rate * t); // continuous
+  const f = compounding; // periods per year (1,2,4,12,...)
+  return Math.pow(1 + rate / f, -f * t);
 }
 
 // ── intenvset ───────────────────────────────────────────────────────────────────────────
@@ -55,28 +80,58 @@ async function intenvset(args: Value[]): Promise<Value[]> {
 }
 
 // ── cfbyzero: price cash flows from a zero curve ────────────────────────────────────────
+function rsField(rs: any, name: string): Value | undefined {
+  if (!rs || rs.kind !== 'object' || !rs.props) return undefined;
+  const lower = name.toLowerCase();
+  for (const [k, v] of rs.props as Map<string, Value>) {
+    if (k.toLowerCase() === lower) return v;
+  }
+  return undefined;
+}
+function rsNums(rs: any, name: string): number[] | undefined {
+  const v = rsField(rs, name);
+  return v && isMat(v) ? toArray(v as any) : undefined;
+}
 async function cfbyzero(args: Value[]): Promise<Value[]> {
   if (args.length < 4) throw new MatError('cfbyzero: requires RateSpec,CFlowAmounts,CFlowDates,Settle');
-  const rateSpec = args[0];
+  const rs = args[0] as any;
   const cfAmts = isMat(args[1]) ? toArray(args[1] as any) : [asScalar(m(args[1]))];
   const cfDates = isMat(args[2]) ? toArray(args[2] as any) : [asScalar(m(args[2]))];
   const settle = asSerial(args[3]);
-  const basis = args.length > 4 && isMat(args[4]) ? asScalar(m(args[4])) : 0;
 
-  // Extract rates from rateSpec if idobj, else assume flat 5%
-  let rates: number[] = [0.05];
-  if (rateSpec && (rateSpec as any).kind === 'object') {
-    const rsObj = rateSpec as any;
-    const ratesProp = rsObj.props?.get('rates') ?? rsObj.props?.get('Rates');
-    if (ratesProp && isMat(ratesProp)) rates = toArray(ratesProp as any);
-  }
+  // Pull the zero curve and its conventions from the RateSpec built by intenvset.
+  const rates = rsNums(rs, 'Rates') ?? [0.05];
+  const startDates = rsNums(rs, 'StartDates');
+  const endDates = rsNums(rs, 'EndDates');
+  const compArr = rsNums(rs, 'Compounding');
+  const basisArr = rsNums(rs, 'Basis');
+  const compounding = compArr && compArr.length ? compArr[0] : -1;
+  const basis = basisArr && basisArr.length ? basisArr[0] : 0;
+  // Curve valuation (start) date: the first StartDate, else the Settle.
+  const curveStart = startDates && startDates.length ? startDates[0] : settle;
+
+  // Linear interpolation of the zero rate to an arbitrary date along the curve.
+  const rateAt = (d: number): number => {
+    if (!endDates || endDates.length === 0) return rates[0];
+    if (endDates.length === 1) return rates[0];
+    if (d <= endDates[0]) return rates[0];
+    if (d >= endDates[endDates.length - 1]) return rates[endDates.length - 1];
+    for (let k = 1; k < endDates.length; k++) {
+      if (d <= endDates[k]) {
+        const w = (d - endDates[k - 1]) / (endDates[k] - endDates[k - 1]);
+        return rates[k - 1] + w * (rates[k] - rates[k - 1]);
+      }
+    }
+    return rates[rates.length - 1];
+  };
 
   let price = 0;
   for (let i = 0; i < cfAmts.length; i++) {
     const cf = cfAmts[i];
-    const t = yearFrac(settle, cfDates[i] ?? settle + 365, basis);
-    const r = rates[Math.min(i, rates.length - 1)];
-    price += cf / Math.pow(1 + r, t);
+    const d = cfDates[i] ?? curveStart;
+    const t = yearFrac(curveStart, d, basis);
+    const r = rateAt(d);
+    price += cf * discFactor(r, t, compounding);
   }
   return [scalar(price)];
 }
@@ -261,17 +316,23 @@ export const FININST: ToolboxModule = {
     intenvset,
     intenvget,
     cfbyzero,
-    intenvprice,
-    bndfutprice,
     blsprice,
     blsdelta,
     blsgamma,
     blstheta,
     blsvega,
     blsimpv,
-    asianbylevy,
-    barrierbybls,
-    lookbackbyls,
+    // QUARANTINED: intenvprice — only delegates to cfbyzero; real intenvprice takes
+    //   (RateSpec, InstSet portfolio object), which is not implemented.
+    // QUARANTINED: bndfutprice — FutPrice and AccrInt both wrong; accrued-interest
+    //   formula (couponRate*T/2) is unrelated to MATLAB's bond accrual. Needs the
+    //   bond/RateSpec object framework + correct accrual.
+    // QUARANTINED: asianbylevy — ~140x off (broken M2 variance) and wrong signature
+    //   (scalars vs RateSpec/StockSpec/OptSpec/Strike/Settle/ExerciseDates objects).
+    // QUARANTINED: barrierbybls — ~9x off, only the S>H up branch, no knock-in/out
+    //   logic, wrong (object) signature.
+    // QUARANTINED: lookbackbyls — ~3x off, degenerate log(1) (assumes running-min=spot),
+    //   wrong model + wrong (object) signature.
   },
   help: {
     intenvset: {
@@ -284,7 +345,7 @@ export const FININST: ToolboxModule = {
         "intenvset builds a RateSpec structure from name-value pairs.",
         "Key fields: Rates (zero rates), StartDates, EndDates, Basis (day-count convention), Compounding (-1=continuous).",
       ],
-      seealso: ['cfbyzero', 'intenvprice'],
+      seealso: ['cfbyzero', 'intenvget'],
     },
     cfbyzero: {
       summary: 'Price cash flows from set of zero curves',
@@ -296,19 +357,9 @@ export const FININST: ToolboxModule = {
         'Price = cfbyzero(RateSpec,CFlowAmounts,CFlowDates,Settle) discounts cash flows CFlowAmounts at dates CFlowDates using the zero-curve in RateSpec.',
         'Settle is the pricing date as a MATLAB serial date number.',
       ],
-      seealso: ['intenvset', 'intenvprice', 'bndfutprice'],
+      seealso: ['intenvset', 'intenvget'],
     },
-    bndfutprice: {
-      summary: 'Price bond future given repo rates',
-      syntax: [
-        '[FutPrice,AccrInt] = bndfutprice(RepoRate,Price,FutSettle,Delivery,ConvFactor,CouponRate,Maturity)',
-        '[FutPrice,AccrInt] = bndfutprice(___,Name,Value)',
-      ],
-      description: [
-        'Computes the bond futures price as (SpotPrice*(1+repo*T) - accruedInterest) / conversionFactor.',
-      ],
-      seealso: ['cfbyzero', 'blsprice'],
-    },
+    // QUARANTINED: bndfutprice help removed (see builtins comment).
     blsprice: {
       summary: 'Black-Scholes European option pricing',
       syntax: [
@@ -350,33 +401,8 @@ export const FININST: ToolboxModule = {
       ],
       seealso: ['blsprice', 'blsdelta'],
     },
-    asianbylevy: {
-      summary: 'Price Asian option using Levy approximation',
-      syntax: ['Price = asianbylevy(S,K,r,T,sigma,m,optType)'],
-      description: [
-        'Price = asianbylevy(S,K,r,T,sigma,m) prices an arithmetic-average Asian option using the Levy (1992) log-normal approximation.',
-        'm is the number of averaging observation periods.',
-      ],
-      seealso: ['blsprice', 'barrierbybls'],
-    },
-    barrierbybls: {
-      summary: 'Price barrier option using Black-Scholes method',
-      syntax: ['Price = barrierbybls(S,K,H,r,T,sigma,optSpec,barrierSpec)'],
-      description: [
-        'Price = barrierbybls(S,K,H,r,T,sigma) prices a barrier option (knock-out/knock-in) using the Haug (1997) closed-form formula.',
-      ],
-      seealso: ['blsprice', 'asianbylevy'],
-    },
-    lookbackbyls: {
-      summary: 'Price lookback option using Levy approximation',
-      syntax: ['Price = lookbackbyls(S,r,T,sigma,optType)'],
-      seealso: ['barrierbybls', 'blsprice'],
-    },
-    intenvprice: {
-      summary: 'Price instruments from set of zero curves',
-      syntax: ['Price = intenvprice(RateSpec,InstSet)'],
-      seealso: ['intenvset', 'cfbyzero'],
-    },
+    // QUARANTINED: asianbylevy / barrierbybls / lookbackbyls / intenvprice help removed
+    //   (see builtins comment).
     intenvget: {
       summary: 'Properties of interest-rate structure',
       syntax: [

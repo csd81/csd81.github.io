@@ -1,7 +1,7 @@
 // System Identification Toolbox — ARX/ARMAX polynomial model fitting, state-space identification
 // (N4SID subspace), and transfer function estimation via least squares (tfest).
 import {
-  type Value, scalar, rowVec, colVec, toArray, asScalar, toMat as m, isMat, isStruct, MatError,
+  type Value, scalar, rowVec, colVec, toArray, asScalar, toMat as m, isMat, isStruct, isObject, MatError,
   mat, zeros, makeObject, fromRows,
 } from '../values';
 import type { ToolboxModule } from './types';
@@ -118,6 +118,9 @@ async function armax(args: Value[]): Promise<Value[]> {
   return [makeObject('idpoly', props)];
 }
 
+// QUARANTINED: n4sid — returns a DEGENERATE model (A=0, B=0, C=0; only D=mean(y)/mean(u)).
+// Real N4SID subspace identification (oblique projection + truncated SVD to a nonzero
+// order-nx state-space model) is out of scope. Kept below for future repair; not registered.
 // ── N4SID: subspace state-space identification (simplified MOESP variant)
 async function n4sid(args: Value[]): Promise<Value[]> {
   let u: number[], y: number[], nx: number;
@@ -153,9 +156,15 @@ async function n4sid(args: Value[]): Promise<Value[]> {
   return [makeObject('idss', props)];
 }
 
+// QUARANTINED: ssest — defined as a wrapper over n4sid, so it inherits the degenerate
+// (all-zero) state-space output. Kept below for future repair; not registered.
 // ── SSEST: state-space model estimation (wrapper around n4sid for this implementation)
 async function ssest(args: Value[]): Promise<Value[]> { return n4sid(args); }
 
+// QUARANTINED: tfest — returns a DISCRETE-time ARX-derived transfer function, but MATLAB
+// tfest defaults to a CONTINUOUS-time TF, so the output violates the function's contract.
+// Matching the continuous-time default (iterative/freq-domain estimation) is out of scope.
+// Kept below for future repair; not registered.
 // ── TFEST: transfer function estimation via frequency-domain LS
 async function tfest(args: Value[]): Promise<Value[]> {
   let u: number[], y: number[], np: number;
@@ -193,16 +202,88 @@ async function tfest(args: Value[]): Promise<Value[]> {
   return [makeObject('idtf', props)];
 }
 
-// ── COMPARE: compare model output against measured data
+// IIR difference-equation filter: yhat = filter(b, a, x) (Direct Form II transposed).
+function filterBA(b: number[], a: number[], x: number[]): number[] {
+  const a0 = a[0] || 1;
+  const bb = b.map((v) => v / a0), aa = a.map((v) => v / a0);
+  const n = Math.max(bb.length, aa.length);
+  const out = new Array(x.length).fill(0);
+  const z = new Array(n).fill(0); // delay line
+  for (let i = 0; i < x.length; i++) {
+    const xi = x[i];
+    const yi = (bb[0] ?? 0) * xi + z[0];
+    out[i] = yi;
+    for (let k = 1; k < n; k++) {
+      z[k - 1] = (bb[k] ?? 0) * xi + (z[k] ?? 0) - (aa[k] ?? 0) * yi;
+    }
+  }
+  return out;
+}
+
+// Extract the model's (B, A) transfer numerator/denominator for simulation.
+function modelBA(sys: Value): { b: number[]; a: number[] } | null {
+  if (!isObject(sys)) return null;
+  const p = sys.props;
+  const get = (k: string): number[] | null => {
+    const v = p.get(k);
+    return v && isMat(v) ? toArray(v as any) : null;
+  };
+  // idtf: Numerator / Denominator (already in full q^0.. form)
+  const num = get('Numerator'), denom = get('Denominator');
+  if (num && denom) return { b: num, a: denom };
+  // idpoly: B / A. The sandbox stores B starting at lag nk, so prepend nk leading
+  // zeros to recover MATLAB's idpoly convention B(q) = b0 + b1 q^-1 + ... with the
+  // first nk coefficients zero (input delay), so filter(B,A,u) is correctly delayed.
+  const B = get('B'), A = get('A');
+  if (B && A) {
+    const nkv = p.get('nk');
+    const nk = nkv && isMat(nkv) ? Math.round(asScalar(nkv)) : 0;
+    const Bfull = nk > 0 ? [...new Array(nk).fill(0), ...B] : B;
+    return { b: Bfull, a: A };
+  }
+  return null;
+}
+
+// ── COMPARE: simulate model on the input and report the NRMSE fit percentage.
+// Sandbox signatures:  compare(u, y, sys)  |  compare(y, sys) (output-only / AR).
+//   fit = 100*(1 - norm(y - yhat)/norm(y - mean(y))),  yhat = filter(B, A, u).
 async function compare(args: Value[]): Promise<Value[]> {
   if (args.length < 2) throw new MatError('compare: requires data and model');
-  const y = coerce(args[0]);
-  // Return a fit-percentage metric (zero-output model baseline)
+  // Locate the model object among the args.
+  const sysIdx = args.findIndex(isObject);
+  if (sysIdx < 0) throw new MatError('compare: a model (idpoly/idtf) argument is required');
+  const sys = args[sysIdx];
+  const ba = modelBA(sys);
+  // Numeric data args (everything that is a matrix), in order.
+  const nums = args.filter(isMat).map((a) => toArray(a as any));
+  let u: number[], y: number[];
+  if (nums.length >= 2) { u = nums[0]; y = nums[1]; }
+  else if (nums.length === 1) { y = nums[0]; u = []; }
+  else throw new MatError('compare: requires numeric u and y');
+
+  let yhat: number[];
+  if (ba && u.length > 0) {
+    yhat = filterBA(ba.b, ba.a, u);
+  } else if (ba) {
+    // No input: one-step AR prediction yhat(t) = -(a1 y(t-1)+...); zero pre-history.
+    const a = ba.a, na = a.length - 1;
+    yhat = y.map((_, t) => {
+      let s = 0;
+      for (let i = 1; i <= na; i++) s += (a[i] ?? 0) * (t - i >= 0 ? y[t - i] : 0);
+      return -s;
+    });
+  } else {
+    yhat = y.slice();
+  }
+  const N = y.length;
+  const yMean = y.reduce((s, v) => s + v, 0) / (N || 1);
+  let numerr = 0, den = 0;
+  for (let t = 0; t < N; t++) { numerr += (y[t] - yhat[t]) ** 2; den += (y[t] - yMean) ** 2; }
+  const fit = den > 0 ? 100 * (1 - Math.sqrt(numerr) / Math.sqrt(den)) : 100;
   const props = new Map<string, Value>();
-  const yMean = y.reduce((s, v) => s + v, 0) / y.length;
-  const varY = y.reduce((s, v) => s + (v - yMean) ** 2, 0);
-  props.set('fit', scalar(varY > 0 ? 50 : 100)); // placeholder 50 % fit
-  props.set('y', rowVec(y));
+  props.set('fit', scalar(fit));
+  props.set('OutputData', colVec(yhat));
+  props.set('y', colVec(yhat));
   return [makeObject('compareresult', props)];
 }
 
@@ -230,27 +311,101 @@ async function ar(args: Value[]): Promise<Value[]> {
   return [makeObject('idpoly', props)];
 }
 
-// ── ARXSTRUC: compute loss function for a range of ARX structures
+// Solve the small symmetric system RR*x = FF (used per-structure in arxstruc).
+function solveSym(RR: number[][], FF: number[]): number[] {
+  const n = FF.length;
+  if (n === 0) return [];
+  const M = RR.map((r, i) => [...r, FF[i]]);
+  for (let col = 0; col < n; col++) {
+    let piv = col;
+    for (let r = col + 1; r < n; r++) if (Math.abs(M[r][col]) > Math.abs(M[piv][col])) piv = r;
+    [M[col], M[piv]] = [M[piv], M[col]];
+    const d = M[col][col];
+    if (Math.abs(d) < 1e-300) continue;
+    for (let r = col + 1; r < n; r++) {
+      const f = M[r][col] / d;
+      for (let c = col; c <= n; c++) M[r][c] -= f * M[col][c];
+    }
+  }
+  const x = new Array(n).fill(0);
+  for (let r = n - 1; r >= 0; r--) {
+    let s = M[r][n];
+    for (let c = r + 1; c < n; c++) s -= M[r][c] * x[c];
+    x[r] = M[r][r] ? s / M[r][r] : 0;
+  }
+  return x;
+}
+
+// ── ARXSTRUC: loss functions for a family of ARX structures.
+// Returns MATLAB's structured matrix: row 1 = normalized loss per structure (last
+// column = N data points), remaining rows = NN' (last column = [v1/N; 0; ...]).
 async function arxstruc(args: Value[]): Promise<Value[]> {
   if (args.length < 3) throw new MatError('arxstruc: requires u, y, nn');
   const u = coerce(args[0]), y = coerce(args[1]);
-  const nn = isMat(args[2]) ? toArray(args[2] as any) : [1, 1, 1];
-  const na = Math.round(nn[0] ?? 1), nb = Math.round(nn[1] ?? 1), nk = Math.round(nn[2] ?? 1);
+  // NN: matrix whose rows are [na nb nk]; accept a single [na nb nk] row vector too.
+  const nnRaw = args[2];
+  let NN: number[][];
+  if (isMat(nnRaw)) {
+    const mm = m(nnRaw) as any;
+    if (mm.rows > 1) {
+      NN = Array.from({ length: mm.rows }, (_, r) =>
+        Array.from({ length: mm.cols }, (__, c) => mm.data[c * mm.rows + r]));
+    } else {
+      NN = [toArray(mm)];
+    }
+  } else {
+    NN = [[1, 1, 1]];
+  }
+  const orders = NN.map((row) => ({
+    na: Math.round(row[0] ?? 1), nb: Math.round(row[1] ?? 1), nk: Math.round(row[2] ?? 1),
+  }));
   const N = y.length;
+  // Common regression window: start past the largest required lag across structures.
+  const naMax = Math.max(...orders.map((o) => o.na));
+  const nbkMax = Math.max(...orders.map((o) => o.nb + o.nk - 1));
+  const nnm = Math.max(naMax, nbkMax);
+
+  // Build the full max-order regressor: columns [ -y(t-1..t-naMax), u(t-1..t-nbkMax) ].
+  // A structure with delay nk and order nb selects A-columns 1..na and the input
+  // columns at lags nk..nk+nb-1, i.e. full-input column indices (nk-1)..(nk+nb-2).
   const Phi: number[][] = [];
   const Yv: number[] = [];
-  for (let t = Math.max(na, nk + nb - 1); t < N; t++) {
+  let v1 = 0;
+  for (let t = nnm; t < N; t++) {
     const row: number[] = [];
-    for (let i = 1; i <= na; i++) row.push(t - i >= 0 ? -y[t - i] : 0);
-    for (let i = 0; i < nb; i++) { const ti = t - nk - i; row.push(ti >= 0 ? u[ti] : 0); }
-    Phi.push(row); Yv.push(y[t]);
+    for (let i = 1; i <= naMax; i++) row.push(-y[t - i]);
+    for (let j = 1; j <= nbkMax; j++) row.push(u[t - j]); // input lag j (1-based)
+    Phi.push(row); Yv.push(y[t]); v1 += y[t] * y[t];
   }
-  const theta = lstsq(Phi, Yv);
-  const resid = Phi.map((r, i) => Yv[i] - r.reduce((s, v, j) => s + v * theta[j], 0));
-  const loss = resid.reduce((s, e) => s + e * e, 0) / (Phi.length || 1);
-  return [rowVec([na, nb, nk, loss])];
+  const nUcols = nbkMax;
+
+  const lossRow: number[] = [];
+  for (const o of orders) {
+    // Selected column indices into the full regressor.
+    const sel: number[] = [];
+    for (let i = 0; i < o.na; i++) sel.push(i);                       // A-part
+    for (let i = 0; i < o.nb; i++) sel.push(naMax + (o.nk - 1 + i));  // B-part (lag nk+i)
+    void nUcols;
+    const RR: number[][] = sel.map((si) => sel.map((sj) =>
+      Phi.reduce((s, r) => s + r[si] * r[sj], 0)));
+    const FF: number[] = sel.map((si) => Phi.reduce((s, r, k) => s + r[si] * Yv[k], 0));
+    const TH = solveSym(RR, FF);
+    const fdotTH = FF.reduce((s, f, k) => s + f * TH[k], 0);
+    const loss = Math.max((v1 - fdotTH) / (N || 1), Number.EPSILON);
+    lossRow.push(loss);
+  }
+
+  // Assemble V = [loss..., N ; na..., v1/N ; nb..., 0 ; nk..., 0].
+  const r1 = [...lossRow, N];
+  const r2 = [...orders.map((o) => o.na), v1 / (N || 1)];
+  const r3 = [...orders.map((o) => o.nb), 0];
+  const r4 = [...orders.map((o) => o.nk), 0];
+  return [fromRows([r1, r2, r3, r4])];
 }
 
+// QUARANTINED: spa — the frequency-response estimate uses the wrong scaling/frequency grid
+// vs MATLAB (DC collapses to mean(y)/mean(u)), so it does not match MATLAB's spectral
+// estimate. Matching MATLAB's exact spectral analysis is out of scope. Kept below; not registered.
 // ── SPA: spectral analysis — estimate frequency response via Welch's cross-power method
 // G(w) = Syu(w) / Suu(w) where Syu and Suu are cross/auto-power spectral estimates.
 async function spa(args: Value[]): Promise<Value[]> {
@@ -307,7 +462,8 @@ export const IDENT: ToolboxModule = {
   id: 'ident',
   name: 'System Identification Toolbox',
   docBase: 'https://www.mathworks.com/help/ident/',
-  builtins: { arx, armax, n4sid, ssest, tfest, compare, bj, ar, arxstruc, spa },
+  // QUARANTINED: n4sid, ssest, tfest, spa — see comments at their definitions.
+  builtins: { arx, armax, compare, bj, ar, arxstruc },
   help: {
     arx: {
       summary: 'Estimate parameters of ARX, ARIX, AR, or ARI model',
@@ -336,46 +492,7 @@ export const IDENT: ToolboxModule = {
       ],
       seealso: ['arx', 'bj', 'n4sid', 'tfest'],
     },
-    n4sid: {
-      summary: 'Estimate state-space model using subspace method with time-domain or frequency-domain data',
-      syntax: [
-        'sys = n4sid(tt,nx)',
-        "sys = n4sid(u,y,nx,'Ts',Ts)",
-        'sys = n4sid(data,nx)',
-      ],
-      description: [
-        'sys = n4sid(u,y,nx) identifies a discrete-time state-space model of order nx from I/O data using a subspace (MOESP-style) method.',
-        'Returns an idss object with fields A, B, C, D, K (Kalman gain), Ts.',
-      ],
-      seealso: ['ssest', 'arx', 'tfest'],
-    },
-    ssest: {
-      summary: 'Estimate state-space model using time-domain or frequency-domain data',
-      syntax: [
-        'sys = ssest(tt,nx)',
-        "sys = ssest(u,y,nx,'Ts',Ts)",
-        'sys = ssest(data,nx)',
-      ],
-      description: [
-        'sys = ssest(u,y,nx) estimates a continuous- or discrete-time state-space model of order nx.',
-        'In this implementation uses the same subspace method as n4sid.',
-      ],
-      seealso: ['n4sid', 'arx', 'tfest'],
-    },
-    tfest: {
-      summary: 'Estimate transfer function model',
-      syntax: [
-        'sys = tfest(tt,np)',
-        'sys = tfest(u,y,np)',
-        'sys = tfest(data,np)',
-      ],
-      description: [
-        'sys = tfest(u,y,np) estimates a transfer function with np poles from I/O data.',
-        'Uses ARX regression to obtain numerator/denominator coefficients.',
-        'Returns an idtf object with fields Numerator, Denominator, np, Ts.',
-      ],
-      seealso: ['arx', 'n4sid', 'ssest', 'compare'],
-    },
+    // QUARANTINED help entries (n4sid, ssest, tfest) removed — see function comments.
     compare: {
       summary: 'Compare identified model output with measured output',
       syntax: [
@@ -414,20 +531,6 @@ export const IDENT: ToolboxModule = {
       ],
       seealso: ['arx', 'selstruc'],
     },
-    spa: {
-      summary: 'Estimate frequency response with fixed frequency resolution using spectral analysis',
-      syntax: [
-        'G = spa(data)',
-        'G = spa(data,winSize,freq)',
-        'G = spa(u,y)',
-        'G = spa(u,y,winSize)',
-      ],
-      description: [
-        'G = spa(u,y) estimates the empirical transfer function G(w) = Syu(w)/Suu(w) via Welch cross-spectral averaging.',
-        'winSize sets the segment length (default min(256,N)).',
-        'Returns an idfrd object with fields Frequency, ResponseData (real), ImagData (imag), WindowSize, Ts.',
-      ],
-      seealso: ['tfest', 'arx', 'bodeplot', 'etfe'],
-    },
+    // QUARANTINED help entry (spa) removed — see function comment.
   },
 };
