@@ -158,6 +158,15 @@ const lagmatrix: Builtin = (a) => {
   for (const L of lags) for (let col = 0; col < mc; col++) { for (let r = 0; r < N; r++) { const s = r - L; if (s >= 0 && s < N) data[r + c * N] = Y.data[s + col * N]; } c++; }
   return Promise.resolve([mat(N, ncol, data)]);
 };
+/** autocorr(y[,NumLags]): sample (biased) autocorrelation, lags 0..NumLags. */
+const autocorr: Builtin = (a) => {
+  const y = toArray(m(a[0])), N = y.length;
+  let nlags = Math.min(20, N - 1);
+  for (let i = 1; i < a.length; i++) if (isMat(a[i]) && !(a[i] as Mat).isChar && (a[i] as Mat).rows) { nlags = Math.round(asScalar(a[i])); break; }
+  const mean = y.reduce((s, v) => s + v, 0) / N, d = y.map((v) => v - mean), c0 = d.reduce((s, v) => s + v * v, 0);
+  const acf: number[] = []; for (let k = 0; k <= nlags; k++) { let s = 0; for (let t = 0; t < N - k; t++) s += d[t] * d[t + k]; acf.push(s / c0); }
+  return Promise.resolve([colVec(acf)]);
+};
 /** aicbic(logL,numParam[,numObs]): Akaike (and Bayesian) information criteria. */
 const aicbic: Builtin = (a, nargout) => { const L = asScalar(a[0]), k = asScalar(a[1]); const outs: Value[] = [scalar(-2 * L + 2 * k)]; if (nargout >= 2) outs.push(scalar(-2 * L + k * Math.log(asScalar(a[2])))); return Promise.resolve(outs); };
 
@@ -165,13 +174,14 @@ export const ECON: ToolboxModule = {
   id: 'econ',
   name: 'Econometrics Toolbox',
   docBase: 'https://www.mathworks.com/help/econ/ref/',
-  builtins: { adftest, pptest, price2ret, ret2price, tick2ret, ret2tick, lagmatrix, aicbic },
+  builtins: { adftest, pptest, price2ret, ret2price, tick2ret, ret2tick, lagmatrix, aicbic, autocorr },
   help: {
-    adftest: 'Augmented Dickey-Fuller test for a unit root',
-    pptest: 'Phillips-Perron test for a unit root',
-    price2ret: 'Convert prices to continuous (log) returns', ret2price: 'Convert returns to prices',
-    tick2ret: 'Convert prices to simple returns', ret2tick: 'Convert simple returns to prices',
-    lagmatrix: 'Create lagged time series matrix', aicbic: 'Akaike and Bayesian information criteria',
+    adftest: { summary: 'returns the rejection decision from conducting an augmented Dickey-Fuller test for a unit root in the input univariate time series.', syntax: ['h = adftest(y)', 'StatTbl = adftest(Tbl)', '[ ___ ] = adftest( ___ ,Name=Value)', '[ ___ ,reg] = adftest( ___ )'], seealso: ['kpsstest', 'lmctest', 'pptest', 'vratiotest', 'i10test'] },
+    pptest: { summary: 'returns the rejection decision from conducting the Phillips-Perron test for a unit root in the input univariate time series.', syntax: ['h = pptest(y)', 'StatTbl = pptest(Tbl)', '[ ___ ] = pptest( ___ ,Name=Value)', '[ ___ ,reg] = pptest( ___ )'], seealso: ['adftest', 'kpsstest', 'vratiotest', 'lmctest'] },
+    price2ret: { summary: 'returns the matrix of numVars continuously compounded return series, and corresponding time intervals, from the input matrix of numVars price series.', syntax: ['[Returns,intervals] = price2ret(Prices)', 'ReturnTbl = price2ret(PriceTbl)', '[ ___ ] = price2ret( ___ ,Name=Value)'], seealso: ['ret2price', 'tick2ret'] },
+    tick2ret: { summary: 'Convert tick (price) series to return series', syntax: ['ret = tick2ret(price)', 'ret = tick2ret(price,base)'], seealso: ['ret2tick', 'price2ret'] },
+    lagmatrix: { summary: 'shifts the input regular series in time by the input vector of lags (positive) or leads (negative), and returns the matrix of shifted series.', syntax: ['YLag = lagmatrix(Y,lags)', '[YLag,TLag] = lagmatrix(Y,lags)', 'LagTbl = lagmatrix(Tbl,lags)', '[ ___ ] = lagmatrix( ___ ,Name=Value)'] },
+    autocorr: { summary: 'returns the sample autocorrelation function (ACF) and associated lags of the input univariate time series.', syntax: ['[acf,lags] = autocorr(y)', 'ACFTbl = autocorr(Tbl)', '[ ___ ] = autocorr( ___ ,Name=Value)', 'autocorr( ___ )'] },
   },
 };
 // Augmented Dickey-Fuller critical-value tables, extracted verbatim from the

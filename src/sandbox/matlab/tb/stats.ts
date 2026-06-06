@@ -542,6 +542,15 @@ export const STATS: ToolboxModule = {
   builtins: {
     tiedrank: (a, nargout) => Promise.resolve(tiedrankImpl(a, nargout)),
     partialcorr: (a) => ret(partialcorrImpl(a)),
+    // ── tabulate(x): frequency table [value, count, percent]; 1..max for positive integers ──
+    tabulate: (a) => {
+      const x = toArray(m(a[0])), N = x.length;
+      const allPosInt = x.every((v) => v > 0 && Number.isInteger(v));
+      const vals = allPosInt ? Array.from({ length: Math.max(...x) }, (_, i) => i + 1) : [...new Set(x)].sort((p, q) => p - q);
+      const data = new Float64Array(vals.length * 3);
+      for (let i = 0; i < vals.length; i++) { const c = x.filter((v) => v === vals[i]).length; data[i] = vals[i]; data[i + vals.length] = c; data[i + 2 * vals.length] = 100 * c / N; }
+      return ret(mat(vals.length, 3, data));
+    },
     // ── grp2idx(s): group indices + sorted string labels (numeric input) ──
     grp2idx: (a, nargout) => {
       const x = toArray(m(a[0]));
@@ -1385,16 +1394,6 @@ export const STATS: ToolboxModule = {
     nanmax: (a) => ret(colReduceNan(m(a[0]), (c) => Math.max(...noNan(c)))),
     nanmin: (a) => ret(colReduceNan(m(a[0]), (c) => Math.min(...noNan(c)))),
     range: (a) => ret(colReduceNan(m(a[0]), (c) => { const n = noNan(c); return Math.max(...n) - Math.min(...n); })),
-    /** tabulate(x) → [value count percent] matrix (numeric output form). */
-    tabulate: (a) => {
-      const x = toArray(m(a[0])).map((v) => Math.round(v));
-      const counts = new Map<number, number>(); for (const v of x) counts.set(v, (counts.get(v) ?? 0) + 1);
-      const vals = [...counts.keys()].sort((p, q) => p - q); const n = x.length;
-      const out = zeros(vals.length, 3);
-      vals.forEach((v, i) => { out.data[i] = v; out.data[i + vals.length] = counts.get(v)!; out.data[i + 2 * vals.length] = 100 * counts.get(v)! / n; });
-      return ret(out);
-    },
-
     // ── distances / clustering ──
     /** pdist(X[,metric]) → 1×(m choose 2) row of pairwise distances (i<j, column-major upper). */
     pdist: (a) => {
@@ -1831,60 +1830,60 @@ export const STATS: ToolboxModule = {
     },
   },
   help: {
-    ttest: 'One-sample and paired-sample t-test', ttest2: 'Two-sample t-test',
-    ranksum: 'Wilcoxon rank-sum (Mann-Whitney U) test', signrank: 'Wilcoxon signed-rank test',
-    adtest: 'Anderson-Darling goodness-of-fit test', hmmestimate: 'Hidden Markov model parameter estimates from state path', linhyptest: 'Linear hypothesis test',
-    ansaribradley: 'Ansari-Bradley test for equal dispersions', nearcorr: 'Nearest correlation matrix by Frobenius distance',
-    sampsizepwr: 'Sample size and power of test', knntest: 'k-nearest-neighbor two-sample test',
-    normpdf: 'Normal probability density function', normcdf: 'Normal cumulative distribution function', norminv: 'Normal inverse cumulative distribution function',
+    ttest: { summary: 'returns a test decision for the null hypothesis that the data in x comes from a normal distribution with mean equal to zero and unknown variance, using the one-sample t-test.', syntax: ['h = ttest(x)', 'h = ttest(x,y)', 'h = ttest(x,y,Name,Value)', 'h = ttest(x,m)'], seealso: ['ztest', 'ttest2', 'sampsizepwr'] },
+    ranksum: { summary: 'returns the p-value of a two-sided Wilcoxon rank sum test.', syntax: ['p = ranksum(x,y)', '[ ___ ] = ranksum(x,y,Name,Value)'], seealso: ['kruskalwallis', 'signrank', 'signtest', 'ttest2'] },
+    adtest: { summary: 'returns a test decision for the null hypothesis that the data in vector x is from a population with a normal distribution, using the Anderson-Darling test.', syntax: ['h = adtest(x)', 'h = adtest(x,Name,Value)'], seealso: ['kstest', 'jbtest'] },
+    ansaribradley: { summary: 'returns a test decision for the null hypothesis that the data in vectors x and y comes from the same distribution, using the Ansari-Bradley test.', syntax: ['h = ansaribradley(x,y)', 'h = ansaribradley(x,y,Name,Value)'], seealso: ['vartest2', 'vartestn', 'ttest2'] },
+    sampsizepwr: { summary: 'sampsizepwr computes the sample size, power, or alternative parameter value for a hypothesis test, given the other two values.', syntax: ['nout = sampsizepwr(testtype,p0,p1)', 'nout = sampsizepwr(testtype,p0,p1,pwr)', 'pwrout = sampsizepwr(testtype,p0,p1,[],n)', 'p1out = sampsizepwr(testtype,p0,[],pwr,n)'], seealso: ['vartest', 'ttest', 'ttest2', 'ztest', 'binocdf'] },
+    normpdf: { summary: 'returns the probability density function (pdf) of the standard normal distribution, evaluated at the values in x.', syntax: ['y = normpdf(x)', 'y = normpdf(x,mu)', 'y = normpdf(x,mu,sigma)'], seealso: ['pdf', 'normcdf', 'norminv', 'normrnd', 'mvnpdf'] },
     tpdf: "Student's t probability density function", tcdf: "Student's t cumulative distribution function", tinv: "Student's t inverse cumulative distribution function",
-    chi2pdf: 'Chi-square probability density function', chi2cdf: 'Chi-square cumulative distribution function', chi2inv: 'Chi-square inverse cumulative distribution function',
-    gampdf: 'Gamma probability density function', gamcdf: 'Gamma cumulative distribution function', gaminv: 'Gamma inverse cumulative distribution function',
-    exppdf: 'Exponential probability density function', expcdf: 'Exponential cumulative distribution function', expinv: 'Exponential inverse cumulative distribution function',
-    betapdf: 'Beta probability density function', betacdf: 'Beta cumulative distribution function', betainv: 'Beta inverse cumulative distribution function',
-    fpdf: 'F probability density function', fcdf: 'F cumulative distribution function', finv: 'F inverse cumulative distribution function',
-    unifpdf: 'Continuous uniform probability density function', unifcdf: 'Continuous uniform cumulative distribution function', unifinv: 'Continuous uniform inverse cumulative distribution function',
-    lognpdf: 'Lognormal probability density function', logncdf: 'Lognormal cumulative distribution function', logninv: 'Lognormal inverse cumulative distribution function',
-    binopdf: 'Binomial probability density function', binocdf: 'Binomial cumulative distribution function', binoinv: 'Binomial inverse cumulative distribution function',
-    poisspdf: 'Poisson probability density function', poisscdf: 'Poisson cumulative distribution function', poissinv: 'Poisson inverse cumulative distribution function',
-    geopdf: 'Geometric probability density function', geocdf: 'Geometric cumulative distribution function',
-    wblpdf: 'Weibull probability density function', wblcdf: 'Weibull cumulative distribution function', wblinv: 'Weibull inverse cumulative distribution function',
-    raylpdf: 'Rayleigh probability density function', raylcdf: 'Rayleigh cumulative distribution function', raylinv: 'Rayleigh inverse cumulative distribution function',
-    normstat: 'Normal mean and variance', expstat: 'Exponential mean and variance', poisstat: 'Poisson mean and variance', binostat: 'Binomial mean and variance',
-    unifstat: 'Uniform mean and variance', gamstat: 'Gamma mean and variance', betastat: 'Beta mean and variance', chi2stat: 'Chi-square mean and variance',
+    chi2pdf: { summary: 'returns the probability density function (pdf) of the chi-square distribution with nu degrees of freedom, evaluated at the values in x.', syntax: ['y = chi2pdf(x,nu)'], seealso: ['pdf', 'chi2cdf', 'chi2inv', 'chi2stat', 'chi2rnd'] },
+    gampdf: { summary: 'returns the probability density function (pdf) of the standard gamma distribution with the shape parameter a, evaluated at the values in x.', syntax: ['y = gampdf(x,a)', 'y = gampdf(x,a,b)'], seealso: ['GammaDistribution', 'pdf', 'gamcdf', 'gaminv', 'gamstat'] },
+    exppdf: { summary: 'returns the probability density function (pdf) of the standard exponential distribution, evaluated at the values in x.', syntax: ['y = exppdf(x)', 'y = exppdf(x,mu)'], seealso: ['ExponentialDistribution', 'pdf', 'expcdf', 'expinv', 'expstat'] },
+    betapdf: { summary: 'returns the probability density function (pdf) of the beta distribution at each of the values in x using the corresponding parameters in a and b.', syntax: ['y = betapdf(x,a,b)'], seealso: ['pdf', 'betafit', 'betainv', 'betastat', 'betalike'] },
+    fpdf: { summary: 'returns the probability density function (pdf) of the F distribution with the numerator degrees of freedom nu1 and denominator degrees of freedom nu2, evaluated at the values in x', syntax: ['p = fpdf(x,nu1,nu2)'], seealso: ['pdf', 'fcdf', 'finv', 'fstat', 'frnd'] },
+    unifpdf: { summary: 'returns the probability density function (pdf) of the standard uniform distribution, evaluated at the values in x.', syntax: ['y = unifpdf(x)', 'y = unifpdf(x,a,b)'], seealso: ['UniformDistribution', 'pdf', 'unifcdf', 'unifinv', 'unifstat'] },
+    lognpdf: { summary: 'returns the probability density function (pdf) of the standard lognormal distribution, evaluated at the values in x.', syntax: ['y = lognpdf(x)', 'y = lognpdf(x,mu)', 'y = lognpdf(x,mu,sigma)'], seealso: ['pdf', 'logncdf', 'logninv', 'lognstat', 'lognfit'] },
+    binopdf: { summary: 'computes the binomial probability density function at each of the values in x using the corresponding number of trials in n and probability of success for each trial in p.', syntax: ['y = binopdf(x,n,p)'], seealso: ['pdf', 'binoinv', 'binocdf', 'binofit', 'binostat'] },
+    poisspdf: { summary: 'computes the Poisson probability density function at each of the values in x using the rate parameters in lambda.', syntax: ['y = poisspdf(x,lambda)'], seealso: ['pdf', 'poisscdf', 'poissinv', 'poisstat', 'poissfit'] },
+    geopdf: { summary: 'returns the probability density function (pdf) of the geometric distribution, evaluated at each value in x using the corresponding probabilities in p.', syntax: ['y = geopdf(x,p)'], seealso: ['geocdf', 'geoinv', 'geostat', 'geornd', 'pdf'] },
+    wblpdf: { summary: 'returns the probability density function (pdf) of the Weibull distribution with unit parameters, evaluated at the values in x.', syntax: ['y = wblpdf(x)', 'y = wblpdf(x,a)', 'y = wblpdf(x,a,b)'], seealso: ['WeibullDistribution', 'pdf', 'wblcdf', 'wblstat', 'wblfit'] },
+    raylpdf: { summary: 'returns the Rayleigh probability density function (pdf) with the scale parameter b, evaluated at the values in x.', syntax: ['p = raylpdf(x,b)'], seealso: ['pdf', 'raylcdf', 'raylinv', 'raylstat', 'raylfit'] },
+    normstat: { summary: 'returns the mean and variance of the normal distribution with mean mu and standard deviation sigma.', syntax: ['[m,v] = normstat(mu,sigma)'], seealso: ['normpdf', 'normcdf', 'normrnd', 'NormalDistribution', 'mean'] },
+    unifstat: { summary: 'returns the element-wise mean and variance of the continuous uniform distribution defined by the lower endpoint (minimum) a and upper endpoint (maximum) b.', syntax: ['[m,v] = unifstat(a,b)'], seealso: ['unifpdf', 'unifcdf', 'unifinv', 'unifit', 'unifrnd'] },
     tstat: "Student's t mean and variance", fstat: 'F mean and variance', lognstat: 'Lognormal mean and variance', geostat: 'Geometric mean and variance',
-    raylstat: 'Rayleigh mean and variance', wblstat: 'Weibull mean and variance', moment: 'Central moment of a sample', trimmean: 'Trimmed mean',
-    evpdf: 'Extreme value probability density function', evcdf: 'Extreme value cumulative distribution function', evinv: 'Extreme value inverse cumulative distribution function', evstat: 'Extreme value mean and variance',
-    gevpdf: 'Generalized extreme value probability density function', gevcdf: 'Generalized extreme value cumulative distribution function', gevinv: 'Generalized extreme value inverse cumulative distribution function', gevstat: 'Generalized extreme value mean and variance',
-    gppdf: 'Generalized Pareto probability density function', gpcdf: 'Generalized Pareto cumulative distribution function', gpinv: 'Generalized Pareto inverse cumulative distribution function', gpstat: 'Generalized Pareto mean and variance',
-    nbinpdf: 'Negative binomial probability density function', nbincdf: 'Negative binomial cumulative distribution function', nbininv: 'Negative binomial inverse cumulative distribution function', nbinstat: 'Negative binomial mean and variance',
-    hygepdf: 'Hypergeometric probability density function', hygecdf: 'Hypergeometric cumulative distribution function', hygeinv: 'Hypergeometric inverse cumulative distribution function', hygestat: 'Hypergeometric mean and variance',
-    ncx2pdf: 'Noncentral chi-square probability density function', ncx2cdf: 'Noncentral chi-square cumulative distribution function', ncx2inv: 'Noncentral chi-square inverse cumulative distribution function', ncx2stat: 'Noncentral chi-square mean and variance',
-    ncfpdf: 'Noncentral F probability density function', ncfcdf: 'Noncentral F cumulative distribution function', ncfinv: 'Noncentral F inverse cumulative distribution function', ncfstat: 'Noncentral F mean and variance',
-    nctpdf: 'Noncentral t probability density function', nctcdf: 'Noncentral t cumulative distribution function', nctinv: 'Noncentral t inverse cumulative distribution function', nctstat: 'Noncentral t mean and variance',
-    expfit: 'Exponential parameter estimate (MLE)', poissfit: 'Poisson parameter estimate (MLE)', raylfit: 'Rayleigh parameter estimate (MLE)', normfit: 'Normal parameter estimates (mean, std)', unifit: 'Uniform parameter estimates (min, max)',
-    binofit: 'Binomial proportion estimate', wblfit: 'Weibull parameter estimates (MLE)', skewness: 'Sample skewness', kurtosis: 'Sample kurtosis',
-    lognfit: 'Lognormal parameter estimates (MLE)', gamfit: 'Gamma parameter estimates (MLE)',
-    mvnpdf: 'Multivariate normal probability density function', copulastat: 'Copula rank correlation',
-    ecdf: 'Empirical cumulative distribution function',
-    betafit: 'Beta distribution parameter estimates (MLE)', nbinfit: 'Negative binomial parameter estimates (MLE)',
-    nanmean: 'Mean, ignoring NaN values', nansum: 'Sum, ignoring NaN values', nanstd: 'Standard deviation, ignoring NaN values', nanvar: 'Variance, ignoring NaN values',
-    nanmedian: 'Median, ignoring NaN values', nanmax: 'Maximum, ignoring NaN values', nanmin: 'Minimum, ignoring NaN values',
-    range: 'Range of values (max − min)', tabulate: 'Frequency table',
-    pdist: 'Pairwise distance between observations', squareform: 'Format distance matrix', linkage: 'Agglomerative hierarchical cluster tree', kmeans: 'k-means clustering',
-    tiedrank: 'Ranks of a sample, adjusting for ties', partialcorr: 'Linear or partial correlation coefficients',
-    grp2idx: 'Create index vector from grouping variable', crosstab: 'Cross-tabulation', x2fx: 'Convert predictors to design matrix',
-    geoinv: 'Geometric inverse cumulative distribution function', mnpdf: 'Multinomial probability density function',
-    ff2n: 'Two-level full factorial design', fullfact: 'Full factorial design', hougen: 'Hougen-Watson model function',
-    combnk: 'Enumerate combinations of n choose k', mvtpdf: 'Multivariate Student-t probability density function',
-    explike: 'Exponential negative log-likelihood',
-    unidpdf: 'Discrete uniform probability density function', unidcdf: 'Discrete uniform cumulative distribution function',
-    unidinv: 'Discrete uniform inverse cumulative distribution function', unidstat: 'Discrete uniform mean and variance',
-    regress: 'Multiple linear regression', pca: 'Principal component analysis', anova1: 'One-way analysis of variance',
-    glmfit: 'Generalized linear model regression',
-    makedist: 'Create a probability distribution object', pdf: 'Probability density function', cdf: 'Cumulative distribution function', icdf: 'Inverse cumulative distribution function',
-    confusionmat: 'Confusion matrix for classification', dummyvar: 'Dummy (one-hot) variable coding for grouping variables',
-    mahal: 'Squared Mahalanobis distance to a reference distribution', robustfit: 'Robust linear regression (iteratively reweighted least squares)',
+    raylstat: { summary: 'returns the mean for the Rayleigh distribution with the scale parameter b.', syntax: ['m = raylstat(b)', '[m,v] = raylstat(b)'], seealso: ['raylpdf', 'raylcdf', 'raylinv', 'raylfit', 'raylrnd'] },
+    evpdf: { summary: 'returns the probability density function (pdf) of the type 1 extreme value distribution (also known as the Gumbel distribution) with a location parameter equal to 0 and a scale pa', syntax: ['p = evpdf(x)', 'p = evpdf(x,mu,sigma)'], seealso: ['pdf', 'evcdf', 'evinv', 'evstat', 'evfit'] },
+    gevpdf: { summary: 'returns the probability density function (pdf) of the generalized extreme value (GEV) distribution with a shape parameter equal to 0, scale parameter equal to 1, and location para', syntax: ['p = gevpdf(x)', 'p = gevpdf(x,k,sigma,mu)'], seealso: ['pdf', 'gevcdf', 'gevinv', 'gevstat', 'gevfit'] },
+    gppdf: { summary: 'returns the probability density function (pdf) of the generalized Pareto (GP) distribution with a shape parameter equal to 0, a scale parameter equal to 1, and a threshold (locati', syntax: ['p = gppdf(x)', 'p = gppdf(x,k,sigma,theta)'], seealso: ['pdf', 'gpcdf', 'gpinv', 'gpstat', 'gpfit'] },
+    nbinpdf: { summary: 'returns the negative binomial probability density function (pdf), evaluated at the values in x, using the corresponding number of successes r and the probability of success in a s', syntax: ['y = nbinpdf(x,r,p)'], seealso: ['pdf', 'nbincdf', 'nbininv', 'nbinstat', 'nbinfit'] },
+    hygepdf: { summary: 'returns the probability density function (pdf) of the hypergeometric distribution, evaluated at the values in x, using the corresponding size of the population m, the number of it', syntax: ['p = hygepdf(x,m,k,n)'], seealso: ['pdf', 'hygecdf', 'hygeinv', 'hygestat', 'hygernd'] },
+    ncx2pdf: { summary: 'returns the noncentral chi-square probability density function (pdf) with nu degrees of freedom and the noncentrality parameter delta, evaluated at the values in x.', syntax: ['p = ncx2pdf(x,nu,delta)'], seealso: ['pdf', 'ncx2cdf', 'ncx2inv', 'ncx2stat', 'ncx2rnd'] },
+    ncfpdf: { summary: 'returns the noncentral F probability density function (pdf) with nu1 numerator degrees of freedom, nu2 denominator degrees of freedom, and the noncentrality parameter delta, evalu', syntax: ['p = ncfpdf(x,nu1,nu2,delta)'], seealso: ['pdf', 'ncfcdf', 'ncfinv', 'ncfstat', 'ncfrnd'] },
+    nctpdf: { summary: 'returns the noncentral t probability density function (pdf) with nu degrees of freedom and the noncentrality parameter delta, evaluated at the values in x.', syntax: ['p = nctpdf(x,nu,delta)'], seealso: ['pdf', 'nctcdf', 'nctinv', 'nctstat', 'nctrnd'] },
+    expfit: { summary: 'returns the maximum likelihood estimates (MLEs) of the mean parameter mu of the exponential distribution, given the sample data in x.', syntax: ['pHat = expfit(x)', '[pHat,pCI] = expfit(x)', '[pHat,pCI] = expfit(x,alpha)', '[ ___ ] = expfit(x,alpha,censoring)'], seealso: ['mle', 'explike', 'exppdf', 'expcdf', 'expinv'] },
+    binofit: { summary: 'returns the maximum likelihood estimates (MLEs) of the probability of success in a given binomial trial based on the number of successes r observed in n independent trials.', syntax: ['pHat = binofit(r,n)', '[pHat,pCI] = binofit(r,n)', '[pHat,pCI] = binofit(r,n,alpha)'], seealso: ['mle', 'binopdf', 'binocdf', 'binoinv', 'binostat'] },
+    lognfit: { summary: 'returns unbiased estimates of lognormal distribution parameters, given the sample data in x.', syntax: ['pHat = lognfit(x)', '[pHat,pCI] = lognfit(x)', '[pHat,pCI] = lognfit(x,alpha)', '[ ___ ] = lognfit(x,alpha,censoring)'], seealso: ['mle', 'lognlike', 'lognpdf', 'logncdf', 'logninv'] },
+    mvnpdf: { summary: 'returns an n-by-1 vector y containing the probability density function (pdf) values for the d-dimensional multivariate normal distribution with zero mean and identity covariance m', syntax: ['y = mvnpdf(X)', 'y = mvnpdf(X,mu)', 'y = mvnpdf(X,mu,Sigma)'], seealso: ['mvncdf', 'mvnrnd', 'normpdf'] },
+    ecdf: { summary: 'returns the empirical cumulative distribution function f, evaluated at x, using the data in y.', syntax: ['ecdf( ___ )', 'ecdf(ax, ___ )'], seealso: ['cdfplot', 'ecdfhist', 'EmpiricalDistribution'] },
+    betafit: { summary: 'returns the maximum likelihood estimates (MLEs) of the beta distribution parameters a and b, given the data in x.', syntax: ['pHat= betafit(x)', '[pHat,pCI] = betafit(x)', '[pHat,pCI] = betafit(x,alpha)'], seealso: ['mle', 'betapdf', 'betainv', 'betastat', 'betalike'] },
+    nanmean: { summary: 'Mean ignoring NaN values', syntax: ['m = nanmean(x)', 'm = nanmean(x,dim)'], seealso: ['mean', 'nanmedian', 'nanstd'] },
+    nanmedian: { summary: 'Median ignoring NaN values', syntax: ['m = nanmedian(x)', 'm = nanmedian(x,dim)'], seealso: ['median', 'nanmean'] },
+    range: { summary: 'returns the difference between the maximum and minimum values of sample data in X.', syntax: ['y = range(X)', 'y = range(X,\'all\')', 'y = range(X,dim)', 'y = range(X,vecdim)'], seealso: ['std', 'iqr', 'mad'] },
+    pdist: { summary: 'returns the Euclidean distance between pairs of observations in X.', syntax: ['D = pdist(X)', 'D = pdist(X,Distance)', 'D = pdist(X,Distance,DistParameter)', 'D = pdist(X,Distance,CacheSize=cache)'], seealso: ['cluster', 'clusterdata', 'cmdscale', 'cophenet', 'dendrogram'] },
+    tiedrank: { summary: 'returns the rank of each value in X.', syntax: ['[R,tieadj] = tiedrank(X)', '[R,tieadj] = tiedrank(X,1)', '[R,tieadj] = tiedrank(X,0,1)'], seealso: ['ansaribradley', 'corr', 'partialcorr', 'ranksum', 'signrank'] },
+    tabulate: { summary: 'displays a frequency table of the data in the vector x.', syntax: ['tabulate(x)', 'tbl = tabulate(x)'], seealso: ['pareto', 'histogram', 'bar', 'grpstats', 'groupcounts'] },
+    geoinv: { summary: 'returns the inverse cumulative distribution function (icdf) of the geometric distribution at each value in y using the corresponding probabilities in p.', syntax: ['x = geoinv(y,p)'], seealso: ['geocdf', 'geopdf', 'geostat', 'geornd', 'icdf'] },
+    ff2n: { summary: 'returns a 2n-by-n numeric matrix dFF2 containing the treatments of a full factorial design for n two-level factors.', syntax: ['dFF2 = ff2n(n)'], seealso: ['fullfact', 'fracfact', 'fracfactgen', 'hadamard'] },
+    combnk: { summary: 'All combinations of n elements taken k at a time', syntax: ['C = combnk(v,k)'], seealso: ['nchoosek', 'perms'] },
+    explike: { summary: 'returns the exponential negative loglikelihood of the parameter mu, given the sample data x.', syntax: ['nlogL = explike(mu,x)', 'nlogL = explike(mu,x,censoring)', 'nlogL = explike(mu,x,censoring,freq)', '[nlogL,aVar] = explike( ___ )'], seealso: ['expcdf', 'exppdf', 'expstat', 'expfit', 'expinv'] },
+    unidpdf: { summary: 'returns the probability density function (pdf) of the discrete uniform distribution with the maximum value n, evaluated at the values in x.', syntax: ['p = unidpdf(x,n)'], seealso: ['pdf', 'unidcdf', 'unidinv', 'unidstat', 'unidrnd'] },
+    unidinv: { summary: 'returns the inverse cumulative distribution function (icdf) of the discrete uniform distribution with the maximum values in n, evaluated at the probability values in p.', syntax: ['x = unidinv(p,n)'], seealso: ['icdf', 'unidcdf', 'unidpdf', 'unidstat', 'unidrnd'] },
+    regress: { summary: 'returns a vector b of coefficient estimates for a multiple linear regression of the responses in vector y on the predictors in matrix X.', syntax: ['b = regress(y,X)', '[b,bint] = regress(y,X)', '[b,bint,r] = regress(y,X)', '[b,bint,r,rint] = regress(y,X)'], seealso: ['LinearModel', 'fitlm', 'stepwiselm', 'mvregress', 'rcoplot'] },
+    glmfit: { summary: 'returns a vector b of coefficient estimates for a generalized linear regression model of the responses in y on the predictors in X, using the distribution distr.', syntax: ['b = glmfit(X,y,distr)', 'b = glmfit(X,y,distr,Name,Value)', '[b,dev] = glmfit( ___ )', '[b,dev,stats] = glmfit( ___ )'], seealso: ['glmval', 'regress', 'regstats', 'GeneralizedLinearModel', 'fitglm'] },
+    makedist: { summary: 'creates a probability distribution object for the distribution distname, using the default parameter values.', syntax: ['pd = makedist(distname)', 'pd = makedist(distname,Name,Value)', 'list = makedist', 'makedist -reset'], seealso: ['fitdist'] },
+    confusionmat: { summary: 'returns the confusion matrix C determined by the known and predicted groups in group and grouphat, respectively.', syntax: ['C = confusionmat(group,grouphat)', 'C = confusionmat(group,grouphat,\'Order\',grouporder)', '[C,order] = confusionmat( ___ )'], seealso: ['categories', 'crosstab', 'confusionchart'] },
+    mahal: { summary: 'returns the squared Mahalanobis distance of each observation in Y to the reference samples in X.', syntax: ['d2 = mahal(Y,X)'], seealso: ['pdist', 'pdist2', 'mahal', 'mahal', 'robustcov'] },
   },
 };
 
