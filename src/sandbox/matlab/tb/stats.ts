@@ -131,7 +131,8 @@ function norminvStd(p: number): number {
 }
 /** Bisection inverse of a monotone-increasing CDF on [lo,hi] (expanding for unbounded support). */
 function invCdf(target: number, cdf: (x: number) => number, lo: number, hi: number): number {
-  if (target <= 0) return lo; if (target >= 1) return hi;
+  if (Number.isNaN(target) || target < 0 || target > 1) return NaN; // p outside [0,1] is undefined
+  if (target === 0) return lo; if (target === 1) return hi;
   let a = lo, b = hi;
   if (!Number.isFinite(a)) { a = -1; while (cdf(a) > target) a *= 2; }
   if (!Number.isFinite(b)) { b = 1; while (cdf(b) < target) b *= 2; }
@@ -221,7 +222,7 @@ interface DistSpec { display: string; params: string[]; defaults: number[]; pdf:
 const DISTS: Record<string, DistSpec> = {
   normal: { display: 'Normal', params: ['mu', 'sigma'], defaults: [0, 1], pdf: (x, mu, s) => Math.exp(-0.5 * ((x - mu) / s) ** 2) / (s * Math.sqrt(2 * Math.PI)), cdf: (x, mu, s) => 0.5 * erfc(-(x - mu) / (s * Math.SQRT2)), inv: (p, mu, s) => mu + s * norminvStd(p) },
   exponential: { display: 'Exponential', params: ['mu'], defaults: [1], pdf: (x, mu) => x < 0 ? 0 : Math.exp(-x / mu) / mu, cdf: (x, mu) => x < 0 ? 0 : 1 - Math.exp(-x / mu), inv: (p, mu) => -mu * Math.log(1 - p) },
-  poisson: { display: 'Poisson', params: ['lambda'], defaults: [1], pdf: (k, lam) => { k = Math.round(k); return k < 0 ? 0 : Math.exp(k * Math.log(lam) - lam - logGamma(k + 1)); }, cdf: (k, lam) => { k = Math.floor(k); return k < 0 ? 0 : 1 - gammainc(lam, k + 1); }, inv: (pr, lam) => { let c = 0, k = 0; for (; k < 1e6; k++) { c += Math.exp(k * Math.log(lam) - lam - logGamma(k + 1)); if (c >= pr - 1e-12) return k; } return k; } },
+  poisson: { display: 'Poisson', params: ['lambda'], defaults: [1], pdf: (k, lam) => { k = Math.round(k); return k < 0 ? 0 : Math.exp(k * Math.log(lam) - lam - logGamma(k + 1)); }, cdf: (k, lam) => { k = Math.floor(k); return k < 0 ? 0 : k === Infinity ? 1 : 1 - gammainc(lam, k + 1); }, inv: (pr, lam) => { let c = 0, k = 0; for (; k < 1e6; k++) { c += Math.exp(k * Math.log(lam) - lam - logGamma(k + 1)); if (c >= pr - 1e-12) return k; } return k; } },
   uniform: { display: 'Uniform', params: ['lower', 'upper'], defaults: [0, 1], pdf: (x, lo, hi) => x >= lo && x <= hi ? 1 / (hi - lo) : 0, cdf: (x, lo, hi) => x < lo ? 0 : x > hi ? 1 : (x - lo) / (hi - lo), inv: (p, lo, hi) => lo + p * (hi - lo) },
   gamma: { display: 'Gamma', params: ['a', 'b'], defaults: [1, 1], pdf: (x, k, th) => x < 0 ? 0 : Math.exp((k - 1) * Math.log(x) - x / th - k * Math.log(th) - logGamma(k)), cdf: (x, k, th) => gammainc(x / th, k), inv: (p, k, th) => invCdf(p, (x) => gammainc(x / th, k), 0, Infinity) },
   lognormal: { display: 'Lognormal', params: ['mu', 'sigma'], defaults: [0, 1], pdf: (x, mu, s) => x <= 0 ? 0 : Math.exp(-0.5 * ((Math.log(x) - mu) / s) ** 2) / (x * s * Math.sqrt(2 * Math.PI)), cdf: (x, mu, s) => x <= 0 ? 0 : 0.5 * erfc(-(Math.log(x) - mu) / (s * Math.SQRT2)), inv: (p, mu, s) => Math.exp(mu + s * norminvStd(p)) },
@@ -1379,7 +1380,7 @@ export const STATS: ToolboxModule = {
     tcdf: (a) => dist(a, [1], (x, v) => { const ib = betainc(v / (v + x * x), v / 2, 0.5); return x >= 0 ? 1 - 0.5 * ib : 0.5 * ib; }),
     tinv: (a) => dist(a, [1], (p, v) => invCdf(p, (x) => { const ib = betainc(v / (v + x * x), v / 2, 0.5); return x >= 0 ? 1 - 0.5 * ib : 0.5 * ib; }, -Infinity, Infinity)),
     // ── Chi-square ──
-    chi2pdf: (a) => dist(a, [1], (x, k) => x < 0 ? 0 : Math.exp((k / 2 - 1) * Math.log(x) - x / 2 - (k / 2) * Math.LN2 - logGamma(k / 2))),
+    chi2pdf: (a) => dist(a, [1], (x, k) => x < 0 ? 0 : x === 0 ? (k < 2 ? Infinity : k === 2 ? 0.5 : 0) : x === Infinity ? 0 : Math.exp((k / 2 - 1) * Math.log(x) - x / 2 - (k / 2) * Math.LN2 - logGamma(k / 2))),
     chi2cdf: (a) => dist(a, [1], (x, k) => gammainc(x / 2, k / 2)),
     chi2inv: (a) => dist(a, [1], (p, k) => invCdf(p, (x) => gammainc(x / 2, k / 2), 0, Infinity)),
     // ── Gamma (shape a, scale b) ──
@@ -1395,7 +1396,7 @@ export const STATS: ToolboxModule = {
     betacdf: (a) => dist(a, [1, 1], (x, p, q) => betainc(x, p, q)),
     betainv: (a) => dist(a, [1, 1], (pr, p, q) => invCdf(pr, (x) => betainc(x, p, q), 0, 1)),
     // ── F ──
-    fpdf: (a) => dist(a, [1, 1], (x, d1, d2) => x < 0 ? 0 : Math.exp(0.5 * (d1 * Math.log(d1 * x) + d2 * Math.log(d2) - (d1 + d2) * Math.log(d1 * x + d2)) - Math.log(x) - (logGamma(d1 / 2) + logGamma(d2 / 2) - logGamma((d1 + d2) / 2)))),
+    fpdf: (a) => dist(a, [1, 1], (x, d1, d2) => x < 0 ? 0 : x === 0 ? (d1 < 2 ? Infinity : d1 === 2 ? 1 : 0) : x === Infinity ? 0 : Math.exp(0.5 * (d1 * Math.log(d1 * x) + d2 * Math.log(d2) - (d1 + d2) * Math.log(d1 * x + d2)) - Math.log(x) - (logGamma(d1 / 2) + logGamma(d2 / 2) - logGamma((d1 + d2) / 2)))),
     fcdf: (a) => dist(a, [1, 1], (x, d1, d2) => x <= 0 ? 0 : x === Infinity ? 1 : betainc(d1 * x / (d1 * x + d2), d1 / 2, d2 / 2)),
     finv: (a) => dist(a, [1, 1], (p, d1, d2) => invCdf(p, (x) => x <= 0 ? 0 : betainc(d1 * x / (d1 * x + d2), d1 / 2, d2 / 2), 0, Infinity)),
     // ── Uniform ──
@@ -1412,7 +1413,7 @@ export const STATS: ToolboxModule = {
     binoinv: (a) => dist(a, [1, 0.5], (pr, n, p) => { let c = 0; for (let k = 0; k <= n; k++) { c += nCk(n, k) * p ** k * (1 - p) ** (n - k); if (c >= pr - 1e-12) return k; } return n; }),
     // ── Poisson ──
     poisspdf: (a) => dist(a, [1], (k, lam) => { k = Math.round(k); if (k < 0) return 0; return Math.exp(k * Math.log(lam) - lam - logGamma(k + 1)); }),
-    poisscdf: (a) => dist(a, [1], (k, lam) => { k = Math.floor(k); return k < 0 ? 0 : 1 - gammainc(lam, k + 1); }),
+    poisscdf: (a) => dist(a, [1], (k, lam) => { k = Math.floor(k); return k < 0 ? 0 : k === Infinity ? 1 : 1 - gammainc(lam, k + 1); }),
     poissinv: (a) => dist(a, [1], (pr, lam) => { let c = 0, k = 0; for (; k < 1e6; k++) { c += Math.exp(k * Math.log(lam) - lam - logGamma(k + 1)); if (c >= pr - 1e-12) return k; } return k; }),
     // ── Exponential negative log-likelihood: nlogL + inverse-observed-information avar ──
     explike: (a, nargout) => {
