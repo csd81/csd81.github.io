@@ -29,11 +29,13 @@ type FromWorker =
 const post = (m: FromWorker) => (self as unknown as Worker).postMessage(m);
 
 // Reusable macrotask yield: posting on a MessageChannel returns control to the
-// worker event loop, so a queued "abort" message gets a chance to run.
-let yieldResolve: (() => void) | null = null;
+// worker event loop, so a queued "abort" message gets a chance to run. Use a FIFO
+// queue of resolvers so overlapping yields (e.g. a reset arriving mid-run) can't
+// clobber each other and leak a pending promise.
+const yieldResolves: (() => void)[] = [];
 const tickChannel = new MessageChannel();
-tickChannel.port1.onmessage = () => { const r = yieldResolve; yieldResolve = null; r?.(); };
-const macrotaskYield = () => new Promise<void>((res) => { yieldResolve = res; tickChannel.port2.postMessage(0); });
+tickChannel.port1.onmessage = () => { yieldResolves.shift()?.(); };
+const macrotaskYield = () => new Promise<void>((res) => { yieldResolves.push(res); tickChannel.port2.postMessage(0); });
 
 let aborted = false;
 let inputResolve: ((v: string) => void) | null = null;
@@ -57,15 +59,20 @@ self.onmessage = async (ev: MessageEvent<ToWorker>) => {
   const msg = ev.data;
   switch (msg.type) {
     case 'reset':
+      // Stop any in-flight run and unblock a pending input() before rebuilding.
+      aborted = true;
+      if (inputResolve) { const r = inputResolve; inputResolve = null; r(''); }
       preload = msg.preload;
       makeSession();
       post({ type: 'completions', names: session!.completions() });
-      return;
+      return;   // `aborted` stays set until the next 'run' clears it (so a stale run can't continue)
     case 'inputReply':
       { const r = inputResolve; inputResolve = null; r?.(msg.value); }
       return;
     case 'abort':
       aborted = true;
+      // Wake an interpreter parked on input() so it can observe the abort and throw.
+      if (inputResolve) { const r = inputResolve; inputResolve = null; r(''); }
       return;
     case 'putFile':
       if (!session) makeSession();

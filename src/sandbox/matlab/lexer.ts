@@ -145,7 +145,9 @@ export function tokenize(src: string): Token[] {
         out += src[j]; j++;
       }
       toks.push({ kind: 'str', value: out, spaceBefore, pos: i, line });
-      i = j + 1; spaceBefore = false; continue;
+      // On an unterminated string we stopped *at* the newline — leave it for the nl
+      // handler (which emits the token and bumps `line`); only skip the closing quote.
+      i = (j < n && src[j] === '\n') ? j : j + 1; spaceBefore = false; continue;
     }
     // Double-quoted string (Octave/newer MATLAB).
     if (c === '"') {
@@ -153,6 +155,7 @@ export function tokenize(src: string): Token[] {
       while (j < n) {
         if (src[j] === '"') { if (src[j + 1] === '"') { out += '"'; j += 2; continue; } break; } // MATLAB "" → "
         if (src[j] === '\\' && src[j + 1] === '"') { out += '"'; j += 2; continue; }            // Octave \" → "
+        if (src[j] === '\n') line++;   // keep the line counter correct if the string spans lines
         out += src[j]; j++;
       }
       toks.push({ kind: 'str', value: out, dq: true, spaceBefore, pos: i, line });
