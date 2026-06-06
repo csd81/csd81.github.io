@@ -306,6 +306,62 @@ function eomday(y: number, m: number): number {
   return [31, isLeap(y) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1];
 }
 
+/** calendar(Y,M) — 6×7 day matrix, column 1 = Sunday. Mirrors calendar.m. */
+function calendarImpl(args: Value[]): Value {
+  const Y = Math.trunc(asScalar(args[0])), M = Math.trunc(asScalar(args[1]));
+  if (M < 1 || M > 12) throw new MatError('calendar: month must be 1..12');
+  const k = ((Math.trunc(datenum(Y, M, 1)) + 5) % 7) + 1;     // weekday of the 1st: 1=Sun..7=Sat
+  let d = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][M - 1];
+  if (M === 2 && isLeap(Y)) d = 29;
+  const data = new Float64Array(42);                          // 6×7 column-major (transpose of 7×6 fill)
+  for (let i = 0; i < d; i++) { const L = (k - 1) + i; data[Math.floor(L / 7) + (L % 7) * 6] = i + 1; }
+  return mat(6, 7, data);
+}
+
+/** juliandate(Y,M,D[,H,MI,S]) — Julian date via Fliegel-Van Flandern. Element-wise. */
+function juliandateImpl(args: Value[]): Value {
+  const cols = args.map((v) => toArray(m(v)));
+  const n = Math.max(...cols.map((c) => c.length));
+  const g = (k: number, i: number) => { const c = cols[k]; return c ? (c.length === 1 ? c[0] : c[i]) : (k >= 3 ? 0 : 0); };
+  const out: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const Y = g(0, i), M = g(1, i), D = g(2, i), H = g(3, i), MI = g(4, i), S = g(5, i);
+    const a = Math.floor((14 - M) / 12), yy = Y + 4800 - a, mm = M + 12 * a - 3;
+    const jdn = D + Math.floor((153 * mm + 2) / 5) + 365 * yy + Math.floor(yy / 4) - Math.floor(yy / 100) + Math.floor(yy / 400) - 32045;
+    out.push(jdn + (H - 12) / 24 + MI / 1440 + S / 86400);
+  }
+  const shapeSrc = m(args[(cols.findIndex((c) => c.length === n))] ?? args[0]);
+  return n === 1 ? scalar(out[0]) : mat(shapeSrc.rows, shapeSrc.cols, Float64Array.from(out));
+}
+
+/** weeknum(D[,W[,E]]) — week of the year. Transcribed from weeknum.m (default + European). */
+function weeknumOne(dd: number, w: number, e: number): number {
+  const yr = ymd(dd)[0];
+  const dFirst = datenum(yr, 1, 1);
+  let nDay = (((Math.trunc(dFirst) - 2) % 7) + 7) % 7 - (w - 1);
+  const firstCase = nDay < 0 && (dd - dFirst >= -nDay);
+  let n = Math.trunc((dd - dFirst + nDay) / 7) + (firstCase ? 2 : 1);
+  if (e === 1) {
+    if (nDay < 0) nDay += 7;
+    if (nDay >= 4) n -= 1;
+    const dFirstNew = datenum(yr + 1, 1, 1);
+    let nDayNew = (((Math.trunc(dFirstNew) - 2) % 7) + 7) % 7 - (w - 1);
+    if (nDayNew < 0) nDayNew += 7;
+    if (nDayNew < 4 && (dFirstNew - dd <= nDayNew)) n = 1;
+    if (n === 0) n = weeknumOne(dFirst - 1, w, e);            // last week of previous year
+  }
+  return n;
+}
+function weeknumImpl(args: Value[]): Value {
+  const D = m(args[0]); const da = asSerials(D, 'weeknum');
+  const w = args.length > 1 ? asScalar(args[1]) : 1;
+  const e = args.length > 2 ? asScalar(args[2]) : 0;
+  if (w < 1 || w > 7) throw new MatError('weeknum: W must be 1..7');
+  const out = da.map((dd) => weeknumOne(dd, w, e));
+  if (out.length === 1) return scalar(out[0]);
+  return isMat(D) && !D.isChar ? mat(D.rows, D.cols, Float64Array.from(out)) : colVec(out);
+}
+
 /** eomdate(N) | eomdate(Y,M) — last (serial) date of the month. Mirrors eomdate.m. */
 function eomdateImpl(args: Value[]): Value {
   if (args.length === 0) throw new MatError('eomdate: not enough input arguments');
@@ -674,6 +730,9 @@ export const FINANCIAL: ToolboxModule = {
     datewrkdy: (a) => ret(datewrkdyImpl(a)),
     days252bus: (a) => ret(days252busImpl(a)),
     eomdate: (a) => ret(eomdateImpl(a)),
+    calendar: (a) => ret(calendarImpl(a)),
+    juliandate: (a) => ret(juliandateImpl(a)),
+    weeknum: (a) => ret(weeknumImpl(a)),
 
     // ── more cashflow / fixed-income ──
     payadv: (a) => ret(payadvImpl(a)),
@@ -696,6 +755,9 @@ export const FINANCIAL: ToolboxModule = {
     datewrkdy: 'Date a number of work days into the future/past',
     days252bus: 'Number of business days between dates',
     eomdate: 'Last date of the month (serial date number)',
+    calendar: 'Calendar for specified month as a 6-by-7 matrix',
+    juliandate: 'Julian date from year/month/day (and optional time)',
+    weeknum: 'Week of the year for a date',
     payadv: 'Periodic payment given number of advance payments',
     tbillyield2disc: 'Discount rates of T-bills from yields',
     acrubond: 'Accrued interest of a bond with periodic interest payments',
