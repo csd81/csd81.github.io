@@ -47,13 +47,14 @@ import { ROBOTICS } from './robotics';
 // (fgoalattain/optimvar/optimproblem) are broken/object-stubs. Re-enable once it adds real value.
 // import { OPTIM } from './optim';
 import { NNET } from './nnet';
+import { TEXTANALYTICS } from './textanalytics';
 import { VISION } from './vision';
 
 /** All registered toolboxes, in precedence order (first wins on inter-toolbox collision). */
 export const TOOLBOXES: ToolboxModule[] = [
   AEROSPACE, ANTENNA, AUDIO, BIOINFO, COMM, CONTROL, CURVEFIT, DSP, ECON, FINANCIAL, FININST, FIXEDPOINT,
   FUSION, FUZZY, GADS, IDENT, IMAGES, MAPPING, NAV, NNET, PARALLEL, Pde, RADAR, RL, RF,
-  ROBOTICS, SIGNAL, SIMULINK, STATS, SYMBOLIC, VISION, WAVELET,
+  ROBOTICS, SIGNAL, SIMULINK, STATS, SYMBOLIC, TEXTANALYTICS, VISION, WAVELET,
 ];
 
 export const TOOLBOX_BUILTINS: Record<string, Builtin> = {};
