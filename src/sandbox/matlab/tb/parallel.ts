@@ -3,7 +3,7 @@
 // pass through data unchanged, preserving script compatibility.
 import {
   type Value, scalar, rowVec, toArray, asScalar, toMat as m, isMat, MatError,
-  mat, zeros, makeObject, str, bool,
+  mat, zeros, makeObject, isObject, str, bool,
 } from '../values';
 import type { ToolboxModule } from './types';
 
@@ -85,20 +85,35 @@ async function validategpu(_args: Value[]): Promise<Value[]> { return [scalar(0)
 // parfeval(pool, fcn, nargout, X1,...,Xn) — runs fcn(X1,...) synchronously and wraps in a
 // Future-like object; fetchOutputs(f) retrieves the results.
 async function parfeval(args: Value[]): Promise<Value[]> {
-  if (args.length < 3) throw new MatError('parfeval: requires pool, fcn, nargout, inputs...');
-  const fn = args[1];
-  if (!fn || (fn as any).kind !== 'handle') throw new MatError('parfeval: second argument must be a function handle');
-  const nOut = isMat(args[2]) ? Math.round(asScalar(m(args[2]))) : 1;
-  const inputs = args.slice(3);
+  // Accept both parfeval(pool,fcn,nargout,X...) and parfeval(fcn,nargout,X...):
+  // if the first arg is itself a function handle, there is no pool argument.
+  const noPool = !!args[0] && (args[0] as any).kind === 'handle';
+  const fn = noPool ? args[0] : args[1];
+  if (!fn || (fn as any).kind !== 'handle') throw new MatError('parfeval: a function handle is required');
+  const nArgIdx = noPool ? 1 : 2;
+  const nOut = isMat(args[nArgIdx]) ? Math.round(asScalar(m(args[nArgIdx]))) : 1;
+  const inputs = args.slice(nArgIdx + 1);
   // Execute synchronously in the sandbox; store results in the future object
-  const h = fn as unknown as { fn: (a: Value[]) => Promise<Value[]> };
-  const results = await h.fn(inputs);
+  const h = fn as unknown as { call: (a: Value[], nargout: number) => Promise<Value[]> };
+  const results = await h.call(inputs, nOut);
   const props = new Map<string, Value>();
   props.set('State', str('finished'));
   props.set('NumOutputArguments', scalar(nOut));
   // Store outputs as a cell-array-like object indexed 1..nOut
   for (let i = 0; i < nOut; i++) props.set(`Output${i + 1}`, results[i] ?? scalar(0));
   return [makeObject('parallel.FevalFuture', props)];
+}
+
+// ── fetchOutputs: retrieve the stored results of a completed parfeval future ────────────────
+async function fetchOutputs(args: Value[]): Promise<Value[]> {
+  const f = args[0];
+  if (!isObject(f) || f.className !== 'parallel.FevalFuture') {
+    throw new MatError('fetchOutputs: first argument must be a parfeval future (parallel.FevalFuture)');
+  }
+  const n = Math.round(asScalar(m(f.props.get('NumOutputArguments') ?? scalar(0))));
+  const out: Value[] = [];
+  for (let i = 0; i < n; i++) out.push(f.props.get(`Output${i + 1}`) ?? scalar(0));
+  return out.length ? out : [scalar(0)];
 }
 
 export const PARALLEL: ToolboxModule = {
@@ -120,6 +135,7 @@ export const PARALLEL: ToolboxModule = {
     gputimeit,
     validategpu,
     parfeval,
+    fetchOutputs,
     spmdbarrier: noop,
     spmdbroadcast: async (args) => args.length > 1 ? [args[1]] : [scalar(0)],
     spmdcat: async (args) => args.length > 0 ? [args[0]] : [scalar(0)],
@@ -214,6 +230,12 @@ export const PARALLEL: ToolboxModule = {
         'f is a parallel.FevalFuture object with State="finished" immediately.',
       ],
       seealso: ['fetchOutputs', 'parpool', 'parfor'],
+    },
+    fetchOutputs: {
+      summary: 'Retrieve all output arguments from a parfeval future',
+      syntax: ['[X1,...,Xn] = fetchOutputs(f)'],
+      description: ['Returns the NumOutputArguments results stored in a finished parfeval future f.'],
+      seealso: ['parfeval', 'parpool'],
     },
     gputimeit: {
       summary: 'Time required to run function on GPU',

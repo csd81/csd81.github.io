@@ -12,9 +12,9 @@ function isFn(v: Value): v is { kind: 'handle' } & Value { return v?.kind === 'h
 
 async function callFn(fn: Value, xArr: number[]): Promise<number> {
   if (!isFn(fn)) throw new MatError('gads: objective must be a function handle');
-  const h = fn as unknown as { fn: (args: Value[]) => Promise<Value[]> };
+  const h = fn as unknown as { call: (args: Value[], nargout: number) => Promise<Value[]> };
   const xVec = rowVec(xArr);
-  const res = await h.fn([xVec]);
+  const res = await h.call([xVec], 1);
   return asScalar(m(res[0]));
 }
 
@@ -200,9 +200,9 @@ async function gamultiobj(args: Value[]): Promise<Value[]> {
   const lo = lb.map((v, i) => isFinite(v) ? v : -5);
   const hi = ub.map((v, i) => isFinite(v) ? v : 5);
 
-  const h = fn as unknown as { fn: (args: Value[]) => Promise<Value[]> };
+  const h = fn as unknown as { call: (args: Value[], nargout: number) => Promise<Value[]> };
   const evaluate = async (x: number[]): Promise<number[]> => {
-    const res = await h.fn([mat(1, nvars, new Float64Array(x))]);
+    const res = await h.call([mat(1, nvars, new Float64Array(x))], 1);
     const fv = res[0];
     return isMat(fv) ? toArray(fv as any) : [asScalar(m(fv))];
   };

@@ -55,13 +55,13 @@ function solveGE(A: number[][], b: number[]): number[] {
 
 function isFn(v: Value): boolean { return (v as any)?.kind === 'handle'; }
 async function callFn(fn: Value, x: number[]): Promise<number> {
-  const h = fn as unknown as { fn: (args: Value[]) => Promise<Value[]> };
-  const res = await h.fn([rowVec(x)]);
+  const h = fn as unknown as { call: (args: Value[], nargout: number) => Promise<Value[]> };
+  const res = await h.call([rowVec(x)], 1);
   return asScalar(m(res[0]));
 }
 async function callFnVec(fn: Value, x: number[]): Promise<number[]> {
-  const h = fn as unknown as { fn: (args: Value[]) => Promise<Value[]> };
-  const res = await h.fn([rowVec(x)]);
+  const h = fn as unknown as { call: (args: Value[], nargout: number) => Promise<Value[]> };
+  const res = await h.call([rowVec(x)], 1);
   return toArray(m(res[0]));
 }
 
