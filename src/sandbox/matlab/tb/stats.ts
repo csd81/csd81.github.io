@@ -2039,6 +2039,35 @@ export const STATS: ToolboxModule = {
       for (let i = 1; i + 1 < a.length; i += 2) { const k = asString(a[i]); if (spec.params.includes(k)) props.set(k, scalar(asScalar(a[i + 1]))); }
       return ret(makeObject(`prob.${spec.display}Distribution`, props));
     },
+    /** fitdist(x,'Name') — fit a distribution to data by maximum likelihood → prob.<Name>Distribution. */
+    fitdist: (a) => {
+      const x = toArray(m(a[0])).filter((v) => !Number.isNaN(v)); const N = x.length;
+      const name = normDistName(asString(a[1])); const spec = DISTS[name];
+      if (!spec) throw new MatError(`fitdist: unsupported distribution '${asString(a[1])}'`);
+      const mean = x.reduce((s, v) => s + v, 0) / (N || 1);
+      const props = new Map<string, Value>([['DistributionName', str(`${spec.display}Distribution`)]]);
+      const sd1 = () => Math.sqrt(x.reduce((s, v) => s + (v - mean) ** 2, 0) / Math.max(1, N - 1));
+      if (name === 'normal') { props.set('mu', scalar(mean)); props.set('sigma', scalar(sd1())); }
+      else if (name === 'exponential') { props.set('mu', scalar(mean)); }
+      else if (name === 'poisson') { props.set('lambda', scalar(mean)); }
+      else if (name === 'rayleigh') { props.set('b', scalar(Math.sqrt(x.reduce((s, v) => s + v * v, 0) / (2 * N)))); }
+      else if (name === 'lognormal') { const lx = x.map((v) => Math.log(v)); const lm = lx.reduce((s, v) => s + v, 0) / N; props.set('mu', scalar(lm)); props.set('sigma', scalar(Math.sqrt(lx.reduce((s, v) => s + (v - lm) ** 2, 0) / Math.max(1, N - 1)))); }
+      else spec.params.forEach((p, i) => props.set(p, scalar(spec.defaults[i])));   // fallback: defaults
+      return ret(makeObject(`prob.${spec.display}Distribution`, props));
+    },
+    /** random('Name',p1,…,pk[,m,n]) or random(pd,…) — draw samples via the inverse CDF.
+     *  RNG-based, so values won't bit-match MATLAB, but the distribution & size are correct. */
+    random: (a) => {
+      let spec: DistSpec, params: number[], szArgs: Value[];
+      if (isObject(a[0])) { const o0 = a[0] as { className: string; props: Map<string, Value> }; spec = DISTS[normDistName(o0.className.replace(/^prob\./, '').replace(/Distribution$/, ''))]; params = spec.params.map((p) => asScalar(o0.props.get(p) ?? scalar(0))); szArgs = a.slice(1); }
+      else { const nm = normDistName(asString(a[0])); spec = DISTS[nm]; if (!spec) throw new MatError(`random: unsupported distribution '${asString(a[0])}'`); const np = spec.params.length; params = spec.params.map((_, i) => a.length > 1 + i && isMat(a[1 + i]) && !(a[1 + i] as Mat).isChar ? asScalar(a[1 + i]) : spec.defaults[i]); szArgs = a.slice(1 + np); }
+      let rows = 1, cols = 1;
+      if (szArgs.length === 1) { const sz = toArray(m(szArgs[0])); if (sz.length >= 2) { rows = Math.round(sz[0]); cols = Math.round(sz[1]); } else { rows = cols = Math.round(sz[0]); } }
+      else if (szArgs.length >= 2) { rows = Math.round(asScalar(szArgs[0])); cols = Math.round(asScalar(szArgs[1])); }
+      const out = zeros(rows, cols);
+      for (let i = 0; i < rows * cols; i++) out.data[i] = spec.inv(Math.random(), ...params);
+      return ret(out);
+    },
     /** pdf(pd,x) or pdf('Name',x,p1,p2) — probability density. */
     pdf: (a) => { const { spec, vals, rest } = resolveDist(a); return ret(map(m(rest[0]), (x) => spec.pdf(x, ...vals))); },
     /** cdf(pd,x) or cdf('Name',x,p1,p2) — cumulative probability. */
