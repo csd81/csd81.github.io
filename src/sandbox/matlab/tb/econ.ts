@@ -9,7 +9,7 @@
 // (defaults 'AR'/0/'t1'/0.05). Validated oracle-exact against live MATLAB.
 import type { Builtin } from '../builtins';
 import {
-  type Value, type Mat, isMat, rowVec, scalar, bool, toArray, asString, asScalar, toMat as m, MatError,
+  type Value, type Mat, isMat, rowVec, colVec, mat, scalar, bool, toArray, asString, asScalar, toMat as m, MatError,
 } from '../values';
 import type { ToolboxModule } from './types';
 
@@ -142,14 +142,36 @@ const pptest: Builtin = async (args, nargout) => {
   return outs.slice(0, Math.max(1, nargout));
 };
 
+// ── price/return conversions and design helpers (deterministic, validated vs R2026a) ──
+/** price2ret(P): continuous (log) returns log(Pₜ/Pₜ₋₁). */
+const price2ret: Builtin = (a) => { const P = toArray(m(a[0])); const out: number[] = []; for (let i = 1; i < P.length; i++) out.push(Math.log(P[i] / P[i - 1])); return Promise.resolve([colVec(out)]); };
+/** ret2price(R[,S0]): inverse of price2ret (continuous); default start price 1. */
+const ret2price: Builtin = (a) => { const R = toArray(m(a[0])); let s0 = 1; if (a.length > 1 && isMat(a[1]) && !(a[1] as Mat).isChar && (a[1] as Mat).rows) s0 = asScalar(a[1]); const out = [s0]; for (const r of R) out.push(out[out.length - 1] * Math.exp(r)); return Promise.resolve([colVec(out)]); };
+/** tick2ret(P): simple returns Pₜ/Pₜ₋₁−1 (+ unit intervals). */
+const tick2ret: Builtin = (a, nargout) => { const P = toArray(m(a[0])); const r: number[] = []; for (let i = 1; i < P.length; i++) r.push(P[i] / P[i - 1] - 1); const outs: Value[] = [colVec(r)]; if (nargout >= 2) outs.push(colVec(new Array(r.length).fill(1))); return Promise.resolve(outs); };
+/** ret2tick(R[,S0]): inverse of tick2ret (simple); default start price 1. */
+const ret2tick: Builtin = (a) => { const R = toArray(m(a[0])); let s0 = 1; if (a.length > 1 && isMat(a[1]) && !(a[1] as Mat).isChar && (a[1] as Mat).rows) s0 = asScalar(a[1]); const out = [s0]; for (const r of R) out.push(out[out.length - 1] * (1 + r)); return Promise.resolve([colVec(out)]); };
+/** lagmatrix(Y,lags): lagged series, NaN-filled (column j shifts down by lags(j)). */
+const lagmatrix: Builtin = (a) => {
+  const Y = m(a[0]), lags = toArray(m(a[1])).map(Math.round), N = Y.rows, mc = Y.cols;
+  const ncol = mc * lags.length, data = new Float64Array(N * ncol).fill(NaN); let c = 0;
+  for (const L of lags) for (let col = 0; col < mc; col++) { for (let r = 0; r < N; r++) { const s = r - L; if (s >= 0 && s < N) data[r + c * N] = Y.data[s + col * N]; } c++; }
+  return Promise.resolve([mat(N, ncol, data)]);
+};
+/** aicbic(logL,numParam[,numObs]): Akaike (and Bayesian) information criteria. */
+const aicbic: Builtin = (a, nargout) => { const L = asScalar(a[0]), k = asScalar(a[1]); const outs: Value[] = [scalar(-2 * L + 2 * k)]; if (nargout >= 2) outs.push(scalar(-2 * L + k * Math.log(asScalar(a[2])))); return Promise.resolve(outs); };
+
 export const ECON: ToolboxModule = {
   id: 'econ',
   name: 'Econometrics Toolbox',
   docBase: 'https://www.mathworks.com/help/econ/ref/',
-  builtins: { adftest, pptest },
+  builtins: { adftest, pptest, price2ret, ret2price, tick2ret, ret2tick, lagmatrix, aicbic },
   help: {
     adftest: 'Augmented Dickey-Fuller test for a unit root',
     pptest: 'Phillips-Perron test for a unit root',
+    price2ret: 'Convert prices to continuous (log) returns', ret2price: 'Convert returns to prices',
+    tick2ret: 'Convert prices to simple returns', ret2tick: 'Convert simple returns to prices',
+    lagmatrix: 'Create lagged time series matrix', aicbic: 'Akaike and Bayesian information criteria',
   },
 };
 // Augmented Dickey-Fuller critical-value tables, extracted verbatim from the
