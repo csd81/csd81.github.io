@@ -52,10 +52,11 @@ async function axang2rotm(args: Value[]): Promise<Value[]> {
 async function axang2tform(args: Value[]): Promise<Value[]> {
   const [R] = await axang2rotm(args);
   const Rm = R as any;
+  // Column-major 3×3: R(i,j) = data[i + 3*j]. Pack as rows into the 4×4.
   const T = fromRows([
-    [Rm.data[0], Rm.data[1], Rm.data[2], 0],
-    [Rm.data[3], Rm.data[4], Rm.data[5], 0],
-    [Rm.data[6], Rm.data[7], Rm.data[8], 0],
+    [Rm.data[0], Rm.data[3], Rm.data[6], 0],
+    [Rm.data[1], Rm.data[4], Rm.data[7], 0],
+    [Rm.data[2], Rm.data[5], Rm.data[8], 0],
     [0, 0, 0, 1],
   ]);
   return [T];
@@ -167,10 +168,12 @@ async function rotm2eul(args: Value[]): Promise<Value[]> {
   const R = args[0] as any;
   if (!isMat(R)) throw new MatError('rotm2eul: expected matrix');
   const d = R.data;
-  // ZYX convention
-  const roll = Math.atan2(d[7], d[8]);
-  const pitch = Math.atan2(-d[6], Math.sqrt(d[7] * d[7] + d[8] * d[8]));
-  const yaw = Math.atan2(d[3], d[0]);
+  // ZYX convention. Column-major 3×3: R(i,j) = d[i + 3*j].
+  // roll=atan2(R(3,2),R(3,3))=atan2(d[5],d[8]); pitch=atan2(-R(3,1),√(R32²+R33²))=atan2(-d[2],…);
+  // yaw=atan2(R(2,1),R(1,1))=atan2(d[1],d[0]).
+  const roll = Math.atan2(d[5], d[8]);
+  const pitch = Math.atan2(-d[2], Math.sqrt(d[5] * d[5] + d[8] * d[8]));
+  const yaw = Math.atan2(d[1], d[0]);
   return [rowVec([yaw, pitch, roll])];
 }
 
@@ -189,10 +192,11 @@ async function quat2eul(args: Value[]): Promise<Value[]> {
 const _eul2tform = async (args: Value[]): Promise<Value[]> => {
   const [R] = await eul2rotm(args);
   const Rm = R as any;
+  // Column-major 3×3: R(i,j) = data[i + 3*j]. Pack as rows into the 4×4.
   return [fromRows([
-    [Rm.data[0], Rm.data[1], Rm.data[2], 0],
-    [Rm.data[3], Rm.data[4], Rm.data[5], 0],
-    [Rm.data[6], Rm.data[7], Rm.data[8], 0],
+    [Rm.data[0], Rm.data[3], Rm.data[6], 0],
+    [Rm.data[1], Rm.data[4], Rm.data[7], 0],
+    [Rm.data[2], Rm.data[5], Rm.data[8], 0],
     [0, 0, 0, 1],
   ])];
 };
@@ -203,7 +207,8 @@ async function tform2eul(args: Value[]): Promise<Value[]> {
   const T = args[0] as any;
   if (!isMat(T)) throw new MatError('tform2eul: expected matrix');
   const d = T.data;
-  const R = fromRows([[d[0], d[1], d[2]], [d[4], d[5], d[6]], [d[8], d[9], d[10]]]);
+  // Column-major 4×4: R(i,j) = d[i + 4*j]. Extract upper-left 3×3 as rows.
+  const R = fromRows([[d[0], d[4], d[8]], [d[1], d[5], d[9]], [d[2], d[6], d[10]]]);
   return rotm2eul([R]);
 }
 
@@ -213,7 +218,8 @@ async function tform2rotm(args: Value[]): Promise<Value[]> {
   const T = args[0] as any;
   if (!isMat(T)) throw new MatError('tform2rotm: expected matrix');
   const d = T.data;
-  return [fromRows([[d[0], d[1], d[2]], [d[4], d[5], d[6]], [d[8], d[9], d[10]]])];
+  // Column-major 4×4: R(i,j) = d[i + 4*j]. Extract upper-left 3×3 as rows.
+  return [fromRows([[d[0], d[4], d[8]], [d[1], d[5], d[9]], [d[2], d[6], d[10]]])];
 }
 
 // ── trvec2tform: translation vector → 4×4 transform ─────────────────────────────────
@@ -234,7 +240,8 @@ async function tform2trvec(args: Value[]): Promise<Value[]> {
   const T = args[0] as any;
   if (!isMat(T)) throw new MatError('tform2trvec: expected matrix');
   const d = T.data;
-  return [rowVec([d[3], d[7], d[11]])];
+  // Translation = first 3 entries of last column of 4×4 (column-major): d[12],d[13],d[14].
+  return [rowVec([d[12], d[13], d[14]])];
 }
 
 // ── rigidBodyTree: stub object ────────────────────────────────────────────────────────
@@ -262,7 +269,8 @@ async function bsplinepolytraj(args: Value[]): Promise<Value[]> {
     const col = Math.min(nWP - 2, Math.floor(alpha * (nWP - 1)));
     const t = alpha * (nWP - 1) - col;
     for (let d = 0; d < nDim; d++) {
-      pos.data[d * tSam.length + k] = (1 - t) * wp.data[d * nWP + col] + t * wp.data[d * nWP + col + 1];
+      // Column-major: pos(d,k) at d + k*nDim; wp(d,col) at d + col*nDim.
+      pos.data[d + k * nDim] = (1 - t) * wp.data[d + col * nDim] + t * wp.data[d + (col + 1) * nDim];
     }
   }
   return [pos];
@@ -276,12 +284,12 @@ async function quatnormalize(args: Value[]): Promise<Value[]> {
   const data = toArray(q);
   const rows = q.rows, cols = q.cols;
   const out = new Float64Array(data.length);
-  // Each row is one quaternion [w x y z]
+  // Each row is one quaternion [w x y z]. Column-major: (r,c) at r + c*rows.
   for (let r = 0; r < rows; r++) {
     let norm = 0;
-    for (let c = 0; c < cols; c++) norm += data[r * cols + c] ** 2;
+    for (let c = 0; c < cols; c++) norm += data[r + c * rows] ** 2;
     norm = Math.sqrt(norm) || 1;
-    for (let c = 0; c < cols; c++) out[r * cols + c] = data[r * cols + c] / norm;
+    for (let c = 0; c < cols; c++) out[r + c * rows] = data[r + c * rows] / norm;
   }
   return [mat(rows, cols, out)];
 }
