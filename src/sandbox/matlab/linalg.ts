@@ -522,6 +522,19 @@ export function expm(A: Mat): Mat {
  *  confluent handling for equal/clustered eigenvalues — robust for repeated eigenvalues). */
 function funmViaEig(A: Mat, f: (re: number, im: number) => [number, number]): Mat {
   const n = A.rows; if (n === 0) return A;
+  // Real symmetric A: use the exact eigendecomposition A = V Λ Vᵀ (V real orthogonal),
+  // so f(A) = V diag(f(λ)) Vᵀ. Avoids the Schur–Parlett path, which loses symmetry here.
+  if (!isComplex(A) && isSymmetric(A)) {
+    const { values, V } = jacobiEigSym(A);
+    const fv = values.map((v) => f(v, 0));
+    const Fre = new Float64Array(n * n), Fim = new Float64Array(n * n);
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      let sr = 0, si = 0;
+      for (let kk = 0; kk < n; kk++) { const w = V.data[i + kk * n] * V.data[j + kk * n]; sr += w * fv[kk][0]; si += w * fv[kk][1]; }
+      Fre[i + j * n] = sr; Fim[i + j * n] = si;
+    }
+    return finishComplex(n, n, Fre, Fim);
+  }
   // complex Schur: A = U T Uᴴ, T upper-triangular
   const sc = schur(A); const cs = rsf2csf(sc.U, sc.T);
   const Tre = cs.T.data, Tim = cs.T.idata ?? new Float64Array(n * n);
@@ -531,13 +544,13 @@ function funmViaEig(A: Mat, f: (re: number, im: number) => [number, number]): Ma
   const fprime = (re: number, im: number): [number, number] => { const h = 1e-6; const [pr, pi] = f(re + h, im); const [mr, mi] = f(re - h, im); return [(pr - mr) / (2 * h), (pi - mi) / (2 * h)]; };
   for (let d = 1; d < n; d++) for (let i = 0; i + d < n; i++) {
     const j = i + d;
-    // N = T_ij (F_jj − F_ii) + Σ_{i<k<j} (F_ik T_kj − T_ik F_kj)
+    // F_ij (T_jj − T_ii) = T_ij (F_jj − F_ii) + Σ_{i<k<j} (T_ik F_kj − F_ik T_kj)   [from FT = TF]
     let nr = 0, ni = 0;
     { const [r, m] = cmul(tr(i, j), ti(i, j), Fre[j + j * n] - Fre[i + i * n], Fim[j + j * n] - Fim[i + i * n]); nr += r; ni += m; }
     for (let k = i + 1; k < j; k++) {
-      const [r1, m1] = cmul(Fre[i + k * n], Fim[i + k * n], tr(k, j), ti(k, j));
-      const [r2, m2] = cmul(tr(i, k), ti(i, k), Fre[k + j * n], Fim[k + j * n]);
-      nr += r1 - r2; ni += m1 - m2;
+      const [r1, m1] = cmul(Fre[i + k * n], Fim[i + k * n], tr(k, j), ti(k, j));   // F_ik T_kj
+      const [r2, m2] = cmul(tr(i, k), ti(i, k), Fre[k + j * n], Fim[k + j * n]);   // T_ik F_kj
+      nr += r2 - r1; ni += m2 - m1;   // + (T_ik F_kj − F_ik T_kj)
     }
     const dr = tr(j, j) - tr(i, i), di = ti(j, j) - ti(i, i);
     if (Math.hypot(dr, di) < 1e-11) {   // confluent: f'(λ) on the (near-)equal eigenvalue
@@ -761,16 +774,35 @@ export function svd(A: Mat): { U: Mat; s: number[]; V: Mat } {
   const AtA = matmul(transpose(A), A); // n×n symmetric PSD
   const { values, V } = jacobiEigSym(AtA);
   const order = values.map((v, i) => i).sort((a, b) => values[b] - values[a]);
-  const s = order.map((i) => Math.sqrt(Math.max(0, values[i])));
+  const k = Math.min(m, n);
+  const s = order.slice(0, k).map((i) => Math.sqrt(Math.max(0, values[i])));   // exactly min(m,n) singular values
   const Vs = zeros(n, n);
   order.forEach((src, dst) => { for (let r = 0; r < n; r++) Vs.data[r + dst * n] = V.data[r + src * n]; });
   // U columns = A v_i / s_i for s_i > 0
   const U = zeros(m, m);
   const tol = 1e-12 * (s[0] || 1);
-  for (let j = 0; j < Math.min(m, n); j++) {
-    if (s[j] > tol) for (let r = 0; r < m; r++) { let d = 0; for (let k = 0; k < n; k++) d += A.data[r + k * m] * Vs.data[k + j * n]; U.data[r + j * m] = d / s[j]; }
+  for (let j = 0; j < k; j++) {
+    if (s[j] > tol) for (let r = 0; r < m; r++) { let d = 0; for (let c = 0; c < n; c++) d += A.data[r + c * m] * Vs.data[c + j * n]; U.data[r + j * m] = d / s[j]; }
   }
+  completeOrthoBasis(U, m);   // fill zero/missing columns (left null space) so U is a valid orthogonal matrix
   return { U, s, V: Vs };
+}
+/** Fill any (near-)zero columns of an m×m matrix with vectors that complete an
+ *  orthonormal basis (modified Gram-Schmidt against the existing columns). */
+function completeOrthoBasis(U: Mat, m: number): void {
+  const cols: number[][] = [];
+  const colOf = (j: number) => { const c: number[] = []; for (let r = 0; r < m; r++) c.push(U.data[r + j * m]); return c; };
+  const norm2 = (v: number[]) => Math.sqrt(v.reduce((a, x) => a + x * x, 0));
+  for (let j = 0; j < m; j++) { const c = colOf(j); if (norm2(c) > 1e-10) cols.push(c); }
+  for (let j = 0; j < m; j++) {
+    if (norm2(colOf(j)) > 1e-10) continue;   // already a real column
+    for (let e = 0; e < m; e++) {
+      const v = new Array(m).fill(0); v[e] = 1;
+      for (const c of cols) { let dot = 0; for (let r = 0; r < m; r++) dot += v[r] * c[r]; for (let r = 0; r < m; r++) v[r] -= dot * c[r]; }
+      const nrm = norm2(v);
+      if (nrm > 1e-8) { for (let r = 0; r < m; r++) { v[r] /= nrm; U.data[r + j * m] = v[r]; } cols.push(v); break; }
+    }
+  }
 }
 
 export function rankOf(A: Mat, tol?: number): number {
