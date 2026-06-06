@@ -158,8 +158,13 @@ export default function CommandWindow({
     if (matches.length === 1) { applyCompletion(matches[0], start, word); return; }
     // Extend to the longest common prefix before showing the menu.
     const lcp = matches.reduce((p, s) => { let i = 0; while (i < p.length && i < s.length && p[i].toLowerCase() === s[i].toLowerCase()) i++; return p.slice(0, i); });
-    if (lcp.length > word.length) { setValue(value.slice(0, start) + lcp + value.slice(start + word.length)); }
-    setMenu({ items: matches.slice(0, MAX_COMPLETIONS), sel: 0, word, start });
+    let currentWord = word;
+    if (lcp.length > word.length) {
+      currentWord = lcp;
+      setValue(value.slice(0, start) + lcp + value.slice(start + word.length));
+      requestAnimationFrame(() => { if (input) { const pos = start + lcp.length; input.selectionStart = input.selectionEnd = pos; } });
+    }
+    setMenu({ items: matches.slice(0, MAX_COMPLETIONS), sel: 0, word: currentWord, start });
   };
 
   const submit = () => {
@@ -179,7 +184,7 @@ export default function CommandWindow({
     if (menu) {
       if (e.key === 'ArrowDown') { e.preventDefault(); setMenu({ ...menu, sel: (menu.sel + 1) % menu.items.length }); return; }
       if (e.key === 'ArrowUp') { e.preventDefault(); setMenu({ ...menu, sel: (menu.sel - 1 + menu.items.length) % menu.items.length }); return; }
-      if (e.key === 'Enter') { e.preventDefault(); applyCompletion(menu.items[menu.sel], menu.start, wordBeforeCursor(value, inputRef.current?.selectionStart ?? value.length).word); return; }
+      if (e.key === 'Enter') { e.preventDefault(); applyCompletion(menu.items[menu.sel], menu.start, menu.word); return; }
       if (e.key === 'Escape') { e.preventDefault(); setMenu(null); return; }
     }
     if (e.key === 'Enter') { e.preventDefault(); submit(); return; }
@@ -222,7 +227,7 @@ export default function CommandWindow({
                   role="option"
                   aria-selected={j === menu.sel}
                   className={'mlab__ac-item' + (j === menu.sel ? ' mlab__ac-item--sel' : '')}
-                  onMouseDown={(e) => { e.preventDefault(); applyCompletion(it, menu.start, wordBeforeCursor(value, inputRef.current?.selectionStart ?? value.length).word); }}
+                  onMouseDown={(e) => { e.preventDefault(); applyCompletion(it, menu.start, menu.word); }}
                   onMouseEnter={() => setMenu({ ...menu, sel: j })}
                 >{it}</li>
               ))}

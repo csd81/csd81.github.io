@@ -74,10 +74,17 @@ export function useSandbox(folderId: string) {
     const worker = workerRef.current; if (!worker) return;
     let pending = 0; let changed = false;
     for (const name of names) {
-      if (vfsRef.current.has(name)) continue;
       pending++;
       const id = ++getFileId.current;
-      getFileWaiters.current.set(id, (bytes) => { if (bytes) { vfsRef.current.set(name, bytes); changed = true; } if (--pending === 0 && changed) saveVfs(vfsRef.current); });
+      getFileWaiters.current.set(id, (bytes) => {
+        if (bytes) {
+          const old = vfsRef.current.get(name);
+          let isSame = false;
+          if (old && old.length === bytes.length) { isSame = true; for (let i = 0; i < old.length; i++) { if (old[i] !== bytes[i]) { isSame = false; break; } } }
+          if (!isSame) { vfsRef.current.set(name, bytes); changed = true; }
+        }
+        if (--pending === 0 && changed) saveVfs(vfsRef.current);
+      });
       worker.postMessage({ type: 'getFile', id, name });
     }
     for (const k of [...vfsRef.current.keys()]) if (!names.includes(k)) { vfsRef.current.delete(k); changed = true; }
