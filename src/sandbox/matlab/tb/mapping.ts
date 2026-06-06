@@ -319,6 +319,11 @@ export const MAPPING: ToolboxModule = {
     enu2ecef: (a, n) => { const { a: A, f } = ellipAF(a[6]); const d = inDeg(a[7]); const lat0 = asScalar(a[3]), lon0 = asScalar(a[4]); const [x0, y0, z0] = g2e(A, f, lat0, lon0, asScalar(a[5]), d); const [dx, dy, dz] = enu2ecefv(asScalar(a[0]), asScalar(a[1]), asScalar(a[2]), lat0, lon0, d); return out3([x0 + dx, y0 + dy, z0 + dz], n); },
     ecef2ned: (a, n) => { const { a: A, f } = ellipAF(a[6]); const d = inDeg(a[7]); const [x0, y0, z0] = g2e(A, f, asScalar(a[3]), asScalar(a[4]), asScalar(a[5]), d); const [e, no, up] = ecef2enuv(asScalar(a[0]) - x0, asScalar(a[1]) - y0, asScalar(a[2]) - z0, asScalar(a[3]), asScalar(a[4]), d); return out3([no, e, -up], n); },
     ned2ecef: (a, n) => { const { a: A, f } = ellipAF(a[6]); const d = inDeg(a[7]); const lat0 = asScalar(a[3]), lon0 = asScalar(a[4]); const [x0, y0, z0] = g2e(A, f, lat0, lon0, asScalar(a[5]), d); const [dx, dy, dz] = enu2ecefv(asScalar(a[1]), asScalar(a[0]), -asScalar(a[2]), lat0, lon0, d); return out3([x0 + dx, y0 + dy, z0 + dz], n); },
+    // pure vector rotations (no origin translation), angle in degrees by default
+    ecef2enuv: (a, n) => out3(ecef2enuv(asScalar(a[0]), asScalar(a[1]), asScalar(a[2]), asScalar(a[3]), asScalar(a[4]), inDeg(a[5])), n),
+    enu2ecefv: (a, n) => out3(enu2ecefv(asScalar(a[0]), asScalar(a[1]), asScalar(a[2]), asScalar(a[3]), asScalar(a[4]), inDeg(a[5])), n),
+    ecef2nedv: (a, n) => { const [e, no, up] = ecef2enuv(asScalar(a[0]), asScalar(a[1]), asScalar(a[2]), asScalar(a[3]), asScalar(a[4]), inDeg(a[5])); return out3([no, e, -up], n); },
+    ned2ecefv: (a, n) => out3(enu2ecefv(asScalar(a[1]), asScalar(a[0]), -asScalar(a[2]), asScalar(a[3]), asScalar(a[4]), inDeg(a[5])), n),
 
     // ── geodetic ↔ ENU / NED ──
     geodetic2enu: (a, n) => { const { a: A, f } = ellipAF(a[6]); const d = inDeg(a[7]); const lat0 = asScalar(a[3]), lon0 = asScalar(a[4]); const [x, y, z] = g2e(A, f, asScalar(a[0]), asScalar(a[1]), asScalar(a[2]), d); const [x0, y0, z0] = g2e(A, f, lat0, lon0, asScalar(a[5]), d); return out3(ecef2enuv(x - x0, y - y0, z - z0, lat0, lon0, d), n); },
@@ -461,6 +466,10 @@ export const MAPPING: ToolboxModule = {
     sm2rad: { summary: 'Convert distance from statute miles to radians', syntax: ['rad = sm2rad(sm)'], seealso: ['rad2sm', 'sm2km'] },
     meanm: { summary: 'Mean location of geographic coordinates', syntax: ['[latm,lonm] = meanm(lat,lon)'], seealso: ['distance', 'azimuth'] },
     changem: { summary: 'Substitute values in array', syntax: ['B = changem(A,newval,oldval)'], seealso: ['ismember'] },
+    ecef2enuv: { summary: 'Rotate ECEF vector to local ENU', syntax: ['[uE,vN,wU] = ecef2enuv(U,V,W,lat0,lon0)'], seealso: ['enu2ecefv', 'ecef2enu'] },
+    enu2ecefv: { summary: 'Rotate local ENU vector to ECEF', syntax: ['[U,V,W] = enu2ecefv(uE,vN,wU,lat0,lon0)'], seealso: ['ecef2enuv', 'enu2ecef'] },
+    ecef2nedv: { summary: 'Rotate ECEF vector to local NED', syntax: ['[uN,vE,wD] = ecef2nedv(U,V,W,lat0,lon0)'], seealso: ['ned2ecefv', 'ecef2ned'] },
+    ned2ecefv: { summary: 'Rotate local NED vector to ECEF', syntax: ['[U,V,W] = ned2ecefv(uN,vE,wD,lat0,lon0)'], seealso: ['ecef2nedv', 'ned2ecef'] },
     toDegrees: { summary: 'Convert angles to degrees', syntax: ['deg = toDegrees(angleUnits,angles)'], description: ["deg = toDegrees('radians',angles) converts angles from any angular unit ('radians', 'degrees') to degrees."], seealso: ['fromDegrees', 'deg2rad'] },
     fromDegrees: { summary: 'Convert angles from degrees', syntax: ['angles = fromDegrees(angleUnits,deg)'], description: ["angles = fromDegrees('radians',deg) converts angles in degrees to the specified angular unit."], seealso: ['toDegrees', 'deg2rad'] },
     distance: { summary: 'Angular or surface distance between two geographic points', syntax: ['d = distance(pt1,pt2)', 'd = distance(lat1,lon1,lat2,lon2)'], seealso: ['azimuth', 'reckon', 'departure'] },
