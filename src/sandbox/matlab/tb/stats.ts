@@ -39,7 +39,9 @@ function trigamma(x: number): number {
 }
 /** Regularized lower incomplete gamma P(a,x) = γ(a,x)/Γ(a). */
 function gammainc(x: number, a: number): number {
+  if (Number.isNaN(x) || Number.isNaN(a)) return NaN;
   if (x <= 0 || a <= 0) return 0;
+  if (x === Infinity) return 1;                      // P(a,∞) = 1 (CDF fully accumulated)
   if (x < a + 1) {                                   // series expansion
     let ap = a, sum = 1 / a, del = sum;
     for (let n = 0; n < 300; n++) { ap++; del *= x / ap; sum += del; if (Math.abs(del) < Math.abs(sum) * 1e-15) break; }
@@ -1394,7 +1396,7 @@ export const STATS: ToolboxModule = {
     betainv: (a) => dist(a, [1, 1], (pr, p, q) => invCdf(pr, (x) => betainc(x, p, q), 0, 1)),
     // ── F ──
     fpdf: (a) => dist(a, [1, 1], (x, d1, d2) => x < 0 ? 0 : Math.exp(0.5 * (d1 * Math.log(d1 * x) + d2 * Math.log(d2) - (d1 + d2) * Math.log(d1 * x + d2)) - Math.log(x) - (logGamma(d1 / 2) + logGamma(d2 / 2) - logGamma((d1 + d2) / 2)))),
-    fcdf: (a) => dist(a, [1, 1], (x, d1, d2) => x <= 0 ? 0 : betainc(d1 * x / (d1 * x + d2), d1 / 2, d2 / 2)),
+    fcdf: (a) => dist(a, [1, 1], (x, d1, d2) => x <= 0 ? 0 : x === Infinity ? 1 : betainc(d1 * x / (d1 * x + d2), d1 / 2, d2 / 2)),
     finv: (a) => dist(a, [1, 1], (p, d1, d2) => invCdf(p, (x) => x <= 0 ? 0 : betainc(d1 * x / (d1 * x + d2), d1 / 2, d2 / 2), 0, Infinity)),
     // ── Uniform ──
     unifpdf: (a) => dist(a, [0, 1], (x, lo, hi) => x >= lo && x <= hi ? 1 / (hi - lo) : 0),
