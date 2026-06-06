@@ -5,6 +5,7 @@ import type { Builtin } from '../builtins';
 import {
   type Value, type Mat, isObject, makeObject, scalar, bool, colVec, rowVec, toArray, asScalar, toMat as m,
 } from '../values';
+import { schur, schurEig } from '../linalg';
 import type { ToolboxModule } from './types';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
@@ -70,6 +71,89 @@ const traceM = (A: number[][]) => A.reduce((s, row, i) => s + row[i], 0);
 function polyConv(a: number[], b: number[]): number[] { const o = new Array(a.length + b.length - 1).fill(0); for (let i = 0; i < a.length; i++) for (let j = 0; j < b.length; j++) o[i + j] += a[i] * b[j]; return o; }
 function polyAdd(a: number[], b: number[]): number[] { const n = Math.max(a.length, b.length); const o = new Array(n).fill(0); for (let i = 0; i < a.length; i++) o[n - a.length + i] += a[i]; for (let i = 0; i < b.length; i++) o[n - b.length + i] += b[i]; return o; }
 const tfModel = (num: number[], den: number[]): Value => makeObject('tf', { num: rowVec(num), den: rowVec(den) });
+
+// ── LQR / Riccati helpers ──
+const matT = (A: number[][]): number[][] => A[0].map((_, j) => A.map((r) => r[j]));
+const matSub = (A: number[][], B: number[][]): number[][] => A.map((r, i) => r.map((v, j) => v - B[i][j]));
+const matAdd2 = (A: number[][], B: number[][]): number[][] => A.map((r, i) => r.map((v, j) => v + B[i][j]));
+const symmetrize = (A: number[][]): number[][] => A.map((r, i) => r.map((v, j) => (v + A[j][i]) / 2));
+/** Reduce LQR with cross term N to standard form: A←A−B R⁻¹ N', Q←Q−N R⁻¹ N'. K←K+R⁻¹N'. */
+function reduceCross(A: number[][], B: number[][], Q: number[][], Ri: number[][], N: number[][] | null): { A: number[][]; Q: number[][]; corr: number[][] | null } {
+  if (!N) return { A, Q, corr: null };
+  const Nt = matT(N); const RiNt = mmul(Ri, Nt);      // R⁻¹ N'
+  return { A: matSub(A, mmul(B, RiNt)), Q: matSub(Q, mmul(N, RiNt)), corr: RiNt };
+}
+const matScale = (A: number[][], s: number): number[][] => A.map((r) => r.map((v) => v * s));
+const eyeN = (n: number): number[][] => Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)));
+/** Solve the continuous-time algebraic Riccati equation A'X+XA−XBR⁻¹B'X+Q=0 via the matrix-sign
+ *  function. H=[A,−G;−Q,−A'] (G=BR⁻¹B'); the Newton iteration Z←½(Z/μ+μZ⁻¹) converges to sign(H).
+ *  P=(I−sign(H))/2 projects onto the stable invariant subspace; its first n columns give [U11;U21]
+ *  and X=U21 U11⁻¹. Robust (no eigendecomposition needed). */
+function care(A: number[][], B: number[][], Q: number[][], Ri: number[][]): number[][] {
+  const n = A.length; const N = 2 * n; const G = mmul(mmul(B, Ri), matT(B)); const At = matT(A);
+  let Z: number[][] = [];
+  for (let i = 0; i < N; i++) {
+    Z[i] = [];
+    for (let j = 0; j < N; j++) {
+      if (i < n && j < n) Z[i][j] = A[i][j];
+      else if (i < n) Z[i][j] = -G[i][j - n];
+      else if (j < n) Z[i][j] = -Q[i - n][j];
+      else Z[i][j] = -At[i - n][j - n];
+    }
+  }
+  for (let it = 0; it < 200; it++) {
+    const Zi = matInv(Z);
+    const mu = spectralScale(Z, Zi, N);   // 1-norm scaling for fast, well-conditioned convergence
+    const Zn = matScale(matAdd2(matScale(Z, 1 / mu), matScale(Zi, mu)), 0.5);
+    let d = 0; for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) d = Math.max(d, Math.abs(Zn[i][j] - Z[i][j]));
+    Z = Zn; if (d < 1e-13) break;
+  }
+  const P = matScale(matSub(eyeN(N), Z), 0.5);          // projector onto stable subspace
+  const U11: number[][] = [], U21: number[][] = [];
+  for (let i = 0; i < n; i++) { U11[i] = []; U21[i] = []; for (let j = 0; j < n; j++) { U11[i][j] = P[i][j]; U21[i][j] = P[n + i][j]; } }
+  return symmetrize(mmul(U21, matInv(U11)));
+}
+/** Scaling factor for one sign-function step: μ=sqrt(‖Z⁻¹‖₁/‖Z‖₁) (Higham's 1-norm scaling). */
+function spectralScale(Z: number[][], Zi: number[][], N: number): number {
+  const norm1 = (M: number[][]) => { let mx = 0; for (let j = 0; j < N; j++) { let s = 0; for (let i = 0; i < N; i++) s += Math.abs(M[i][j]); mx = Math.max(mx, s); } return mx; };
+  const a = norm1(Z), b = norm1(Zi); return Math.sqrt(b / a) || 1;
+}
+/** Solve the discrete-time algebraic Riccati equation A'XA−X−A'XB(R+B'XB)⁻¹B'XA+Q=0
+ *  by the fixed-point Riccati iteration (converges for stabilizable/detectable systems). */
+function dare(A: number[][], B: number[][], Q: number[][], Rm: number[][]): number[][] {
+  const n = A.length; const At = matT(A), Bt = matT(B);
+  let X = Q.map((r) => r.slice());
+  for (let it = 0; it < 10000; it++) {
+    const AtX = mmul(At, X);
+    const BtXB = matAdd2(Rm, mmul(mmul(Bt, X), B));      // R + B'XB
+    const BtXA = mmul(mmul(Bt, X), A);                   // B'XA
+    const Xn = symmetrize(matAdd2(matSub(mmul(AtX, A), mmul(mmul(matT(BtXA), matInv(BtXB)), BtXA)), Q));
+    let d = 0, s = 0; for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { d = Math.max(d, Math.abs(Xn[i][j] - X[i][j])); s = Math.max(s, Math.abs(Xn[i][j])); }
+    X = Xn;
+    if (d <= 1e-15 * (s + 1)) break;
+  }
+  return X;
+}
+/** Closed-loop eigenvalues of A−BK as a column Value (complex when needed). */
+function eigClosed(Acl: number[][]): Value {
+  const { T } = schur(fromRows(Acl)); const e = schurEig(T);
+  const c = colVec(e.re); if (e.im.some((x) => x !== 0)) c.idata = Float64Array.from(e.im);
+  return c;
+}
+/** Common (A,B,Q,R[,N]) parsing for lqr/dlqr → matrices. */
+function lqrArgs(a: Value[]): { A: number[][]; B: number[][]; Q: number[][]; Ri: number[][]; Rm: number[][]; N: number[][] | null } {
+  const A = matRows(m(a[0])), B = matRows(m(a[1])), Q = matRows(m(a[2]));
+  const Rm = matRows(m(a[3])); const Ri = matInv(Rm);
+  const N = a.length >= 5 ? matRows(m(a[4])) : null;
+  return { A, B, Q, Ri, Rm, N };
+}
+/** Build [K,S,e] outputs for nargout. */
+function lqrResult(K: number[][], S: number[][], Acl: number[][], n: number): Promise<Value[]> {
+  const out: Value[] = [fromRows(K)];
+  if (n >= 2) out.push(fromRows(S));
+  if (n >= 3) out.push(eigClosed(Acl));
+  return Promise.resolve(out);
+}
 
 export const CONTROL: ToolboxModule = {
   id: 'control',
@@ -147,6 +231,31 @@ export const CONTROL: ToolboxModule = {
     feedback: (a) => { const g1 = getNumDen(a[0]); const g2 = a.length >= 2 && isObject(a[1]) ? getNumDen(a[1]) : { num: [asScalar(a[1] ?? scalar(1))], den: [1] }; return ret(tfModel(polyConv(g1.num, g2.den), polyAdd(polyConv(g1.den, g2.den), polyConv(g1.num, g2.num)))); },
     /** order(sys) — number of states (denominator degree). */
     order: (a) => ret(scalar(getNumDen(a[0]).den.length - 1)),
+    /** [K,S,e] = lqr(A,B,Q,R[,N]) — continuous LQR. Solves CARE A'S+SA−SBR⁻¹B'S+Q=0,
+     *  K=R⁻¹(B'S+N'), e=eig(A−BK). */
+    lqr: (a, n) => {
+      const { A, B, Q, Ri, N } = lqrArgs(a);
+      const { A: Ar, Q: Qr, corr } = reduceCross(A, B, Q, Ri, N);   // fold cross term N
+      const S = care(Ar, B, Qr, Ri);
+      let K = mmul(Ri, mmul(matT(B), S));                            // R⁻¹ B'S
+      if (corr) K = matAdd2(K, corr);                                // + R⁻¹ N'
+      const Acl = matSub(A, mmul(B, K));
+      return lqrResult(K, S, Acl, n);
+    },
+    /** [K,S,e] = dlqr(A,B,Q,R[,N]) — discrete LQR. Solves DARE, K=(R+B'SB)⁻¹(B'SA+N'),
+     *  e=eig(A−BK). */
+    dlqr: (a, n) => {
+      const { A, B, Q, Ri, Rm, N } = lqrArgs(a);
+      const { A: Ar, Q: Qr } = reduceCross(A, B, Q, Ri, N);          // fold cross term N
+      const S = dare(Ar, B, Qr, Rm);
+      const Bt = matT(B);
+      const RBSB = matInv(matAdd2(Rm, mmul(mmul(Bt, S), B)));        // (R+B'SB)⁻¹
+      let BSA = mmul(mmul(Bt, S), A);                                // B'SA  (original A)
+      if (N) BSA = matAdd2(BSA, matT(N));                            // + N'
+      const K = mmul(RBSB, BSA);
+      const Acl = matSub(A, mmul(B, K));
+      return lqrResult(K, S, Acl, n);
+    },
     /** ss2ss(sys,T) — state-coordinate transform z=Tx: A→TAT⁻¹, B→TB, C→CT⁻¹, D→D. */
     ss2ss: (a) => {
       const sys = a[0];
@@ -168,6 +277,7 @@ export const CONTROL: ToolboxModule = {
     parallel: 'Parallel connection', feedback: 'Feedback connection', order: 'Order (number of states)',
     series: 'Series (cascade) connection',
     ss2ss: 'State coordinate transformation for state-space models',
+    lqr: 'Linear-quadratic regulator design (continuous)', dlqr: 'Linear-quadratic regulator design (discrete)',
   },
   // OOP method dispatch (see tb/types.ts): series(tf,…) routes here; series(sym,…) → Symbolic.
   methods: {

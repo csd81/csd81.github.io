@@ -225,6 +225,118 @@ function kaislpord(freq1: number, freq2: number, delta1: number, delta2: number)
   return { L: D / df + 1, bta: kaiserBeta(atten) };
 }
 
+// ── IIR filter design helpers (complex arithmetic on [re,im] pairs) ──
+type Cx = [number, number];
+const cAdd = (a: Cx, b: Cx): Cx => [a[0] + b[0], a[1] + b[1]];
+const cSub = (a: Cx, b: Cx): Cx => [a[0] - b[0], a[1] - b[1]];
+const cMul = (a: Cx, b: Cx): Cx => [a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]];
+const cDiv = (a: Cx, b: Cx): Cx => { const d = b[0] * b[0] + b[1] * b[1]; return [(a[0] * b[0] + a[1] * b[1]) / d, (a[1] * b[0] - a[0] * b[1]) / d]; };
+/** poly(roots) → real(-ish) polynomial coefficients (descending powers), complex-aware. */
+function polyFromRoots(roots: Cx[]): Cx[] {
+  let c: Cx[] = [[1, 0]];
+  for (const r of roots) {
+    const nc: Cx[] = c.map((v) => [v[0], v[1]]); nc.push([0, 0]);
+    for (let j = 0; j < c.length; j++) { const t = cMul(c[j], r); nc[j + 1] = cSub(nc[j + 1], t); }
+    c = nc;
+  }
+  return c;
+}
+/** N-th order Butterworth analog lowpass prototype zeros/poles/gain (buttap). */
+function buttap(n: number): { z: Cx[]; p: Cx[]; k: number } {
+  const p: Cx[] = [];
+  for (let i = 1; i <= n - 1; i += 2) { const th = (Math.PI * i) / (2 * n) + Math.PI / 2; p.push([Math.cos(th), Math.sin(th)]); p.push([Math.cos(th), -Math.sin(th)]); }
+  if (n % 2) p.push([-1, 0]);
+  // k = real(prod(-p))
+  let k: Cx = [1, 0]; for (const pi of p) k = cMul(k, [-pi[0], -pi[1]]);
+  return { z: [], p, k: k[0] };
+}
+/** lp2lp on zpk: s → s/Wo. Scales zeros/poles by Wo and gain by Wo^(np-nz). */
+function lp2lpZpk(z: Cx[], p: Cx[], k: number, wo: number): { z: Cx[]; p: Cx[]; k: number } {
+  const zn = z.map((v): Cx => [v[0] * wo, v[1] * wo]);
+  const pn = p.map((v): Cx => [v[0] * wo, v[1] * wo]);
+  return { z: zn, p: pn, k: k * wo ** (p.length - z.length) };
+}
+/** lp2hp on zpk: s → Wo/s. New zeros Wo./z (+ zeros at origin to match), poles Wo./p,
+ *  gain k·real(prod(-z)/prod(-p)). */
+function lp2hpZpk(z: Cx[], p: Cx[], k: number, wo: number): { z: Cx[]; p: Cx[]; k: number } {
+  let pz: Cx = [1, 0]; for (const zi of z) pz = cMul(pz, [-zi[0], -zi[1]]);
+  let pp: Cx = [1, 0]; for (const pi of p) pp = cMul(pp, [-pi[0], -pi[1]]);
+  const kgain = k * cDiv(pz, pp)[0];
+  const zn = z.map((v): Cx => cDiv([wo, 0], v));
+  const pn = p.map((v): Cx => cDiv([wo, 0], v));
+  while (zn.length < pn.length) zn.push([0, 0]);   // append zeros at origin
+  return { z: zn, p: pn, k: kgain };
+}
+/** bilinear on zpk (Fs prewarped externally): s-plane → z-plane (signal/bilinear.m zpk branch). */
+function bilinearZpk(z: Cx[], p: Cx[], k: number, fs: number): { z: Cx[]; p: Cx[]; k: number } {
+  const sf = 2 * fs;
+  let prodz: Cx = [1, 0]; const zd: Cx[] = [];
+  if (z.length) { for (const zi of z) { prodz = cMul(prodz, cSub([sf, 0], zi)); zd.push(cDiv(cAdd([1, 0], [zi[0] / sf, zi[1] / sf]), cSub([1, 0], [zi[0] / sf, zi[1] / sf]))); } }
+  let prodp: Cx = [1, 0]; const pd: Cx[] = [];
+  if (p.length) { for (const pi of p) { prodp = cMul(prodp, cSub([sf, 0], pi)); pd.push(cDiv(cAdd([1, 0], [pi[0] / sf, pi[1] / sf]), cSub([1, 0], [pi[0] / sf, pi[1] / sf]))); } }
+  const kd = cDiv([k * prodz[0], k * prodz[1]], prodp)[0];
+  while (zd.length < pd.length) zd.push([-1, 0]);   // pad with z = -1 (Nyquist)
+  return { z: zd, p: pd, k: kd };
+}
+/** zpk → [b,a] transfer-function (descending powers), taking the real part. */
+function zpk2tf(z: Cx[], p: Cx[], k: number): { b: number[]; a: number[] } {
+  const a = polyFromRoots(p).map((c) => c[0]);
+  const bz = polyFromRoots(z).map((c) => c[0] * k);
+  const b = new Array(p.length - z.length).fill(0).concat(bz);   // left-pad to match a
+  return { b, a };
+}
+
+/** One-dimensional digital filter (Direct Form II Transposed); returns y and final states zf. */
+function filterDf2t(b: number[], a: number[], x: number[], zi?: number[]): { y: number[]; zf: number[] } {
+  const a0 = a[0];
+  const bn = b.map((v) => v / a0), an = a.map((v) => v / a0);
+  const nb = bn.length, na = an.length, n = Math.max(nb, na);
+  const bb = bn.slice(); while (bb.length < n) bb.push(0);
+  const aa = an.slice(); while (aa.length < n) aa.push(0);
+  const z = new Array(n - 1).fill(0); if (zi) for (let i = 0; i < z.length && i < zi.length; i++) z[i] = zi[i];
+  const y = new Array(x.length);
+  for (let m2 = 0; m2 < x.length; m2++) {
+    const xm = x[m2];
+    const ym = bb[0] * xm + (z[0] ?? 0);
+    for (let i = 1; i < n - 1; i++) z[i - 1] = bb[i] * xm + z[i] - aa[i] * ym;
+    if (n - 1 >= 1) z[n - 2] = bb[n - 1] * xm - aa[n - 1] * ym;
+    y[m2] = ym;
+  }
+  return { y, zf: z };
+}
+/** filtfilt initial-state vector zi (steady state) for a single-section b/a (signal/filtfilt.m). */
+function filtfiltZi(b: number[], a: number[]): number[] {
+  const a0 = a[0]; const B = b.map((v) => v / a0), A = a.map((v) => v / a0);
+  const M = Math.max(B.length, A.length);
+  while (B.length < M) B.push(0); while (A.length < M) A.push(0);
+  if (M <= 1) return [];
+  // Solve (eye(M-1) - [-a, [eye(M-2); zeros(1,M-2)]]) zi = B(2:M) - B(1)*A(2:M)
+  // a = A(2:M) as a column; the bracketed matrix is (M-1)x(M-1): col0 = -a,
+  // cols 1..M-2 = eye(M-2) stacked over a zero row.
+  const mm = M - 1;
+  const mtx: number[][] = []; const rhs: number[] = [];
+  for (let i = 0; i < mm; i++) { mtx.push(new Array(mm).fill(0)); rhs.push(B[i + 1] - B[0] * A[i + 1]); }
+  for (let i = 0; i < mm; i++) {
+    for (let j = 0; j < mm; j++) {
+      const eyeM1 = i === j ? 1 : 0;
+      let block = 0;
+      if (j === 0) block = -A[i + 1];          // first column = -a
+      else if (i === j - 1) block = 1;          // eye(M-2) in rows 0..M-3, cols 1..M-2
+      mtx[i][j] = eyeM1 - block;
+    }
+  }
+  // Gaussian elimination
+  for (let col = 0; col < mm; col++) {
+    let piv = col; for (let r = col + 1; r < mm; r++) if (Math.abs(mtx[r][col]) > Math.abs(mtx[piv][col])) piv = r;
+    [mtx[col], mtx[piv]] = [mtx[piv], mtx[col]]; [rhs[col], rhs[piv]] = [rhs[piv], rhs[col]];
+    const d = mtx[col][col];
+    for (let r = 0; r < mm; r++) { if (r === col) continue; const f = mtx[r][col] / d; for (let c = col; c < mm; c++) mtx[r][c] -= f * mtx[col][c]; rhs[r] -= f * rhs[col]; }
+  }
+  return rhs.map((v, i) => v / mtx[i][i]);
+}
+/** Effective filter length: index of last nonzero coefficient (after normalization). */
+function effLen(c: number[]): number { const mx = Math.max(...c.map(Math.abs)); if (mx === 0) return 0; let L = 0; for (let i = 0; i < c.length; i++) if (Math.abs(c[i] / mx) !== 0) L = i + 1; return L; }
+
 /** Build a length-L window column from a sample function g(n, N) where N is the symmetric span.
  *  'periodic'/'symmetric' (default) selects N = L (periodic) or L-1 (symmetric). */
 function window(a: Value[], optIdx: number, g: (n: number, N: number) => number): Promise<Value[]> {
@@ -722,6 +834,117 @@ export const SIGNAL: ToolboxModule = {
     /** rc2is(k) — reflection coefficients → inverse sine parameters: (2/π)·asin(k). */
     rc2is: (a) => ret(map(m(a[0]), (k) => (2 / Math.PI) * Math.asin(k))),
 
+    // ── IIR design / zero-phase filtering / peak finding ──
+    /** [z,p,k] = buttap(n) — Butterworth analog lowpass prototype. */
+    buttap: (a, nargout) => {
+      const n = Math.round(asScalar(a[0])); const { z, p, k } = buttap(n);
+      const pCol = colVec(p.map((c) => c[0])); pCol.idata = Float64Array.from(p.map((c) => c[1]));
+      return Promise.resolve(nargout >= 3 ? [zeros(0, 1), pCol, scalar(k)] : nargout >= 2 ? [zeros(0, 1), pCol] : [zeros(0, 1)]);
+    },
+    /** [b,a] = butter(n,Wn[,ftype]) — Butterworth IIR filter design (lowpass/highpass, digital). */
+    butter: (a, nargout) => {
+      const n = Math.round(asScalar(a[0])); const Wn = asScalar(a[1]);
+      const ftype = a.length >= 3 && (isStr(a[2]) || (isMat(a[2]) && (a[2] as Mat).isChar)) ? asString(a[2]).toLowerCase() : '';
+      const high = ftype.startsWith('high');
+      // step 1: prewarp (fs = 2)
+      const fs = 2; const u = 2 * fs * Math.tan((Math.PI * Wn) / fs);
+      // step 2: analog prototype
+      let { z, p, k } = buttap(n);
+      // step 3: transform to lowpass/highpass of cutoff u
+      ({ z, p, k } = high ? lp2hpZpk(z, p, k, u) : lp2lpZpk(z, p, k, u));
+      // step 4: bilinear → digital
+      ({ z, p, k } = bilinearZpk(z, p, k, fs));
+      const { b, a: den } = zpk2tf(z, p, k);
+      return Promise.resolve(nargout >= 2 ? [rowVec(b), rowVec(den)] : [rowVec(b)]);
+    },
+    /** y = filtfilt(b,a,x) — zero-phase forward-reverse IIR filtering (edge-reflection + steady-state zi). */
+    filtfilt: (a) => {
+      const b = toArray(m(a[0])), den = toArray(m(a[1])); const X = m(a[2]); const isRow = X.rows === 1;
+      const x = toArray(X);
+      const ord = Math.max(effLen(b), effLen(den)) - 1;
+      const nfact = Math.max(1, 3 * ord);
+      if (x.length <= nfact) return ret(isRow ? rowVec(x.slice()) : colVec(x.slice()));
+      const zi = filtfiltZi(b, den);
+      // reflect: 2*x(1)-x(nfact+1:-1:2) ... x ... 2*x(end)-x(end-1:-1:end-nfact)
+      const ext: number[] = [];
+      for (let i = nfact; i >= 1; i--) ext.push(2 * x[0] - x[i]);
+      for (const v of x) ext.push(v);
+      for (let i = 1; i <= nfact; i++) ext.push(2 * x[x.length - 1] - x[x.length - 1 - i]);
+      // forward
+      const ziF = zi.map((v) => v * ext[0]);
+      let yt = filterDf2t(b, den, ext, ziF).y;
+      // reverse
+      yt.reverse();
+      const ziR = zi.map((v) => v * yt[0]);
+      yt = filterDf2t(b, den, yt, ziR).y;
+      yt.reverse();
+      const y = yt.slice(nfact, nfact + x.length);
+      return ret(isRow ? rowVec(y) : colVec(y));
+    },
+    /** [pks,locs] = findpeaks(y[,x]) — local maxima with MinPeakHeight/Prominence/Distance, NPeaks, SortStr. */
+    findpeaks: (a, nargout) => {
+      const Y = m(a[0]); const yIsRow = Y.rows === 1; const y = toArray(Y);
+      // optional x / Fs as the first positional arg (numeric, non-string)
+      let argStart = 1; let x: number[] = y.map((_, i) => i + 1);
+      if (a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar) {
+        const xv = toArray(m(a[1]));
+        x = xv.length === 1 ? y.map((_, i) => i / xv[0]) : xv;   // scalar ⇒ Fs
+        argStart = 2;
+      }
+      // name/value options
+      let minH = -Infinity, minP = 0, minD = 0, maxN = Infinity, sortStr = 'none';
+      for (let i = argStart; i + 1 < a.length; i += 2) {
+        const name = asString(a[i]).toLowerCase(); const val = a[i + 1];
+        if (name === 'minpeakheight') minH = asScalar(val);
+        else if (name === 'minpeakprominence') minP = asScalar(val);
+        else if (name === 'minpeakdistance') minD = asScalar(val);
+        else if (name === 'npeaks') maxN = Math.round(asScalar(val));
+        else if (name === 'sortstr') sortStr = asString(val).toLowerCase();
+      }
+      // all local maxima (first index of plateaus); bookend by NaN (signal/findpeaks.m findLocalMaxima)
+      let iPk: number[] = [];
+      const yb = [NaN, ...y, NaN];                       // 1..length(yb) map to iTemp
+      // keep first of any adjacent-equal pair (including NaN==NaN) where at least one is finite
+      const iTemp: number[] = [0];
+      for (let i = 1; i < yb.length; i++) {
+        const fin = !Number.isNaN(yb[i - 1]) || !Number.isNaN(yb[i]);
+        if (yb[i - 1] !== yb[i] && fin) iTemp.push(i);
+      }
+      // s = sign(diff(yTemp(iTemp))); NaN stays NaN so transitions to NaN are not falling
+      const s = iTemp.slice(1).map((idx, k) => Math.sign(yb[idx] - yb[iTemp[k]]));
+      // iMax: positions where diff(s) < 0 (NaN comparisons are false)
+      for (let i = 1; i < s.length; i++) if (s[i] - s[i - 1] < 0) iPk.push(iTemp[i] - 1);   // -1 removes NaN bookend
+      // MinPeakHeight: strictly greater than threshold
+      iPk = iPk.filter((j) => y[j] > minH);
+      // MinPeakProminence
+      if (minP > 0) {
+        iPk = iPk.filter((j) => {
+          let leftMin = y[j]; for (let i = j - 1; i >= 0; i--) { if (y[i] > y[j]) break; if (y[i] < leftMin) leftMin = y[i]; }
+          let rightMin = y[j]; for (let i = j + 1; i < y.length; i++) { if (y[i] > y[j]) break; if (y[i] < rightMin) rightMin = y[i]; }
+          return y[j] - Math.max(leftMin, rightMin) >= minP;
+        });
+      }
+      // MinPeakDistance: greedily keep larger peaks, suppress neighbors within Pd (in x-units)
+      if (minD > 0 && iPk.length) {
+        const order = iPk.map((p2, i) => i).sort((p2, q) => y[iPk[q]] - y[iPk[p2]]);  // descending by height
+        const locs = iPk.map((p2) => x[p2]);
+        const del = new Array(iPk.length).fill(false);
+        for (const i of order) {
+          if (del[i]) continue;
+          for (let jj = 0; jj < iPk.length; jj++) if (jj !== i && locs[jj] >= locs[i] - minD && locs[jj] <= locs[i] + minD) del[jj] = true;
+        }
+        iPk = iPk.filter((_, i) => !del[i]);
+      }
+      // SortStr
+      if (sortStr.startsWith('a')) iPk.sort((p2, q) => y[p2] - y[q]);
+      else if (sortStr.startsWith('d')) iPk.sort((p2, q) => y[q] - y[p2]);
+      // NPeaks (after sort; for default 'none', take first maxN in index order)
+      if (iPk.length > maxN) iPk = iPk.slice(0, maxN);
+      const pks = iPk.map((j) => y[j]); const locs = iPk.map((j) => x[j]);
+      const mk = (v: number[]) => (yIsRow ? rowVec(v) : colVec(v));
+      return Promise.resolve(nargout >= 2 ? [mk(pks), mk(locs)] : [mk(pks)]);
+    },
+
     // ── Savitzky-Golay ──
     /** B = sgolay(order,framelen) — Savitzky-Golay FIR projection matrix. */
     sgolay: (a) => { const order = Math.round(asScalar(a[0])), F = Math.round(asScalar(a[1])); const B = sgolayMat(order, F); const o = { kind: 'num' as const, rows: F, cols: F, data: new Float64Array(F * F) } as Mat; for (let i = 0; i < F; i++) for (let j = 0; j < F; j++) o.data[i + j * F] = B[i][j]; return ret(o); },
@@ -765,5 +988,7 @@ export const SIGNAL: ToolboxModule = {
     cell2sos: 'Convert second-order-sections cell array to matrix', sos2ctf: 'Convert second-order sections to cascaded transfer functions',
     kaiserord: 'Kaiser window FIR filter design estimation parameters',
     sgolay: 'Savitzky-Golay FIR smoothing matrix', sgolayfilt: 'Savitzky-Golay filtering',
+    buttap: 'Butterworth analog lowpass filter prototype', butter: 'Butterworth IIR filter design',
+    filtfilt: 'Zero-phase forward and reverse digital IIR filtering', findpeaks: 'Find local maxima',
   },
 };

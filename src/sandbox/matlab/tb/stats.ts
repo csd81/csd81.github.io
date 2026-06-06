@@ -5,7 +5,7 @@
 import type { Builtin } from '../builtins';
 import {
   type Value, type Mat, isMat, isObject, makeObject, str, scalar, zeros, rowVec, colVec, toArray, map, numel,
-  asString, asScalar, toMat as m, MatError, mat, fromRows, isCell, isStr,
+  asString, asScalar, toMat as m, MatError, mat, fromRows, isCell, isStr, makeCell,
 } from '../values';
 import type { ToolboxModule } from './types';
 
@@ -1199,6 +1199,138 @@ export const STATS: ToolboxModule = {
       const sumd = colVec(Array.from({ length: k }, (_, j) => X.reduce((s, p, i) => s + (idx[i] === j ? METRICS.squaredeuclidean(p, cen[j]) : 0), 0)));
       return Promise.resolve([idxOut, C, sumd]);
     },
+    // ── multivariate / regression ──
+    /** [b,bint,r,rint,stats]=regress(y,X[,alpha]) — multiple linear regression by least squares. */
+    regress: (a, nargout) => {
+      const yv = toArray(m(a[0])); const Xm = matRows(m(a[1]));
+      const n = Xm.length, p = Xm[0]?.length ?? 0;
+      const alpha = a.length > 2 && isMat(a[2]) && numel(m(a[2])) ? asScalar(a[2]) : 0.05;
+      // Normal equations: (X'X) b = X'y, with G = inv(X'X).
+      const XtX: number[][] = Array.from({ length: p }, () => new Array<number>(p).fill(0));
+      const Xty = new Array<number>(p).fill(0);
+      for (let i = 0; i < p; i++) {
+        for (let r = 0; r < n; r++) Xty[i] += Xm[r][i] * yv[r];
+        for (let j = 0; j < p; j++) { let s = 0; for (let r = 0; r < n; r++) s += Xm[r][i] * Xm[r][j]; XtX[i][j] = s; }
+      }
+      const b = solveLin(XtX, Xty);
+      // G = inv(X'X) via solving against identity columns.
+      const G: number[][] = Array.from({ length: p }, () => new Array<number>(p).fill(0));
+      for (let c = 0; c < p; c++) { const e = new Array<number>(p).fill(0); e[c] = 1; const col = solveLin(XtX, e); for (let i = 0; i < p; i++) G[i][c] = col[i]; }
+      const yhat = Xm.map((row) => row.reduce((s, x, i) => s + x * b[i], 0));
+      const r = yv.map((v, i) => v - yhat[i]);
+      const nu = Math.max(0, n - p);
+      const normr2 = r.reduce((s, x) => s + x * x, 0);
+      const s2 = nu !== 0 ? normr2 / nu : NaN;                          // error variance estimate
+      const tval = nu !== 0 ? tinvL(1 - alpha / 2, nu) : 0;
+      const se = G.map((_, i) => Math.sqrt(s2 * G[i][i]));
+      const bMat = colVec(b);
+      if (nargout < 2) return ret(bMat);
+      const bint = fromRows(b.map((bi, i) => [bi - tval * se[i], bi + tval * se[i]]));
+      // rint: studentized residual CI (Belsley): sigmai per residual, hat-diagonal h_ii.
+      const hdiag = Xm.map((row) => { let h = 0; for (let i = 0; i < p; i++) { let gi = 0; for (let j = 0; j < p; j++) gi += G[i][j] * row[j]; h += row[i] * gi; } return h; });
+      const rint = (() => {
+        const lo: number[] = [], hi: number[] = [];
+        const tv2 = nu > 1 ? tinvL(1 - alpha / 2, nu - 1) : 0;
+        for (let i = 0; i < n; i++) {
+          let sigmai: number;
+          if (nu > 1) { const denom = (nu - 1) * (1 - hdiag[i]); sigmai = denom > 0 ? Math.sqrt(Math.max(0, (nu * s2 / (nu - 1)) - (r[i] * r[i] / denom))) : 0; }
+          else sigmai = 0;
+          lo.push(r[i] - tv2 * sigmai); hi.push(r[i] + tv2 * sigmai);
+        }
+        return fromRows(lo.map((l, i) => [l, hi[i]]));
+      })();
+      const ybar = yv.reduce((s, v) => s + v, 0) / (n || 1);
+      // Detect a constant column for the centered TSS, matching MATLAB.
+      const hasIntercept = Array.from({ length: p }, (_, j) => Xm.every((row) => row[j] === Xm[0][j])).some((v) => v);
+      const TSS = hasIntercept ? yv.reduce((s, v) => s + (v - ybar) ** 2, 0) : yv.reduce((s, v) => s + v * v, 0);
+      const SSE = normr2;
+      const r2 = 1 - SSE / TSS;
+      const dfReg = hasIntercept ? p - 1 : p;
+      const F = (r2 / dfReg) / ((1 - r2) / nu);
+      const prob = fUpperTail(F, dfReg, nu);
+      const stats = rowVec([r2, F, prob, s2]);
+      return Promise.resolve([bMat, bint, colVec(r), rint, stats].slice(0, Math.max(1, nargout)));
+    },
+    /** [coeff,score,latent,tsquared,explained,mu]=pca(X) — principal component analysis (SVD on centered X). */
+    pca: (a, nargout) => {
+      const X = matRows(m(a[0])); const n = X.length, p = X[0]?.length ?? 0;
+      const mu = new Array<number>(p).fill(0);
+      for (let j = 0; j < p; j++) { for (let i = 0; i < n; i++) mu[j] += X[i][j]; mu[j] /= (n || 1); }
+      const Xc = X.map((row) => row.map((v, j) => v - mu[j]));            // centered
+      // Eigendecomposition of the (p×p) covariance matrix C = Xc'Xc/(n-1).
+      const dof = Math.max(1, n - 1);
+      const C: number[][] = Array.from({ length: p }, () => new Array<number>(p).fill(0));
+      for (let i = 0; i < p; i++) for (let j = 0; j < p; j++) { let s = 0; for (let r = 0; r < n; r++) s += Xc[r][i] * Xc[r][j]; C[i][j] = s / dof; }
+      const { d, V } = symEig(C);
+      // Sort eigenpairs by descending eigenvalue.
+      const order = d.map((_, i) => i).sort((x, y) => d[y] - d[x]);
+      const ncomp = Math.min(p, n - 1);                                  // MATLAB keeps min(p, n-1) components
+      const latent: number[] = [], coeff: number[][] = Array.from({ length: p }, () => [] as number[]);
+      for (let k = 0; k < ncomp; k++) {
+        const o = order[k]; let lam = d[o]; if (lam < 0) lam = 0;
+        // sign convention: largest-magnitude loading positive
+        let mi = 0; for (let i = 1; i < p; i++) if (Math.abs(V[i][o]) > Math.abs(V[mi][o])) mi = i;
+        const sgn = V[mi][o] < 0 ? -1 : 1;
+        latent.push(lam);
+        for (let i = 0; i < p; i++) coeff[i].push(sgn * V[i][o]);
+      }
+      const coeffMat = fromRows(coeff);
+      if (nargout < 2) return ret(coeffMat);
+      // score = Xc * coeff
+      const score: number[][] = Xc.map((row) => coeff[0].map((_, k) => { let s = 0; for (let i = 0; i < p; i++) s += row[i] * coeff[i][k]; return s; }));
+      const scoreMat = score.length ? fromRows(score) : zeros(0, ncomp);
+      if (nargout < 3) return Promise.resolve([coeffMat, scoreMat]);
+      const latMat = colVec(latent);
+      if (nargout < 4) return Promise.resolve([coeffMat, scoreMat, latMat]);
+      // Hotelling T²: Σ_k score(i,k)²/latent(k) over components with latent>0.
+      const tsq = score.map((row) => row.reduce((s, sc, k) => s + (latent[k] > 1e-12 ? sc * sc / latent[k] : 0), 0));
+      const tsqMat = colVec(tsq);
+      if (nargout < 5) return Promise.resolve([coeffMat, scoreMat, latMat, tsqMat]);
+      const tot = latent.reduce((s, x) => s + x, 0) || 1;
+      const explained = colVec(latent.map((x) => 100 * x / tot));
+      if (nargout < 6) return Promise.resolve([coeffMat, scoreMat, latMat, tsqMat, explained]);
+      return Promise.resolve([coeffMat, scoreMat, latMat, tsqMat, explained, rowVec(mu)]);
+    },
+    /** [p,tbl,stats]=anova1(X[,group][,displayopt]) — one-way ANOVA (matrix columns = groups). */
+    anova1: (a, nargout) => {
+      // Build groups: matrix → columns are groups; vector + group labels → by label.
+      const groups: number[][] = [];
+      const X0 = m(a[0]);
+      const grpArg = a.length > 1 && a[1] !== undefined && !(isMat(a[1]) && (a[1] as Mat).isChar) && numel(m(a[1])) ? a[1] : undefined;
+      if (grpArg !== undefined && (X0.rows === 1 || X0.cols === 1)) {
+        const xv = toArray(X0); const gv = toArray(m(grpArg)).map((v) => v);
+        const labels: number[] = []; const byLab = new Map<number, number[]>();
+        for (let i = 0; i < xv.length; i++) { const key = gv[i]; if (!byLab.has(key)) { byLab.set(key, []); labels.push(key); } byLab.get(key)!.push(xv[i]); }
+        for (const k of labels) groups.push(byLab.get(k)!.filter((v) => !Number.isNaN(v)));
+      } else {
+        const cols = matRows(X0); const ncol = X0.cols;
+        for (let c = 0; c < ncol; c++) groups.push(cols.map((row) => row[c]).filter((v) => !Number.isNaN(v)));
+      }
+      const k = groups.length;
+      const grandN = groups.reduce((s, g) => s + g.length, 0);
+      const grandMean = groups.reduce((s, g) => s + g.reduce((t, x) => t + x, 0), 0) / (grandN || 1);
+      let SSB = 0, SSW = 0;
+      for (const g of groups) { const gm = g.reduce((s, x) => s + x, 0) / (g.length || 1); SSB += g.length * (gm - grandMean) ** 2; for (const x of g) SSW += (x - gm) ** 2; }
+      const dfB = k - 1, dfW = grandN - k;
+      const MSB = SSB / dfB, MSW = SSW / dfW;
+      const F = MSB / MSW;
+      const p = fUpperTail(F, dfB, dfW);
+      if (nargout < 2) return ret(scalar(p));
+      // Minimal cell-array ANOVA table (4×6): header + Groups/Error/Total rows.
+      const rowsArr: Value[][] = [
+        ['Source', 'SS', 'df', 'MS', 'F', 'Prob>F'].map((s) => str(s)),
+        [str('Groups'), scalar(SSB), scalar(dfB), scalar(MSB), scalar(F), scalar(p)],
+        [str('Error'), scalar(SSW), scalar(dfW), scalar(MSW), str(''), str('')],
+        [str('Total'), scalar(SSB + SSW), scalar(grandN - 1), str(''), str(''), str('')],
+      ];
+      const tblItems: Value[] = []; for (let c = 0; c < 6; c++) for (let rr = 0; rr < 4; rr++) tblItems.push(rowsArr[rr][c]);
+      const tbl: Value = makeCell(4, 6, tblItems) as unknown as Value;
+      if (nargout < 3) return Promise.resolve([scalar(p), tbl]);
+      const meansArr = groups.map((g) => g.reduce((s, x) => s + x, 0) / (g.length || 1));
+      const stats = mkStruct([['gnames', str('')], ['n', rowVec(groups.map((g) => g.length))], ['source', str('anova1')],
+        ['means', rowVec(meansArr)], ['df', scalar(dfW)], ['s', scalar(Math.sqrt(MSW))]]);
+      return Promise.resolve([scalar(p), tbl, stats]);
+    },
     // ── distribution objects (exercise the generic ClassV object type) ──
     /** makedist('Normal','mu',0,'sigma',1) → a prob.<Name>Distribution object. */
     makedist: (a) => {
@@ -1258,6 +1390,7 @@ export const STATS: ToolboxModule = {
     nanmedian: 'Median, ignoring NaN values', nanmax: 'Maximum, ignoring NaN values', nanmin: 'Minimum, ignoring NaN values',
     range: 'Range of values (max − min)', tabulate: 'Frequency table',
     pdist: 'Pairwise distance between observations', squareform: 'Format distance matrix', linkage: 'Agglomerative hierarchical cluster tree', kmeans: 'k-means clustering',
+    regress: 'Multiple linear regression', pca: 'Principal component analysis', anova1: 'One-way analysis of variance',
     makedist: 'Create a probability distribution object', pdf: 'Probability density function', cdf: 'Cumulative distribution function', icdf: 'Inverse cumulative distribution function',
   },
 };

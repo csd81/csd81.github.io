@@ -127,6 +127,8 @@ export const IMAGES: ToolboxModule = {
       for (let i = 0; i < outR; i++) { out[i] = []; const ur = (i + 1) / sr + 0.5 * (1 - 1 / sr); for (let j = 0; j < outC; j++) out[i][j] = samp(ur, (j + 1) / sc + 0.5 * (1 - 1 / sc)); }
       return ret(fromRows(out));
     },
+    /** padarray(A,padsize[,padval|method][,direction]) — pad a 2-D array (constant/circular/replicate/symmetric). */
+    padarray: (a) => ret(padarray(a)),
     integralImage: (a) => integralImage(a),
     integralImage3: (a) => integralImage3(a),
     integralBoxFilter: (a) => integralBoxFilter(a),
@@ -142,6 +144,7 @@ export const IMAGES: ToolboxModule = {
     im2single: 'Convert image to single precision', adaptthresh: 'Adaptive image threshold using local first-order statistics',
     integralImage: 'Compute upright or rotated integral image', integralImage3: 'Compute 3-D integral image',
     integralBoxFilter: '2-D box filtering of integral images', integralBoxFilter3: '3-D box filtering of 3-D integral images',
+    padarray: 'Pad array (constant, circular, replicate, or symmetric)',
   },
 };
 
@@ -153,6 +156,55 @@ function mapRows3(M: Mat, f: (a: number, b: number, c: number) => number[]): Mat
 }
 /** Rows of a column-major Mat as number[][]. */
 function matToRows(M: Mat): number[][] { const o: number[][] = []; for (let r = 0; r < M.rows; r++) { const row: number[] = []; for (let c = 0; c < M.cols; c++) row.push(M.data[r + c * M.rows]); o.push(row); } return o; }
+
+/** Map a padded index `i` (range −pre … n−1+post) back into 0…n−1 per padding method. */
+function padIndex(i: number, n: number, method: string): number {
+  if (i >= 0 && i < n) return i;
+  if (method === 'circular') return ((i % n) + n) % n;
+  if (method === 'replicate') return i < 0 ? 0 : n - 1;
+  if (method === 'symmetric') {
+    // reflect with the border element repeated (period 2n)
+    const p = ((i % (2 * n)) + 2 * n) % (2 * n);
+    return p < n ? p : 2 * n - 1 - p;
+  }
+  return -1; // constant padding sentinel
+}
+/** padarray(A,padsize[,padval|method][,direction]). 2-D. Preserves class/logical. */
+function padarray(args: Value[]): Mat {
+  const A = m(args[0]);
+  const ps = toArray(m(args[1]));
+  // scalar padsize pads dim-1 only (padSize(ndims)=0); [r c] pads both dims.
+  const pr = ps.length >= 1 ? Math.round(ps[0]) : 0;
+  const pc = ps.length >= 2 ? Math.round(ps[1]) : 0;
+  let method = 'constant';
+  let padVal = 0;
+  let direction = 'both';
+  // args 3 and 4 are METHOD/DIRECTION/PADVAL, interchangeable for 3-4 (PADVAL only as 3rd, numeric).
+  let first = 2;
+  if (args.length > 2 && isMat(args[2]) && !(args[2] as Mat).isChar) { padVal = asScalar(args[2]); first = 3; }
+  for (let k = first; k < args.length; k++) {
+    const s = isMat(args[k]) ? asString(args[k]).toLowerCase() : '';
+    if (s === 'circular' || s === 'replicate' || s === 'symmetric') method = s;
+    else if (s === 'pre' || s === 'post' || s === 'both') direction = s;
+  }
+  const rPre = direction === 'post' ? 0 : pr, rPost = direction === 'pre' ? 0 : pr;
+  const cPre = direction === 'post' ? 0 : pc, cPost = direction === 'pre' ? 0 : pc;
+  const R = A.rows, C = A.cols;
+  const outR = R + rPre + rPost, outC = C + cPre + cPost;
+  const out = matToRows(A);
+  const res: number[][] = [];
+  for (let i = 0; i < outR; i++) {
+    res[i] = [];
+    const si = padIndex(i - rPre, R, method);
+    for (let j = 0; j < outC; j++) {
+      const sj = padIndex(j - cPre, C, method);
+      res[i][j] = (si < 0 || sj < 0) ? padVal : out[si][sj];
+    }
+  }
+  const o = fromRows(res);
+  if (A.isBool) o.isBool = true;
+  return A.itype ? applyClass(o, A.itype) : o;
+}
 /** Build a column-major Mat from number[][]. */
 function fromRows(rows: number[][]): Mat { const R = rows.length, C = R ? Math.max(...rows.map((r) => r.length)) : 0; const o = zeros(R, C); for (let r = 0; r < R; r++) for (let c = 0; c < (rows[r]?.length ?? 0); c++) o.data[r + c * R] = rows[r][c]; return o; }
 
