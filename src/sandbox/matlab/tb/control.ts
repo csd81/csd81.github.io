@@ -5,7 +5,6 @@ import type { Builtin } from '../builtins';
 import {
   type Value, type Mat, type StructV, isObject, makeObject, scalar, bool, colVec, rowVec, toArray, asScalar, asString, toMat as m,
 } from '../values';
-import { schur, schurEig } from '../linalg';
 import type { ToolboxModule } from './types';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
@@ -137,10 +136,31 @@ function reduceCross(A: number[][], B: number[][], Q: number[][], Ri: number[][]
 }
 const matScale = (A: number[][], s: number): number[][] => A.map((r) => r.map((v) => v * s));
 const eyeN = (n: number): number[][] => Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)));
+/** Least-squares solve of a (rows×n) overdetermined system M·X = R via the normal equations
+ *  (MᵀM)X = MᵀR (M is well-conditioned here, spanning an invariant subspace). */
+function lstsq(M: number[][], R: number[][]): number[][] {
+  const Mt = matT(M); return mmul(matInv(mmul(Mt, M)), mmul(Mt, R));
+}
+/** Determinant of a dense matrix via LU with partial pivoting (used for sign-function scaling). */
+function matDet(A: number[][]): number {
+  const n = A.length; const M = A.map((r) => r.slice()); let d = 1;
+  for (let c = 0; c < n; c++) {
+    let piv = c; for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[piv][c])) piv = r;
+    if (piv !== c) { [M[c], M[piv]] = [M[piv], M[c]]; d = -d; }
+    if (M[c][c] === 0) return 0;
+    d *= M[c][c];
+    for (let r = c + 1; r < n; r++) { const f = M[r][c] / M[c][c]; for (let j = c; j < n; j++) M[r][j] -= f * M[c][j]; }
+  }
+  return d;
+}
 /** Solve the continuous-time algebraic Riccati equation A'X+XA−XBR⁻¹B'X+Q=0 via the matrix-sign
- *  function. H=[A,−G;−Q,−A'] (G=BR⁻¹B'); the Newton iteration Z←½(Z/μ+μZ⁻¹) converges to sign(H).
- *  P=(I−sign(H))/2 projects onto the stable invariant subspace; its first n columns give [U11;U21]
- *  and X=U21 U11⁻¹. Robust (no eigendecomposition needed). */
+ *  function (Roberts' method). H=[A,−G;−Q,−A'] (G=BR⁻¹B'); the determinant-scaled Newton iteration
+ *  Z←½(c·Z + c⁻¹·Z⁻¹) with c=|det Z|^{−1/N} converges quadratically to W=sign(H). The optimal
+ *  determinantal scaling keeps every iterate well-conditioned, so the iteration converges even for
+ *  *unstable* A (the earlier norm-ratio scaling collapsed c→0 and blew the iterate up to NaN).
+ *  With W partitioned into n×n blocks, the stabilizing X solves the overdetermined system
+ *  [W12; W22+I]·X = −[W11+I; W21] (least squares — the leading n columns of I−W span the stable
+ *  invariant subspace). */
 function care(A: number[][], B: number[][], Q: number[][], Ri: number[][]): number[][] {
   const n = A.length; const N = 2 * n; const G = mmul(mmul(B, Ri), matT(B)); const At = matT(A);
   let Z: number[][] = [];
@@ -155,20 +175,16 @@ function care(A: number[][], B: number[][], Q: number[][], Ri: number[][]): numb
   }
   for (let it = 0; it < 200; it++) {
     const Zi = matInv(Z);
-    const mu = spectralScale(Z, Zi, N);   // 1-norm scaling for fast, well-conditioned convergence
-    const Zn = matScale(matAdd2(matScale(Z, 1 / mu), matScale(Zi, mu)), 0.5);
+    const c = Math.pow(Math.abs(matDet(Z)), -1 / N) || 1;   // optimal determinantal scaling
+    const Zn = matScale(matAdd2(matScale(Z, c), matScale(Zi, 1 / c)), 0.5);
     let d = 0; for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) d = Math.max(d, Math.abs(Zn[i][j] - Z[i][j]));
     Z = Zn; if (d < 1e-13) break;
   }
-  const P = matScale(matSub(eyeN(N), Z), 0.5);          // projector onto stable subspace
-  const U11: number[][] = [], U21: number[][] = [];
-  for (let i = 0; i < n; i++) { U11[i] = []; U21[i] = []; for (let j = 0; j < n; j++) { U11[i][j] = P[i][j]; U21[i][j] = P[n + i][j]; } }
-  return symmetrize(mmul(U21, matInv(U11)));
-}
-/** Scaling factor for one sign-function step: μ=sqrt(‖Z⁻¹‖₁/‖Z‖₁) (Higham's 1-norm scaling). */
-function spectralScale(Z: number[][], Zi: number[][], N: number): number {
-  const norm1 = (M: number[][]) => { let mx = 0; for (let j = 0; j < N; j++) { let s = 0; for (let i = 0; i < N; i++) s += Math.abs(M[i][j]); mx = Math.max(mx, s); } return mx; };
-  const a = norm1(Z), b = norm1(Zi); return Math.sqrt(b / a) || 1;
+  // Z = sign(H). Stabilizing X solves [W12; W22+I] X = −[W11+I; W21].
+  const Mlhs: number[][] = [], Rrhs: number[][] = [];
+  for (let i = 0; i < n; i++) { Mlhs[i] = []; Rrhs[i] = []; for (let j = 0; j < n; j++) { Mlhs[i][j] = Z[i][n + j]; Rrhs[i][j] = -(Z[i][j] + (i === j ? 1 : 0)); } }
+  for (let i = 0; i < n; i++) { Mlhs[n + i] = []; Rrhs[n + i] = []; for (let j = 0; j < n; j++) { Mlhs[n + i][j] = Z[n + i][n + j] + (i === j ? 1 : 0); Rrhs[n + i][j] = -Z[n + i][j]; } }
+  return symmetrize(lstsq(Mlhs, Rrhs));
 }
 /** Solve the discrete-time algebraic Riccati equation A'XA−X−A'XB(R+B'XB)⁻¹B'XA+Q=0
  *  by the fixed-point Riccati iteration (converges for stabilizable/detectable systems). */
@@ -186,9 +202,26 @@ function dare(A: number[][], B: number[][], Q: number[][], Rm: number[][]): numb
   }
   return X;
 }
-/** Closed-loop eigenvalues of A−BK as a column Value (complex when needed). */
+/** Discrete Riccati with cross term N (cost x'Qx+u'Ru+2x'Nu): solve via reduction
+ *  Ā=A−B R⁻¹ N', Q̄=Q−N R⁻¹ N', X=dare(Ā,B,Q̄,R); gain K=(R+B'XB)⁻¹(B'XA+N'). Returns {X,K}. */
+function dareN(A: number[][], B: number[][], Q: number[][], Rm: number[][], N: number[][]): { X: number[][]; K: number[][] } {
+  const Ri = matInv(Rm); const Nt = matT(N); const RiNt = mmul(Ri, Nt);
+  const Abar = matSub(A, mmul(B, RiNt)); const Qbar = matSub(Q, mmul(N, RiNt));
+  const X = dare(Abar, B, Qbar, Rm); const Bt = matT(B);
+  const K = mmul(matInv(matAdd2(Rm, mmul(mmul(Bt, X), B))), matAdd2(mmul(mmul(Bt, X), A), Nt));
+  return { X, K };
+}
+/** Closed-loop eigenvalues of A−BK as a column Value (complex when needed). The characteristic
+ *  polynomial is formed via Faddeev–LeVerrier and its roots found with polyRoots (Durand–Kerner);
+ *  this is more reliable than reading them off the real-Schur diagonal blocks, which can converge
+ *  to a spurious quasi-triangular clustering for some closely-spaced real spectra. */
 function eigClosed(Acl: number[][]): Value {
-  const { T } = schur(fromRows(Acl)); const e = schurEig(T);
+  const N = Acl.length;
+  if (N === 0) return colVec([]);
+  // Faddeev–LeVerrier: characteristic poly p (descending coeffs, leading 1).
+  const p = [1]; let Mk = eye(N);
+  for (let k = 1; k <= N; k++) { const AM = mmul(Acl, Mk); p[k] = -traceM(AM) / k; Mk = AM.map((row, i) => row.map((vv, j) => vv + (i === j ? p[k] : 0))); }
+  const e = sortRoots(polyRoots(p));
   const c = colVec(e.re); if (e.im.some((x) => x !== 0)) c.idata = Float64Array.from(e.im);
   return c;
 }
@@ -227,6 +260,50 @@ function matExp(A: number[][]): number[][] {
   let E = mmul(matInv(Dp), Np);
   for (let i = 0; i < s; i++) E = mmul(E, E);   // squaring
   return E;
+}
+
+// ── Lyapunov / Sylvester (Kronecker linear-solve) helpers ──
+/** Solve a dense linear system M x = b (column vectors) via Gauss-Jordan (matInv). */
+function linSolve(M: number[][], b: number[]): number[] {
+  const Mi = matInv(M); return Mi.map((row) => row.reduce((s, v, j) => s + v * b[j], 0));
+}
+/** Kronecker product A ⊗ B (both dense). */
+function kron(A: number[][], B: number[][]): number[][] {
+  const ar = A.length, ac = A[0].length, br = B.length, bc = B[0].length;
+  const O: number[][] = Array.from({ length: ar * br }, () => new Array(ac * bc).fill(0));
+  for (let i = 0; i < ar; i++) for (let j = 0; j < ac; j++) for (let p = 0; p < br; p++) for (let q = 0; q < bc; q++) O[i * br + p][j * bc + q] = A[i][j] * B[p][q];
+  return O;
+}
+/** Column-major vec of a matrix → flat array. */
+function vecCM(X: number[][]): number[] { const r = X.length, c = X[0].length; const o: number[] = []; for (let j = 0; j < c; j++) for (let i = 0; i < r; i++) o.push(X[i][j]); return o; }
+/** Inverse of vecCM into an r×c matrix. */
+function unvecCM(v: number[], r: number, c: number): number[][] { const O: number[][] = Array.from({ length: r }, () => new Array(c).fill(0)); let k = 0; for (let j = 0; j < c; j++) for (let i = 0; i < r; i++) O[i][j] = v[k++]; return O; }
+/** Solve continuous Sylvester A X + X B + C = 0 for X (vec: (I⊗A + Bᵀ⊗I) vecX = −vecC). */
+function sylvSolve(A: number[][], B: number[][], C: number[][]): number[][] {
+  const n = A.length, m2 = B.length; const In = eyeN(n), Im = eyeN(m2);
+  const M = matAdd2(kron(Im, A), kron(matT(B), In));
+  const x = linSolve(M, vecCM(C).map((v) => -v));
+  return unvecCM(x, n, m2);
+}
+/** Solve continuous Lyapunov A X + X Aᵀ + Q = 0 for X. */
+function lyapSolve(A: number[][], Q: number[][]): number[][] { return symmetrize(sylvSolve(A, matT(A), Q)); }
+/** Solve discrete Lyapunov A X Aᵀ − X + Q = 0 (vec: (A⊗A − I) vecX = −vecQ). */
+function dlyapSolve(A: number[][], Q: number[][]): number[][] {
+  const n = A.length; const I = eyeN(n * n);
+  const M = matSub(kron(A, A), I);
+  const x = linSolve(M, vecCM(Q).map((v) => -v));
+  return symmetrize(unvecCM(x, n, n));
+}
+/** Upper-triangular Cholesky R (R'·R = X) of a symmetric positive-definite matrix. */
+function cholUpper(X: number[][]): number[][] {
+  const n = X.length; const R: number[][] = Array.from({ length: n }, () => new Array(n).fill(0));
+  for (let j = 0; j < n; j++) {
+    let s = X[j][j]; for (let k = 0; k < j; k++) s -= R[k][j] * R[k][j];
+    if (s <= 0) throw new Error('lyapchol: solution is not positive definite');
+    R[j][j] = Math.sqrt(s);
+    for (let i = j + 1; i < n; i++) { let t = X[j][i]; for (let k = 0; k < j; k++) t -= R[k][j] * R[k][i]; R[j][i] = t / R[j][j]; }
+  }
+  return R;
 }
 
 /** c2d via ZOH: discretise (A,B) of the tf's controllable-canonical realisation using
@@ -600,6 +677,116 @@ export const CONTROL: ToolboxModule = {
         fields.set(key, [scalar(info.get(key) ?? NaN)]);
       return ret({ kind: 'struct', rows: 1, cols: 1, fields } as StructV);
     },
+    /** X = lyap(A,Q) solves A*X+X*A'+Q=0; X = lyap(A,B,C) solves the Sylvester eqn A*X+X*B+C=0. */
+    lyap: (a) => {
+      const A = matRows(m(a[0]));
+      if (a.length >= 3) { const B = matRows(m(a[1])), C = matRows(m(a[2])); return ret(fromRows(sylvSolve(A, B, C))); }
+      return ret(fromRows(lyapSolve(A, matRows(m(a[1])))));
+    },
+    /** X = dlyap(A,Q) solves the discrete Lyapunov equation A*X*A'-X+Q=0. */
+    dlyap: (a) => ret(fromRows(dlyapSolve(matRows(m(a[0])), matRows(m(a[1]))))),
+    /** R = lyapchol(A,B) returns the Cholesky factor R (R'*R = X) of lyap(A,B*B'). */
+    lyapchol: (a) => {
+      const A = matRows(m(a[0])), B = matRows(m(a[1]));
+      const X = lyapSolve(A, mmul(B, matT(B)));
+      return ret(fromRows(cholUpper(X)));
+    },
+    /** [X,K,L] = idare(A,B,Q,R) solves the discrete-time algebraic Riccati equation. */
+    idare: (a, n) => {
+      const A = matRows(m(a[0])), B = matRows(m(a[1])), Q = matRows(m(a[2]));
+      const Rm = matRows(m(a[3]));
+      const X = dare(A, B, Q, Rm);
+      const Bt = matT(B);
+      const Kgain = () => mmul(matInv(matAdd2(Rm, mmul(mmul(Bt, X), B))), mmul(mmul(Bt, X), A)); // (R+B'XB)^-1 B'XA
+      const out: Value[] = [fromRows(X)];
+      if (n >= 2) out.push(fromRows(Kgain()));
+      if (n >= 3) out.push(eigClosed(matSub(A, mmul(B, Kgain()))));
+      return Promise.resolve(out);
+    },
+    /** [K,S,e] = lqrd(A,B,Q,R,Ts) / lqrd(A,B,Q,R,N,Ts) designs a discrete LQR equivalent to the
+     *  continuous cost J=∫(x'Qx+u'Ru+2x'Nu)dt for the plant (A,B) sampled at Ts. */
+    lqrd: (a, nout) => {
+      const A = matRows(m(a[0])), B = matRows(m(a[1])), Q = matRows(m(a[2])); const Rm = matRows(m(a[3]));
+      const ns = A.length, ni = B[0].length;
+      const hasN = a.length >= 6;                          // lqrd(A,B,Q,R,N,Ts)
+      const Nc = hasN ? matRows(m(a[4])) : Array.from({ length: ns }, () => new Array(ni).fill(0));
+      const Ts = asScalar(a[hasN ? 5 : 4]);
+      // Van Loan augmented matrix (Franklin/Powell/Workman): exact cost discretisation.
+      const nn = ns + ni; const dim = 2 * nn; const At = matT(A), Bt = matT(B), Nt = matT(Nc);
+      const M: number[][] = Array.from({ length: dim }, () => new Array(dim).fill(0));
+      const set = (r0: number, c0: number, blk: number[][]) => { for (let i = 0; i < blk.length; i++) for (let j = 0; j < blk[0].length; j++) M[r0 + i][c0 + j] = blk[i][j] * Ts; };
+      // rows 0..ns-1: [-A', 0, Q, N]; rows ns..nn-1: [-B', 0, N', R]; rows nn..nn+ns-1: [0,0,A,B]
+      set(0, 0, matScale(At, -1)); set(0, nn, Q); set(0, nn + ns, Nc);
+      set(ns, 0, matScale(Bt, -1)); set(ns, nn, Nt); set(ns, nn + ns, Rm);
+      set(nn, nn, A); set(nn, nn + ns, B);
+      const phi = matExp(M);
+      const phi12: number[][] = [], phi22: number[][] = [];
+      for (let i = 0; i < nn; i++) { phi12[i] = []; phi22[i] = []; for (let j = 0; j < nn; j++) { phi12[i][j] = phi[i][nn + j]; phi22[i][j] = phi[nn + i][nn + j]; } }
+      const QQ = symmetrize(mmul(matT(phi22), phi12));      // [Qd Nd; Nd' Rd]
+      const Qd: number[][] = [], Rd: number[][] = [], Nd: number[][] = [];
+      for (let i = 0; i < ns; i++) { Qd[i] = []; Nd[i] = []; for (let j = 0; j < ns; j++) Qd[i][j] = QQ[i][j]; for (let j = 0; j < ni; j++) Nd[i][j] = QQ[i][ns + j]; }
+      for (let i = 0; i < ni; i++) { Rd[i] = []; for (let j = 0; j < ni; j++) Rd[i][j] = QQ[ns + i][ns + j]; }
+      const Ad: number[][] = [], Bd: number[][] = [];
+      for (let i = 0; i < ns; i++) { Ad[i] = []; Bd[i] = []; for (let j = 0; j < ns; j++) Ad[i][j] = phi22[i][j]; for (let j = 0; j < ni; j++) Bd[i][j] = phi22[i][ns + j]; }
+      const { X, K } = dareN(Ad, Bd, Qd, Rd, Nd);
+      const out: Value[] = [fromRows(K)];
+      if (nout >= 2) out.push(fromRows(X));
+      if (nout >= 3) out.push(eigClosed(matSub(Ad, mmul(Bd, K))));
+      return Promise.resolve(out);
+    },
+    /** [u,t] = gensig(type,tau[,Tf,Ts]) generates a periodic unit-amplitude test signal. */
+    gensig: (a, nout) => {
+      const type = asString(a[0]).toLowerCase().slice(0, 2);
+      const tau = asScalar(a[1]);
+      const Tf = a.length >= 3 && a[2] && !(isMatLike(a[2]) && m(a[2]).data.length === 0) ? asScalar(a[2]) : 5 * tau;
+      const Ts = a.length >= 4 ? asScalar(a[3]) : tau / 64;
+      const t: number[] = []; for (let v = 0; v <= Tf + 1e-12; v += Ts) t.push(v);
+      const eps = 2.220446049250313e-16;
+      const u = t.map((tv) => {
+        const r = tv - Math.floor(tv / tau) * tau;   // rem(t,tau)
+        if (type === 'si') return Math.sin((2 * Math.PI / tau) * tv);
+        if (type === 'sq') return r >= tau / 2 ? 1 : 0;
+        if (type === 'pu') return r < (1 - 1000 * eps) * Ts ? 1 : 0;
+        throw new Error('gensig: unknown signal type');
+      });
+      const U = colVec(u), T = colVec(t);
+      return nout >= 2 ? Promise.resolve([U, T]) : ret(U);
+    },
+    /** S = lsiminfo(y,t[,yfinal[,yinit]]) returns linear-response characteristics. */
+    lsiminfo: (a) => {
+      const y = toArray(m(a[0]));
+      const t = a.length >= 2 && isMatLike(a[1]) ? toArray(m(a[1])) : y.map((_, i) => i + 1);
+      const yf = a.length >= 3 ? asScalar(a[2]) : y[y.length - 1];
+      const yi = a.length >= 4 ? asScalar(a[3]) : 0;
+      const ST = 0.02; const ns = t.length;
+      // Peak of |y-yi|
+      let peak = -Infinity, ipeak = 0; for (let i = 0; i < ns; i++) { const d = Math.abs(y[i] - yi); if (d > peak) { peak = d; ipeak = i; } }
+      // Min / Max
+      let mn = Infinity, imn = 0, mx = -Infinity, imx = 0;
+      for (let i = 0; i < ns; i++) { if (y[i] < mn) { mn = y[i]; imn = i; } if (y[i] > mx) { mx = y[i]; imx = i; } }
+      const err = y.map((v) => Math.abs(v - yf));
+      const settle = (tol: number): number => {
+        let iS = -1; for (let i = ns - 1; i >= 0; i--) if (err[i] > tol) { iS = i; break; }
+        if (iS < 0) return 0;
+        if (iS === ns - 1) return NaN;
+        // Ts==0 (continuous): interpolate
+        const aa = y[iS] - y[iS + 1], bb = y[iS + 1] - yf;
+        const tau = Math.max((-tol - bb) / aa, (tol - bb) / aa);
+        return t[iS + 1] + tau * (t[iS] - t[iS + 1]);
+      };
+      let transient: number, settling: number;
+      if (Number.isFinite(yf)) {
+        transient = settle(ST * Math.max(...err));
+        settling = settle(ST * Math.abs(yf - yi));
+      } else { transient = NaN; settling = NaN; }
+      const fields = new Map<string, Value[]>([
+        ['TransientTime', [scalar(transient)]], ['SettlingTime', [scalar(settling)]],
+        ['Peak', [scalar(peak)]], ['PeakTime', [scalar(t[ipeak])]],
+        ['Min', [scalar(mn)]], ['MinTime', [scalar(t[imn])]],
+        ['Max', [scalar(mx)]], ['MaxTime', [scalar(t[imx])]],
+      ]);
+      return ret({ kind: 'struct', rows: 1, cols: 1, fields } as StructV);
+    },
     /** minreal(sys[,tol]) — minimal realization via pole/zero cancellation. */
     minreal: (a) => {
       const { num, den } = getNumDen(a[0]);
@@ -638,6 +825,13 @@ export const CONTROL: ToolboxModule = {
     margin: { summary: 'Gain and phase margins and crossover frequencies', syntax: ['[Gm,Pm,Wgm,Wpm] = margin(sys)'], seealso: ['bode', 'allmargin', 'nyquist'] },
     stepinfo: { summary: 'Step-response characteristics (rise time, settling time, etc.)', syntax: ['S = stepinfo(sys)'], seealso: ['step', 'lsim', 'impulse'] },
     minreal: { summary: 'Minimal realization or pole-zero cancellation', syntax: ['msys = minreal(sys)', 'msys = minreal(sys,tol)'], seealso: ['pole', 'zero', 'ss'] },
+    lyap: { summary: 'Continuous Lyapunov and Sylvester equation solver', syntax: ['X = lyap(A,Q)', 'X = lyap(A,B,C)'], description: ['X = lyap(A,Q) solves the continuous-time Lyapunov equation A*X + X*A\' + Q = 0.', 'X = lyap(A,B,C) solves the Sylvester equation A*X + X*B + C = 0.'], seealso: ['dlyap', 'lyapchol', 'sylvester'] },
+    dlyap: { summary: 'Discrete-time Lyapunov equation solver', syntax: ['X = dlyap(A,Q)'], description: ['X = dlyap(A,Q) solves the discrete-time Lyapunov equation A*X*A\' - X + Q = 0.'], seealso: ['lyap', 'dlyapchol', 'covar'] },
+    lyapchol: { summary: 'Square-root (Cholesky) solver for continuous Lyapunov equations', syntax: ['R = lyapchol(A,B)'], description: ['R = lyapchol(A,B) computes the upper-triangular Cholesky factor R of the solution X = R\'*R of the Lyapunov equation A*X + X*A\' + B*B\' = 0.', 'A must be stable; R is returned such that R\'*R is positive semidefinite.'], seealso: ['lyap', 'dlyapchol', 'chol'] },
+    idare: { summary: 'Discrete-time algebraic Riccati equation solver', syntax: ['[X,K,L] = idare(A,B,Q,R)'], description: ['[X,K,L] = idare(A,B,Q,R) solves A\'*X*A - X - (A\'*X*B)*inv(R+B\'*X*B)*(B\'*X*A) + Q = 0.', 'K = inv(R+B\'*X*B)*B\'*X*A is the optimal gain and L = eig(A-B*K) are the closed-loop eigenvalues.'], seealso: ['icare', 'dlqr', 'dare'] },
+    lqrd: { summary: 'Discrete LQR design from a continuous cost function', syntax: ['[K,S,e] = lqrd(A,B,Q,R,Ts)'], description: ['[K,S,e] = lqrd(A,B,Q,R,Ts) computes the discrete state-feedback gain K that minimizes the continuous-time LQR cost for the plant (A,B) sampled with period Ts.', 'S is the solution of the associated discrete Riccati equation and e are the discrete closed-loop eigenvalues.'], seealso: ['lqr', 'dlqr', 'c2d'] },
+    gensig: { summary: 'Generate a periodic test input signal', syntax: ['[u,t] = gensig(type,tau)', '[u,t] = gensig(type,tau,Tf,Ts)'], description: ['[u,t] = gensig(type,tau) generates a unit-amplitude periodic signal of period tau. type is \'sin\', \'square\', or \'pulse\'.', 'Tf sets the signal duration (default 5*tau) and Ts the sample spacing (default tau/64).'], seealso: ['lsim', 'square', 'sawtooth'] },
+    lsiminfo: { summary: 'Compute linear-response characteristics', syntax: ['S = lsiminfo(y,t)', 'S = lsiminfo(y,t,yfinal,yinit)'], description: ['S = lsiminfo(y,t) returns a struct with TransientTime, SettlingTime, Peak, PeakTime, Min, MinTime, Max, MaxTime for the response data (t,y).', 'yfinal defaults to the last sample of y and yinit defaults to 0.'], seealso: ['stepinfo', 'lsim', 'impulse'] },
   },
   // OOP method dispatch (see tb/types.ts): series(tf,…) routes here; series(sym,…) → Symbolic.
   methods: {
