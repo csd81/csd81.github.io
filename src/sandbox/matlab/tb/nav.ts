@@ -33,6 +33,61 @@ function trvec2tformImpl(args: Value[]): Value {
   for (let i = 0; i < N; i++) data.set(make(i), i * 16);
   return makeND([4, 4, N], data);
 }
+/** Elementary rotation matrix about an axis, angle in DEGREES (Phased Array convention). */
+function elemRot(args: Value[], axis: 'x' | 'y' | 'z'): Value {
+  const A = m(args[0]); const angs = Array.from(A.data); const N = angs.length;
+  const build = (deg: number) => {
+    const a = deg * Math.PI / 180, c = Math.cos(a), s = Math.sin(a); const d = new Float64Array(9);
+    if (axis === 'x') { d[0] = 1; d[4] = c; d[5] = s; d[7] = -s; d[8] = c; }
+    else if (axis === 'y') { d[0] = c; d[2] = -s; d[4] = 1; d[6] = s; d[8] = c; }
+    else { d[0] = c; d[1] = s; d[3] = -s; d[4] = c; d[8] = 1; }
+    return d;
+  };
+  if (N === 1) return mat(3, 3, build(angs[0]));
+  const data = new Float64Array(9 * N); for (let i = 0; i < N; i++) data.set(build(angs[i]), i * 9); return makeND([3, 3, N], data);
+}
+/** quat2rotm([w x y z]): quaternion → 3×3 rotation matrix (normalized). */
+function quat2rotmImpl(args: Value[]): Value {
+  const Q = m(args[0]); const N = Q.rows;
+  const make = (i: number) => {
+    let w = Q.data[i + 0 * N], x = Q.data[i + 1 * N], y = Q.data[i + 2 * N], z = Q.data[i + 3 * N];
+    const n = Math.hypot(w, x, y, z) || 1; w /= n; x /= n; y /= n; z /= n; const d = new Float64Array(9);
+    d[0] = 1 - 2 * (y * y + z * z); d[1] = 2 * (x * y + w * z); d[2] = 2 * (x * z - w * y);
+    d[3] = 2 * (x * y - w * z); d[4] = 1 - 2 * (x * x + z * z); d[5] = 2 * (y * z + w * x);
+    d[6] = 2 * (x * z + w * y); d[7] = 2 * (y * z - w * x); d[8] = 1 - 2 * (x * x + y * y); return d;
+  };
+  if (N === 1) return mat(3, 3, make(0));
+  const data = new Float64Array(9 * N); for (let i = 0; i < N; i++) data.set(make(i), i * 9); return makeND([3, 3, N], data);
+}
+/** rotm2quat(R): 3×3 rotation → quaternion [w x y z] (Shepperd's method, w≥0). */
+function rotm2quatImpl(args: Value[]): Value {
+  const R = m(args[0]); const N = R.nd && R.nd.length === 3 ? R.nd[2] : 1;
+  const make = (off: number) => {
+    const g = (r: number, c: number) => R.data[off + r + c * 3];
+    const tr = g(0, 0) + g(1, 1) + g(2, 2); let w: number, x: number, y: number, z: number;
+    if (tr > 0) { const S = Math.sqrt(tr + 1) * 2; w = 0.25 * S; x = (g(2, 1) - g(1, 2)) / S; y = (g(0, 2) - g(2, 0)) / S; z = (g(1, 0) - g(0, 1)) / S; }
+    else if (g(0, 0) > g(1, 1) && g(0, 0) > g(2, 2)) { const S = Math.sqrt(1 + g(0, 0) - g(1, 1) - g(2, 2)) * 2; w = (g(2, 1) - g(1, 2)) / S; x = 0.25 * S; y = (g(0, 1) + g(1, 0)) / S; z = (g(0, 2) + g(2, 0)) / S; }
+    else if (g(1, 1) > g(2, 2)) { const S = Math.sqrt(1 + g(1, 1) - g(0, 0) - g(2, 2)) * 2; w = (g(0, 2) - g(2, 0)) / S; x = (g(0, 1) + g(1, 0)) / S; y = 0.25 * S; z = (g(1, 2) + g(2, 1)) / S; }
+    else { const S = Math.sqrt(1 + g(2, 2) - g(0, 0) - g(1, 1)) * 2; w = (g(1, 0) - g(0, 1)) / S; x = (g(0, 2) + g(2, 0)) / S; y = (g(1, 2) + g(2, 1)) / S; z = 0.25 * S; }
+    if (w < 0) { w = -w; x = -x; y = -y; z = -z; }
+    return [w, x, y, z];
+  };
+  if (N === 1) { const q = make(0); return rowVec(q); }
+  const out = new Float64Array(N * 4); for (let i = 0; i < N; i++) { const q = make(i * 9); for (let k = 0; k < 4; k++) out[i + k * N] = q[k]; } return mat(N, 4, out);
+}
+/** quat2axang([w x y z]): quaternion → axis-angle [x y z θ]. */
+function quat2axangImpl(args: Value[]): Value {
+  const Q = m(args[0]); const N = Q.rows; const out = new Float64Array(N * 4);
+  for (let i = 0; i < N; i++) {
+    let w = Q.data[i + 0 * N], x = Q.data[i + 1 * N], y = Q.data[i + 2 * N], z = Q.data[i + 3 * N];
+    const n = Math.hypot(w, x, y, z) || 1; w /= n; x /= n; y /= n; z /= n;
+    const s = Math.sqrt(Math.max(0, 1 - w * w)); const theta = 2 * Math.acos(Math.min(1, Math.max(-1, w)));
+    let ax = 0, ay = 0, az = 1;
+    if (s > 1e-12) { ax = x / s; ay = y / s; az = z / s; }
+    out[i + 0 * N] = ax; out[i + 1 * N] = ay; out[i + 2 * N] = az; out[i + 3 * N] = theta;
+  }
+  return N === 1 ? rowVec([out[0], out[1], out[2], out[3]]) : mat(N, 4, out);
+}
 /** rotm2tform(R): 3×3 (or 3×3×N) rotation → 4×4 homogeneous transform (zero translation). */
 function rotm2tformImpl(args: Value[]): Value {
   const R = m(args[0]); const N = R.nd && R.nd.length === 3 ? R.nd[2] : 1;
@@ -607,6 +662,12 @@ export const NAV: ToolboxModule = {
     tform2rotm: ((args: Value[]) => ret(tform2rotmImpl(args))) as Builtin,
     axang2rotm: ((args: Value[]) => ret(axang2rotmImpl(args))) as Builtin,
     axang2quat: ((args: Value[]) => ret(axang2quatImpl(args))) as Builtin,
+    rotx: ((args: Value[]) => ret(elemRot(args, 'x'))) as Builtin,
+    roty: ((args: Value[]) => ret(elemRot(args, 'y'))) as Builtin,
+    rotz: ((args: Value[]) => ret(elemRot(args, 'z'))) as Builtin,
+    quat2rotm: ((args: Value[]) => ret(quat2rotmImpl(args))) as Builtin,
+    rotm2quat: ((args: Value[]) => ret(rotm2quatImpl(args))) as Builtin,
+    quat2axang: ((args: Value[]) => ret(quat2axangImpl(args))) as Builtin,
   },
   constants: {
     WGS84_A: () => rowVec([WGS84_A]),
@@ -631,5 +692,11 @@ export const NAV: ToolboxModule = {
     tform2rotm: 'Extract rotation matrices from homogeneous transforms.',
     axang2rotm: 'Convert axis-angle rotation to rotation matrix.',
     axang2quat: 'Convert axis-angle rotation to quaternion [w x y z].',
+    rotx: 'Rotation matrix about the x-axis (angle in degrees).',
+    roty: 'Rotation matrix about the y-axis (angle in degrees).',
+    rotz: 'Rotation matrix about the z-axis (angle in degrees).',
+    quat2rotm: 'Convert quaternion [w x y z] to rotation matrix.',
+    rotm2quat: 'Convert rotation matrix to quaternion [w x y z].',
+    quat2axang: 'Convert quaternion [w x y z] to axis-angle.',
   },
 };
