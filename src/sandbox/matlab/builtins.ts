@@ -1910,7 +1910,16 @@ export const BUILTINS: Record<string, Builtin> = {
     for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) { const i = r + 1, j = c + 1; H.data[r + c * n] = ((i + j) % 2 === 0 ? 1 : -1) * (i + j - 1) * binom(n + i - 1, n - j) * binom(n + j - 1, n - i) * binom(i + j - 2, i - 1) ** 2; }
     return ret(H);
   },
-  hadamard: async (a) => { let n = Math.round(asScalar(a[0])); if (n < 1 || (n & (n - 1)) !== 0) throw new MatError('hadamard: only power-of-2 sizes are supported in this implementation (Paley sizes such as 12 and 20 are not implemented).'); let H = mat(1, 1, Float64Array.of(1)); while (H.rows < n) { const k = H.rows; const o = zeros(2 * k, 2 * k); for (let r = 0; r < k; r++) for (let c = 0; c < k; c++) { const v = H.data[r + c * k]; o.data[r + c * 2 * k] = v; o.data[r + (c + k) * 2 * k] = v; o.data[(r + k) + c * 2 * k] = v; o.data[(r + k) + (c + k) * 2 * k] = -v; } H = o; } return ret(H); },
+  hadamard: async (a) => {
+    const n = Math.round(asScalar(a[0]));
+    if (n < 1) throw new MatError('hadamard: N must be a positive integer');
+    // Pick base ∈ {1,12,20} with n/base a power of 2 (1 ⇒ Sylvester; 12/20 ⇒ Paley then Sylvester).
+    let base = 0; for (const b of [1, 12, 20]) { if (n % b === 0) { const k = n / b; if (k >= 1 && (k & (k - 1)) === 0) { base = b; break; } } }
+    if (base === 0) throw new MatError('hadamard: N must be 2^k, 12·2^k, or 20·2^k');
+    let H = base === 1 ? mat(1, 1, Float64Array.of(1)) : paleyHadamard(base - 1);   // p = 11 → 12, p = 19 → 20
+    while (H.rows < n) { const k = H.rows; const o = zeros(2 * k, 2 * k); for (let r = 0; r < k; r++) for (let c = 0; c < k; c++) { const v = H.data[r + c * k]; o.data[r + c * 2 * k] = v; o.data[r + (c + k) * 2 * k] = v; o.data[(r + k) + c * 2 * k] = v; o.data[(r + k) + (c + k) * 2 * k] = -v; } H = o; }
+    return ret(H);
+  },
   hankel: async (a) => { const c = toArray(m(a[0])); const r = a.length >= 2 ? toArray(m(a[1])) : c.map((_, i) => (i === 0 ? c[c.length - 1] : 0)); const nr = c.length, nc = r.length; const o = zeros(nr, nc); for (let i = 0; i < nr; i++) for (let j = 0; j < nc; j++) { const k = i + j; o.data[i + j * nr] = k < nr ? c[k] : (k - nr + 1 < nc ? r[k - nr + 1] : 0); } return ret(o); },
   compan: async (a) => { const p = toArray(m(a[0])); const n = p.length - 1; if (n < 1) return ret(zeros(0, 0)); const o = zeros(n, n); for (let j = 0; j < n; j++) o.data[0 + j * n] = -p[j + 1] / p[0]; for (let i = 1; i < n; i++) o.data[i + (i - 1) * n] = 1; return ret(o); },
   sub2ind: async (a) => {
@@ -4027,11 +4036,15 @@ export const BUILTINS: Record<string, Builtin> = {
     //   gridded: interpn(X1…Xd, V, q1…qd) → 2d+1 args
     const L = a.length;
     const isVec = (v: Value) => isMat(v) && (m(v).rows === 1 || m(v).cols === 1);
-    const layout: Record<number, [number, boolean]> = { 2: [1, false], 3: [2, false], 4: [3, false], 5: [2, true], 7: [3, true] };
     let D: number, gridded: boolean;
-    // interpn(x, v, xq): 1-D gridded (3 args, all vectors) — 2-D compact needs a matrix V
+    // compact interpn(V,q1…qd) → d+1 args (even L>2 ⇒ d=L−1); gridded interpn(X1…Xd,V,q1…qd)
+    // → 2d+1 args (odd L≥5 ⇒ d=(L−1)/2). L=3 is 2-D compact, unless the first two args are
+    // vectors (then it's 1-D gridded interpn(x,v,xq)).
     if (L === 3 && isVec(a[0]) && isVec(a[1])) { D = 1; gridded = true; }
-    else { if (!layout[L]) throw new MatError('interpn: only 1-D, 2-D and 3-D gridded interpolation are supported'); [D, gridded] = layout[L]; }
+    else if (ndimsOf(m(a[0])) === L - 1 && L >= 2) { D = L - 1; gridded = false; } // compact interpn(V,q1…qd): V first, ndims(V)=#queries
+    else if (L % 2 === 1 && L >= 5) { D = (L - 1) / 2; gridded = true; }         // gridded interpn(X1…Xd,V,q1…qd)
+    else if (L % 2 === 0 && L >= 2) { D = L - 1; gridded = false; }              // compact (even arg count)
+    else throw new MatError('interpn: invalid number of arguments');
     const V = m(a[gridded ? D : 0]);
     // For 1-D, a row/col vector reports ndSize [1,n] or [n,1]; use its length as the axis.
     const ed = D === 1 ? [numel(V)] : ndSize(V);
@@ -6416,6 +6429,16 @@ function truthyArg(v: Value): boolean { if (isMat(v) && v.isChar) { const s = as
 
 // ── Set / conversion helpers ──────────────────────────────────────────────
 function setUniq(arr: number[]): number[] { const s = new Set<number>(); const o: number[] = []; for (const x of arr) if (!s.has(x)) { s.add(x); o.push(x); } return o.sort((a, b) => a - b); }
+/** Paley type-I Hadamard matrix of order p+1 (p prime ≡ 3 mod 4), via the quadratic-residue
+ *  (Legendre) character: bordered Jacobsthal matrix with a −1 diagonal. */
+function paleyHadamard(p: number): Mat {
+  const qr = new Set<number>(); for (let x = 1; x < p; x++) qr.add((x * x) % p);
+  const chi = (a: number): number => { a = ((a % p) + p) % p; return a === 0 ? 0 : qr.has(a) ? 1 : -1; };
+  const n = p + 1; const H = zeros(n, n);
+  for (let j = 0; j < n; j++) { H.data[0 + j * n] = 1; H.data[j + 0 * n] = 1; }   // first row & column of 1s
+  for (let i = 1; i < n; i++) for (let j = 1; j < n; j++) H.data[i + j * n] = i === j ? -1 : chi((i - 1) - (j - 1));
+  return H;
+}
 // ── complex-aware set-operation helpers (used when an input has an imaginary part) ──
 interface Cx { re: number; im: number }
 const cxKey = (v: Cx): string => `${v.re} ${v.im}`;
