@@ -128,7 +128,18 @@ function durRound(v: Temporal, f: (x: number) => number, args: Value[]): Value {
 function flipValue(v: Value, dim: number): Value {
   if (isCell(v)) { const R = v.rows, C = v.cols, it = new Array(R * C); for (let c = 0; c < C; c++) for (let r = 0; r < R; r++) { const rr = dim === 1 ? R - 1 - r : r, cc = dim === 2 ? C - 1 - c : c; it[rr + cc * R] = v.items[r + c * R]; } return makeCell(R, C, it); }
   if (isStr(v)) { const R = v.rows, C = v.cols, it = new Array(R * C); for (let c = 0; c < C; c++) for (let r = 0; r < R; r++) { const rr = dim === 1 ? R - 1 - r : r, cc = dim === 2 ? C - 1 - c : c; it[rr + cc * R] = v.items[r + c * R]; } return makeStrArr(R, C, it); }
-  const A = m(v); const o = zeros(A.rows, A.cols); if (A.idata) o.idata = new Float64Array(o.data.length);
+  const A = m(v);
+  if (A.nd && A.nd.length > 2) {   // N-D: flip along `dim` (1-based), preserving the shape
+    const dims = A.nd, n = dims.length, d = dim - 1, total = A.data.length;
+    const strides = [1]; for (let k = 1; k < n; k++) strides[k] = strides[k - 1] * dims[k - 1];
+    const outData = new Float64Array(total), outI = A.idata ? new Float64Array(total) : null;
+    for (let lin = 0; lin < total; lin++) {
+      let dst = 0; for (let k = 0; k < n; k++) { let ik = Math.floor(lin / strides[k]) % dims[k]; if (k === d) ik = dims[k] - 1 - ik; dst += ik * strides[k]; }
+      outData[dst] = A.data[lin]; if (outI) outI[dst] = A.idata![lin];
+    }
+    const o = makeND(dims.slice(), outData, outI ? { idata: outI, isChar: A.isChar } : { isChar: A.isChar }); o.isBool = A.isBool; o.itype = A.itype; return o;
+  }
+  const o = zeros(A.rows, A.cols); if (A.idata) o.idata = new Float64Array(o.data.length);
   for (let c = 0; c < A.cols; c++) for (let r = 0; r < A.rows; r++) { const rr = dim === 1 ? A.rows - 1 - r : r, cc = dim === 2 ? A.cols - 1 - c : c; o.data[rr + cc * A.rows] = A.data[r + c * A.rows]; if (A.idata) o.idata![rr + cc * A.rows] = A.idata[r + c * A.rows]; }
   o.isChar = A.isChar; o.isBool = A.isBool; o.itype = A.itype; return o;
 }
@@ -4102,6 +4113,19 @@ export const BUILTINS: Record<string, Builtin> = {
   circshift: async (a) => {
     const A = m(a[0]); const k = m(a[1]); const isVec = A.rows === 1 || A.cols === 1;
     const dim = a.length >= 3 && isMat(a[2]) && !(a[2] as Mat).isChar ? Math.round(asScalar(a[2])) : undefined;
+    if (A.nd && A.nd.length > 2) {   // N-D circular shift, preserving shape
+      const dims = A.nd, n = dims.length, total = A.data.length;
+      const strides = [1]; for (let i = 1; i < n; i++) strides[i] = strides[i - 1] * dims[i - 1];
+      const shifts = new Array(n).fill(0); const kv = toArray(k);
+      if (dim !== undefined) shifts[dim - 1] = Math.round(kv[0]); else for (let i = 0; i < Math.min(kv.length, n); i++) shifts[i] = Math.round(kv[i]);
+      const md = (x: number, nn: number) => ((x % nn) + nn) % nn;
+      const outData = new Float64Array(total), outI = A.idata ? new Float64Array(total) : null;
+      for (let lin = 0; lin < total; lin++) {
+        let dst = 0; for (let i = 0; i < n; i++) { const ik = md(Math.floor(lin / strides[i]) % dims[i] + shifts[i], dims[i]); dst += ik * strides[i]; }
+        outData[dst] = A.data[lin]; if (outI) outI[dst] = A.idata![lin];
+      }
+      const o = makeND(dims.slice(), outData, outI ? { idata: outI, isChar: A.isChar } : { isChar: A.isChar }); o.isBool = A.isBool; o.itype = A.itype; return ret(o);
+    }
     let sr = 0, sc = 0;
     if (numel(k) >= 2) { sr = Math.round(k.data[0]); sc = Math.round(k.data[1]); }
     else if (dim === 1) sr = Math.round(k.data[0]);
