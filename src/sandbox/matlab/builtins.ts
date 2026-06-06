@@ -1952,6 +1952,62 @@ export const BUILTINS: Record<string, Builtin> = {
   regexptranslate: async (a) => { const op = asString(a[0]).toLowerCase(); const s = asString(a[1]); if (op === 'wildcard') return ret(str(s.replace(/[.+^$|()[\]{}\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.'))); return ret(str(s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))); },
   iskeyword: async (a) => { const kw = ['break', 'case', 'catch', 'classdef', 'continue', 'else', 'elseif', 'end', 'for', 'function', 'global', 'if', 'otherwise', 'parfor', 'persistent', 'return', 'spmd', 'switch', 'try', 'while']; if (a.length === 0) return ret(makeCell(kw.length, 1, kw.map((k) => str(k)))); return ret(bool(kw.includes(asString(a[0])))); },
   sscanf: async (a) => { const s = asString(a[0]); const nums = (s.match(/-?\d+\.?\d*(e[+-]?\d+)?/gi) ?? []).map(Number); return ret(colVec(nums)); },
+  // textscan(chr, formatSpec, Name,Value...) — read formatted columns from a char/string.
+  // Supports %f/%d/%u/%g/%e (numeric), %s/%q/%c (text), %*… (skip); options Delimiter,
+  // HeaderLines, MultipleDelimsAsOne, CollectOutput. File-ID input is not supported in the sandbox.
+  textscan: async (a) => {
+    if (isMat(a[0]) && !(a[0] as Mat).isChar) throw new MatError('textscan: file-ID input is not supported in the sandbox (pass a char/string)');
+    const text = asString(a[0]);
+    const fmt = a.length > 1 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar)) ? asString(a[1]) : '%f';
+    let delims: string[] | null = null, headerLines = 0, collectOutput = false, multiAsOne = false;
+    for (let i = 2; i + 1 < a.length; i += 2) {
+      const key = asString(a[i]).toLowerCase(), val = a[i + 1];
+      if (key === 'delimiter') delims = isCell(val) ? (val as Cell).items.map((x) => asString(x)) : [asString(val)];
+      else if (key === 'headerlines') headerLines = Math.round(asScalar(val));
+      else if (key === 'collectoutput') collectOutput = asScalar(val) !== 0;
+      else if (key === 'multipledelimsasone') multiAsOne = asScalar(val) !== 0;
+    }
+    // conversion specs: %[*][width][.prec]<conv>
+    const specs: { skip: boolean; kind: 'num' | 'str' }[] = [];
+    const re = /%(\*?)\d*(?:\.\d+)?([diouxXfeEgGsqc])/g; let mm: RegExpExecArray | null;
+    while ((mm = re.exec(fmt)) !== null) specs.push({ skip: mm[1] === '*', kind: 'sqc'.includes(mm[2]) ? 'str' : 'num' });
+    if (specs.length === 0) specs.push({ skip: false, kind: 'num' });
+    let body = text;
+    if (headerLines > 0) body = text.split('\n').slice(headerLines).join('\n');
+    let fields: string[];
+    if (delims) {
+      const parts = delims.concat(['\n', '\r']).filter(Boolean).map((d) => d.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+      fields = body.split(new RegExp('(?:' + parts.join('|') + ')' + (multiAsOne ? '+' : ''))).map((f) => f.trim());
+      while (fields.length && fields[fields.length - 1] === '') fields.pop();
+    } else {
+      fields = body.trim().split(/\s+/).filter((f) => f.length > 0);
+    }
+    const outCols = specs.filter((s) => !s.skip);
+    const colVals: (number | string)[][] = outCols.map(() => []);
+    const ocIndex: number[] = []; { let oc = 0; for (const sp of specs) { ocIndex.push(sp.skip ? -1 : oc); if (!sp.skip) oc++; } }
+    for (let f = 0, si = 0; f < fields.length; f++, si = (si + 1) % specs.length) {
+      const spec = specs[si]; if (spec.skip) continue;
+      const field = fields[f];
+      if (spec.kind === 'num') { const v = field === '' ? NaN : Number(field); if (Number.isNaN(v) && field !== '') break; (colVals[ocIndex[si]] as number[]).push(v); }
+      else (colVals[ocIndex[si]] as string[]).push(field);
+    }
+    let cols: Value[] = outCols.map((s, i) => s.kind === 'num'
+      ? colVec(colVals[i] as number[])
+      : makeCell((colVals[i] as string[]).length, 1, (colVals[i] as string[]).map((t) => str(t))));
+    if (collectOutput) {
+      const merged: Value[] = [];
+      for (let i = 0; i < outCols.length;) {
+        if (outCols[i].kind === 'num') {
+          const run: number[][] = []; let j = i; while (j < outCols.length && outCols[j].kind === 'num') run.push(colVals[j++] as number[]);
+          const rows = run.reduce((mx, c) => Math.max(mx, c.length), 0), Mt = zeros(rows, run.length);
+          for (let c = 0; c < run.length; c++) for (let r = 0; r < run[c].length; r++) Mt.data[r + c * rows] = run[c][r];
+          merged.push(Mt); i = j;
+        } else merged.push(cols[i++]);
+      }
+      cols = merged;
+    }
+    return ret(makeCell(1, cols.length, cols));
+  },
   // ═══════════════ CELLS · STRUCTS · STRING CLASS · MISC ═══════════════
   // ── cell arrays ──
   cell: async (a) => { const [r, c] = dims2(a); const items: Value[] = []; for (let i = 0; i < r * c; i++) items.push(zeros(0, 0)); return ret(makeCell(r, c, items)); },
