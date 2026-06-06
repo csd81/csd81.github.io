@@ -13,6 +13,13 @@ const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 // NTSC/YIQ base matrix T (rows) and its transpose, from rgb2ntsc.m / ntsc2rgb.m.
 const NTSC_T = [[1.0, 0.956, 0.621], [1.0, -0.272, -0.647], [1.0, -1.106, 1.703]];
 const NTSC_Tt = [[1.0, 1.0, 1.0], [0.956, -0.272, -1.106], [0.621, -0.647, 1.703]];
+// sRGB↔XYZ (D65) 3×3 matrix (from MATLAB rgb2xyz primaries) and gamma companding.
+const SRGB_M = [[0.412456439089692, 0.357576077643909, 0.180437483266399],
+  [0.212672851405623, 0.715152155287818, 0.0721749933065596],
+  [0.0193338955823293, 0.119192025881303, 0.950304078536368]];
+const srgbDecode = (c: number) => (c > 0.04045 ? ((c + 0.055) / 1.055) ** 2.4 : c / 12.92);
+const srgbEncode = (l: number) => (l > 0.0031308 ? 1.055 * l ** (1 / 2.4) - 0.055 : 12.92 * l);
+const mul3 = (M: number[][], v: number[]) => [M[0][0] * v[0] + M[0][1] * v[1] + M[0][2] * v[2], M[1][0] * v[0] + M[1][1] * v[1] + M[1][2] * v[2], M[2][0] * v[0] + M[2][1] * v[1] + M[2][2] * v[2]];
 // CIELAB: D65 white point and the nonlinear f / f⁻¹ used by xyz2lab / lab2xyz.
 const D65 = [0.95047, 1, 1.08883];
 const labF = (t: number) => (t > 0.008856451679035631 ? Math.cbrt(t) : 7.787037037037035 * t + 0.13793103448275862);
@@ -77,6 +84,38 @@ export const IMAGES: ToolboxModule = {
         const mx = Math.max(row[0], row[1], row[2]);
         if (mx > 1) for (let j = 0; j < 3; j++) row[j] /= mx;
         for (let j = 0; j < 3; j++) out[r + j * N] = row[j];
+      }
+      return ret(mat(N, 3, out));
+    },
+    /** rgb2xyz(RGB) — sRGB → CIE 1931 XYZ (D65). N×3 rows. */
+    rgb2xyz: (a) => {
+      const A = m(a[0]), N = A.rows, SR = SRGB_M; const out = new Float64Array(N * 3);
+      for (let r = 0; r < N; r++) { const xyz = mul3(SR, [srgbDecode(A.data[r]), srgbDecode(A.data[r + N]), srgbDecode(A.data[r + 2 * N])]); out[r] = xyz[0]; out[r + N] = xyz[1]; out[r + 2 * N] = xyz[2]; }
+      return ret(mat(N, 3, out));
+    },
+    /** xyz2rgb(XYZ) — CIE 1931 XYZ → sRGB (D65), clamped to [0,1]. N×3 rows. */
+    xyz2rgb: (a) => {
+      const A = m(a[0]), N = A.rows, Minv = mat3inv(SRGB_M); const out = new Float64Array(N * 3);
+      for (let r = 0; r < N; r++) { const lin = mul3(Minv, [A.data[r], A.data[r + N], A.data[r + 2 * N]]); out[r] = clamp01(srgbEncode(lin[0])); out[r + N] = clamp01(srgbEncode(lin[1])); out[r + 2 * N] = clamp01(srgbEncode(lin[2])); }
+      return ret(mat(N, 3, out));
+    },
+    /** rgb2lab(RGB) — sRGB → CIELAB (D65). N×3 rows. */
+    rgb2lab: (a) => {
+      const A = m(a[0]), N = A.rows, SR = SRGB_M; const out = new Float64Array(N * 3);
+      for (let r = 0; r < N; r++) {
+        const xyz = mul3(SR, [srgbDecode(A.data[r]), srgbDecode(A.data[r + N]), srgbDecode(A.data[r + 2 * N])]);
+        const fx = labF(xyz[0] / D65[0]), fy = labF(xyz[1] / D65[1]), fz = labF(xyz[2] / D65[2]);
+        out[r] = 116 * fy - 16; out[r + N] = 500 * (fx - fy); out[r + 2 * N] = 200 * (fy - fz);
+      }
+      return ret(mat(N, 3, out));
+    },
+    /** lab2rgb(LAB) — CIELAB → sRGB (D65), clamped to [0,1]. N×3 rows. */
+    lab2rgb: (a) => {
+      const A = m(a[0]), N = A.rows, Minv = mat3inv(SRGB_M); const out = new Float64Array(N * 3);
+      for (let r = 0; r < N; r++) {
+        const fy = (A.data[r] + 16) / 116, fx = fy + A.data[r + N] / 500, fz = fy - A.data[r + 2 * N] / 200;
+        const lin = mul3(Minv, [D65[0] * labFinv(fx), D65[1] * labFinv(fy), D65[2] * labFinv(fz)]);
+        out[r] = clamp01(srgbEncode(lin[0])); out[r + N] = clamp01(srgbEncode(lin[1])); out[r + 2 * N] = clamp01(srgbEncode(lin[2]));
       }
       return ret(mat(N, 3, out));
     },
@@ -227,6 +266,8 @@ export const IMAGES: ToolboxModule = {
     ind2rgb: 'Convert indexed image to RGB image',
     rgb2ntsc: 'Convert RGB to NTSC (YIQ) color values', ntsc2rgb: 'Convert NTSC (YIQ) to RGB color values',
     xyz2lab: 'Convert CIE 1931 XYZ to CIELAB (D65)', lab2xyz: 'Convert CIELAB to CIE 1931 XYZ (D65)',
+    rgb2xyz: 'Convert sRGB to CIE 1931 XYZ (D65)', xyz2rgb: 'Convert CIE 1931 XYZ to sRGB (D65)',
+    rgb2lab: 'Convert sRGB to CIELAB (D65)', lab2rgb: 'Convert CIELAB to sRGB (D65)',
     im2double: 'Convert image to double precision [0,1]', im2uint8: 'Convert image to uint8', im2uint16: 'Convert image to uint16',
     mat2gray: 'Scale matrix values to grayscale [0,1]', imcomplement: 'Complement (negative) of an image', imadjust: 'Adjust image intensity values',
     graythresh: 'Global image threshold (Otsu method)', imbinarize: 'Binarize image by thresholding',
