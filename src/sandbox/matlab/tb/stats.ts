@@ -1032,6 +1032,17 @@ export const STATS: ToolboxModule = {
     poisspdf: (a) => dist(a, [1], (k, lam) => { k = Math.round(k); if (k < 0) return 0; return Math.exp(k * Math.log(lam) - lam - logGamma(k + 1)); }),
     poisscdf: (a) => dist(a, [1], (k, lam) => { k = Math.floor(k); return k < 0 ? 0 : 1 - gammainc(lam, k + 1); }),
     poissinv: (a) => dist(a, [1], (pr, lam) => { let c = 0, k = 0; for (; k < 1e6; k++) { c += Math.exp(k * Math.log(lam) - lam - logGamma(k + 1)); if (c >= pr - 1e-12) return k; } return k; }),
+    // ── Discrete uniform on {1..N} (invalid N → NaN) ──
+    unidpdf: (a) => dist(a, [1], (x, N) => (N < 1 || N !== Math.floor(N)) ? NaN : (x >= 1 && x <= N && x === Math.floor(x)) ? 1 / N : 0),
+    unidcdf: (a) => dist(a, [1], (x, N) => (N < 1 || N !== Math.floor(N)) ? NaN : x < 1 ? 0 : Math.min(Math.floor(x), N) / N),
+    unidinv: (a) => dist(a, [1], (p, N) => { if (N < 1 || N !== Math.floor(N) || p < 0 || p > 1) return NaN; const k = Math.ceil(p * N); return k < 1 ? NaN : k; }),
+    unidstat: (a, nargout) => {
+      const N = m(a[0]);
+      const valid = (n: number) => n >= 1 && n === Math.floor(n);
+      const M = map(N, (n) => valid(n) ? (n + 1) / 2 : NaN);
+      const V = map(N, (n) => valid(n) ? (n * n - 1) / 12 : NaN);
+      return Promise.resolve(nargout >= 2 ? [M, V] : [M]);
+    },
     // ── Geometric (# failures before first success) ──
     geopdf: (a) => dist(a, [0.5], (k, p) => { k = Math.round(k); return k < 0 ? 0 : p * (1 - p) ** k; }),
     geocdf: (a) => dist(a, [0.5], (k, p) => { k = Math.floor(k); return k < 0 ? 0 : 1 - (1 - p) ** (k + 1); }),
@@ -1759,6 +1770,8 @@ export const STATS: ToolboxModule = {
     range: 'Range of values (max − min)', tabulate: 'Frequency table',
     pdist: 'Pairwise distance between observations', squareform: 'Format distance matrix', linkage: 'Agglomerative hierarchical cluster tree', kmeans: 'k-means clustering',
     tiedrank: 'Ranks of a sample, adjusting for ties', partialcorr: 'Linear or partial correlation coefficients',
+    unidpdf: 'Discrete uniform probability density function', unidcdf: 'Discrete uniform cumulative distribution function',
+    unidinv: 'Discrete uniform inverse cumulative distribution function', unidstat: 'Discrete uniform mean and variance',
     regress: 'Multiple linear regression', pca: 'Principal component analysis', anova1: 'One-way analysis of variance',
     glmfit: 'Generalized linear model regression',
     makedist: 'Create a probability distribution object', pdf: 'Probability density function', cdf: 'Cumulative distribution function', icdf: 'Inverse cumulative distribution function',
