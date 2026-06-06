@@ -13,6 +13,10 @@ const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 // NTSC/YIQ base matrix T (rows) and its transpose, from rgb2ntsc.m / ntsc2rgb.m.
 const NTSC_T = [[1.0, 0.956, 0.621], [1.0, -0.272, -0.647], [1.0, -1.106, 1.703]];
 const NTSC_Tt = [[1.0, 1.0, 1.0], [0.956, -0.272, -1.106], [0.621, -0.647, 1.703]];
+// CIELAB: D65 white point and the nonlinear f / f⁻¹ used by xyz2lab / lab2xyz.
+const D65 = [0.95047, 1, 1.08883];
+const labF = (t: number) => (t > 0.008856451679035631 ? Math.cbrt(t) : 7.787037037037035 * t + 0.13793103448275862);
+const labFinv = (t: number) => (t > 0.20689655172413793 ? t * t * t : (t - 0.13793103448275862) / 7.787037037037035);
 /** Inverse of a 3×3 matrix (row-major). */
 function mat3inv(M: number[][]): number[][] {
   const [a, b, c] = M[0], [d, e, f] = M[1], [g, h, i] = M[2];
@@ -73,6 +77,24 @@ export const IMAGES: ToolboxModule = {
         const mx = Math.max(row[0], row[1], row[2]);
         if (mx > 1) for (let j = 0; j < 3; j++) row[j] /= mx;
         for (let j = 0; j < 3; j++) out[r + j * N] = row[j];
+      }
+      return ret(mat(N, 3, out));
+    },
+    /** xyz2lab(XYZ) — CIE 1931 XYZ → CIELAB (D65 white point). N×3 rows. */
+    xyz2lab: (a) => {
+      const A = m(a[0]), N = A.rows; const out = new Float64Array(N * 3);
+      for (let r = 0; r < N; r++) {
+        const fx = labF(A.data[r] / D65[0]), fy = labF(A.data[r + N] / D65[1]), fz = labF(A.data[r + 2 * N] / D65[2]);
+        out[r] = 116 * fy - 16; out[r + N] = 500 * (fx - fy); out[r + 2 * N] = 200 * (fy - fz);
+      }
+      return ret(mat(N, 3, out));
+    },
+    /** lab2xyz(LAB) — CIELAB → CIE 1931 XYZ (D65 white point). N×3 rows. */
+    lab2xyz: (a) => {
+      const A = m(a[0]), N = A.rows; const out = new Float64Array(N * 3);
+      for (let r = 0; r < N; r++) {
+        const fy = (A.data[r] + 16) / 116, fx = fy + A.data[r + N] / 500, fz = fy - A.data[r + 2 * N] / 200;
+        out[r] = D65[0] * labFinv(fx); out[r + N] = D65[1] * labFinv(fy); out[r + 2 * N] = D65[2] * labFinv(fz);
       }
       return ret(mat(N, 3, out));
     },
@@ -204,6 +226,7 @@ export const IMAGES: ToolboxModule = {
   help: {
     ind2rgb: 'Convert indexed image to RGB image',
     rgb2ntsc: 'Convert RGB to NTSC (YIQ) color values', ntsc2rgb: 'Convert NTSC (YIQ) to RGB color values',
+    xyz2lab: 'Convert CIE 1931 XYZ to CIELAB (D65)', lab2xyz: 'Convert CIELAB to CIE 1931 XYZ (D65)',
     im2double: 'Convert image to double precision [0,1]', im2uint8: 'Convert image to uint8', im2uint16: 'Convert image to uint16',
     mat2gray: 'Scale matrix values to grayscale [0,1]', imcomplement: 'Complement (negative) of an image', imadjust: 'Adjust image intensity values',
     graythresh: 'Global image threshold (Otsu method)', imbinarize: 'Binarize image by thresholding',
