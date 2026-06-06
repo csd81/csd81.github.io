@@ -308,6 +308,17 @@ function eomday(y: number, m: number): number {
 
 const DAYTOTAL365 = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
 
+/** Element-wise over the first k numeric args, scalar-expanding; shape follows the length-n input. */
+function ewN(args: Value[], k: number, f: (...xs: number[]) => number): Value {
+  const cols = args.slice(0, k).map((v) => toArray(m(v)));
+  const n = Math.max(...cols.map((c) => c.length));
+  const g = (c: number[], i: number) => (c.length === 1 ? c[0] : c[i]);
+  const out = new Float64Array(n); for (let i = 0; i < n; i++) out[i] = f(...cols.map((c) => g(c, i)));
+  if (n === 1) return scalar(out[0]);
+  const idx = cols.findIndex((c) => c.length === n); const src = m(args[idx]);
+  return mat(src.rows, src.cols, out);
+}
+
 /** days365 between dates (Act/365 cumulative-month table). */
 function days365one(d1: number, d2: number): number { const [y1, m1, dd1] = ymd(d1), [y2, m2, dd2] = ymd(d2); return 365 * (y2 - y1) + DAYTOTAL365[m2 - 1] - DAYTOTAL365[m1 - 1] + dd2 - dd1; }
 /** European 30E/360 day count. */
@@ -799,6 +810,17 @@ export const FINANCIAL: ToolboxModule = {
     eomdate: (a) => ret(eomdateImpl(a)),
     calendar: (a) => ret(calendarImpl(a)),
     daysact: (a) => ret(ewDates(a, (d1, d2) => d2 - d1)),
+    // ── simple finance formulas (depreciation, returns, quotation) ──
+    leapyear: (a) => { const y = m(a[0]); const d = Float64Array.from(toArray(y).map((v) => { v = Math.floor(v); return (v % 4 === 0 && v % 100 !== 0) || v % 400 === 0 ? 1 : 0; })); const r = mat(y.rows, y.cols, d) as Mat; r.isBool = true; return ret(r); },
+    depstln: (a) => ret(ewN(a, 3, (c, s, l) => (c - s) / l)),
+    deprdv: (a) => ret(ewN(a, 3, (c, s, ac) => c - s - ac)),
+    taxedrr: (a) => ret(ewN(a, 2, (r, t) => r * (1 - t))),
+    depsoyd: (a) => { const c = asScalar(a[0]), s = asScalar(a[1]), life = asScalar(a[2]); const out: number[] = []; for (let yr = 1; yr <= life; yr++) out.push((c - s) / (life / 2 * (life + 1)) * (life - yr + 1)); return ret(colVec(out)); },
+    portror: (a) => { const rs = toArray(m(a[0])), ws = toArray(m(a[1])); let s = 0; for (let i = 0; i < rs.length; i++) s += rs[i] * ws[i]; return ret(scalar(s)); },
+    todecimal: (a) => { const frac = a.length > 1 ? asScalar(a[1]) : 32; return ret(ewN(a, 1, (q) => { const w = Math.floor(q); return w + Math.round((q - w) * 100) / frac; })); },
+    toquoted: (a) => { const frac = a.length > 1 ? asScalar(a[1]) : 32; return ret(ewN(a, 1, (d) => { const w = Math.floor(d); return w + Math.round((d - w) * frac) / 100; })); },
+    thirtytwo2dec: (a) => ret(ewN(a, 2, (n, fr) => n + fr / 32)),
+    corr2cov: (a) => { const sig = toArray(m(a[0])), C = m(a[1]), N = sig.length, out = new Float64Array(N * N); for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) out[i + j * N] = C.data[i + j * N] * sig[i] * sig[j]; return ret(mat(N, N, out)); },
     yearfrac: (a) => { const basis = a.length > 2 && isMat(a[2]) && (a[2] as Mat).rows ? asScalar(a[2]) : 0; return ret(ewDates(a, (d1, d2) => yearfracOne(d1, d2, basis))); },
     // ── prmat/yldmat: price & yield of a security paying interest at maturity ──
     prmat: (a, nargout) => {
@@ -861,6 +883,16 @@ export const FINANCIAL: ToolboxModule = {
     calendar: { summary: 'Calendar matrix for a specified month (6-by-7)', syntax: ['cal = calendar', 'cal = calendar(d)', 'cal = calendar(year,month)'], description: ['calendar returns a 6-by-7 matrix of dates for the current month, with zeros padding days before/after the month.', 'Columns represent Sunday through Saturday.'], seealso: ['eomdate', 'busdate', 'datestr'] },
     daysact: { summary: 'Actual number of days between two dates', syntax: ['d = daysact(d1,d2)'], description: ['d = daysact(d1,d2) returns the actual (Act/Act) number of days between dates d1 and d2.'], seealso: ['daysdif', 'days360', 'days365'] },
     yearfrac: { summary: 'Fraction of year between two dates for a day-count basis', syntax: ['f = yearfrac(StartDate,EndDate)', 'f = yearfrac(StartDate,EndDate,Basis)'], description: ['f = yearfrac(StartDate,EndDate) returns the fraction of a year between StartDate and EndDate using actual/actual day-count (basis 0).', 'Basis: 0=Act/Act (default), 1=30/360, 2=Act/360, 3=Act/365, 4=30/360 European.'], seealso: ['days360', 'daysact', 'daysdif', 'yeardays'] },
+    leapyear: { summary: 'Determine leap years', syntax: ['tf = leapyear(year)'], seealso: ['datenum', 'eomday'] },
+    depstln: { summary: 'Straight-line depreciation schedule', syntax: ['d = depstln(cost,salvage,life)'], seealso: ['depsoyd', 'deprdv'] },
+    deprdv: { summary: 'Remaining depreciable value', syntax: ['rdv = deprdv(cost,salvage,accumdep)'], seealso: ['depstln', 'depsoyd'] },
+    taxedrr: { summary: 'After-tax rate of return', syntax: ['r = taxedrr(pretax,taxrate)'], seealso: ['effrr', 'nomrr'] },
+    depsoyd: { summary: 'Sum of years digits depreciation', syntax: ['d = depsoyd(cost,salvage,life)'], seealso: ['depstln', 'deprdv'] },
+    portror: { summary: 'Portfolio expected rate of return', syntax: ['r = portror(returns,weights)'], seealso: ['portstats'] },
+    todecimal: { summary: 'Fractional to decimal conversion', syntax: ['d = todecimal(quote)', 'd = todecimal(quote,fraction)'], seealso: ['toquoted'] },
+    toquoted: { summary: 'Decimal to fractional conversion', syntax: ['q = toquoted(decimal)', 'q = toquoted(decimal,fraction)'], seealso: ['todecimal'] },
+    thirtytwo2dec: { summary: 'Thirty-second quotation to decimal', syntax: ['d = thirtytwo2dec(n,fraction)'], seealso: ['todecimal'] },
+    corr2cov: { summary: 'Convert standard deviation and correlation to covariance', syntax: ['cov = corr2cov(sigma,corr)'], seealso: ['cov2corr', 'corrcoef'] },
     prmat: { summary: 'Price and accrued interest of a security paying interest at maturity', syntax: ['[price,ai] = prmat(settle,maturity,issue,face,coupon,yield)', '[price,ai] = prmat(...,basis)'], description: ['[price,ai] = prmat(settle,maturity,issue,face,coupon,yield) returns the price per $100 face value and the accrued interest of a security that pays all interest at maturity (no periodic coupons).', 'basis selects the day-count convention (default 0 = actual/actual).'], seealso: ['yldmat', 'prdisc', 'acrudisc'] },
     yldmat: { summary: 'Yield of a security paying interest at maturity', syntax: ['yld = yldmat(settle,maturity,issue,face,price,coupon)', 'yld = yldmat(...,basis)'], description: ['yld = yldmat(settle,maturity,issue,face,price,coupon) returns the yield of a security that pays all interest at maturity (no periodic coupons) given its price.'], seealso: ['prmat', 'ylddisc'] },
     days365: { summary: 'Days between dates on a 365-day year basis', syntax: ['d = days365(d1,d2)'], description: ['d = days365(d1,d2) returns the number of days between d1 and d2 based on an Act/365 convention (ignores leap years).'], seealso: ['daysact', 'days360', 'daysdif'] },
