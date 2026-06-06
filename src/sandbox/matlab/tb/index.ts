@@ -33,6 +33,7 @@ import { SIMULINK } from './simulink';
 import { STATS } from './stats';
 import { SYMBOLIC } from './symbolic';
 import { WAVELET } from './wavelet';
+import { DSP } from './dsp';
 import { GADS } from './gads';
 // MPC removed (tb/mpc.ts deleted): every function was a stub — mpcmove hardcoded (ref-ym)/10,
 // ignoring the plant/horizons/weights/constraints; the real QP solver was dead code.
@@ -49,9 +50,9 @@ import { NNET } from './nnet';
 
 /** All registered toolboxes, in precedence order (first wins on inter-toolbox collision). */
 export const TOOLBOXES: ToolboxModule[] = [
-  AEROSPACE, ANTENNA, AUDIO, BIOINFO, COMM, CONTROL, CURVEFIT, ECON, FINANCIAL, FININST, FIXEDPOINT,
-  FUSION, FUZZY, GADS, IDENT, IMAGES, MAPPING, NAV, PARALLEL, Pde, RADAR, RL, RF,
-  NNET, ROBOTICS, SIGNAL, SIMULINK, STATS, SYMBOLIC, WAVELET,
+  AEROSPACE, ANTENNA, AUDIO, BIOINFO, COMM, CONTROL, CURVEFIT, DSP, ECON, FINANCIAL, FININST, FIXEDPOINT,
+  FUSION, FUZZY, GADS, IDENT, IMAGES, MAPPING, NAV, NNET, PARALLEL, Pde, RADAR, RL, RF,
+  ROBOTICS, SIGNAL, SIMULINK, STATS, SYMBOLIC, WAVELET,
 ];
 
 export const TOOLBOX_BUILTINS: Record<string, Builtin> = {};
