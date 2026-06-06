@@ -227,6 +227,11 @@ export function simplifyAssume(e: SymExpr): SymExpr {
 export function symDet(e: SymExpr[], n: number): SymExpr {
   if (n === 1) return e[0];
   if (n === 2) return sSub(sMul(e[0], e[3]), sMul(e[2], e[1]));
+  // Laplace expansion (O(n!)) keeps the most-simplified output and is fine through 8×8; beyond
+  // that it explodes (a 9×9/10×10 would hang), so switch to Bareiss fraction-free elimination
+  // (O(n³) operations — exact and clean for numeric matrices; unsimplified but non-hanging for
+  // matrices with free variables, which Laplace couldn't finish anyway).
+  if (n > 8) return bareissDet(e, n);
   let acc: SymExpr = sN(0);
   for (let j = 0; j < n; j++) {
     const minor: SymExpr[] = new Array((n - 1) * (n - 1)); let nc = 0;
@@ -234,6 +239,26 @@ export function symDet(e: SymExpr[], n: number): SymExpr {
     acc = sAdd(acc, sMul(sN(j % 2 === 0 ? 1 : -1), e[0 + j * n], symDet(minor, n - 1)));
   }
   return acc;
+}
+/** Bareiss fraction-free Gaussian elimination — every intermediate division is exact, so the
+ *  determinant is obtained in O(n³) symbolic operations instead of O(n!) Laplace recursions. */
+function bareissDet(e: SymExpr[], n: number): SymExpr {
+  const zero = (x: SymExpr): boolean => { const s = simplifyExpr(x); return s.t === 'n' && Math.abs(s.v) < 1e-12; };
+  const M: SymExpr[][] = []; for (let r = 0; r < n; r++) { M[r] = []; for (let c = 0; c < n; c++) M[r][c] = e[r + c * n]; }
+  let sign = 1; let prev: SymExpr = sN(1);
+  for (let k = 0; k < n - 1; k++) {
+    if (zero(M[k][k])) {                       // pivot is identically zero → swap a nonzero row up
+      let sw = -1; for (let i = k + 1; i < n; i++) if (!zero(M[i][k])) { sw = i; break; }
+      if (sw === -1) return sN(0);             // whole column below pivot is zero → singular
+      [M[k], M[sw]] = [M[sw], M[k]]; sign = -sign;
+    }
+    for (let i = k + 1; i < n; i++) for (let j = k + 1; j < n; j++) {
+      const num = sSub(sMul(M[i][j], M[k][k]), sMul(M[i][k], M[k][j]));
+      M[i][j] = simplifyExpr(sDiv(num, prev));  // exact (Bareiss guarantees no remainder)
+    }
+    prev = M[k][k];
+  }
+  return sign === 1 ? M[n - 1][n - 1] : simplifyExpr(sNeg(M[n - 1][n - 1]));
 }
 /** Symbolic matrix inverse via adjugate / determinant. */
 export function symInv(s: Sym): Sym {
