@@ -1,7 +1,7 @@
 // Fixed-Point Designer Toolbox — fi (fixed-point number), numerictype, fimath, quantizer.
 // Implements fixed-point quantization, bit-accurate arithmetic, and code-generation metadata.
 import {
-  type Value, scalar, rowVec, colVec, toArray, asScalar, toMat as m, isMat, isStruct, MatError,
+  type Value, scalar, rowVec, colVec, toArray, asScalar, asString, toMat as m, isMat, isStr, isObject, isStruct, truthy, MatError,
   mat, zeros, makeObject, str, bool,
 } from '../values';
 import type { ToolboxModule } from './types';
@@ -55,10 +55,11 @@ async function fimath(args: Value[]): Promise<Value[]> {
 function quantize(v: number, wl: number, fl: number, signed: boolean, round: string, overflow: string): number {
   const scale = Math.pow(2, fl);
   let q = round === 'floor' ? Math.floor(v * scale) : Math.round(v * scale);
-  const maxInt = signed ? (1 << (wl - 1)) - 1 : (1 << wl) - 1;
-  const minInt = signed ? -(1 << (wl - 1)) : 0;
+  // Use floating-point powers (exact to 2^53), not 32-bit shifts: 1<<32 wraps to 1.
+  const maxInt = signed ? Math.pow(2, wl - 1) - 1 : Math.pow(2, wl) - 1;
+  const minInt = signed ? -Math.pow(2, wl - 1) : 0;
   if (overflow === 'wrap') {
-    const range = 1 << wl;
+    const range = Math.pow(2, wl);
     q = ((q - minInt) % range + range) % range + minInt;
   } else {
     q = Math.max(minInt, Math.min(maxInt, q));
@@ -140,8 +141,10 @@ async function num2bin(args: Value[]): Promise<Value[]> {
     const fl = isMat(p.get('FractionLength')!) ? asScalar(p.get('FractionLength') as any) : 15;
     if (data && isMat(data)) {
       const v = asScalar(data as any);
-      const intVal = Math.round(v * Math.pow(2, fl));
-      const bits = ((intVal >>> 0) & ((1 << wl) - 1)).toString(2).padStart(wl, '0');
+      const total = Math.pow(2, wl);
+      let iv = Math.round(v * Math.pow(2, fl));
+      iv = ((iv % total) + total) % total;          // two's-complement, wl-bit (BigInt mask, not 32-bit)
+      const bits = BigInt(iv).toString(2).padStart(wl, '0');
       return [str(bits)];
     }
   }
@@ -150,13 +153,24 @@ async function num2bin(args: Value[]): Promise<Value[]> {
 }
 
 // ── bin2num: convert binary fixed-point string to number ──────────────────────────────
+// MATLAB form is a quantizer/fi method: bin2num(q, b). Reconstruct using q's word length,
+// fraction length and sign (two's complement), not a bare unsigned parseInt.
 async function bin2num(args: Value[]): Promise<Value[]> {
   if (args.length < 1) throw new MatError('bin2num: requires input');
-  const s = isMat(args[0]) && (args[0] as any).isChar
-    ? String.fromCharCode(...(Array.from((args[0] as any).data) as number[]))
-    : asScalar(m(args[0])).toString();
-  const intVal = parseInt(s, 2);
-  return [scalar(intVal)];
+  const asStr = (v: Value): string => (isMat(v) && (v as any).isChar) || isStr(v) ? asString(v) : asScalar(m(v)).toString();
+  let wl = 0, fl = 0, signed = true, scaled = false, s: string;
+  if (isObject(args[0])) {
+    const p = (args[0] as any).props as Map<string, Value>;
+    if (p.has('Format')) { const fmt = toArray(p.get('Format') as any); wl = Math.round(fmt[0]); fl = Math.round(fmt[1] ?? 0); signed = !p.has('Mode') || asString(p.get('Mode')!).toLowerCase() !== 'ufixed'; }
+    else { wl = Math.round(asScalar(p.get('WordLength') as any)); fl = Math.round(asScalar(p.get('FractionLength') as any)); signed = !p.has('Signed') || truthy(p.get('Signed')!); }
+    scaled = true;
+    s = asStr(args[1]);
+  } else {
+    s = asStr(args[0]);
+  }
+  let raw = parseInt(s, 2);
+  if (scaled && signed && s.length >= wl && s[0] === '1') raw -= Math.pow(2, wl);   // two's complement
+  return [scalar(scaled ? raw / Math.pow(2, fl) : raw)];
 }
 
 // ── fipref: fixed-point preferences ────────────────────────────────────────────────────

@@ -31,8 +31,11 @@ export function parseCsv(text: string, delim = ','): Csv {
   if (field !== '' || row.length) endRow();
   while (rows.length && rows[rows.length - 1].every((f) => f === '')) rows.pop();   // drop trailing blank lines
   if (!rows.length) return { headers: null, rows: [] };
-  // Header row = a first row that is not all-numeric.
-  const hasHeader = rows[0].some((f) => f.trim() !== '' && !isNum(f));
+  // Header row only when row 0 is all-text AND row 1 has a number. An all-string dataset
+  // (e.g. a column of names/categories) keeps every row — don't treat row 0 as a header.
+  const row0AllText = rows[0].every((f) => f.trim() === '' || !isNum(f));
+  const row1HasNum = rows.length > 1 && rows[1].some((f) => isNum(f));
+  const hasHeader = rows.length > 1 && row0AllText && row1HasNum;
   const headers = hasHeader ? rows[0].map((h) => h.trim()) : null;
   const body = hasHeader ? rows.slice(1) : rows;
   const data = body.map((r) => r.map((f) => (isNum(f) ? Number(f.trim()) : f)));
