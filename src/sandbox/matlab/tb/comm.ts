@@ -146,11 +146,41 @@ function rowsToMat(R: number[][]): Mat { const r = R.length, c = R[0].length, d 
 /** deintrlv scatter: out[elements[i]] = data[i] (1-based elements). Works row-wise on column data. */
 function deintrlvRows(data: number[][], elements: number[]): number[][] { const out: number[][] = new Array(data.length); for (let i = 0; i < data.length; i++) out[elements[i] - 1] = data[i]; return out; }
 
+/** gen2par over GF(2): generator [I_r|P] (r×n) → parity [Pᵀ|I_{n-r}], or parity [Q|I_r] →
+ *  generator [I_{n-r}|Qᵀ]. Detects form by which side carries the identity. Involutive. */
+function gen2parImpl(A: Mat): Mat {
+  const r = A.rows, n = A.cols, nk = n - r, at = (i: number, c: number) => A.data[i + c * r];
+  const idAt = (off: number) => { for (let i = 0; i < r; i++) for (let j = 0; j < r; j++) if (at(i, off + j) !== (i === j ? 1 : 0)) return false; return true; };
+  const data = new Float64Array(nk * n);
+  if (idAt(0)) {                                   // generator [I_r | P] → [Pᵀ | I_nk]
+    for (let i = 0; i < nk; i++) for (let j = 0; j < n; j++) data[i + j * nk] = j < r ? at(j, r + i) : (i === j - r ? 1 : 0);
+  } else {                                         // parity [Q | I_r] → [I_nk | Qᵀ]
+    for (let i = 0; i < nk; i++) for (let j = 0; j < n; j++) data[i + j * nk] = j < nk ? (i === j ? 1 : 0) : at(j - nk, i);
+  }
+  return mat(nk, n, data);
+}
+
 export const COMM: ToolboxModule = {
   id: 'comm',
   name: 'Communications Toolbox',
   docBase: 'https://www.mathworks.com/help/comm/',
   builtins: {
+    // ── gen2par: swap between standard-form generator [I|P] and parity [P'|I] over GF(2) ──
+    gen2par: (a) => ret(gen2parImpl(m(a[0]))),
+    // ── gfweight(M[,'gen'|'par']): minimum Hamming weight (min distance) of a linear code ──
+    gfweight: (a) => {
+      const mode = a.length > 1 ? asString(a[1]).toLowerCase() : 'gen';
+      const G = mode.startsWith('par') ? gen2parImpl(m(a[0])) : m(a[0]);
+      const k = G.rows, n = G.cols, gat = (i: number, c: number) => G.data[i + c * k];
+      let minw = Infinity;
+      for (let mm = 1; mm < (1 << k); mm++) {
+        const cw = new Array<number>(n).fill(0);
+        for (let i = 0; i < k; i++) if (mm & (1 << i)) for (let c = 0; c < n; c++) cw[c] ^= gat(i, c) & 1;
+        const w = cw.reduce((s, x) => s + x, 0);
+        if (w > 0 && w < minw) minw = w;
+      }
+      return ret(scalar(minw));
+    },
     // ── zadoffChuSeq(R,N): seq(m) = exp(-iπ·R·m(m+1)/N), m=0..N-1 (column, complex) ──
     zadoffChuSeq: (a) => {
       const R = asScalar(a[0]), N = asScalar(a[1]);
@@ -455,6 +485,7 @@ export const COMM: ToolboxModule = {
   },
   help: {
     zadoffChuSeq: 'Generate a Zadoff-Chu sequence',
+    gen2par: 'Convert between parity-check and generator matrices', gfweight: 'Minimum distance of a linear block code',
     qfunc: 'Q function (Gaussian tail probability)', quantiz: 'Produce a quantization index and quantized output value', qfuncinv: 'Inverse Q function',
     oct2dec: 'Convert octal to decimal numbers', vec2mat: 'Convert vector into matrix (row-major, padded)',
     compand: 'Source code mu-law or A-law compressor or expander',
