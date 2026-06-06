@@ -517,7 +517,8 @@ export const CURVEFIT: ToolboxModule = {
     polyval2: (a) => {
       const c = toArray(m(a[0])); const src = m(a[1]); const xv = toArray(src);
       const out = xv.map(xi => polyVal(c, xi));
-      return ret(src.rows === 1 ? rowVec(out) : colVec(out));
+      // preserve the exact shape of x (element-wise eval), matching MATLAB polyval
+      return ret(mat(src.rows, src.cols, Float64Array.from(out)));
     },
     /** rsquared(y, yfit) — R² goodness-of-fit statistic (1 = perfect fit). */
     rsquared: (a) => {
