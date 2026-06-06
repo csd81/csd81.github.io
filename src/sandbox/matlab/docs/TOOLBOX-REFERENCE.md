@@ -4,7 +4,7 @@ Consolidated coverage tables for 48 toolboxes. The **Implemented** column (✅) 
 functions available in the TypeScript sandbox interpreter. Generated from the former per-toolbox
 docs/*.md files.
 
-**Overall: 2492 / 17245 functions implemented across 48 toolboxes.**
+**Overall: 2524 / 17245 functions implemented across 48 toolboxes.**
 
 Also see [Base MATLAB reference-list validation](#base-validation) — 705 converged / 905 audited base builtins.
 
@@ -15,29 +15,29 @@ Also see [Base MATLAB reference-list validation](#base-validation) — 705 conve
 | :--- | ---: | ---: | ---: |
 | [core_referencelist (core list)](#0core_referencelist) | 1145 | 3094 | 37% |
 | [Symbolic Math Toolbox](#symbolic) | 355 | 415 | 86% |
-| [Stats Toolbox](#stats) | 166 | 861 | 19% |
-| [Signal Toolbox](#signal) | 142 | 397 | 36% |
+| [Stats Toolbox](#stats) | 172 | 861 | 20% |
+| [Signal Toolbox](#signal) | 148 | 397 | 37% |
 | [Map Toolbox](#map) | 90 | 399 | 23% |
 | [Fixedpoint Toolbox](#fixedpoint) | 87 | 335 | 26% |
-| [Control Toolbox](#control) | 47 | 352 | 13% |
+| [Control Toolbox](#control) | 53 | 352 | 15% |
 | [Aerotbx Toolbox](#aerotbx) | 45 | 223 | 20% |
+| [Images Toolbox](#images) | 43 | 651 | 7% |
 | [Comm Toolbox](#comm) | 40 | 409 | 10% |
 | [Finance Toolbox](#finance) | 39 | 383 | 10% |
-| [Images Toolbox](#images) | 37 | 651 | 6% |
 | [simulink (core list)](#0simulink) | 26 | 889 | 3% |
 | [Pde Toolbox](#pde) | 25 | 191 | 13% |
-| [Ident Toolbox](#ident) | 19 | 261 | 7% |
+| [Ident Toolbox](#ident) | 23 | 261 | 9% |
 | [Rf Toolbox](#rf) | 19 | 205 | 9% |
 | [Wavelet Toolbox](#wavelet) | 19 | 211 | 9% |
 | [Antenna Toolbox](#antenna) | 17 | 279 | 6% |
-| [Deeplearning Toolbox](#deeplearning) | 14 | 402 | 3% |
+| [Deeplearning Toolbox](#deeplearning) | 16 | 402 | 4% |
 | [Bioinfo Toolbox](#bioinfo) | 13 | 334 | 4% |
 | [Driving Toolbox](#driving) | 13 | 539 | 2% |
 | [Radar Toolbox](#radar) | 13 | 271 | 5% |
 | [Audio Toolbox](#audio) | 12 | 180 | 7% |
 | [Fusion Toolbox](#fusion) | 12 | 266 | 5% |
+| [Medical-imaging Toolbox](#medical-imaging) | 10 | 164 | 6% |
 | [Nav Toolbox](#nav) | 10 | 248 | 4% |
-| [Medical-imaging Toolbox](#medical-imaging) | 8 | 164 | 5% |
 | [Slrealtime Toolbox](#slrealtime) | 8 | 217 | 4% |
 | [Compiler_sdk Toolbox](#compiler_sdk) | 6 | 149 | 4% |
 | [Parallel-computing Toolbox](#parallel-computing) | 6 | 139 | 4% |
@@ -6892,7 +6892,7 @@ platforms |
 <a id="control"></a>
 ## Control Toolbox  
 
-_47 / 352 implemented_
+_53 / 352 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -6955,7 +6955,7 @@ _47 / 352 implemented_
 |   | `gram` | Controllability and observability Gramians |
 |   | `lft` | Generalized feedback interconnection of two models (Redheffer
 star product) |
-|   | `minreal` | Minimal realization or pole-zero cancellation |
+| ✅ | `minreal` | Minimal realization or pole-zero cancellation |
 |   | `modalreal` | Compute modal state-space realization(Since R2023b) |
 | ✅ | `obsv` | Observability of state-space model |
 | ✅ | `parallel` | Parallel connection of two models |
@@ -6967,7 +6967,7 @@ star product) |
 |   | `xelim` | Eliminate states from state-space models(Since R2023b) |
 |   | `xperm` | Reorder states in state-space models |
 |   | `xsort` | Sort states based on state partition |
-|   | `bode` | Bode frequency response of dynamic system |
+| ✅ | `bode` | Bode frequency response of dynamic system |
 | ✅ | `dcgain` | Low-frequency (DC) gain of LTI system |
 |   | `evalfr` | Evaluate system response at specific frequency |
 |   | `findop` | Compute operating condition from specifications(Since R2023b) |
@@ -7000,7 +7000,7 @@ Linear Analysis Plots block, or Model Verification block |
 |   | `sparssdata` | Access first-order sparse state-space model data |
 | ✅ | `spy` | Visualize sparsity pattern of a sparse model |
 |   | `step` | Step response of dynamic system |
-|   | `c2d` | Convert model from continuous to discrete time |
+| ✅ | `c2d` | Convert model from continuous to discrete time |
 |   | `d2c` | Convert model from discrete to continuous time |
 |   | `d2d` | Resample discrete-time
 model |
@@ -7123,9 +7123,9 @@ array dimensions |
 |   | `stepplot` | Plot step response of dynamic system |
 |   | `covar` | Output and state covariance of system driven by white noise |
 |   | `lsiminfo` | Compute linear response characteristics |
-|   | `stepinfo` | Rise time, settling time, and other step-response characteristics |
+| ✅ | `stepinfo` | Rise time, settling time, and other step-response characteristics |
 |   | `gensig` | Create periodic signals for simulating system response withlsim |
-|   | `bodemag` | Magnitude-only Bode plot of frequency response |
+| ✅ | `bodemag` | Magnitude-only Bode plot of frequency response |
 |   | `bodeplot` | Plot Bode frequency response of dynamic system |
 |   | `nicholsplot` | Plot Nichols frequency response of dynamic system |
 |   | `nyquistplot` | Plot Nyquist response of dynamic system |
@@ -7147,7 +7147,7 @@ array dimensions |
 |   | `tzero` | Invariant zeros of linear system |
 | ✅ | `zero` | Zeros and gain of SISO dynamic system |
 |   | `allmargin` | Gain margin, phase margin, delay margin, and crossover frequencies |
-|   | `margin` | Gain margin, phase margin, and crossover frequencies |
+| ✅ | `margin` | Gain margin, phase margin, and crossover frequencies |
 |   | `iopzplot` | Plot pole-zero map for input-output pairs of dynamic system |
 |   | `pzplot` | Plot pole-zero map of dynamic system |
 |   | `rlocus` | Root locus of dynamic system |
@@ -7302,7 +7302,7 @@ form |
 <a id="deeplearning"></a>
 ## Deeplearning Toolbox  
 
-_14 / 402 implemented_
+_16 / 402 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -7374,7 +7374,7 @@ _14 / 402 implemented_
 |   | `edfinfo` | Get information about EDF/EDF+ file |
 |   | `edfread` | Read data from EDF/EDF+ file |
 |   | `edfwrite` | Create or modify EDF or EDF+ file |
-|   | `envelope` | Signal envelope |
+| ✅ | `envelope` | Signal envelope |
 |   | `extendsigroi` | Extend signal regions of interest to left and right |
 |   | `extractsigroi` | Extract signal regions of interest |
 |   | `filenames2labels` | Get list of labels from filenames(Since R2022b) |
@@ -7405,7 +7405,7 @@ _14 / 402 implemented_
 |   | `sigroi2binmask` | Convert matrix of ROI limits to binary mask |
 | ✅ | `smoothdata` | Smooth noisy data |
 |   | `splitlabels` | Find indices to split labels according to specified proportions |
-|   | `stft` | Short-time Fourier transform |
+| ✅ | `stft` | Short-time Fourier transform |
 |   | `stftLayer` | Short-time Fourier transform layer(Since R2021b) |
 |   | `stftmag2sig` | Signal reconstruction from STFT magnitude |
 |   | `timeFrequencyScattering` | Joint time-frequency scattering(Since R2024b) |
@@ -11179,7 +11179,7 @@ executed during Program Target Device task in the Workflow Advisor |
 <a id="ident"></a>
 ## Ident Toolbox  
 
-_19 / 261 implemented_
+_23 / 261 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -11200,8 +11200,8 @@ app startup information |
 |   | `getexp` | Get specific experiments from multiple-experiment data set |
 |   | `merge (iddata)` | Merge data sets into iddata object |
 |   | `advice` | Analysis and recommendations for data or estimated linear models |
-|   | `bode` | Bode frequency response of dynamic system |
-|   | `bodemag` | Magnitude-only Bode plot of frequency response |
+| ✅ | `bode` | Bode frequency response of dynamic system |
+| ✅ | `bodemag` | Magnitude-only Bode plot of frequency response |
 |   | `checkFeedback` | Identify possible feedback data(Since R2023a) |
 |   | `dataPlotOptions` | Option set foridplotwhen plotting input/output estimation data
             contained in a timetable, numeric matrices, or aniddataobject(Since R2023a) |
@@ -11415,7 +11415,7 @@ models |
 |   | `showConfidence` | Display confidence regions on response plots for identified models |
 |   | `step` | Step response of dynamic system |
 |   | `stepplot` | Plot step response of dynamic system |
-|   | `c2d` | Convert model from continuous to discrete time |
+| ✅ | `c2d` | Convert model from continuous to discrete time |
 |   | `c2dOptions` | Specify discretization method for continuous-time to discrete-time
       conversions |
 |   | `d2c` | Convert model from discrete to continuous time |
@@ -11456,7 +11456,7 @@ property values |
       inputs |
 |   | `lsiminfo` | Compute linear response characteristics |
 |   | `pzmap` | Pole-zero map of dynamic system |
-|   | `stepinfo` | Rise time, settling time, and other step-response characteristics |
+| ✅ | `stepinfo` | Rise time, settling time, and other step-response characteristics |
 |   | `addResponse` | Add dynamic system response to existing response plot(Since R2024b) |
 |   | `bodeplot` | Plot Bode frequency response of dynamic system |
 |   | `impulseplot` | Plot impulse response of dynamic system |
@@ -11506,7 +11506,7 @@ regression method |
 <a id="images"></a>
 ## Images Toolbox  
 
-_37 / 651 implemented_
+_43 / 651 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -11868,12 +11868,12 @@ image |
 |   | `bwulterode` | Ultimate erosion |
 |   | `imbothat` | Bottom-hat filtering |
 |   | `imclearborder` | Suppress light structures connected to image border |
-|   | `imclose` | Morphologically close image |
-|   | `imdilate` | Dilate image |
-|   | `imerode` | Erode image |
+| ✅ | `imclose` | Morphologically close image |
+| ✅ | `imdilate` | Dilate image |
+| ✅ | `imerode` | Erode image |
 |   | `imfill` | Fill image regions and holes |
 |   | `imkeepborder` | Retain light structures connected to image border(Since R2023b) |
-|   | `imopen` | Morphologically open image |
+| ✅ | `imopen` | Morphologically open image |
 |   | `imtophat` | Top-hat filtering |
 |   | `imextendedmax` | Extended-maxima transform |
 |   | `imextendedmin` | Extended-minima transform |
@@ -11965,7 +11965,7 @@ segmentation |
 |   | `bwconvhull` | Generate convex hull image from binary image |
 |   | `bweuler` | Euler number of binary image |
 |   | `bwferet` | Measure Feret properties |
-|   | `regionprops` | Measure properties of image regions |
+| ✅ | `regionprops` | Measure properties of image regions |
 |   | `regionprops3` | Measure properties of 3-D volumetric image regions |
 |   | `imcontour` | Create contour plot of image data |
 |   | `impixel` | Pixel color values |
@@ -11979,7 +11979,7 @@ segmentation |
 |   | `std2` | Standard deviation of matrix elements |
 |   | `bwareaopen` | Remove small objects from binary image |
 |   | `bwconncomp` | Find and count connected components in binary image |
-|   | `bwlabel` | Label connected components in 2-D binary image |
+| ✅ | `bwlabel` | Label connected components in 2-D binary image |
 |   | `bwlabeln` | Label connected components in binary image |
 |   | `bwselect` | Select objects in binary image |
 |   | `bwselect3` | Select objects in binary volume |
@@ -12647,7 +12647,7 @@ grid |
 <a id="medical-imaging"></a>
 ## Medical-imaging Toolbox  
 
-_8 / 164 implemented_
+_10 / 164 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -12812,7 +12812,7 @@ intensity difference |
 |   | `bwareafilt` | Extract objects from binary image by size |
 |   | `bwareaopen` | Remove small objects from binary image |
 |   | `bwconncomp` | Find and count connected components in binary image |
-|   | `bwlabel` | Label connected components in 2-D binary image |
+| ✅ | `bwlabel` | Label connected components in 2-D binary image |
 |   | `bwpropfilt` | Extract objects from binary image using properties |
 |   | `bwselect` | Select objects in binary image |
 |   | `bwselect3` | Select objects in binary volume |
@@ -12826,7 +12826,7 @@ intensity difference |
 |   | `bweuler` | Euler number of binary image |
 |   | `bwferet` | Measure Feret properties |
 |   | `bwperim` | Find perimeter of objects in binary image |
-|   | `regionprops` | Measure properties of image regions |
+| ✅ | `regionprops` | Measure properties of image regions |
 |   | `regionprops3` | Measure properties of 3-D volumetric image regions |
 |   | `cellpose` | Configure Cellpose model for cell segmentation(Since R2023b) |
 |   | `downloadCellposeModels` | Download pretrained models from Cellpose Library(Since R2023b) |
@@ -15291,7 +15291,7 @@ model |
 <a id="signal"></a>
 ## Signal Toolbox  
 
-_142 / 397 implemented_
+_148 / 397 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -15333,7 +15333,7 @@ _142 / 397 implemented_
 | ✅ | `smoothdata` | Smooth noisy data |
 | ✅ | `cummax` | Cumulative maximum |
 | ✅ | `cummin` | Cumulative minimum |
-|   | `envelope` | Signal envelope |
+| ✅ | `envelope` | Signal envelope |
 | ✅ | `max` | Maximum elements of array |
 | ✅ | `mean` | Average or mean value of array |
 | ✅ | `meanfreq` | Mean frequency |
@@ -15425,11 +15425,11 @@ method |
 |   | `fsst` | Fourier synchrosqueezed transform |
 |   | `hht` | Hilbert-Huang transform |
 |   | `ifsst` | Inverse Fourier synchrosqueezed transform |
-|   | `istft` | Inverse short-time Fourier transform |
+| ✅ | `istft` | Inverse short-time Fourier transform |
 |   | `istftLayer` | Inverse short-time Fourier transform layer(Since R2024a) |
 |   | `pspectrum` | Analyze signals in the frequency and time-frequency domains |
-|   | `spectrogram` | Spectrogram using short-time Fourier transform |
-|   | `stft` | Short-time Fourier transform |
+| ✅ | `spectrogram` | Spectrogram using short-time Fourier transform |
+| ✅ | `stft` | Short-time Fourier transform |
 |   | `stftLayer` | Short-time Fourier transform layer(Since R2021b) |
 |   | `stftmag2sig` | Signal reconstruction from STFT magnitude |
 |   | `vmd` | Variational mode decomposition |
@@ -15447,7 +15447,7 @@ method |
 | ✅ | `xcorr` | Cross-correlation |
 |   | `xcorr2` | 2-D cross-correlation |
 | ✅ | `xcov` | Cross-covariance |
-|   | `cconv` | Modulo-n circular convolution |
+| ✅ | `cconv` | Modulo-n circular convolution |
 | ✅ | `conv` | Convolution and polynomial multiplication |
 | ✅ | `conv2` | 2-D convolution |
 |   | `convmtx` | Convolution matrix |
@@ -15496,7 +15496,7 @@ method |
 |   | `buttord` | Butterworth filter order and cutoff frequency |
 |   | `cheb1ord` | Chebyshev Type I filter order |
 |   | `cheb2ord` | Chebyshev Type II filter order |
-|   | `cheby1` | Chebyshev Type I filter design |
+| ✅ | `cheby1` | Chebyshev Type I filter design |
 |   | `cheby2` | Chebyshev Type II filter design |
 |   | `ellip` | Elliptic filter design |
 |   | `ellipord` | Minimum order for elliptic filters |
@@ -16995,7 +16995,7 @@ _1 / 112 implemented_
 <a id="stats"></a>
 ## Stats Toolbox  
 
-_166 / 861 implemented_
+_172 / 861 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -17007,7 +17007,7 @@ _166 / 861 implemented_
 |   | `xptread` | Create table from data stored in SAS XPORT format file |
 |   | `countPredictorsAfterCategoricalEncoding` | Number of predictors in tabular data after encoding categorical
       variables(Since R2026a) |
-|   | `dummyvar` | Create dummy variables |
+| ✅ | `dummyvar` | Create dummy variables |
 |   | `gplotmatrix` | Matrix of scatter plots by group |
 |   | `grp2idx` | Create index vector from grouping variable |
 |   | `gscatter` | Scatter plot by group |
@@ -17275,7 +17275,7 @@ bivariate data |
 |   | `wblrnd` | Weibull random numbers |
 | ✅ | `wblstat` | Weibull mean and variance |
 |   | `cluster` | Construct clusters from Gaussian mixture distribution |
-|   | `mahal` | Mahalanobis distance to Gaussian mixture component |
+| ✅ | `mahal` | Mahalanobis distance to Gaussian mixture component |
 |   | `posterior` | Posterior probability of Gaussian mixture component |
 |   | `copulacdf` | Copula cumulative distribution function |
 |   | `copulafit` | Fit copula to data |
@@ -17480,7 +17480,7 @@ model |
 |   | `relieff` | Rank importance of predictors using ReliefF or RReliefF algorithm |
 |   | `removeTerms` | Remove terms from linear regression model |
 |   | `robustdemo` | Interactive robust regression |
-|   | `robustfit` | Fit robust linear regression |
+| ✅ | `robustfit` | Fit robust linear regression |
 |   | `selectModels` | Select fitted regularized linear regression models |
 |   | `shapley` | Shapley values |
 |   | `step` | Improve linear regression model by adding or removing terms |
@@ -17523,7 +17523,7 @@ classifiers |
 |   | `fitglm` | Create generalized linear regression model |
 |   | `fitmnr` | Fit multinomial regression model(Since R2023a) |
 |   | `GeneralizedLinearModel` | Generalized linear regression model class |
-|   | `glmfit` | Fit generalized linear regression model |
+| ✅ | `glmfit` | Fit generalized linear regression model |
 |   | `glmval` | Generalized linear model values |
 |   | `MultinomialRegression` | Multinomial regression model(Since R2023a) |
 |   | `stepwiseglm` | Create generalized linear regression model by stepwise
@@ -17676,7 +17676,7 @@ bag of regression trees |
 |   | `kfoldMargin` | Classification margins for cross-validated classification model |
 |   | `compareHoldout` | Compare accuracies of two classification models using new data |
 |   | `edge` | Classification edge for classification tree model |
-|   | `margin` | Classification margins for classification tree model |
+| ✅ | `margin` | Classification margins for classification tree model |
 |   | `resubEdge` | Resubstitution classification edge for classification tree model |
 |   | `resubMargin` | Resubstitution classification margins for classification tree model |
 |   | `testckfold` | Compare accuracies of two classification models by repeated
@@ -17771,7 +17771,7 @@ bag of regression trees |
 |   | `average` | Compute performance metrics for average receiver operating characteristic (ROC)
       curve in multiclass problem(Since R2022a) |
 |   | `confusionchart` | Create confusion matrix chart for classification problem |
-|   | `confusionmat` | Compute confusion matrix for classification problem |
+| ✅ | `confusionmat` | Compute confusion matrix for classification problem |
 |   | `modelOperatingPoint` | Operating point ofrocmetricsobject(Since R2024b) |
 |   | `perfcurve` | Receiver operating characteristic (ROC) curve or other
 performance curve for classifier output |
