@@ -62,6 +62,10 @@ export interface Env {
   writeFileText(name: string, text: string): void;
   listFiles(): string[];
   deleteFile(name: string): void;
+  /** Virtual file descriptors for fopen/fclose/fgetl/fscanf/fread/textscan. */
+  fopenFile(name: string, mode?: string): number;
+  fcloseFile(fid: number): number;
+  fdInfo(fid: number): { name: string; data: number[]; pos: number; mode: string } | undefined;
   clearConsole(): void;
   /** nargin of the currently executing user function, or null at base/script level. */
   currentNargin(): number | null;
@@ -2215,9 +2219,46 @@ export const BUILTINS: Record<string, Builtin> = {
   // textscan(chr, formatSpec, Name,Value...) — read formatted columns from a char/string.
   // Supports %f/%d/%u/%g/%e (numeric), %s/%q/%c (text), %*… (skip); options Delimiter,
   // HeaderLines, MultipleDelimsAsOne, CollectOutput. File-ID input is not supported in the sandbox.
-  textscan: async (a) => {
-    if (isMat(a[0]) && !(a[0] as Mat).isChar) throw new MatError('textscan: file-ID input is not supported in the sandbox (pass a char/string)');
-    const text = asString(a[0]);
+  // ── virtual file I/O (fopen/fclose/… over the in-memory VFS) ──
+  fopen: async (a, nout, env) => {
+    const name = asString(a[0]); const mode = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar)) ? asString(a[1]) : 'r';
+    const fid = env.fopenFile(name, mode);
+    return nout >= 2 ? [scalar(fid), str(fid === -1 ? 'No such file or directory' : '')] : [scalar(fid)];
+  },
+  fclose: async (a, _n, env) => { const fid = (isStr(a[0]) || (isMat(a[0]) && (a[0] as Mat).isChar)) && asString(a[0]).toLowerCase() === 'all' ? -1 : Math.round(asScalar(a[0])); return ret(scalar(env.fcloseFile(fid))); },
+  feof: async (a, _n, env) => { const fd = env.fdInfo(Math.round(asScalar(a[0]))); return ret(bool(!fd || fd.pos >= fd.data.length)); },
+  ftell: async (a, _n, env) => { const fd = env.fdInfo(Math.round(asScalar(a[0]))); return ret(scalar(fd ? fd.pos : -1)); },
+  frewind: async (a, _n, env) => { const fd = env.fdInfo(Math.round(asScalar(a[0]))); if (fd) fd.pos = 0; return []; },
+  fseek: async (a, _n, env) => {
+    const fd = env.fdInfo(Math.round(asScalar(a[0]))); if (!fd) return ret(scalar(-1));
+    const off = Math.round(asScalar(a[1]));
+    const o = a.length >= 3 ? (isStr(a[2]) || (isMat(a[2]) && (a[2] as Mat).isChar) ? asString(a[2]).toLowerCase() : Math.round(asScalar(a[2]))) : 'bof';
+    const base = (o === 'bof' || o === -1) ? 0 : (o === 'eof' || o === 1) ? fd.data.length : fd.pos;
+    fd.pos = Math.max(0, Math.min(fd.data.length, base + off)); return ret(scalar(0));
+  },
+  fgetl: async (a, _n, env) => { const fd = env.fdInfo(Math.round(asScalar(a[0]))); if (!fd || fd.pos >= fd.data.length) return ret(scalar(-1)); let s = ''; while (fd.pos < fd.data.length) { const ch = fd.data[fd.pos++]; if (ch === 10) break; if (ch !== 13) s += String.fromCharCode(ch); } return ret(str(s)); },
+  fgets: async (a, _n, env) => { const fd = env.fdInfo(Math.round(asScalar(a[0]))); if (!fd || fd.pos >= fd.data.length) return ret(scalar(-1)); let s = ''; while (fd.pos < fd.data.length) { const ch = fd.data[fd.pos++]; s += String.fromCharCode(ch); if (ch === 10) break; } return ret(str(s)); },
+  fread: async (a, _n, env) => {
+    const fd = env.fdInfo(Math.round(asScalar(a[0]))); if (!fd) return ret(colVec([]));
+    const count = a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar ? Math.round(asScalar(a[1])) : Infinity;
+    const out: number[] = []; while (fd.pos < fd.data.length && out.length < count) out.push(fd.data[fd.pos++]);
+    const isChar = a.length >= 3 && (isStr(a[2]) || (isMat(a[2]) && (a[2] as Mat).isChar)) && /char/.test(asString(a[2]).toLowerCase());
+    if (isChar) { const m2 = str(out.map((c) => String.fromCharCode(c)).join('')); return ret(m2); }
+    return ret(colVec(out));
+  },
+  fwrite: async (a, _n, env) => { const fd = env.fdInfo(Math.round(asScalar(a[0]))); if (!fd) return ret(scalar(0)); const v = (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar)) ? Array.from(asString(a[1]), (c) => c.charCodeAt(0)) : toArray(m(a[1])).map((x) => Math.round(x) & 0xff); for (const b of v) { fd.data[fd.pos++] = b; } return ret(scalar(v.length)); },
+  fscanf: async (a, _n, env) => {
+    const fd = env.fdInfo(Math.round(asScalar(a[0]))); if (!fd) return ret(colVec([]));
+    const rest = fd.data.slice(fd.pos).map((c) => String.fromCharCode(c)).join(''); fd.pos = fd.data.length;
+    const fmt = a.length >= 2 ? asString(a[1]) : '%f';
+    if (/%s|%c/.test(fmt) && !/%[diouxefg]/i.test(fmt)) return ret(str(rest.trim()));
+    const nums = rest.match(/-?\d+\.?\d*(?:[eE][+-]?\d+)?/g)?.map(Number) ?? [];
+    return ret(colVec(nums));
+  },
+  textscan: async (a, _n, env) => {
+    let text: string;
+    if (isMat(a[0]) && !(a[0] as Mat).isChar) { const fd = env.fdInfo(Math.round(asScalar(a[0]))); if (!fd) throw new MatError('textscan: invalid file identifier'); text = fd.data.slice(fd.pos).map((c) => String.fromCharCode(c)).join(''); fd.pos = fd.data.length; }
+    else text = asString(a[0]);
     const fmt = a.length > 1 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar)) ? asString(a[1]) : '%f';
     let delims: string[] | null = null, headerLines = 0, collectOutput = false, multiAsOne = false;
     for (let i = 2; i + 1 < a.length; i += 2) {
@@ -2234,22 +2275,49 @@ export const BUILTINS: Record<string, Builtin> = {
     if (specs.length === 0) specs.push({ skip: false, kind: 'num' });
     let body = text;
     if (headerLines > 0) body = text.split('\n').slice(headerLines).join('\n');
-    let fields: string[];
-    if (delims) {
-      const parts = delims.concat(['\n', '\r']).filter(Boolean).map((d) => d.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-      fields = body.split(new RegExp('(?:' + parts.join('|') + ')' + (multiAsOne ? '+' : ''))).map((f) => f.trim());
-      while (fields.length && fields[fields.length - 1] === '') fields.pop();
-    } else {
-      fields = body.trim().split(/\s+/).filter((f) => f.length > 0);
-    }
     const outCols = specs.filter((s) => !s.skip);
     const colVals: (number | string)[][] = outCols.map(() => []);
-    const ocIndex: number[] = []; { let oc = 0; for (const sp of specs) { ocIndex.push(sp.skip ? -1 : oc); if (!sp.skip) oc++; } }
-    for (let f = 0, si = 0; f < fields.length; f++, si = (si + 1) % specs.length) {
-      const spec = specs[si]; if (spec.skip) continue;
-      const field = fields[f];
-      if (spec.kind === 'num') { const v = field === '' ? NaN : Number(field); if (Number.isNaN(v) && field !== '') break; (colVals[ocIndex[si]] as number[]).push(v); }
-      else (colVals[ocIndex[si]] as string[]).push(field);
+    // Literal text in the format (e.g. "Value: %d")? Scan sequentially, consuming literals.
+    const litStripped = fmt.replace(/%(\*?)\d*(?:\.\d+)?([diouxXfeEgGsqc])/g, '').replace(/\s+/g, '');
+    if (litStripped.length > 0 && !delims) {
+      // Tokenise the format into literal runs and conversion specs.
+      type Tok = { t: 'lit'; s: string } | { t: 'spec'; skip: boolean; kind: 'num' | 'str' };
+      const toks: Tok[] = []; const sre = /^%(\*?)\d*(?:\.\d+)?([diouxXfeEgGsqc])/;
+      for (let i = 0; i < fmt.length;) { if (fmt[i] === '%') { const mt2 = fmt.slice(i).match(sre); if (mt2) { toks.push({ t: 'spec', skip: mt2[1] === '*', kind: 'sqc'.includes(mt2[2]) ? 'str' : 'num' }); i += mt2[0].length; continue; } } let lit = ''; while (i < fmt.length && fmt[i] !== '%') lit += fmt[i++]; toks.push({ t: 'lit', s: lit }); }
+      let pos = 0; const N = body.length; const ws = (c: string) => c === ' ' || c === '\t' || c === '\n' || c === '\r';
+      scan: while (pos < N) {
+        const start = pos; let oc = 0;
+        for (const tk of toks) {
+          if (tk.t === 'lit') {
+            for (let li = 0; li < tk.s.length;) {
+              if (ws(tk.s[li])) { while (li < tk.s.length && ws(tk.s[li])) li++; while (pos < N && ws(body[pos])) pos++; }
+              else { while (pos < N && ws(body[pos])) pos++; if (pos >= N || body[pos] !== tk.s[li]) break scan; pos++; li++; }
+            }
+          } else {
+            while (pos < N && ws(body[pos])) pos++; if (pos >= N) break scan;
+            if (tk.kind === 'num') { const mt2 = body.slice(pos).match(/^[+-]?\d+\.?\d*(?:[eE][+-]?\d+)?/); if (!mt2) break scan; if (!tk.skip) (colVals[oc] as number[]).push(Number(mt2[0])); pos += mt2[0].length; }
+            else { const mt2 = body.slice(pos).match(/^\S+/); if (!mt2) break scan; if (!tk.skip) (colVals[oc] as string[]).push(mt2[0]); pos += mt2[0].length; }
+            if (!tk.skip) oc++;
+          }
+        }
+        if (pos === start) break;   // no progress → avoid infinite loop
+      }
+    } else {
+      let fields: string[];
+      if (delims) {
+        const parts = delims.concat(['\n', '\r']).filter(Boolean).map((d) => d.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        fields = body.split(new RegExp('(?:' + parts.join('|') + ')' + (multiAsOne ? '+' : ''))).map((f) => f.trim());
+        while (fields.length && fields[fields.length - 1] === '') fields.pop();
+      } else {
+        fields = body.trim().split(/\s+/).filter((f) => f.length > 0);
+      }
+      const ocIndex: number[] = []; { let oc = 0; for (const sp of specs) { ocIndex.push(sp.skip ? -1 : oc); if (!sp.skip) oc++; } }
+      for (let f = 0, si = 0; f < fields.length; f++, si = (si + 1) % specs.length) {
+        const spec = specs[si]; if (spec.skip) continue;
+        const field = fields[f];
+        if (spec.kind === 'num') { const v = field === '' ? NaN : Number(field); if (Number.isNaN(v) && field !== '') break; (colVals[ocIndex[si]] as number[]).push(v); }
+        else (colVals[ocIndex[si]] as string[]).push(field);
+      }
     }
     let cols: Value[] = outCols.map((s, i) => s.kind === 'num'
       ? colVec(colVals[i] as number[])
@@ -4451,10 +4519,12 @@ export const BUILTINS: Record<string, Builtin> = {
   disp: async (a, _n, env) => { env.output((isSym(a[0]) ? symTexLines(a[0] as Sym).join('\n') : dispValue(a[0])) + '\n'); return []; },
   display: async (a, _n, env) => { env.output((isSym(a[0]) ? symTexLines(a[0] as Sym).join('\n') : dispValue(a[0])) + '\n'); return []; },
   fprintf: async (a, _n, env) => {
-    let fmtIdx = 0;
-    if (isMat(a[0]) && !(a[0] as Mat).isChar) fmtIdx = 1; // leading fid (1=stdout, 2=stderr)
+    let fmtIdx = 0, fid = 1;
+    if (isMat(a[0]) && !(a[0] as Mat).isChar) { fmtIdx = 1; fid = Math.round(asScalar(a[0])); }   // leading fid (1=stdout, 2=stderr, ≥3=file)
     const text = sprintf(asString(a[fmtIdx]), a.slice(fmtIdx + 1));
-    env.output(text);
+    const fd = fid >= 3 ? env.fdInfo(fid) : undefined;
+    if (fd) { for (let i = 0; i < text.length; i++) fd.data[fd.pos++] = text.charCodeAt(i); }
+    else env.output(text);
     return [];
   },
   printf: async (a, _n, env) => { env.output(sprintf(asString(a[0]), a.slice(1))); return []; },

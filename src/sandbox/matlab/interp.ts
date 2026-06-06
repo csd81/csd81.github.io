@@ -189,6 +189,27 @@ export class Interpreter implements Env {
   writeFileText(name: string, text: string) { this.files.set(this.fileKey(name), new TextEncoder().encode(text)); }
   listFiles(): string[] { return [...this.files.keys()].sort(); }
   deleteFile(name: string) { this.files.delete(this.fileKey(name)); }
+
+  // ── virtual file descriptors (fopen/fclose/fgetl/fscanf/fread/textscan over the VFS) ──
+  private fds = new Map<number, { name: string; data: number[]; pos: number; mode: string }>();
+  private nextFd = 3;   // 0/1/2 reserved for stdin/stdout/stderr
+  fopenFile(name: string, mode = 'r'): number {
+    const m2 = mode.toLowerCase();
+    let data: number[];
+    if (m2.startsWith('r')) { const b = this.readFileBytes(name); if (!b) return -1; data = Array.from(b); }
+    else if (m2.startsWith('a')) { const b = this.readFileBytes(name); data = b ? Array.from(b) : []; }
+    else data = [];   // 'w' truncates
+    const fid = this.nextFd++;
+    this.fds.set(fid, { name, data, pos: m2.startsWith('a') ? data.length : 0, mode: m2 });
+    return fid;
+  }
+  fcloseFile(fid: number): number {
+    if (fid === -1) { let n = 0; for (const id of [...this.fds.keys()]) { this.fcloseFile(id); n++; } return 0; }   // fclose('all')
+    const fd = this.fds.get(fid); if (!fd) return -1;
+    if (fd.mode.startsWith('w') || fd.mode.startsWith('a') || fd.mode.includes('+')) this.writeFileBytes(fd.name, Uint8Array.from(fd.data));
+    this.fds.delete(fid); return 0;
+  }
+  fdInfo(fid: number) { return this.fds.get(fid); }
   async evalInput(text: string, wantValue = true): Promise<Value> {
     const prog = parse(text);
     for (const f of prog.functions) this.funcs.set(f.name, f);
