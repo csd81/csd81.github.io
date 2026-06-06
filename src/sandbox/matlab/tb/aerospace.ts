@@ -10,6 +10,18 @@ import type { ToolboxModule } from './types';
 const ret = (v: Value | Value[]): Promise<Value[]> => Promise.resolve(Array.isArray(v) ? v : [v]);
 const D2R = Math.PI / 180;
 
+/** Element-wise over three operands with scalar expansion; shape follows the first length-n input. */
+function ew3(A: Mat, B: Mat, C: Mat, f: (a: number, b: number, c: number) => number): Value {
+  const a = Array.from(A.data), b = Array.from(B.data), c = Array.from(C.data);
+  const n = Math.max(a.length, b.length, c.length);
+  const g = (arr: number[], i: number) => (arr.length === 1 ? arr[0] : arr[i]);
+  const out = new Float64Array(n);
+  for (let i = 0; i < n; i++) out[i] = f(g(a, i), g(b, i), g(c, i));
+  if (n === 1) return scalar(out[0]);
+  const src = a.length === n ? A : b.length === n ? B : C;
+  return mat(src.rows, src.cols, out);
+}
+
 // ---- small matrix helpers ----------------------------------------------------------------------
 function rowsOf(M: Mat): number[][] {
   const out: number[][] = [];
@@ -384,6 +396,19 @@ export const AEROSPACE: ToolboxModule = {
       const outs = [machArr, TArr, PArr, rhoArr, AArr].map(wrap);
       return ret(outs.slice(0, Math.max(1, nargout)));
     },
+    // mach = machnumber(vel,a) = airspeed(vel)./a (vel rows are velocity vectors)
+    machnumber: (a) => {
+      const v = rowsOf(m(a[0])).map((r) => Math.hypot(r[0], r[1], r[2]));
+      const av = Array.from(m(a[1]).data);
+      const n = Math.max(v.length, av.length);
+      const out: number[] = [];
+      for (let i = 0; i < n; i++) out.push((v.length === 1 ? v[0] : v[i]) / (av.length === 1 ? av[0] : av[i]));
+      return ret(out.length === 1 ? scalar(out[0]) : colVec(out));
+    },
+    // Isentropic relative ratios vs ISA sea level (101325 Pa, 288.15 K, 1.225 kg/m³).
+    rrdelta: (a) => ret(ew3(m(a[0]), m(a[1]), m(a[2]), (p, M, g) => (p / 101325) * (1 + 0.5 * (g - 1) * M * M) ** (g / (g - 1)))),
+    rrtheta: (a) => ret(ew3(m(a[0]), m(a[1]), m(a[2]), (t, M, g) => (1 + 0.5 * (g - 1) * M * M) * (t / 288.15))),
+    rrsigma: (a) => ret(ew3(m(a[0]), m(a[1]), m(a[2]), (r, M, g) => (r / 1.225) * (1 + 0.5 * (g - 1) * M * M) ** (1 / (g - 1)))),
   },
   help: {
     convlength: 'Convert from length units to desired length units',
@@ -415,6 +440,8 @@ export const AEROSPACE: ToolboxModule = {
     alphabeta: 'Compute incidence and sideslip angles',
     dcm2alphabeta: 'Convert direction cosine matrix to angle of attack and sideslip angle',
     dpressure: 'Compute dynamic pressure from velocity vector and density',
+    machnumber: 'Compute Mach number from velocity and speed of sound',
+    rrdelta: 'Compute relative pressure ratio', rrtheta: 'Compute relative temperature ratio', rrsigma: 'Compute relative density ratio',
     flowisentropic: 'Calculate isentropic flow ratios',
   },
 };
