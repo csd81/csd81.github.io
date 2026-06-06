@@ -154,6 +154,29 @@ function gf2rem(num: number[], den: number[]): number[] {
   while (dr >= dd && dr >= 0) { const sh = dr - dd; for (let j = 0; j <= dd; j++) r[sh + j] ^= den[j] & 1; dr = deg(r); }
   return r.slice(0, Math.max(dd, 0));
 }
+/** GF(2) polynomial long division (ascending): returns {quotient, remainder}. */
+function gf2divmod(num: number[], den: number[]): { q: number[]; r: number[] } {
+  const r = num.map((x) => x & 1);
+  const deg = (p: number[]) => { for (let i = p.length - 1; i >= 0; i--) if (p[i] & 1) return i; return -1; };
+  const dd = deg(den); let dr = deg(r);
+  const q = new Array(Math.max(1, dr - dd + 1)).fill(0);
+  while (dr >= dd && dr >= 0) { const sh = dr - dd; q[sh] = 1; for (let j = 0; j <= dd; j++) r[sh + j] ^= den[j] & 1; dr = deg(r); }
+  return { q, r: r.slice(0, Math.max(dd, 1)) };
+}
+/** Rank of a GF(2) matrix via Gaussian elimination. */
+function gf2rank(A: Mat): number {
+  const mm = A.rows, n = A.cols, M: number[][] = [];
+  for (let i = 0; i < mm; i++) { const row: number[] = []; for (let j = 0; j < n; j++) row.push(A.data[i + j * mm] & 1); M.push(row); }
+  let rank = 0;
+  for (let col = 0; col < n && rank < mm; col++) {
+    let piv = -1; for (let r = rank; r < mm; r++) if (M[r][col] & 1) { piv = r; break; }
+    if (piv < 0) continue;
+    [M[rank], M[piv]] = [M[piv], M[rank]];
+    for (let r = 0; r < mm; r++) if (r !== rank && (M[r][col] & 1)) for (let c = col; c < n; c++) M[r][c] ^= M[rank][c];
+    rank++;
+  }
+  return rank;
+}
 /** cyclgen(n,p): systematic parity-check H ((n-k)×n) and generator G (k×n) for the cyclic code
  *  with generator polynomial p (ascending). b[i] = (x^(n-k+i) mod p); H=[I|bᵀ], G=[b|I]. */
 function cyclgenImpl(n: number, p: number[]): { h: Mat; g: Mat; k: number } {
@@ -193,6 +216,14 @@ export const COMM: ToolboxModule = {
   builtins: {
     // ── gen2par: swap between standard-form generator [I|P] and parity [P'|I] over GF(2) ──
     gen2par: (a) => ret(gen2parImpl(m(a[0]))),
+    // ── GF(2) polynomial / matrix arithmetic (default field; no GF(2^m) arg) ──
+    gfadd: (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])), n = Math.max(x.length, y.length), o: number[] = []; for (let i = 0; i < n; i++) o.push(((x[i] || 0) ^ (y[i] || 0)) & 1); return ret(rowVec(o)); },
+    gfsub: (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])), n = Math.max(x.length, y.length), o: number[] = []; for (let i = 0; i < n; i++) o.push(((x[i] || 0) ^ (y[i] || 0)) & 1); return ret(rowVec(o)); },
+    gfmul: (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])); return ret(rowVec(x.map((v, i) => (v & 1) & (y[i] & 1)))); },
+    gfdiv: (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])); return ret(rowVec(x.map((v, i) => ((y[i] & 1) ? (v & 1) : NaN)))); },
+    gfconv: (a) => { const x = toArray(m(a[0])), y = toArray(m(a[1])), o = new Array(x.length + y.length - 1).fill(0); for (let i = 0; i < x.length; i++) for (let j = 0; j < y.length; j++) o[i + j] ^= (x[i] & 1) & (y[j] & 1); return ret(rowVec(o)); },
+    gfdeconv: (a, nargout) => { const { q, r } = gf2divmod(toArray(m(a[0])), toArray(m(a[1]))); return Promise.resolve([rowVec(q), rowVec(r)].slice(0, Math.max(1, nargout))); },
+    gfrank: (a) => ret(scalar(gf2rank(m(a[0])))),
     // ── cyclgen(n,p): systematic [H,G,k] for a cyclic code from generator polynomial p ──
     cyclgen: (a, nargout) => {
       if (a.length > 2 && asString(a[2]).toLowerCase().includes('no')) throw new Error('comm:cyclgen: only systematic mode supported');
@@ -519,6 +550,8 @@ export const COMM: ToolboxModule = {
     zadoffChuSeq: { summary: 'Generate a Zadoff-Chu sequence', syntax: ['seq = zadoffChuSeq(R,N)'], description: ['seq = zadoffChuSeq(R,N) generates the Rth root Zadoff-Chu sequence of length N, as defined in 3GPP TS 36.211.', 'The sequence is defined as seq(m+1) = exp(-j*pi*R*m*(m+1)/N) for m = 0,...,N-1.', 'R and N must be coprime (gcd(R,N)=1). Zadoff-Chu sequences have constant amplitude and ideal periodic auto-correlation.'], seealso: [] },
     gen2par: { summary: 'Convert between parity-check and generator matrices', syntax: ['H = gen2par(G)', 'G = gen2par(H)'], description: ['H = gen2par(G) converts a standard-form binary generator matrix G to the corresponding parity-check matrix H.', 'G = gen2par(H) converts a standard-form binary parity-check matrix H to the corresponding generator matrix G.', 'Both matrices must be in standard form: G = [I_k | P] and H = [P\' | I_(n-k)].'], seealso: ['cyclgen', 'hammgen'] },
     gfweight: { summary: 'Minimum distance of a linear block code', syntax: ['wt = gfweight(genmat)', 'wt = gfweight(genmat,\'gen\')', 'wt = gfweight(parmat,\'par\')', 'wt = gfweight(genpoly,n)'], description: ['wt = gfweight(genmat) returns the minimum distance of the linear block code whose generator matrix is genmat.', 'wt = gfweight(parmat,\'par\') returns the minimum distance using the parity-check matrix.', 'wt = gfweight(genpoly,n) returns the minimum distance for a cyclic code of codeword length n with generator polynomial genpoly.'], seealso: ['hammgen', 'cyclpoly', 'bchgenpoly'] },
+    gfadd: 'Add polynomials over GF(2)', gfsub: 'Subtract polynomials over GF(2)', gfmul: 'Multiply elements over GF(2)',
+    gfdiv: 'Divide elements over GF(2)', gfconv: 'Multiply polynomials over GF(2)', gfdeconv: 'Divide polynomials over GF(2)', gfrank: 'Rank of a matrix over GF(2)',
     cyclgen: { summary: 'Produce parity-check and generator matrices for a cyclic code', syntax: ['h = cyclgen(n,p)', 'h = cyclgen(n,p,opt)', '[h,g] = cyclgen(___)', '[h,g,k] = cyclgen(___)'], description: ['h = cyclgen(n,p) produces an (n-k)-by-n parity-check matrix for a systematic binary cyclic code of codeword length n with generator polynomial p.', '[h,g] = cyclgen(...) also returns the k-by-n generator matrix g corresponding to h.', '[h,g,k] = cyclgen(...) additionally returns k, the message length of the code.'], seealso: ['encode', 'decode', 'bchgenpoly', 'cyclpoly'] },
     qfunc: { summary: 'Q function (Gaussian tail probability)', syntax: ['y = qfunc(x)'], description: ['y = qfunc(x) returns the Q function value for each element of real-valued x.', 'The Q function is Q(x) = (1/sqrt(2*pi)) * integral from x to Inf of exp(-t^2/2) dt.', 'It equals 0.5*erfc(x/sqrt(2)) and represents the probability that a standard normal random variable exceeds x.'], seealso: ['qfuncinv', 'erfc'] },
     quantiz: { summary: 'Produce a quantization index and quantized output value', syntax: ['index = quantiz(sig,partition)', '[index,quants] = quantiz(sig,partition,codebook)', '[index,quants,distor] = quantiz(sig,partition,codebook)'], description: ['index = quantiz(sig,partition) returns quantization indices for sig using the scalar quantization boundary vector partition.', '[index,quants,distor] = quantiz(sig,partition,codebook) also maps indices through codebook to get quantized values and returns mean-square distortion.', 'partition is a length-(n-1) vector defining n quantization regions; codebook has n values, one per region.'], seealso: ['lloyds'] },
