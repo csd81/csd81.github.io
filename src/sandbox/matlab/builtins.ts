@@ -3032,6 +3032,21 @@ export const BUILTINS: Record<string, Builtin> = {
     for (let c = 0; c < nc; c++) { const col: number[] = []; for (let r = 0; r <= L; r++) col.push(Vm.data[r + c * Vm.rows]); const f = makeEval(col); for (let k = 0; k < nq; k++) out.data[k + c * nq] = f(xqa[k]); }
     return ret(out);
   },
+  /** interp1q(x,y,xi) — fast linear interpolation; x must be monotonically increasing; NaN
+   *  outside [x(1),x(end)] (no extrapolation). y may be a matrix (one column per series). */
+  interp1q: async (a) => {
+    const x = toArray(m(a[0])); const Y = m(a[1]); const xi = m(a[2]); const L = x.length - 1;
+    const at = (v: number[]) => (q: number): number => {
+      if (q < x[0] || q > x[L]) return NaN;
+      let i = 0; while (i < L - 1 && q > x[i + 1]) i++;
+      return v[i] + (v[i + 1] - v[i]) * (q - x[i]) / (x[i + 1] - x[i]);
+    };
+    if (Y.rows === 1 || Y.cols === 1) return ret(map(xi, at(toArray(Y))));
+    const nc = Y.cols, xq = toArray(xi), nq = xq.length, out = zeros(nq, nc);
+    for (let c = 0; c < nc; c++) { const col: number[] = []; for (let r = 0; r <= L; r++) col.push(Y.data[r + c * Y.rows]); const f = at(col); for (let k = 0; k < nq; k++) out.data[k + c * nq] = f(xq[k]); }
+    return ret(out);
+  },
+  namelengthmax: async () => ret(scalar(2048)),   // maximum MATLAB identifier length (R2026a)
   spline: async (a) => {
     const x = toArray(m(a[0])), y = toArray(m(a[1])); const C = splineCoefs(x, y); const L = x.length - 1;
     if (a.length < 3) return ret(makePP(x, C));
