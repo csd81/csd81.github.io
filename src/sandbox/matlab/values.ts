@@ -401,6 +401,9 @@ export function range(from: number, step: number, to: number): Mat {
 
 // ── Indexing ───────────────────────────────────────────────────────────
 export type Sub = number[] | 'colon';   // 1-based index lists, or whole dimension
+/** An index list that remembers the shape of the subscript expression it came from,
+ *  so single-subscript indexing can reproduce MATLAB's result-orientation rules. */
+export interface IdxList extends Array<number> { srcRows?: number; srcCols?: number; srcLogical?: boolean }
 
 function subToList(s: Sub, dim: number): number[] {
   if (s === 'colon') { const a = []; for (let i = 1; i <= dim; i++) a.push(i); return a; }
@@ -489,17 +492,22 @@ export function indexGet(m: Mat, subs: Sub[]): Mat {
   if (subs.length === 1) {
     const s = subs[0];
     if (s === 'colon') { const out = zeros(numel(m), 1); out.data.set(m.data); if (m.idata) out.idata = Float64Array.from(m.idata); out.isChar = m.isChar; return out; }
-    // linear indexing: result takes the index vector's own shape
-    const out = zeros(1, s.length); const im = m.idata ? new Float64Array(s.length) : null;
+    if (s.length === 0) { const e = zeros(0, 0); e.isChar = m.isChar; return e; }
+    const vals = new Float64Array(s.length); const im = m.idata ? new Float64Array(s.length) : null;
     for (let i = 0; i < s.length; i++) {
       const li = s[i] - 1;
       if (li < 0 || li >= numel(m)) throw new MatError(`index ${s[i]} out of bounds (numel=${numel(m)})`);
-      out.data[i] = m.data[li]; if (im) im[i] = m.idata![li];
+      vals[i] = m.data[li]; if (im) im[i] = m.idata![li];
     }
-    if (im) out.idata = im;
-    out.isChar = m.isChar;
-    // if both target and index are columns, keep a column
-    if (m.cols === 1 && m.rows > 1) return transpose(out);
+    // MATLAB result-orientation rule: logical mask → A's orientation if A is a vector, else a column;
+    // numeric index → A's orientation when both A and the index are vectors, otherwise the index's shape.
+    const sl = s as IdxList; const aVec = m.rows === 1 || m.cols === 1;
+    const idxVec = sl.srcRows === undefined || sl.srcRows === 1 || sl.srcCols === 1;
+    let oR: number, oC: number;
+    if (sl.srcLogical) { if (aVec && m.rows === 1) { oR = 1; oC = s.length; } else { oR = s.length; oC = 1; } }
+    else if (aVec && idxVec) { if (m.rows === 1) { oR = 1; oC = s.length; } else { oR = s.length; oC = 1; } }
+    else { oR = sl.srcRows ?? 1; oC = sl.srcCols ?? s.length; }
+    const out = zeros(oR, oC); out.data.set(vals); if (im) out.idata = im; out.isChar = m.isChar;
     return out;
   }
   if (subs.length === 2) {

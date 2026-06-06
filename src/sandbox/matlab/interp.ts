@@ -5,7 +5,7 @@ import {
   type Value, type Mat, type Handle, MatError,
   isMat, isHandle, mat, zeros, scalar, cscalar, bool, str, empty,
   numel, asScalar, asString, truthy, map, elementwise, matmul, transpose, ctranspose,
-  horzcat, vertcat, range as makeRange, indexGet, indexSet, indexDelete, isEmpty, toArray, type Sub,
+  horzcat, vertcat, range as makeRange, indexGet, indexSet, indexDelete, isEmpty, toArray, type Sub, type IdxList,
   isComplex, cmap, ewAdd, ewSub, ewMul, ewRDiv, ewLDiv, ewPow, ewEq, cmatmul,
   type Cell, type StructV, type Categorical, isCell, isStruct, makeCell, makeCategorical, sparseToDense,
   type Str, isStr, makeStr, makeStrArr,
@@ -548,11 +548,14 @@ export class Interpreter implements Env {
       try { v = await this.evalExpr(a, scope); } finally { this.endStack.pop(); }
       const mv = asMat(v);
       if (mv.isBool) {
-        const idx: number[] = [];
+        const idx: IdxList = [];
         for (let k = 0; k < mv.data.length; k++) if (mv.data[k] !== 0) idx.push(k + 1);
+        idx.srcRows = mv.rows; idx.srcCols = mv.cols; idx.srcLogical = true;
         subs.push(idx);
       } else {
-        subs.push(toArray(mv).map((x) => Math.round(x)));
+        const idx: IdxList = toArray(mv).map((x) => Math.round(x));
+        idx.srcRows = mv.rows; idx.srcCols = mv.cols; idx.srcLogical = false;
+        subs.push(idx);
       }
     }
     return subs;
