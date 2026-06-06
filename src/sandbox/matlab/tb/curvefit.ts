@@ -28,6 +28,12 @@ function readBform(v: Value): { t: number[]; a: number[]; n: number; k: number }
   return { t, a, n: a.length, k: t.length - a.length };
 }
 
+/** The two-letter form tag of a spline struct ('pp' or 'B-'). */
+function splineForm(v: Value): string {
+  if (!isStruct(v)) throw new MatError('expected a spline struct (pp-form or B-form)');
+  return asString(v.fields.get('form')?.[0] ?? str('')).slice(0, 2);
+}
+
 // ── core B-spline math ──────────────────────────────────────────────────────
 /** Cox–de Boor: values of all n = (t.length−k) order-k B-splines at x. */
 function bsplineValues(t: number[], k: number, x: number): number[] {
@@ -122,6 +128,52 @@ function sp2ppStruct(t: number[], a: number[], k: number): StructV {
   return { kind: 'struct', rows: 1, cols: 1, fields };
 }
 
+// ── pp-form helpers (mirror the base mkpp/ppval convention: L×k coefs, columns
+//    high→low power, Horner in the local variable q − breaks[i]) ──────────────
+type PP = { breaks: number[]; coefs: Mat; L: number; k: number };
+/** Build a pp struct from breaks (length L+1) and an L×k coefficient matrix. */
+function makePP(breaks: number[], coefs: Mat): StructV {
+  const L = coefs.rows, k = coefs.cols;
+  const fields = new Map<string, Value[]>([
+    ['form', [str('pp')]], ['breaks', [rowVec(breaks)]], ['coefs', [coefs]],
+    ['pieces', [scalar(L)]], ['order', [scalar(k)]], ['dim', [scalar(1)]],
+  ]);
+  return { kind: 'struct', rows: 1, cols: 1, fields };
+}
+/** Read a pp struct (from mkpp/spline/pchip/sp2pp) back into plain data. */
+function readPP(v: Value): PP {
+  if (!isStruct(v) || asString(v.fields.get('form')?.[0] ?? str('')) !== 'pp') throw new MatError('expected a piecewise-polynomial (pp) struct from spline/mkpp/sp2pp');
+  const breaks = toArray(m(v.fields.get('breaks')![0]));
+  const coefs = m(v.fields.get('coefs')![0]);
+  return { breaks, coefs, L: coefs.rows, k: coefs.cols };
+}
+/** Evaluate a pp at q: locate the piece, then Horner in (q − breaks[i]). */
+function ppEval(pp: PP, q: number): number {
+  let i = 0; while (i < pp.L - 1 && q >= pp.breaks[i + 1]) i++;
+  const t = q - pp.breaks[i]; let v = 0;
+  for (let j = 0; j < pp.k; j++) v = v * t + pp.coefs.data[i + j * pp.L];
+  return v;
+}
+/** Derivative of a pp (order k → k−1): drop the constant column, weight by power. */
+function ppDer(pp: PP): StructV {
+  const { breaks, coefs, L, k } = pp; if (k <= 1) return makePP(breaks, zeros(L, 1));
+  const nc = zeros(L, k - 1);
+  for (let i = 0; i < L; i++) for (let j = 0; j < k - 1; j++) nc.data[i + j * L] = coefs.data[i + j * L] * (k - 1 - j);
+  return makePP(breaks, nc);
+}
+/** Antiderivative of a pp (order k → k+1), continuous across breaks. ifa = left-end value. */
+function ppInt(pp: PP, ifa: number): StructV {
+  const { breaks, coefs, L, k } = pp; const nc = zeros(L, k + 1); let carry = ifa;
+  for (let i = 0; i < L; i++) {
+    for (let j = 0; j < k; j++) nc.data[i + j * L] = coefs.data[i + j * L] / (k - j);
+    nc.data[i + k * L] = carry;
+    const h = breaks[i + 1] - breaks[i]; let v = 0;
+    for (let j = 0; j <= k; j++) v = v * h + nc.data[i + j * L];
+    carry = v;
+  }
+  return makePP(breaks, nc);
+}
+
 // ── small dense linear solve (Gaussian elimination with partial pivoting) ────
 function solveDense(A: number[][], b: number[]): number[] {
   const n = b.length; const M = A.map((r, i) => [...r, b[i]]);
@@ -132,6 +184,56 @@ function solveDense(A: number[][], b: number[]): number[] {
     for (let r = 0; r < n; r++) if (r !== c) { const f = M[r][c] / d; for (let cc = c; cc <= n; cc++) M[r][cc] -= f * M[c][cc]; }
   }
   return M.map((r, i) => r[n] / (M[i][i] || 1e-300));
+}
+
+// ── cubic smoothing spline (csaps, univariate, unit weights) ────────────────
+/** Build the smoothing-spline pp from (x,y) with smoothing parameter p∈[0,1]
+ *  (p<0 ⇒ auto). Returns the pp struct and the p actually used. Algorithm from
+ *  MATLAB csaps1 (de Boor, A Practical Guide to Splines, XIV.6ff), W = I. */
+function csapsPP(x: number[], y: number[], p: number): { pp: StructV; p: number } {
+  const n = x.length;
+  const dx: number[] = []; for (let i = 0; i < n - 1; i++) dx.push(x[i + 1] - x[i]);
+  const divdif: number[] = []; for (let i = 0; i < n - 1; i++) divdif.push((y[i + 1] - y[i]) / dx[i]);
+  if (n === 2) { // straight-line interpolant; p forced to 1
+    const C = zeros(1, 4); C.data[0] = 0; C.data[1] = 0; C.data[2] = divdif[0]; C.data[3] = y[0];
+    return { pp: makePP(x.slice(), C), p: 1 };
+  }
+  const mm = n - 2;
+  // R: (n-2)×(n-2) symmetric tridiagonal
+  const R = Array.from({ length: mm }, () => new Array<number>(mm).fill(0));
+  for (let i = 0; i < mm; i++) {
+    R[i][i] = 2 * (dx[i + 1] + dx[i]);
+    if (i + 1 < mm) R[i][i + 1] = dx[i + 1];
+    if (i - 1 >= 0) R[i][i - 1] = dx[i];
+  }
+  // Qt: (n-2)×n with rows odx(i),-(odx(i+1)+odx(i)),odx(i+1) on diagonals 0,1,2
+  const odx = dx.map((v) => 1 / v);
+  const Qt = Array.from({ length: mm }, () => new Array<number>(n).fill(0));
+  for (let i = 0; i < mm; i++) { Qt[i][i] = odx[i]; Qt[i][i + 1] = -(odx[i + 1] + odx[i]); Qt[i][i + 2] = odx[i + 1]; }
+  // QtWQ = Qt*Qt' (W = I)
+  const QtQ = Array.from({ length: mm }, () => new Array<number>(mm).fill(0));
+  for (let i = 0; i < mm; i++) for (let j = 0; j < mm; j++) { let s = 0; for (let l = 0; l < n; l++) s += Qt[i][l] * Qt[j][l]; QtQ[i][j] = s; }
+  let trR = 0, trQ = 0; for (let i = 0; i < mm; i++) { trR += R[i][i]; trQ += QtQ[i][i]; }
+  if (p < 0) p = 1 / (1 + trR / (6 * trQ));
+  // ((6(1-p))·QtQ + p·R) u = diff(divdif)
+  const A = Array.from({ length: mm }, (_, i) => Array.from({ length: mm }, (__, j) => 6 * (1 - p) * QtQ[i][j] + p * R[i][j]));
+  const rhs: number[] = []; for (let i = 0; i < mm; i++) rhs.push(divdif[i + 1] - divdif[i]);
+  const u = solveDense(A, rhs);                                   // length n-2
+  // yi = y − 6(1-p)·diff([0; diff([0;u;0])./dx; 0])  (W = I)
+  const aV = [0, ...u, 0];                                        // length n
+  const bV: number[] = []; for (let i = 0; i < n - 1; i++) bV.push((aV[i + 1] - aV[i]) / dx[i]);
+  const cV = [0, ...bV, 0];                                       // length n+1
+  const yi = y.map((v, i) => v - 6 * (1 - p) * (cV[i + 1] - cV[i]));
+  const c3 = [0, ...u.map((v) => p * v), 0];                      // length n
+  const c2: number[] = []; for (let i = 0; i < n - 1; i++) c2.push((yi[i + 1] - yi[i]) / dx[i] - dx[i] * (2 * c3[i] + c3[i + 1]));
+  const L = n - 1; const C = zeros(L, 4);                         // columns high→low power
+  for (let i = 0; i < L; i++) {
+    C.data[i + 0 * L] = (c3[i + 1] - c3[i]) / dx[i];
+    C.data[i + 1 * L] = 3 * c3[i];
+    C.data[i + 2 * L] = c2[i];
+    C.data[i + 3 * L] = yi[i];
+  }
+  return { pp: makePP(x.slice(), C), p };
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -215,6 +317,87 @@ const SPLINE_BUILTINS: Record<string, Builtin> = {
     const coefs = solveDense(C, y);
     return ret(makeBform(knots, coefs));
   },
+
+  /** v=fnval(f,x) — evaluate a spline (pp-form or B-form) at the points x (shape of x). */
+  fnval: async (a) => {
+    // fnval(x,f) is also allowed: swap so the struct is first.
+    let f = a[0], xv = a[1];
+    if (!isStruct(f) && isStruct(xv)) { const t = f; f = xv; xv = t; }
+    const X = m(xv); const out = zeros(X.rows, X.cols);
+    if (splineForm(f) === 'B-') { const { t, a: co, k } = readBform(f); for (let i = 0; i < X.data.length; i++) out.data[i] = spvalAt(t, co, k, X.data[i]); }
+    else { const pp = readPP(f); for (let i = 0; i < X.data.length; i++) out.data[i] = ppEval(pp, X.data[i]); }
+    return ret(out);
+  },
+
+  /** g=fnder(f[,dorder]) — differentiate a spline dorder times (pp-form or B-form). */
+  fnder: async (a) => {
+    const dorder = a.length >= 2 ? Math.round(asScalar(a[1])) : 1;
+    if (dorder < 0) throw new MatError('fnder: negative differentiation order is not supported (use fnint)');
+    if (splineForm(a[0]) === 'B-') {
+      let { t, a: co, k } = readBform(a[0]);
+      for (let r = 0; r < dorder; r++) ({ t, a: co, k } = bsplineDeriv(t, co, k));
+      return ret(makeBform(t, co));
+    }
+    let pp = readPP(a[0]);
+    for (let r = 0; r < dorder; r++) pp = readPP(ppDer(pp));
+    return ret(makePP(pp.breaks, pp.coefs));
+  },
+
+  /** g=fnint(f[,ifa]) — antiderivative of a spline (pp-form or B-form); ifa = left-end value. */
+  fnint: async (a) => {
+    const ifa = a.length >= 2 ? asScalar(a[1]) : 0;
+    if (splineForm(a[0]) === 'B-') {
+      let { t, a: co, n, k } = readBform(a[0]);
+      // increase multiplicity of the last knot to k (so the spline is order k+1 there)
+      const diffPos: number[] = []; for (let i = 0; i < t.length - 1; i++) if (t[i + 1] > t[i]) diffPos.push(i);
+      const lastInc = diffPos[diffPos.length - 1];
+      const needed = (lastInc + 1) - n;                 // 1-based index(end) − n
+      if (needed > 0) { const tn = t[n + k - 1]; t = [...t, ...new Array<number>(needed).fill(tn)]; co = [...co, ...new Array<number>(needed).fill(0)]; n = n + needed; }
+      // integral coefficients: cumsum of a_j·(t(j+k)−t(j))/k
+      const w = new Array<number>(n); for (let j = 0; j < n; j++) w[j] = co[j] * (t[j + k] - t[j]) / k;
+      if (a.length >= 2) {
+        const firstInc = diffPos[0];
+        const need2 = k - (firstInc + 1);               // raise left-end multiplicity to k+1
+        const lead = new Array<number>(Math.max(need2, 0)).fill(0);
+        const knots = [...new Array<number>(need2 + 1).fill(t[0]), ...t, t[n + k - 1]];
+        const seq = [ifa, ...lead, ...w]; const cs: number[] = []; let s = 0; for (const v of seq) { s += v; cs.push(s); }
+        return ret(makeBform(knots, cs));
+      }
+      const knots = [...t, t[n + k - 1]];
+      const cs: number[] = []; let s = 0; for (const v of w) { s += v; cs.push(s); }
+      return ret(makeBform(knots, cs));
+    }
+    return ret(ppInt(readPP(a[0]), ifa));
+  },
+
+  /** out=fnbrk(f,part) — extract a part of a spline (dispatches pp→ppbrk, B-→spbrk). */
+  fnbrk: async (a, nargout, env) => {
+    if (splineForm(a[0]) === 'B-') return SPLINE_BUILTINS.spbrk(a, nargout, env);
+    const pp = readPP(a[0]);
+    const part = a.length >= 2 ? asString(a[1]).toLowerCase()[0] : '';
+    if (!part) { const outs: Value[] = [rowVec(pp.breaks), pp.coefs, scalar(pp.L), scalar(pp.k), scalar(1)]; return outs.slice(0, Math.max(1, nargout)); }
+    switch (part) {
+      case 'b': return ret(rowVec(pp.breaks));
+      case 'c': return ret(pp.coefs);
+      case 'l': case 'p': return ret(scalar(pp.L));     // 'l' / 'pieces'
+      case 'o': return ret(scalar(pp.k));               // 'order'
+      case 'd': return ret(scalar(1));                  // 'dim'
+      case 'i': return ret(rowVec([pp.breaks[0], pp.breaks[pp.breaks.length - 1]]));
+      case 'f': return ret(str('ppform'));
+      case 'v': return ret(scalar(1));                  // number of variables
+      default: throw new MatError(`fnbrk: unknown part '${asString(a[1])}'`);
+    }
+  },
+
+  /** [v,p]=csaps(x,y[,p]) — cubic smoothing spline (pp-form); p∈[0,1], omitted ⇒ auto. */
+  csaps: async (a, nargout) => {
+    const x = toArray(m(a[0])), y = toArray(m(a[1]));
+    if (x.length !== y.length) throw new MatError('csaps: x and y must have the same length');
+    if (x.length < 2) throw new MatError('csaps: need at least two data points');
+    const p = a.length >= 3 && !(isMat(a[2]) && m(a[2]).data.length === 0) ? asScalar(a[2]) : -1;
+    const r = csapsPP(x, y, p);
+    return nargout >= 2 ? [r.pp, scalar(r.p)] : [r.pp];
+  },
 };
 
 const SPLINE_HELP: Record<string, string> = {
@@ -230,6 +413,11 @@ const SPLINE_HELP: Record<string, string> = {
   aptknt: 'Acceptable knot sequence for interpolation',
   spcol: 'B-spline collocation matrix',
   spapi: 'Spline interpolation, B-form',
+  fnval: 'Evaluate a spline (pp-form or B-form) at given points',
+  fnder: 'Differentiate a spline',
+  fnint: 'Integrate a spline',
+  fnbrk: 'Extract parts of a spline (breaks/coefs/order/pieces/interval)',
+  csaps: 'Cubic smoothing spline',
 };
 
 /** Moving-average smoothing with MATLAB's shrinking-window edge rule (window halves at the ends). */

@@ -4,6 +4,7 @@
 import type { Builtin } from '../builtins';
 import {
   type Value, type Mat, isMat, scalar, colVec, zeros, toArray, asScalar, asString, toMat as m, applyClass,
+  ndSize, makeND,
 } from '../values';
 import type { ToolboxModule } from './types';
 
@@ -125,6 +126,10 @@ export const IMAGES: ToolboxModule = {
       for (let i = 0; i < outR; i++) { out[i] = []; const ur = (i + 1) / sr + 0.5 * (1 - 1 / sr); for (let j = 0; j < outC; j++) out[i][j] = samp(ur, (j + 1) / sc + 0.5 * (1 - 1 / sc)); }
       return ret(fromRows(out));
     },
+    integralImage: (a) => integralImage(a),
+    integralImage3: (a) => integralImage3(a),
+    integralBoxFilter: (a) => integralBoxFilter(a),
+    integralBoxFilter3: (a) => integralBoxFilter3(a),
   },
   help: {
     im2double: 'Convert image to double precision [0,1]', im2uint8: 'Convert image to uint8', im2uint16: 'Convert image to uint16',
@@ -134,6 +139,8 @@ export const IMAGES: ToolboxModule = {
     fspecial: 'Create a predefined 2-D filter kernel', imfilter: 'N-D filtering of images', imgaussfilt: '2-D Gaussian smoothing filtering',
     stretchlim: 'Find limits to contrast-stretch an image', rgb2lin: 'Apply gamma decoding (sRGB to linear)', lin2rgb: 'Apply gamma encoding (linear to sRGB)', imresize: 'Resize an image',
     im2single: 'Convert image to single precision', adaptthresh: 'Adaptive image threshold using local first-order statistics',
+    integralImage: 'Compute upright or rotated integral image', integralImage3: 'Compute 3-D integral image',
+    integralBoxFilter: '2-D box filtering of integral images', integralBoxFilter3: '3-D box filtering of 3-D integral images',
   },
 };
 
@@ -245,4 +252,125 @@ function filter2d(A: number[][], h: number[][], conv: boolean, boundary: number 
   const out: number[][] = [];
   for (let i = 0; i < R; i++) { out[i] = []; for (let j = 0; j < C; j++) { let s = 0; for (let di = 0; di < hr; di++) for (let dj = 0; dj < hc; dj++) s += ker[di][dj] * get(i + di - cy, j + dj - cx); out[i][j] = s; } }
   return out;
+}
+
+// ---- integral images (Image Processing Toolbox) ----
+// Ported from integralImage.m / integralImage3.m / integralBoxFilter.m /
+// integralBoxFilter3.m (R2026a). The actual filtering builtin is compiled, but
+// the semantics are the standard summed-area-table inclusion-exclusion.
+
+/** integralImage(I[,'upright']) — upright summed-area table, zero-padded top & left.
+ *  size(J) = size(I)+1; J(r,c) = sum of I(1:r-1, 1:c-1). Output class is double. */
+function integralImage(a: Value[]): Promise<Value[]> {
+  const I = m(a[0]);
+  const R = I.rows, C = I.cols;
+  const src = toArray(I);                       // honor integer/logical class numerically
+  const oR = R + 1, oC = C + 1;
+  const out = new Float64Array(oR * oC);
+  for (let c = 1; c <= C; c++) {
+    for (let r = 1; r <= R; r++) {
+      // J(r+1,c+1) = I(r,c) + J(r,c+1) + J(r+1,c) - J(r,c)
+      out[r + c * oR] = src[(r - 1) + (c - 1) * R]
+        + out[(r - 1) + c * oR] + out[r + (c - 1) * oR] - out[(r - 1) + (c - 1) * oR];
+    }
+  }
+  return ret({ kind: 'num', rows: oR, cols: oC, data: out } as Mat);
+}
+
+/** integralImage3(I) — 3-D integral image: size(J)=size(I)+1, zero-padded on the
+ *  low side of every dimension; J = cumulative sum of I over all three dims. */
+function integralImage3(a: Value[]): Promise<Value[]> {
+  const I = m(a[0]);
+  const dims = ndSize(I);
+  const R = dims[0] ?? 0, C = dims[1] ?? 1, P = dims[2] ?? 1;
+  const src = toArray(I);
+  const oR = R + 1, oC = C + 1, oP = P + 1;
+  const out = new Float64Array(oR * oC * oP);
+  const sP = oR * oC;                            // page stride of the output
+  for (let k = 1; k <= P; k++) {
+    for (let c = 1; c <= C; c++) {
+      for (let r = 1; r <= R; r++) {
+        const v = src[(r - 1) + (c - 1) * R + (k - 1) * R * C];
+        // 3-D inclusion-exclusion recurrence on the zero-padded table.
+        const i = (i0: number, c0: number, k0: number) => out[i0 + c0 * oR + k0 * sP];
+        out[r + c * oR + k * sP] = v
+          + i(r - 1, c, k) + i(r, c - 1, k) + i(r, c, k - 1)
+          - i(r - 1, c - 1, k) - i(r - 1, c, k - 1) - i(r, c - 1, k - 1)
+          + i(r - 1, c - 1, k - 1);
+      }
+    }
+  }
+  return ret(makeND([oR, oC, oP], out));
+}
+
+/** Parse a 2- or 3-element filter size (scalar => isotropic). */
+function parseFilterSize(v: Value | undefined, ndim: number, def: number): number[] {
+  if (v === undefined || !isMat(v)) return new Array(ndim).fill(def);
+  const d = toArray(m(v));
+  if (d.length === 1) return new Array(ndim).fill(Math.round(d[0]));
+  return d.slice(0, ndim).map((x) => Math.round(x));
+}
+
+/** Read the optional NormalizationFactor name/value (default: 1/prod(filterSize)). */
+function normFactorFrom(a: Value[], start: number, def: number): number {
+  for (let i = start; i + 1 < a.length; i++) {
+    if (isMat(a[i]) && (a[i] as Mat).isChar) {
+      const name = asString(a[i]).toLowerCase();
+      if ('normalizationfactor'.startsWith(name)) return asScalar(a[i + 1]);
+    }
+  }
+  return def;
+}
+
+/** integralBoxFilter(intA[,filterSize][,'NormalizationFactor',v]) — 2-D box filter
+ *  via a summed-area table. Output size = size(intA) - filterSize. */
+function integralBoxFilter(a: Value[]): Promise<Value[]> {
+  const J = m(a[0]);
+  const oR = J.rows, oC = J.cols;
+  const jd = J.data;
+  const fsArg = a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar ? a[1] : undefined;
+  const fs = parseFilterSize(fsArg, 2, 3);
+  const fm = fs[0], fn = fs[1];
+  const norm = normFactorFrom(a, fsArg ? 2 : 1, 1 / (fm * fn));
+  const bR = oR - fm, bC = oC - fn;
+  const out = new Float64Array(bR * bC);
+  for (let c = 0; c < bC; c++) {
+    for (let r = 0; r < bR; r++) {
+      // sum over intA[r..r+fm, c..c+fn] (the SAT corners), then normalize.
+      const s = jd[(r + fm) + (c + fn) * oR] - jd[(r + fm) + c * oR]
+        - jd[r + (c + fn) * oR] + jd[r + c * oR];
+      out[r + c * bR] = s * norm;
+    }
+  }
+  return ret({ kind: 'num', rows: bR, cols: bC, data: out } as Mat);
+}
+
+/** integralBoxFilter3(intA[,filterSize][,'NormalizationFactor',v]) — 3-D box filter
+ *  via a 3-D summed-area table (8-corner inclusion-exclusion). Output size =
+ *  size(intA) - filterSize. Default filterSize=[3 3 3], normFactor=1/prod(fs). */
+function integralBoxFilter3(a: Value[]): Promise<Value[]> {
+  const J = m(a[0]);
+  const dims = ndSize(J);
+  const oR = dims[0] ?? 0, oC = dims[1] ?? 1, oP = dims[2] ?? 1;
+  const jd = J.data;
+  const sP = oR * oC;
+  const fsArg = a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar ? a[1] : undefined;
+  const fs = parseFilterSize(fsArg, 3, 3);
+  const fm = fs[0], fn = fs[1], fp = fs[2];
+  const norm = normFactorFrom(a, fsArg ? 2 : 1, 1 / (fm * fn * fp));
+  const bR = oR - fm, bC = oC - fn, bP = oP - fp;
+  const out = new Float64Array(bR * bC * bP);
+  const obP = bR * bC;
+  const J3 = (r: number, c: number, k: number) => jd[r + c * oR + k * sP];
+  for (let k = 0; k < bP; k++) {
+    for (let c = 0; c < bC; c++) {
+      for (let r = 0; r < bR; r++) {
+        const r1 = r + fm, c1 = c + fn, k1 = k + fp;
+        const s = J3(r1, c1, k1) - J3(r, c1, k1) - J3(r1, c, k1) - J3(r1, c1, k)
+          + J3(r, c, k1) + J3(r, c1, k) + J3(r1, c, k) - J3(r, c, k);
+        out[r + c * bR + k * obP] = s * norm;
+      }
+    }
+  }
+  return ret(makeND([bR, bC, bP], out));
 }

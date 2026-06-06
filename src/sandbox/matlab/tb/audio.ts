@@ -1,5 +1,5 @@
 import type { Builtin } from '../builtins';
-import { type Value, type Mat, toArray, scalar, rowVec, colVec, toMat as m, isMat } from '../values';
+import { type Value, type Mat, toArray, scalar, rowVec, colVec, toMat as m, isMat, asScalar, asString } from '../values';
 import type { ToolboxModule } from './types';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
@@ -127,6 +127,63 @@ function dBov(a: Value[], nargout: number): Promise<Value[]> {
   return ret(mkRow(meanArr));
 }
 
+// mls.m — maximum length sequence (deterministic ±gain LFSR sequence of length 2^n-1).
+//   Ported verbatim from MATLAB R2026a. The only non-obvious part is the *initial*
+//   shift-register state: mls() seeds it from a fresh RandStream('mt19937ar') via
+//   randi(s,[0 1],1,mlsRegWidth). A freshly-default mt19937ar stream is deterministic,
+//   so randi([0 1],1,n) is a fixed prefix of bits — captured here verbatim from
+//   `s=RandStream('mt19937ar'); randi(s,[0 1],1,40)` (R2026a). This makes mls fully
+//   deterministic and reproducible, matching the live oracle bit-for-bit.
+const MLS_REGISTER_PREFIX = '1101100111011010011110111110101000011010'
+  .split('').map((c) => Number(c));   // length 40 (orders 2..40)
+
+// primitive binary polynomial coefficients (W. Stahnke 1973), degrees 2..40.
+const MLS_PRIMPOLY: Record<number, number[]> = {
+  2: [2, 1, 0], 3: [3, 1, 0], 4: [4, 1, 0], 5: [5, 2, 0], 6: [6, 1, 0],
+  7: [7, 1, 0], 8: [8, 6, 5, 1, 0], 9: [9, 4, 0], 10: [10, 3, 0], 11: [11, 2, 0],
+  12: [12, 7, 4, 3, 0], 13: [13, 4, 3, 1, 0], 14: [14, 12, 11, 1, 0], 15: [15, 1, 0],
+  16: [16, 5, 3, 2, 0], 17: [17, 3, 0], 18: [18, 7, 0], 19: [19, 6, 5, 1, 0],
+  20: [20, 3, 0], 21: [21, 2, 0], 22: [22, 1, 0], 23: [23, 5, 0], 24: [24, 4, 3, 1, 0],
+  25: [25, 3, 0], 26: [26, 8, 7, 1, 0], 27: [27, 8, 7, 1, 0], 28: [28, 3, 0],
+  29: [29, 2, 0], 30: [30, 16, 15, 1, 0], 31: [31, 3, 0], 32: [32, 28, 27, 1, 0],
+  33: [33, 13, 0], 34: [34, 15, 14, 1, 0], 35: [35, 2, 0], 36: [36, 11, 0],
+  37: [37, 12, 10, 2, 0], 38: [38, 6, 5, 1, 0], 39: [39, 4, 0], 40: [40, 21, 19, 2, 0],
+};
+
+function mls(a: Value[]): Promise<Value[]> {
+  // arguments: mls(mlsLength=2^15-1, 'ExcitationLevel', -6)
+  let mlsLength = a.length >= 1 && isMat(a[0]) && !(a[0] as Mat).isChar
+    ? Math.round(asScalar(a[0])) : 2 ** 15 - 1;
+  let excitationLevel = -6;
+  for (let i = 1; i + 1 < a.length; i += 2) {
+    const key = asString(a[i]).toLowerCase();
+    if ('excitationlevel'.startsWith(key)) excitationLevel = asScalar(a[i + 1]);
+  }
+  // mlsRegWidth = ceil(log2(mlsLength+1)); resulting length = 2^width - 1.
+  const mlsRegWidth = Math.ceil(Math.log2(mlsLength + 1));
+  mlsLength = 2 ** mlsRegWidth - 1;
+  const register = MLS_REGISTER_PREFIX.slice(0, mlsRegWidth);
+  const primPoly = MLS_PRIMPOLY[mlsRegWidth];
+  // db2mag(x) = 10^(x/20)
+  const dbLevel = Math.pow(10, excitationLevel / 20);
+  const exc = new Float64Array(mlsLength);
+  let regIdx = 0; // 0-based (MATLAB regIdx-1)
+  for (let idx = 0; idx < mlsLength; idx++) {
+    let feedbackBit = register[regIdx];
+    for (let jdx = primPoly.length - 2; jdx >= 1; jdx--) {
+      const tapIdx = mlsRegWidth - primPoly[jdx];
+      // MATLAB: regPos = mod(regIdx-tapIdx-1, mlsRegWidth)+1 (1-based);
+      // here regIdx is already 0-based, so regPos0 = mod(regIdx-tapIdx, width).
+      const regPos = (((regIdx - tapIdx) % mlsRegWidth) + mlsRegWidth) % mlsRegWidth;
+      feedbackBit = (feedbackBit + register[regPos]) % 2; // xor
+    }
+    register[regIdx] = feedbackBit;
+    regIdx = regIdx < mlsRegWidth - 1 ? regIdx + 1 : 0;
+    exc[idx] = dbLevel * (-2 * feedbackBit + 1);
+  }
+  return ret({ kind: 'num', rows: mlsLength, cols: 1, data: exc } as Mat);
+}
+
 export const AUDIO: ToolboxModule = {
   id: 'audio',
   name: 'Audio Toolbox',
@@ -143,6 +200,7 @@ export const AUDIO: ToolboxModule = {
     sone2phon: (a) => elementwise(a, sone2phonScalar),
     octavebw2bw: (a) => octavebw2bw(a),
     bw2octavebw: (a, nargout) => bw2octavebw(a, nargout),
+    mls: (a) => mls(a),
   },
   help: {
     hz2bark: 'Convert frequency from hertz to bark scale',
@@ -156,5 +214,6 @@ export const AUDIO: ToolboxModule = {
     sone2phon: 'Convert loudness in sones to loudness levels in phons',
     octavebw2bw: 'Convert octave bandwidth to normalized (analog cutoff) bandwidth',
     bw2octavebw: 'Convert normalized bandwidth to octave bandwidth',
+    mls: 'Generate maximum length sequence',
   },
 };

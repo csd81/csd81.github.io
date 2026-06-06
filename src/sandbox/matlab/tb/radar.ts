@@ -26,7 +26,7 @@
 // defaults (RCS=1, Ts=290 K, Gain=20 dB, Loss=0, CustomFactor=0, AtmosphericLoss=0,
 // PropagationFactor=0) since those are the only ones we can validate exactly closed-form.
 
-import { type Value, type Mat, scalar, asScalar, toMat as m } from '../values';
+import { type Value, type Mat, scalar, asScalar, asString, isObject, makeObject, str, toMat as m } from '../values';
 import type { ToolboxModule } from './types';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
@@ -213,6 +213,167 @@ function steervec(args: Value[]): Promise<Value[]> {
   return ret(out);
 }
 
+// ── sarbeamcompratio(r,lambda,synlen,wa[,'AzimuthBroadening',azb][,'ConeAngle',dcang]) ──
+// SAR beam compression ratio. r is J×1 (column), lambda 1×K (row) ⇒ output J×K:
+//   bcr = (wa*2*synlen*sind(dcang)) ./ ((r*lambda)*azb)
+// Defaults: AzimuthBroadening azb=1, ConeAngle dcang=90 (sind(90)=1).
+function sarbeamcompratio(a: Value[]): Promise<Value[]> {
+  const rM = m(a[0], 'R'), lamM = m(a[1], 'LAMBDA');
+  const synlen = num(a[2], 'SYNLEN'), wa = num(a[3], 'WA');
+  let azb = 1, dcang = 90;
+  for (let i = 4; i + 1 < a.length; i += 2) {
+    const key = asString(a[i]).toLowerCase();
+    if (key === 'azimuthbroadening') azb = num(a[i + 1], 'AzimuthBroadening');
+    else if (key === 'coneangle') dcang = num(a[i + 1], 'ConeAngle');
+  }
+  const r = Array.from(rM.data);             // J entries (vector, any orientation → column)
+  const lambda = Array.from(lamM.data);      // K entries (→ row)
+  const J = r.length, K = lambda.length;
+  const sind = Math.sin((dcang * Math.PI) / 180);
+  const numer = wa * 2 * synlen * sind;
+  const out = new Float64Array(J * K);       // J×K, column-major
+  for (let k = 0; k < K; k++) {
+    for (let j = 0; j < J; j++) {
+      out[j + k * J] = numer / (r[j] * lambda[k] * azb);
+    }
+  }
+  return ret({ kind: 'num', rows: J, cols: K, data: out });
+}
+
+// ── bistaticSurfaceReflectivityLand — normalized bistatic land reflectivity (NRCS) ──
+// Documented default model: in-plane = Domville (Rural/Forest/Urban), out-of-plane =
+// 'RuralInterpolation' (outOfPlaneRural, the experimentally verified Leonardo model).
+// Faithful port of MATLAB R2026a +radar/+internal/+clutter/+bistaticLandReflectivity.
+//
+// Constructor returns a ClassV; calling step(h,angIn,angScat,angAz,freq) computes a Q×R matrix.
+// angIn,angScat: grazing angles 0..90 (deg); angAz: -180..180 (deg); freq: 1×R (only sets R).
+
+// griddedInterpolant(x,v,'linear','nearest'): linear interpolation, nearest-value extrapolation.
+function gridInterp(x: number[], v: number[], q: number): number {
+  const n = x.length;
+  if (q <= x[0]) return v[0];
+  if (q >= x[n - 1]) return v[n - 1];
+  let i = 1;
+  while (i < n && x[i] < q) i++;
+  const x0 = x[i - 1], x1 = x[i], v0 = v[i - 1], v1 = v[i];
+  return v0 + ((v1 - v0) * (q - x0)) / (x1 - x0);
+}
+
+const D2P = (x: number) => 10 ** (x / 10);
+const seq = (lo: number, step: number, hi: number) => {
+  const out: number[] = [];
+  for (let x = lo; x <= hi + 1e-9; x += step) out.push(x);
+  return out;
+};
+
+// Domville in-plane NRCS (linear m^2/m^2). angIn 0..90; theta (in-plane scatter) 0..180.
+function domvilleRural(angIn: number, theta: number): number {
+  const xL = [0, 10, 20, 30, 40, 50, 60, 65, 75, 82, 90, 110];
+  const vL = [-6, -7, -8, -10, -13, -17, -17.5, -18, -18.5, -19, -20, -28].map(D2P);
+  const xR = [0, 10, 20, 30, 40, 50, 60, 70, 85].map((x) => x / Math.SQRT2);
+  const vR = [-6, -7, -8, -10, -13, -17, -18, -18.5, -19].map(D2P);
+  let nrcs: number;
+  if (theta < 90) nrcs = gridInterp(xL, vL, Math.hypot(90 - angIn, 90 - theta));
+  else nrcs = gridInterp(xR, vR, Math.abs(angIn + theta - 180) / Math.SQRT2);
+  // Forward-scattering triangular overrides (quantized constant-NRCS regions).
+  if (theta > 143 && angIn > -1.7391 * theta + 286.95 && angIn < -0.5263 * theta + 114.66) nrcs = D2P(-6);
+  if (theta > 150 && angIn > -1.5 * theta + 255 && angIn < -0.7 * theta + 135) nrcs = 2;
+  if (theta > 160 && angIn > -1.67 * theta + 286.67 && angIn < -0.6 * theta + 116) nrcs = 3;
+  if (theta > 168 && angIn < -0.96 * theta + 175 && angIn > -1.555 * theta + 275.333) nrcs = 4;
+  return nrcs;
+}
+function domvilleUrban(angIn: number, theta: number): number {
+  const xL = [0, 10, 18, 29, 38, 62, 82, 103, 119];
+  const vL = [3.1623e-8, 3.1623e-8, 0.5, 0.25, 0.1, 0.05, 0.025, 0.175, 0.015];
+  const xR = [0, 10, 18, 29, 38, 62, 82].map((x) => x / Math.SQRT2);
+  const vR = [3.1623e-8, 3.1623e-8, 0.5, 0.25, 0.1, 0.05, 0.025];
+  let nrcs: number;
+  if (theta < 90) nrcs = gridInterp(xL, vL, Math.hypot(90 - angIn, 90 - theta));
+  else nrcs = gridInterp(xR, vR, Math.abs(angIn + theta - 180) / Math.SQRT2);
+  if (theta > 143 && angIn > -1.379 * theta + 233.103 && angIn < -0.775 * theta + 148.5) nrcs = 1;
+  if (theta > 150 && angIn > -1.909 * theta + 326.455 && angIn < -0.7 * theta + 133) nrcs = 5;
+  return nrcs;
+}
+// 2D bilinear interpolant (nearest-value extrapolation) on grid g1×g2, values vt[i][j]=f(g1[i],g2[j]).
+function gridInterp2(g1: number[], g2: number[], vt: number[][], q1: number, q2: number): number {
+  const clamp = (x: number, ax: number[]) => Math.min(Math.max(x, ax[0]), ax[ax.length - 1]);
+  q1 = clamp(q1, g1); q2 = clamp(q2, g2);
+  let i = 1; while (i < g1.length && g1[i] < q1) i++;
+  let j = 1; while (j < g2.length && g2[j] < q2) j++;
+  const x0 = g1[i - 1], x1 = g1[i], y0 = g2[j - 1], y1 = g2[j];
+  const tx = x1 === x0 ? 0 : (q1 - x0) / (x1 - x0);
+  const ty = y1 === y0 ? 0 : (q2 - y0) / (y1 - y0);
+  const f00 = vt[i - 1][j - 1], f10 = vt[i][j - 1], f01 = vt[i - 1][j], f11 = vt[i][j];
+  return f00 * (1 - tx) * (1 - ty) + f10 * tx * (1 - ty) + f01 * (1 - tx) * ty + f11 * tx * ty;
+}
+function domvilleForest(angIn: number, theta: number): number {
+  const av = [-13, -13, -14, -15, -16, -17, -18, -19, -20, -21, -22, -23, -24, -25, -26].map(D2P);
+  // x = [0:10:90, 90+cumsum([7.5 6.25 5 7.5 6.25])]
+  const cum = [7.5, 6.25, 5, 7.5, 6.25].reduce<number[]>((acc, d) => { acc.push((acc.length ? acc[acc.length - 1] : 0) + d); return acc; }, []);
+  const ax = [...seq(0, 10, 90), ...cum.map((c) => 90 + c)];
+  const fwdIdx = theta > 152 && angIn < 28;
+  if (!fwdIdx) return gridInterp(ax, av, Math.hypot(90 - angIn, 90 - theta));
+  // TopCorner: griddedInterpolant({150:5:180, 0:5:30}, V'); call (theta, angIn).
+  const V = [
+    [-22.5, -22, -19, -14, -10, -10, -10],
+    [-22, -21, -19, -14, -10, -10, -10],
+    [-22, -20, -19, -14, -11, -11, -11],
+    [-21.5, -20, -19, -16, -16, -16, -16],
+    [-21.5, -21, -20, -20, -20, -20, -20],
+    [-20, -20, -20.5, -21, -21, -22, -21],
+    [-20.5, -20, -21.5, -22, -22, -22.5, -22.5],
+  ].map((row) => row.map(D2P));      // V is 7×7 (rows=angAz-grid? indexes [angScat-row][angIn-col])
+  const g1 = seq(150, 5, 180), g2 = seq(0, 5, 30);   // axes of V' : g1=theta, g2=angIn
+  // V' transposes: Vt[i][j] = V[j][i], with i over g1 (theta), j over g2 (angIn).
+  const Vt: number[][] = g1.map((_, i) => g2.map((__, j) => V[j][i]));
+  return gridInterp2(g1, g2, Vt, theta, angIn);
+}
+
+// outOfPlaneRural: combine forward/back in-plane NRCS, azimuth weighting + gain (Leonardo, X-band).
+function outOfPlaneRural(inPlane: (ai: number, th: number) => number, angIn: number, angScat: number, angAz: number): number {
+  const az = Math.abs(angAz);
+  const nf = inPlane(angIn, 180 - angScat);    // forward scattering
+  const nb = inPlane(angIn, angScat);          // back scattering
+  const fVal = Math.exp(-((az / 20) ** 2));    // fInterp, dPhi=20 (rural, Leonardo)
+  const a = nf * fVal + nb * (1 - fVal);
+  // gFunc(angAz) in dB: gamma0=-5, gammaf=gammab=5, wf=15, wb=45.
+  const g = -5 + (5 * 15 * 15) / (az * az + 15 * 15) + (5 * 45 * 45) / ((az - 180) ** 2 + 45 * 45);
+  return D2P(g) * a;
+}
+
+function bistaticLandCtor(a: Value[]): Promise<Value[]> {
+  let inPlaneModel = 'Domville', outOfPlaneModel = 'RuralInterpolation', landType = 'Rural';
+  for (let i = 0; i + 1 < a.length; i += 2) {
+    const key = asString(a[i]).toLowerCase();
+    if (key === 'inplanemodel') inPlaneModel = asString(a[i + 1]);
+    else if (key === 'outofplanemodel') outOfPlaneModel = asString(a[i + 1]);
+    else if (key === 'inplanelandtype') landType = asString(a[i + 1]);
+  }
+  return ret(makeObject('bistaticSurfaceReflectivityLand', {
+    InPlaneModel: str(inPlaneModel),
+    OutOfPlaneModel: str(outOfPlaneModel),
+    InPlaneLandType: str(landType),
+  }));
+}
+
+function bistaticLandStep(a: Value[]): Promise<Value[]> {
+  const obj = a[0];
+  if (!isObject(obj)) throw new Error('step: expected a bistaticSurfaceReflectivityLand object.');
+  const landType = asString(obj.props.get('InPlaneLandType') ?? str('Rural')).toLowerCase();
+  const inPlane = landType === 'urban' ? domvilleUrban : landType === 'forest' ? domvilleForest : domvilleRural;
+  const angInM = m(a[1], 'ANGIN'), angScatM = m(a[2], 'ANGSCAT'), angAzM = m(a[3], 'ANGAZ');
+  const freqM = a[4] != null ? m(a[4], 'FREQ') : scalar(1);
+  const ai = Array.from(angInM.data), asc = Array.from(angScatM.data), aaz = Array.from(angAzM.data);
+  const Q = Math.max(ai.length, asc.length, aaz.length);
+  const R = freqM.data.length;
+  const at = (arr: number[], q: number) => (arr.length === 1 ? arr[0] : arr[q]);
+  const col = new Float64Array(Q);
+  for (let q = 0; q < Q; q++) col[q] = outOfPlaneRural(inPlane, at(ai, q), at(asc, q), at(aaz, q));
+  const out = new Float64Array(Q * R);          // Q×R, column-major (replicated across freq columns)
+  for (let r = 0; r < R; r++) for (let q = 0; q < Q; q++) out[q + r * Q] = col[q];
+  return ret({ kind: 'num', rows: Q, cols: R, data: out });
+}
+
 export const RADAR: ToolboxModule = {
   id: 'radar',
   name: 'Radar Toolbox',
@@ -232,6 +393,11 @@ export const RADAR: ToolboxModule = {
     sarnoiserefl,
     mtifactor,
     steervec,
+    sarbeamcompratio,
+    bistaticSurfaceReflectivityLand: bistaticLandCtor,
+  },
+  methods: {
+    bistaticSurfaceReflectivityLand: { step: bistaticLandStep },
   },
   help: {
     dop2speed: 'dop2speed(dp,lambda): convert Doppler shift (Hz) to radial speed (m/s) = dp*lambda.',
@@ -247,5 +413,7 @@ export const RADAR: ToolboxModule = {
     sarnoiserefl: 'sarnoiserefl(freq,freqref,imgsnr,sigmaref[,n]): SAR noise-equivalent reflectivity (dB) = pow2db(sigmaref*(freq/freqref)^n/db2pow(imgsnr)).',
     mtifactor: 'mtifactor(M,freq,prf): MTI improvement factor (dB) for an (M-1)-delay canceler (coherent, sigmaV=2, v0=0 defaults).',
     steervec: 'steervec(pos,ang): array steering vector exp(1i*2*pi*pos·u) for sensor positions (in wavelengths) and az/el angles (deg).',
+    sarbeamcompratio: 'sarbeamcompratio(r,lambda,synlen,wa[,Name,Value]): SAR beam compression ratio (wa*2*synlen*sind(dcang))/((r*lambda)*azb); Name/Value AzimuthBroadening (azb, default 1), ConeAngle (dcang deg, default 90).',
+    bistaticSurfaceReflectivityLand: 'bistaticSurfaceReflectivityLand([Name,Value]): normalized bistatic land reflectivity (NRCS) System object. Domville in-plane model (InPlaneLandType Rural/Forest/Urban) + RuralInterpolation out-of-plane model. Call step(h,angIn,angScat,angAz,freq) → Q×R NRCS (m^2/m^2).',
   },
 };

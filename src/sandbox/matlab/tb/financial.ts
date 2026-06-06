@@ -286,6 +286,289 @@ function tbillyield2discImpl(args: Value[]): Value {
   return out.length === 1 ? scalar(out[0]) : colVec(out);
 }
 
+// ── Bond accrued-interest machinery (acrubond) ──────────────────────────────────────
+// Faithful port of the Financial Toolbox coupon-date chain used by acrubond:
+//   acrubond → cfamounts → accrfrac → accrfraci → {cpndatepi, cpnperszi(cpndatepqi,
+//   cpndatenqi), cfdatesi(cpndateni)} → dateoffset.
+// Covers the regular-coupon-period path (all bases, via the cpnperszi denominators) and
+// the long-first-coupon path for actual/actual basis 0/8 (FirstCouponDate > Settle).
+
+/** serial datenum from (year, month, day); month/day may overflow (mirrors datenum). */
+function datenum(y: number, mo: number, d: number): number {
+  // normalize month overflow the way MATLAB datenum does
+  const yy = y + Math.floor((mo - 1) / 12);
+  const mm = ((mo - 1) % 12 + 12) % 12; // 0-based
+  return Math.round(Date.UTC(yy, mm, d) / DAY_MS) + EPOCH;
+}
+
+const isLeap = (y: number) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+function eomday(y: number, m: number): number {
+  return [31, isLeap(y) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1];
+}
+const isISMABasis = (b: number) => b === 8 || b === 9 || b === 10 || b === 11;
+
+// dateoffset day-lookup tables for late-in-month reference days (28/29/30/31).
+// Rows indexed by CpnMonth (1..12, 13=Feb leap); columns by RefDay (28,29,30,31).
+// Two distinct tables: EOM-on (rule index 1) and EOM-off (rule index 5). All bases map
+// to one of these via the EOM flag. Faithful copy of daytablegen in dateoffset.m.
+const DAYTABLE_EOM_ON: number[][] = [
+  [28, 29, 30, 31], [28, 28, 28, 28], [28, 29, 30, 31], [28, 29, 30, 30],
+  [28, 29, 30, 31], [28, 29, 30, 30], [28, 29, 30, 31], [28, 29, 30, 31],
+  [28, 29, 30, 30], [28, 29, 30, 31], [28, 29, 30, 30], [28, 29, 30, 31],
+  [28, 29, 29, 29],
+];
+const DAYTABLE_EOM_OFF: number[][] = [
+  [28, 29, 30, 31], [28, 28, 28, 28], [28, 29, 30, 31], [28, 29, 30, 30],
+  [28, 29, 30, 31], [28, 29, 30, 30], [28, 29, 30, 31], [28, 29, 30, 31],
+  [28, 29, 30, 30], [28, 29, 30, 31], [28, 29, 30, 30], [28, 29, 30, 31],
+  [28, 29, 29, 29],
+];
+// Note: for the rules/bases acrubond exercises (Rule ∈ {0 EOM-on, 4 EOM-off},
+// actual/actual), the EOM-on and EOM-off tables are identical except in February;
+// Feb cases are resolved before the table lookup via the leap-year row remapping below,
+// so a single shared table suffices for the supported scope. We keep both for clarity.
+
+/** dateoffset: date offset from (refDay,refMonth,refYear) by monthOffset months.
+ *  rule: 0=act/act EOM-on (default), 4=act/act EOM-off. Returns [day,month,year]. */
+function dateoffset(refDay: number, refMonth: number, refYear: number, monthOffset: number, rule: number): [number, number, number] {
+  let cpnMonth = ((refMonth + monthOffset - 1) % 12);
+  cpnMonth = ((cpnMonth % 12) + 12) % 12 + 1;
+  const cpnYear = refYear + Math.floor((refMonth + monthOffset - 1) / 12);
+  let cpnDay = refDay;
+  if (cpnDay >= 28) {
+    let lookCpnMonth = cpnMonth;
+    if (cpnMonth === 2 && isLeap(cpnYear)) lookCpnMonth = 13;
+    const table = (rule === 0 || rule === 1 || rule === 2 || rule === 3) ? DAYTABLE_EOM_ON : DAYTABLE_EOM_OFF;
+    // RefDay index: 28→0,29→1,30→2,31→3. Row = coupon month (1..13). Late-month day
+    // resolution depends on the coupon month's length + leap flag (the row captures it).
+    const dayIdx = refDay - 28;
+    const v = table[lookCpnMonth - 1]?.[dayIdx];
+    if (v != null && !Number.isNaN(v)) cpnDay = v;
+    else cpnDay = eomday(cpnYear, cpnMonth);
+  }
+  return [cpnDay, cpnMonth, cpnYear];
+}
+
+function ruleFromEMR(emr: number): number { return emr === 0 ? 4 : 0; }
+
+/** referenceDate precedence: FirstCouponDate > LastCouponDate > Maturity. */
+function refDate(maturity: number, fcd: number, lcd: number): number {
+  if (!Number.isNaN(fcd)) return fcd;
+  if (!Number.isNaN(lcd)) return lcd;
+  return maturity;
+}
+
+/** Previous quasi-coupon date (cpndatepqi). */
+function cpndatepq(settle: number, maturity: number, period: number, emr: number, fcd: number, lcd: number): number {
+  const ref = refDate(maturity, fcd, lcd);
+  const rule = ruleFromEMR(emr);
+  const [ryr, rmo, rdy] = ymd(ref);
+  const [syr, smo] = ymd(settle);
+  let offsetMonths = 12 * (syr - ryr) + (smo - rmo);
+  offsetMonths = Math.floor(offsetMonths * period / 12) * 12 / period;
+  let [cd, cmo, cyr] = dateoffset(rdy, rmo, ryr, offsetMonths, rule);
+  let prev = datenum(cyr, cmo, cd);
+  if (prev > settle) {
+    offsetMonths -= 12 / period;
+    [cd, cmo, cyr] = dateoffset(rdy, rmo, ryr, offsetMonths, rule);
+    prev = datenum(cyr, cmo, cd);
+  }
+  return prev;
+}
+
+/** Next quasi-coupon date (cpndatenqi). */
+function cpndatenq(settle: number, maturity: number, period: number, emr: number, fcd: number, lcd: number): number {
+  const ref = refDate(maturity, fcd, lcd);
+  const rule = ruleFromEMR(emr);
+  const [ryr, rmo, rdy] = ymd(ref);
+  const [syr, smo] = ymd(settle);
+  let offsetMonths = 12 * (syr - ryr) + (smo - rmo);
+  offsetMonths = Math.ceil(offsetMonths * period / 12) * 12 / period;
+  let [cd, cmo, cyr] = dateoffset(rdy, rmo, ryr, offsetMonths, rule);
+  let next = datenum(cyr, cmo, cd);
+  if (next <= settle) {
+    offsetMonths += 12 / period;
+    [cd, cmo, cyr] = dateoffset(rdy, rmo, ryr, offsetMonths, rule);
+    next = datenum(cyr, cmo, cd);
+  }
+  return next;
+}
+
+/** Previous *actual* coupon date (cpndatepi): quasi date clamped to issue/first/last. */
+function cpndatep(settle: number, maturity: number, period: number, emr: number, issue: number, fcd: number, lcd: number): number {
+  let prev = cpndatepq(settle, maturity, period, emr, fcd, lcd);
+  if (!Number.isNaN(issue) && prev < issue) prev = issue;
+  if (!Number.isNaN(fcd) && settle < fcd) prev = !Number.isNaN(issue) ? issue : cpndatepq(settle, maturity, period, emr, fcd, lcd);
+  if (!Number.isNaN(fcd) && !Number.isNaN(lcd) && settle >= fcd && settle < lcd) prev = cpndatepq(settle, maturity, period, emr, fcd, lcd);
+  if (!Number.isNaN(lcd) && settle >= lcd) prev = lcd;
+  return prev;
+}
+
+/** Next *actual* coupon date (cpndateni). */
+function cpndaten(settle: number, maturity: number, period: number, emr: number, fcd: number, lcd: number): number {
+  const ref = refDate(maturity, fcd, lcd);
+  const rule = ruleFromEMR(emr);
+  const [ryr, rmo, rdy] = ymd(ref);
+  const [syr, smo] = ymd(settle);
+  let offsetMonths = 12 * (syr - ryr) + (smo - rmo);
+  offsetMonths = Math.ceil(offsetMonths * period / 12) * 12 / period;
+  let [cd, cmo, cyr] = dateoffset(rdy, rmo, ryr, offsetMonths, rule);
+  let next = datenum(cyr, cmo, cd);
+  if (next <= settle && next < maturity) {
+    offsetMonths += 12 / period;
+    [cd, cmo, cyr] = dateoffset(rdy, rmo, ryr, offsetMonths, rule);
+    next = datenum(cyr, cmo, cd);
+  }
+  if (!Number.isNaN(fcd) && settle < fcd) next = fcd;
+  if (!Number.isNaN(lcd) && settle >= lcd) next = maturity;
+  if (next > maturity) next = maturity;
+  return next;
+}
+
+/** Number of (actual) days in the coupon period containing settlement (cpnperszi). */
+function cpnpersz(settle: number, maturity: number, period: number, basis: number, emr: number, fcd: number, lcd: number): number {
+  const prev = cpndatepq(settle, maturity, period, emr, fcd, lcd);
+  const next = cpndatenq(settle, maturity, period, emr, fcd, lcd);
+  let n = Math.round(next - prev); // daysact
+  if (basis === 1 || basis === 2 || basis === 4 || basis === 5 || basis === 6 || basis === 9 || basis === 11) n = 360 / period;
+  else if (basis === 3 || basis === 7 || basis === 10) n = 365 / period;
+  else if (basis === 13) n = days252busOne(prev, next);
+  return n;
+}
+
+/** datemnth(StartDate, NumberMonths, DayFlag=0, Basis, EndMonthRule). */
+function datemnth(start: number, numberMonths: number, dayFlag: number, basis: number, emr: number): number {
+  const n = Math.round(numberMonths);
+  const [yr0, mo0, sd] = ymd(start);
+  let endDay = sd;
+  const lastActStart = eomday(yr0, mo0);
+  const juxt = (mo0 + n - 1) % 12;
+  const yr = yr0 + Math.floor((mo0 + n - 1) / 12);
+  const mo = ((juxt % 12) + 12) % 12 + 1;
+  let lastActDay = eomday(yr, mo);
+  if (mo === 2 && lastActDay > 28 && (basis === 3 || basis === 10)) lastActDay = 28;
+  if (endDay > lastActDay) endDay = lastActDay;
+  if (mo === 2 && endDay > 28 && (basis === 3 || basis === 10)) endDay = 28;
+  if (dayFlag === 1) endDay = 1;
+  if (dayFlag === 2) endDay = lastActDay;
+  if ((basis === 1 || basis === 4 || basis === 5 || basis === 6 || basis === 11) && basis === 1 && endDay > 30) endDay = 30;
+  if (emr && sd === lastActStart) endDay = lastActDay;
+  return datenum(yr, mo, endDay);
+}
+
+/** Cash-flow dates (cfdatesi) — only what accrfraci's long-first path needs (sorted, NaN-trimmed). */
+function cfdates(settle: number, maturity: number, period: number, emr: number, fcd: number, lcd: number): number[] {
+  const ref = refDate(maturity, fcd, lcd);
+  const rule = ruleFromEMR(emr);
+  const ncd = cpndaten(settle, maturity, period, emr, fcd, lcd);
+  const [ncy, ncm] = ymd(ncd);
+  const [ry, rm, rd] = ymd(ref);
+  const [my, mm] = ymd(maturity);
+  const offsetMonths1 = 12 * (ncy - ry) + (ncm - rm);
+  const offsetMonths2 = 12 * (my - ry) + (mm - rm);
+  const lo = Math.floor(offsetMonths1 * period / 12) - 1;
+  const hi = Math.ceil(offsetMonths2 * period / 12) + 1;
+  const dates: number[] = [];
+  for (let k = lo; k <= hi; k++) {
+    const delta = (12 / period) * k;
+    const [cd, cmo, cyr] = dateoffset(rd, rm, ry, delta, rule);
+    let dn = datenum(cyr, cmo, cd);
+    if (!Number.isNaN(fcd) && dn < fcd) dn = fcd;
+    if (dn > maturity) dn = maturity;
+    if (!Number.isNaN(lcd) && dn > lcd && dn < maturity) dn = lcd;
+    if (dn <= settle && dn !== maturity) continue; // flagged NaN
+    dates.push(dn);
+  }
+  // unique + ascending (matches MATLAB unique behaviour, NaN trimmed already)
+  return Array.from(new Set(dates)).sort((a, b) => a - b);
+}
+
+/** accrfraci core: fraction of coupon period accrued at settlement. */
+function accrfraci(settle: number, maturity: number, period: number, basis: number, emr: number, issue: number, fcd: number, lcd: number): number {
+  let per = period;
+  if (per === 0) per = isISMABasis(basis) ? 1 : 2;
+
+  const prev = cpndatep(settle, maturity, per, emr, issue, fcd, lcd);
+  const daysLast = daysdifOne(prev, settle, basis);
+  const daysPeriod = cpnpersz(settle, maturity, per, basis, emr, fcd, lcd);
+  let frac = daysPeriod !== 0 ? daysLast / daysPeriod : 0;
+
+  // Long first coupon period (actual/actual basis 0 or 8, FirstCouponDate > Settle).
+  if (!Number.isNaN(issue) && !Number.isNaN(fcd) && fcd > settle && (basis === 0 || basis === 8)) {
+    const prevIssue = datemnth(issue, -12, 0, basis, emr);
+    const cf = cfdates(prevIssue, maturity, per, emr, NaN, fcd);
+    const wholePeriods = cf.filter((d) => d >= issue && d <= settle).length - 1;
+
+    // Accrued portion of the quasi-coupon period containing the issue date.
+    const aftIssue = cf.find((d) => d >= issue);
+    const befIssue = [...cf].reverse().find((d) => d < issue);
+    let issueFrac = 0;
+    if (befIssue != null && aftIssue != null) {
+      const i2a = daysdifOne(issue, aftIssue, basis);
+      const p2a = daysdifOne(befIssue, aftIssue, basis);
+      issueFrac = i2a / p2a;
+    }
+    // Accrued portion of the quasi-coupon period containing settlement.
+    const aftSet = cf.find((d) => d > settle);
+    const befSet = [...cf].reverse().find((d) => d <= settle);
+    const prev2settle = daysdifOne(befSet!, settle, basis);
+    const prev2first = daysdifOne(befSet!, aftSet!, basis);
+    const settleFrac = prev2settle / prev2first;
+
+    frac = issueFrac + wholePeriods + settleFrac;
+  }
+
+  if (period === 0) frac = 0; // zero-coupon bond
+  return frac;
+}
+
+// acrubond — accrued interest of a security with periodic interest payments.
+// acrubond(IssueDate, Settle, FirstCouponDate, Face, CouponRate[, Period][, Basis]).
+// Returns |first cash-flow accrued| = Face * CouponRate/Period * accruedFraction.
+function acrubondOne(issue: number, settle: number, fcd: number, face: number, cpn: number, period: number, basis: number): number {
+  // Maturity used by cfamounts: datemnth(max(fcd,settle), 12). EndMonthRule default = 1.
+  const emr = 1;
+  const maturity = datemnth(Math.max(fcd, settle), 12, 0, basis, emr);
+  const frac = accrfraci(settle, maturity, period, basis, emr, issue, fcd, NaN);
+  return Math.abs(face * (cpn / period) * frac);
+}
+
+function acrubondImpl(args: Value[]): Value {
+  if (args.length < 5) throw new MatError('acrubond: requires IssueDate, Settle, FirstCouponDate, Face, CouponRate');
+  const id = asSerials(args[0], 'acrubond');
+  const sd = asSerials(args[1], 'acrubond');
+  const fd = asSerials(args[2], 'acrubond');
+  const rv = toArray(m(args[3]));
+  const cpn = toArray(m(args[4]));
+  const per = args[5] != null ? toArray(m(args[5])) : [2];
+  const basis = args[6] != null ? toArray(m(args[6])) : [0];
+  const n = Math.max(id.length, sd.length, fd.length, rv.length, cpn.length, per.length, basis.length);
+  const pick = (cc: number[], i: number) => cc[cc.length === 1 ? 0 : i];
+  const out: number[] = [];
+  for (let i = 0; i < n; i++) {
+    out.push(acrubondOne(pick(id, i), pick(sd, i), pick(fd, i), pick(rv, i), pick(cpn, i), Math.round(pick(per, i)), Math.round(pick(basis, i))));
+  }
+  return out.length === 1 ? scalar(out[0]) : colVec(out);
+}
+
+// prcroc — Price Rate-Of-Change technical indicator (faithful port of prcroc.m).
+// PriceChangeRate(k) = (P(k) - P(k-N+1)) / P(k-N+1) * 100, NaN-padded for the first N-1.
+function prcrocImpl(args: Value[]): Value {
+  if (args.length < 1) throw new MatError('prcroc: requires Data');
+  const close = toArray(m(args[0]));
+  const numObs = close.length;
+  const numPeriods = args[1] != null ? Math.round(asScalar(args[1])) : 12;
+  if (numPeriods < 1) throw new MatError('prcroc: NumPeriods must be a positive integer');
+  if (numPeriods > numObs) throw new MatError('prcroc: NumPeriods must be <= number of observations');
+  const out: number[] = [];
+  for (let i = 0; i < numPeriods - 1; i++) out.push(NaN);
+  for (let k = numPeriods - 1; k < numObs; k++) {
+    const base = close[k - (numPeriods - 1)];
+    out.push((close[k] - base) / base * 100);
+  }
+  return colVec(out);
+}
+
 // abs2active / active2abs — portfolio constraint conversions between absolute and active
 // (index-relative) weight formats. ConSet = [A b], NCONSTRAINTS x (NASSETS+1). Faithful port:
 // abs→active sets b' = b - A*Index, active→abs sets b' = b + A*Index. A is left unchanged.
@@ -367,6 +650,8 @@ export const FINANCIAL: ToolboxModule = {
     // ── more cashflow / fixed-income ──
     payadv: (a) => ret(payadvImpl(a)),
     tbillyield2disc: (a) => ret(tbillyield2discImpl(a)),
+    acrubond: (a) => ret(acrubondImpl(a)),
+    prcroc: (a) => ret(prcrocImpl(a)),
 
     // ── portfolio constraint conversions ──
     abs2active: (a) => ret(convertConSet(a[0], a[1], 'abs2active', -1)),
@@ -384,6 +669,8 @@ export const FINANCIAL: ToolboxModule = {
     days252bus: 'Number of business days between dates',
     payadv: 'Periodic payment given number of advance payments',
     tbillyield2disc: 'Discount rates of T-bills from yields',
+    acrubond: 'Accrued interest of a bond with periodic interest payments',
+    prcroc: 'Price rate-of-change technical indicator',
     abs2active: 'Convert constraints from absolute to active format',
     active2abs: 'Convert constraints from active to absolute format',
   },

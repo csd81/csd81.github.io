@@ -320,6 +320,75 @@ function fUpperTail(x: number, df1: number, df2: number): number {
   return 1 - betainc(df1 * x / (df1 * x + df2), df1 / 2, df2 / 2);
 }
 
+// ── scalar distribution helpers (reused by sampsizepwr / ansaribradley / knntest) ──
+const chi2cdfS = (x: number, v: number) => gammainc(x / 2, v / 2);
+const chi2invS = (p: number, v: number) => invCdf(p, (x) => gammainc(x / 2, v / 2), 0, Infinity);
+const norminvS = (p: number, mu = 0, s = 1) => mu + s * norminvStd(p);
+const normcdfS = (x: number, mu = 0, s = 1) => 0.5 * erfc(-(x - mu) / (s * Math.SQRT2));
+/** Binomial cdf P(X<=k) and pdf using the incomplete-beta / log-domain forms. */
+function binopdfS(k: number, n: number, p: number): number { if (k < 0 || k > n) return 0; return Math.exp(lchoose(n, k) + k * Math.log(p) + (n - k) * Math.log(1 - p)); }
+function binocdfS(k: number, n: number, p: number): number { k = Math.floor(k); if (k < 0) return 0; if (k >= n) return 1; return betainc(1 - p, n - k, k + 1); }
+/** Binomial inverse: smallest k with cdf(k) >= pr. */
+function binoinvS(pr: number, n: number, p: number): number { for (let k = 0; k <= n; k++) if (binocdfS(k, n, p) >= pr - 1e-12) return k; return n; }
+/** Brent's method root-finder on a bracket [a,b] with f(a)·f(b)<0. */
+function brent(f: (x: number) => number, a: number, b: number, tol = 1e-9): number {
+  let fa = f(a), fb = f(b);
+  if (fa === 0) return a; if (fb === 0) return b;
+  if (fa * fb > 0) return NaN;
+  let c = a, fc = fa, d = b - a, e = d;
+  for (let it = 0; it < 200; it++) {
+    if (fb * fc > 0) { c = a; fc = fa; d = b - a; e = d; }
+    if (Math.abs(fc) < Math.abs(fb)) { a = b; b = c; c = a; fa = fb; fb = fc; fc = fa; }
+    const tol1 = 2 * Number.EPSILON * Math.abs(b) + 0.5 * tol, xm = 0.5 * (c - b);
+    if (Math.abs(xm) <= tol1 || fb === 0) return b;
+    if (Math.abs(e) >= tol1 && Math.abs(fa) > Math.abs(fb)) {
+      const s = fb / fa; let p: number, q: number;
+      if (a === c) { p = 2 * xm * s; q = 1 - s; }
+      else { const qq = fa / fc, r = fb / fc; p = s * (2 * xm * qq * (qq - r) - (b - a) * (r - 1)); q = (qq - 1) * (r - 1) * (s - 1); }
+      if (p > 0) q = -q; p = Math.abs(p);
+      if (2 * p < Math.min(3 * xm * q - Math.abs(tol1 * q), Math.abs(e * q))) { e = d; d = p / q; }
+      else { d = xm; e = d; }
+    } else { d = xm; e = d; }
+    a = b; fa = fb;
+    b += Math.abs(d) > tol1 ? d : (xm > 0 ? tol1 : -tol1);
+    fb = f(b);
+  }
+  return b;
+}
+/** Jacobi eigensolver for a real symmetric matrix; returns eigenvalues d and eigenvectors V (columns). */
+function symEig(Ain: number[][]): { d: number[]; V: number[][] } {
+  const n = Ain.length; const A = Ain.map((r) => r.slice());
+  const V: number[][] = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)));
+  for (let sweep = 0; sweep < 100; sweep++) {
+    let off = 0; for (let p = 0; p < n; p++) for (let q = p + 1; q < n; q++) off += A[p][q] * A[p][q];
+    if (off < 1e-30) break;
+    for (let p = 0; p < n; p++) for (let q = p + 1; q < n; q++) {
+      if (Math.abs(A[p][q]) < 1e-300) continue;
+      const theta = (A[q][q] - A[p][p]) / (2 * A[p][q]);
+      const t = Math.sign(theta || 1) / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
+      const c = 1 / Math.sqrt(t * t + 1), s = t * c;
+      for (let k = 0; k < n; k++) { const akp = A[k][p], akq = A[k][q]; A[k][p] = c * akp - s * akq; A[k][q] = s * akp + c * akq; }
+      for (let k = 0; k < n; k++) { const apk = A[p][k], aqk = A[q][k]; A[p][k] = c * apk - s * aqk; A[q][k] = s * apk + c * aqk; }
+      for (let k = 0; k < n; k++) { const vkp = V[k][p], vkq = V[k][q]; V[k][p] = c * vkp - s * vkq; V[k][q] = s * vkp + c * vkq; }
+    }
+  }
+  return { d: A.map((_, i) => A[i][i]), V };
+}
+const froNorm = (M: number[][]) => Math.sqrt(M.reduce((s, r) => s + r.reduce((t, x) => t + x * x, 0), 0));
+/** Project a symmetric matrix onto the PSD cone (clip negative eigenvalues to 0). */
+function projPSD(M: number[][]): number[][] {
+  const n = M.length; const { d, V } = symEig(M);
+  const out: number[][] = Array.from({ length: n }, () => new Array<number>(n).fill(0));
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { let s = 0; for (let k = 0; k < n; k++) if (d[k] > 0) s += V[i][k] * d[k] * V[j][k]; out[i][j] = s; }
+  return out;
+}
+/** Ansari-Bradley positional scores for a sorted vector z: min(i,N+1−i) averaged over ties. */
+function abScores(z: number[]): number[] {
+  const N = z.length, raw = z.map((_, i) => Math.min(i + 1, N - i)), out = new Array<number>(N);
+  for (let i = 0; i < N;) { let j = i; while (j + 1 < N && z[j + 1] === z[i]) j++; let s = 0; for (let k = i; k <= j; k++) s += raw[k]; const avg = s / (j - i + 1); for (let k = i; k <= j; k++) out[k] = avg; i = j + 1; }
+  return out;
+}
+
 export const STATS: ToolboxModule = {
   id: 'stats',
   name: 'Statistics and Machine Learning Toolbox',
@@ -415,6 +484,230 @@ export const STATS: ToolboxModule = {
       const h = p <= alpha ? 1 : 0;
       const stats = mkStruct([['signedrank', scalar(w)], ['zval', Number.isNaN(z) ? undefined : scalar(z)]]);
       return Promise.resolve([scalar(p), scalar(h), stats].slice(0, Math.max(1, nargout)));
+    },
+    /** [h,p,stats]=ansaribradley(x,y[,'Alpha',a][,'Tail',t][,'Method',m]) — Ansari-Bradley
+     *  dispersion test. Exact conditional null distribution (enumerated by DP) when N≤25 or
+     *  'exact' requested, otherwise the W* normal approximation. */
+    ansaribradley: (a, nargout) => {
+      const xv = toArray(m(a[0])).filter((v) => !Number.isNaN(v));
+      const yv = toArray(m(a[1])).filter((v) => !Number.isNaN(v));
+      let alpha = 0.05, tail = 0, doexact: boolean | null = null; const opts = a.slice(2);
+      for (let i = 0; i < opts.length; i++) {
+        const s = isMat(opts[i]) && (opts[i] as Mat).isChar ? asString(opts[i]).toLowerCase() : '';
+        if (s === 'alpha') alpha = asScalar(opts[++i]);
+        else if (s === 'tail') tail = tailCode(opts[++i]);
+        else if (s === 'method') { const mm = asString(opts[++i]).toLowerCase(); doexact = mm.startsWith('on') || mm.startsWith('e'); }
+        else if (i === 0 && isMat(opts[i]) && !(opts[i] as Mat).isChar) { alpha = asScalar(opts[i]); if (opts[i + 1] !== undefined) tail = tailCode(opts[++i]); }
+      }
+      const nxv = xv.length, nyv = yv.length, N = nxv + nyv;
+      if (doexact === null) doexact = N <= 25;
+      // sort combined sample, track group membership, compute AB scores
+      const z = [...xv.map((v) => [v, 1] as [number, number]), ...yv.map((v) => [v, 2] as [number, number])];
+      z.sort((p1, p2) => p1[0] - p2[0]);
+      const scores = abScores(z.map((p1) => p1[0]));
+      const W = z.reduce((s, p1, i) => s + (p1[1] === 1 ? scores[i] : 0), 0);
+      // W* normal statistic
+      const mm = nxv, nn = nyv, sumsq = scores.reduce((s, r) => s + r * r, 0);
+      let meanW: number, stdW: number;
+      if (N % 2 === 0) { meanW = mm * (N + 2) / 4; stdW = Math.sqrt(mm * nn * (16 * sumsq - N * (N + 2) ** 2) / (16 * N * (N - 1))); }
+      else { meanW = mm * (N + 1) ** 2 / (4 * N); stdW = Math.sqrt(mm * nn * (16 * N * sumsq - (N + 1) ** 4) / (16 * N * N * (N - 1))); }
+      const Wstar = stdW > 0 ? (W - meanW) / stdW : (W === meanW ? NaN : Math.sign(W - meanW) * Infinity);
+      // conditional p-values [P(W<obs), P(W=obs), P(W>obs)]
+      let pl: number, pe: number, pg: number;
+      if (mm === 0 || nn === 0) { pl = pe = pg = NaN; }
+      else if (doexact) {
+        const scale = scores.some((r) => r !== Math.round(r)) ? 2 : 1;
+        const r = scores.map((v) => Math.round(v * scale)); const maxS = r.reduce((s, v) => s + v, 0);
+        const dp = Array.from({ length: mm + 1 }, () => new Float64Array(maxS + 1)); dp[0][0] = 1;
+        for (const ri of r) for (let j = mm; j >= 1; j--) for (let su = maxS; su >= ri; su--) dp[j][su] += dp[j - 1][su - ri];
+        let total = 0; for (const c of dp[mm]) total += c;
+        const Ws = Math.round(W * scale);
+        let less = 0, eq = 0, gr = 0;
+        for (let su = 0; su <= maxS; su++) { if (su < Ws) less += dp[mm][su]; else if (su === Ws) eq += dp[mm][su]; else gr += dp[mm][su]; }
+        pl = less / total; pe = eq / total; pg = gr / total;
+      } else { const pn = normcdfL(-Math.abs(Wstar)); pe = 0; if (Wstar < 0) { pl = pn; pg = 1 - pn; } else { pl = 1 - pn; pg = pn; } }
+      let p: number;
+      if (tail === 0) p = Math.min(1, 2 * (pe + Math.min(pl, pg)));
+      else if (tail === 1) p = pe + pl;
+      else p = pe + pg;
+      const h = Number.isNaN(p) ? NaN : (p <= alpha ? 1 : 0);
+      const stats = mkStruct([['W', scalar(W)], ['Wstar', scalar(Wstar)]]);
+      return Promise.resolve([scalar(h), scalar(p), stats].slice(0, Math.max(1, nargout)));
+    },
+    /** Y=nearcorr(A[,'Method',m][,'Tolerance',t][,'MaxIterations',k][,'Weights',w]) — nearest
+     *  correlation matrix by Frobenius distance via Higham's alternating projections (Dykstra
+     *  correction). Newton method is not ported; default here uses the projection algorithm. */
+    nearcorr: (a) => {
+      const A0 = m(a[0]); const N = A0.rows; let A = matRows(A0);
+      A = A.map((r, i) => r.map((v, j) => (v + A[j][i]) / 2)); // symmetrize
+      let tol = 1e-6, maxIter = 200; let weight: number[] | null = null;
+      for (let i = 1; i < a.length; i++) {
+        const s = isMat(a[i]) && (a[i] as Mat).isChar ? asString(a[i]).toLowerCase() : '';
+        if (s === 'tolerance') tol = asScalar(a[++i]);
+        else if (s === 'maxiterations') maxIter = asScalar(a[++i]);
+        else if (s === 'weights') { const wM = m(a[++i]); weight = numel(wM) ? toArray(wM) : null; }
+        else if (s === 'method') i++; // projection is the only supported method
+      }
+      // diagonal W-form weighting → element-wise sqrt(w_i*w_j) multiplier
+      const wmat: number[][] = Array.from({ length: N }, (_, i) => Array.from({ length: N }, (_, j) => (weight ? Math.sqrt(weight[i] * weight[j]) : 1)));
+      let dS: number[][] = Array.from({ length: N }, () => new Array<number>(N).fill(0));
+      let Yold = A.map((r) => r.slice()), Xold = A.map((r) => r.slice());
+      let X = Yold, Y = Yold;
+      for (let iter = 0; iter <= maxIter; iter++) {
+        const R = Yold.map((r, i) => r.map((v, j) => v - dS[i][j]));
+        const WR = R.map((r, i) => r.map((v, j) => v * wmat[i][j]));
+        const P = projPSD(WR);
+        X = P.map((r, i) => r.map((v, j) => v / wmat[i][j]));
+        X = X.map((r, i) => r.map((v, j) => (v + X[j][i]) / 2));
+        dS = X.map((r, i) => r.map((v, j) => v - R[i][j]));
+        Y = X.map((r) => r.slice());
+        for (let i = 0; i < N; i++) Y[i][i] = 1;
+        const diff = (M: number[][], Q: number[][]) => froNorm(M.map((r, i) => r.map((v, j) => v - Q[i][j])));
+        const normY = froNorm(Y);
+        const c1 = diff(Y, Yold) / normY, c2 = diff(X, Xold) / froNorm(X), c3 = diff(Y, X) / normY;
+        if (Math.max(c1, c2, c3) <= tol) break;
+        Yold = Y.map((r) => r.slice()); Xold = X.map((r) => r.slice());
+      }
+      // restore unit diagonal by rescaling X
+      const sc = X.map((_, i) => Math.sqrt(X[i][i]));
+      Y = X.map((r, i) => r.map((v, j) => v / (sc[i] * sc[j])));
+      Y = Y.map((r, i) => r.map((v, j) => (v + Y[j][i]) / 2));
+      // handle tiny negative eigenvalues from rounding
+      let minE = Math.min(...symEig(Y).d);
+      if (minE < 0) { Y = Y.map((r) => r.map((v) => v / (1 - minE + Number.EPSILON))); for (let i = 0; i < N; i++) Y[i][i] = 1; let nn = 10; minE = Math.min(...symEig(Y).d); while (minE < 0) { Y = Y.map((r) => r.map((v) => v / (1 + nn * Number.EPSILON))); for (let i = 0; i < N; i++) Y[i][i] = 1; minE = Math.min(...symEig(Y).d); nn *= 10; } }
+      return ret(fromRows(Y));
+    },
+    /** out=sampsizepwr(testtype,params,p1,power[,n][,'Alpha',a][,'Tail',t][,'Ratio',r]) —
+     *  sample size, power, or detectable alternative for Z/t/t2/Variance/P tests. Scalar inputs. */
+    sampsizepwr: (a, nargout) => {
+      const ttRaw = asString(a[0]).toLowerCase();
+      const params = toArray(m(a[1]));
+      const p0 = params[0]; const sig = params[1];
+      const hasP1 = a[2] !== undefined && isMat(a[2]) && numel(m(a[2])) > 0;
+      const p1 = hasP1 ? asScalar(a[2]) : NaN;
+      const hasPow = a[3] !== undefined && isMat(a[3]) && numel(m(a[3])) > 0;
+      let power = hasPow ? asScalar(a[3]) : NaN;
+      const hasN = a[4] !== undefined && isMat(a[4]) && numel(m(a[4])) > 0;
+      const n = hasN ? asScalar(a[4]) : NaN;
+      let alpha = 0.05, tail = 0, ratio = 1;
+      for (let i = 5; i < a.length; i++) { const s = asString(a[i]).toLowerCase(); if (s === 'alpha') alpha = asScalar(a[++i]); else if (s === 'tail') tail = tailCode(a[++i]); else if (s === 'ratio') ratio = asScalar(a[++i]); }
+      if (a.length === 3) power = 0.9;
+      const tt = ttRaw.startsWith('z') ? 'Z' : ttRaw === 't2' ? 't2' : ttRaw.startsWith('t') ? 't' : ttRaw.startsWith('v') ? 'Variance' : 'P';
+      // power functions
+      const powN = (mu1: number, nn: number) => { const S = sig / Math.sqrt(nn); if (tail === 0) { const cL = norminvS(alpha / 2, p0, S), cU = p0 + (p0 - cL); return normcdfS(cL, mu1, S) + normcdfS(-cU, -mu1, S); } if (tail === 1) { const cr = p0 + (p0 - norminvS(alpha, p0, S)); return normcdfS(-cr, -mu1, S); } const cr = norminvS(alpha, p0, S); return normcdfS(cr, mu1, S); };
+      const powT = (mu1: number, nn: number) => { const S = sig / Math.sqrt(nn), ncp = (mu1 - p0) / S; if (tail === 0) { const cL = tinvL(alpha / 2, nn - 1); return nctcdfS(cL, nn - 1, ncp) + nctcdfS(cL, nn - 1, -ncp); } if (tail === 1) { const cr = tinvL(1 - alpha, nn - 1); return nctcdfS(-cr, nn - 1, -ncp); } const cr = tinvL(alpha, nn - 1); return nctcdfS(cr, nn - 1, ncp); };
+      const powT2 = (mu1: number, nn: number) => { const df = nn + ratio * nn - 2, ncp = (mu1 - p0) / (sig * Math.sqrt(1 / nn + 1 / (ratio * nn))); if (tail === 0) { const cL = tinvL(alpha / 2, df); return nctcdfS(cL, df, ncp) + nctcdfS(cL, df, -ncp); } if (tail === 1) { const cr = tinvL(1 - alpha, df); return nctcdfS(-cr, df, -ncp); } const cr = tinvL(alpha, df); return nctcdfS(cr, df, ncp); };
+      const powV = (v1: number, nn: number) => { if (tail === 0) { const cU = p0 * chi2invS(1 - alpha / 2, nn - 1), cL = p0 * chi2invS(alpha / 2, nn - 1); return chi2cdfS(cL / v1, nn - 1) + (1 - chi2cdfS(cU / v1, nn - 1)); } if (tail === 1) { const cr = p0 * chi2invS(1 - alpha, nn - 1); return 1 - chi2cdfS(cr / v1, nn - 1); } const cr = p0 * chi2invS(alpha, nn - 1); return chi2cdfS(cr / v1, nn - 1); };
+      const getcritP = (nn: number): [number, number] => { let Alo = tail === 0 ? alpha / 2 : (tail < 0 ? alpha : 0); let critU = nn, critL = 0; if (tail <= 0) { critL = binoinvS(Alo, nn, p0); Alo = binocdfS(critL, nn, p0); if (critL < nn && Alo <= alpha / 2) { critL += 1; } else { Alo -= binopdfS(critL, nn, p0); } } if (tail >= 0) { const Aup = Math.max(0, alpha - Alo); critU = binoinvS(1 - Aup, nn, p0); } return [critL, critU]; };
+      const powP = (pp1: number, nn: number) => { const [cL, cU] = getcritP(nn); if (tail === 0) return binocdfS(cL - 1, nn, pp1) + 1 - binocdfS(cU, nn, pp1); if (tail === 1) return 1 - binocdfS(cU, nn, pp1); return binocdfS(cL - 1, nn, pp1); };
+      const powerfun = (mu1: number, nn: number) => tt === 'Z' ? powN(mu1, nn) : tt === 't' ? powT(mu1, nn) : tt === 't2' ? powT2(mu1, nn) : tt === 'Variance' ? powV(mu1, nn) : powP(mu1, nn);
+      // ── compute power given n ──
+      if (!hasPow) return ret(scalar(powerfun(p1, n)));
+      // ── compute n given power ──
+      if (!hasN) {
+        if (tt === 'Z' || tt === 't') {
+          const al = tail === 0 ? alpha / 2 : alpha;
+          const z1 = -norminvStd(al), z2 = norminvStd(1 - power), mudiff = Math.abs(p0 - p1) / sig;
+          let nv = Math.ceil(((z1 - z2) / mudiff) ** 2);
+          if (tt === 't' || tail === 0) { if (tt === 't') nv = Math.max(nv, 2); while (powerfun(p1, nv) < power) nv++; }
+          return ret(scalar(nv));
+        }
+        if (tt === 't2') {
+          const al = tail === 0 ? alpha / 2 : alpha; const z1 = -norminvStd(al), z2 = norminvStd(1 - power);
+          let n0 = Math.ceil((z1 - z2) ** 2 * (sig / Math.abs(p0 - p1)) ** 2 * 2); if (n0 <= 1) n0 = 2;
+          const F = (nn: number) => powT2(p1, nn) - power; // powT2 already sums both tails for tail==0
+          const minN = ratio >= 2 ? 1 : 2;
+          let nReal: number;
+          if (F(minN) > 0) nReal = minN; else { let n0u = n0 === minN ? n0 + 1 : n0; nReal = F(n0u) > 0 ? brent(F, minN, n0u, 1e-6) : (() => { let hi = n0u; while (F(hi) < 0) hi *= 2; return brent(F, n0u, hi, 1e-6); })(); }
+          const N1 = Math.ceil(nReal), N2 = Math.ceil(ratio * nReal);
+          return Promise.resolve([scalar(N1), scalar(N2)].slice(0, Math.max(1, nargout)));
+        }
+        // Variance / P: binary search
+        const lo0 = tt === 'P' ? 0 : 1; let nlo = lo0, nhi = 100;
+        while (powerfun(p1, nhi) < power) nhi *= 2;
+        while (nhi > nlo + 1) { const nm = Math.floor((nhi + nlo) / 2); if (powerfun(p1, nm) > power) nhi = nm; else nlo = nm; }
+        let nv = nhi;
+        if (tt === 'P' && nv <= 200) { for (let kk = 1; kk <= nv; kk++) if (powP(p1, kk) >= power) { nv = kk; break; } }
+        return ret(scalar(nv));
+      }
+      // ── compute detectable p1 given power and n ──
+      const a2 = tail === 0 ? alpha / 2 : alpha;
+      if (tt === 'Z') {
+        const S = sig / Math.sqrt(n); const alZ = tail === 0 ? alpha / 2 : alpha;
+        let z1: number, z2: number;
+        if (tail === -1) { z1 = norminvStd(alZ); z2 = norminvStd(power); } else { z1 = norminvStd(1 - alZ); z2 = norminvStd(1 - power); }
+        let mu1 = p0 + S * (z1 - z2);
+        if (tail === 0) { const desiredbeta = 1 - power; let betahi = desiredbeta; for (let it = 0; it < 100; it++) { const betalo = normcdfS(-z1 + (p0 - mu1) / S); if (Math.abs((betahi - betalo) - desiredbeta) <= 1e-6 * desiredbeta) break; betahi = desiredbeta + betalo; mu1 = p0 + S * (z1 - norminvStd(betahi)); } }
+        return ret(scalar(mu1));
+      }
+      if (tt === 't' || tt === 't2') {
+        const isT2 = tt === 't2', df = isT2 ? n + ratio * n - 2 : n - 1;
+        const seFac = isT2 ? Math.sqrt(1 / n + 1 / (ratio * n)) : 1 / Math.sqrt(n);
+        let z1: number, z2: number;
+        if (tail === -1) { z1 = norminvStd(alpha); z2 = norminvStd(power); } else { z1 = norminvStd(1 - a2); z2 = norminvStd(1 - power); }
+        const pf = isT2 ? powT2 : powT;
+        let mu1 = isT2 ? p0 + sig * (tinvL(tail === -1 ? alpha : 1 - a2, df) - tinvL(tail === -1 ? power : 1 - power, df)) * seFac
+                       : p0 + sig * (z1 - z2) * seFac;
+        const F0 = (mu1arg: number) => (mu1 > p0 ? pf(Math.max(p0, mu1arg), n) - power : power - pf(Math.min(p0, mu1arg), n));
+        // refine with a local bracket around the explicit estimate
+        const lo = mu1 > p0 ? p0 : p0 - 10 * Math.abs(mu1 - p0) - 1, hi = mu1 > p0 ? p0 + 10 * Math.abs(mu1 - p0) + 1 : p0;
+        const r = brent(F0, lo, hi, 1e-9); if (Number.isFinite(r)) mu1 = r;
+        return ret(scalar(mu1));
+      }
+      if (tt === 'Variance') {
+        const Finv = (pr: number, p1v: number) => p1v * chi2invS(pr, n - 1) / (n - 1);
+        const Fc = (xx: number, p1v: number) => chi2cdfS(xx * (n - 1) / p1v, n - 1);
+        const al = tail === 0 ? alpha / 2 : alpha; const desiredbeta = 1 - power;
+        let critU = NaN, critL = NaN, p1v = NaN;
+        if (tail >= 0) { critU = Finv(1 - al, p0); p1v = 1 / Finv(desiredbeta, 1 / critU); }
+        if (tail <= 0) critL = Finv(al, p0);
+        if (tail < 0) p1v = 1 / Finv(power, 1 / critL);
+        if (tail === 0) { let betahi = desiredbeta; for (let it = 0; it < 100; it++) { const betalo = Fc(critL, p1v); if (Math.abs((betahi - betalo) - desiredbeta) <= 1e-6 * desiredbeta) break; betahi = desiredbeta + betalo; p1v = 1 / Finv(betahi, 1 / critU); } }
+        return ret(scalar(p1v));
+      }
+      // P (binomial): normal-approx start, then refine with brent
+      {
+        const [cL, cU] = getcritP(n); const sigma = Math.sqrt(p0 * (1 - p0) / n);
+        // normal-approx p1
+        const S = sigma; let z1: number, z2: number;
+        if (tail === -1) { z1 = norminvStd(alpha); z2 = norminvStd(power); } else { z1 = norminvStd(1 - a2); z2 = norminvStd(1 - power); }
+        let p1v = p0 + S * (z1 - z2);
+        if (p1v <= 0) p1v = p0 / 2; if (p1v >= 1) p1v = 1 - p0 / 2;
+        const F0 = (arg: number) => (p1v > p0 ? powP(Math.max(p0, Math.min(1, arg)), n) - power : power - powP(Math.max(0, Math.min(p0, arg)), n));
+        void cL; void cU;
+        const lo = p1v > p0 ? p0 : 1e-6, hi = p1v > p0 ? 1 - 1e-6 : p0;
+        const r = brent(F0, lo, hi, 1e-9); if (Number.isFinite(r)) p1v = r;
+        return ret(scalar(p1v));
+      }
+    },
+    /** [nnstat,p,h]=knntest(X,Y[,'NumNeighbors',k][,'Distance',d][,'Alpha',a]) — k-nearest-
+     *  neighbor two-sample test (Schilling/Henze). Continuous numeric data; supported metrics:
+     *  euclidean, cityblock, chebychev, cosine, minkowski, correlation. */
+    knntest: (a, nargout) => {
+      const X = matRows(m(a[0])), Y = matRows(m(a[1]));
+      let alpha = 0.05, k = 10, distance = 'euclidean';
+      for (let i = 2; i < a.length; i++) { const s = asString(a[i]).toLowerCase(); if (s === 'alpha') alpha = asScalar(a[++i]); else if (s === 'numneighbors') k = asScalar(a[++i]); else if (s === 'distance') distance = asString(a[++i]).toLowerCase(); }
+      const Nx = X.length, Ny = Y.length, N = Nx + Ny;
+      const pooled = [...X, ...Y];
+      const correlationDist = (u: number[], v: number[]) => { const mu = u.reduce((s, x) => s + x, 0) / u.length, mv = v.reduce((s, x) => s + x, 0) / v.length; const cu = u.map((x) => x - mu), cv = v.map((x) => x - mv); const den = Math.hypot(...cu) * Math.hypot(...cv); return den === 0 ? 1 : 1 - dot(cu, cv) / den; };
+      const metric = distance === 'correlation' ? correlationDist : (METRICS[distance] ?? METRICS.euclidean);
+      // for each point, k nearest neighbors excluding self
+      let inGroup = 0; const totalEntries = N * k;
+      for (let i = 0; i < N; i++) {
+        const dists: [number, number][] = [];
+        for (let j = 0; j < N; j++) { if (j === i) continue; dists.push([metric(pooled[i], pooled[j]), j]); }
+        dists.sort((p1, p2) => p1[0] - p2[0]);
+        const iIsX = i < Nx;
+        for (let t = 0; t < k && t < dists.length; t++) { const nbX = dists[t][1] < Nx; if (nbX === iIsX) inGroup++; }
+      }
+      const T = inGroup / totalEntries;
+      const mu = (Nx * (Nx - 1) + Ny * (Ny - 1)) / (N * (N - 1));
+      const l1 = Nx / N, l2 = Ny / N;
+      const variance = (1 / (k * N)) * (l1 * l2 + 4 * l1 * l1 * l2 * l2);
+      const sigma = Math.sqrt(variance);
+      const p = normcdfL(-(T - mu) / sigma); // upper-tail P(Z > (T-mu)/sigma)
+      const h = p <= alpha ? 1 : 0;
+      return Promise.resolve([scalar(T), scalar(p), scalar(h)].slice(0, Math.max(1, nargout)));
     },
     /** [h,p,adstat,cv]=adtest(x[,'Distribution',d][,'Alpha',a]) — Anderson-Darling test.
      *  Composite (parameters estimated) for 'normal'/'exponential'; simple test against a
@@ -927,6 +1220,8 @@ export const STATS: ToolboxModule = {
     ttest: 'One-sample and paired-sample t-test', ttest2: 'Two-sample t-test',
     ranksum: 'Wilcoxon rank-sum (Mann-Whitney U) test', signrank: 'Wilcoxon signed-rank test',
     adtest: 'Anderson-Darling goodness-of-fit test', hmmestimate: 'Hidden Markov model parameter estimates from state path', linhyptest: 'Linear hypothesis test',
+    ansaribradley: 'Ansari-Bradley test for equal dispersions', nearcorr: 'Nearest correlation matrix by Frobenius distance',
+    sampsizepwr: 'Sample size and power of test', knntest: 'k-nearest-neighbor two-sample test',
     normpdf: 'Normal probability density function', normcdf: 'Normal cumulative distribution function', norminv: 'Normal inverse cumulative distribution function',
     tpdf: "Student's t probability density function", tcdf: "Student's t cumulative distribution function", tinv: "Student's t inverse cumulative distribution function",
     chi2pdf: 'Chi-square probability density function', chi2cdf: 'Chi-square cumulative distribution function', chi2inv: 'Chi-square inverse cumulative distribution function',

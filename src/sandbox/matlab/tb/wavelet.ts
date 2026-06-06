@@ -4,7 +4,7 @@
 // Haar matches hand calculation. See plan §7 and tb/wavelet.VALIDATION.md.
 import type { Builtin } from '../builtins';
 import {
-  type Value, rowVec, colVec, scalar, toArray, asString, asScalar, toMat as m, type Mat, isMat, isCell, makeCell,
+  type Value, rowVec, colVec, scalar, toArray, asString, asScalar, toMat as m, type Mat, isMat, isCell, makeCell, mat,
 } from '../values';
 import type { ToolboxModule } from './types';
 
@@ -149,6 +149,66 @@ function biorfiltBank(Df: number[], Rf: number[]): { LoD: number[]; HiD: number[
   return { LoD: o1.LoD, HiD: o2.HiD, LoR: o2.LoR, HiR: o1.HiR };
 }
 
+// ── 2-D Haar inverse lifting (ihaart2 → ihlwt2), ported from MATLAB R2026a ──
+// Tiny column-major dense-matrix helpers (MATLAB 2-D, real).
+interface M2 { r: number; c: number; d: Float64Array; }
+const M = (r: number, c: number, fill = 0): M2 => { const d = new Float64Array(r * c); if (fill) d.fill(fill); return { r, c, d }; };
+const G = (a: M2, i: number, j: number) => a.d[i + j * a.r];          // 0-based (row,col)
+const S = (a: M2, i: number, j: number, v: number) => { a.d[i + j * a.r] = v; };
+const toM2 = (v: Value): M2 => { const x = m(v); return { r: x.rows, c: x.cols, d: Float64Array.from(x.data) }; };
+const fromM2 = (a: M2): Mat => mat(a.r, a.c, a.d);
+/** Take every-other ROW starting at `start` (0-based step 2). */
+const rowsStride = (a: M2, start: number): M2 => { const r = Math.ceil((a.r - start) / 2); const o = M(r, a.c); for (let j = 0; j < a.c; j++) for (let i = 0; i < r; i++) S(o, i, j, G(a, start + 2 * i, j)); return o; };
+/** Take every-other COLUMN starting at `start`. */
+const colsStride = (a: M2, start: number): M2 => { const c = Math.ceil((a.c - start) / 2); const o = M(a.r, c); for (let j = 0; j < c; j++) for (let i = 0; i < a.r; i++) S(o, i, j, G(a, i, start + 2 * j)); return o; };
+/** Vertical concat [top; bottom]. */
+const vcat = (top: M2, bot: M2): M2 => { const o = M(top.r + bot.r, top.c); for (let j = 0; j < top.c; j++) { for (let i = 0; i < top.r; i++) S(o, i, j, G(top, i, j)); for (let i = 0; i < bot.r; i++) S(o, top.r + i, j, G(bot, i, j)); } return o; };
+const ew = (a: M2, b: M2, f: (x: number, y: number) => number): M2 => { const o = M(a.r, a.c); for (let k = 0; k < o.d.length; k++) o.d[k] = f(a.d[k], b.d[k]); return o; };
+const sm = (a: M2, f: (x: number) => number): M2 => { const o = M(a.r, a.c); for (let k = 0; k < o.d.length; k++) o.d[k] = f(a.d[k]); return o; };
+const padCol = (a: M2): M2 => { const o = M(a.r, a.c + 1); o.d.set(a.d); return o; };  // append a zero column
+const padRow = (a: M2): M2 => { const o = M(a.r + 1, a.c); for (let j = 0; j < a.c; j++) for (let i = 0; i < a.r; i++) S(o, i, j, G(a, i, j)); return o; };
+const dropLastCol = (a: M2): M2 => { const o = M(a.r, a.c - 1); for (let j = 0; j < o.c; j++) for (let i = 0; i < a.r; i++) S(o, i, j, G(a, i, j)); return o; };
+const dropLastRow = (a: M2): M2 => { const o = M(a.r - 1, a.c); for (let j = 0; j < a.c; j++) for (let i = 0; i < o.r; i++) S(o, i, j, G(a, i, j)); return o; };
+
+/** Single-level inverse Haar lifting reconstruction (ihlwt2). integerflag → integer scheme. */
+function ihlwt2(a: M2, hin: M2, vin: M2, din: M2, integerflag: boolean): M2 {
+  const oddCol = din.c < a.c;
+  let tempd = oddCol ? padCol(din) : din;
+  let tempv = oddCol ? padCol(vin) : vin;
+  const oddRow = din.r < a.r;
+  let temph: M2; let tempd_final: M2;
+  if (oddRow) { tempd_final = padRow(tempd); temph = padRow(hin); } else { tempd_final = tempd; temph = hin; }
+  let h = temph; let v = tempv; let d = tempd_final; let aa = a;
+  const fix = (x: number) => Math.trunc(x);
+  // Reverse lifting (rows split L/H).
+  if (!integerflag) {
+    aa = sm(aa, (x) => x / 2);
+    d = sm(d, (x) => 2 * x);
+    v = ew(v, d, (vv, dd) => vv - dd / 2);
+  } else {
+    v = ew(v, d, (vv, dd) => vv - fix(dd / 2));
+  }
+  d = ew(v, d, (vv, dd) => vv + dd);
+  // Merge rows of v (odd) and d (even) → H.
+  let H = M(v.r + d.r, v.c);
+  for (let j = 0; j < v.c; j++) { for (let i = 0; i < v.r; i++) S(H, 2 * i, j, G(v, i, j)); for (let i = 0; i < d.r; i++) S(H, 2 * i + 1, j, G(d, i, j)); }
+  if (!integerflag) aa = ew(aa, h, (av, hv) => av - hv / 2);
+  else aa = ew(aa, h, (av, hv) => av - fix(hv / 2));
+  h = ew(aa, h, (av, hv) => av + hv);
+  let L = M(aa.r + h.r, aa.c);
+  for (let j = 0; j < aa.c; j++) { for (let i = 0; i < aa.r; i++) S(L, 2 * i, j, G(aa, i, j)); for (let i = 0; i < h.r; i++) S(L, 2 * i + 1, j, G(h, i, j)); }
+  if (!integerflag) L = ew(L, H, (lv, hv) => lv - hv / 2);
+  else L = ew(L, H, (lv, hv) => lv - fix(hv / 2));
+  H = ew(L, H, (lv, hv) => lv + hv);
+  // Merge columns of L (odd) and H (even) → x.
+  let x = M(L.r, L.c + H.c);
+  for (let j = 0; j < L.c; j++) for (let i = 0; i < L.r; i++) S(x, i, 2 * j, G(L, i, j));
+  for (let j = 0; j < H.c; j++) for (let i = 0; i < H.r; i++) S(x, i, 2 * j + 1, G(H, i, j));
+  if (oddCol) x = dropLastCol(x);
+  if (oddRow) x = dropLastRow(x);
+  return x;
+}
+
 /** Normalized Haar analysis/synthesis steps (for haart/ihaart). */
 function haarStep(x: number[]): { cA: number[]; cD: number[] } { const h = Math.floor(x.length / 2), cA: number[] = [], cD: number[] = []; for (let k = 0; k < h; k++) { cA.push((x[2 * k] + x[2 * k + 1]) / SQRT2); cD.push((x[2 * k] - x[2 * k + 1]) / SQRT2); } return { cA, cD }; }
 function invHaarStep(cA: number[], cD: number[]): number[] { const x = new Array(cA.length * 2); for (let k = 0; k < cA.length; k++) { x[2 * k] = (cA[k] + cD[k]) / SQRT2; x[2 * k + 1] = (cA[k] - cD[k]) / SQRT2; } return x; }
@@ -196,6 +256,28 @@ export const WAVELET: ToolboxModule = {
       let cur = aVal;
       for (let i = dets.length - 1; i >= 0; i--) cur = invHaarStep(cur, dets[i]);
       return ret(rowVec(cur));
+    },
+    /** xrec = ihaart2(a,h,v,d[,level][,'integer'|'noninteger']) — inverse 2-D Haar transform.
+     *  h,v,d are matrices (1 level) or cells ordered finest→coarsest. A trailing 'integer'/'noninteger'
+     *  string selects the lifting scheme; a trailing numeric LEVEL is accepted for API compatibility
+     *  (MATLAB R2026a reconstructs the full image regardless). */
+    ihaart2: (a) => {
+      const aMat = toM2(a[0]);
+      const hArg = a[1]; const vArg = a[2]; const dArg = a[3];
+      let integerflag = false;
+      for (let i = 4; i < a.length; i++) {
+        const ai = a[i];
+        if (isMat(ai) && (ai as Mat).isChar) { const s = asString(ai).toLowerCase(); if (s.startsWith('i')) integerflag = true; }
+      }
+      const asCells = (x: Value): M2[] => (isCell(x) ? x.items.map(toM2) : [toM2(x)]);
+      const hC = asCells(hArg); const vC = asCells(vArg); const dC = asCells(dArg);
+      const Nlevels = dC.length;
+      let tempa = aMat;
+      for (let jj = Nlevels; jj >= 1; jj--) {
+        const k = jj - 1;
+        tempa = ihlwt2(tempa, hC[k], vC[k], dC[k], integerflag);
+      }
+      return ret(fromM2(tempa));
     },
     /** detcoef(C,L,n) — extract level-n detail coefficients from a wavedec result. */
     detcoef: (a) => {
@@ -250,6 +332,7 @@ export const WAVELET: ToolboxModule = {
     dwt: 'Single-level discrete 1-D wavelet transform', idwt: 'Single-level inverse discrete 1-D wavelet transform',
     wavedec: 'Multilevel 1-D wavelet decomposition', waverec: 'Multilevel 1-D wavelet reconstruction',
     haart: 'Haar 1-D wavelet transform', ihaart: 'Inverse Haar 1-D wavelet transform',
+    ihaart2: 'Inverse 2-D Haar wavelet transform',
     detcoef: 'Extract 1-D detail coefficients', appcoef: 'Extract 1-D approximation coefficients',
     dyaddown: 'Dyadic downsampling', dyadup: 'Dyadic upsampling', wrev: 'Flip vector',
     qorthwavf: 'Kingsbury Q-shift filters for dual-tree wavelet transforms',
