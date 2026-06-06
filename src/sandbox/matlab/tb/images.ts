@@ -263,6 +263,8 @@ export const IMAGES: ToolboxModule = {
       return Promise.resolve(nargout >= 2 ? [o, scalar(regions.length)] : [o]);
     },
     /** imerode(BW,SE) — binary erosion (out-of-border treated as foreground → 1-padding). */
+    /** watershed(A) — watershed transform (Meyer flooding); basins 1..k, ridge pixels 0. */
+    watershed: (a) => ret(fromRows(watershedTransform(matToRows(m(a[0]))))),
     imerode: (a) => ret(morph(m(a[0]), seNeighborhood(a[1]), 'erode')),
     /** imdilate(BW,SE) — binary dilation (out-of-border treated as background → 0-padding). */
     imdilate: (a) => ret(morph(m(a[0]), seNeighborhood(a[1]), 'dilate')),
@@ -436,6 +438,39 @@ function mapRows3(M: Mat, f: (a: number, b: number, c: number) => number[]): Mat
 }
 /** Rows of a column-major Mat as number[][]. */
 function matToRows(M: Mat): number[][] { const o: number[][] = []; for (let r = 0; r < M.rows; r++) { const row: number[] = []; for (let c = 0; c < M.cols; c++) row.push(M.data[r + c * M.rows]); o.push(row); } return o; }
+/** Watershed transform (Meyer flooding, 8-connectivity): label catchment basins 1..k with
+ *  ridge (watershed) pixels = 0. Label numbering may differ from MATLAB up to permutation. */
+function watershedTransform(A: number[][]): number[][] {
+  const R = A.length, C = A[0]?.length ?? 0;
+  const lab: number[][] = Array.from({ length: R }, () => new Array(C).fill(-1)); // -1 unlabeled, 0 ridge, ≥1 basin
+  const inq: boolean[][] = Array.from({ length: R }, () => new Array(C).fill(false));
+  const nbrs = (r: number, c: number): [number, number][] => { const o: [number, number][] = []; for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) { if (!dr && !dc) continue; const nr = r + dr, nc = c + dc; if (nr >= 0 && nr < R && nc >= 0 && nc < C) o.push([nr, nc]); } return o; };
+  // 1. Regional minima → unique basin labels (flood equal-value plateaus with no lower neighbour).
+  const visited: boolean[][] = Array.from({ length: R }, () => new Array(C).fill(false));
+  let nlab = 0;
+  for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) {
+    if (visited[r][c]) continue;
+    const v = A[r][c]; const stack: [number, number][] = [[r, c]]; const plateau: [number, number][] = []; visited[r][c] = true; let isMin = true;
+    while (stack.length) { const [pr, pc] = stack.pop()!; plateau.push([pr, pc]); for (const [nr, nc] of nbrs(pr, pc)) { const av = A[nr][nc]; if (av === v) { if (!visited[nr][nc]) { visited[nr][nc] = true; stack.push([nr, nc]); } } else if (av < v) isMin = false; } }
+    if (isMin) { nlab++; for (const [pr, pc] of plateau) lab[pr][pc] = nlab; }
+  }
+  // 2. Flood from the markers using a value-ordered priority queue (FIFO tiebreak).
+  type Q = { v: number; o: number; r: number; c: number };
+  const heap: Q[] = []; let ord = 0;
+  const less = (a: Q, b: Q) => a.v < b.v || (a.v === b.v && a.o < b.o);
+  const push = (r: number, c: number) => { heap.push({ v: A[r][c], o: ord++, r, c }); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (!less(heap[i], heap[p])) break;[heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
+  const pop = (): Q => { const top = heap[0]; const last = heap.pop()!; if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, rr = 2 * i + 2; let m2 = i; if (l < heap.length && less(heap[l], heap[m2])) m2 = l; if (rr < heap.length && less(heap[rr], heap[m2])) m2 = rr; if (m2 === i) break;[heap[m2], heap[i]] = [heap[i], heap[m2]]; i = m2; } } return top; };
+  for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) if (lab[r][c] > 0) for (const [nr, nc] of nbrs(r, c)) if (lab[nr][nc] === -1 && !inq[nr][nc]) { inq[nr][nc] = true; push(nr, nc); }
+  while (heap.length) {
+    const { r, c } = pop(); if (lab[r][c] !== -1) continue;
+    let basin = -1, ridge = false;
+    for (const [nr, nc] of nbrs(r, c)) { const L = lab[nr][nc]; if (L > 0) { if (basin === -1) basin = L; else if (basin !== L) ridge = true; } }
+    if (ridge) lab[r][c] = 0;
+    else if (basin > 0) { lab[r][c] = basin; for (const [nr, nc] of nbrs(r, c)) if (lab[nr][nc] === -1 && !inq[nr][nc]) { inq[nr][nc] = true; push(nr, nc); } }
+  }
+  for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) if (lab[r][c] === -1) lab[r][c] = 0;
+  return lab;
+}
 
 /** Map a padded index `i` (range −pre … n−1+post) back into 0…n−1 per padding method. */
 function padIndex(i: number, n: number, method: string): number {
