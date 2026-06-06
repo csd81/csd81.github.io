@@ -3,7 +3,7 @@
 // the live Control System Toolbox. See plan §1 (ClassV) / §7.
 import type { Builtin } from '../builtins';
 import {
-  type Value, type Mat, isObject, makeObject, scalar, bool, colVec, rowVec, toArray, asScalar, toMat as m,
+  type Value, type Mat, type StructV, isObject, makeObject, scalar, bool, colVec, rowVec, toArray, asScalar, asString, toMat as m,
 } from '../values';
 import { schur, schurEig } from '../linalg';
 import type { ToolboxModule } from './types';
@@ -207,6 +207,236 @@ function lqrResult(K: number[][], S: number[][], Acl: number[][], n: number): Pr
   return Promise.resolve(out);
 }
 
+// ── matrix exponential (scaling & squaring with [6/6] Padé) ──
+function matExp(A: number[][]): number[][] {
+  const n = A.length;
+  if (n === 0) return [];
+  // scaling: choose s so that ‖A/2^s‖∞ ≤ 1/2
+  let normInf = 0;
+  for (let i = 0; i < n; i++) { let s = 0; for (let j = 0; j < n; j++) s += Math.abs(A[i][j]); normInf = Math.max(normInf, s); }
+  let s = 0; while (normInf / 2 ** s > 0.5) s++;
+  const Asc = matScale(A, 1 / 2 ** s);
+  // [6/6] Padé: N = Σ c_k A^k, D = Σ (-1)^k c_k A^k
+  const c = [1, 1 / 2, 5 / 44, 1 / 66, 1 / 792, 1 / 15840, 1 / 665280];
+  let Ak = eye(n); let Np = matScale(eye(n), c[0]); let Dp = matScale(eye(n), c[0]);
+  for (let k = 1; k <= 6; k++) {
+    Ak = mmul(Ak, Asc);
+    Np = matAdd2(Np, matScale(Ak, c[k]));
+    Dp = matAdd2(Dp, matScale(Ak, (k % 2 ? -1 : 1) * c[k]));
+  }
+  let E = mmul(matInv(Dp), Np);
+  for (let i = 0; i < s; i++) E = mmul(E, E);   // squaring
+  return E;
+}
+
+/** c2d via ZOH: discretise (A,B) of the tf's controllable-canonical realisation using
+ *  expm([[A,B];[0,0]])=[[Ad,Bd];[0,I]], then convert (Ad,Bd,C,D) back to tf. */
+function c2dZoh(num: number[], den: number[], Ts: number): { num: number[]; den: number[] } {
+  // controllable-canonical realization (matches tf2ss above)
+  const g = den[0] || 1; const d = den.map((v) => v / g); let nm = num.map((v) => v / g);
+  while (nm.length < d.length) nm.unshift(0);
+  const no = d.length - 1; const D = nm[0];
+  if (no === 0) return { num: [D], den: [1] };
+  const A: number[][] = []; for (let i = 0; i < no; i++) { A[i] = []; for (let j = 0; j < no; j++) A[i][j] = i === 0 ? -d[j + 1] : (i - 1 === j ? 1 : 0); }
+  const B = Array.from({ length: no }, (_, i) => [i === 0 ? 1 : 0]);
+  const C = [Array.from({ length: no }, (_, j) => nm[j + 1] - D * d[j + 1])];
+  // augmented [[A B];[0 0]]
+  const M: number[][] = [];
+  for (let i = 0; i < no + 1; i++) { M[i] = []; for (let j = 0; j < no + 1; j++) M[i][j] = i < no && j < no ? A[i][j] * Ts : (i < no && j === no ? B[i][0] * Ts : 0); }
+  const E = matExp(M);
+  const Ad: number[][] = [], Bd: number[][] = [];
+  for (let i = 0; i < no; i++) { Ad[i] = []; for (let j = 0; j < no; j++) Ad[i][j] = E[i][j]; Bd[i] = [E[i][no]]; }
+  // (Ad,Bd,C,D) → tf via Faddeev-LeVerrier
+  return ss2tfFL(Ad, Bd, C, D);
+}
+/** SISO ss→tf (Faddeev-LeVerrier), shared by c2d. */
+function ss2tfFL(A: number[][], B: number[][], C: number[][], D: number): { num: number[]; den: number[] } {
+  const N = A.length; const p = [1]; let M = eye(N); const Ms = [eye(N)];
+  for (let k = 1; k <= N; k++) { const AM = mmul(A, M); p[k] = -traceM(AM) / k; M = AM.map((row, i) => row.map((v, j) => v + (i === j ? p[k] : 0))); if (k < N) Ms.push(M); }
+  const den = p; const numAdj = new Array(N).fill(0);
+  for (let k = 0; k < N; k++) { const CMk = mmul(mmul(C, Ms[k]), B); numAdj[k] = CMk[0][0]; }
+  const num = polyAdd(numAdj, den.map((v) => v * D));
+  return { num: num.map((v) => (Math.abs(v) < 1e-12 ? 0 : v)), den: den.map((v) => (Math.abs(v) < 1e-12 ? 0 : v)) };
+}
+/** c2d via Tustin (bilinear): s = (2/Ts)(z-1)/(z+1). Substitute into num(s)/den(s). */
+function c2dTustin(num: number[], den: number[], Ts: number): { num: number[]; den: number[] } {
+  // Pad numerator to denominator length so both are degree n.
+  const nn = num.slice(), dd = den.slice();
+  while (nn.length < dd.length) nn.unshift(0);
+  const n = dd.length - 1; const a = 2 / Ts;
+  // For a polynomial p(s)=Σ p_k s^{n-k}, substitute s=a(z-1)/(z+1):
+  //   p(s)·(z+1)^n = Σ p_k · [a(z-1)]^{n-k} · (z+1)^k   (polynomials in z, descending)
+  const accum = (coeffs: number[]): number[] => {
+    let res = new Array(n + 1).fill(0);
+    for (let k = 0; k <= n; k++) {
+      // term = coeffs[k] * (a(z-1))^{n-k} * (z+1)^k
+      let term = [coeffs[k] * a ** (n - k)];
+      const zm1 = [1, -1], zp1 = [1, 1];
+      for (let i = 0; i < n - k; i++) term = polyConv(term, zm1);
+      for (let i = 0; i < k; i++) term = polyConv(term, zp1);
+      res = polyAdd(res, term);
+    }
+    return res;
+  };
+  let bn = accum(nn), an = accum(dd);
+  const lead = an[0] || 1; bn = bn.map((v) => v / lead); an = an.map((v) => v / lead);
+  return { num: bn.map((v) => (Math.abs(v) < 1e-12 ? 0 : v)), den: an.map((v) => (Math.abs(v) < 1e-12 ? 0 : v)) };
+}
+
+/** Refine a frequency crossing by bisection on f(w). */
+function bisect(f: (w: number) => number, lo: number, hi: number): number {
+  let flo = f(lo);
+  for (let it = 0; it < 200; it++) {
+    const mid = 0.5 * (lo + hi); const fm = f(mid);
+    if (fm === 0 || (hi - lo) < 1e-13 * Math.max(1, mid)) return mid;
+    if ((flo < 0) === (fm < 0)) { lo = mid; flo = fm; } else hi = mid;
+  }
+  return 0.5 * (lo + hi);
+}
+/** L(jw) of a tf → complex value. */
+function evalLjw(num: number[], den: number[], w: number): { re: number; im: number; mag: number; phaseDeg: number } {
+  const nv = polyValJw(num, w), dv = polyValJw(den, w);
+  const dd = dv.re * dv.re + dv.im * dv.im || 1e-300;
+  const re = (nv.re * dv.re + nv.im * dv.im) / dd, im = (nv.im * dv.re - nv.re * dv.im) / dd;
+  return { re, im, mag: Math.hypot(re, im), phaseDeg: (Math.atan2(im, re) * 180) / Math.PI };
+}
+/** margin: find phase (−180°) and gain (0 dB) crossovers; return [Gm,Pm,Wcg,Wcp]. */
+function marginData(num: number[], den: number[]): { Gm: number; Pm: number; Wcg: number; Wcp: number } {
+  // dense log grid for bracketing
+  const grid: number[] = []; for (let i = 0; i <= 8000; i++) grid.push(10 ** (-4 + (8 * i) / 8000));
+  const L = grid.map((w) => evalLjw(num, den, w));
+  // --- phase crossover: L(jw) real & negative ⇔ Im[L]=0 with Re[L]<0 (phase = ±180°) ---
+  let Wcg = NaN, Gm = Infinity;
+  for (let i = 1; i < grid.length; i++) {
+    const a = L[i - 1].im, b = L[i].im;
+    if (a === 0 || (a < 0) !== (b < 0)) {
+      const wc = bisect((w) => evalLjw(num, den, w).im, grid[i - 1], grid[i]);
+      const lc = evalLjw(num, den, wc);
+      if (lc.re < 0) { const gm = 1 / lc.mag; if (gm > 0 && gm < Gm) { Gm = gm; Wcg = wc; } }
+    }
+  }
+  const gainDb = grid.map((_, i) => L[i].mag);
+  // --- gain crossover: mag passes through 1 ---
+  let Wcp = NaN, Pm = Infinity;
+  for (let i = 1; i < grid.length; i++) {
+    const a = gainDb[i - 1] - 1, b = gainDb[i] - 1;
+    if (a === 0 || (a < 0) !== (b < 0)) {
+      const wc = bisect((w) => evalLjw(num, den, w).mag - 1, grid[i - 1], grid[i]);
+      const L = evalLjw(num, den, wc);
+      let pm = L.phaseDeg + 180; // 180 + phase
+      while (pm > 180) pm -= 360; while (pm < -180) pm += 360;
+      if (Math.abs(pm) < Math.abs(Pm) || !isFinite(Pm)) { Pm = pm; Wcp = wc; }
+    }
+  }
+  if (!isFinite(Pm)) { Pm = Infinity; Wcp = NaN; }
+  return { Gm, Pm, Wcg, Wcp };
+}
+
+/** stepinfo from a (t,y) response: linear-interpolated rise/settle, parabolic-refined peak. */
+function stepInfoFromResp(t: number[], y: number[], yfinal: number, yinit: number): Map<string, number> {
+  const st = 0.02, rtLo = 0.1, rtHi = 0.9;
+  const dev = yfinal - yinit;
+  const interpCross = (lvl: number): number => {
+    for (let i = 1; i < y.length; i++) {
+      const a = y[i - 1] - lvl, b = y[i] - lvl;
+      if (a === 0) return t[i - 1];
+      if ((a < 0) !== (b < 0)) return t[i - 1] + (t[i] - t[i - 1]) * (lvl - y[i - 1]) / (y[i] - y[i - 1]);
+    }
+    return NaN;
+  };
+  const yLo = yinit + rtLo * dev, yHi = yinit + rtHi * dev;
+  const tLo = interpCross(yLo), tHi = interpCross(yHi);
+  const RiseTime = tHi - tLo;
+  // SettlingMin/Max: extrema once response first reaches rtHi level
+  let iHi = 0; while (iHi < y.length && y[iHi] < yHi) iHi++;
+  let sMin = Infinity, sMax = -Infinity;
+  for (let i = iHi; i < y.length; i++) { sMin = Math.min(sMin, y[i]); sMax = Math.max(sMax, y[i]); }
+  // SettlingTime: last time |y-yfinal| exits the ±st·|dev| band
+  const band = st * Math.abs(dev);
+  let SettlingTime = 0;
+  for (let i = 1; i < y.length; i++) {
+    const a = Math.abs(y[i - 1] - yfinal) - band, b = Math.abs(y[i] - yfinal) - band;
+    if (a === 0) SettlingTime = t[i - 1];
+    else if ((a < 0) !== (b < 0)) SettlingTime = t[i - 1] + (t[i] - t[i - 1]) * (0 - a) / (b - a);
+  }
+  // Peak deviation |y-yinit|, parabolic refine.
+  let pk = -Infinity, ipk = 0;
+  for (let i = 0; i < y.length; i++) { const d = Math.abs(y[i] - yinit); if (d > pk) { pk = d; ipk = i; } }
+  let Peak = pk, PeakTime = t[ipk];
+  if (ipk > 0 && ipk < y.length - 1) {
+    const x0 = t[ipk - 1], x1 = t[ipk], x2 = t[ipk + 1];
+    const f0 = Math.abs(y[ipk - 1] - yinit), f1 = Math.abs(y[ipk] - yinit), f2 = Math.abs(y[ipk + 1] - yinit);
+    const denom = (x0 - x1) * (x0 - x2) * (x1 - x2);
+    if (Math.abs(denom) > 1e-300) {
+      const A2 = (x2 * (f1 - f0) + x1 * (f0 - f2) + x0 * (f2 - f1)) / denom;
+      const B2 = (x2 * x2 * (f0 - f1) + x1 * x1 * (f2 - f0) + x0 * x0 * (f1 - f2)) / denom;
+      if (A2 < 0) { const xv = -B2 / (2 * A2); if (xv > x0 && xv < x2) { PeakTime = xv; Peak = f1 - A2 * (x1 - xv) * (x1 - xv); } }
+    }
+  }
+  const Overshoot = dev !== 0 ? Math.max(0, (sMax - yfinal) / Math.abs(dev)) * 100 : 0;
+  const Undershoot = dev !== 0 ? Math.max(0, (yinit - sMin) / Math.abs(dev)) * 100 : 0;
+  return new Map<string, number>([
+    ['RiseTime', RiseTime], ['SettlingTime', SettlingTime], ['SettlingMin', sMin], ['SettlingMax', sMax],
+    ['Overshoot', Overshoot], ['Undershoot', Undershoot], ['Peak', Peak], ['PeakTime', PeakTime],
+  ]);
+}
+/** Dense step response of a SISO tf on a fine uniform grid via its ss realization + expm steps. */
+function stepResponse(num: number[], den: number[]): { t: number[]; y: number[]; yfinal: number } {
+  const g = den[0] || 1; const d = den.map((v) => v / g); let nm = num.map((v) => v / g);
+  while (nm.length < d.length) nm.unshift(0);
+  const no = d.length - 1; const D = nm[0];
+  const yfinal = num[num.length - 1] / den[den.length - 1];
+  if (no === 0) return { t: [0, 1], y: [D, D], yfinal: D };
+  const A: number[][] = []; for (let i = 0; i < no; i++) { A[i] = []; for (let j = 0; j < no; j++) A[i][j] = i === 0 ? -d[j + 1] : (i - 1 === j ? 1 : 0); }
+  const B = Array.from({ length: no }, (_, i) => [i === 0 ? 1 : 0]);
+  const C = [Array.from({ length: no }, (_, j) => nm[j + 1] - D * d[j + 1])];
+  // settle horizon from slowest pole
+  const poles = polyRoots(den); let maxReal = -Infinity, minDecay = Infinity;
+  for (let i = 0; i < poles.re.length; i++) { if (poles.re[i] < 0) minDecay = Math.min(minDecay, -poles.re[i]); maxReal = Math.max(maxReal, poles.re[i]); }
+  let Tfinal = isFinite(minDecay) && minDecay > 0 ? 8 / minDecay : 40;
+  Tfinal = Math.min(Math.max(Tfinal, 5), 500);
+  const Nsteps = 40000; const h = Tfinal / Nsteps;
+  // discretize for fixed-step propagation: x_{k+1}=Ad x_k + Bd u, u=1 step
+  const Maug: number[][] = [];
+  for (let i = 0; i < no + 1; i++) { Maug[i] = []; for (let j = 0; j < no + 1; j++) Maug[i][j] = i < no && j < no ? A[i][j] * h : (i < no && j === no ? B[i][0] * h : 0); }
+  const E = matExp(Maug);
+  const Ad: number[][] = [], Bd: number[][] = [];
+  for (let i = 0; i < no; i++) { Ad[i] = []; for (let j = 0; j < no; j++) Ad[i][j] = E[i][j]; Bd[i] = [E[i][no]]; }
+  const t: number[] = [], y: number[] = []; let x = new Array(no).fill(0);
+  for (let k = 0; k <= Nsteps; k++) {
+    let out = D; for (let j = 0; j < no; j++) out += C[0][j] * x[j];
+    t.push(k * h); y.push(out);
+    const xn = new Array(no).fill(0);
+    for (let i = 0; i < no; i++) { let s = Bd[i][0]; for (let j = 0; j < no; j++) s += Ad[i][j] * x[j]; xn[i] = s; }
+    x = xn;
+  }
+  return { t, y, yfinal };
+}
+
+/** minreal: cancel coincident num/den roots within tol; rebuild tf. */
+function minrealTf(num: number[], den: number[], tol: number): { num: number[]; den: number[] } {
+  const z = polyRoots(num), p = polyRoots(den);
+  // leading gains
+  let i0 = 0; while (i0 < num.length && Math.abs(num[i0]) < 1e-300) i0++;
+  let j0 = 0; while (j0 < den.length && Math.abs(den[j0]) < 1e-300) j0++;
+  const kn = num[i0] ?? 0, kd = den[j0] ?? 1;
+  const zr = z.re.slice(), zi = z.im.slice(), pr = p.re.slice(), pi = p.im.slice();
+  const usedP = new Array(pr.length).fill(false);
+  const zKeepR: number[] = [], zKeepI: number[] = [], pKeepR: number[] = [], pKeepI: number[] = [];
+  for (let a = 0; a < zr.length; a++) {
+    let best = -1, bd = tol;
+    for (let b = 0; b < pr.length; b++) if (!usedP[b]) { const dist = Math.hypot(zr[a] - pr[b], zi[a] - pi[b]); if (dist <= bd) { bd = dist; best = b; } }
+    if (best >= 0) usedP[best] = true; else { zKeepR.push(zr[a]); zKeepI.push(zi[a]); }
+  }
+  for (let b = 0; b < pr.length; b++) if (!usedP[b]) { pKeepR.push(pr[b]); pKeepI.push(pi[b]); }
+  const k = kn / kd;
+  let n2 = polyFromRoots(zKeepR, zKeepI).map((v) => v * k);
+  let d2 = polyFromRoots(pKeepR, pKeepI);
+  // normalize so leading den coeff = 1 (MATLAB minreal returns monic-den scaling implicitly via tf)
+  const lead = d2[0] || 1; n2 = n2.map((v) => v / lead); d2 = d2.map((v) => v / lead);
+  return { num: n2.map((v) => (Math.abs(v) < 1e-10 ? 0 : v)), den: d2.map((v) => (Math.abs(v) < 1e-10 ? 0 : v)) };
+}
+
 export const CONTROL: ToolboxModule = {
   id: 'control',
   name: 'Control System Toolbox',
@@ -334,6 +564,49 @@ export const CONTROL: ToolboxModule = {
       const An = mmul(mmul(T, A), Ti); const Bn = mmul(T, B); const Cn = mmul(C, Ti);
       return ret(makeObject('ss', { A: fromRows(An), B: fromRows(Bn), C: fromRows(Cn), D }));
     },
+    /** c2d(sys,Ts[,method]) — continuous→discrete. method: 'zoh' (default) | 'tustin'/'bilinear'. */
+    c2d: (a) => {
+      const { num, den } = getNumDen(a[0]); const Ts = asScalar(a[1]);
+      const meth = (a.length >= 3 ? asString(a[2]) : 'zoh').toLowerCase();
+      let r: { num: number[]; den: number[] };
+      if (meth === 'tustin' || meth === 'bilinear') r = c2dTustin(num, den, Ts);
+      else r = c2dZoh(num, den, Ts);
+      return ret(makeObject('tf', { num: rowVec(r.num), den: rowVec(r.den), Ts: scalar(Ts) }));
+    },
+    /** [Gm,Pm,Wcg,Wcp] = margin(sys) — gain margin (abs), phase margin (deg), crossover freqs. */
+    margin: (a, n) => {
+      const { num, den } = getNumDenAny(a[0]);
+      const { Gm, Pm, Wcg, Wcp } = marginData(num, den);
+      if (n >= 4) return Promise.resolve([scalar(Gm), scalar(Pm), scalar(Wcg), scalar(Wcp)]);
+      if (n >= 3) return Promise.resolve([scalar(Gm), scalar(Pm), scalar(Wcg)]);
+      if (n >= 2) return Promise.resolve([scalar(Gm), scalar(Pm)]);
+      return ret(scalar(Gm));
+    },
+    /** stepinfo(sys) or stepinfo(y,t[,yfinal[,yinit]]) — step-response characteristics struct. */
+    stepinfo: (a) => {
+      let t: number[], y: number[], yfinal: number, yinit = 0;
+      if (isObject(a[0])) {
+        const { num, den } = getNumDenAny(a[0]);
+        const resp = stepResponse(num, den); t = resp.t; y = resp.y; yfinal = resp.yfinal;
+        if (a.length >= 2 && isMatLike(a[1])) yfinal = asScalar(a[1]);
+      } else {
+        y = toArray(m(a[0])); t = a.length >= 2 ? toArray(m(a[1])) : y.map((_, i) => i + 1);
+        yfinal = a.length >= 3 ? asScalar(a[2]) : y[y.length - 1];
+        yinit = a.length >= 4 ? asScalar(a[3]) : 0;
+      }
+      const info = stepInfoFromResp(t, y, yfinal, yinit);
+      const fields = new Map<string, Value[]>();
+      for (const key of ['RiseTime', 'SettlingTime', 'SettlingMin', 'SettlingMax', 'Overshoot', 'Undershoot', 'Peak', 'PeakTime'])
+        fields.set(key, [scalar(info.get(key) ?? NaN)]);
+      return ret({ kind: 'struct', rows: 1, cols: 1, fields } as StructV);
+    },
+    /** minreal(sys[,tol]) — minimal realization via pole/zero cancellation. */
+    minreal: (a) => {
+      const { num, den } = getNumDen(a[0]);
+      const tol = a.length >= 2 ? asScalar(a[1]) : Math.sqrt(2.220446049250313e-16);
+      const r = minrealTf(num, den, Math.max(tol, 1e-9));
+      return ret(makeObject('tf', { num: rowVec(r.num), den: rowVec(r.den) }));
+    },
   },
   help: {
     tf: 'Create a transfer-function model', ss: 'Create a state-space model', zpk: 'Create a zero-pole-gain model',
@@ -346,6 +619,10 @@ export const CONTROL: ToolboxModule = {
     ss2ss: 'State coordinate transformation for state-space models',
     lqr: 'Linear-quadratic regulator design (continuous)', dlqr: 'Linear-quadratic regulator design (discrete)',
     bode: 'Bode frequency response of dynamic systems', bodemag: 'Bode magnitude response of dynamic systems',
+    c2d: 'Convert model from continuous to discrete time',
+    margin: 'Gain margin, phase margin, and crossover frequencies',
+    stepinfo: 'Rise time, settling time, and other step-response characteristics',
+    minreal: 'Minimal realization or pole-zero cancellation',
   },
   // OOP method dispatch (see tb/types.ts): series(tf,…) routes here; series(sym,…) → Symbolic.
   methods: {

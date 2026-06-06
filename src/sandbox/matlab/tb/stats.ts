@@ -159,6 +159,47 @@ const mean_ = (c: number[]) => c.reduce((s, x) => s + x, 0) / (c.length || 1);
 function var_(c: number[], pop = false): number { const mu = mean_(c); const ss = c.reduce((s, x) => s + (x - mu) ** 2, 0); return ss / Math.max(1, c.length - (pop ? 0 : 1)); }
 function median_(c: number[]): number { const s = c.slice().sort((x, y) => x - y); const n = s.length; if (!n) return NaN; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; }
 
+// ──────────────────────── grouping-variable helpers (confusionmat / dummyvar) ────────────────────────
+/** Extract a label vector as string keys plus a kind tag, from numeric / cellstr / string-array input.
+ *  Returns { keys, numeric, sort }: `keys` are per-observation label strings, `numeric` marks numeric
+ *  labels (so unique labels sort numerically), and `sort(a,b)` orders two label keys. */
+function labelKeys(v: Value): { keys: string[]; numeric: boolean; cmp: (a: string, b: string) => number } {
+  if (isCell(v)) {
+    const keys = v.items.map((it) => asString(it).trim());
+    return { keys, numeric: false, cmp: (a, b) => (a < b ? -1 : a > b ? 1 : 0) };
+  }
+  if (isStr(v)) {
+    return { keys: v.items.map((s) => s.trim()), numeric: false, cmp: (a, b) => (a < b ? -1 : a > b ? 1 : 0) };
+  }
+  const M = m(v);
+  if (M.isChar) {                          // char row(s) → one label per row
+    const keys: string[] = [];
+    for (let r = 0; r < M.rows; r++) { let s = ''; for (let c = 0; c < M.cols; c++) s += String.fromCharCode(M.data[r + c * M.rows]); keys.push(s.trim()); }
+    return { keys, numeric: false, cmp: (a, b) => (a < b ? -1 : a > b ? 1 : 0) };
+  }
+  const keys = toArray(M).map((x) => String(x));
+  return { keys, numeric: true, cmp: (a, b) => Number(a) - Number(b) };
+}
+/** Sorted unique labels (numeric: numerically; otherwise lexicographically) — matches grp2idx ordering. */
+function uniqueLabels(keys: string[], cmp: (a: string, b: string) => number): string[] {
+  const seen = new Set<string>(); const out: string[] = [];
+  for (const k of keys) if (!seen.has(k)) { seen.add(k); out.push(k); }
+  return out.sort(cmp);
+}
+
+// ──────────────────────── robust regression weight functions (statrobustwfun) ────────────────────────
+const ROBUST_WFUNS: Record<string, { w: (r: number) => number; tune: number }> = {
+  andrews: { w: (r) => { const a = Math.max(Math.sqrt(EPS), Math.abs(r)); return Math.abs(a) < Math.PI ? Math.sin(a) / a : 0; }, tune: 1.339 },
+  bisquare: { w: (r) => (Math.abs(r) < 1 ? (1 - r * r) ** 2 : 0), tune: 4.685 },
+  cauchy: { w: (r) => 1 / (1 + r * r), tune: 2.385 },
+  fair: { w: (r) => 1 / (1 + Math.abs(r)), tune: 1.4 },
+  huber: { w: (r) => 1 / Math.max(1, Math.abs(r)), tune: 1.345 },
+  logistic: { w: (r) => { const a = Math.max(Math.sqrt(EPS), Math.abs(r)); return Math.tanh(a) / a; }, tune: 1.205 },
+  ols: { w: () => 1, tune: 1 },
+  talwar: { w: (r) => (Math.abs(r) < 1 ? 1 : 0), tune: 2.795 },
+  welsch: { w: (r) => Math.exp(-(r * r)), tune: 2.985 },
+};
+
 // ──────────────────────────── distance / clustering ────────────────────────────
 const METRICS: Record<string, (u: number[], v: number[], p?: number) => number> = {
   euclidean: (u, v) => Math.sqrt(u.reduce((s, x, i) => s + (x - v[i]) ** 2, 0)),
@@ -1470,6 +1511,149 @@ export const STATS: ToolboxModule = {
     cdf: (a) => { const { spec, vals, rest } = resolveDist(a); return ret(map(m(rest[0]), (x) => spec.cdf(x, ...vals))); },
     /** icdf(pd,p) or icdf('Name',p,p1,p2) — inverse cumulative (quantile). */
     icdf: (a) => { const { spec, vals, rest } = resolveDist(a); return ret(map(m(rest[0]), (p) => spec.inv(p, ...vals))); },
+
+    /** [C,order]=confusionmat(g,ghat[,'Order',order]) — confusion matrix (rows=true, cols=predicted).
+     *  Classes appear in sorted order of the unique labels of [g;ghat] (grp2idx convention). */
+    confusionmat: (a, nargout) => {
+      const lg = labelKeys(a[0]); const lp = labelKeys(a[1]);
+      const cmp = lg.cmp;
+      // 'Order' name/value pair overrides the class order.
+      let order: string[] | null = null;
+      for (let i = 2; i + 1 < a.length; i += 2) {
+        const isName = isStr(a[i]) || (isMat(a[i]) && (a[i] as Mat).isChar);
+        if (isName && asString(a[i]).toLowerCase() === 'order') order = labelKeys(a[i + 1]).keys;
+      }
+      const classes = order ?? uniqueLabels([...lg.keys, ...lp.keys], cmp);
+      const idx = new Map<string, number>(); classes.forEach((c, i) => idx.set(c, i));
+      const k = classes.length;
+      const C = Array.from({ length: k }, () => new Array<number>(k).fill(0));
+      const isMissing = (s: string) => s === 'NaN' || s === '' || s === 'undefined';
+      for (let r = 0; r < lg.keys.length; r++) {
+        const gi = idx.get(lg.keys[r]); const pi = idx.get(lp.keys[r]);
+        if (gi === undefined || pi === undefined || isMissing(lg.keys[r]) || isMissing(lp.keys[r])) continue;
+        C[gi][pi]++;
+      }
+      const Cmat = fromRows(C);
+      if (nargout < 2) return ret(Cmat);
+      // Order output: same type as the inputs.
+      const ord: Value = lg.numeric ? colVec(classes.map(Number))
+        : makeCell(classes.length, 1, classes.map((s) => str(s)));
+      return Promise.resolve([Cmat, ord]);
+    },
+
+    /** D=dummyvar(g) — one-hot/dummy matrix: n×k with D(i,g(i))=1 for integer groups (k=max(g)).
+     *  For a categorical-like (cellstr / string) group, k=#unique labels in sorted order. */
+    dummyvar: (a) => {
+      const lab = labelKeys(a[0]);
+      if (lab.numeric) {                                  // integer codes → column = code, k = max code
+        const codes = lab.keys.map(Number);
+        const k = codes.reduce((mx, x) => Math.max(mx, x), 0);
+        const n = codes.length;
+        const D = zeros(n, k);
+        for (let i = 0; i < n; i++) { const c = codes[i]; if (c >= 1 && c <= k && Number.isInteger(c)) D.data[i + (c - 1) * n] = 1; }
+        return ret(D);
+      }
+      const classes = uniqueLabels(lab.keys, lab.cmp);
+      const idx = new Map<string, number>(); classes.forEach((c, i) => idx.set(c, i));
+      const n = lab.keys.length; const D = zeros(n, classes.length);
+      for (let i = 0; i < n; i++) { const c = idx.get(lab.keys[i]); if (c !== undefined) D.data[i + c * n] = 1; }
+      return ret(D);
+    },
+
+    /** d=mahal(Y,X) — squared Mahalanobis distance of each row of Y to the distribution of X:
+     *  d_i = (y_i-mu)·inv(cov(X))·(y_i-mu)'. */
+    mahal: (a) => {
+      const X = matRows(m(a[0])); const Y = matRows(m(a[1]));
+      const n = X.length, p = X[0]?.length ?? 0;
+      const mu = new Array<number>(p).fill(0);
+      for (const row of X) for (let j = 0; j < p; j++) mu[j] += row[j] / n;
+      // Sample covariance (divisor n-1).
+      const Cov = Array.from({ length: p }, () => new Array<number>(p).fill(0));
+      for (const row of X) for (let i = 0; i < p; i++) for (let j = 0; j < p; j++) Cov[i][j] += (row[i] - mu[i]) * (row[j] - mu[j]) / (n - 1);
+      const out: number[] = [];
+      for (const y of Y) {
+        const c = y.map((v, j) => v - mu[j]);
+        const z = solveLin(Cov.map((r) => r.slice()), c.slice());   // z = inv(Cov)·c
+        out.push(c.reduce((s, ci, j) => s + ci * z[j], 0));
+      }
+      return ret(colVec(out));
+    },
+
+    /** [b,stats]=robustfit(X,y[,wfun][,tune][,const]) — robust regression via IRLS (bisquare default,
+     *  tune 4.685). Adds an intercept column by default ('off' to suppress). Mirrors statrobustfit. */
+    robustfit: (a, nargout) => {
+      const X0 = matRows(m(a[0])); const yv = toArray(m(a[1]));
+      const wname = a.length > 2 && (isStr(a[2]) || (isMat(a[2]) && (a[2] as Mat).isChar)) ? asString(a[2]).toLowerCase() : 'bisquare';
+      const WFUNS = ROBUST_WFUNS;
+      const wspec = WFUNS[wname] ?? WFUNS.bisquare;
+      const tune = a.length > 3 && isMat(a[3]) && numel(m(a[3])) ? asScalar(a[3]) : wspec.tune;
+      const addConst = !(a.length > 4 && (isStr(a[4]) || (isMat(a[4]) && (a[4] as Mat).isChar)) && asString(a[4]).toLowerCase() === 'off');
+      const n = X0.length;
+      const X = X0.map((row) => (addConst ? [1, ...row] : [...row]));
+      const p = X[0]?.length ?? 0;
+      const wfun = wspec.w;
+
+      // OLS solution via normal equations; G = inv(X'X) for leverage + standard errors.
+      const olsFit = (Xm: number[][], wts: number[]): number[] => {
+        const XtX = Array.from({ length: p }, () => new Array<number>(p).fill(0));
+        const Xty = new Array<number>(p).fill(0);
+        for (let r = 0; r < n; r++) { const w = wts[r]; for (let i = 0; i < p; i++) { Xty[i] += w * Xm[r][i] * yv[r]; for (let j = 0; j < p; j++) XtX[i][j] += w * Xm[r][i] * Xm[r][j]; } }
+        return solveLin(XtX, Xty);
+      };
+      const ones = new Array<number>(n).fill(1);
+      // Leverage h = diag(X·inv(X'X)·X') and adjfactor.
+      const XtX0 = Array.from({ length: p }, () => new Array<number>(p).fill(0));
+      for (let r = 0; r < n; r++) for (let i = 0; i < p; i++) for (let j = 0; j < p; j++) XtX0[i][j] += X[r][i] * X[r][j];
+      const G: number[][] = Array.from({ length: p }, () => new Array<number>(p).fill(0));
+      for (let c = 0; c < p; c++) { const e = new Array<number>(p).fill(0); e[c] = 1; const col = solveLin(XtX0.map((r) => r.slice()), e); for (let i = 0; i < p; i++) G[i][c] = col[i]; }
+      const hLev = X.map((row) => { let h = 0; for (let i = 0; i < p; i++) { let gi = 0; for (let j = 0; j < p; j++) gi += G[i][j] * row[j]; h += row[i] * gi; } return Math.min(0.9999, h); });
+      const adj = hLev.map((h) => 1 / Math.sqrt(1 - h));
+
+      const dfe = n - p;
+      const predict = (b: number[]) => X.map((row) => row.reduce((s, x, i) => s + x * b[i], 0));
+      const olsB = olsFit(X, ones);
+      const olsResid = yv.map((v, i) => v - predict(olsB)[i]);
+      const ols_s = Math.sqrt(olsResid.reduce((s, x) => s + x * x, 0)) / Math.sqrt(dfe);
+      const stdY = Math.sqrt(var_(yv));
+      let tiny_s = 1e-6 * stdY; if (tiny_s === 0) tiny_s = 1;
+      const madsigma = (r: number[]): number => {
+        const rs = r.map(Math.abs).sort((x, y) => x - y);
+        return median_(rs.slice(Math.max(0, p - 1))) / 0.6745;   // rs(max(1,p):end) → 0-based slice from p-1
+      };
+
+      let b = olsB.slice(); let b0 = new Array<number>(p).fill(0);
+      let w = ones.slice();
+      const D = Math.sqrt(EPS);
+      for (let iter = 0; iter < 50; iter++) {
+        const conv = iter > 0 && b.every((bi, i) => Math.abs(bi - b0[i]) <= D * Math.max(Math.abs(bi), Math.abs(b0[i])));
+        if (conv) break;
+        const yhat = predict(b);
+        const radj = yv.map((v, i) => (v - yhat[i]) * adj[i]);
+        const s = madsigma(radj);
+        w = radj.map((rr) => wfun(rr / (Math.max(s, tiny_s) * tune)));
+        b0 = b.slice();
+        b = olsFit(X, w);
+      }
+      const bMat = colVec(b);
+      if (nargout < 2) return ret(bMat);
+
+      // stats: robust sigma (DuMouchel & O'Brien shrink toward OLS), SE, t, p.
+      const resid = yv.map((v, i) => v - predict(b)[i]);
+      const radj = resid.map((rr, i) => rr * adj[i]);
+      const mad_s = madsigma(radj);
+      const robust_s = mad_s;   // approximate robust scale by MAD estimate
+      const sigma = Math.max(robust_s, Math.sqrt((ols_s * ols_s * p * p + robust_s * robust_s * n) / (p * p + n)));
+      const se = G.map((_, i) => Math.sqrt(Math.max(EPS, G[i][i] * sigma * sigma)));
+      const tstat = b.map((bi, i) => (se[i] > 0 ? bi / se[i] : NaN));
+      const pval = tstat.map((t) => 2 * tcdfL(-Math.abs(t), dfe));
+      const covb = fromRows(G.map((row) => row.map((g) => g * sigma * sigma)));
+      const stats = mkStruct([
+        ['ols_s', scalar(ols_s)], ['robust_s', scalar(robust_s)], ['mad_s', scalar(mad_s)], ['s', scalar(sigma)],
+        ['resid', colVec(resid)], ['se', colVec(se)], ['covb', covb], ['t', colVec(tstat)], ['p', colVec(pval)],
+        ['w', colVec(w)], ['dfe', scalar(dfe)], ['h', colVec(hLev)],
+      ]);
+      return Promise.resolve([bMat, stats]);
+    },
   },
   help: {
     ttest: 'One-sample and paired-sample t-test', ttest2: 'Two-sample t-test',
@@ -1516,6 +1700,8 @@ export const STATS: ToolboxModule = {
     regress: 'Multiple linear regression', pca: 'Principal component analysis', anova1: 'One-way analysis of variance',
     glmfit: 'Generalized linear model regression',
     makedist: 'Create a probability distribution object', pdf: 'Probability density function', cdf: 'Cumulative distribution function', icdf: 'Inverse cumulative distribution function',
+    confusionmat: 'Confusion matrix for classification', dummyvar: 'Dummy (one-hot) variable coding for grouping variables',
+    mahal: 'Squared Mahalanobis distance to a reference distribution', robustfit: 'Robust linear regression (iteratively reweighted least squares)',
   },
 };
 

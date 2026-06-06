@@ -135,6 +135,25 @@ export const IMAGES: ToolboxModule = {
     integralBoxFilter3: (a) => integralBoxFilter3(a),
     /** regionprops(BW[,props...]) — measure properties of connected components (8-conn). */
     regionprops: (a) => ret(regionprops(a)),
+    /** bwlabel(BW[,conn]) — label connected components; [L,num]. conn=8 (default) or 4. */
+    bwlabel: (a, nargout) => {
+      const BWm = m(a[0]); const R = BWm.rows, C = BWm.cols; const d = toArray(BWm);
+      const BW: number[][] = [];
+      for (let r = 0; r < R; r++) { BW[r] = []; for (let c = 0; c < C; c++) BW[r][c] = d[r + c * R] ? 1 : 0; }
+      const conn = a.length >= 2 && isMat(a[1]) ? Math.round(asScalar(a[1])) : 8;
+      const regions = bwLabelConn(BW, R, C, conn === 4 ? 4 : 8);
+      const o = zeros(R, C);
+      for (let lab = 0; lab < regions.length; lab++) for (const li of regions[lab]) o.data[li] = lab + 1;
+      return Promise.resolve(nargout >= 2 ? [o, scalar(regions.length)] : [o]);
+    },
+    /** imerode(BW,SE) — binary erosion (out-of-border treated as foreground → 1-padding). */
+    imerode: (a) => ret(morph(m(a[0]), seNeighborhood(a[1]), 'erode')),
+    /** imdilate(BW,SE) — binary dilation (out-of-border treated as background → 0-padding). */
+    imdilate: (a) => ret(morph(m(a[0]), seNeighborhood(a[1]), 'dilate')),
+    /** imopen(BW,SE) — erosion followed by dilation. */
+    imopen: (a) => ret(openClose(m(a[0]), seNeighborhood(a[1]), 'open')),
+    /** imclose(BW,SE) — dilation followed by erosion. */
+    imclose: (a) => ret(openClose(m(a[0]), seNeighborhood(a[1]), 'close')),
   },
   help: {
     im2double: 'Convert image to double precision [0,1]', im2uint8: 'Convert image to uint8', im2uint16: 'Convert image to uint16',
@@ -148,8 +167,115 @@ export const IMAGES: ToolboxModule = {
     integralBoxFilter: '2-D box filtering of integral images', integralBoxFilter3: '3-D box filtering of 3-D integral images',
     padarray: 'Pad array (constant, circular, replicate, or symmetric)',
     regionprops: 'Measure properties of image regions (connected components)',
+    bwlabel: 'Label connected components in a 2-D binary image',
+    imerode: 'Erode a binary image with a structuring element',
+    imdilate: 'Dilate a binary image with a structuring element',
+    imopen: 'Morphologically open a binary image (erode then dilate)',
+    imclose: 'Morphologically close a binary image (dilate then erode)',
   },
 };
+
+/** Connected-component labeling with 4- or 8-connectivity, in MATLAB column-major
+ *  scan order (increasing linear index). Returns per region the sorted 0-based
+ *  column-major linear pixel indices. */
+function bwLabelConn(BW: number[][], R: number, C: number, conn: 4 | 8): number[][] {
+  const label = new Int32Array(R * C).fill(0);
+  const regions: number[][] = [];
+  const idx = (r: number, c: number) => r + c * R;
+  const offs4: Array<[number, number]> = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+  const offs8: Array<[number, number]> = [];
+  for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) if (dr || dc) offs8.push([dr, dc]);
+  const offs = conn === 4 ? offs4 : offs8;
+  for (let c = 0; c < C; c++) {
+    for (let r = 0; r < R; r++) {
+      if (!BW[r][c] || label[idx(r, c)] !== 0) continue;
+      const lab = regions.length + 1; const pix: number[] = [];
+      const stack: Array<[number, number]> = [[r, c]]; label[idx(r, c)] = lab;
+      while (stack.length) {
+        const [pr, pc] = stack.pop()!; pix.push(idx(pr, pc));
+        for (const [dr, dc] of offs) {
+          const nr = pr + dr, nc = pc + dc;
+          if (nr < 0 || nr >= R || nc < 0 || nc >= C) continue;
+          if (BW[nr][nc] && label[idx(nr, nc)] === 0) { label[idx(nr, nc)] = lab; stack.push([nr, nc]); }
+        }
+      }
+      pix.sort((x, y) => x - y); regions.push(pix);
+    }
+  }
+  return regions;
+}
+
+/** Offsets (row,col) of a structuring element's set elements relative to its
+ *  origin (center = floor(size/2)). Accepts a numeric/logical neighborhood
+ *  matrix (nonzeros are the SE) or a strel-style object exposing a Neighborhood. */
+function seNeighborhood(v: Value): Array<[number, number]> {
+  let M: Mat | null = null;
+  if (isMat(v)) M = m(v);
+  else if (v && typeof v === 'object' && (v as StructV).kind === 'struct') {
+    const f = (v as StructV).fields;
+    const nb = f.get('Neighborhood')?.[0] ?? f.get('neighborhood')?.[0];
+    if (nb && isMat(nb)) M = m(nb);
+  }
+  if (!M) M = scalar(1);
+  const R = M.rows, C = M.cols; const cy = Math.floor(R / 2), cx = Math.floor(C / 2);
+  const off: Array<[number, number]> = [];
+  for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) if (M.data[r + c * R]) off.push([r - cy, c - cx]);
+  return off;
+}
+
+/** Binary erosion/dilation with a structuring element given as origin-relative
+ *  offsets. Erosion treats out-of-border pixels as foreground (value-1 padding,
+ *  matching MATLAB); dilation treats them as background. Returns a logical Mat. */
+function morph(BWm: Mat, off: Array<[number, number]>, op: 'erode' | 'dilate'): Mat {
+  const R = BWm.rows, C = BWm.cols; const d = toArray(BWm);
+  const get = (r: number, c: number) => (d[r + c * R] ? 1 : 0);
+  const o = zeros(R, C);
+  for (let c = 0; c < C; c++) {
+    for (let r = 0; r < R; r++) {
+      let val: number;
+      if (op === 'erode') {
+        val = 1;
+        for (const [dr, dc] of off) {
+          const nr = r + dr, nc = c + dc;
+          const px = (nr < 0 || nr >= R || nc < 0 || nc >= C) ? 1 : get(nr, nc); // 1-pad
+          if (!px) { val = 0; break; }
+        }
+      } else {
+        // dilation: reflect SE about origin; out-of-border = 0.
+        val = 0;
+        for (const [dr, dc] of off) {
+          const nr = r - dr, nc = c - dc;
+          if (nr < 0 || nr >= R || nc < 0 || nc >= C) continue; // 0-pad
+          if (get(nr, nc)) { val = 1; break; }
+        }
+      }
+      o.data[r + c * R] = val;
+    }
+  }
+  o.isBool = true;
+  return o;
+}
+
+/** imopen/imclose. MATLAB pads the image (with 0) by the SE's reach before the
+ *  two morphology passes and crops back, so the border does not artificially
+ *  preserve foreground during the internal erosion. Validated vs MATLAB R2026a. */
+function openClose(BWm: Mat, off: Array<[number, number]>, op: 'open' | 'close'): Mat {
+  const R = BWm.rows, C = BWm.cols; const d = toArray(BWm);
+  // SE reach in each direction.
+  let up = 0, down = 0, left = 0, right = 0;
+  for (const [dr, dc] of off) { up = Math.max(up, -dr); down = Math.max(down, dr); left = Math.max(left, -dc); right = Math.max(right, dc); }
+  const pT = up, pB = down, pL = left, pR = right;
+  const pR_ = R + pT + pB, pC_ = C + pL + pR;
+  const padded = zeros(pR_, pC_);
+  for (let c = 0; c < C; c++) for (let r = 0; r < R; r++) padded.data[(r + pT) + (c + pL) * pR_] = d[r + c * R] ? 1 : 0;
+  const seq: Array<'erode' | 'dilate'> = op === 'open' ? ['erode', 'dilate'] : ['dilate', 'erode'];
+  let cur = padded;
+  for (const step of seq) cur = morph(cur, off, step);
+  const o = zeros(R, C);
+  for (let c = 0; c < C; c++) for (let r = 0; r < R; r++) o.data[r + c * R] = cur.data[(r + pT) + (c + pL) * pR_];
+  o.isBool = true;
+  return o;
+}
 
 /** Apply a per-row 3→3 map to an N×3 matrix (rows of [c1 c2 c3]). */
 function mapRows3(M: Mat, f: (a: number, b: number, c: number) => number[]): Mat {

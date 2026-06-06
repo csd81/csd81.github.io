@@ -285,6 +285,22 @@ function buttap(n: number): { z: Cx[]; p: Cx[]; k: number } {
   let k: Cx = [1, 0]; for (const pi of p) k = cMul(k, [-pi[0], -pi[1]]);
   return { z: [], p, k: k[0] };
 }
+/** N-th order Chebyshev Type I analog lowpass prototype zeros/poles/gain (cheb1ap), Rp dB ripple. */
+function cheb1ap(n: number, rp: number): { z: Cx[]; p: Cx[]; k: number } {
+  const epsilon = Math.sqrt(10 ** (0.1 * rp) - 1);
+  const mu = Math.asinh(1 / epsilon) / n;
+  // raw poles on the unit circle: exp(1i*(pi*(1:2:2n-1)/(2n) + pi/2))
+  const raw: Cx[] = [];
+  for (let i = 1; i <= 2 * n - 1; i += 2) { const th = (Math.PI * i) / (2 * n) + Math.PI / 2; raw.push([Math.cos(th), Math.sin(th)]); }
+  // symmetrize real (mean with flip) and imag (half-difference with flip), like the .m source
+  const N = raw.length, sh = Math.sinh(mu), ch = Math.cosh(mu);
+  const p: Cx[] = [];
+  for (let i = 0; i < N; i++) { const re = (raw[i][0] + raw[N - 1 - i][0]) / 2, im = (raw[i][1] - raw[N - 1 - i][1]) / 2; p.push([sh * re, ch * im]); }
+  let k: Cx = [1, 0]; for (const pi of p) k = cMul(k, [-pi[0], -pi[1]]);
+  let kr = k[0];
+  if (n % 2 === 0) kr = kr / Math.sqrt(1 + epsilon * epsilon);   // even-order gain patch
+  return { z: [], p, k: kr };
+}
 /** lp2lp on zpk: s → s/Wo. Scales zeros/poles by Wo and gain by Wo^(np-nz). */
 function lp2lpZpk(z: Cx[], p: Cx[], k: number, wo: number): { z: Cx[]; p: Cx[]; k: number } {
   const zn = z.map((v): Cx => [v[0] * wo, v[1] * wo]);
@@ -1122,6 +1138,50 @@ export const SIGNAL: ToolboxModule = {
       for (let i = n - mid; i < n; i++) { const rrow = i - n + F; let s = 0; for (let j = 0; j < F; j++) s += B[rrow][j] * x[n - F + j]; y[i] = s; }
       return ret(m(a[0]).rows === 1 ? rowVec(y) : colVec(y));
     },
+
+    // ── cconv(a,b[,n]) — modulo-n circular convolution (n defaults to la+lb-1, i.e. linear conv) ──
+    cconv: (a) => {
+      const A = m(a[0]), B = m(a[1]), av = toArray(A), bv = toArray(B);
+      const la = av.length, lb = bv.length;
+      const n = a.length >= 3 && isMat(a[2]) ? Math.round(asScalar(a[2])) : la + lb - 1;
+      const out = new Array(Math.max(0, n)).fill(0);
+      for (let i = 0; i < la; i++) for (let j = 0; j < lb; j++) out[(i + j) % n] += av[i] * bv[j];
+      // orientation: row unless either operand is a (non-scalar) column vector
+      const col = (A.cols === 1 && A.rows > 1) || (B.cols === 1 && B.rows > 1);
+      return ret(col ? colVec(out) : rowVec(out));
+    },
+
+    // ── envelope(x) analytic: [yupper,ylower] = mean(x) ± |hilbert(x-mean(x))| ──
+    envelope: (a, nargout) => {
+      const X = m(a[0]), x = toArray(X), N = x.length, isRow = X.rows === 1;
+      // method string (last char arg); only 'analytic' single-arg path is validated here
+      const method = a.length >= 3 && (isStr(a[2]) || (isMat(a[2]) && (a[2] as Mat).isChar)) ? asString(a[2]).toLowerCase() : 'analytic';
+      if (!method.startsWith('a')) throw new Error("cconv/envelope: only the analytic (single-argument) envelope method is supported");
+      if (a.length >= 2 && isMat(a[1])) throw new Error("envelope: the FIR-length analytic envelope (envelope(x,n)) is not supported");
+      const xmean = x.reduce((s, v) => s + v, 0) / N;
+      const xc = x.map((v) => v - xmean);
+      // analytic signal via the one-sided spectrum (same scheme as the hilbert builtin)
+      const Hr = new Array(N), Hi = new Array(N);
+      for (let k = 0; k < N; k++) { let re = 0, im = 0; for (let nn = 0; nn < N; nn++) { const ang = -2 * Math.PI * k * nn / N; re += xc[nn] * Math.cos(ang); im += xc[nn] * Math.sin(ang); } const mult = k === 0 || (N % 2 === 0 && k === N / 2) ? 1 : k < N / 2 ? 2 : 0; Hr[k] = re * mult; Hi[k] = im * mult; }
+      const amp = new Array(N);
+      for (let nn = 0; nn < N; nn++) { let re = 0, im = 0; for (let k = 0; k < N; k++) { const ang = 2 * Math.PI * k * nn / N, c = Math.cos(ang), s = Math.sin(ang); re += Hr[k] * c - Hi[k] * s; im += Hr[k] * s + Hi[k] * c; } amp[nn] = Math.hypot(re / N, im / N); }
+      const yu = amp.map((v) => xmean + v), yl = amp.map((v) => xmean - v);
+      const mk = (v: number[]): Value => (isRow ? rowVec(v) : colVec(v));
+      return Promise.resolve(nargout >= 2 ? [mk(yu), mk(yl)] : [mk(yu)]);
+    },
+
+    // ── [b,a] = cheby1(n,Rp,Wp[,ftype]) — Chebyshev Type I IIR (lowpass/highpass, digital) ──
+    cheby1: (a, nargout) => {
+      const n = Math.round(asScalar(a[0])); const Rp = asScalar(a[1]); const Wp = asScalar(a[2]);
+      const ftype = a.length >= 4 && (isStr(a[3]) || (isMat(a[3]) && (a[3] as Mat).isChar)) ? asString(a[3]).toLowerCase() : '';
+      const high = ftype.startsWith('high');
+      const fs = 2; const u = 2 * fs * Math.tan((Math.PI * Wp) / fs);   // prewarp
+      let { z, p, k } = cheb1ap(n, Rp);                                  // analog prototype
+      ({ z, p, k } = high ? lp2hpZpk(z, p, k, u) : lp2lpZpk(z, p, k, u));
+      ({ z, p, k } = bilinearZpk(z, p, k, fs));                          // → digital
+      const { b, a: den } = zpk2tf(z, p, k);
+      return Promise.resolve(nargout >= 2 ? [rowVec(b), rowVec(den)] : [rowVec(b)]);
+    },
   },
   help: {
     rectwin: 'Rectangular window', hann: 'Hann (Hanning) window', hanning: 'Hann window (symmetric)', hamming: 'Hamming window',
@@ -1157,5 +1217,6 @@ export const SIGNAL: ToolboxModule = {
     sgolay: 'Savitzky-Golay FIR smoothing matrix', sgolayfilt: 'Savitzky-Golay filtering',
     buttap: 'Butterworth analog lowpass filter prototype', butter: 'Butterworth IIR filter design',
     filtfilt: 'Zero-phase forward and reverse digital IIR filtering', findpeaks: 'Find local maxima',
+    cconv: 'Modulo-n circular convolution', envelope: 'Signal envelope', cheby1: 'Chebyshev Type I IIR filter design',
   },
 };
