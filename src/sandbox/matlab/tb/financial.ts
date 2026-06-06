@@ -308,6 +308,24 @@ function eomday(y: number, m: number): number {
 
 const DAYTOTAL365 = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
 
+/** days365 between dates (Act/365 cumulative-month table). */
+function days365one(d1: number, d2: number): number { const [y1, m1, dd1] = ymd(d1), [y2, m2, dd2] = ymd(d2); return 365 * (y2 - y1) + DAYTOTAL365[m2 - 1] - DAYTOTAL365[m1 - 1] + dd2 - dd1; }
+/** European 30E/360 day count. */
+function days360eOne(d1: number, d2: number): number { const [y1, m1, dd1] = ymd(d1), [y2, m2, dd2] = ymd(d2); return 360 * (y2 - y1) + 30 * (m2 - m1) + (Math.min(dd2, 30) - Math.min(dd1, 30)); }
+/** yearfrac(d1,d2,basis) — fraction of a year for a day-count basis. Mirrors yearfrac.m. */
+function yearfracOne(d1: number, d2: number, basis: number): number {
+  const actual = d2 - d1;
+  switch (basis) {
+    case 0: case 8: { const [y, mo, dd] = ymd(d1); return actual / (datenum(y + 1, mo, dd) - d1); }  // actual/actual
+    case 1: return days360one(d1, d2) / 360;                                                          // 30/360 SIA
+    case 2: case 9: return actual / 360;                                                              // actual/360
+    case 3: case 10: return actual / 365;                                                             // actual/365
+    case 6: case 11: return days360eOne(d1, d2) / 360;                                                // 30E/360
+    case 7: return days365one(d1, d2) / 365;                                                          // NASD actual/365
+    default: throw new MatError(`yearfrac: basis ${basis} not supported`);
+  }
+}
+
 /** Days-in-year for a day-count basis: 360 (basis 2), 365 (basis 3), else actual (basis 0). */
 function yearLenFor(serial: number, basis: number): number {
   if (basis === 2) return 360; if (basis === 3) return 365;
@@ -781,6 +799,22 @@ export const FINANCIAL: ToolboxModule = {
     eomdate: (a) => ret(eomdateImpl(a)),
     calendar: (a) => ret(calendarImpl(a)),
     daysact: (a) => ret(ewDates(a, (d1, d2) => d2 - d1)),
+    yearfrac: (a) => { const basis = a.length > 2 && isMat(a[2]) && (a[2] as Mat).rows ? asScalar(a[2]) : 0; return ret(ewDates(a, (d1, d2) => yearfracOne(d1, d2, basis))); },
+    // ── prmat/yldmat: price & yield of a security paying interest at maturity ──
+    prmat: (a, nargout) => {
+      const sd = asScalarSerial(a[0], 'prmat'), md = asScalarSerial(a[1], 'prmat'), id = asScalarSerial(a[2], 'prmat');
+      const rv = asScalar(a[3]), cpn = asScalar(a[4]), yld = asScalar(a[5]), basis = a.length > 6 ? asScalar(a[6]) : 0;
+      const ai = yearfracOne(id, sd, basis) * cpn * rv;
+      const p = (rv + yearfracOne(id, md, basis) * cpn * rv) / (1 + yearfracOne(sd, md, basis) * yld) - ai;
+      return Promise.resolve(nargout >= 2 ? [scalar(p), scalar(ai)] : [scalar(p)]);
+    },
+    yldmat: (a) => {
+      const sd = asScalarSerial(a[0], 'yldmat'), md = asScalarSerial(a[1], 'yldmat'), id = asScalarSerial(a[2], 'yldmat');
+      const rv = asScalar(a[3]), price = asScalar(a[4]), cpn = asScalar(a[5]), basis = a.length > 6 ? asScalar(a[6]) : 0;
+      const ai = yearfracOne(id, sd, basis) * cpn * rv;
+      const yld = ((rv + yearfracOne(id, md, basis) * cpn * rv) / (price + ai) - 1) / yearfracOne(sd, md, basis);
+      return ret(scalar(yld));
+    },
     // ── Treasury-bill (actual/360) and discounted-security pricing ──
     prtbill: (a) => { const S = asScalarSerial(a[0], 'prtbill'), M = asScalarSerial(a[1], 'prtbill'); return ret(scalar(asScalar(a[2]) * (1 - asScalar(a[3]) * (M - S) / 360))); },
     yldtbill: (a) => { const S = asScalarSerial(a[0], 'yldtbill'), M = asScalarSerial(a[1], 'yldtbill'), F = asScalar(a[2]), P = asScalar(a[3]); return ret(scalar((F - P) / P * 360 / (M - S))); },
@@ -826,6 +860,7 @@ export const FINANCIAL: ToolboxModule = {
     eomdate: { summary: 'Last date of the specified month', syntax: ['d = eomdate(year,month)'], description: ['d = eomdate(year,month) returns the serial date number of the last day of the given month and year.'], seealso: ['busdate', 'datewrkdy', 'datenum'] },
     calendar: { summary: 'Calendar matrix for a specified month (6-by-7)', syntax: ['cal = calendar', 'cal = calendar(d)', 'cal = calendar(year,month)'], description: ['calendar returns a 6-by-7 matrix of dates for the current month, with zeros padding days before/after the month.', 'Columns represent Sunday through Saturday.'], seealso: ['eomdate', 'busdate', 'datestr'] },
     daysact: { summary: 'Actual number of days between two dates', syntax: ['d = daysact(d1,d2)'], description: ['d = daysact(d1,d2) returns the actual (Act/Act) number of days between dates d1 and d2.'], seealso: ['daysdif', 'days360', 'days365'] },
+    yearfrac: 'Fraction of year between dates for a day-count basis', prmat: 'Price of a security paying interest at maturity', yldmat: 'Yield of a security paying interest at maturity',
     days365: { summary: 'Days between dates on a 365-day year basis', syntax: ['d = days365(d1,d2)'], description: ['d = days365(d1,d2) returns the number of days between d1 and d2 based on an Act/365 convention (ignores leap years).'], seealso: ['daysact', 'days360', 'daysdif'] },
     prtbill: { summary: 'Price of Treasury bill from discount rate', syntax: ['Price = prtbill(Settle,Maturity,Discount)'], description: ['Price = prtbill(Settle,Maturity,Discount) returns the price per $100 face value of a Treasury bill given the settlement date, maturity date, and bank discount rate.'], seealso: ['yldtbill', 'beytbill', 'prdisc'] },
     yldtbill: { summary: 'Yield of Treasury bill from price', syntax: ['Yield = yldtbill(Settle,Maturity,Price)'], description: ['Yield = yldtbill(Settle,Maturity,Price) returns the money-market yield of a Treasury bill given its price per $100 face value.'], seealso: ['prtbill', 'beytbill', 'discrate'] },
