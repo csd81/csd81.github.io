@@ -216,6 +216,15 @@ export const COMM: ToolboxModule = {
   builtins: {
     // ── gen2par: swap between standard-form generator [I|P] and parity [P'|I] over GF(2) ──
     gen2par: (a) => ret(gen2parImpl(m(a[0]))),
+    // rsgenpolycoeffs(n,k): Reed-Solomon generator-poly coefficients over GF(2^m), MSB-first decimals.
+    rsgenpolycoeffs: (a) => {
+      const n = Math.round(asScalar(a[0])), k = Math.round(asScalar(a[1])), mm = Math.round(Math.log2(n + 1));
+      const F = gfField(mm), q = F.q;
+      const gfmul = (x: number, y: number) => (x === 0 || y === 0 ? 0 : F.field[(F.expOf.get(x)! + F.expOf.get(y)!) % (q - 1)]);
+      let g = [1]; const tt = (n - k) / 2;
+      for (let i = 1; i <= 2 * tt; i++) { const ai = F.field[i % (q - 1)]; const ng = new Array(g.length + 1).fill(0); for (let j = 0; j < g.length; j++) { ng[j] ^= g[j]; ng[j + 1] ^= gfmul(g[j], ai); } g = ng; }
+      return ret(rowVec(g));
+    },
     // oct2poly(oct[,ord]): binary coefficients of an octal-interpreted number (MSB-first default).
     oct2poly: (a) => {
       const dec = parseInt(String(Math.round(asScalar(a[0]))), 8);
@@ -621,6 +630,7 @@ export const COMM: ToolboxModule = {
     gfminpol: { summary: 'Find the minimal polynomial of an element of a Galois field', syntax: ['pol = gfminpol(k,m)', 'pol = gfminpol(k,m,p)', 'pol = gfminpol(k,prim_poly,p)'], description: ['pol = gfminpol(k,m) returns the minimal polynomial of alpha^k over GF(2), where alpha is a root of the default primitive polynomial for GF(2^m).', 'If k is a vector, pol is a matrix with one row per element.', 'The polynomial is represented as a row vector of GF(2) coefficients in ascending power order.'], seealso: ['gfprimdf', 'gfcosets', 'gfroots'] },
     gftrunc: { summary: 'Minimize the length of a polynomial representation over GF', syntax: ['c = gftrunc(a)'], description: ['c = gftrunc(a) removes trailing (high-order) zeros from the row-vector representation of a polynomial over a Galois field.', 'If the polynomial has degree d, trailing zeros beyond position d+1 are removed.', 'Middle or leading zeros are preserved since they represent non-zero intermediate coefficients.'], seealso: ['gfadd', 'gfsub', 'gfconv', 'gfdeconv'] },
     iqimbal2coef: { summary: 'Convert I/Q imbalance to compensator coefficient', syntax: ['c = iqimbal2coef(ampImbalanceDB,phaseImbalanceDeg)'], seealso: ['iqcoef2imbal'] },
+    rsgenpolycoeffs: { summary: 'Generator polynomial coefficients of a Reed-Solomon code', syntax: ['g = rsgenpolycoeffs(n,k)'], seealso: ['rsgenpoly', 'rsenc'] },
     iqcoef2imbal: { summary: 'Convert compensator coefficient to amplitude and phase imbalance', syntax: ['[A,P] = iqcoef2imbal(C)'], description: ['[A,P] = iqcoef2imbal(C) converts a complex IQ imbalance compensator coefficient C to its equivalent amplitude imbalance A (dB) and phase imbalance P (degrees).', 'C is typically the output of the step function of an IQImbalanceCompensator System object.', 'Use imbal2iqcoef to convert in the opposite direction.'], seealso: [] },
     fmmod: { summary: 'Frequency modulation', syntax: ['y = fmmod(x,Fc,Fs,freqdev)', 'y = fmmod(x,Fc,Fs,freqdev,ini_phase)'], description: ['y = fmmod(x,Fc,Fs,freqdev) returns the FM-modulated signal y for message x with carrier frequency Fc (Hz), sample rate Fs (Hz), and frequency deviation freqdev (Hz).', 'Requires Fs >= 2*Fc and freqdev < Fc.', 'ini_phase sets the initial phase of the carrier in radians (default 0).'], seealso: ['fmdemod', 'ammod', 'pmmod'] },
     matdeintrlv: { summary: 'Restore ordering of symbols using a matrix interleaver', syntax: ['deintrlvd = matdeintrlv(data,Nrows,Ncols)'], description: ['deintrlvd = matdeintrlv(data,Nrows,Ncols) is the inverse of matintrlv: it fills an Nrows-by-Ncols matrix column-by-column with the elements of data, then reads out the rows sequentially.', 'data must have length Nrows*Ncols.', 'Interleaving spreads burst errors across multiple codewords to improve error-correction performance.'], seealso: ['matintrlv', 'algdeintrlv'] },

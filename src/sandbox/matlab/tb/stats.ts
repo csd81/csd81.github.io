@@ -8,7 +8,7 @@ import {
   asString, asScalar, toMat as m, MatError, mat, fromRows, isCell, isStr, makeCell, bool,
 } from '../values';
 import type { ToolboxModule } from './types';
-import { inv, det } from '../linalg';
+import { inv, det, schur } from '../linalg';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
 /** Rows of a matrix as number[][] (local copy of the builtins.ts helper, kept self-contained). */
@@ -542,6 +542,16 @@ export const STATS: ToolboxModule = {
   builtins: {
     tiedrank: (a, nargout) => Promise.resolve(tiedrankImpl(a, nargout)),
     partialcorr: (a) => ret(partialcorrImpl(a)),
+    // ── pcacov(C): PCA on a covariance matrix → [coeff, latent, explained] ──
+    pcacov: (a, nargout) => {
+      const C = m(a[0]), d = C.rows; const { U, T } = schur(C);
+      const ev = Array.from({ length: d }, (_, i) => ({ val: T.data[i + i * d], vec: Array.from({ length: d }, (_, r) => U.data[r + i * d]) }));
+      ev.sort((p, q) => q.val - p.val);
+      for (const e of ev) { let mi = 0; for (let r = 1; r < d; r++) if (Math.abs(e.vec[r]) > Math.abs(e.vec[mi])) mi = r; if (e.vec[mi] < 0) e.vec = e.vec.map((v) => -v); }
+      const coeff = new Float64Array(d * d); for (let i = 0; i < d; i++) for (let r = 0; r < d; r++) coeff[r + i * d] = ev[i].vec[r];
+      const latent = ev.map((e) => e.val), tot = latent.reduce((s, v) => s + v, 0);
+      return Promise.resolve([mat(d, d, coeff), colVec(latent), colVec(latent.map((v) => 100 * v / tot))].slice(0, Math.max(1, nargout)));
+    },
     // ── tabulate(x): frequency table [value, count, percent]; 1..max for positive integers ──
     tabulate: (a) => {
       const x = toArray(m(a[0])), N = x.length;
