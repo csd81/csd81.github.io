@@ -72,6 +72,58 @@ function polyConv(a: number[], b: number[]): number[] { const o = new Array(a.le
 function polyAdd(a: number[], b: number[]): number[] { const n = Math.max(a.length, b.length); const o = new Array(n).fill(0); for (let i = 0; i < a.length; i++) o[n - a.length + i] += a[i]; for (let i = 0; i < b.length; i++) o[n - b.length + i] += b[i]; return o; }
 const tfModel = (num: number[], den: number[]): Value => makeObject('tf', { num: rowVec(num), den: rowVec(den) });
 
+// ── frequency response (bode) helpers ──
+/** Evaluate a real polynomial (descending coeffs) at s=jω → complex (re,im). */
+function polyValJw(coeffs: number[], w: number): { re: number; im: number } {
+  // Horner in s=jω: powers of (jω) cycle 1, jω, −ω², −jω³, …
+  let re = 0, im = 0;
+  for (let k = 0; k < coeffs.length; k++) { const nr = re * 0 - im * w + coeffs[k]; im = re * w + im * 0; re = nr; }
+  return { re, im };
+}
+/** Get (num,den) for tf, or convert an ss model to (num,den) via Faddeev-LeVerrier (SISO). */
+function getNumDenAny(v: Value): { num: number[]; den: number[] } {
+  if (isObject(v) && v.className === 'tf') return getNumDen(v);
+  if (isObject(v) && v.className === 'ss') {
+    const A = matRows(m(v.props.get('A') as Mat)), B = matRows(m(v.props.get('B') as Mat)), C = matRows(m(v.props.get('C') as Mat));
+    const D = v.props.has('D') ? asScalar(v.props.get('D') as Value) : 0; const N = A.length;
+    if (N === 0) return { num: [D], den: [1] };
+    const p = [1]; let M = eye(N); const Ms = [eye(N)];
+    for (let k = 1; k <= N; k++) { const AM = mmul(A, M); p[k] = -traceM(AM) / k; M = AM.map((row, i) => row.map((vv, j) => vv + (i === j ? p[k] : 0))); if (k < N) Ms.push(M); }
+    const den = p; const numAdj = new Array(N).fill(0);
+    for (let k = 0; k < N; k++) { const CMk = mmul(mmul(C, Ms[k]), B); numAdj[k] = CMk[0][0]; }
+    const num = polyAdd(numAdj, den.map((vv) => vv * D));
+    return { num, den };
+  }
+  throw new Error('bode: expected a tf or ss model');
+}
+/** Default log-spaced frequency grid (rad/s) when w is omitted. */
+function autoFreqGrid(num: number[], den: number[]): number[] {
+  const feats: number[] = [];
+  for (const r of [polyRoots(num), polyRoots(den)]) for (let i = 0; i < r.re.length; i++) { const mag = Math.hypot(r.re[i], r.im[i]); if (mag > 0) feats.push(mag); }
+  let lo = -1, hi = 2;
+  if (feats.length) { const mn = Math.min(...feats), mx = Math.max(...feats); lo = Math.floor(Math.log10(mn)) - 1; hi = Math.ceil(Math.log10(mx)) + 1; }
+  const npts = 200; const grid: number[] = [];
+  for (let i = 0; i < npts; i++) grid.push(10 ** (lo + ((hi - lo) * i) / (npts - 1)));
+  return grid;
+}
+/** [mag,phase,wout] frequency response of a SISO tf/ss over grid w. phase in degrees (unwrapped). */
+function bodeData(sys: Value, wArg: Value | undefined): { mag: number[]; phase: number[]; w: number[] } {
+  const { num, den } = getNumDenAny(sys);
+  const w = wArg && isMatLike(wArg) ? toArray(m(wArg)) : autoFreqGrid(num, den);
+  const mag: number[] = [], phaseRaw: number[] = [];
+  for (const wi of w) {
+    const n = polyValJw(num, wi), d = polyValJw(den, wi);
+    const dd = d.re * d.re + d.im * d.im || 1e-300;
+    const hr = (n.re * d.re + n.im * d.im) / dd, hi = (n.im * d.re - n.re * d.im) / dd;
+    mag.push(Math.hypot(hr, hi)); phaseRaw.push((Math.atan2(hi, hr) * 180) / Math.PI);
+  }
+  // Unwrap phase (degrees): remove ±360° jumps.
+  const phase = phaseRaw.slice();
+  for (let i = 1; i < phase.length; i++) { let d = phase[i] - phase[i - 1]; while (d > 180) { phase[i] -= 360; d -= 360; } while (d < -180) { phase[i] += 360; d += 360; } }
+  return { mag, phase, w };
+}
+const isMatLike = (v: Value): boolean => !!v && !isObject(v);
+
 // ── LQR / Riccati helpers ──
 const matT = (A: number[][]): number[][] => A[0].map((_, j) => A.map((r) => r[j]));
 const matSub = (A: number[][], B: number[][]): number[][] => A.map((r, i) => r.map((v, j) => v - B[i][j]));
@@ -256,6 +308,21 @@ export const CONTROL: ToolboxModule = {
       const Acl = matSub(A, mmul(B, K));
       return lqrResult(K, S, Acl, n);
     },
+    /** [mag,phase,wout] = bode(sys[,w]) — Bode frequency response data. mag in absolute units,
+     *  phase in degrees (unwrapped). With no output args, returns mag only (no plotting here). */
+    bode: (a, n) => {
+      const { mag, phase, w } = bodeData(a[0], a[1]);
+      const magV = colVec(mag);
+      if (n >= 3) return Promise.resolve([magV, colVec(phase), colVec(w)]);
+      if (n >= 2) return Promise.resolve([magV, colVec(phase)]);
+      return ret(magV);
+    },
+    /** [mag,wout] = bodemag(sys[,w]) — Bode magnitude response (absolute units). */
+    bodemag: (a, n) => {
+      const { mag, w } = bodeData(a[0], a[1]);
+      const magV = colVec(mag);
+      return n >= 2 ? Promise.resolve([magV, colVec(w)]) : ret(magV);
+    },
     /** ss2ss(sys,T) — state-coordinate transform z=Tx: A→TAT⁻¹, B→TB, C→CT⁻¹, D→D. */
     ss2ss: (a) => {
       const sys = a[0];
@@ -278,6 +345,7 @@ export const CONTROL: ToolboxModule = {
     series: 'Series (cascade) connection',
     ss2ss: 'State coordinate transformation for state-space models',
     lqr: 'Linear-quadratic regulator design (continuous)', dlqr: 'Linear-quadratic regulator design (discrete)',
+    bode: 'Bode frequency response of dynamic systems', bodemag: 'Bode magnitude response of dynamic systems',
   },
   // OOP method dispatch (see tb/types.ts): series(tf,…) routes here; series(sym,…) → Symbolic.
   methods: {

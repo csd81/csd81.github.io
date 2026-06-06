@@ -5,7 +5,7 @@
 import type { Builtin } from '../builtins';
 import {
   type Value, type Mat, isMat, isObject, makeObject, str, scalar, zeros, rowVec, colVec, toArray, map, numel,
-  asString, asScalar, toMat as m, MatError, mat, fromRows, isCell, isStr, makeCell,
+  asString, asScalar, toMat as m, MatError, mat, fromRows, isCell, isStr, makeCell, bool,
 } from '../values';
 import type { ToolboxModule } from './types';
 
@@ -318,6 +318,52 @@ function fUpperTail(x: number, df1: number, df2: number): number {
   if (!(x > 0)) return 1;
   if (!Number.isFinite(df2)) return 1 - gammainc(df1 * x / 2, df1 / 2);
   return 1 - betainc(df1 * x / (df1 * x + df2), df1 / 2, df2 / 2);
+}
+
+// ── generalized linear model (glmfit) via IRLS ──
+type GLMSpec = {
+  link: (mu: number) => number;          // g(mu) = eta
+  dlink: (mu: number) => number;         // dg/dmu
+  ilink: (eta: number) => number;        // g⁻¹(eta) = mu
+  sqrtvar: (mu: number) => number;       // sqrt(V(mu))  (variance function)
+  dev: (mu: number, y: number) => number;// per-observation deviance contribution
+  init: (y: number, N: number) => number;// starting mu
+  muLim: [number, number];               // (lo,hi) clamp on mu
+};
+const EPS = Number.EPSILON;
+/** Clamp mu into the distribution's valid support (matches MATLAB muLims). */
+const clampMu = (mu: number, spec: GLMSpec): number => Math.min(Math.max(mu, spec.muLim[0]), spec.muLim[1]);
+/** Distribution / canonical-link specs matching MATLAB glmfit conventions. */
+function glmSpec(distr: string): GLMSpec {
+  const d = distr.toLowerCase();
+  if (d === 'normal' || d === 'gaussian') return {
+    link: (mu) => mu, dlink: () => 1, ilink: (e) => e, sqrtvar: () => 1,
+    dev: (mu, y) => (y - mu) * (y - mu), init: (y) => y, muLim: [-Infinity, Infinity],
+  };
+  if (d === 'poisson') {
+    const lo = Math.exp(-708);
+    return {
+      link: (mu) => Math.log(mu), dlink: (mu) => 1 / mu, ilink: (e) => Math.exp(e), sqrtvar: (mu) => Math.sqrt(mu),
+      dev: (mu, y) => 2 * (y * (y > 0 ? Math.log(y / mu) : 0) - (y - mu)), init: (y) => y + 0.25, muLim: [lo, Infinity],
+    };
+  }
+  if (d === 'binomial') {
+    const eps = Math.pow(EPS, 1 / 3);
+    return {
+      link: (mu) => Math.log(mu / (1 - mu)), dlink: (mu) => 1 / (mu * (1 - mu)), ilink: (e) => 1 / (1 + Math.exp(-e)),
+      sqrtvar: (mu) => Math.sqrt(mu * (1 - mu)),
+      dev: (mu, y) => 2 * ((y > 0 ? y * Math.log(y / mu) : 0) + (y < 1 ? (1 - y) * Math.log((1 - y) / (1 - mu)) : 0)),
+      init: (y, N) => (N * y + 0.5) / (N + 1), muLim: [eps, 1 - eps],
+    };
+  }
+  if (d === 'gamma') {
+    const lo = Math.exp(-708);
+    return {
+      link: (mu) => 1 / mu, dlink: (mu) => -1 / (mu * mu), ilink: (e) => 1 / e, sqrtvar: (mu) => mu,
+      dev: (mu, y) => 2 * (-(y > 0 ? Math.log(y / mu) : 0) + (y - mu) / mu), init: (y) => Math.max(y, EPS), muLim: [lo, Infinity],
+    };
+  }
+  throw new Error(`glmfit: unsupported distribution '${distr}'`);
 }
 
 // ── scalar distribution helpers (reused by sampsizepwr / ansaribradley / knntest) ──
@@ -1251,6 +1297,83 @@ export const STATS: ToolboxModule = {
       const stats = rowVec([r2, F, prob, s2]);
       return Promise.resolve([bMat, bint, colVec(r), rint, stats].slice(0, Math.max(1, nargout)));
     },
+    /** [b,dev,stats]=glmfit(X,y,distr[,Name,Value]) — generalized linear model by IRLS.
+     *  Supports 'normal'(identity),'binomial'(logit),'poisson'(log),'gamma'(reciprocal).
+     *  Adds an intercept column by default ('constant','off' to suppress). For 'binomial',
+     *  y may be a 2-column [successes trials] matrix; otherwise trials N=1. */
+    glmfit: (a, nargout) => {
+      const Xraw = matRows(m(a[0]));
+      const distr = a.length > 2 && isStr(a[2]) ? asString(a[2]) : (a.length > 2 && isMat(a[2]) && (a[2] as Mat).isChar ? asString(a[2]) : 'normal');
+      const spec = glmSpec(distr);
+      // Name/Value options.
+      let addConst = true;
+      for (let i = 3; i + 1 < a.length; i += 2) {
+        const k = asString(a[i]).toLowerCase();
+        if (k === 'constant') { const v = asString(a[i + 1]).toLowerCase(); addConst = v !== 'off'; }
+      }
+      // Response (and binomial trial counts).
+      const ymat = m(a[1]); const yrows = matRows(ymat);
+      let y: number[]; let N: number[];
+      if (distr.toLowerCase() === 'binomial' && ymat.cols === 2) {
+        N = yrows.map((r) => r[1]); y = yrows.map((r, i) => (N[i] ? r[0] / N[i] : 0));
+      } else { y = toArray(ymat); N = y.map(() => 1); }
+      const nobs = Xraw.length;
+      // Design matrix: prepend intercept column unless suppressed.
+      const X = Xraw.map((row, i) => (addConst ? [1, ...row] : [...row]));
+      const p = X[0]?.length ?? 0;
+      // IRLS.
+      const mu = y.map((yi, i) => clampMu(spec.init(yi, N[i]), spec));
+      const eta = mu.map((mi) => spec.link(mi));
+      let b = new Array<number>(p).fill(0);
+      let dev = Infinity;
+      for (let iter = 0; iter < 100; iter++) {
+        const deta = mu.map((mi) => spec.dlink(mi));
+        // working response z and IRLS weights w (= 1/(deta²·V)).
+        const z = eta.map((ei, i) => ei + (y[i] - mu[i]) * deta[i]);
+        const w = mu.map((mi, i) => { const sv = spec.sqrtvar(mi); const den = deta[i] * deta[i] * sv * sv; return den > 0 ? N[i] / den : 0; });
+        // Weighted normal equations (X'WX) b = X'Wz.
+        const XtWX: number[][] = Array.from({ length: p }, () => new Array<number>(p).fill(0));
+        const XtWz = new Array<number>(p).fill(0);
+        for (let r = 0; r < nobs; r++) {
+          const wr = w[r];
+          for (let i = 0; i < p; i++) { XtWz[i] += X[r][i] * wr * z[r]; for (let j = 0; j < p; j++) XtWX[i][j] += X[r][i] * wr * X[r][j]; }
+        }
+        const bnew = solveLin(XtWX, XtWz);
+        for (let r = 0; r < nobs; r++) { let e = 0; for (let i = 0; i < p; i++) e += X[r][i] * bnew[i]; eta[r] = e; mu[r] = clampMu(spec.ilink(e), spec); }
+        const devNew = y.reduce((s, yi, i) => s + N[i] * Math.max(0, spec.dev(mu[i], yi)), 0);
+        const conv = Math.abs(devNew - dev) <= 1e-8 * (Math.abs(devNew) + 1);
+        b = bnew; dev = devNew;
+        if (conv && iter > 0) break;
+      }
+      const bV = colVec(b);
+      if (nargout < 2) return ret(bV);
+      // stats: build se, t, p, dfe from the final IRLS weights.
+      const deta = mu.map((mi) => spec.dlink(mi));
+      const w = mu.map((mi, i) => { const sv = spec.sqrtvar(mi); const den = deta[i] * deta[i] * sv * sv; return den > 0 ? N[i] / den : 0; });
+      const XtWX: number[][] = Array.from({ length: p }, () => new Array<number>(p).fill(0));
+      for (let r = 0; r < nobs; r++) for (let i = 0; i < p; i++) for (let j = 0; j < p; j++) XtWX[i][j] += X[r][i] * w[r] * X[r][j];
+      const dfe = Math.max(0, nobs - p);
+      const dpsn = distr.toLowerCase();
+      // dispersion: 1 for binomial/poisson, Pearson estimate otherwise.
+      let s2 = 1;
+      if (dpsn !== 'binomial' && dpsn !== 'poisson') {
+        let chi2 = 0; for (let i = 0; i < nobs; i++) { const sv = spec.sqrtvar(mu[i]); const v = sv * sv / (N[i] || 1); chi2 += v > 0 ? (y[i] - mu[i]) * (y[i] - mu[i]) / v : 0; }
+        s2 = dfe > 0 ? chi2 / dfe : NaN;
+      }
+      const Ginv: number[][] = Array.from({ length: p }, () => new Array<number>(p).fill(0));
+      for (let c = 0; c < p; c++) { const e = new Array<number>(p).fill(0); e[c] = 1; const col = solveLin(XtWX, e); for (let i = 0; i < p; i++) Ginv[i][c] = col[i]; }
+      const se = b.map((_, i) => Math.sqrt(Math.max(0, s2 * Ginv[i][i])));
+      const tstat = b.map((bi, i) => (se[i] > 0 ? bi / se[i] : NaN));
+      const useT = dpsn !== 'binomial' && dpsn !== 'poisson';
+      const pval = tstat.map((t) => (useT ? (dfe > 0 ? 2 * (1 - tcdfL(Math.abs(t), dfe)) : NaN) : 2 * normcdfL(-Math.abs(t))));
+      const resid = y.map((yi, i) => yi - mu[i]);
+      const stats = mkStruct([
+        ['beta', colVec(b)], ['dfe', scalar(dfe)], ['sfit', scalar(Math.sqrt(s2))], ['s', scalar(Math.sqrt(s2))],
+        ['estdisp', bool(useT)], ['se', colVec(se)], ['t', colVec(tstat)], ['p', colVec(pval)],
+        ['resid', colVec(resid)],
+      ]);
+      return Promise.resolve([bV, scalar(dev), stats].slice(0, Math.max(1, nargout)));
+    },
     /** [coeff,score,latent,tsquared,explained,mu]=pca(X) — principal component analysis (SVD on centered X). */
     pca: (a, nargout) => {
       const X = matRows(m(a[0])); const n = X.length, p = X[0]?.length ?? 0;
@@ -1391,6 +1514,7 @@ export const STATS: ToolboxModule = {
     range: 'Range of values (max − min)', tabulate: 'Frequency table',
     pdist: 'Pairwise distance between observations', squareform: 'Format distance matrix', linkage: 'Agglomerative hierarchical cluster tree', kmeans: 'k-means clustering',
     regress: 'Multiple linear regression', pca: 'Principal component analysis', anova1: 'One-way analysis of variance',
+    glmfit: 'Generalized linear model regression',
     makedist: 'Create a probability distribution object', pdf: 'Probability density function', cdf: 'Cumulative distribution function', icdf: 'Inverse cumulative distribution function',
   },
 };

@@ -156,6 +156,41 @@ function whtNat(v: number[]): number[] {
 }
 const bitrev = (x: number, L: number): number => { let r = 0; for (let i = 0; i < L; i++) { r = (r << 1) | (x & 1); x >>= 1; } return r; };
 const nextPow2Pad = (x: number[]): number[] => { const N2 = 2 ** Math.ceil(Math.log2(Math.max(1, x.length))); const o = x.slice(); while (o.length < N2) o.push(0); return o; };
+// ── short-time Fourier transform helpers (stft / istft / spectrogram) ──
+/** Length-N DFT of a complex column (re,im) — Σ x[n]·e^{-2πj kn/N}, k=0..N-1. Naive O(N²); N small. */
+function dftCol(re: number[], im: number[], N: number): { re: number[]; im: number[] } {
+  // datawrap when the segment is longer than N (computeDFT wraps to nfft)
+  let xr = re, xi = im;
+  if (re.length > N) { xr = new Array(N).fill(0); xi = new Array(N).fill(0); for (let n = 0; n < re.length; n++) { xr[n % N] += re[n]; xi[n % N] += im[n]; } }
+  else if (re.length < N) { xr = re.concat(new Array(N - re.length).fill(0)); xi = im.concat(new Array(N - im.length).fill(0)); }
+  const or: number[] = new Array(N), oi: number[] = new Array(N);
+  for (let k = 0; k < N; k++) { let sr = 0, si = 0; for (let n = 0; n < N; n++) { const ang = -2 * Math.PI * k * n / N, c = Math.cos(ang), s = Math.sin(ang); sr += xr[n] * c - xi[n] * s; si += xr[n] * s + xi[n] * c; } or[k] = sr; oi[k] = si; }
+  return { re: or, im: oi };
+}
+/** Length-N inverse DFT — (1/N)·Σ X[k]·e^{+2πj kn/N}. */
+function idftCol(re: number[], im: number[], N: number): { re: number[]; im: number[] } {
+  const or: number[] = new Array(N), oi: number[] = new Array(N);
+  for (let n = 0; n < N; n++) { let sr = 0, si = 0; for (let k = 0; k < N; k++) { const ang = 2 * Math.PI * k * n / N, c = Math.cos(ang), s = Math.sin(ang); sr += re[k] * c - im[k] * s; si += re[k] * s + im[k] * c; } or[n] = sr / N; oi[n] = si / N; }
+  return { re: or, im: oi };
+}
+/** psdfreqvec: full two-sided frequency vector of length nfft over [0, Fs). */
+function psdfreqvecFull(nfft: number, Fs: number): number[] { const f: number[] = []; for (let k = 0; k < nfft; k++) f.push(k * Fs / nfft); return f; }
+/** centerfreq: shift frequency vector so DC is centered. */
+function centerFreqVec(f: number[], _Fs: number): number[] { const n = f.length, ref = n % 2 === 0 ? f[n / 2 - 1] : f[(n - 1) / 2]; return f.map((v) => v - ref); }
+/** centerest column index permutation: circshift (even) / fftshift (odd). Returns new→old index map. */
+function centerPerm(n: number): number[] {
+  const idx: number[] = [];
+  if (n % 2 === 0) { const sh = n / 2 - 1; for (let i = 0; i < n; i++) idx.push(((i - sh) % n + n) % n); }   // circshift down by sh
+  else { const half = (n + 1) / 2; for (let i = 0; i < n; i++) idx.push((i + half) % n); }                    // fftshift
+  return idx;
+}
+/** Build a complex Mat (rows×cols) column-major from per-column [re,im] arrays. */
+function complexMat(cols: { re: number[]; im: number[] }[], rows: number): Mat {
+  const data = new Float64Array(rows * cols.length), idata = new Float64Array(rows * cols.length);
+  let any = false;
+  for (let c = 0; c < cols.length; c++) for (let r = 0; r < rows; r++) { data[r + c * rows] = cols[c].re[r]; const iv = cols[c].im[r]; idata[r + c * rows] = iv; if (iv !== 0) any = true; }
+  const out = mat(rows, Math.max(0, cols.length), data); if (any) out.idata = idata; return out;
+}
 /** Resolve the time base: t-vector, scalar Fs, or default sample numbers 1..n. */
 function timeBase(a: Value[], n: number): number[] {
   if (a.length > 1 && isMat(a[1])) { const M = m(a[1]); if (M.rows * M.cols === 1) { const Fs = asScalar(a[1]); return Array.from({ length: n }, (_, i) => i / Fs); } return toArray(M); }
@@ -441,6 +476,137 @@ export const SIGNAL: ToolboxModule = {
         Pxx.push(p); f.push(fs ? k * fs / nfft : k * 2 * Math.PI / nfft);
       }
       return Promise.resolve(nargout >= 2 ? [colVec(Pxx), colVec(f)] : [colVec(Pxx)]);
+    },
+    // ── short-time Fourier transform: stft(x[,fs],Name,Value) → [S,F,T] ──
+    stft: (a, nargout) => {
+      const x = toArray(m(a[0])), xIm0 = m(a[0]).idata, xIm = xIm0 ? Array.from(xIm0) : null, nx = x.length;
+      // optional positional fs (numeric scalar before any Name/Value pair)
+      let argStart = 1, fs: number | null = null;
+      if (a.length > 1 && isMat(a[1]) && !(a[1] as Mat).isChar && m(a[1]).rows * m(a[1]).cols === 1) { fs = asScalar(a[1]); argStart = 2; }
+      const opt = (name: string): Value | undefined => { for (let i = argStart; i + 1 < a.length; i += 2) if ((isStr(a[i]) || (isMat(a[i]) && (a[i] as Mat).isChar)) && asString(a[i]).toLowerCase() === name) return a[i + 1]; return undefined; };
+      const winArg = opt('window');
+      const win = winArg !== undefined ? toArray(m(winArg)) : Array.from({ length: 128 }, (_, n) => 0.5 - 0.5 * Math.cos(2 * Math.PI * n / 128));  // hann(128,'periodic')
+      const nwin = win.length;
+      const ovArg = opt('overlaplength'), noverlap = ovArg !== undefined ? Math.round(asScalar(ovArg)) : Math.floor(nwin * 0.75);
+      const nfArg = opt('fftlength'), nfft = nfArg !== undefined ? Math.round(asScalar(nfArg)) : nwin;
+      const isNorm = fs === null; const Fs = isNorm ? 2 : fs!;
+      const frArg = opt('frequencyrange'), centeredArg = opt('centered');
+      let range = 'centered';
+      if (frArg !== undefined) range = asString(frArg).toLowerCase();
+      else if (centeredArg !== undefined) range = asScalar(centeredArg) ? 'centered' : 'twosided';
+      const hop = nwin - noverlap, nCol = Math.floor((nx - noverlap) / hop);
+      const cols: { re: number[]; im: number[] }[] = [], offs: number[] = [];
+      for (let c = 0; c < nCol; c++) { const off = c * hop; offs.push(off); const re: number[] = [], im: number[] = []; for (let i = 0; i < nwin; i++) { re.push(x[off + i] * win[i]); im.push((xIm ? xIm[off + i] : 0) * win[i]); } cols.push(dftCol(re, im, nfft)); }
+      let full = psdfreqvecFull(nfft, Fs), fOut = full, nFreq = nfft;
+      let outCols = cols;
+      if (range === 'onesided') { nFreq = nfft % 2 === 0 ? nfft / 2 + 1 : (nfft + 1) / 2; fOut = full.slice(0, nFreq); outCols = cols.map((c) => ({ re: c.re.slice(0, nFreq), im: c.im.slice(0, nFreq) })); }
+      else if (range === 'centered') { const perm = centerPerm(nfft); fOut = centerFreqVec(full, Fs); outCols = cols.map((c) => ({ re: perm.map((p) => c.re[p]), im: perm.map((p) => c.im[p]) })); }
+      const S = complexMat(outCols, nFreq);
+      if (nargout < 2) return ret(S);
+      const Fcol = isNorm ? colVec(fOut.map((v) => v * Math.PI)) : colVec(fOut);   // rad/sample when normalized
+      if (nargout < 3) return Promise.resolve([S, Fcol]);
+      const tVals = offs.map((o) => (o + nwin / 2) / Fs * (isNorm ? Fs : 1));      // samples when normalized, else seconds
+      return Promise.resolve([S, Fcol, colVec(tVals)]);
+    },
+    // ── inverse STFT (WOLA / OLA) → reconstructed signal ──
+    istft: (a, nargout) => {
+      const S = m(a[0]), nFreqRows = S.rows, nseg = S.cols;
+      const Sre = toArray(S), Sim = S.idata ? Array.from(S.idata) : new Array(Sre.length).fill(0);
+      let argStart = 1, fs: number | null = null;
+      if (a.length > 1 && isMat(a[1]) && !(a[1] as Mat).isChar && m(a[1]).rows * m(a[1]).cols === 1) { fs = asScalar(a[1]); argStart = 2; }
+      const opt = (name: string): Value | undefined => { for (let i = argStart; i + 1 < a.length; i += 2) if ((isStr(a[i]) || (isMat(a[i]) && (a[i] as Mat).isChar)) && asString(a[i]).toLowerCase() === name) return a[i + 1]; return undefined; };
+      const winArg = opt('window');
+      const win = winArg !== undefined ? toArray(m(winArg)) : Array.from({ length: 128 }, (_, n) => 0.5 - 0.5 * Math.cos(2 * Math.PI * n / 128));
+      const nwin = win.length;
+      const ovArg = opt('overlaplength'), noverlap = ovArg !== undefined ? Math.round(asScalar(ovArg)) : Math.floor(nwin * 0.75);
+      const nfArg = opt('fftlength'), nfft = nfArg !== undefined ? Math.round(asScalar(nfArg)) : nwin;
+      const isNorm = fs === null; const Fs = isNorm ? 2 : fs!;
+      const frArg = opt('frequencyrange'), centeredArg = opt('centered');
+      let range = 'centered';
+      if (frArg !== undefined) range = asString(frArg).toLowerCase();
+      else if (centeredArg !== undefined) range = asScalar(centeredArg) ? 'centered' : 'twosided';
+      const conjSym = (() => { const c = opt('conjugatesymmetric'); return c !== undefined ? !!asScalar(c) : false; })();
+      const methodArg = opt('method'), method = methodArg !== undefined ? asString(methodArg).toLowerCase() : 'wola';
+      const numFreqSamples = nfft % 2 === 0 ? nfft / 2 + 1 : (nfft + 1) / 2;
+      // formatISTFTInput → reconstruct full two-sided spectra (per segment)
+      const segs: { re: number[]; im: number[] }[] = [];
+      for (let c = 0; c < nseg; c++) {
+        const cr: number[] = [], ci: number[] = [];
+        for (let r = 0; r < nFreqRows; r++) { cr.push(Sre[r + c * nFreqRows]); ci.push(Sim[r + c * nFreqRows]); }
+        let fr: number[], fi: number[];
+        if (range === 'twosided') { fr = cr; fi = ci; }
+        else if (range === 'centered') {
+          fr = new Array(nfft); fi = new Array(nfft);
+          // even: circshift(s,-(n/2-1)) ⇒ fr[i]=cr[(i+n/2-1) mod n]; odd: ifftshift ⇒ fr[i]=cr[(i+(n-1)/2) mod n]
+          const sh = nfft % 2 === 0 ? nfft / 2 - 1 : (nfft - 1) / 2;
+          for (let i = 0; i < nfft; i++) { const src = (i + sh) % nfft; fr[i] = cr[src]; fi[i] = ci[src]; }
+        } else { // onesided → mirror conjugate
+          fr = new Array(nfft).fill(0); fi = new Array(nfft).fill(0);
+          for (let r = 0; r < numFreqSamples; r++) { fr[r] = cr[r]; fi[r] = ci[r]; }
+          const lastMirror = nfft % 2 === 0 ? numFreqSamples - 1 : numFreqSamples;
+          for (let r = 2; r <= lastMirror; r++) { fr[nfft - r + 1] = cr[r - 1]; fi[nfft - r + 1] = -ci[r - 1]; }
+        }
+        let inv = idftCol(fr, fi, nfft);
+        if (conjSym) inv = { re: inv.re, im: inv.re.map(() => 0) };  // 'symmetric' → real output
+        segs.push({ re: inv.re.slice(0, Math.min(nwin, nfft)), im: inv.im.slice(0, Math.min(nwin, nfft)) });
+      }
+      const hop = nwin - noverlap, xlen = nwin + (nseg - 1) * hop, aPow = method === 'ola' ? 0 : 1;
+      const xr = new Array(xlen).fill(0), xi = new Array(xlen).fill(0), normVal = new Array(xlen).fill(0);
+      const wNum = win.map((w) => Math.pow(w, aPow)), wDen = win.map((w) => Math.pow(w, aPow + 1));
+      for (let ii = 0; ii < nseg; ii++) for (let i = 0; i < nwin; i++) { const idx = ii * hop + i; xr[idx] += segs[ii].re[i] * wNum[i]; xi[idx] += segs[ii].im[i] * wNum[i]; normVal[idx] += wDen[i]; }
+      const EPS = 2.220446049250313e-16;
+      for (let i = 0; i < xlen; i++) if (normVal[i] < nseg * EPS) normVal[i] = 1;
+      const reOut = xr.map((v, i) => v / normVal[i]), imOut = xi.map((v, i) => v / normVal[i]);
+      const anyImag = imOut.some((v) => v !== 0);
+      const X = colVec(reOut); if (anyImag) X.idata = Float64Array.from(imOut);
+      if (nargout < 2) return ret(X);
+      const T = colVec(Array.from({ length: xlen }, (_, i) => i / Fs * (isNorm ? Fs : 1)));
+      return Promise.resolve([X, T]);
+    },
+    // ── legacy spectrogram(x,window,noverlap,nfft[,fs]) → [S,F,T,P] (one-sided for real x) ──
+    spectrogram: (a, nargout) => {
+      const x = toArray(m(a[0])), xIm0 = m(a[0]).idata, xIm = xIm0 ? Array.from(xIm0) : null, nx = x.length;
+      const isRealX = !xIm0;
+      const winArg = a.length > 1 && isMat(a[1]) && m(a[1]).rows * m(a[1]).cols > 1 ? a[1] : undefined;
+      const nwinDefault = Math.max(2, Math.floor(nx / 4.5));
+      const win = winArg !== undefined ? toArray(m(winArg)) : hammingWin(nwinDefault);
+      const nwin = win.length;
+      const ovGiven = a.length > 2 && isMat(a[2]) && m(a[2]).rows * m(a[2]).cols >= 1;
+      const noverlap = ovGiven ? Math.round(asScalar(a[2])) : Math.round(nwin / 2);
+      const nfGiven = a.length > 3 && isMat(a[3]) && m(a[3]).rows * m(a[3]).cols >= 1;
+      const nfft = nfGiven ? Math.round(asScalar(a[3])) : Math.max(256, 2 ** Math.ceil(Math.log2(nwin)));
+      const fs = a.length > 4 && isMat(a[4]) ? asScalar(a[4]) : null;
+      const Fs = fs ?? 2 * Math.PI;
+      const range = isRealX ? 'onesided' : 'twosided';
+      const hop = nwin - noverlap, nCol = Math.floor((nx - noverlap) / hop);
+      const cols: { re: number[]; im: number[] }[] = [], offs: number[] = [];
+      for (let c = 0; c < nCol; c++) { const off = c * hop; offs.push(off); const re: number[] = [], im: number[] = []; for (let i = 0; i < nwin; i++) { re.push(x[off + i] * win[i]); im.push((xIm ? xIm[off + i] : 0) * win[i]); } cols.push(dftCol(re, im, nfft)); }
+      const full = psdfreqvecFull(nfft, Fs);
+      let nFreq = nfft, fOut = full, outCols = cols;
+      if (range === 'onesided') { nFreq = nfft % 2 === 0 ? nfft / 2 + 1 : (nfft + 1) / 2; fOut = full.slice(0, nFreq); outCols = cols.map((c) => ({ re: c.re.slice(0, nFreq), im: c.im.slice(0, nFreq) })); }
+      const S = complexMat(outCols, nFreq);
+      const Fcol = colVec(fOut), Tcol = colVec(offs.map((o) => (o + nwin / 2) / Fs));
+      if (nargout < 4) {
+        if (nargout < 2) return ret(S);
+        if (nargout < 3) return Promise.resolve([S, Fcol]);
+        return Promise.resolve([S, Fcol, Tcol]);
+      }
+      // P (PSD): Sxx = |y|^2/U, onesided doubling (not DC/Nyquist), Pxx = Sxx/Fs
+      const U = win.reduce((s, w) => s + w * w, 0);
+      const pCols: number[][] = [];
+      for (let c = 0; c < nCol; c++) {
+        const yr = cols[c].re, yi = cols[c].im, sxx = full.map((_, k) => (yr[k] * yr[k] + yi[k] * yi[k]) / U);
+        let pcol: number[];
+        if (range === 'onesided') {
+          const sel = sxx.slice(0, nFreq);
+          if (nfft % 2 === 0) { for (let r = 1; r < nFreq - 1; r++) sel[r] *= 2; } else { for (let r = 1; r < nFreq; r++) sel[r] *= 2; }
+          pcol = sel.map((v) => v / Fs);
+        } else pcol = sxx.map((v) => v / Fs);
+        pCols.push(pcol);
+      }
+      const Pdata = new Float64Array(nFreq * nCol);
+      for (let c = 0; c < nCol; c++) for (let r = 0; r < nFreq; r++) Pdata[r + c * nFreq] = pCols[c][r];
+      return Promise.resolve([S, Fcol, Tcol, mat(nFreq, nCol, Pdata)]);
     },
     // ── spectral measures (rectangular/kaiser0 window, nfft=N, specfreqwidth width-method) ──
     meanfreq: (a) => {
@@ -971,6 +1137,7 @@ export const SIGNAL: ToolboxModule = {
     overshoot: 'Overshoot metrics of bilevel waveform transitions', undershoot: 'Undershoot metrics of bilevel waveform transitions',
     settlingtime: 'Settling time for bilevel waveform transitions', enbw: 'Equivalent noise bandwidth of a window',
     periodogram: 'Periodogram power spectral density estimate', dctmtx: 'Discrete cosine transform matrix', pwelch: "Welch's power spectral density estimate",
+    stft: 'Short-time Fourier transform', istft: 'Inverse short-time Fourier transform', spectrogram: 'Spectrogram using short-time Fourier transform',
     rectpuls: 'Sampled aperiodic rectangle', tripuls: 'Sampled aperiodic triangle', sawtooth: 'Sawtooth or triangle wave', gauspuls: 'Gaussian-modulated sinusoidal RF pulse',
     upsample: 'Increase sample rate by integer factor', downsample: 'Decrease sample rate by integer factor', intdump: 'Integrate and dump', upfirdn: 'Upsample, FIR filter, downsample',
     fwht: 'Fast Walsh-Hadamard transform', ifwht: 'Inverse fast Walsh-Hadamard transform', hilbert: 'Discrete-time analytic signal via Hilbert transform',

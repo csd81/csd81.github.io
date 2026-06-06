@@ -3,7 +3,7 @@
 // Otsu, imbinarize), and YCbCr conversion. (rgb2gray/im2gray are already base.) See plan §7.
 import type { Builtin } from '../builtins';
 import {
-  type Value, type Mat, isMat, scalar, colVec, zeros, toArray, asScalar, asString, toMat as m, applyClass,
+  type Value, type Mat, type StructV, isMat, scalar, colVec, zeros, toArray, asScalar, asString, toMat as m, applyClass,
   ndSize, makeND,
 } from '../values';
 import type { ToolboxModule } from './types';
@@ -133,6 +133,8 @@ export const IMAGES: ToolboxModule = {
     integralImage3: (a) => integralImage3(a),
     integralBoxFilter: (a) => integralBoxFilter(a),
     integralBoxFilter3: (a) => integralBoxFilter3(a),
+    /** regionprops(BW[,props...]) — measure properties of connected components (8-conn). */
+    regionprops: (a) => ret(regionprops(a)),
   },
   help: {
     im2double: 'Convert image to double precision [0,1]', im2uint8: 'Convert image to uint8', im2uint16: 'Convert image to uint16',
@@ -145,6 +147,7 @@ export const IMAGES: ToolboxModule = {
     integralImage: 'Compute upright or rotated integral image', integralImage3: 'Compute 3-D integral image',
     integralBoxFilter: '2-D box filtering of integral images', integralBoxFilter3: '3-D box filtering of 3-D integral images',
     padarray: 'Pad array (constant, circular, replicate, or symmetric)',
+    regionprops: 'Measure properties of image regions (connected components)',
   },
 };
 
@@ -426,4 +429,274 @@ function integralBoxFilter3(a: Value[]): Promise<Value[]> {
     }
   }
   return ret(makeND([bR, bC, bP], out));
+}
+
+// ---- regionprops (Image Processing Toolbox) ----
+// Ported from regionprops.m (R2026a). 2-D, 8-connectivity (the bwconncomp
+// default). Regions are labeled in MATLAB column-major scan order (increasing
+// linear pixel index). Coordinates are 1-based with the MATLAB pixel-center
+// convention: pixel (row r, col c) has center (x=c, y=r). Validated vs live
+// MATLAB R2026a (Area, Centroid, BoundingBox, Extent, FilledArea, Perimeter,
+// MajorAxisLength, MinorAxisLength, Orientation, Eccentricity, EquivDiameter).
+
+/** All deterministic shape properties this implementation supports. */
+const RP_PROPS = [
+  'Area', 'Centroid', 'BoundingBox', 'PixelIdxList', 'PixelList', 'Extent',
+  'FilledArea', 'Perimeter', 'MajorAxisLength', 'MinorAxisLength',
+  'Orientation', 'Eccentricity', 'EquivDiameter',
+] as const;
+type RPProp = typeof RP_PROPS[number];
+
+/** Label connected components of a binary image with 8-connectivity, in
+ *  MATLAB column-major (increasing linear index) labeling order. Returns, per
+ *  region, the sorted list of linear (column-major, 0-based) pixel indices. */
+function bwLabel8(BW: number[][], R: number, C: number): number[][] {
+  const label = new Int32Array(R * C).fill(0);
+  const regions: number[][] = [];
+  const idx = (r: number, c: number) => r + c * R;        // 0-based column-major
+  // Scan in column-major order so region labels follow MATLAB convention.
+  for (let c = 0; c < C; c++) {
+    for (let r = 0; r < R; r++) {
+      if (!BW[r][c] || label[idx(r, c)] !== 0) continue;
+      const lab = regions.length + 1;
+      const pix: number[] = [];
+      const stack: Array<[number, number]> = [[r, c]];
+      label[idx(r, c)] = lab;
+      while (stack.length) {
+        const [pr, pc] = stack.pop()!;
+        pix.push(idx(pr, pc));
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const nr = pr + dr, nc = pc + dc;
+            if (nr < 0 || nr >= R || nc < 0 || nc >= C) continue;
+            if (BW[nr][nc] && label[idx(nr, nc)] === 0) { label[idx(nr, nc)] = lab; stack.push([nr, nc]); }
+          }
+        }
+      }
+      pix.sort((x, y) => x - y);                            // sorted linear indices
+      regions.push(pix);
+    }
+  }
+  return regions;
+}
+
+/** Moore-neighbor boundary trace (8-connected, clockwise) of a single region's
+ *  cropped binary image `im` (1-based pixel grid), matching MATLAB
+ *  bwboundaries/regionboundaries: start at the first foreground pixel in
+ *  column-major order, return an N×2 closed list of [row,col] (start repeated). */
+function traceBoundary(im: boolean[][], R: number, C: number): Array<[number, number]> {
+  // Find start: first foreground pixel in column-major order.
+  let sr = -1, sc = -1;
+  outer: for (let c = 0; c < C; c++) for (let r = 0; r < R; r++) if (im[r][c]) { sr = r; sc = c; break outer; }
+  if (sr < 0) return [];
+  // single pixel
+  let count = 0; for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) if (im[r][c]) count++;
+  if (count === 1) return [[sr + 1, sc + 1]];
+  // 8-neighborhood offsets, clockwise starting from West (matches MATLAB trace order).
+  const d8: Array<[number, number]> = [
+    [0, -1], [-1, -1], [-1, 0], [-1, 1], [0, 1], [1, 1], [1, 0], [1, -1],
+  ];
+  const inb = (r: number, c: number) => r >= 0 && r < R && c >= 0 && c < C && im[r][c];
+  const boundary: Array<[number, number]> = [];
+  // backtrack direction: came into start from the left (West neighbor is empty here by scan).
+  let cr = sr, cc = sc, bdir = 0;                          // previous-explore direction index
+  // Initial backtrack points to where we "came from": west of start.
+  let prevR = sr, prevC = sc - 1;
+  let first = true;
+  const maxSteps = 8 * R * C + 16;
+  let steps = 0;
+  while (steps++ < maxSteps) {
+    boundary.push([cr + 1, cc + 1]);
+    // direction from current pixel back to the backtrack (previous) pixel
+    let start = -1;
+    for (let i = 0; i < 8; i++) if (cr + d8[i][0] === prevR && cc + d8[i][1] === prevC) { start = i; break; }
+    if (start < 0) start = 0;
+    let found = false;
+    for (let k = 1; k <= 8; k++) {
+      const i = (start + k) % 8;
+      const nr = cr + d8[i][0], nc = cc + d8[i][1];
+      if (inb(nr, nc)) {
+        prevR = cr; prevC = cc; cr = nr; cc = nc; bdir = i; found = true; break;
+      }
+    }
+    if (!found) break;                                     // isolated pixel (shouldn't happen here)
+    // Stop when we return to the start pixel arriving from the same first step.
+    if (!first && cr === sr && cc === sc) {
+      // Reached start again; the Jacob stopping criterion: re-enter start. Close it.
+      boundary.push([sr + 1, sc + 1]);
+      break;
+    }
+    first = false;
+    void bdir;
+  }
+  return boundary;
+}
+
+/** Perimeter from a closed boundary list (computePerimeterFromBoundary). */
+function perimeterFromBoundary(B: Array<[number, number]>): number {
+  if (B.length <= 2) return 0;
+  const delta: Array<[number, number]> = [];
+  for (let i = 1; i < B.length; i++) delta.push([(B[i][0] - B[i - 1][0]) ** 2, (B[i][1] - B[i - 1][1]) ** 2]);
+  if (delta.length <= 1) return 0;
+  const ext = [...delta, delta[0]];
+  let nCorner = 0, nEven = 0, nOdd = 0;
+  for (let i = 1; i < ext.length; i++) if (ext[i][0] - ext[i - 1][0] !== 0 || ext[i][1] - ext[i - 1][1] !== 0) nCorner++;
+  for (const d of delta) { const even = d[0] === 0 || d[1] === 0; if (even) nEven++; else nOdd++; }
+  return nEven * 0.980 + nOdd * 1.406 - nCorner * 0.091;
+}
+
+/** regionprops(BW[,props...]) — N×1 struct array, one element per region. */
+function regionprops(args: Value[]): StructV {
+  const BWm = m(args[0]);
+  const R = BWm.rows, C = BWm.cols;
+  const bwData = toArray(BWm);
+  const BW: number[][] = [];
+  for (let r = 0; r < R; r++) { BW[r] = []; for (let c = 0; c < C; c++) BW[r][c] = bwData[r + c * R] ? 1 : 0; }
+
+  // ---- parse requested properties ----
+  let req: RPProp[] = [];
+  let listed = false;
+  for (const arg of args.slice(1)) {
+    if (!isMat(arg) || !(arg as Mat).isChar) continue;     // ignore label matrices / grayscale image / 'struct'
+    const s = asString(arg);
+    const sl = s.toLowerCase();
+    if (sl === 'struct' || sl === 'table') continue;
+    listed = true;
+    if (sl === 'basic') { req.push('Area', 'Centroid', 'BoundingBox'); continue; }
+    const match = RP_PROPS.find((p) => p.toLowerCase() === sl);
+    if (match) req.push(match);
+    else throw new Error(`regionprops: property '${s}' is not supported`);
+  }
+  if (!listed) req = ['Area', 'Centroid', 'BoundingBox'];
+
+  const regions = bwLabel8(BW, R, C);
+  const N = regions.length;
+
+  // Build each field as a per-region Value[].
+  const fields = new Map<string, Value[]>();
+  const ensure = (name: string) => { if (!fields.has(name)) fields.set(name, []); return fields.get(name)!; };
+
+  for (let k = 0; k < N; k++) {
+    const pix = regions[k];                                // 0-based column-major linear indices
+    const area = pix.length;
+    // Per-pixel rows/cols (1-based) and bounding box.
+    let minR = Infinity, maxR = -Infinity, minC = Infinity, maxC = -Infinity;
+    let sumR = 0, sumC = 0;
+    const rows: number[] = [], cols: number[] = [];
+    for (const li of pix) {
+      const r = li % R, c = Math.floor(li / R);            // 0-based
+      rows.push(r); cols.push(c);
+      if (r < minR) minR = r; if (r > maxR) maxR = r;
+      if (c < minC) minC = c; if (c > maxC) maxC = c;
+      sumR += r; sumC += c;
+    }
+    const bh = maxR - minR + 1, bw = maxC - minC + 1;
+
+    for (const p of req) {
+      switch (p) {
+        case 'Area': ensure('Area').push(scalar(area)); break;
+        case 'Centroid': {
+          // [x y], 1-based: x = mean(col)+1, y = mean(row)+1 (0-based means +1 → 1-based center)
+          const cx = sumC / area + 1, cy = sumR / area + 1;
+          ensure('Centroid').push(rowVec2(cx, cy));
+          break;
+        }
+        case 'BoundingBox': {
+          // [x y w h]; x,y are the top-left corner: (minCol+1)-0.5, (minRow+1)-0.5.
+          ensure('BoundingBox').push(rowVec4(minC + 0.5, minR + 0.5, bw, bh));
+          break;
+        }
+        case 'PixelIdxList': {
+          // 1-based linear indices, column n.
+          ensure('PixelIdxList').push(colVec(pix.map((li) => li + 1)));
+          break;
+        }
+        case 'PixelList': {
+          // N×2 [x y] = [col+1 row+1]; ordered by increasing linear index.
+          const M = zeros(area, 2);
+          for (let i = 0; i < area; i++) { M.data[i] = cols[i] + 1; M.data[i + area] = rows[i] + 1; }
+          ensure('PixelList').push(M);
+          break;
+        }
+        case 'Extent': ensure('Extent').push(scalar(area / (bw * bh))); break;
+        case 'FilledArea':
+          // No holes are filled for an 8-connected foreground region without
+          // explicit hole computation; for solid regions FilledArea == Area.
+          ensure('FilledArea').push(scalar(filledArea(rows, cols, minR, minC, bh, bw)));
+          break;
+        case 'Perimeter': {
+          const im = cropImage(rows, cols, minR, minC, bh, bw);
+          ensure('Perimeter').push(scalar(perimeterFromBoundary(traceBoundary(im, bh, bw))));
+          break;
+        }
+        case 'MajorAxisLength': case 'MinorAxisLength': case 'Orientation': case 'Eccentricity': {
+          const e = ellipseParams(rows, cols, sumR / area, sumC / area, area);
+          if (p === 'MajorAxisLength') ensure('MajorAxisLength').push(scalar(e.major));
+          else if (p === 'MinorAxisLength') ensure('MinorAxisLength').push(scalar(e.minor));
+          else if (p === 'Orientation') ensure('Orientation').push(scalar(e.orient));
+          else ensure('Eccentricity').push(scalar(e.ecc));
+          break;
+        }
+        case 'EquivDiameter': ensure('EquivDiameter').push(scalar((2 / Math.sqrt(Math.PI)) * Math.sqrt(area))); break;
+      }
+    }
+  }
+  // Preserve requested-property order in the field map (already insertion-ordered).
+  // Ensure each requested field exists even when N === 0.
+  for (const p of req) ensure(p);
+  return { kind: 'struct', rows: N, cols: N ? 1 : 0, fields } as StructV;
+}
+
+/** 1×2 row vector [a b]. */
+function rowVec2(a: number, b: number): Mat { const o = zeros(1, 2); o.data[0] = a; o.data[1] = b; return o; }
+/** 1×4 row vector [a b c d]. */
+function rowVec4(a: number, b: number, c: number, d: number): Mat { const o = zeros(1, 4); o.data[0] = a; o.data[1] = b; o.data[2] = c; o.data[3] = d; return o; }
+
+/** Cropped boolean image of a region (bh×bw), rows/cols are 0-based pixel coords. */
+function cropImage(rows: number[], cols: number[], minR: number, minC: number, bh: number, bw: number): boolean[][] {
+  const im: boolean[][] = Array.from({ length: bh }, () => new Array(bw).fill(false));
+  for (let i = 0; i < rows.length; i++) im[rows[i] - minR][cols[i] - minC] = true;
+  return im;
+}
+
+/** FilledArea = area + number of background holes inside the cropped region
+ *  (4-connected background not reachable from the crop border). */
+function filledArea(rows: number[], cols: number[], minR: number, minC: number, bh: number, bw: number): number {
+  const im = cropImage(rows, cols, minR, minC, bh, bw);
+  // Flood-fill background (4-connected) from the border; anything not reached is a hole.
+  const seen: boolean[][] = Array.from({ length: bh }, () => new Array(bw).fill(false));
+  const stack: Array<[number, number]> = [];
+  const push = (r: number, c: number) => { if (r >= 0 && r < bh && c >= 0 && c < bw && !im[r][c] && !seen[r][c]) { seen[r][c] = true; stack.push([r, c]); } };
+  for (let c = 0; c < bw; c++) { push(0, c); push(bh - 1, c); }
+  for (let r = 0; r < bh; r++) { push(r, 0); push(r, bw - 1); }
+  while (stack.length) { const [r, c] = stack.pop()!; push(r - 1, c); push(r + 1, c); push(r, c - 1); push(r, c + 1); }
+  let holes = 0;
+  for (let r = 0; r < bh; r++) for (let c = 0; c < bw; c++) if (!im[r][c] && !seen[r][c]) holes++;
+  return rows.length + holes;
+}
+
+/** Second-moment ellipse parameters (Haralick & Shapiro). rows/cols are 0-based;
+ *  meanR/meanC are 0-based pixel-coordinate means. Lengths/angle match MATLAB. */
+function ellipseParams(rows: number[], cols: number[], meanR: number, meanC: number, N: number): { major: number; minor: number; orient: number; ecc: number } {
+  if (N === 0) return { major: 0, minor: 0, orient: 0, ecc: 0 };
+  // x = col - xbar (1-based equivalent cancels), y = -(row - ybar).
+  let sxx = 0, syy = 0, sxy = 0;
+  for (let i = 0; i < N; i++) {
+    const x = cols[i] - meanC;
+    const y = -(rows[i] - meanR);
+    sxx += x * x; syy += y * y; sxy += x * y;
+  }
+  const uxx = sxx / N + 1 / 12;
+  const uyy = syy / N + 1 / 12;
+  const uxy = sxy / N;
+  const common = Math.sqrt((uxx - uyy) ** 2 + 4 * uxy ** 2);
+  const major = 2 * Math.SQRT2 * Math.sqrt(uxx + uyy + common);
+  const minor = 2 * Math.SQRT2 * Math.sqrt(uxx + uyy - common);
+  const ecc = major === 0 ? 0 : 2 * Math.sqrt((major / 2) ** 2 - (minor / 2) ** 2) / major;
+  let num: number, den: number;
+  if (uyy > uxx) { num = uyy - uxx + Math.sqrt((uyy - uxx) ** 2 + 4 * uxy ** 2); den = 2 * uxy; }
+  else { num = 2 * uxy; den = uxx - uyy + Math.sqrt((uxx - uyy) ** 2 + 4 * uxy ** 2); }
+  const orient = (num === 0 && den === 0) ? 0 : (180 / Math.PI) * Math.atan(num / den);
+  return { major, minor, orient, ecc };
 }
