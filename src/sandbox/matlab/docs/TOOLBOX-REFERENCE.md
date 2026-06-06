@@ -4,7 +4,7 @@ Consolidated coverage tables for 48 toolboxes. The **Implemented** column (✅) 
 functions available in the TypeScript sandbox interpreter. Generated from the former per-toolbox
 docs/*.md files.
 
-**Overall: 2385 / 17245 functions implemented across 48 toolboxes.**
+**Overall: 2465 / 17245 functions implemented across 48 toolboxes.**
 
 Also see [Base MATLAB reference-list validation](#base-validation) — 705 converged / 905 audited base builtins.
 
@@ -13,47 +13,47 @@ Also see [Base MATLAB reference-list validation](#base-validation) — 705 conve
 
 | Toolbox | Implemented | Total | % |
 | :--- | ---: | ---: | ---: |
-| [core_referencelist (core list)](#0core_referencelist) | 1144 | 3094 | 37% |
+| [core_referencelist (core list)](#0core_referencelist) | 1145 | 3094 | 37% |
 | [Symbolic Math Toolbox](#symbolic) | 355 | 415 | 86% |
-| [Stats Toolbox](#stats) | 156 | 861 | 18% |
-| [Signal Toolbox](#signal) | 131 | 397 | 33% |
+| [Stats Toolbox](#stats) | 159 | 861 | 18% |
+| [Signal Toolbox](#signal) | 138 | 397 | 35% |
+| [Map Toolbox](#map) | 90 | 399 | 23% |
 | [Fixedpoint Toolbox](#fixedpoint) | 87 | 335 | 26% |
-| [Map Toolbox](#map) | 84 | 399 | 21% |
-| [Control Toolbox](#control) | 44 | 352 | 13% |
-| [Aerotbx Toolbox](#aerotbx) | 40 | 223 | 18% |
-| [Comm Toolbox](#comm) | 33 | 409 | 8% |
-| [Finance Toolbox](#finance) | 31 | 383 | 8% |
-| [Images Toolbox](#images) | 30 | 651 | 5% |
+| [Aerotbx Toolbox](#aerotbx) | 45 | 223 | 20% |
+| [Control Toolbox](#control) | 45 | 352 | 13% |
+| [Comm Toolbox](#comm) | 40 | 409 | 10% |
+| [Finance Toolbox](#finance) | 36 | 383 | 9% |
+| [Images Toolbox](#images) | 32 | 651 | 5% |
 | [simulink (core list)](#0simulink) | 26 | 889 | 3% |
 | [Pde Toolbox](#pde) | 25 | 191 | 13% |
-| [Ident Toolbox](#ident) | 18 | 261 | 7% |
+| [Ident Toolbox](#ident) | 19 | 261 | 7% |
+| [Rf Toolbox](#rf) | 19 | 205 | 9% |
+| [Wavelet Toolbox](#wavelet) | 18 | 211 | 9% |
 | [Antenna Toolbox](#antenna) | 17 | 279 | 6% |
-| [Wavelet Toolbox](#wavelet) | 14 | 211 | 7% |
+| [Bioinfo Toolbox](#bioinfo) | 13 | 334 | 4% |
 | [Deeplearning Toolbox](#deeplearning) | 13 | 402 | 3% |
 | [Driving Toolbox](#driving) | 13 | 539 | 2% |
 | [Fusion Toolbox](#fusion) | 12 | 266 | 5% |
-| [Audio Toolbox](#audio) | 9 | 180 | 5% |
-| [Rf Toolbox](#rf) | 8 | 205 | 4% |
+| [Audio Toolbox](#audio) | 11 | 180 | 6% |
+| [Radar Toolbox](#radar) | 11 | 271 | 4% |
+| [Nav Toolbox](#nav) | 10 | 248 | 4% |
+| [Medical-imaging Toolbox](#medical-imaging) | 8 | 164 | 5% |
 | [Slrealtime Toolbox](#slrealtime) | 8 | 217 | 4% |
-| [Medical-imaging Toolbox](#medical-imaging) | 7 | 164 | 4% |
-| [Radar Toolbox](#radar) | 7 | 271 | 3% |
 | [Compiler_sdk Toolbox](#compiler_sdk) | 6 | 149 | 4% |
 | [Parallel-computing Toolbox](#parallel-computing) | 6 | 139 | 4% |
+| [Robotics Toolbox](#robotics) | 6 | 197 | 3% |
 | [Ros Toolbox](#ros) | 6 | 148 | 4% |
 | [Slrequirements Toolbox](#slrequirements) | 6 | 224 | 3% |
 | [Systemcomposer Toolbox](#systemcomposer) | 6 | 371 | 2% |
 | [Ecoder Toolbox](#ecoder) | 5 | 491 | 1% |
-| [Nav Toolbox](#nav) | 5 | 248 | 2% |
 | [Coder Toolbox](#coder) | 4 | 219 | 2% |
 | [Fault-analyzer Toolbox](#fault-analyzer) | 4 | 108 | 4% |
 | [Reinforcement-learning Toolbox](#reinforcement-learning) | 4 | 150 | 3% |
 | [Rptgen Toolbox](#rptgen) | 4 | 292 | 1% |
 | [Vision Toolbox](#vision) | 4 | 410 | 1% |
-| [Bioinfo Toolbox](#bioinfo) | 3 | 334 | 1% |
 | [Fininst Toolbox](#fininst) | 2 | 534 | 0% |
 | [Slcontrol Toolbox](#slcontrol) | 2 | 131 | 2% |
 | [Hdlcoder Toolbox](#hdlcoder) | 1 | 154 | 1% |
-| [Robotics Toolbox](#robotics) | 1 | 197 | 1% |
 | [Rtw Toolbox](#rtw) | 1 | 240 | 0% |
 | [Slcheck Toolbox](#slcheck) | 1 | 213 | 0% |
 | [Sltest Toolbox](#sltest) | 1 | 158 | 1% |
@@ -67,7 +67,7 @@ Also see [Base MATLAB reference-list validation](#base-validation) — 705 conve
 <a id="0core_referencelist"></a>
 ## core_referencelist (core list)  
 
-_1144 / 3094 implemented_
+_1145 / 3094 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -1004,7 +1004,7 @@ Format (CDF) file |
 |   | `spreadsheetDatastore` | Datastore for spreadsheet files |
 |   | `stop` | Stop playback ofaudioplayerobject or recording ofaudiorecorderobject |
 |   | `tabularTextDatastore` | Datastore for tabular text files |
-|   | `textscan` | Read formatted data from text file or string |
+| ✅ | `textscan` | Read formatted data from text file or string |
 |   | `Tiff` | MATLABGateway to LibTIFF library routines |
 | ✅ | `type` | Display contents of file |
 |   | `VideoReader` | Create object to read video files |
@@ -4552,7 +4552,7 @@ _0 / 176 implemented_
 <a id="aerotbx"></a>
 ## Aerotbx Toolbox  
 
-_40 / 223 implemented_
+_45 / 223 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -4563,7 +4563,7 @@ _40 / 223 implemented_
 | ✅ | `angle2dcm` | Convert rotation angles to direction cosine matrix |
 | ✅ | `angle2quat` | Convert rotation angles to quaternion |
 | ✅ | `angle2rod` | Convert rotation angles to Euler-Rodrigues vector |
-|   | `dcm2alphabeta` | Convert direction cosine matrix to angle of attack and sideslip angle |
+| ✅ | `dcm2alphabeta` | Convert direction cosine matrix to angle of attack and sideslip angle |
 | ✅ | `dcm2angle` | Create rotation angles from direction cosine matrix |
 |   | `dcm2latlon` | Convert direction cosine matrix to geodetic latitude and longitude |
 | ✅ | `dcm2quat` | Convert direction cosine matrix to quaternion |
@@ -4732,11 +4732,11 @@ to Earth-centered inertial (ECI) coordinates |
 |   | `propagateOrbit` | Calculate position and velocity of spacecraft(Since R2024b) |
 |   | `tleread` | Read data from two-line element (TLE) file(Since R2023b) |
 |   | `fluxSolarAndGeomagnetic` | Extract solar flux and geomagnetic field data(Since R2023a) |
-|   | `airspeed` | Airspeed from velocity |
-|   | `alphabeta` | Compute incidence and sideslip angles |
+| ✅ | `airspeed` | Airspeed from velocity |
+| ✅ | `alphabeta` | Compute incidence and sideslip angles |
 |   | `correctairspeed` | Convert airspeeds between equivalent airspeed (EAS), calibrated airspeed (CAS), or
       true airspeed (TAS) |
-|   | `dpressure` | Compute dynamic pressure using velocity and density |
+| ✅ | `dpressure` | Compute dynamic pressure using velocity and density |
 |   | `machnumber` | Compute Mach number using velocity and speed of sound |
 |   | `rrdelta` | Compute relative pressure ratio |
 |   | `rrsigma` | Compute relative density ratio |
@@ -4800,7 +4800,7 @@ to Earth-centered inertial (ECI) coordinates |
 International Geomagnetic Reference Field |
 |   | `wrldmagm` | Use World Magnetic Model |
 |   | `flowfanno` | Fanno line flow relations |
-|   | `flowisentropic` | Isentropic flow ratios |
+| ✅ | `flowisentropic` | Isentropic flow ratios |
 |   | `flownormalshock` | Normal shock relations |
 |   | `flowprandtlmeyer` | Calculate Prandtl-Meyer functions for expansion waves |
 |   | `flowrayleigh` | Rayleigh line flow relations |
@@ -5127,7 +5127,7 @@ _17 / 279 implemented_
 <a id="audio"></a>
 ## Audio Toolbox  
 
-_9 / 180 implemented_
+_11 / 180 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -5151,12 +5151,12 @@ _9 / 180 implemented_
 |   | `audioresample` | Sample-rate conversion of audio signals(Since R2023b) |
 |   | `designAudioResampler` | Design sample-rate converter for audio signals(Since R2023b) |
 |   | `audioBandwidthSpecification` | Audio bandwidth specifications(Since R2026a) |
-|   | `bw2octavebw` | Convert bandwidth to octave bandwidth(Since R2026a) |
+| ✅ | `bw2octavebw` | Convert bandwidth to octave bandwidth(Since R2026a) |
 |   | `crossoverFilter` | Audio crossover filter |
 |   | `gammatoneFilterBank` | Gammatone filter bank |
 |   | `graphicEQ` | Standards-based graphic equalizer |
 |   | `multibandParametricEQ` | Multiband parametric equalizer |
-|   | `octavebw2bw` | Convert octave bandwidth to linear bandwidth(Since R2026a) |
+| ✅ | `octavebw2bw` | Convert octave bandwidth to linear bandwidth(Since R2026a) |
 |   | `octavebw2q` | Convert analog octave bandwidth to quality factor(Since R2026a) |
 |   | `octaveFilter` | Octave-band and fractional octave-band filter |
 |   | `octaveFilterBank` | Octave and fractional-octave filter bank |
@@ -5318,7 +5318,7 @@ _9 / 180 implemented_
 <a id="bioinfo"></a>
 ## Bioinfo Toolbox  
 
-_3 / 334 implemented_
+_13 / 334 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -5571,7 +5571,7 @@ Markov model (HMM) profile from PFAM database |
 |   | `pfamhmmread` | Read data from PFAM HMM-formatted file |
 |   | `phytreeread` | Read phylogenetic tree file |
 |   | `phytreewrite` | Write phylogenetic tree object to Newick-formatted file |
-|   | `basecount` | Count nucleotides in sequence |
+| ✅ | `basecount` | Count nucleotides in sequence |
 |   | `codonbias` | Calculate codon frequency for each amino acid coded for
 in nucleotide sequence |
 |   | `codoncount` | Count codons in nucleotide sequence |
@@ -5582,19 +5582,19 @@ in nucleotide sequence |
 |   | `baselookup` | Find nucleotide codes, integers, names, and complements |
 |   | `dna2rna` | Convert DNA sequence to RNA sequence |
 |   | `geneticcode` | Return nucleotide codon to amino acid mapping for genetic code |
-|   | `int2nt` | Convert nucleotide sequence from integer to letter representation |
-|   | `nt2aa` | Convert nucleotide sequence to amino acid sequence |
-|   | `nt2int` | Convert nucleotide sequence from letter to integer representation |
+| ✅ | `int2nt` | Convert nucleotide sequence from integer to letter representation |
+| ✅ | `nt2aa` | Convert nucleotide sequence to amino acid sequence |
+| ✅ | `nt2int` | Convert nucleotide sequence from letter to integer representation |
 |   | `oligoprop` | Calculate sequence properties of DNA oligonucleotide |
 |   | `revgeneticcode` | Return reverse mapping (amino acid to nucleotide codon)
 for genetic code |
 |   | `rna2dna` | Convert RNA sequence to DNA sequence |
 |   | `seq2regexp` | Convert sequence with ambiguous characters to regular
 expression |
-|   | `seqcomplement` | Complement of nucleotide sequence |
+| ✅ | `seqcomplement` | Complement of nucleotide sequence |
 |   | `seqinsertgaps` | Insert gaps into nucleotide or amino acid sequence |
-|   | `seqrcomplement` | Calculate reverse complementary strand of nucleotide sequence |
-|   | `seqreverse` | Calculate reverse strand of nucleotide sequence |
+| ✅ | `seqrcomplement` | Calculate reverse complementary strand of nucleotide sequence |
+| ✅ | `seqreverse` | Calculate reverse strand of nucleotide sequence |
 |   | `cpgisland` | Locate CpG islands in DNA sequence |
 |   | `featureparse` | Parse features fromGenBank, GenPept, or EMBL data |
 |   | `featureview` | Draw linear or circular map of features fromGenBankstructure |
@@ -5611,11 +5611,11 @@ sequences |
 |   | `seqlogo` | Display sequence logo for nucleotide or amino acid sequences |
 |   | `rebasecuts` | Find restriction enzymes that cut nucleotide sequence |
 |   | `restrict` | Split nucleotide sequence at restriction site |
-|   | `aacount` | Count amino acids in sequence |
+| ✅ | `aacount` | Count amino acids in sequence |
 |   | `nmercount` | Count n-mers in nucleotide or amino acid sequence |
-|   | `aa2int` | Convert amino acid sequence from letter to integer representation |
+| ✅ | `aa2int` | Convert amino acid sequence from letter to integer representation |
 |   | `aminolookup` | Find amino acid codes, integers, abbreviations, names, and codons |
-|   | `int2aa` | Convert amino acid sequence from integer to letter representation |
+| ✅ | `int2aa` | Convert amino acid sequence from integer to letter representation |
 |   | `atomiccomp` | Calculate atomic composition of protein |
 |   | `isoelectric` | Estimate isoelectric point for amino acid sequence |
 |   | `isotopicdist` | Calculate high-resolution isotope mass distribution and density
@@ -6252,7 +6252,7 @@ the loop body for each loop iteration |
 <a id="comm"></a>
 ## Comm Toolbox  
 
-_33 / 409 implemented_
+_40 / 409 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -6353,7 +6353,7 @@ code |
 | ✅ | `log` | Logarithm in Galois field |
 |   | `minpol` | Find minimal polynomial of Galois field element |
 | ✅ | `mldivide` | Solve systems of linear equationsAx = BforxwhenAis a Galois array |
-|   | `primpoly` | Find primitive polynomials for Galois field |
+| ✅ | `primpoly` | Find primitive polynomials for Galois field |
 |   | `gfadd` | Add polynomials over Galois field |
 |   | `gfconv` | Multiply polynomials over Galois field |
 |   | `gfcosets` | Produce cyclotomic cosets for Galois field |
@@ -6362,7 +6362,7 @@ code |
 |   | `gffilter` | Filter data using polynomials over prime Galois field |
 |   | `gflineq` | Find particular solution ofAx=bover prime
       Galois field |
-|   | `gfminpol` | Find minimal polynomial of Galois field element |
+| ✅ | `gfminpol` | Find minimal polynomial of Galois field element |
 |   | `gfmul` | Multiply elements of Galois field |
 |   | `gfpretty` | Polynomial in traditional format |
 |   | `gfprimck` | Check whether polynomial over Galois field is primitive |
@@ -6372,7 +6372,7 @@ code |
 |   | `gfrepcov` | Convert exponent format polynomial to standard binary format polynomial |
 |   | `gfroots` | Find roots of polynomial over prime Galois field |
 |   | `gfsub` | Subtract polynomials over Galois field |
-|   | `gftrunc` | Minimize length of polynomial representation |
+| ✅ | `gftrunc` | Minimize length of polynomial representation |
 |   | `gftuple` | Simplify or convert Galois field element formatting |
 |   | `comm.CRCDetector` | Detect errors in input data using CRC |
 |   | `comm.CRCGenerator` | Generate CRC code bits and append to input data |
@@ -6403,7 +6403,7 @@ with GPU |
 |   | `hex2poly` | Convert hexadecimal character vector to binary coefficients |
 |   | `int2bit` | Convert integers to bits(Since R2021b) |
 |   | `oct2poly` | Convert octal number to binary coefficients |
-|   | `algdeintrlv` | Restore ordering of symbols using algebraically
+| ✅ | `algdeintrlv` | Restore ordering of symbols using algebraically
             derived permutation table |
 |   | `algintrlv` | Reorder symbols using algebraically
 derived permutation table |
@@ -6411,7 +6411,7 @@ derived permutation table |
 |   | `helscandeintrlv` | Restore ordering of symbols in helical pattern |
 |   | `helscanintrlv` | Reorder symbols in helical pattern |
 |   | `intrlv` | Reorder sequence of symbols |
-|   | `matdeintrlv` | Restore ordering of symbols by filling matrix by columns
+| ✅ | `matdeintrlv` | Restore ordering of symbols by filling matrix by columns
 and emptying it by rows |
 |   | `matintrlv` | Reorder symbols by filling matrix by rows and emptying
 it by columns |
@@ -6459,7 +6459,7 @@ using shift registers |
 |   | `amdemod` | Amplitude demodulation |
 |   | `ammod` | Amplitude modulation |
 |   | `fmdemod` | Frequency demodulation |
-|   | `fmmod` | Frequency modulation |
+| ✅ | `fmmod` | Frequency modulation |
 |   | `pmdemod` | Phase demodulation |
 |   | `pmmod` | Phase modulation |
 |   | `ssbdemod` | Single sideband amplitude demodulation |
@@ -6534,7 +6534,7 @@ method |
 |   | `comm.PreambleDetector` | Detect preamble in data |
 |   | `comm.SymbolSynchronizer` | Correct symbol timing clock skew |
 |   | `channelDelay` | Channel timing delay |
-|   | `iqcoef2imbal` | Convert compensator coefficient to amplitude and phase
+| ✅ | `iqcoef2imbal` | Convert compensator coefficient to amplitude and phase
 imbalance |
 |   | `iqimbal2coef` | Convert I/Q imbalance to compensator coefficient |
 |   | `ofdmChannelEstimate` | Perform OFDM channel estimation based on pilot locations and pilot
@@ -6892,7 +6892,7 @@ platforms |
 <a id="control"></a>
 ## Control Toolbox  
 
-_44 / 352 implemented_
+_45 / 352 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -6962,7 +6962,7 @@ star product) |
 |   | `prescale` | Optimal scaling of state-space models |
 | ✅ | `series` | Series connection of two models |
 |   | `sminreal` | Eliminates structurally disconnected states, delays, and blocks |
-|   | `ss2ss` | State coordinate transformation for state-space model |
+| ✅ | `ss2ss` | State coordinate transformation for state-space model |
 |   | `ssequiv` | Equivalence transformation for state-space models(Since R2023b) |
 |   | `xelim` | Eliminate states from state-space models(Since R2023b) |
 |   | `xperm` | Reorder states in state-space models |
@@ -9111,7 +9111,7 @@ _4 / 108 implemented_
 <a id="finance"></a>
 ## Finance Toolbox  
 
-_31 / 383 implemented_
+_36 / 383 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -9133,7 +9133,7 @@ _31 / 383 implemented_
 | ✅ | `busdays` | Business days for given period |
 |   | `datemnth` | Date of day in future or past month |
 | ✅ | `datewrkdy` | Date of future or past workday |
-|   | `days252bus` | Number of business days between dates |
+| ✅ | `days252bus` | Number of business days between dates |
 | ✅ | `days360` | Days between dates based on 360-day year |
 |   | `days360e` | Days between dates based on 360-day year (European) |
 |   | `days360isda` | Days between dates based on 360-day year (International
@@ -9232,7 +9232,7 @@ Association (PSA) compliant) |
 |   | `volarea` | Price and volume chart |
 |   | `annurate` | Periodic interest rate of annuity |
 |   | `annuterm` | Number of periods to obtain value |
-|   | `payadv` | Periodic payment given number of advance payments |
+| ✅ | `payadv` | Periodic payment given number of advance payments |
 |   | `payodd` | Payment of loan or annuity with odd first period |
 | ✅ | `payper` | Periodic payment of loan or annuity |
 |   | `payuni` | Uniform payment equal to varying cash flow |
@@ -9298,8 +9298,8 @@ Association (PSA) compliant) |
 |   | `mvnrstd` | Evaluate standard errors for multivariate normal regression model |
 |   | `convert2sur` | Convert multivariate normal regression model to seemingly unrelated regression
             (SUR) model |
-|   | `abs2active` | Convert constraints from absolute to active format |
-|   | `active2abs` | Convert constraints from active to absolute format |
+| ✅ | `abs2active` | Convert constraints from absolute to active format |
+| ✅ | `active2abs` | Convert constraints from active to absolute format |
 |   | `arith2geom` | Arithmetic to geometric moments of asset returns |
 |   | `boxcox` | Box-Cox transformation |
 |   | `corr2cov` | Convert standard deviation and correlation to covariance |
@@ -9501,7 +9501,7 @@ swap market quotes |
 |   | `tbillrepo` | Break-even discount of repurchase agreement |
 |   | `tbillval01` | Value of one basis point |
 |   | `tbillyield` | Yield on Treasury bill |
-|   | `tbillyield2disc` | Convert Treasury bill yield to equivalent discount |
+| ✅ | `tbillyield2disc` | Convert Treasury bill yield to equivalent discount |
 |   | `binprice` | Binomial put and call American option pricing using Cox-Ross-Rubinstein
 model |
 |   | `blkimpv` | Implied volatility for futures options from Black model |
@@ -11179,7 +11179,7 @@ executed during Program Target Device task in the Workflow Advisor |
 <a id="ident"></a>
 ## Ident Toolbox  
 
-_18 / 261 implemented_
+_19 / 261 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -11433,7 +11433,7 @@ model |
 |   | `noise2meas` | Noise component of linear identified model |
 |   | `noisecnv` | Transform identified linear model with noise channels to model with measured
             channels only |
-|   | `ss2ss` | State coordinate transformation for state-space model |
+| ✅ | `ss2ss` | State coordinate transformation for state-space model |
 |   | `stack` | Build model array by stacking models or model arrays along
 array dimensions |
 |   | `frdata` | Access data for frequency response data (FRD) object |
@@ -11506,7 +11506,7 @@ regression method |
 <a id="images"></a>
 ## Images Toolbox  
 
-_30 / 651 implemented_
+_32 / 651 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -11590,7 +11590,7 @@ _30 / 651 implemented_
 | ✅ | `rgb2gray` | Convert RGB image or colormap to grayscale |
 |   | `rgb2ind` | Convert RGB image to indexed image |
 |   | `rgb2lightness` | Convert RGB color values to lightness values |
-|   | `adaptthresh` | Adaptive image threshold using local first-order statistics |
+| ✅ | `adaptthresh` | Adaptive image threshold using local first-order statistics |
 | ✅ | `graythresh` | Global image threshold using Otsu's method |
 | ✅ | `imbinarize` | Binarize 2-D grayscale image or 3-D volume by thresholding |
 |   | `otsuthresh` | Global histogram threshold using Otsu's method |
@@ -11600,7 +11600,7 @@ output values |
 |   | `multithresh` | Multilevel image thresholds using Otsu’s method |
 | ✅ | `im2double` | Convert image to double precision |
 |   | `im2int16` | Convert image to 16-bit signed integers |
-|   | `im2single` | Convert image to single precision |
+| ✅ | `im2single` | Convert image to single precision |
 | ✅ | `im2uint16` | Convert image to 16-bit unsigned integers |
 | ✅ | `im2uint8` | Convert image to 8-bit unsigned integers |
 |   | `montage` | Display multiple images as rectangular montage |
@@ -12204,7 +12204,7 @@ segmentation |
 <a id="map"></a>
 ## Map Toolbox  
 
-_84 / 399 implemented_
+_90 / 399 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -12415,7 +12415,7 @@ and lines |
 |   | `bufferm` | Buffer zones for latitude-longitude polygons |
 |   | `flatearthpoly` | Clip polygon to world limits |
 |   | `geoclip` | Clip geographic shape to latitude-longitude limits or polygon(Since R2022a) |
-|   | `interpm` | Densify connected vertices in latitude-longitude coordinates |
+| ✅ | `interpm` | Densify connected vertices in latitude-longitude coordinates |
 |   | `intrplat` | Interpolate latitude at specified longitude |
 |   | `intrplon` | Interpolate longitude at specified latitude |
 |   | `mapclip` | Clip planar shape toxy-limits or polygon(Since R2022a) |
@@ -12540,10 +12540,10 @@ grid |
 |   | `ned2ecefv` | Rotate local north-east-down vector to geocentric Earth-centered
                         Earth-fixed |
 | ✅ | `deg2rad` | Convert angle from degrees to radians |
-|   | `degrees2dm` | Convert degrees to degrees-minutes |
-|   | `degrees2dms` | Convert degrees to degrees-minutes-seconds |
-|   | `dm2degrees` | Convert degrees-minutes to degrees |
-|   | `dms2degrees` | Convert degrees-minutes-seconds to degrees |
+| ✅ | `degrees2dm` | Convert degrees to degrees-minutes |
+| ✅ | `degrees2dms` | Convert degrees to degrees-minutes-seconds |
+| ✅ | `dm2degrees` | Convert degrees-minutes to degrees |
+| ✅ | `dms2degrees` | Convert degrees-minutes-seconds to degrees |
 |   | `fromDegrees` | Convert angles from degrees |
 |   | `fromRadians` | Convert angles from radians |
 | ✅ | `rad2deg` | Convert angle from radians to degrees |
@@ -12572,7 +12572,7 @@ grid |
 | ✅ | `rad2sm` | Convert spherical distance from radians to statute miles |
 | ✅ | `sm2deg` | Convert spherical distance from statute miles to degrees |
 | ✅ | `sm2rad` | Convert spherical distance from statute miles to radians |
-|   | `angl2str` | Convert angles to character array |
+| ✅ | `angl2str` | Convert angles to character array |
 |   | `map.geodesy.isDegree` | True if input matches'degree'and false if'radian' |
 |   | `str2angle` | Convert strings to angles in degrees |
 |   | `unitsratio` | Conversion factor between units |
@@ -12647,7 +12647,7 @@ grid |
 <a id="medical-imaging"></a>
 ## Medical-imaging Toolbox  
 
-_7 / 164 implemented_
+_8 / 164 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -12759,7 +12759,7 @@ images |
 |   | `VolumeSource` | Source of 3-D medical image data forgroundTruthMedicalobject(Since R2022b) |
 |   | `activecontour` | Segment image into foreground and background using active contours (snakes) region
             growing technique |
-|   | `adaptthresh` | Adaptive image threshold using local first-order statistics |
+| ✅ | `adaptthresh` | Adaptive image threshold using local first-order statistics |
 |   | `gradientweight` | Calculate weights for image pixels based on image gradient |
 |   | `grayconnected` | Select contiguous image region with similar gray values using flood-fill
             technique |
@@ -12839,23 +12839,23 @@ intensity difference |
 <a id="nav"></a>
 ## Nav Toolbox  
 
-_5 / 248 implemented_
+_10 / 248 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
 |   | `axang2quat` | Convert axis-angle rotation to quaternion |
 |   | `axang2rotm` | Convert axis-angle rotation to rotation matrix |
 |   | `axang2tform` | Convert axis-angle rotation to homogeneous transformation |
-|   | `eul2quat` | Convert Euler angles to quaternion |
-|   | `eul2rotm` | Convert Euler angles to rotation matrix |
-|   | `eul2tform` | Convert Euler angles to homogeneous transformation |
+| ✅ | `eul2quat` | Convert Euler angles to quaternion |
+| ✅ | `eul2rotm` | Convert Euler angles to rotation matrix |
+| ✅ | `eul2tform` | Convert Euler angles to homogeneous transformation |
 |   | `quat2axang` | Convert quaternion to axis-angle rotation |
-|   | `quat2eul` | Convert quaternion to Euler angles |
+| ✅ | `quat2eul` | Convert quaternion to Euler angles |
 |   | `quat2rotm` | Convert quaternion to rotation matrix |
 |   | `quat2tform` | Convert quaternion to homogeneous transformation |
 |   | `quaternion` | Create quaternion array |
 |   | `rotm2axang` | Convert rotation matrix to axis-angle rotation |
-|   | `rotm2eul` | Convert rotation matrix to Euler angles |
+| ✅ | `rotm2eul` | Convert rotation matrix to Euler angles |
 |   | `rotm2quat` | Convert rotation matrix to quaternion |
 |   | `rotm2tform` | Convert rotation matrix to homogeneous transformation |
 |   | `so3` | SO(3) rotation(Since R2022b) |
@@ -13516,7 +13516,7 @@ oracle-exact against live MATLAB.
 <a id="radar"></a>
 ## Radar Toolbox  
 
-_7 / 271 implemented_
+_11 / 271 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -13543,7 +13543,7 @@ probability |
 |   | `rocsnr` | Receiver operating characteristic curves by SNR |
 |   | `shnidman` | Required SNR using Shnidman’s equation |
 |   | `toccgh` | Compute track probabilities using the CGH algorithm |
-|   | `aperture2gain` | Convert effective aperture to gain |
+| ✅ | `aperture2gain` | Convert effective aperture to gain |
 |   | `arrayscanloss` | Loss due to electronic scanning off broadside |
 |   | `beamdwellfactor` | Range-dependent loss for rapidly scanning beam |
 |   | `beamloss` | Beam shape loss for Gaussian antenna pattern |
@@ -13554,7 +13554,7 @@ probability |
 |   | `eclipsingfactor` | Range-dependent eclipsing factor |
 |   | `eclipsingloss` | Loss due to pulse eclipsing |
 |   | `matchingloss` | Receiver filter matching loss |
-|   | `mtifactor` | Improvement factor due to moving target indicator (MTI) processing |
+| ✅ | `mtifactor` | Improvement factor due to moving target indicator (MTI) processing |
 |   | `mtiloss` | Losses due to moving target indicator (MTI) processing |
 |   | `noisepow` | Receiver noise power |
 |   | `polloss` | Polarization loss |
@@ -13611,7 +13611,7 @@ probability |
 |   | `range2height` | Convert propagated range to target height(Since R2021b) |
 |   | `slant2range` | Convert slant range to propagated range(Since R2022b) |
 |   | `aperture2swath` | Swath extent for radar on ground plane |
-|   | `grnd2slantrange` | Convert ground range projection to slant range |
+| ✅ | `grnd2slantrange` | Convert ground range projection to slant range |
 |   | `grnd2slantrngres` | Convert ground range resolution to slant range resolution(Since R2021b) |
 |   | `sarbeamcompratio` | SAR beam compression ratio |
 |   | `sarbeamwidth` | Synthetic aperture azimuth beamwidth |
@@ -13628,7 +13628,7 @@ probability |
 |   | `slant2grndrngres` | Convert slant range resolution to ground range resolution(Since R2021b) |
 |   | `rainreflectivity` | Volume reflectivity of rain |
 |   | `rainscr` | Signal-to-clutter ratio due to rain |
-|   | `sarnoiserefl` | Noise equivalent reflectivity of SAR |
+| ✅ | `sarnoiserefl` | Noise equivalent reflectivity of SAR |
 |   | `sarSurfaceRCS` | Radar cross-section of target for SAR |
 |   | `matchinggain` | Gain due to matched filtering |
 |   | `rainelres` | Elevation resolution of rain limited by radar resolution |
@@ -14044,7 +14044,7 @@ _4 / 150 implemented_
 <a id="rf"></a>
 ## Rf Toolbox  
 
-_8 / 205 implemented_
+_19 / 205 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -14059,11 +14059,11 @@ _8 / 205 implemented_
 |   | `cascadesparams` | Combine S-parameters to form cascade network |
 |   | `deembedsparams` | De-embed 2N-port S-parameters |
 |   | `rlgc2s` | Convert RLGC transmission line parameters to S-parameters |
-|   | `s2abcd` | Convert S-parameters to ABCD-parameters |
+| ✅ | `s2abcd` | Convert S-parameters to ABCD-parameters |
 |   | `s2h` | Convert S-parameters to hybrid h-parameters |
 |   | `s2rlgc` | Convert S-parameters to RLGC transmission line parameters |
 |   | `s2s` | Convert S-parameters to S-parameters with different impedance |
-|   | `s2scc` | Convert single-ended S-parameters to common-mode S-parameters
+| ✅ | `s2scc` | Convert single-ended S-parameters to common-mode S-parameters
         (Scc) |
 |   | `s2scd` | Convert 4-port, single-ended S-parameters to 2-port, cross-mode S-parameters
         (Scd) |
@@ -14075,23 +14075,23 @@ _8 / 205 implemented_
 |   | `s2t` | Convert S-parameters to T-parameters |
 |   | `s2tf` | Convert S-parameters of 2-port network to voltage or power-wave transfer
       function |
-|   | `s2y` | Convert S-parameters to Y-parameters |
-|   | `s2z` | Convert S-parameters to Z-parameters |
+| ✅ | `s2y` | Convert S-parameters to Y-parameters |
+| ✅ | `s2z` | Convert S-parameters to Z-parameters |
 |   | `smm2s` | Convert mixed-mode 2N-port S-parameters to single-ended 4N-port
       S-parameters |
 |   | `snp2smp` | Convert and reorder single-ended N-port S-parameters to single-ended M-port
       S-parameters |
-|   | `abcd2h` | Convert ABCD-parameters to hybrid h-parameters |
-|   | `abcd2s` | Convert ABCD-parameters to S-parameters |
+| ✅ | `abcd2h` | Convert ABCD-parameters to hybrid h-parameters |
+| ✅ | `abcd2s` | Convert ABCD-parameters to S-parameters |
 |   | `abcd2y` | Convert ABCD-parameters to Y-parameters |
 |   | `abcd2z` | Convert ABCD-parameters to Z-parameters |
 |   | `z2abcd` | Convert Z-parameters to ABCD-parameters |
 |   | `z2h` | Convert Z-parameters to hybrid h-parameters |
-|   | `z2s` | Convert Z-parameters to S-parameters |
+| ✅ | `z2s` | Convert Z-parameters to S-parameters |
 |   | `z2y` | Convert Z-parameters to Y-parameters |
 |   | `y2abcd` | Convert Y-parameters to ABCD-parameters |
 |   | `y2h` | Convert Y-parameters to hybrid h-parameters |
-|   | `y2s` | Convert Y-parameters to S-parameters |
+| ✅ | `y2s` | Convert Y-parameters to S-parameters |
 |   | `y2z` | Convert Y-parameters to Z-parameters |
 |   | `g2h` | Convert g-parameters to hybrid h-parameters |
 |   | `h2abcd` | Convert hybrid h-parameters to ABCD-parameters |
@@ -14231,15 +14231,15 @@ _8 / 205 implemented_
 |   | `gamma2z` | Convert reflection coefficient to impedance |
 |   | `gammain` | Calculate input reflection coefficient of two-port network |
 |   | `gammaml` | Calculate load reflection coefficient of two-port network |
-|   | `gammams` | Calculate source reflection coefficient of two-port network |
+| ✅ | `gammams` | Calculate source reflection coefficient of two-port network |
 |   | `gammaout` | Calculate output reflection coefficient of two-port network |
 |   | `ispassive` | Check passivity of N-port S-parameters |
 |   | `makepassive` | Make N-port S-parameters passive |
 |   | `passivity` | Plot passivity ofN-by-Nrational fit
             output |
-|   | `powergain` | Calculate power gain from two-port S-parameters |
+| ✅ | `powergain` | Calculate power gain from two-port S-parameters |
 |   | `rfinterp1` | Interpolate network parameter data at new frequencies |
-|   | `stabilityk` | Stability factorKof two-port network |
+| ✅ | `stabilityk` | Stability factorKof two-port network |
 |   | `stabilitymu` | Stability factorμof two-port network |
 |   | `vswr` | VSWR at given reflection coefficientΓ |
 |   | `z2gamma` | Convert impedance to reflection coefficient |
@@ -14284,7 +14284,7 @@ _8 / 205 implemented_
 <a id="robotics"></a>
 ## Robotics Toolbox  
 
-_1 / 197 implemented_
+_6 / 197 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -14427,15 +14427,15 @@ _1 / 197 implemented_
 |   | `axang2quat` | Convert axis-angle rotation to quaternion |
 |   | `axang2rotm` | Convert axis-angle rotation to rotation matrix |
 |   | `axang2tform` | Convert axis-angle rotation to homogeneous transformation |
-|   | `eul2quat` | Convert Euler angles to quaternion |
-|   | `eul2rotm` | Convert Euler angles to rotation matrix |
-|   | `eul2tform` | Convert Euler angles to homogeneous transformation |
+| ✅ | `eul2quat` | Convert Euler angles to quaternion |
+| ✅ | `eul2rotm` | Convert Euler angles to rotation matrix |
+| ✅ | `eul2tform` | Convert Euler angles to homogeneous transformation |
 |   | `quat2axang` | Convert quaternion to axis-angle rotation |
-|   | `quat2eul` | Convert quaternion to Euler angles |
+| ✅ | `quat2eul` | Convert quaternion to Euler angles |
 |   | `quat2rotm` | Convert quaternion to rotation matrix |
 |   | `quat2tform` | Convert quaternion to homogeneous transformation |
 |   | `rotm2axang` | Convert rotation matrix to axis-angle rotation |
-|   | `rotm2eul` | Convert rotation matrix to Euler angles |
+| ✅ | `rotm2eul` | Convert rotation matrix to Euler angles |
 |   | `rotm2quat` | Convert rotation matrix to quaternion |
 |   | `rotm2tform` | Convert rotation matrix to homogeneous transformation |
 |   | `tform2axang` | Convert homogeneous transformation to axis-angle rotation |
@@ -15291,7 +15291,7 @@ model |
 <a id="signal"></a>
 ## Signal Toolbox  
 
-_131 / 397 implemented_
+_138 / 397 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -15454,7 +15454,7 @@ method |
 | ✅ | `cov` | Covariance |
 | ✅ | `deconv` | Least-squares deconvolution and polynomial division |
 | ✅ | `ac2poly` | Convert autocorrelation sequence to prediction polynomial |
-|   | `ac2rc` | Convert autocorrelation sequence to reflection coefficients |
+| ✅ | `ac2rc` | Convert autocorrelation sequence to reflection coefficients |
 |   | `is2rc` | Convert inverse sine parameters to reflection coefficients |
 |   | `lar2rc` | Convert log area ratio parameters to reflection coefficients |
 | ✅ | `levinson` | Levinson-Durbin recursion |
@@ -15464,7 +15464,7 @@ method |
 |   | `poly2lsf` | Convert prediction filter coefficients to line spectral frequencies |
 | ✅ | `poly2rc` | Convert prediction filter polynomial to reflection coefficients |
 |   | `rc2ac` | Convert reflection coefficients to autocorrelation sequence |
-|   | `rc2is` | Convert reflection coefficients to inverse sine parameters |
+| ✅ | `rc2is` | Convert reflection coefficients to inverse sine parameters |
 |   | `rc2lar` | Convert reflection coefficients to log area ratio parameters |
 | ✅ | `rc2poly` | Convert reflection coefficients to prediction filter polynomial |
 |   | `rlevinson` | Reverse Levinson-Durbin recursion |
@@ -15489,7 +15489,7 @@ method |
 |   | `firpmord` | Parks-McClellan optimal FIR filter order estimation |
 |   | `gaussdesign` | Gaussian FIR pulse-shaping filter design |
 |   | `intfilt` | Interpolation FIR filter design |
-|   | `kaiserord` | Kaiser window FIR filter design estimation parameters |
+| ✅ | `kaiserord` | Kaiser window FIR filter design estimation parameters |
 |   | `maxflat` | Generalized digital Butterworth filter design |
 |   | `rcosdesign` | Raised cosine FIR pulse-shaping filter design |
 |   | `butter` | Butterworth filter design |
@@ -15523,7 +15523,7 @@ method |
 |   | `impz` | Impulse response of digital filter |
 |   | `impzlength` | Impulse response length |
 |   | `stepz` | Step response of digital filter |
-|   | `filternorm` | 2-norm or infinity-norm of digital filter |
+| ✅ | `filternorm` | 2-norm or infinity-norm of digital filter |
 |   | `filtord` | Filter order |
 |   | `firtype` | Type of linear phase FIR filter |
 |   | `getNumStages` | Get number of stages in digital filter cascade(Since R2026a) |
@@ -15548,14 +15548,14 @@ method |
 |   | `residuez` | Z-transform partial-fraction expansion |
 |   | `sosfilt` | Second-order (biquadratic) IIR digital filtering |
 |   | `cascade` | Cascade digital filters(Since R2026a) |
-|   | `cell2sos` | Convert second-order sections cell array to matrix |
+| ✅ | `cell2sos` | Convert second-order sections cell array to matrix |
 |   | `ctf` | Convert digital filter to coefficients in cascaded transfer function
       format(Since R2026a) |
 |   | `ctf2zp` | Convert cascaded transfer functions to zero-pole-gain form(Since R2024b) |
 |   | `eqtflength` | Equalize lengths of transfer function numerator and denominator |
 |   | `latc2tf` | Convert lattice filter coefficients to transfer function form |
 |   | `sos2cell` | Convert second-order sections matrix to cell array |
-|   | `sos2ctf` | Convert digital filter second-order section parameters to cascaded transfer
+| ✅ | `sos2ctf` | Convert digital filter second-order section parameters to cascaded transfer
       function form(Since R2024a) |
 |   | `sos2ss` | Convert digital filter second-order section parameters
 to state-space form |
@@ -15614,7 +15614,7 @@ sections form |
 |   | `poctave` | Generate octave spectrum |
 | ✅ | `pwelch` | Welch’s power spectral density estimate |
 |   | `tfestimate` | Transfer function estimate |
-|   | `db` | Convert energy or power measurements to decibels |
+| ✅ | `db` | Convert energy or power measurements to decibels |
 | ✅ | `db2mag` | Convert decibels to magnitude |
 | ✅ | `db2pow` | Convert decibels to power |
 | ✅ | `mag2db` | Convert magnitude to decibels |
@@ -16995,7 +16995,7 @@ _1 / 112 implemented_
 <a id="stats"></a>
 ## Stats Toolbox  
 
-_156 / 861 implemented_
+_159 / 861 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -17313,7 +17313,7 @@ bivariate data |
 |   | `datasample` | Randomly sample from data, with or without replacement |
 |   | `jackknife` | Jackknife sampling |
 | ✅ | `randsample` | Random sample |
-|   | `adtest` | Anderson-Darling test |
+| ✅ | `adtest` | Anderson-Darling test |
 |   | `dwtest` | Durbin-Watson test with residual inputs |
 |   | `fishertest` | Fisher’s exact test |
 |   | `jbtest` | Jarque-Bera test |
@@ -17394,7 +17394,7 @@ bivariate data |
 |   | `discardResiduals` | Remove residuals from Cox model(Since R2022b) |
 |   | `fitcox` | Create Cox proportional hazards model |
 |   | `hazardratio` | Estimate Cox model hazard relative to baseline |
-|   | `linhyptest` | Linear hypothesis tests on Cox model coefficients |
+| ✅ | `linhyptest` | Linear hypothesis tests on Cox model coefficients |
 |   | `survival` | Calculate survival of Cox proportional hazards model |
 |   | `AcceleratedLifeModel` | Accelerated life model for lifetime analysis(Since R2026a) |
 |   | `CoxModel` | Cox proportional hazards model |
@@ -17796,7 +17796,7 @@ performance curve for classifier output |
 |   | `knnsearch` | Findk-nearest neighbors using searcher object |
 |   | `rangesearch` | Find all neighbors within specified distance using searcher object |
 |   | `hmmdecode` | Hidden Markov model posterior state probabilities |
-|   | `hmmestimate` | Hidden Markov model parameter estimates from emissions
+| ✅ | `hmmestimate` | Hidden Markov model parameter estimates from emissions
 and states |
 |   | `hmmgenerate` | Hidden Markov model states and emissions |
 |   | `hmmtrain` | Hidden Markov model parameter estimates from emissions |
@@ -18809,7 +18809,7 @@ images |
 <a id="wavelet"></a>
 ## Wavelet Toolbox  
 
-_14 / 211 implemented_
+_18 / 211 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -18855,7 +18855,7 @@ filter banks |
 | ✅ | `ihaart` | Inverse 1-D Haar wavelet transform |
 |   | `itqwt` | Inverse tunable Q-factor wavelet transform(Since R2021b) |
 |   | `qbiorthfilt` | First-level dual-tree biorthogonal filters |
-|   | `qorthwavf` | Kingsbury Q-shift filters |
+| ✅ | `qorthwavf` | Kingsbury Q-shift filters |
 |   | `tqwt` | Tunable Q-factor wavelet transform(Since R2021b) |
 |   | `tqwtmra` | Tunable Q-factor multiresolution analysis(Since R2021b) |
 | ✅ | `wavedec` | Multilevel 1-D discrete wavelet transform |
@@ -18996,12 +18996,12 @@ maximal overlap discrete wavelet transform (MODWT) |
 |   | `mbscalf` | Morris minimum-bandwidth discrete-time wavelets(Since R2022b) |
 |   | `symaux` | (To be removed) Symlet wavelet filter computation |
 |   | `symwavf` | Symlet wavelet filter |
-|   | `biorfilt` | Biorthogonal wavelet filter set |
-|   | `biorwavf` | Biorthogonal spline wavelet filter |
+| ✅ | `biorfilt` | Biorthogonal wavelet filter set |
+| ✅ | `biorwavf` | Biorthogonal spline wavelet filter |
 |   | `rbiowavf` | Reverse biorthogonal spline wavelet filters |
 |   | `isbiorthwfb` | Determine if filter bank is biorthogonal wavelet filter bank(Since R2022b) |
 |   | `isorthwfb` | Determine if filter bank is orthogonal wavelet filter bank(Since R2022b) |
-|   | `orthfilt` | Orthogonal wavelet filters |
+| ✅ | `orthfilt` | Orthogonal wavelet filters |
 |   | `qmf` | Scaling and wavelet filter |
 |   | `wfilters` | Wavelet filters |
 |   | `bswfun` | Biorthogonal scaling and wavelet functions |
@@ -19283,7 +19283,7 @@ _355 / 415 implemented_
 | ✅ | `atan2d` | |
 | ✅ | `atand` | |
 | ✅ | `atanh` | |
-|    | `baseUnits` | |
+|   | `baseUnits` | |
 | ✅ | `bernoulli` | |
 | ✅ | `bernstein` | |
 | ✅ | `bernsteinMatrix` | |
@@ -19297,19 +19297,19 @@ _355 / 415 implemented_
 | ✅ | `cart2pol` | |
 | ✅ | `cart2sph` | |
 | ✅ | `cat` | |
-|    | `catalan` | |
-|    | `ccode` | |
+|   | `catalan` | |
+|   | `ccode` | |
 | ✅ | `cdf2rdf` | |
 | ✅ | `ceil` | |
 | ✅ | `cell2sym` | |
-|    | `changeIntegrationVariable` | |
+|   | `changeIntegrationVariable` | |
 | ✅ | `char` | |
 | ✅ | `charpoly` | |
 | ✅ | `charToFunction` | (C) |
 | ✅ | `chebyshevT` | |
 | ✅ | `chebyshevU` | |
-|    | `checkIgnoreAnalyticConstraintsValue` | Static auxiliary method of the sym class: |
-|    | `checkUnits` | |
+|   | `checkIgnoreAnalyticConstraintsValue` | Static auxiliary method of the sym class: |
+|   | `checkUnits` | |
 | ✅ | `children` | |
 | ✅ | `chol` | |
 | ✅ | `circshift` | |
@@ -19340,13 +19340,13 @@ _355 / 415 implemented_
 | ✅ | `cumprod` | |
 | ✅ | `cumsum` | |
 | ✅ | `curl` | |
-|    | `daeFunction` | |
+|   | `daeFunction` | |
 | ✅ | `dawson` | |
 | ✅ | `dec2bin` | |
 | ✅ | `dec2hex` | |
 | ✅ | `decic` | |
 | ✅ | `deg2rad` | |
-|    | `derivedUnits` | |
+|   | `derivedUnits` | |
 | ✅ | `det` | |
 | ✅ | `diag` | |
 | ✅ | `diff` | |
@@ -19355,7 +19355,7 @@ _355 / 415 implemented_
 | ✅ | `dirac` | |
 | ✅ | `disp` | |
 | ✅ | `display` | Display function for syms. |
-|    | `displayFormula` | |
+|   | `displayFormula` | |
 | ✅ | `divergence` | |
 | ✅ | `divisors` | |
 | ✅ | `dsolve` | |
@@ -19379,7 +19379,7 @@ _355 / 415 implemented_
 | ✅ | `erfi` | |
 | ✅ | `erfinv` | |
 | ✅ | `euler` | |
-|    | `eulergamma` | |
+|   | `eulergamma` | |
 | ✅ | `eulerPhi` | |
 | ✅ | `eval` | is not recommended. Use subs instead. |
 | ✅ | `exp` | |
@@ -19400,27 +19400,27 @@ _355 / 415 implemented_
 | ✅ | `factorIntegerPower` | |
 | ✅ | `feval` | Evaluate symbolic function |
 | ✅ | `fibonacci` | |
-|    | `findDecoupledBlocks` | |
+|   | `findDecoupledBlocks` | |
 | ✅ | `findSymType` | |
-|    | `findUnits` | |
+|   | `findUnits` | |
 | ✅ | `finverse` | |
 | ✅ | `fix` | |
 | ✅ | `floor` | |
-|    | `fold` | |
-|    | `fortran` | |
+|   | `fold` | |
+|   | `fortran` | |
 | ✅ | `fourier` | |
 | ✅ | `frac` | Symbolic matrix element-wise fractional part. |
 | ✅ | `fresnelc` | |
 | ✅ | `fresnels` | |
 | ✅ | `functionalDerivative` | |
 | ✅ | `funm` | |
-|    | `funtool` | |
+|   | `funtool` | |
 | ✅ | `gamma` | |
 | ✅ | `gammaln` | |
-|    | `gbasis` | |
+|   | `gbasis` | |
 | ✅ | `gcd` | |
 | ✅ | `gegenbauerC` | |
-|    | `getEqnsVars` | (eq1,...,eqn,x1,...,xm) |
+|   | `getEqnsVars` | (eq1,...,eqn,x1,...,xm) |
 | ✅ | `gradient` | |
 | ✅ | `harmonic` | |
 | ✅ | `has` | |
@@ -19440,17 +19440,17 @@ _355 / 415 implemented_
 | ✅ | `ihtrans` | |
 | ✅ | `ilaplace` | |
 | ✅ | `imag` | |
-|    | `in` | |
-|    | `incidenceMatrix` | |
+|   | `in` | |
+|   | `incidenceMatrix` | |
 | ✅ | `int` | |
-|    | `integrateByParts` | |
+|   | `integrateByParts` | |
 | ✅ | `inv` | |
 | ✅ | `isAlways` | |
 | ✅ | `isCondition` | (x) |
 | ✅ | `isDistinctVariable` | This function is undocumented and will change in a future release |
 | ✅ | `isfinite` | |
 | ✅ | `isinf` | |
-|    | `isLowIndexDAE` | |
+|   | `isLowIndexDAE` | |
 | ✅ | `ismember` | |
 | ✅ | `isnan` | |
 | ✅ | `isolate` | |
@@ -19458,7 +19458,7 @@ _355 / 415 implemented_
 | ✅ | `isPrimitiveRoot` | |
 | ✅ | `isscalar` | |
 | ✅ | `isSymType` | |
-|    | `isUnit` | |
+|   | `isUnit` | |
 | ✅ | `isVariable` | (x) |
 | ✅ | `iztrans` | |
 | ✅ | `jacobiAM` | |
@@ -19501,25 +19501,25 @@ _355 / 415 implemented_
 | ✅ | `logspace` | |
 | ✅ | `lu` | |
 | ✅ | `mapSymType` | |
-|    | `massMatrixForm` | |
-|    | `mathml` | |
+|   | `massMatrixForm` | |
+|   | `mathml` | |
 | ✅ | `matlabFunction` | |
-|    | `matlabFunctionBlock` | |
+|   | `matlabFunctionBlock` | |
 | ✅ | `max` | Symbolic maximum computation. |
 | ✅ | `mean` | |
-|    | `meijerG` | |
+|   | `meijerG` | |
 | ✅ | `min` | Symbolic minimum computation. |
 | ✅ | `minpoly` | |
 | ✅ | `minus` | |
-|    | `mixedUnits` | |
+|   | `mixedUnits` | |
 | ✅ | `mod` | |
 | ✅ | `mode` | |
 | ✅ | `mustBeInteger` | |
 | ✅ | `mustBePositive` | |
 | ✅ | `nchoosek` | |
 | ✅ | `ndims` | |
-|    | `newUnit` | |
-|    | `newUnitSystem` | |
+|   | `newUnit` | |
+|   | `newUnitSystem` | |
 | ✅ | `nextprime` | |
 | ✅ | `nnz` | |
 | ✅ | `nonzeros` | |
@@ -19529,14 +19529,14 @@ _355 / 415 implemented_
 | ✅ | `null` | |
 | ✅ | `numden` | |
 | ✅ | `numel` | |
-|    | `odeFunction` | |
+|   | `odeFunction` | |
 | ✅ | `odeToVectorField` | |
 | ✅ | `orth` | |
 | ✅ | `paddata` | |
 | ✅ | `pade` | |
 | ✅ | `partfrac` | |
-|    | `pdeCoefficients` | |
-|    | `pdeCoefficientsToDouble` | |
+|   | `pdeCoefficients` | |
+|   | `pdeCoefficientsToDouble` | |
 | ✅ | `perms` | |
 | ✅ | `permute` | |
 | ✅ | `piecewise` | |
@@ -19565,14 +19565,14 @@ _355 / 415 implemented_
 | ✅ | `rat` | |
 | ✅ | `real` | |
 | ✅ | `rectangularPulse` | |
-|    | `reduceDAEIndex` | |
-|    | `reduceDAEToODE` | |
-|    | `reduceDifferentialOrder` | |
-|    | `reduceRedundancies` | |
-|    | `release` | |
+|   | `reduceDAEIndex` | |
+|   | `reduceDAEToODE` | |
+|   | `reduceDifferentialOrder` | |
+|   | `reduceRedundancies` | |
+|   | `release` | |
 | ✅ | `rem` | |
-|    | `removeUnit` | |
-|    | `removeUnitSystem` | |
+|   | `removeUnit` | |
+|   | `removeUnitSystem` | |
 | ✅ | `repelem` | |
 | ✅ | `repmat` | |
 | ✅ | `reshape` | |
@@ -19580,16 +19580,16 @@ _355 / 415 implemented_
 | ✅ | `resultant` | |
 | ✅ | `rewrite` | |
 | ✅ | `rhs` | |
-|    | `root` | |
+|   | `root` | |
 | ✅ | `roots` | |
 | ✅ | `round` | |
 | ✅ | `rref` | |
-|    | `rsums` | |
-|    | `saveobj` | |
+|   | `rsums` | |
+|   | `saveobj` | |
 | ✅ | `sec` | |
 | ✅ | `secd` | |
 | ✅ | `sech` | |
-|    | `separateUnits` | |
+|   | `separateUnits` | |
 | ✅ | `series` | |
 | ✅ | `setdiff` | |
 | ✅ | `setxor` | |
@@ -19597,7 +19597,7 @@ _355 / 415 implemented_
 | ✅ | `signIm` | |
 | ✅ | `simplify` | |
 | ✅ | `simplifyFraction` | |
-|    | `simscapeEquation` | |
+|   | `simscapeEquation` | |
 | ✅ | `sin` | |
 | ✅ | `sinc` | |
 | ✅ | `sind` | |
@@ -19607,14 +19607,14 @@ _355 / 415 implemented_
 | ✅ | `sinpi` | |
 | ✅ | `smithForm` | |
 | ✅ | `solve` | |
-|    | `solveRecurrence` | |
+|   | `solveRecurrence` | |
 | ✅ | `sort` | |
 | ✅ | `sph2cart` | |
 | ✅ | `sqrt` | |
 | ✅ | `sqrtm` | |
 | ✅ | `ssinint` | |
 | ✅ | `str2sym` | |
-|    | `str2symunit` | |
+|   | `str2symunit` | |
 | ✅ | `string` | |
 | ✅ | `subexpr` | |
 | ✅ | `subs` | |
@@ -19623,29 +19623,29 @@ _355 / 415 implemented_
 | ✅ | `sym` | |
 | ✅ | `sym2cell` | |
 | ✅ | `sym2poly` | |
-|    | `symbolicUnitsCollection` | Physical units in Symbolic Math Toolbox |
+|   | `symbolicUnitsCollection` | Physical units in Symbolic Math Toolbox |
 | ✅ | `symfalse` | |
 | ✅ | `symfun` | |
-|    | `symfunmatrix` | |
+|   | `symfunmatrix` | |
 | ✅ | `symFunType` | |
-|    | `symmatrix` | |
+|   | `symmatrix` | |
 | ✅ | `sympref` | |
 | ✅ | `symprod` | |
-|    | `symReadSSCParameters` | |
-|    | `symReadSSCVariables` | |
+|   | `symReadSSCParameters` | |
+|   | `symReadSSCVariables` | |
 | ✅ | `syms` | |
 | ✅ | `symsum` | |
 | ✅ | `symtrue` | |
 | ✅ | `symType` | |
-|    | `symunit` | |
-|    | `symunit2str` | |
+|   | `symunit` | |
+|   | `symunit2str` | |
 | ✅ | `symvar` | |
-|    | `symWriteSSC` | |
+|   | `symWriteSSC` | |
 | ✅ | `tan` | |
 | ✅ | `tand` | |
 | ✅ | `tanh` | |
 | ✅ | `taylor` | |
-|    | `taylortool` | |
+|   | `taylortool` | |
 | ✅ | `texlabel` | |
 | ✅ | `toeplitz` | |
 | ✅ | `transpose` | |
@@ -19655,12 +19655,12 @@ _355 / 415 implemented_
 | ✅ | `triu` | |
 | ✅ | `union` | |
 | ✅ | `unique` | |
-|    | `unitConversionFactor` | |
-|    | `unitConvert` | |
-|    | `unitInfo` | |
-|    | `unitSystems` | |
+|   | `unitConversionFactor` | |
+|   | `unitConvert` | |
+|   | `unitInfo` | |
+|   | `unitSystems` | |
 | ✅ | `vander` | |
-|    | `vectorPotential` | |
+|   | `vectorPotential` | |
 | ✅ | `vertcat` | |
 | ✅ | `vpa` | |
 | ✅ | `vpaintegral` | |
