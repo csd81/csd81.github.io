@@ -2109,7 +2109,19 @@ export const BUILTINS: Record<string, Builtin> = {
   strncmp: async (a) => { const x = getStr(a[0]), y = getStr(a[1]); const k = Math.round(asScalar(a[2])); return ret(bool(x !== null && y !== null && x.slice(0, k) === y.slice(0, k) && x.length >= k && y.length >= k)); },
   strncmpi: async (a) => { const x = getStr(a[0]), y = getStr(a[1]); const k = Math.round(asScalar(a[2])); return ret(bool(x !== null && y !== null && x.slice(0, k).toLowerCase() === y.slice(0, k).toLowerCase() && x.length >= k && y.length >= k)); },
   strrep: async (a) => ret(str(asString(a[0]).split(asString(a[1])).join(asString(a[2])))),
-  strcat: async (a) => ret(str(a.map((v) => (isMat(v) && (v as Mat).isChar ? asString(v).replace(/\s+$/, '') : asString(v))).join(''))),
+  strcat: async (a) => {
+    const hasCell = a.some(isCell), hasStr = a.some(isStr);
+    // All char/scalar → one char row (trailing whitespace trimmed per char arg), as before.
+    if (!hasCell && !hasStr) return ret(str(a.map((v) => (isMat(v) && (v as Mat).isChar) ? asString(v).replace(/\s+$/, '') : asString(v)).join('')));
+    // Element-wise: char inputs keep trailing-whitespace trimming, cell/string inputs do not.
+    const cols = a.map((v) => ({ sa: asStrArr(v), isChar: isMat(v) && (v as Mat).isChar }));
+    const N = Math.max(1, ...cols.map((c) => c.sa.items.length));
+    const out: string[] = [];
+    for (let k = 0; k < N; k++) { let sCat = ''; for (const c of cols) { const piece = c.sa.items.length === 1 ? c.sa.items[0] : (c.sa.items[k] ?? ''); sCat += c.isChar ? piece.replace(/\s+$/, '') : piece; } out.push(sCat); }
+    const shape = a.find((v) => (isCell(v) && v.items.length > 1) || (isStr(v) && (v as Str).items.length > 1));
+    const sh = shape ? asStrArr(shape) : { rows: N === 1 ? 1 : N, cols: N === 1 ? 1 : 1 };
+    return ret(hasCell ? makeCell(sh.rows, sh.cols, out.map((s) => str(s))) : makeStrArr(sh.rows, sh.cols, out));
+  },
   strfind: async (a) => { const s = asString(a[0]), p = asString(a[1]); const out: number[] = []; if (p.length) { let i = s.indexOf(p); while (i >= 0) { out.push(i + 1); i = s.indexOf(p, i + 1); } } return ret(rowVec(out)); },
   strtok: async (a, n) => { const s = asString(a[0]); const delim = a.length >= 2 ? asString(a[1]) : ' \t\n'; let i = 0; while (i < s.length && delim.includes(s[i])) i++; let j = i; while (j < s.length && !delim.includes(s[j])) j++; return n >= 2 ? [str(s.slice(i, j)), str(s.slice(j))] : [str(s.slice(i, j))]; },
   regexprep: async (a) => { try { return ret(str(asString(a[0]).replace(new RegExp(asString(a[1]), 'g'), asString(a[2]).replace(/\$(\d)/g, '$$$1')))); } catch { return ret(a[0]); } },
@@ -2377,7 +2389,16 @@ export const BUILTINS: Record<string, Builtin> = {
   strip: async (a) => { const side = a.length >= 2 ? asString(a[1]).toLowerCase() : 'both'; return ret(mapStrArr(a[0], (x) => (side === 'left' ? x.replace(/^\s+/, '') : side === 'right' ? x.replace(/\s+$/, '') : x.trim()))); },
   reverse: async (a) => ret(mapStrArr(a[0], (x) => [...x].reverse().join(''))),
   pad: async (a) => { const n = Math.round(asScalar(a[1])); const side = a.length >= 3 ? asString(a[2]).toLowerCase() : 'right'; return ret(mapStrArr(a[0], (x) => (side === 'left' ? x.padStart(n) : side === 'both' ? x.padStart(Math.floor((n + x.length) / 2)).padEnd(n) : x.padEnd(n)))); },
-  split: async (a) => { const str = asString(a[0]); const delim = a.length >= 2 ? asString(a[1]) : ' '; const parts = a.length >= 2 ? str.split(delim) : str.split(/\s+/).filter((x) => x.length); return ret(makeStrArr(parts.length, 1, parts)); },
+  split: async (a) => {
+    const texts = asStrArr(a[0]).items;
+    const splitOne = (t: string) => (a.length >= 2 ? t.split(asString(a[1])) : t.split(/\s+/).filter((x) => x.length));
+    if (texts.length <= 1) { const parts = splitOne(texts[0] ?? ''); return ret(makeStrArr(parts.length, 1, parts)); }
+    // String-array input: split each element (each must yield the same number of parts) → M×P.
+    const rows = texts.map(splitOne); const P = rows[0].length;
+    if (rows.some((r) => r.length !== P)) throw new MatError('split: each element must split into the same number of pieces');
+    const M = rows.length; const items: string[] = []; for (let c = 0; c < P; c++) for (let r = 0; r < M; r++) items.push(rows[r][c]);
+    return ret(makeStrArr(M, P, items));
+  },
   splitlines: async (a) => { const parts = asString(a[0]).split(/\r\n|\r|\n/); return ret(makeStrArr(parts.length, 1, parts)); },
   join: async (a) => {
     const s = asStrArr(a[0]); const delim = a.length >= 2 ? asString(a[1]) : ' ';
