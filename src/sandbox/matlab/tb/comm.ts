@@ -146,6 +146,32 @@ function rowsToMat(R: number[][]): Mat { const r = R.length, c = R[0].length, d 
 /** deintrlv scatter: out[elements[i]] = data[i] (1-based elements). Works row-wise on column data. */
 function deintrlvRows(data: number[][], elements: number[]): number[][] { const out: number[][] = new Array(data.length); for (let i = 0; i < data.length; i++) out[elements[i] - 1] = data[i]; return out; }
 
+/** GF(2) polynomial remainder (ascending coefficient vectors). */
+function gf2rem(num: number[], den: number[]): number[] {
+  const r = num.slice();
+  const deg = (a: number[]) => { for (let i = a.length - 1; i >= 0; i--) if (a[i] & 1) return i; return -1; };
+  const dd = deg(den); let dr = deg(r);
+  while (dr >= dd && dr >= 0) { const sh = dr - dd; for (let j = 0; j <= dd; j++) r[sh + j] ^= den[j] & 1; dr = deg(r); }
+  return r.slice(0, Math.max(dd, 0));
+}
+/** cyclgen(n,p): systematic parity-check H ((n-k)×n) and generator G (k×n) for the cyclic code
+ *  with generator polynomial p (ascending). b[i] = (x^(n-k+i) mod p); H=[I|bᵀ], G=[b|I]. */
+function cyclgenImpl(n: number, p: number[]): { h: Mat; g: Mat; k: number } {
+  const mdeg = p.length - 1, k = n - mdeg;
+  const b: number[][] = [];
+  for (let i = 0; i < k; i++) {
+    const e = n - k + i; const mono = new Array(e + 1).fill(0); mono[e] = 1;
+    const rem = gf2rem(mono, p); const row = new Array(mdeg).fill(0);
+    for (let j = 0; j < rem.length && j < mdeg; j++) row[j] = rem[j];
+    b.push(row);
+  }
+  const hd = new Float64Array(mdeg * n);          // H = [I_mdeg | bᵀ], rows=mdeg
+  for (let i = 0; i < mdeg; i++) for (let j = 0; j < n; j++) hd[i + j * mdeg] = j < mdeg ? (i === j ? 1 : 0) : b[j - mdeg][i];
+  const gd = new Float64Array(k * n);             // G = [b | I_k], rows=k
+  for (let i = 0; i < k; i++) for (let j = 0; j < n; j++) gd[i + j * k] = j < mdeg ? b[i][j] : (i === j - mdeg ? 1 : 0);
+  return { h: mat(mdeg, n, hd), g: mat(k, n, gd), k };
+}
+
 /** gen2par over GF(2): generator [I_r|P] (r×n) → parity [Pᵀ|I_{n-r}], or parity [Q|I_r] →
  *  generator [I_{n-r}|Qᵀ]. Detects form by which side carries the identity. Involutive. */
 function gen2parImpl(A: Mat): Mat {
@@ -167,6 +193,12 @@ export const COMM: ToolboxModule = {
   builtins: {
     // ── gen2par: swap between standard-form generator [I|P] and parity [P'|I] over GF(2) ──
     gen2par: (a) => ret(gen2parImpl(m(a[0]))),
+    // ── cyclgen(n,p): systematic [H,G,k] for a cyclic code from generator polynomial p ──
+    cyclgen: (a, nargout) => {
+      if (a.length > 2 && asString(a[2]).toLowerCase().includes('no')) throw new Error('comm:cyclgen: only systematic mode supported');
+      const { h, g, k } = cyclgenImpl(Math.round(asScalar(a[0])), toArray(m(a[1])));
+      return Promise.resolve([h, g, scalar(k)].slice(0, Math.max(1, nargout)));
+    },
     // ── gfweight(M[,'gen'|'par']): minimum Hamming weight (min distance) of a linear code ──
     gfweight: (a) => {
       const mode = a.length > 1 ? asString(a[1]).toLowerCase() : 'gen';
@@ -486,6 +518,7 @@ export const COMM: ToolboxModule = {
   help: {
     zadoffChuSeq: 'Generate a Zadoff-Chu sequence',
     gen2par: 'Convert between parity-check and generator matrices', gfweight: 'Minimum distance of a linear block code',
+    cyclgen: 'Produce parity-check and generator matrices for a cyclic code',
     qfunc: 'Q function (Gaussian tail probability)', quantiz: 'Produce a quantization index and quantized output value', qfuncinv: 'Inverse Q function',
     oct2dec: 'Convert octal to decimal numbers', vec2mat: 'Convert vector into matrix (row-major, padded)',
     compand: 'Source code mu-law or A-law compressor or expander',
