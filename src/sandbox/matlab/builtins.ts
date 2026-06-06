@@ -1137,6 +1137,15 @@ export const BUILTINS: Record<string, Builtin> = {
       const ic = Array.from({ length: A.rows }, (_, r) => posR.get(keyOf(r))! + 1);
       return n >= 3 ? [out, colVec(ia), colVec(ic)] : n >= 2 ? [out, colVec(ia)] : [out];
     }
+    if (isComplex(A)) {   // complex: dedupe on (re,im), order by magnitude then phase
+      const els = cxListOf(A); const order: Cx[] = []; const firstIdx = new Map<string, number>();
+      els.forEach((v, i) => { const k = cxKey(v); if (!firstIdx.has(k)) { firstIdx.set(k, i); order.push(v); } else if (last) firstIdx.set(k, i); });
+      const uniq = stable ? order.slice() : order.slice().sort(cxCmp);
+      const pos = new Map(uniq.map((v, i) => [cxKey(v), i]));
+      const ia = uniq.map((v) => firstIdx.get(cxKey(v))! + 1); const ic = els.map((v) => pos.get(cxKey(v))! + 1);
+      const wrap = cxMatOf(uniq, A.rows !== 1);
+      return n >= 3 ? [wrap, colVec(ia), colVec(ic)] : n >= 2 ? [wrap, colVec(ia)] : [wrap];
+    }
     const arr = toArray(A); const order: number[] = []; const firstIdx = new Map<number, number>();
     arr.forEach((v, i) => { if (!firstIdx.has(v)) { firstIdx.set(v, i); order.push(v); } else if (last) firstIdx.set(v, i); });
     const uniq = stable ? order.slice() : order.slice().sort((x, y) => x - y);
@@ -1146,10 +1155,16 @@ export const BUILTINS: Record<string, Builtin> = {
     return n >= 3 ? [wrap(uniq), colVec(ia), colVec(ic)] : n >= 2 ? [wrap(uniq), colVec(ia)] : [wrap(uniq)];
   },
   ismember: async (a, n) => {
-    const A = m(a[0]); const bArr = toArray(m(a[1]));
-    const tf = zeros(A.rows, A.cols); const loc = zeros(A.rows, A.cols);
-    for (let i = 0; i < A.data.length; i++) { const j = bArr.lastIndexOf(A.data[i]); if (j >= 0) { tf.data[i] = 1; loc.data[i] = j + 1; } }
-    tf.isBool = true;
+    const A = m(a[0]), B = m(a[1]);
+    const tf = zeros(A.rows, A.cols); const loc = zeros(A.rows, A.cols); tf.isBool = true;
+    if (isComplex(A) || isComplex(B)) {   // complex membership on (re,im); loc = lowest match index
+      const els = cxListOf(A); const first = new Map<string, number>();
+      cxListOf(B).forEach((v, j) => { const k = cxKey(v); if (!first.has(k)) first.set(k, j + 1); });
+      els.forEach((v, i) => { const j = first.get(cxKey(v)); if (j !== undefined) { tf.data[i] = 1; loc.data[i] = j; } });
+      return n >= 2 ? [tf, loc] : [tf];
+    }
+    const bArr = toArray(B);
+    for (let i = 0; i < A.data.length; i++) { const j = bArr.indexOf(A.data[i]); if (j >= 0) { tf.data[i] = 1; loc.data[i] = j + 1; } }   // lowest index (MATLAB)
     return n >= 2 ? [tf, loc] : [tf];
   },
   fliplr: async (a) => ret(flipValue(a[0], 2)),
@@ -1674,14 +1689,34 @@ export const BUILTINS: Record<string, Builtin> = {
   // ── set operations ──
   intersect: async (a, n) => {
     if (isGeom(a[0]) && isGeom(a[1])) return ret(polyResultGeom(polyClip(polyVerts(a[0]), polyVerts(a[1]), 'and')));
-    const A = m(a[0]), B = m(a[1]); const av = toArray(A), bv = toArray(B);
+    const A = m(a[0]), B = m(a[1]);
+    if (isComplex(A) || isComplex(B)) {
+      const aEls = cxListOf(A), bEls = cxListOf(B); const bset = new Set(bEls.map(cxKey));
+      const seen = new Set<string>(); const common: Cx[] = [];
+      for (const v of aEls) { const k = cxKey(v); if (bset.has(k) && !seen.has(k)) { seen.add(k); common.push(v); } }
+      common.sort(cxCmp);
+      const C = cxMatOf(common, !(A.rows === 1 && A.cols !== 1));
+      if (n < 2) return ret(C);
+      const aK = aEls.map(cxKey), bK = bEls.map(cxKey);
+      return [C, colVec(common.map((v) => aK.indexOf(cxKey(v)) + 1)), colVec(common.map((v) => bK.indexOf(cxKey(v)) + 1))];
+    }
+    const av = toArray(A), bv = toArray(B);
     const bset = new Set(bv); const c = setUniq(av.filter((x) => bset.has(x)));   // sorted unique common values
     const C = A.rows === 1 && A.cols !== 1 ? rowVec(c) : colVec(c);
     if (n < 2) return ret(C);
     const ia = c.map((v) => av.indexOf(v) + 1); const ib = c.map((v) => bv.indexOf(v) + 1);   // first occurrence in each
     return [C, colVec(ia), colVec(ib)];
   },
-  union: async (a) => { if (isGeom(a[0]) && isGeom(a[1])) return ret(polyResultGeom(polyClip(polyVerts(a[0]), polyVerts(a[1]), 'or'))); const A = m(a[0]); const r = setUniq([...toArray(A), ...toArray(m(a[1]))]); return ret(A.rows === 1 ? rowVec(r) : colVec(r)); },
+  union: async (a) => {
+    if (isGeom(a[0]) && isGeom(a[1])) return ret(polyResultGeom(polyClip(polyVerts(a[0]), polyVerts(a[1]), 'or')));
+    const A = m(a[0]), B = m(a[1]);
+    if (isComplex(A) || isComplex(B)) {
+      const seen = new Set<string>(); const u: Cx[] = [];
+      for (const v of [...cxListOf(A), ...cxListOf(B)]) { const k = cxKey(v); if (!seen.has(k)) { seen.add(k); u.push(v); } }
+      u.sort(cxCmp); return ret(cxMatOf(u, A.rows !== 1));
+    }
+    const r = setUniq([...toArray(A), ...toArray(B)]); return ret(A.rows === 1 ? rowVec(r) : colVec(r));
+  },
   subtract: async (a) => ret(polyResultGeom(polyClip(polyVerts(gGeom(a[0])), polyVerts(gGeom(a[1])), 'minus'))),
   polybuffer: async (a) => {
     if (isGeom(a[0])) { const d = asScalar(a[1]); return ret(polyResultGeom([bufferLoop(polyVerts(a[0]), d)])); }
@@ -1694,8 +1729,17 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(polyResultGeom(segs));
   },
   setdiff: async (a, nargout) => {
-    const A = m(a[0]); const arr = toArray(A); const sb = new Set(toArray(m(a[1])));
-    const stable = a.some((x) => (isStr(x) || (isMat(x) && (x as Mat).isChar)) && asString(x).toLowerCase() === 'stable');
+    const A = m(a[0]);
+    const stableC = a.some((x) => (isStr(x) || (isMat(x) && (x as Mat).isChar)) && asString(x).toLowerCase() === 'stable');
+    if (isComplex(A) || isComplex(m(a[1]))) {
+      const sb = new Set(cxListOf(m(a[1])).map(cxKey)); const seen = new Set<string>(); const pairs: [Cx, number][] = [];
+      cxListOf(A).forEach((v, i) => { const k = cxKey(v); if (!sb.has(k) && !seen.has(k)) { seen.add(k); pairs.push([v, i + 1]); } });
+      if (!stableC) pairs.sort((p, q) => cxCmp(p[0], q[0]));
+      const C = cxMatOf(pairs.map((p) => p[0]), A.rows !== 1);
+      return nargout >= 2 ? [C, colVec(pairs.map((p) => p[1]))] : [C];
+    }
+    const arr = toArray(A); const sb = new Set(toArray(m(a[1])));
+    const stable = stableC;
     const seen = new Set<number>(); const pairs: [number, number][] = [];
     for (let i = 0; i < arr.length; i++) { const v = arr[i]; if (!sb.has(v) && !seen.has(v)) { seen.add(v); pairs.push([v, i + 1]); } }
     if (!stable) pairs.sort((p, q) => p[0] - q[0]);
@@ -1703,9 +1747,22 @@ export const BUILTINS: Record<string, Builtin> = {
     return nargout >= 2 ? [C, colVec(pairs.map((p) => p[1]))] : [C];
   },
   setxor: async (a, nargout) => {
-    const A = m(a[0]), B = m(a[1]); const aArr = toArray(A), bArr = toArray(B);
+    const A = m(a[0]), B = m(a[1]);
+    const stableX = a.some((x) => (isStr(x) || (isMat(x) && (x as Mat).isChar)) && asString(x).toLowerCase() === 'stable');
+    if (isComplex(A) || isComplex(B)) {
+      const aEls = cxListOf(A), bEls = cxListOf(B); const sa = new Set(aEls.map(cxKey)), sb = new Set(bEls.map(cxKey));
+      const seenA = new Set<string>(), seenB = new Set<string>(); const aOnly: [Cx, number][] = [], bOnly: [Cx, number][] = [];
+      aEls.forEach((v, i) => { const k = cxKey(v); if (!sb.has(k) && !seenA.has(k)) { seenA.add(k); aOnly.push([v, i + 1]); } });
+      bEls.forEach((v, i) => { const k = cxKey(v); if (!sa.has(k) && !seenB.has(k)) { seenB.add(k); bOnly.push([v, i + 1]); } });
+      let cvals: Cx[];
+      if (stableX) cvals = [...aOnly.map((p) => p[0]), ...bOnly.map((p) => p[0])];
+      else cvals = [...aOnly.map((p) => p[0]), ...bOnly.map((p) => p[0])].sort(cxCmp);
+      const Cc = cxMatOf(cvals, A.rows !== 1 || B.rows !== 1);
+      return nargout >= 2 ? [Cc, colVec(aOnly.map((p) => p[1])), colVec(bOnly.map((p) => p[1]))] : [Cc];
+    }
+    const aArr = toArray(A), bArr = toArray(B);
     const sa = new Set(aArr), sb = new Set(bArr);
-    const stable = a.some((x) => (isStr(x) || (isMat(x) && (x as Mat).isChar)) && asString(x).toLowerCase() === 'stable');
+    const stable = stableX;
     const seenA = new Set<number>(), seenB = new Set<number>(); const aOnly: [number, number][] = [], bOnly: [number, number][] = [];
     for (let i = 0; i < aArr.length; i++) { const v = aArr[i]; if (!sb.has(v) && !seenA.has(v)) { seenA.add(v); aOnly.push([v, i + 1]); } }
     for (let i = 0; i < bArr.length; i++) { const v = bArr[i]; if (!sa.has(v) && !seenB.has(v)) { seenB.add(v); bOnly.push([v, i + 1]); } }
@@ -6238,6 +6295,13 @@ function truthyArg(v: Value): boolean { if (isMat(v) && v.isChar) { const s = as
 
 // ── Set / conversion helpers ──────────────────────────────────────────────
 function setUniq(arr: number[]): number[] { const s = new Set<number>(); const o: number[] = []; for (const x of arr) if (!s.has(x)) { s.add(x); o.push(x); } return o.sort((a, b) => a - b); }
+// ── complex-aware set-operation helpers (used when an input has an imaginary part) ──
+interface Cx { re: number; im: number }
+const cxKey = (v: Cx): string => `${v.re} ${v.im}`;
+function cxListOf(A: Mat): Cx[] { const out: Cx[] = []; const im = A.idata; for (let i = 0; i < A.data.length; i++) out.push({ re: A.data[i], im: im ? im[i] : 0 }); return out; }
+/** MATLAB complex ordering: by magnitude, ties broken by phase angle in (−π,π]. */
+function cxCmp(a: Cx, b: Cx): number { const ma = Math.hypot(a.re, a.im), mb = Math.hypot(b.re, b.im); if (ma !== mb) return ma - mb; return Math.atan2(a.im, a.re) - Math.atan2(b.im, b.re); }
+function cxMatOf(xs: Cx[], col: boolean): Mat { const re = xs.map((x) => x.re); const w = col ? colVec(re) : rowVec(re); if (xs.some((x) => x.im !== 0)) w.idata = Float64Array.from(xs.map((x) => x.im)); return w; }
 /** Characteristic polynomial coefficients (monic, high→low) for poly(matrix). */
 function charpolyC(A: Mat): number[] {
   const n = A.rows; const c = [1]; let M = zeros(n, n); for (let i = 0; i < n; i++) M.data[i + i * n] = 1;
