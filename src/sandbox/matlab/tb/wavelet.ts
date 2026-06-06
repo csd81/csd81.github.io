@@ -216,7 +216,7 @@ function invHaarStep(cA: number[], cD: number[]): number[] { const x = new Array
 export const WAVELET: ToolboxModule = {
   id: 'wavelet',
   name: 'Wavelet Toolbox',
-  docBase: 'https://www.mathworks.com/help/wavelet/',
+  docBase: 'https://www.mathworks.com/help/wavelet/ref/',
   builtins: {
     dct: (a) => { const x = m(a[0]); return ret(asRow(x, dctII(toArray(x)))); },
     idct: (a) => { const y = m(a[0]); return ret(asRow(y, idctII(toArray(y)))); },

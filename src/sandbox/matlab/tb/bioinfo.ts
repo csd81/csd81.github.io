@@ -222,7 +222,7 @@ const nt2aa: Builtin = async (a) => {
 export const BIOINFO: ToolboxModule = {
   id: 'bioinfo',
   name: 'Bioinformatics Toolbox',
-  docBase: 'https://www.mathworks.com/help/bioinfo/',
+  docBase: 'https://www.mathworks.com/help/bioinfo/ref/',
   builtins: {
     nt2int, int2nt, aa2int, int2aa,
     seqreverse, seqcomplement, seqrcomplement,

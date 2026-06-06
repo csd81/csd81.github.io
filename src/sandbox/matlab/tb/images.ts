@@ -65,7 +65,7 @@ function otsu(unit: number[]): number {
 export const IMAGES: ToolboxModule = {
   id: 'images',
   name: 'Image Processing Toolbox',
-  docBase: 'https://www.mathworks.com/help/images/',
+  docBase: 'https://www.mathworks.com/help/images/ref/',
   builtins: {
     /** rgb2ntsc(A) — RGB → NTSC/YIQ via yiq = rgb·inv(T'). Mirrors rgb2ntsc.m (N×3 colormap). */
     rgb2ntsc: (a) => {

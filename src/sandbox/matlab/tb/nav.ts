@@ -641,7 +641,7 @@ function rotm2eulImpl(args: Value[]): Mat {
 export const NAV: ToolboxModule = {
   id: 'nav',
   name: 'Navigation Toolbox',
-  docBase: 'https://www.mathworks.com/help/nav/',
+  docBase: 'https://www.mathworks.com/help/nav/ref/',
   docPath: (name) => `${name}.html`,
   builtins: {
     lla2ecef: ((args: Value[]) => ret(map3(m(args[0], 'lla'), llaToEcef))) as Builtin,

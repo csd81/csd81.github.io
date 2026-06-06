@@ -377,7 +377,7 @@ function bistaticLandStep(a: Value[]): Promise<Value[]> {
 export const RADAR: ToolboxModule = {
   id: 'radar',
   name: 'Radar Toolbox',
-  docBase: 'https://www.mathworks.com/help/radar/',
+  docBase: 'https://www.mathworks.com/help/radar/ref/',
   docPath: (name) => `${name}.html`,
   builtins: {
     dop2speed,

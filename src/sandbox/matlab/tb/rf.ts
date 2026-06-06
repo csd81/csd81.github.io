@@ -417,7 +417,7 @@ const B: Record<string, Builtin> = {
 export const RF: ToolboxModule = {
   id: 'rf',
   name: 'RF Toolbox',
-  docBase: 'https://www.mathworks.com/help/rf/',
+  docBase: 'https://www.mathworks.com/help/rf/ref/',
   builtins: B,
   help: {
     abcd2h: 'abcd2h(ABCD) — convert 2-port ABCD-parameters to hybrid H-parameters.',

@@ -452,7 +452,7 @@ const intClass = (nbits: number, signed: boolean) => (signed ? 'int' : 'uint') +
 export const SIGNAL: ToolboxModule = {
   id: 'signal',
   name: 'Signal Processing Toolbox',
-  docBase: 'https://www.mathworks.com/help/signal/',
+  docBase: 'https://www.mathworks.com/help/signal/ref/',
   builtins: {
     lin2mu: (a) => ret(map(m(a[0]), lin2muOne)),
     mu2lin: (a) => ret(map(m(a[0]), mu2linOne)),

@@ -93,7 +93,7 @@ const phitheta2azel = (a: Value[]) =>
 export const ANTENNA: ToolboxModule = {
   id: 'antenna',
   name: 'Antenna / Array Geometry',
-  docBase: 'https://www.mathworks.com/help/antenna/',
+  docBase: 'https://www.mathworks.com/help/antenna/ref/',
   builtins: {
     azel2uv,
     uv2azel,

@@ -187,7 +187,7 @@ function mls(a: Value[]): Promise<Value[]> {
 export const AUDIO: ToolboxModule = {
   id: 'audio',
   name: 'Audio Toolbox',
-  docBase: 'https://www.mathworks.com/help/audio/',
+  docBase: 'https://www.mathworks.com/help/audio/ref/',
   builtins: {
     hz2bark: (a) => elementwise(a, hz2barkScalar),
     bark2hz: (a) => elementwise(a, bark2hzScalar),
