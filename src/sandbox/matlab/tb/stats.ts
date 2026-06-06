@@ -1032,6 +1032,15 @@ export const STATS: ToolboxModule = {
     poisspdf: (a) => dist(a, [1], (k, lam) => { k = Math.round(k); if (k < 0) return 0; return Math.exp(k * Math.log(lam) - lam - logGamma(k + 1)); }),
     poisscdf: (a) => dist(a, [1], (k, lam) => { k = Math.floor(k); return k < 0 ? 0 : 1 - gammainc(lam, k + 1); }),
     poissinv: (a) => dist(a, [1], (pr, lam) => { let c = 0, k = 0; for (; k < 1e6; k++) { c += Math.exp(k * Math.log(lam) - lam - logGamma(k + 1)); if (c >= pr - 1e-12) return k; } return k; }),
+    // ── Exponential negative log-likelihood: nlogL + inverse-observed-information avar ──
+    explike: (a, nargout) => {
+      const mu = asScalar(a[0]); const x = toArray(m(a[1])); const n = x.length;
+      const S = x.reduce((s, v) => s + v, 0);
+      const nlogL = n * Math.log(mu) + S / mu;
+      if (nargout < 2) return ret(scalar(nlogL));
+      const avar = 1 / (2 * S / mu ** 3 - n / mu ** 2);     // 1 / d²(nlogL)/dμ²
+      return Promise.resolve([scalar(nlogL), scalar(avar)]);
+    },
     // ── Discrete uniform on {1..N} (invalid N → NaN) ──
     unidpdf: (a) => dist(a, [1], (x, N) => (N < 1 || N !== Math.floor(N)) ? NaN : (x >= 1 && x <= N && x === Math.floor(x)) ? 1 / N : 0),
     unidcdf: (a) => dist(a, [1], (x, N) => (N < 1 || N !== Math.floor(N)) ? NaN : x < 1 ? 0 : Math.min(Math.floor(x), N) / N),
@@ -1770,6 +1779,7 @@ export const STATS: ToolboxModule = {
     range: 'Range of values (max − min)', tabulate: 'Frequency table',
     pdist: 'Pairwise distance between observations', squareform: 'Format distance matrix', linkage: 'Agglomerative hierarchical cluster tree', kmeans: 'k-means clustering',
     tiedrank: 'Ranks of a sample, adjusting for ties', partialcorr: 'Linear or partial correlation coefficients',
+    explike: 'Exponential negative log-likelihood',
     unidpdf: 'Discrete uniform probability density function', unidcdf: 'Discrete uniform cumulative distribution function',
     unidinv: 'Discrete uniform inverse cumulative distribution function', unidstat: 'Discrete uniform mean and variance',
     regress: 'Multiple linear regression', pca: 'Principal component analysis', anova1: 'One-way analysis of variance',
