@@ -50,13 +50,14 @@ import { OPTIM } from './optim';
 import { NNET } from './nnet';
 import { TEXTANALYTICS } from './textanalytics';
 import { VISION } from './vision';
+import { PHASED } from './phased';
 
 /** All registered toolboxes, in precedence order (first wins on inter-toolbox collision). */
 export const TOOLBOXES: ToolboxModule[] = [
   AEROSPACE, ANTENNA, AUDIO, BIOINFO, COMM, CONTROL, CURVEFIT, DSP, ECON, FINANCIAL, FININST, FIXEDPOINT,
   LIDAR,
   FUSION, FUZZY, GADS, IDENT, IMAGES, MAPPING, NAV, NNET, OPTIM, PARALLEL, Pde, RADAR, RL, RF,
-  ROBOTICS, SIGNAL, SIMULINK, STATS, SYMBOLIC, TEXTANALYTICS, VISION, WAVELET,
+  PHASED, ROBOTICS, SIGNAL, SIMULINK, STATS, SYMBOLIC, TEXTANALYTICS, VISION, WAVELET,
 ];
 
 export const TOOLBOX_BUILTINS: Record<string, Builtin> = {};
