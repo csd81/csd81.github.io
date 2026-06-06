@@ -4,7 +4,7 @@ Consolidated coverage tables for 48 toolboxes. The **Implemented** column (✅) 
 functions available in the TypeScript sandbox interpreter. Generated from the former per-toolbox
 docs/*.md files.
 
-**Overall: 2481 / 17245 functions implemented across 48 toolboxes.**
+**Overall: 2492 / 17245 functions implemented across 48 toolboxes.**
 
 Also see [Base MATLAB reference-list validation](#base-validation) — 705 converged / 905 audited base builtins.
 
@@ -15,23 +15,23 @@ Also see [Base MATLAB reference-list validation](#base-validation) — 705 conve
 | :--- | ---: | ---: | ---: |
 | [core_referencelist (core list)](#0core_referencelist) | 1145 | 3094 | 37% |
 | [Symbolic Math Toolbox](#symbolic) | 355 | 415 | 86% |
-| [Stats Toolbox](#stats) | 163 | 861 | 19% |
-| [Signal Toolbox](#signal) | 138 | 397 | 35% |
+| [Stats Toolbox](#stats) | 166 | 861 | 19% |
+| [Signal Toolbox](#signal) | 142 | 397 | 36% |
 | [Map Toolbox](#map) | 90 | 399 | 23% |
 | [Fixedpoint Toolbox](#fixedpoint) | 87 | 335 | 26% |
+| [Control Toolbox](#control) | 47 | 352 | 13% |
 | [Aerotbx Toolbox](#aerotbx) | 45 | 223 | 20% |
-| [Control Toolbox](#control) | 45 | 352 | 13% |
 | [Comm Toolbox](#comm) | 40 | 409 | 10% |
 | [Finance Toolbox](#finance) | 39 | 383 | 10% |
-| [Images Toolbox](#images) | 36 | 651 | 6% |
+| [Images Toolbox](#images) | 37 | 651 | 6% |
 | [simulink (core list)](#0simulink) | 26 | 889 | 3% |
 | [Pde Toolbox](#pde) | 25 | 191 | 13% |
 | [Ident Toolbox](#ident) | 19 | 261 | 7% |
 | [Rf Toolbox](#rf) | 19 | 205 | 9% |
 | [Wavelet Toolbox](#wavelet) | 19 | 211 | 9% |
 | [Antenna Toolbox](#antenna) | 17 | 279 | 6% |
+| [Deeplearning Toolbox](#deeplearning) | 14 | 402 | 3% |
 | [Bioinfo Toolbox](#bioinfo) | 13 | 334 | 4% |
-| [Deeplearning Toolbox](#deeplearning) | 13 | 402 | 3% |
 | [Driving Toolbox](#driving) | 13 | 539 | 2% |
 | [Radar Toolbox](#radar) | 13 | 271 | 5% |
 | [Audio Toolbox](#audio) | 12 | 180 | 7% |
@@ -6892,7 +6892,7 @@ platforms |
 <a id="control"></a>
 ## Control Toolbox  
 
-_45 / 352 implemented_
+_47 / 352 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -7175,7 +7175,7 @@ array dimensions |
 |   | `pidtuneOptions` | Define options forpidtunefunction |
 |   | `pidTuner` | Open PID Tuner for PID tuning |
 |   | `sisoinit` | Configure Control System Designer at startup |
-|   | `dlqr` | Linear-quadratic (LQ) state-feedback regulator for discrete-time state-space
+| ✅ | `dlqr` | Linear-quadratic (LQ) state-feedback regulator for discrete-time state-space
       system |
 |   | `estim` | Form state estimator given estimator gain |
 |   | `lqg` | Linear-Quadratic-Gaussian (LQG) design |
@@ -7183,7 +7183,7 @@ array dimensions |
 (LQG) regulator |
 |   | `lqgtrack` | Form Linear-Quadratic-Gaussian (LQG) servo controller |
 |   | `lqi` | Linear-Quadratic-Integral control |
-|   | `lqr` | Linear-Quadratic Regulator (LQR) design |
+| ✅ | `lqr` | Linear-Quadratic Regulator (LQR) design |
 |   | `lqrd` | Design discrete linear-quadratic (LQ) regulator for continuous
             plant |
 |   | `lqry` | Form linear-quadratic (LQ) state-feedback regulator with output
@@ -7302,7 +7302,7 @@ form |
 <a id="deeplearning"></a>
 ## Deeplearning Toolbox  
 
-_13 / 402 implemented_
+_14 / 402 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -7379,7 +7379,7 @@ _13 / 402 implemented_
 |   | `extractsigroi` | Extract signal regions of interest |
 |   | `filenames2labels` | Get list of labels from filenames(Since R2022b) |
 |   | `findchangepts` | Find abrupt changes in signal |
-|   | `findpeaks` | Find local maxima |
+| ✅ | `findpeaks` | Find local maxima |
 |   | `folders2labels` | Get list of labels from folder names |
 |   | `icwtLayer` | Inverse continuous wavelet transform layer(Since R2024b) |
 |   | `imageDatastore` | Datastore for image data |
@@ -11506,7 +11506,7 @@ regression method |
 <a id="images"></a>
 ## Images Toolbox  
 
-_36 / 651 implemented_
+_37 / 651 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -11805,7 +11805,7 @@ images |
 |   | `modefilt` | 2-D and 3-D mode filtering |
 |   | `nlfilter` | General sliding-neighborhood operations |
 |   | `ordfilt2` | 2-D order-statistic filtering |
-|   | `padarray` | Pad array |
+| ✅ | `padarray` | Pad array |
 |   | `rangefilt` | Local range of image |
 |   | `roifilt2` | Filter region of interest (ROI) in grayscale image |
 |   | `stdfilt` | Local standard deviation of image |
@@ -15291,7 +15291,7 @@ model |
 <a id="signal"></a>
 ## Signal Toolbox  
 
-_138 / 397 implemented_
+_142 / 397 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -15352,7 +15352,7 @@ _138 / 397 implemented_
 | ✅ | `edr` | Edit distance on real signals |
 |   | `findchangepts` | Find abrupt changes in signal |
 | ✅ | `finddelay` | Estimate delay(s) between signals |
-|   | `findpeaks` | Find local maxima |
+| ✅ | `findpeaks` | Find local maxima |
 |   | `findsignal` | Find signal location using similarity search |
 |   | `refinepeaks` | Refine peak value and location estimates(Since R2024b) |
 |   | `signalFrequencyFeatureExtractor` | Streamline signal frequency feature extraction(Since R2021b) |
@@ -15492,7 +15492,7 @@ method |
 | ✅ | `kaiserord` | Kaiser window FIR filter design estimation parameters |
 |   | `maxflat` | Generalized digital Butterworth filter design |
 |   | `rcosdesign` | Raised cosine FIR pulse-shaping filter design |
-|   | `butter` | Butterworth filter design |
+| ✅ | `butter` | Butterworth filter design |
 |   | `buttord` | Butterworth filter order and cutoff frequency |
 |   | `cheb1ord` | Chebyshev Type I filter order |
 |   | `cheb2ord` | Chebyshev Type II filter order |
@@ -15540,7 +15540,7 @@ method |
 |   | `fftfilt` | FFT-based FIR filtering using overlap-add method |
 | ✅ | `filter` | 1-D digital filter |
 | ✅ | `filter2` | 2-D digital filter |
-|   | `filtfilt` | Zero-phase digital filtering |
+| ✅ | `filtfilt` | Zero-phase digital filtering |
 |   | `filtic` | Initial conditions for transposed direct-form II filter implementation |
 |   | `highpass` | Highpass-filter signals |
 |   | `latcfilt` | Lattice and lattice-ladder filter implementation |
@@ -15596,7 +15596,7 @@ sections form |
 |   | `freqspace` | Frequency spacing for frequency response |
 |   | `besselap` | Bessel analog lowpass filter prototype |
 |   | `bilinear` | Bilinear transformation method for analog-to-digital filter conversion |
-|   | `buttap` | Butterworth analog lowpass filter prototype |
+| ✅ | `buttap` | Butterworth analog lowpass filter prototype |
 |   | `cheb1ap` | Chebyshev Type I analog lowpass filter prototype |
 |   | `cheb2ap` | Chebyshev Type II analog lowpass filter prototype |
 |   | `ellipap` | Elliptic analog lowpass filter prototype |
@@ -16995,7 +16995,7 @@ _1 / 112 implemented_
 <a id="stats"></a>
 ## Stats Toolbox  
 
-_163 / 861 implemented_
+_166 / 861 implemented_
 
 | Implemented | Function | Description |
 | :---: | :--- | :--- |
@@ -17410,7 +17410,7 @@ bivariate data |
 |   | `plotComparisons` | Interactive plot of multiple comparisons of means for analysis of variance (ANOVA)(Since R2022b) |
 |   | `stats` | Analysis of variance (ANOVA) table(Since R2022b) |
 |   | `varianceComponent` | Variance component estimates for analysis of variance (ANOVA)(Since R2022b) |
-|   | `anova1` | One-way analysis of variance |
+| ✅ | `anova1` | One-way analysis of variance |
 |   | `anova2` | Two-way analysis of variance |
 |   | `anovan` | N-way analysis of variance |
 |   | `canoncorr` | Canonical correlation |
@@ -17471,7 +17471,7 @@ model |
 |   | `polyconf` | Polynomial confidence intervals |
 | ✅ | `polyfit` | Polynomial curve fitting |
 |   | `polytool` | Interactive polynomial fitting |
-|   | `regress` | Multiple linear regression |
+| ✅ | `regress` | Multiple linear regression |
 |   | `RegressionLinear` | Linear regression model for high-dimensional data |
 |   | `RegressionPartitionedLinear` | Cross-validated linear regression model for high-dimensional data |
 |   | `RegressionPartitionedQuantileModel` | Cross-validated quantile model for regression(Since R2025a) |
@@ -17829,7 +17829,7 @@ and states |
 |   | `tsne` | t-Distributed Stochastic Neighbor Embedding |
 |   | `umap` | Uniform Manifold Approximation and Projection (UMAP) for dimension
       reduction(Since R2026a) |
-|   | `pca` | Principal component analysis of raw data |
+| ✅ | `pca` | Principal component analysis of raw data |
 |   | `pcacov` | Principal component analysis on covariance matrix |
 |   | `pcares` | Residuals from principal component analysis |
 |   | `ppca` | Probabilistic principal component analysis |
