@@ -237,7 +237,7 @@ export class MathFunction extends Block {
             case 'magnitude': return [Math.abs(val)];
             case 'square': return [val * val];
             case 'sqrt': return [Math.sqrt(val)];
-            case 'pow': return [Math.pow(val, u[1] || 1)]; // Expects 2 inputs if pow
+            case 'pow': return [Math.pow(val, u[1] ?? 1)]; // exponent 0 is valid (|| would turn it into 1)
             default: return [val];
         }
     }
@@ -335,14 +335,15 @@ export class LogicalOperator extends Block {
             return [!res ? 1 : 0];
         }
 
-        for (let i = 1; i < this.numInputs; i++) {
-            switch (op) {
-                case 'AND': res = res && bools[i]; break;
-                case 'OR': res = res || bools[i]; break;
-                case 'NAND': res = !(res && bools[i]); break;
-                case 'NOR': res = !(res || bools[i]); break;
-                case 'XOR': res = res !== bools[i]; break;
-            }
+        // Reduce across ALL inputs first, then negate for NAND/NOR (negating per step
+        // is wrong: !(!(A&&B)&&C) ≠ !(A&&B&&C)).
+        const reduce = (combine: (a: boolean, b: boolean) => boolean) => { let r = bools[0]; for (let i = 1; i < this.numInputs; i++) r = combine(r, bools[i]); return r; };
+        switch (op) {
+            case 'AND': res = reduce((a, b) => a && b); break;
+            case 'OR': res = reduce((a, b) => a || b); break;
+            case 'XOR': res = reduce((a, b) => a !== b); break;
+            case 'NAND': res = !reduce((a, b) => a && b); break;
+            case 'NOR': res = !reduce((a, b) => a || b); break;
         }
         return [res ? 1 : 0];
     }
@@ -1218,6 +1219,11 @@ export class Solver {
                  }
             }
             yout.push(currentY);
+
+            // Honour a StopSimulation block: stop after logging the triggering step.
+            let stop = false;
+            for (const b of this.model.blocks.values()) if ((b as unknown as { _stopRequested?: boolean })._stopRequested) { stop = true; break; }
+            if (stop) break;
 
             // Step 2: Compute derivatives and discrete updates
             const derivatives = new Map<string, number[]>();
