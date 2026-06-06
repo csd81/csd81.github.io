@@ -54,12 +54,13 @@ import { PHASED } from './phased';
 // UAV quarantined: all 5 functions (uavMinTurningRadius/FlightPathAngle/GroundSpeed/BankAngle/CrossTrackError)
 // do not exist as standalone MATLAB functions — agent extracted formulas from OOP class internals
 // and invented names. Not registerable until real UAV toolbox standalone functions are ported.
+import { RISK } from './risk';
 
 /** All registered toolboxes, in precedence order (first wins on inter-toolbox collision). */
 export const TOOLBOXES: ToolboxModule[] = [
   AEROSPACE, ANTENNA, AUDIO, BIOINFO, COMM, CONTROL, CURVEFIT, DSP, ECON, FINANCIAL, FININST, FIXEDPOINT,
   LIDAR,
-  FUSION, FUZZY, GADS, IDENT, IMAGES, MAPPING, NAV, NNET, OPTIM, PARALLEL, Pde, RADAR, RL, RF,
+  FUSION, FUZZY, GADS, IDENT, IMAGES, MAPPING, NAV, NNET, OPTIM, PARALLEL, Pde, RADAR, RISK, RL, RF,
   PHASED, ROBOTICS, SIGNAL, SIMULINK, STATS, SYMBOLIC, TEXTANALYTICS, VISION, WAVELET,
 ];
 
