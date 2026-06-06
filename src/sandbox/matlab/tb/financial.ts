@@ -308,6 +308,12 @@ function eomday(y: number, m: number): number {
 
 const DAYTOTAL365 = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
 
+/** Days-in-year for a day-count basis: 360 (basis 2), 365 (basis 3), else actual (basis 0). */
+function yearLenFor(serial: number, basis: number): number {
+  if (basis === 2) return 360; if (basis === 3) return 365;
+  return isLeap(ymd(serial)[0]) ? 366 : 365;
+}
+
 /** Element-wise over two date operands (serial datenums) with scalar expansion. */
 function ewDates(args: Value[], f: (d1: number, d2: number) => number): Value {
   const s1 = asSerials(args[0], 'date'), s2 = asSerials(args[1], 'date');
@@ -775,6 +781,13 @@ export const FINANCIAL: ToolboxModule = {
     eomdate: (a) => ret(eomdateImpl(a)),
     calendar: (a) => ret(calendarImpl(a)),
     daysact: (a) => ret(ewDates(a, (d1, d2) => d2 - d1)),
+    // ── Treasury-bill (actual/360) and discounted-security pricing ──
+    prtbill: (a) => { const S = asScalarSerial(a[0], 'prtbill'), M = asScalarSerial(a[1], 'prtbill'); return ret(scalar(asScalar(a[2]) * (1 - asScalar(a[3]) * (M - S) / 360))); },
+    yldtbill: (a) => { const S = asScalarSerial(a[0], 'yldtbill'), M = asScalarSerial(a[1], 'yldtbill'), F = asScalar(a[2]), P = asScalar(a[3]); return ret(scalar((F - P) / P * 360 / (M - S))); },
+    beytbill: (a) => { const S = asScalarSerial(a[0], 'beytbill'), M = asScalarSerial(a[1], 'beytbill'), D = asScalar(a[2]); return ret(scalar(365 * D / (360 - D * (M - S)))); },
+    prdisc: (a) => { const S = asScalarSerial(a[0], 'prdisc'), M = asScalarSerial(a[1], 'prdisc'), basis = a.length > 4 ? asScalar(a[4]) : 0; return ret(scalar(asScalar(a[2]) * (1 - asScalar(a[3]) * (M - S) / yearLenFor(S, basis)))); },
+    fvdisc: (a) => { const S = asScalarSerial(a[0], 'fvdisc'), M = asScalarSerial(a[1], 'fvdisc'), basis = a.length > 4 ? asScalar(a[4]) : 0; return ret(scalar(asScalar(a[2]) / (1 - asScalar(a[3]) * (M - S) / yearLenFor(S, basis)))); },
+    discrate: (a) => { const S = asScalarSerial(a[0], 'discrate'), M = asScalarSerial(a[1], 'discrate'), F = asScalar(a[2]), P = asScalar(a[3]), basis = a.length > 4 ? asScalar(a[4]) : 0; return ret(scalar((F - P) / F * yearLenFor(S, basis) / (M - S))); },
     days365: (a) => ret(ewDates(a, (d1, d2) => { const [y1, m1, dd1] = ymd(d1), [y2, m2, dd2] = ymd(d2); return 365 * (y2 - y1) + DAYTOTAL365[m2 - 1] - DAYTOTAL365[m1 - 1] + dd2 - dd1; })),
     yeardays: (a) => ret(yeardaysImpl(a)),
     thirdwednesday: (a) => Promise.resolve(thirdwednesdayImpl(a)),
@@ -804,6 +817,8 @@ export const FINANCIAL: ToolboxModule = {
     eomdate: 'Last date of the month (serial date number)',
     calendar: 'Calendar for specified month as a 6-by-7 matrix',
     daysact: 'Actual number of days between dates', days365: 'Days between dates based on a 365-day year',
+    prtbill: 'Price of Treasury bill from discount rate', yldtbill: 'Yield of Treasury bill from price', beytbill: 'Bond-equivalent yield of Treasury bill',
+    prdisc: 'Price of a discounted security', fvdisc: 'Future value of a discounted security', discrate: 'Bank discount rate of a security',
     yeardays: 'Number of days in year for a given basis', thirdwednesday: 'Third Wednesday of month (futures dates)',
     juliandate: 'Julian date from year/month/day (and optional time)',
     weeknum: 'Week of the year for a date',

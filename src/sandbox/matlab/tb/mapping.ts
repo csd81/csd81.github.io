@@ -231,6 +231,9 @@ export const MAPPING: ToolboxModule = {
     deg2nm: conv(60), nm2km: conv(NM), km2nm: conv(1 / NM), nm2sm: conv(NM / SM), sm2nm: conv(SM / NM),
     km2sm: conv(1 / SM), sm2km: conv(SM), deg2sm: conv(D2R * R / SM), sm2deg: conv(SM / R * R2D),
     nm2deg: conv(NM / R * R2D), rad2nm: conv(R / NM), nm2rad: conv(NM / R), rad2sm: conv(R / SM), sm2rad: conv(SM / R),
+    // toDegrees/fromDegrees(units,x): convert angles to/from degrees ('radians' scales, else identity).
+    toDegrees: (a) => { const rad = asString(a[0]).toLowerCase().startsWith('rad'); return ret(map(m(a[1]), (v) => (rad ? v * R2D : v))); },
+    fromDegrees: (a) => { const rad = asString(a[0]).toLowerCase().startsWith('rad'); return ret(map(m(a[1]), (v) => (rad ? v * D2R : v))); },
     // meanm(lat,lon[,units]) — geographic mean (unit-vector sum on a sphere). Mirrors meanm.m.
     meanm: (a, nargout) => {
       const latArr = toArray(m(a[0])), lonArr = toArray(m(a[1]));
@@ -442,6 +445,7 @@ export const MAPPING: ToolboxModule = {
     rad2nm: 'Convert distance from radians to nautical miles', nm2rad: 'Convert distance from nautical miles to radians',
     rad2sm: 'Convert distance from radians to statute miles', sm2rad: 'Convert distance from statute miles to radians',
     meanm: 'Mean location of geographic coordinates',
+    toDegrees: 'Convert angles to degrees', fromDegrees: 'Convert angles from degrees',
     distance: 'Distance between points on sphere or ellipsoid', azimuth: 'Azimuth between points on sphere or ellipsoid',
     reckon: 'Point at specified azimuth, range on sphere or ellipsoid', departure: 'Longitude distance between two meridians at given latitudes',
     antipode: 'Point on opposite side of globe', wrapTo180: 'Wrap angle in degrees to [-180, 180]',
