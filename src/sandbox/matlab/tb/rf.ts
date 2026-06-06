@@ -422,7 +422,7 @@ export const RF: ToolboxModule = {
   help: {
     abcd2h: { summary: 'Converts the ABCD-parameters to the hybrid parameters.', syntax: ['h_params = abcd2h(abcd_params)'], seealso: ['abcd2s', 'abcd2y', 'abcd2z', 'z2abcd', 'h2abcd'] },
     gammams: { summary: 'Calculates the source reflection coefficient of a two-port network required for simultaneous conjugate match.', syntax: ['coefficient = gammams(s_params)', 'coefficient = gammams(hs)'] },
-    powergain: "powergain(S,Z0,ZS,ZL[,type]) — 2-port power gain: 'Gt','Ga','Gp','Gmag','Gmsg'.",
+    powergain: { summary: "Calculate 2-port network power gain", syntax: ["g = powergain(s_params,z0,zs,zl,'Gt')", "g = powergain(s_params,z0,zs,'Ga')", "g = powergain(s_params,z0,zl,'Gp')", "g = powergain(s_params,'Gmag')"], description: ["g = powergain(s_params,z0,zs,zl,type) computes the specified power gain of a 2-port S-parameter network. Types: 'Gt' transducer, 'Ga' available, 'Gp' operating, 'Gmag' maximum available, 'Gmsg' maximum stable."], seealso: ['stabilityk', 'stabilitymu', 'gammams'] },
     s2scc: { summary: 'Functionconverts the 2N-port single-ended S-parameters to N-port common-mode S-parameters.', syntax: ['scc_params = s2scc(s_params)', 'scc_params = s2scc(s_params,option)'], seealso: ['s2abcd', 's2h', 's2s', 's2sdd', 's2smm'] },
     stabilityk: { summary: 'Calculates and returns the stability factor, k, and the conditions b1, b2, and delta for the two-port network.', syntax: ['[k,b1,b2,delta] = stabilityk(s_params)', '[k,b1,b2,delta] = stabilityk(hs)'], seealso: ['stabilitymu'] },
     s2abcd: { summary: 'Functionconverts the scattering parameters to the ABCD-parameters.', syntax: ['abcd_params = s2abcd(s_params,z0)'], seealso: ['abcd2s'] },
