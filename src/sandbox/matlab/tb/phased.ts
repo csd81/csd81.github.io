@@ -16,7 +16,7 @@
 //   cbfweights((0:4)*0.5,30)   → w = [0.2; 0.2i; -0.2; -0.2i; 0.2]  (to 1e-12)
 //   cbfweights((0:3)*0.5,[30 45]) col2 w(2) = -0.151424966769703+0.19892330039187i
 
-import { type Value, type Mat, scalar, toMat as m, MatError } from '../values';
+import { type Value, type Mat, scalar, toMat as m, asScalar, asString, MatError } from '../values';
 import type { ToolboxModule } from './types';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
@@ -30,6 +30,60 @@ const asind = (x: number) => Math.asin(Math.max(-1, Math.min(1, x))) / D2R;
 function ew(v: Value, f: (x: number) => number): Mat {
   const M = m(v, 'arg');
   return { kind: 'num', rows: M.rows, cols: M.cols, data: Float64Array.from(M.data, f) };
+}
+
+// element-wise over two Mats, broadcasting a scalar against a vector/matrix
+function ew2(a: Value, b: Value, f: (x: number, y: number) => number): Mat {
+  const A = m(a, 'arg'), B = m(b, 'arg');
+  const big = A.data.length >= B.data.length ? A : B;
+  const d = new Float64Array(big.data.length);
+  for (let i = 0; i < d.length; i++) d[i] = f(A.data[A.data.length === 1 ? 0 : i], B.data[B.data.length === 1 ? 0 : i]);
+  return { kind: 'num', rows: big.rows, cols: big.cols, data: d };
+}
+
+const LIGHTSPEED = 299792458;
+
+// ── physconst(name): physical constants (MATLAB R2026a values) ──────────────────────────
+function physconst(args: Value[]): Promise<Value[]> {
+  const raw = asString(args[0]);
+  const key = raw.toLowerCase().replace(/\s+/g, '');
+  const table: Record<string, number> = {
+    lightspeed: LIGHTSPEED,        // m/s (exact)
+    boltzmann: 1.380649e-23,       // J/K (2019 SI exact)
+    earthradius: 6371000,          // m (mean)
+  };
+  const v = table[key];
+  if (v === undefined) throw new MatError(`physconst: unknown constant '${raw}'`);
+  return ret(scalar(v));
+}
+
+// ── freq2wavelen(freq[,c]): wavelength = c/freq (element-wise) ───────────────────────────
+function freq2wavelen(args: Value[]): Promise<Value[]> {
+  const c = args[1] != null ? asScalar(m(args[1], 'c')) : LIGHTSPEED;
+  return ret(ew(args[0], (f) => c / f));
+}
+
+// ── wavelen2freq(lambda[,c]): freq = c/lambda (element-wise) ─────────────────────────────
+function wavelen2freq(args: Value[]): Promise<Value[]> {
+  const c = args[1] != null ? asScalar(m(args[1], 'c')) : LIGHTSPEED;
+  return ret(ew(args[0], (lambda) => c / lambda));
+}
+
+// ── gain2aperture(G,lambda): A = lambda^2 * 10^(G/10) / (4*pi) (G in dBi) ─────────────────
+function gain2aperture(args: Value[]): Promise<Value[]> {
+  return ret(ew2(args[0], args[1], (G, lambda) => (lambda * lambda * 10 ** (G / 10)) / (4 * Math.PI)));
+}
+
+// ── albersheim(Pd,Pfa[,N]): single-sample SNR (dB) to detect in white Gaussian noise ─────
+// SNRdB = -5*log10(N) + (6.2 + 4.54/sqrt(N+0.44))*log10(A + 0.12*A*B + 1.7*B),
+// with A = ln(0.62/Pfa), B = ln(Pd/(1-Pd)). N defaults to 1.
+function albersheim(args: Value[]): Promise<Value[]> {
+  const pd = asScalar(m(args[0], 'Pd')), pfa = asScalar(m(args[1], 'Pfa'));
+  const N = args[2] != null ? asScalar(m(args[2], 'N')) : 1;
+  const A = Math.log(0.62 / pfa);
+  const B = Math.log(pd / (1 - pd));
+  const snr = -5 * Math.log10(N) + (6.2 + 4.54 / Math.sqrt(N + 0.44)) * Math.log10(A + 0.12 * A * B + 1.7 * B);
+  return ret(scalar(snr));
 }
 
 // ── az2broadside(az, el=0) ─────────────────────────────────────────────────────────────
@@ -168,6 +222,11 @@ export const PHASED: ToolboxModule = {
     azel2uv,
     uv2azel,
     cbfweights,
+    physconst,
+    freq2wavelen,
+    wavelen2freq,
+    gain2aperture,
+    albersheim,
   },
   help: {
     az2broadside: {
@@ -224,6 +283,52 @@ export const PHASED: ToolboxModule = {
         'w = steervec(pos,ang) / N.',
       ],
       seealso: ['steervec', 'mvdrweights', 'az2broadside', 'azel2uv'],
+    },
+    physconst: {
+      summary: 'Physical constants',
+      syntax: ["c = physconst('LightSpeed')", "k = physconst('Boltzmann')", "re = physconst('EarthRadius')"],
+      description: [
+        'physconst(name) returns a physical constant in SI units. Supported names (case/space-insensitive):',
+        "'LightSpeed' = 299792458 m/s, 'Boltzmann' = 1.380649e-23 J/K, 'EarthRadius' = 6371000 m.",
+      ],
+      seealso: ['freq2wavelen'],
+    },
+    freq2wavelen: {
+      summary: 'Convert frequency to wavelength',
+      syntax: ['lambda = freq2wavelen(freq)', 'lambda = freq2wavelen(freq,c)'],
+      description: [
+        'lambda = freq2wavelen(freq) returns the wavelength c/freq, with c the speed of light.',
+        'lambda = freq2wavelen(freq,c) uses a custom propagation speed c. freq may be a vector.',
+      ],
+      seealso: ['wavelen2freq', 'physconst'],
+    },
+    wavelen2freq: {
+      summary: 'Convert wavelength to frequency',
+      syntax: ['freq = wavelen2freq(lambda)', 'freq = wavelen2freq(lambda,c)'],
+      description: [
+        'freq = wavelen2freq(lambda) returns the frequency c/lambda, with c the speed of light.',
+        'freq = wavelen2freq(lambda,c) uses a custom propagation speed c. lambda may be a vector.',
+      ],
+      seealso: ['freq2wavelen', 'physconst'],
+    },
+    gain2aperture: {
+      summary: 'Convert antenna gain to effective aperture',
+      syntax: ['a = gain2aperture(g,lambda)'],
+      description: [
+        'a = gain2aperture(g,lambda) returns the effective aperture (m^2) for an antenna of gain g (dBi)',
+        'at wavelength lambda (m): a = lambda^2 * 10^(g/10) / (4*pi). Inputs may be vectors (a scalar broadcasts).',
+      ],
+      seealso: ['freq2wavelen', 'physconst'],
+    },
+    albersheim: {
+      summary: "Required SNR from Albersheim's equation",
+      syntax: ['snr = albersheim(prob_det,prob_fa)', 'snr = albersheim(prob_det,prob_fa,N)'],
+      description: [
+        'snr = albersheim(Pd,Pfa,N) returns the single-sample SNR (dB) needed to achieve detection',
+        'probability Pd at false-alarm probability Pfa, integrating N pulses noncoherently (default N=1),',
+        'for a nonfluctuating target in white Gaussian noise (linear detector). Albersheim approximation.',
+      ],
+      seealso: ['shnidman', 'rocsnr'],
     },
   },
 };
