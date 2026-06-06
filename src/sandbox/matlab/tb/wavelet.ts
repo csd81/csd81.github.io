@@ -48,6 +48,107 @@ function idwt1(cA: number[], cD: number[], lo: number[], hi: number[]): number[]
   for (let k = 0; k < half; k++) for (let j = 0; j < L; j++) { const idx = (2 * k + j) % N; x[idx] += lo[j] * cA[k] + hi[j] * cD[k]; }
   return x;
 }
+// ── Kingsbury Q-shift filters (qorthwavf) ──
+// Base LoDa coefficient vectors keyed by tap-count `num`. Source: MATLAB R2026a `type qorthwavf`.
+const QSHIFT_LODA: Record<number, number[]> = {
+  6: [0.035163836571495, 0, -0.088329424451073, 0.233890320607236, 0.760272369066126, 0.587518297723560, 0, -0.114301837144249, 0, 0],
+  10: [0.051130405283832, -0.013975370246889, -0.109836051665971, 0.263839561058938, 0.766628467793037, 0.563655710127052, 0.000873622695217, -0.100231219507476, -0.001689681272528, -0.006181881892116],
+  14: [0.003253142763653, -0.003883211999158, 0.034660346844853, -0.038872801268828, -0.117203887699115, 0.275295384668882, 0.756145643892522, 0.568810420712123, 0.011866092033797, -0.106711804686665, 0.023825384794920, 0.017025223881554, -0.005439475937274, -0.004556895628475],
+  16: [-0.004761611938456, -0.000446022789262, -0.000071441973280, 0.034914612306842, -0.037273895799898, -0.115911457427441, 0.276368643133032, 0.756393765199037, 0.567134484100133, 0.014637405964473, -0.112558884257522, 0.022289263266923, 0.018498682724156, -0.007202677878258, -0.000227652205898, 0.002430349945149],
+  18: [-0.002284127440271, 0.001209894163073, -0.011834794515431, 0.001283456999344, 0.044365221606617, -0.053276108803047, -0.113305886362143, 0.280902863222186, 0.752816038087856, 0.565808067396459, 0.024550152433667, -0.120188544710795, 0.018156493945546, 0.031526377122085, -0.006628794612430, -0.002576174306601, 0.001277558653807, 0.002411869456666],
+};
+const flipArr = (v: number[]) => v.slice().reverse();
+/** [LoDa..HiRb] = qorthwavf(num). LoDb=flip(LoDa); HiDa=(-1)^na·flip(LoDa), HiDb=(-1)^nb·flip(LoDb)
+ *  with na=(0:9)/nb=(1:10) for num==6 else na=(0:num-1)/nb=(1:num). */
+function qorthwavfFilters(num: number): number[][] {
+  const LoDa = QSHIFT_LODA[num];
+  if (!LoDa) throw new Error(`qorthwavf: unsupported Q-shift order ${num} (use 6,10,14,16,18)`);
+  const LoDb = flipArr(LoDa);
+  // na=(0:len-1), nb=(1:len) in both the num==6 (len=10) and general cases.
+  const flipLoDa = flipArr(LoDa), flipLoDb = flipArr(LoDb);
+  const HiDa = flipLoDa.map((x, i) => (i % 2 === 0 ? 1 : -1) * x);       // (-1)^i, i from 0
+  const HiDb = flipLoDb.map((x, i) => ((i + 1) % 2 === 0 ? 1 : -1) * x); // (-1)^(i+1)
+  const LoRa = LoDb, LoRb = LoDa, HiRa = HiDb, HiRb = HiDa;
+  return [LoDa, LoDb, HiDa, HiDb, LoRa, LoRb, HiRa, HiRb];
+}
+
+// ── Biorthogonal scaling filters (biorwavf) ──
+// Returns [Rf, Df] reconstruction/decomposition filters for 'biorNr.Nd'. Source: `type biorwavf`.
+function biorwavfRfDf(wname: string): { Rf: number[]; Df: number[] } {
+  const dot = wname.indexOf('.');
+  if (dot < 0) throw new Error(`biorwavf: invalid name '${wname}'`);
+  const Nd = parseInt(wname.slice(dot + 1), 10);
+  let i = dot; while (i > 0 && wname.charCodeAt(i - 1) > 47 && wname.charCodeAt(i - 1) < 58) i--;
+  const Nr = parseInt(wname.slice(i, dot), 10);
+  const sym = (half: number[], center?: number): number[] => center === undefined
+    ? half.concat(flipArr(half))
+    : half.concat([center], flipArr(half));
+  let Rf: number[]; let Df: number[];
+  if (Nr === 1) {
+    Rf = sym([1 / 2]);
+    if (Nd === 1) Df = [1 / 2];
+    else if (Nd === 3) Df = [-1 / 16, 1 / 16, 1 / 2];
+    else if (Nd === 5) Df = [3 / 256, -3 / 256, -11 / 128, 11 / 128, 1 / 2];
+    else throw new Error(`biorwavf: bad order bior1.${Nd}`);
+    Df = sym(Df);
+  } else if (Nr === 2) {
+    Rf = [1 / 4, 1 / 2, 1 / 4];
+    if (Nd === 2) Df = sym([-1 / 8, 1 / 4], 3 / 4);
+    else if (Nd === 4) Df = sym([3 / 128, -3 / 64, -1 / 8, 19 / 64], 45 / 64);
+    else if (Nd === 6) Df = sym([-5 / 1024, 5 / 512, 17 / 512, -39 / 512, -123 / 1024, 81 / 256], 175 / 256);
+    else if (Nd === 8) Df = sym([35, -70, -300, 670, 1228, -3126, -3796, 10718], 22050).map((v) => v / 32768);
+    else throw new Error(`biorwavf: bad order bior2.${Nd}`);
+  } else if (Nr === 3) {
+    Rf = sym([1 / 8, 3 / 8]);
+    if (Nd === 1) Df = [-1, 3].map((v) => v / 4);
+    else if (Nd === 3) Df = [3, -9, -7, 45].map((v) => v / 64);
+    else if (Nd === 5) Df = [-5, 15, 19, -97, -26, 350].map((v) => v / 512);
+    else if (Nd === 7) Df = [35, -105, -195, 865, 363, -3489, -307, 11025].map((v) => v / 16384);
+    else if (Nd === 9) Df = [-63, 189, 469, -1911, -1308, 9188, 1140, -29676, 190, 87318].map((v) => v / 131072);
+    else throw new Error(`biorwavf: bad order bior3.${Nd}`);
+    Df = sym(Df);
+  } else if (Nr === 4 && Nd === 4) {
+    Rf = sym([-0.045635881557, -0.028771763114, 0.295635881557], 0.557543526229);
+    Df = sym([0.026748757411, -0.016864118443, -0.078223266529, 0.266864118443], 0.602949018236);
+  } else if (Nr === 5 && Nd === 5) {
+    Rf = sym([0.009515330511, -0.001905629356, -0.096666153049, -0.066117805605, 0.337150822538], 0.636046869922);
+    Df = sym([0.028063009296, 0.005620161515, -0.038511714155, 0.244379838485], 0.520897409718);
+  } else if (Nr === 6 && Nd === 8) {
+    Rf = sym([-0.01020092218704, -0.01023007081937, 0.05566486077996, 0.02854447171515, -0.29546393859292], -0.53662880179157);
+    Df = sym([0.00134974786501, -0.00135360470301, -0.01201419666708, 0.00843901203981, 0.03516647330654, -0.05463331368252, -0.06650990062484, 0.29754790634571], 0.58401575224075);
+  } else {
+    throw new Error(`biorwavf: unsupported wavelet '${wname}'`);
+  }
+  return { Rf, Df };
+}
+
+// ── orthfilt: build the orthogonal 4-filter bank from a scaling vector W ──
+const qmfP0 = (lo: number[]): number[] => { const y = flipArr(lo); for (let i = 1; i < y.length; i += 2) y[i] = -y[i]; return y; };
+function orthfiltBank(W: number[]): { LoD: number[]; HiD: number[]; LoR: number[]; HiR: number[] } {
+  const s = W.reduce((a, b) => a + b, 0);
+  const Wn = W.map((v) => v / s);
+  const LoR = Wn.map((v) => SQRT2 * v);
+  const HiR = qmfP0(LoR);
+  const HiD = flipArr(HiR);
+  const LoD = flipArr(LoR);
+  return { LoD, HiD, LoR, HiR };
+}
+
+// ── biorfilt: orthogonal-style filters from a (Df,Rf) biorthogonal pair (nargin==2 form) ──
+function biorfiltBank(Df: number[], Rf: number[]): { LoD: number[]; HiD: number[]; LoR: number[]; HiR: number[] } {
+  const lr = Rf.length, ld = Df.length;
+  let lmax = Math.max(lr, ld);
+  if (lmax % 2 === 1) lmax += 1;
+  const pad = (v: number[], l: number) => {
+    const left = Math.floor((lmax - l) / 2), right = Math.ceil((lmax - l) / 2);
+    return new Array(left).fill(0).concat(v, new Array(right).fill(0));
+  };
+  const Rext = pad(Rf, lr), Dext = pad(Df, ld);
+  const o1 = orthfiltBank(Dext); // [Lo_D1,Hi_D1,Lo_R1,Hi_R1]
+  const o2 = orthfiltBank(Rext); // [Lo_D2,Hi_D2,Lo_R2,Hi_R2]
+  return { LoD: o1.LoD, HiD: o2.HiD, LoR: o2.LoR, HiR: o1.HiR };
+}
+
 /** Normalized Haar analysis/synthesis steps (for haart/ihaart). */
 function haarStep(x: number[]): { cA: number[]; cD: number[] } { const h = Math.floor(x.length / 2), cA: number[] = [], cD: number[] = []; for (let k = 0; k < h; k++) { cA.push((x[2 * k] + x[2 * k + 1]) / SQRT2); cD.push((x[2 * k] - x[2 * k + 1]) / SQRT2); } return { cA, cD }; }
 function invHaarStep(cA: number[], cD: number[]): number[] { const x = new Array(cA.length * 2); for (let k = 0; k < cA.length; k++) { x[2 * k] = (cA[k] + cD[k]) / SQRT2; x[2 * k + 1] = (cA[k] - cD[k]) / SQRT2; } return x; }
@@ -119,6 +220,30 @@ export const WAVELET: ToolboxModule = {
     dyadup: (a) => { const x = toArray(m(a[0])); const p = a.length >= 2 ? Math.round(asScalar(a[1])) : 1; const o: number[] = []; if (p % 2 === 0) { for (let i = 0; i < x.length; i++) { o.push(x[i]); if (i < x.length - 1) o.push(0); } } else { o.push(0); for (const v of x) { o.push(v); o.push(0); } } return ret(asRow(m(a[0]), o)); },
     /** wrev(x) — flip (reverse) a vector. */
     wrev: (a) => ret(asRow(m(a[0]), toArray(m(a[0])).reverse())),
+    /** [LoDa,LoDb,HiDa,HiDb,LoRa,LoRb,HiRa,HiRb] = qorthwavf(num) — Kingsbury Q-shift filters (column vectors). */
+    qorthwavf: (a, nargout) => {
+      const filters = qorthwavfFilters(Math.round(asScalar(a[0])));
+      const out = filters.map((f) => colVec(f));
+      return Promise.resolve(nargout <= 1 ? [out[0]] : out.slice(0, nargout));
+    },
+    /** [Rf,Df] = biorwavf('biorNr.Nd') — biorthogonal scaling-filter coefficients (row vectors). */
+    biorwavf: (a, nargout) => {
+      const { Rf, Df } = biorwavfRfDf(asString(a[0]));
+      return Promise.resolve(nargout >= 2 ? [rowVec(Rf), rowVec(Df)] : [rowVec(Rf)]);
+    },
+    /** [Lo_D,Hi_D,Lo_R,Hi_R] = orthfilt(W[,P]) — orthogonal filter bank from a scaling vector. */
+    orthfilt: (a, nargout) => {
+      const { LoD, HiD, LoR, HiR } = orthfiltBank(toArray(m(a[0])));
+      const src = m(a[0]);
+      const out = [asRow(src, LoD), asRow(src, HiD), asRow(src, LoR), asRow(src, HiR)];
+      return Promise.resolve(nargout <= 1 ? [out[0]] : out.slice(0, nargout));
+    },
+    /** [Lo_D,Hi_D,Lo_R,Hi_R] = biorfilt(Df,Rf) — orthogonal-style filters from a biorthogonal pair. */
+    biorfilt: (a, nargout) => {
+      const { LoD, HiD, LoR, HiR } = biorfiltBank(toArray(m(a[0])), toArray(m(a[1])));
+      const out = [rowVec(LoD), rowVec(HiD), rowVec(LoR), rowVec(HiR)];
+      return Promise.resolve(nargout <= 1 ? [out[0]] : out.slice(0, nargout));
+    },
   },
   help: {
     dct: 'Discrete cosine transform (DCT-II, orthonormal)', idct: 'Inverse discrete cosine transform',
@@ -127,6 +252,9 @@ export const WAVELET: ToolboxModule = {
     haart: 'Haar 1-D wavelet transform', ihaart: 'Inverse Haar 1-D wavelet transform',
     detcoef: 'Extract 1-D detail coefficients', appcoef: 'Extract 1-D approximation coefficients',
     dyaddown: 'Dyadic downsampling', dyadup: 'Dyadic upsampling', wrev: 'Flip vector',
+    qorthwavf: 'Kingsbury Q-shift filters for dual-tree wavelet transforms',
+    biorwavf: 'Biorthogonal spline wavelet filters', orthfilt: 'Orthogonal wavelet filter set',
+    biorfilt: 'Biorthogonal wavelet filter set',
   },
 };
 

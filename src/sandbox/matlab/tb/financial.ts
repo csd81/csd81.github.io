@@ -3,7 +3,7 @@
 // option pricing + Greeks. All validatable by hand / closed form. See plan §7.
 import type { Builtin } from '../builtins';
 import {
-  type Value, type Mat, scalar, colVec, rowVec, toArray, asScalar, toMat as m, isMat, isStr, MatError,
+  type Value, type Mat, scalar, colVec, rowVec, toArray, asScalar, toMat as m, isMat, isStr, MatError, mat,
 } from '../values';
 import type { ToolboxModule } from './types';
 
@@ -208,6 +208,104 @@ function datewrkdyImpl(args: Value[]): Value {
   return out.length === 1 ? scalar(out[0]) : colVec(out);
 }
 
+// days252bus — number of business days between two dates (faithful port of days252bus.m).
+// Algorithm: numdays = max(0, #busdays in [lo,hi] inclusive); if the *upper* date is itself
+// a business day, subtract 1 (half-open count). Sign tracks direction (negative if d1>d2).
+// NOTE: this port uses the file's weekends-only business-day convention (no fixed holidays),
+// so results differ from live MATLAB only on dates that MATLAB treats as fixed holidays.
+function days252busOne(d1: number, d2: number): number {
+  if (d1 === d2) return 0;
+  const lo = Math.min(d1, d2);
+  const hi = Math.max(d1, d2);
+  let count = 0;
+  for (let d = lo; d <= hi; d++) if (isBusday(d)) count++;
+  count = Math.max(0, count);
+  if (isBusday(hi)) count -= 1;
+  return d1 < d2 ? count : -count;
+}
+
+function days252busImpl(args: Value[]): Value {
+  if (args.length < 2) throw new MatError('days252bus: requires StartDate and EndDate');
+  const a = asSerials(args[0], 'days252bus');
+  const b = asSerials(args[1], 'days252bus');
+  if (a.length !== 1 && b.length !== 1 && a.length !== b.length)
+    throw new MatError('days252bus: date vectors must be the same length');
+  const n = Math.max(a.length, b.length);
+  const out: number[] = [];
+  for (let i = 0; i < n; i++) out.push(days252busOne(a[a.length === 1 ? 0 : i], b[b.length === 1 ? 0 : i]));
+  return out.length === 1 ? scalar(out[0]) : colVec(out);
+}
+
+// payadv — periodic payment given a number of advance payments (faithful port of payadv.m).
+function payadvOne(rate: number, nper: number, pv: number, fv: number, adv: number): number {
+  if (rate < 0) throw new MatError('payadv: rate must be non-negative');
+  const s = 1e-10;
+  if (Math.abs(rate) < s) return (fv + pv) / nper;
+  const c = 1 + rate;
+  return (pv + fv * c ** -nper) / ((1 - c ** (adv - nper)) / rate + adv);
+}
+
+function payadvImpl(args: Value[]): Value {
+  if (args.length < 5) throw new MatError('payadv: requires RATE, NPER, PV, FV, ADV');
+  const cols = args.map((v, k) => asSerials(v, `payadv arg ${k + 1}`));
+  const n = Math.max(...cols.map((cc) => cc.length));
+  const pick = (cc: number[], i: number) => cc[cc.length === 1 ? 0 : i];
+  const out: number[] = [];
+  for (let i = 0; i < n; i++) {
+    out.push(payadvOne(pick(cols[0], i), pick(cols[1], i), pick(cols[2], i), pick(cols[3], i), pick(cols[4], i)));
+  }
+  return out.length === 1 ? scalar(out[0]) : colVec(out);
+}
+
+// tbillyield2disc — convert T-Bill yields to discount rates (faithful port).
+// Type 1 = Money-Market Yield (actual/360), Type 2 = Bond-Equivalent Yield (actual/365).
+// Short bills (DSM<=182) and long bills (DSM>182) use different formulas. DSM is actual days.
+function tbillyield2discOne(yield_: number, settle: number, maturity: number, type: number): number {
+  if (settle > maturity) throw new MatError('tbillyield2disc: Settle must be on or before Maturity');
+  if (type !== 1 && type !== 2) throw new MatError('tbillyield2disc: Type must be 1 or 2');
+  const A = type === 1 ? 360 : 365;
+  const DSM = Math.round(maturity - settle); // daysact: actual days
+  if (DSM <= 182) {
+    return 360 / DSM * (1 - 1 / (1 + yield_ * DSM / A));
+  }
+  return 360 / DSM * (1 - 1 / ((1 + yield_ / 2) * (1 + (2 * DSM / A - 1) * yield_ / 2)));
+}
+
+function tbillyield2discImpl(args: Value[]): Value {
+  if (args.length < 3 || args.length > 4) throw new MatError('tbillyield2disc: requires Yield, Settle, Maturity[, Type]');
+  const y = toArray(m(args[0]));
+  const settle = asSerials(args[1], 'tbillyield2disc');
+  const maturity = asSerials(args[2], 'tbillyield2disc');
+  const type = args[3] != null ? toArray(m(args[3])) : [1];
+  const n = Math.max(y.length, settle.length, maturity.length, type.length);
+  const pick = (cc: number[], i: number) => cc[cc.length === 1 ? 0 : i];
+  const out: number[] = [];
+  for (let i = 0; i < n; i++) {
+    out.push(tbillyield2discOne(pick(y, i), pick(settle, i), pick(maturity, i), Math.round(pick(type, i))));
+  }
+  return out.length === 1 ? scalar(out[0]) : colVec(out);
+}
+
+// abs2active / active2abs — portfolio constraint conversions between absolute and active
+// (index-relative) weight formats. ConSet = [A b], NCONSTRAINTS x (NASSETS+1). Faithful port:
+// abs→active sets b' = b - A*Index, active→abs sets b' = b + A*Index. A is left unchanged.
+function convertConSet(conSetV: Value, indexV: Value, ctx: string, sign: 1 | -1): Value {
+  const conSet = m(conSetV);
+  const index = toArray(m(indexV));
+  const nAssets = index.length;
+  const rows = conSet.rows;
+  const cols = conSet.cols;
+  if (cols - 1 !== nAssets) throw new MatError(`${ctx}: inconsistent dimensions (ConSet has ${cols} cols, Index has ${nAssets} assets)`);
+  const out = mat(rows, cols, conSet.data.slice());
+  for (let r = 0; r < rows; r++) {
+    let dot = 0;
+    for (let c = 0; c < nAssets; c++) dot += conSet.data[r + c * rows] * index[c];
+    // last column (b) at column index cols-1
+    out.data[r + (cols - 1) * rows] = conSet.data[r + (cols - 1) * rows] + sign * dot;
+  }
+  return out;
+}
+
 export const FINANCIAL: ToolboxModule = {
   id: 'finance',
   name: 'Financial Toolbox',
@@ -264,6 +362,15 @@ export const FINANCIAL: ToolboxModule = {
     busdate:   (a) => ret(busdateImpl(a)),
     busdays:   (a) => ret(busdaysImpl(a)),
     datewrkdy: (a) => ret(datewrkdyImpl(a)),
+    days252bus: (a) => ret(days252busImpl(a)),
+
+    // ── more cashflow / fixed-income ──
+    payadv: (a) => ret(payadvImpl(a)),
+    tbillyield2disc: (a) => ret(tbillyield2discImpl(a)),
+
+    // ── portfolio constraint conversions ──
+    abs2active: (a) => ret(convertConSet(a[0], a[1], 'abs2active', -1)),
+    active2abs: (a) => ret(convertConSet(a[0], a[1], 'active2abs', 1)),
   },
   help: {
     npv: 'Net present value of a cash flow', pvvar: 'Present value of varying cash flow', fvvar: 'Future value of varying cash flow',
@@ -274,5 +381,10 @@ export const FINANCIAL: ToolboxModule = {
     days360: 'Days between dates on a 30/360 (SIA) basis', daysdif: 'Days between dates for a day-count basis',
     busdate: 'Next or previous business day', busdays: 'Business days (daily) between two dates',
     datewrkdy: 'Date a number of work days into the future/past',
+    days252bus: 'Number of business days between dates',
+    payadv: 'Periodic payment given number of advance payments',
+    tbillyield2disc: 'Discount rates of T-bills from yields',
+    abs2active: 'Convert constraints from absolute to active format',
+    active2abs: 'Convert constraints from active to absolute format',
   },
 };

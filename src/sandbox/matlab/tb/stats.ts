@@ -5,7 +5,7 @@
 import type { Builtin } from '../builtins';
 import {
   type Value, type Mat, isMat, isObject, makeObject, str, scalar, zeros, rowVec, colVec, toArray, map, numel,
-  asString, asScalar, toMat as m, MatError,
+  asString, asScalar, toMat as m, MatError, mat, fromRows, isCell, isStr,
 } from '../values';
 import type { ToolboxModule } from './types';
 
@@ -238,6 +238,88 @@ function rankSumDist(ranks: number[], ns: number): { counts: number[]; scale: nu
   return { counts: dp[ns], scale, total };
 }
 
+// ── Anderson-Darling distribution (Marsaglia 2004) ───────────────────────────
+/** Anderson-Darling statistic A²ₙ from sorted CDF values z (length n). */
+function computeADStat(z: number[]): number {
+  const n = z.length; const s = z.slice().sort((a, b) => a - b);
+  let acc = 0;
+  for (let i = 0; i < n; i++) acc += (2 * (i + 1) - 1) * (Math.log(s[i]) + Math.log(1 - s[n - 1 - i]));
+  return -acc / n - n;
+}
+/** Quick adinf(z): the simplified A∞ CDF from Marsaglia's paper (~7 digits). */
+function adinfShort(ad: number): number {
+  if (ad < 2) {
+    return ad ** (-0.5) * Math.exp(-1.2337 / ad) * (2.00012 + (0.247105 - (0.0649821 - (0.0347962 - (0.0116720 - 0.00168691 * ad) * ad) * ad) * ad) * ad);
+  }
+  return Math.exp(-Math.exp(1.0776 - (2.30695 - (0.43424 - (0.082433 - (0.008056 - 0.0003146 * ad) * ad) * ad) * ad) * ad));
+}
+/** Finite-sample correction errfix(n,x) from Marsaglia's paper. */
+function adErrFix(n: number, x: number): number {
+  const c = 0.01265 + 0.1757 / n;
+  if (x < c) { const xc = x / c; const g1 = Math.sqrt(xc) * (1 - xc) * (49 * xc - 102); return (0.0037 / n ** 3 + 0.00078 / n ** 2 + 0.00006 / n) * g1; }
+  if (x < 0.8) { const xc = (x - c) / (0.8 - c); const g2 = -0.00022633 + (6.54034 - (14.6538 - (14.458 - (8.259 - 1.91864 * xc) * xc) * xc) * xc) * xc; return (0.04213 / n + 0.01365 / n ** 2) * g2; }
+  const xc = x; return (1 / n) * (-130.2137 + (745.2337 - (1705.091 - (1950.646 - (1116.360 - 255.7844 * xc) * xc) * xc) * xc) * xc) * xc;
+}
+/** Pr(Aₙ < ad) for finite n (simple-hypothesis p-value path). */
+function adn(n: number, ad: number): number { const x = adinfShort(ad); return x + adErrFix(n, x); }
+/** Tabulated significance levels for composite-test critical values. */
+const AD_ALPHAS = [0.0005, 0.001, 0.0015, 0.002, 0.005, 0.01, 0.025, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.99];
+/** Composite-normal critical values: Aₙ = A∞(1 + b₀/n + b₁/n²) per-alpha coefficients. */
+function adCVsNorm(n: number): number[] {
+  const a0 = [1.5649, 1.4407, 1.3699, 1.3187, 1.1556, 1.0339, 0.8733, 0.7519, 0.6308, 0.5598, 0.5092, 0.4694, 0.4366, 0.4084, 0.3835, 0.3611, 0.3405, 0.3212, 0.3029, 0.2852, 0.2679, 0.2506, 0.2330, 0.2144, 0.1935, 0.1673, 0.1296];
+  const a1 = [-0.9362, -0.9029, -0.8906, -0.8865, -0.8375, -0.7835, -0.6746, -0.5835, -0.4775, -0.4094, -0.3679, -0.3327, -0.3099, -0.2969, -0.2795, -0.2623, -0.2464, -0.2325, -0.2164, -0.1994, -0.1784, -0.1569, -0.1377, -0.1201, -0.0989, -0.0800, -0.0598];
+  const a2 = [-8.3249, -6.6022, -5.6461, -4.9685, -3.2208, -2.1647, -1.2460, -0.7803, -0.4627, -0.3672, -0.2833, -0.2349, -0.1442, -0.0229, 0.0377, 0.0817, 0.1150, 0.1583, 0.1801, 0.1887, 0.1695, 0.1513, 0.1533, 0.1724, 0.2027, 0.3158, 0.6431];
+  return a0.map((v, i) => v + a1[i] / n + a2[i] / (n * n));
+}
+/** Composite-exponential critical values: Aₙ = A∞(1 + b₀/n) per-alpha coefficients. */
+function adCVsExp(n: number): number[] {
+  const a0 = [3.2371, 2.9303, 2.7541, 2.6307, 2.2454, 1.9621, 1.5928, 1.3223, 1.0621, 0.9153, 0.8134, 0.7355, 0.6725, 0.6194, 0.5734, 0.5326, 0.4957, 0.4617, 0.4301, 0.4001, 0.3712, 0.3428, 0.3144, 0.2849, 0.2527, 0.2131, 0.1581];
+  const a1 = [1.6146, 0.8716, 0.4715, 0.2066, -0.4682, -0.7691, -0.7388, -0.5758, -0.4036, -0.3142, -0.2564, -0.2152, -0.1845, -0.1607, -0.1409, -0.1239, -0.1084, -0.0942, -0.0807, -0.0674, -0.0537, -0.0401, -0.0261, -0.0116, 0.0047, 0.0275, 0.0780];
+  return a0.map((v, i) => v + a1[i] / n);
+}
+/** Piecewise-cubic Hermite (pchip) interpolation, matching MATLAB's monotone slopes. */
+function pchip(xs: number[], ys: number[], xq: number): number {
+  const n = xs.length;
+  if (n === 1) return ys[0];
+  const h: number[] = [], del: number[] = [];
+  for (let i = 0; i < n - 1; i++) { h.push(xs[i + 1] - xs[i]); del.push((ys[i + 1] - ys[i]) / (xs[i + 1] - xs[i])); }
+  const d = new Array<number>(n).fill(0);
+  for (let k = 1; k < n - 1; k++) {
+    if (del[k - 1] * del[k] > 0) { const w1 = 2 * h[k] + h[k - 1], w2 = h[k] + 2 * h[k - 1]; d[k] = (w1 + w2) / (w1 / del[k - 1] + w2 / del[k]); }
+  }
+  // endpoint slopes (non-centered, shape-preserving)
+  const endSlope = (hA: number, hB: number, dA: number, dB: number) => {
+    let s = ((2 * hA + hB) * dA - hA * dB) / (hA + hB);
+    if (Math.sign(s) !== Math.sign(dA)) s = 0; else if (Math.sign(dA) !== Math.sign(dB) && Math.abs(s) > 3 * Math.abs(dA)) s = 3 * dA;
+    return s;
+  };
+  d[0] = n > 2 ? endSlope(h[0], h[1], del[0], del[1]) : del[0];
+  d[n - 1] = n > 2 ? endSlope(h[n - 2], h[n - 3], del[n - 2], del[n - 3]) : del[n - 2];
+  // locate interval
+  let k = 0; while (k < n - 2 && xq > xs[k + 1]) k++;
+  const t = xq - xs[k], hk = h[k];
+  const c2 = (3 * del[k] - 2 * d[k] - d[k + 1]) / hk;
+  const c3 = (d[k] + d[k + 1] - 2 * del[k]) / (hk * hk);
+  return ys[k] + t * (d[k] + t * (c2 + t * c3));
+}
+/** Solve A·y = b for a small dense system (Gaussian elimination, partial pivoting). */
+function solveLin(A: number[][], b: number[]): number[] {
+  const n = b.length; const M = A.map((r, i) => [...r, b[i]]);
+  for (let col = 0; col < n; col++) {
+    let piv = col; for (let r = col + 1; r < n; r++) if (Math.abs(M[r][col]) > Math.abs(M[piv][col])) piv = r;
+    [M[col], M[piv]] = [M[piv], M[col]];
+    const d = M[col][col]; if (d === 0) continue;
+    for (let r = 0; r < n; r++) { if (r === col) continue; const f = M[r][col] / d; for (let c = col; c <= n; c++) M[r][c] -= f * M[col][c]; }
+  }
+  return M.map((row, i) => (M[i][i] === 0 ? 0 : row[n] / M[i][i]));
+}
+/** Upper-tail of the F distribution = fpval(x,df1,df2); df2=Inf → chi²(df1) scaling. */
+function fUpperTail(x: number, df1: number, df2: number): number {
+  if (!(x > 0)) return 1;
+  if (!Number.isFinite(df2)) return 1 - gammainc(df1 * x / 2, df1 / 2);
+  return 1 - betainc(df1 * x / (df1 * x + df2), df1 / 2, df2 / 2);
+}
+
 export const STATS: ToolboxModule = {
   id: 'stats',
   name: 'Statistics and Machine Learning Toolbox',
@@ -333,6 +415,136 @@ export const STATS: ToolboxModule = {
       const h = p <= alpha ? 1 : 0;
       const stats = mkStruct([['signedrank', scalar(w)], ['zval', Number.isNaN(z) ? undefined : scalar(z)]]);
       return Promise.resolve([scalar(p), scalar(h), stats].slice(0, Math.max(1, nargout)));
+    },
+    /** [h,p,adstat,cv]=adtest(x[,'Distribution',d][,'Alpha',a]) — Anderson-Darling test.
+     *  Composite (parameters estimated) for 'normal'/'exponential'; simple test against a
+     *  fully-specified makedist object. 'ev'/'weibull'/MonteCarlo/Asymptotic are omitted. */
+    adtest: (a, nargout) => {
+      let x = toArray(m(a[0])).filter((v) => !Number.isNaN(v));
+      let distr: Value | string = 'normal'; let alpha = 0.05;
+      for (let i = 1; i < a.length; i++) {
+        const s = isMat(a[i]) && (a[i] as Mat).isChar ? asString(a[i]).toLowerCase() : '';
+        if (s === 'distribution') { const v = a[++i]; distr = isObject(v) ? v : asString(v).toLowerCase(); }
+        else if (s === 'alpha') alpha = asScalar(a[++i]);
+        else throw new MatError(`adtest: unsupported option '${asString(a[i])}'`);
+      }
+      const n = x.length;
+      // Simple hypothesis: fully-specified distribution object.
+      if (typeof distr !== 'string') {
+        const { spec, vals } = resolveDist([distr]);
+        const z = x.map((xi) => spec.cdf(xi, ...vals));
+        const ad = computeADStat(z);
+        let p: number;
+        if (n === 1) p = 1 - Math.sqrt(1 - 4 * Math.exp(-1 - ad));
+        else p = 1 - adn(n, ad);
+        p = Math.min(1, Math.max(0, p));
+        const h = p < alpha ? 1 : 0;
+        return Promise.resolve([scalar(h), scalar(p), scalar(ad)].slice(0, Math.max(1, nargout)));
+      }
+      // Composite hypothesis (parameters estimated from data).
+      let name = distr;
+      if (name.startsWith('exp')) name = 'exponential'; else if (name.startsWith('norm')) name = 'normal';
+      if (name !== 'normal' && name !== 'exponential') throw new MatError(`adtest: distribution '${distr}' not supported (only normal, exponential, or a distribution object)`);
+      if (n < 4) throw new MatError('adtest: at least 4 non-missing observations are required for a composite test');
+      let z: number[];
+      if (name === 'normal') { const mu = mean_(x), sd = sd_(x); z = x.map((xi) => 0.5 * erfc(-(xi - mu) / (sd * Math.SQRT2))); }
+      else { const mu = mean_(x); z = x.map((xi) => (xi < 0 ? 0 : 1 - Math.exp(-xi / mu))); }
+      const ad = computeADStat(z);
+      const CVs = name === 'normal' ? adCVsNorm(n) : adCVsExp(n);
+      const logAlphas = AD_ALPHAS.map((al) => Math.log(al));
+      // critical value by pchip on (log alpha, CV); clamp outside the table.
+      let cv: number;
+      if (alpha < AD_ALPHAS[0]) cv = CVs[0]; else if (alpha > AD_ALPHAS[AD_ALPHAS.length - 1]) cv = CVs[CVs.length - 1];
+      else cv = pchip(logAlphas, CVs, Math.log(alpha));
+      // p-value by inverse interpolation of the same pchip in CV.
+      let p: number, h: number;
+      if (ad > CVs[0]) { p = AD_ALPHAS[0]; }
+      else if (ad < CVs[CVs.length - 1]) { p = AD_ALPHAS[AD_ALPHAS.length - 1]; }
+      else {
+        // CVs are decreasing in alpha; find bracketing interval and bisect on log(alpha).
+        let i = 0; while (i < CVs.length - 1 && !(ad > CVs[i + 1])) i++;
+        let lo = logAlphas[i], hi = logAlphas[i + 1];
+        for (let k = 0; k < 200; k++) { const mid = (lo + hi) / 2; if (pchip(logAlphas, CVs, mid) > ad) lo = mid; else hi = mid; if (Math.abs(hi - lo) < 1e-14) break; }
+        p = Math.exp((lo + hi) / 2);
+      }
+      if (alpha < AD_ALPHAS[0] || alpha > AD_ALPHAS[AD_ALPHAS.length - 1]) h = p < alpha ? 1 : 0;
+      else h = ad > cv ? 1 : 0;
+      return Promise.resolve([scalar(h), scalar(p), scalar(ad), scalar(cv)].slice(0, Math.max(1, nargout)));
+    },
+    /** [TR,EM]=hmmestimate(seq,states[,'Symbols',s][,'Statenames',sn][,'Pseudoemissions',PE][,'Pseudotransitions',PT])
+     *  Maximum-likelihood HMM parameter estimate from an observed sequence and its state path. */
+    hmmestimate: (a, nargout) => {
+      // Resolve a sequence value to integer codes; numeric → as-is, string/cell → unique mapping.
+      const toCodes = (v: Value): { codes: number[]; uniq: number; numeric: boolean; labels?: string[] } => {
+        if (isMat(v) && !(v as Mat).isChar) { const arr = toArray(m(v)); return { codes: arr, uniq: Math.max(...arr), numeric: true }; }
+        let items: string[];
+        if (isCell(v)) items = v.items.map((it) => asString(it));
+        else if (isStr(v)) items = v.items.slice();
+        else if (isMat(v) && (v as Mat).isChar) items = asString(v).split('');
+        else items = [asString(v)];
+        const labels = Array.from(new Set(items)).sort();
+        const idx = new Map(labels.map((l, i) => [l, i + 1]));
+        return { codes: items.map((it) => idx.get(it)!), uniq: labels.length, numeric: false, labels };
+      };
+      const S = toCodes(a[0]); const St = toCodes(a[1]);
+      let seq = S.codes.slice(); let states = St.codes.slice();
+      if (seq.length !== states.length) throw new MatError('hmmestimate: seq and states must have the same length');
+      let numSymbols = S.numeric ? S.uniq : S.labels!.length;
+      let numStates = St.numeric ? St.uniq : St.labels!.length;
+      // String items of a value: cell→element strings, string array→items, char row→characters, numeric→string codes.
+      const labelsOf = (v: Value): string[] => isCell(v) ? v.items.map((it) => asString(it)) : isStr(v) ? v.items.slice() : (isMat(v) && (v as Mat).isChar ? asString(v).split('') : toArray(m(v)).map(String));
+      let pseudoE: number[][] | null = null, pseudoTR: number[][] | null = null;
+      for (let i = 2; i < a.length; i++) {
+        const s = isMat(a[i]) && (a[i] as Mat).isChar ? asString(a[i]).toLowerCase() : '';
+        if (s === 'symbols') { const labels = labelsOf(a[++i]); numSymbols = labels.length; const idx = new Map(labels.map((l, k) => [l, k + 1])); seq = labelsOf(a[0]).map((it) => { const c = idx.get(it); if (!c) throw new MatError('hmmestimate: symbol not in Symbols'); return c; }); }
+        else if (s === 'statenames') { const labels = labelsOf(a[++i]); numStates = labels.length; const idx = new Map(labels.map((l, k) => [l, k + 1])); states = labelsOf(a[1]).map((it) => { const c = idx.get(it); if (!c) throw new MatError('hmmestimate: state not in Statenames'); return c; }); }
+        else if (s === 'pseudoemissions') { pseudoE = matRows(m(a[++i])); numStates = Math.max(numStates, pseudoE.length); numSymbols = Math.max(numSymbols, pseudoE[0]?.length ?? 0); }
+        else if (s === 'pseudotransitions') { pseudoTR = matRows(m(a[++i])); if (pseudoTR.length !== (pseudoTR[0]?.length ?? 0)) throw new MatError('hmmestimate: Pseudotransitions must be square'); numStates = Math.max(numStates, pseudoTR.length); }
+        else throw new MatError(`hmmestimate: unsupported option '${asString(a[i])}'`);
+      }
+      const TR = Array.from({ length: numStates }, () => new Array<number>(numStates).fill(0));
+      const EM = Array.from({ length: numStates }, () => new Array<number>(numSymbols).fill(0));
+      for (let c = 0; c < seq.length - 1; c++) TR[states[c] - 1][states[c + 1] - 1]++;
+      for (let c = 0; c < seq.length; c++) EM[states[c] - 1][seq[c] - 1]++;
+      if (pseudoE) for (let r = 0; r < numStates; r++) for (let cc = 0; cc < numSymbols; cc++) EM[r][cc] += pseudoE[r]?.[cc] ?? 0;
+      if (pseudoTR) for (let r = 0; r < numStates; r++) for (let cc = 0; cc < numStates; cc++) TR[r][cc] += pseudoTR[r]?.[cc] ?? 0;
+      const norm = (M: number[][]) => M.map((row) => { const sum = row.reduce((s, v) => s + v, 0); return sum === 0 ? row.map(() => 0) : row.map((v) => v / sum); });
+      return Promise.resolve([fromRows(norm(TR)), fromRows(norm(EM))].slice(0, Math.max(1, nargout)));
+    },
+    /** [p,t,rankH]=linhyptest(mu,Sigma,C,H,dfe) — linear hypothesis test H*mu = C. */
+    linhyptest: (a, nargout) => {
+      const mu = toArray(m(a[0])); const k = mu.length;
+      const Sigma = a.length > 1 && isMat(a[1]) && numel(m(a[1])) > 0 ? matRows(m(a[1])) : Array.from({ length: k }, (_, i) => Array.from({ length: k }, (_, j) => (i === j ? 1 : 0)));
+      let C = a.length > 2 && isMat(a[2]) && numel(m(a[2])) > 0 ? toArray(m(a[2])) : new Array<number>(k).fill(0);
+      let H = a.length > 3 && isMat(a[3]) && numel(m(a[3])) > 0 ? matRows(m(a[3])) : Array.from({ length: k }, (_, i) => Array.from({ length: k }, (_, j) => (i === j ? 1 : 0)));
+      const dfe = a.length > 4 && isMat(a[4]) && numel(m(a[4])) > 0 ? asScalar(a[4]) : Infinity;
+      const nC = H.length;
+      if (C.length === 1 && nC > 1) C = new Array<number>(nC).fill(C[0]);
+      // rank of H via Gaussian elimination with partial pivoting (rows of H).
+      const A = H.map((r) => r.slice()); const nrm = Math.sqrt(H.reduce((s, r) => s + r.reduce((t, v) => t + v * v, 0), 0));
+      const tol = Math.max(nC, k) * (nrm > 0 ? nrm : 1) * 2.220446049250313e-16;
+      const pivotRows: number[] = []; const used = new Array<boolean>(nC).fill(false);
+      const work = A.map((r) => r.slice());
+      for (let col = 0; col < k; col++) {
+        let piv = -1, best = tol;
+        for (let r = 0; r < nC; r++) if (!used[r] && Math.abs(work[r][col]) > best) { best = Math.abs(work[r][col]); piv = r; }
+        if (piv < 0) continue;
+        used[piv] = true; pivotRows.push(piv);
+        for (let r = 0; r < nC; r++) if (r !== piv && !used[r]) { const f = work[r][col] / work[piv][col]; for (let cc = 0; cc < k; cc++) work[r][cc] -= f * work[piv][cc]; }
+      }
+      const rankH = pivotRows.length;
+      // Use a full-rank subset of the hypothesis rows.
+      const Hs = pivotRows.map((r) => H[r]); const Cs = pivotRows.map((r) => C[r]);
+      const c0 = Hs.map((row) => row.reduce((s, v, j) => s + v * mu[j], 0));
+      // v0 = Hs * Sigma * Hs'
+      const SHt = Hs.map((row) => Sigma.map((srow) => srow.reduce((s, v, j) => s + v * row[j], 0)));
+      const v0 = Hs.map((rowI, i) => Hs.map((_rowJ, j) => rowI.reduce((s, v, kk) => s + v * SHt[j][kk], 0)));
+      const r = c0.map((v, i) => v - Cs[i]);
+      // t = (r' * inv(v0) * r) / rankH ; solve v0 * y = r via Gaussian elimination.
+      const sol = solveLin(v0, r);
+      const t = r.reduce((s, v, i) => s + v * sol[i], 0) / rankH;
+      const p = fUpperTail(t, rankH, dfe);
+      return Promise.resolve([scalar(p), scalar(t), scalar(rankH)].slice(0, Math.max(1, nargout)));
     },
 
     // ── Normal ──
@@ -714,6 +926,7 @@ export const STATS: ToolboxModule = {
   help: {
     ttest: 'One-sample and paired-sample t-test', ttest2: 'Two-sample t-test',
     ranksum: 'Wilcoxon rank-sum (Mann-Whitney U) test', signrank: 'Wilcoxon signed-rank test',
+    adtest: 'Anderson-Darling goodness-of-fit test', hmmestimate: 'Hidden Markov model parameter estimates from state path', linhyptest: 'Linear hypothesis test',
     normpdf: 'Normal probability density function', normcdf: 'Normal cumulative distribution function', norminv: 'Normal inverse cumulative distribution function',
     tpdf: "Student's t probability density function", tcdf: "Student's t cumulative distribution function", tinv: "Student's t inverse cumulative distribution function",
     chi2pdf: 'Chi-square probability density function', chi2cdf: 'Chi-square cumulative distribution function', chi2inv: 'Chi-square inverse cumulative distribution function',

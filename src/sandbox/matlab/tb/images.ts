@@ -47,6 +47,8 @@ export const IMAGES: ToolboxModule = {
     im2double: (a) => ret(likeShape(m(a[0]), toUnit(m(a[0])))),
     /** im2uint8(I) — convert to uint8 [0,255]. */
     im2uint8: (a) => ret(applyClass(likeShape(m(a[0]), toUnit(m(a[0])).map((x) => Math.round(clamp01(x) * 255))), 'uint8')),
+    /** im2single(I) — convert image to single precision (scales integer classes to [0,1]). */
+    im2single: (a) => { const A = m(a[0]); const d = A.itype === 'single' ? toArray(A) : toUnit(A); return ret(applyClass(likeShape(A, d), 'single')); },
     /** im2uint16(I) — convert to uint16 [0,65535]. */
     im2uint16: (a) => ret(applyClass(likeShape(m(a[0]), toUnit(m(a[0])).map((x) => Math.round(clamp01(x) * 65535))), 'uint16')),
     /** mat2gray(A[,[lo hi]]) — linearly scale to [0,1] (default lo/hi = min/max). */
@@ -88,6 +90,10 @@ export const IMAGES: ToolboxModule = {
     },
     /** imgaussfilt(A[,sigma]) — Gaussian smoothing (default sigma 0.5), replicate padding. */
     imgaussfilt: (a) => { const sigma = a.length >= 2 && isMat(a[1]) ? asScalar(a[1]) : 0.5; const sz = 2 * Math.ceil(2 * sigma) + 1; return ret(fromRows(filter2d(matToRows(m(a[0])), fspecial('gaussian', [{ kind: 'num', rows: 1, cols: 2, data: Float64Array.of(sz, sz) } as Mat, scalar(sigma)]), false, 'replicate'))); },
+    /** adaptthresh(I[,sensitivity][,Name,Value]) — locally adaptive threshold (Bradley's method).
+     *  Statistic: 'mean'(default)|'median'|'gaussian'; ForegroundPolarity: 'bright'(default)|'dark';
+     *  NeighborhoodSize default 2*floor(size/16)+1. Returns a double threshold image in [0,1]. */
+    adaptthresh: (a) => ret(adaptthresh(a)),
     /** stretchlim(I[,tol]) — [low;high] contrast-stretch limits (256-bin CDF, default 1% saturation). */
     stretchlim: (a) => {
       const u = toUnit(m(a[0])); let lo = 0.01, hi = 0.99;
@@ -127,6 +133,7 @@ export const IMAGES: ToolboxModule = {
     rgb2ycbcr: 'Convert RGB to YCbCr', ycbcr2rgb: 'Convert YCbCr to RGB',
     fspecial: 'Create a predefined 2-D filter kernel', imfilter: 'N-D filtering of images', imgaussfilt: '2-D Gaussian smoothing filtering',
     stretchlim: 'Find limits to contrast-stretch an image', rgb2lin: 'Apply gamma decoding (sRGB to linear)', lin2rgb: 'Apply gamma encoding (linear to sRGB)', imresize: 'Resize an image',
+    im2single: 'Convert image to single precision', adaptthresh: 'Adaptive image threshold using local first-order statistics',
   },
 };
 
@@ -140,6 +147,74 @@ function mapRows3(M: Mat, f: (a: number, b: number, c: number) => number[]): Mat
 function matToRows(M: Mat): number[][] { const o: number[][] = []; for (let r = 0; r < M.rows; r++) { const row: number[] = []; for (let c = 0; c < M.cols; c++) row.push(M.data[r + c * M.rows]); o.push(row); } return o; }
 /** Build a column-major Mat from number[][]. */
 function fromRows(rows: number[][]): Mat { const R = rows.length, C = R ? Math.max(...rows.map((r) => r.length)) : 0; const o = zeros(R, C); for (let r = 0; r < R; r++) for (let c = 0; c < (rows[r]?.length ?? 0); c++) o.data[r + c * R] = rows[r][c]; return o; }
+
+/** adaptthresh(I[,sensitivity][,'Name',Value,...]) — locally adaptive threshold (Bradley).
+ *  Mirrors MATLAB's adaptthresh: convert image to double in [0,1], compute a local
+ *  first-order statistic over a neighborhood, scale by a sensitivity-derived factor,
+ *  and saturate to [0,1]. Verified vs MATLAB R2026a for mean/median/gaussian & both polarities. */
+function adaptthresh(a: Value[]): Mat {
+  const A = m(a[0]);
+  const R = A.rows, C = A.cols;
+  // ---- parse options ----
+  let sensitivity = 0.5;
+  let statistic = 'mean';
+  let polarityBright = true;
+  // default NeighborhoodSize = 2*floor(size/16)+1 (per dimension)
+  let nhr = 2 * Math.floor(R / 16) + 1;
+  let nhc = 2 * Math.floor(C / 16) + 1;
+  const rest = a.slice(1);
+  let i = 0;
+  if (rest.length && isMat(rest[0]) && !(rest[0] as Mat).isChar) { sensitivity = asScalar(rest[0]); i = 1; }
+  for (; i + 1 < rest.length; i += 2) {
+    const name = asString(rest[i]).toLowerCase();
+    const val = rest[i + 1];
+    if ('statistic'.startsWith(name)) statistic = asString(val).toLowerCase();
+    else if ('foregroundpolarity'.startsWith(name)) polarityBright = asString(val).toLowerCase() === 'bright';
+    else if ('neighborhoodsize'.startsWith(name)) {
+      const sz = toArray(m(val));
+      if (sz.length >= 2) { nhr = Math.round(sz[0]); nhc = Math.round(sz[1]); } else { nhr = nhc = Math.round(sz[0]); }
+    }
+  }
+  // sensitivity -> scale factor
+  const scaleFactor = polarityBright ? 0.6 + (1 - sensitivity) : 0.4 + sensitivity;
+  // image to double in [0,1]
+  const unit = toUnit(A);
+  const I: number[][] = [];
+  for (let r = 0; r < R; r++) { I[r] = []; for (let c = 0; c < C; c++) I[r][c] = unit[r + c * R]; }
+
+  let T: number[][];
+  if (statistic === 'mean') {
+    // local mean over nhr×nhc with 'replicate' padding, then × scaleFactor.
+    const kr = nhr, kc = nhc; const ker = Array.from({ length: kr }, () => new Array(kc).fill(1 / (kr * kc)));
+    T = filter2d(I, ker, false, 'replicate').map((row) => row.map((v) => v * scaleFactor));
+  } else if (statistic === 'median') {
+    // local median over nhr×nhc with 'symmetric' padding, then × scaleFactor.
+    T = localMedian(I, nhr, nhc).map((row) => row.map((v) => v * scaleFactor));
+  } else { // gaussian: imgaussfilt(I, nhoodSize) — nhood used as sigma, replicate padding.
+    const sigma = nhr; const sz = 2 * Math.ceil(2 * sigma) + 1;
+    const ker = fspecial('gaussian', [{ kind: 'num', rows: 1, cols: 2, data: Float64Array.of(sz, sz) } as Mat, scalar(sigma)]);
+    T = filter2d(I, ker, false, 'replicate').map((row) => row.map((v) => v * scaleFactor));
+  }
+  // saturate to [0,1]
+  return fromRows(T.map((row) => row.map((v) => (v < 0 ? 0 : v > 1 ? 1 : v))));
+}
+
+/** Local median filter over an nhr×nhc neighborhood with 'symmetric' boundary (medfilt2). */
+function localMedian(A: number[][], nhr: number, nhc: number): number[][] {
+  const R = A.length, C = A[0]?.length ?? 0; const cy = Math.floor(nhr / 2), cx = Math.floor(nhc / 2);
+  const rf = (k: number, n: number) => { k = ((k % (2 * n)) + 2 * n) % (2 * n); return k < n ? k : 2 * n - 1 - k; };
+  const out: number[][] = [];
+  for (let r = 0; r < R; r++) {
+    out[r] = [];
+    for (let c = 0; c < C; c++) {
+      const win: number[] = [];
+      for (let di = 0; di < nhr; di++) for (let dj = 0; dj < nhc; dj++) win.push(A[rf(r + di - cy, R)][rf(c + dj - cx, C)]);
+      win.sort((x, y) => x - y);
+      const n = win.length; out[r][c] = n % 2 ? win[(n - 1) / 2] : (win[n / 2 - 1] + win[n / 2]) / 2;
+    }
+  }
+  return out;
+}
 
 /** Predefined 2-D filter kernels (subset of MATLAB fspecial). */
 function fspecial(type: string, args: Value[]): number[][] {

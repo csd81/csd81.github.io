@@ -55,6 +55,43 @@ function sone2phonScalar(sone: number): number {
   return 40 + 10 * Math.log2(sone);
 }
 
+// octavebw2bw.m / bw2octavebw.m  (closed form, analog domain).
+//   An N-octave band centered at Fc has cutoffs [Fc*2^(-N/2); Fc*2^(N/2)].
+//   octavebw2bw returns the analog cutoffs as a 2-by-K matrix (columns = bands).
+//   Verified vs MATLAB R2026a: octavebw2bw(1,1000) -> [707.1067811865; 1414.2135623731].
+function octavebw2bw(a: Value[]): Promise<Value[]> {
+  const N = toArray(m(a[0]));
+  const Fc = toArray(m(a[1]));
+  const K = Math.max(N.length, Fc.length);
+  const out = zeros2(2, K);
+  for (let k = 0; k < K; k++) {
+    const n = N.length === 1 ? N[0] : N[k];
+    const fc = Fc.length === 1 ? Fc[0] : Fc[k];
+    out[0 + k * 2] = fc * Math.pow(2, -n / 2);   // low cutoff
+    out[1 + k * 2] = fc * Math.pow(2, n / 2);     // high cutoff
+  }
+  return ret({ kind: 'num', rows: 2, cols: K, data: Float64Array.from(out) } as Mat);
+}
+
+// bw2octavebw.m (analog): inverse of octavebw2bw.
+//   Given cutoffs [Flo; Fhi]: N = log2(Fhi/Flo), Fc = sqrt(Flo*Fhi).
+//   Input is a 1-by-2 row [Flo Fhi] or a 2-by-K matrix of cutoff columns.
+//   nargout>=2 also returns the (analog) center frequency as a row vector.
+function bw2octavebw(a: Value[], nargout: number): Promise<Value[]> {
+  const M = m(a[0]);
+  let lo: number[]; let hi: number[];
+  if (M.rows === 1 && M.cols === 2) { lo = [M.data[0]]; hi = [M.data[1]]; }
+  else { const K = M.cols; lo = []; hi = []; for (let k = 0; k < K; k++) { lo.push(M.data[0 + k * 2]); hi.push(M.data[1 + k * 2]); } }
+  const Nrow = lo.map((l, i) => Math.log2(hi[i] / l));
+  const Fcrow = lo.map((l, i) => Math.sqrt(l * hi[i]));
+  const Nout = Nrow.length === 1 ? scalar(Nrow[0]) : rowVec(Nrow);
+  if (nargout >= 2) return Promise.resolve([Nout, Nrow.length === 1 ? scalar(Fcrow[0]) : rowVec(Fcrow)]);
+  return ret(Nout);
+}
+
+// helper: column-major zero buffer of length rows*cols
+function zeros2(rows: number, cols: number): number[] { return new Array(rows * cols).fill(0); }
+
 // elementwise helper: preserve row/col orientation, return scalar for 1x1.
 function elementwise(a: Value[], f: (x: number) => number): Promise<Value[]> {
   const M: Mat = m(a[0]);
@@ -104,6 +141,8 @@ export const AUDIO: ToolboxModule = {
     dBov: (a, nargout) => dBov(a, nargout),
     phon2sone: (a) => elementwise(a, phon2soneScalar),
     sone2phon: (a) => elementwise(a, sone2phonScalar),
+    octavebw2bw: (a) => octavebw2bw(a),
+    bw2octavebw: (a, nargout) => bw2octavebw(a, nargout),
   },
   help: {
     hz2bark: 'Convert frequency from hertz to bark scale',
@@ -115,5 +154,7 @@ export const AUDIO: ToolboxModule = {
     dBov: 'Signal level in dB overload (dBov)',
     phon2sone: 'Convert loudness levels in phons to loudness in sones',
     sone2phon: 'Convert loudness in sones to loudness levels in phons',
+    octavebw2bw: 'Convert octave bandwidth to normalized (analog cutoff) bandwidth',
+    bw2octavebw: 'Convert normalized bandwidth to octave bandwidth',
   },
 };

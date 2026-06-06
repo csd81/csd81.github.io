@@ -54,6 +54,18 @@ function matRows(M: Mat): number[][] { const o: number[][] = []; for (let r = 0;
 function fromRows(rows: number[][]): Mat { const R = rows.length, C = R ? rows[0].length : 0; const o = { kind: 'num' as const, rows: R, cols: C, data: new Float64Array(R * C) } as Mat; for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) o.data[r + c * R] = rows[r][c]; return o; }
 const mmul = (A: number[][], B: number[][]): number[][] => { const n = A.length, m = B[0].length, p = B.length; const C: number[][] = []; for (let i = 0; i < n; i++) { C[i] = []; for (let j = 0; j < m; j++) { let s = 0; for (let k = 0; k < p; k++) s += A[i][k] * B[k][j]; C[i][j] = s; } } return C; };
 const eye = (n: number): number[][] => Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)));
+/** Dense matrix inverse via Gauss-Jordan with partial pivoting. */
+function matInv(A: number[][]): number[][] {
+  const n = A.length; const M = A.map((r, i) => [...r, ...eye(n)[i]]);
+  for (let col = 0; col < n; col++) {
+    let piv = col; for (let r = col + 1; r < n; r++) if (Math.abs(M[r][col]) > Math.abs(M[piv][col])) piv = r;
+    if (Math.abs(M[piv][col]) < 1e-300) throw new Error('ss2ss: transformation matrix T is singular');
+    [M[col], M[piv]] = [M[piv], M[col]];
+    const d = M[col][col]; for (let j = 0; j < 2 * n; j++) M[col][j] /= d;
+    for (let r = 0; r < n; r++) if (r !== col) { const f = M[r][col]; for (let j = 0; j < 2 * n; j++) M[r][j] -= f * M[col][j]; }
+  }
+  return M.map((row) => row.slice(n));
+}
 const traceM = (A: number[][]) => A.reduce((s, row, i) => s + row[i], 0);
 function polyConv(a: number[], b: number[]): number[] { const o = new Array(a.length + b.length - 1).fill(0); for (let i = 0; i < a.length; i++) for (let j = 0; j < b.length; j++) o[i + j] += a[i] * b[j]; return o; }
 function polyAdd(a: number[], b: number[]): number[] { const n = Math.max(a.length, b.length); const o = new Array(n).fill(0); for (let i = 0; i < a.length; i++) o[n - a.length + i] += a[i]; for (let i = 0; i < b.length; i++) o[n - b.length + i] += b[i]; return o; }
@@ -135,6 +147,17 @@ export const CONTROL: ToolboxModule = {
     feedback: (a) => { const g1 = getNumDen(a[0]); const g2 = a.length >= 2 && isObject(a[1]) ? getNumDen(a[1]) : { num: [asScalar(a[1] ?? scalar(1))], den: [1] }; return ret(tfModel(polyConv(g1.num, g2.den), polyAdd(polyConv(g1.den, g2.den), polyConv(g1.num, g2.num)))); },
     /** order(sys) — number of states (denominator degree). */
     order: (a) => ret(scalar(getNumDen(a[0]).den.length - 1)),
+    /** ss2ss(sys,T) — state-coordinate transform z=Tx: A→TAT⁻¹, B→TB, C→CT⁻¹, D→D. */
+    ss2ss: (a) => {
+      const sys = a[0];
+      if (!isObject(sys) || sys.className !== 'ss') throw new Error('ss2ss: first argument must be a state-space (ss) model');
+      const A = matRows(m(sys.props.get('A') as Mat)), B = matRows(m(sys.props.get('B') as Mat)), C = matRows(m(sys.props.get('C') as Mat));
+      const D = sys.props.get('D') as Value; const T = matRows(m(a[1]));
+      if (T.length === 0 || T.length !== T[0].length) throw new Error('ss2ss: T must be a square matrix');
+      const Ti = matInv(T);
+      const An = mmul(mmul(T, A), Ti); const Bn = mmul(T, B); const Cn = mmul(C, Ti);
+      return ret(makeObject('ss', { A: fromRows(An), B: fromRows(Bn), C: fromRows(Cn), D }));
+    },
   },
   help: {
     tf: 'Create a transfer-function model', ss: 'Create a state-space model', zpk: 'Create a zero-pole-gain model',
@@ -144,6 +167,7 @@ export const CONTROL: ToolboxModule = {
     ctrb: 'Controllability matrix', obsv: 'Observability matrix', dsort: 'Sort discrete-time poles', esort: 'Sort continuous-time poles',
     parallel: 'Parallel connection', feedback: 'Feedback connection', order: 'Order (number of states)',
     series: 'Series (cascade) connection',
+    ss2ss: 'State coordinate transformation for state-space models',
   },
   // OOP method dispatch (see tb/types.ts): series(tf,…) routes here; series(sym,…) → Symbolic.
   methods: {
