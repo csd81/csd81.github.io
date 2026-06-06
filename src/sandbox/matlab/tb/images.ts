@@ -3,7 +3,7 @@
 // Otsu, imbinarize), and YCbCr conversion. (rgb2gray/im2gray are already base.) See plan §7.
 import type { Builtin } from '../builtins';
 import {
-  type Value, type Mat, type StructV, isMat, scalar, colVec, zeros, toArray, asScalar, asString, toMat as m, applyClass,
+  type Value, type Mat, type StructV, isMat, isStr, scalar, colVec, zeros, toArray, asScalar, asString, toMat as m, applyClass,
   ndSize, makeND, mat,
 } from '../values';
 import type { ToolboxModule } from './types';
@@ -201,9 +201,9 @@ export const IMAGES: ToolboxModule = {
     /** imfilter(A,h[,boundary][,'conv'|'corr'][,'same'|'full']) — 2-D filtering (default corr, 0-pad, same). */
     imfilter: (a) => {
       const A = matToRows(m(a[0])), h = matToRows(m(a[1]));
-      let conv = false; let boundary: number | string = 0;
-      for (const arg of a.slice(2)) { if (isMat(arg) && (arg as Mat).isChar) { const o = asString(arg).toLowerCase(); if (o === 'conv') conv = true; else if (o === 'corr' || o === 'same' || o === 'full') { /* corr/shape */ } else boundary = o; } else if (isMat(arg)) boundary = asScalar(arg); }
-      return ret(fromRows(filter2d(A, h, conv, boundary)));
+      let conv = false; let boundary: number | string = 0; let shape: 'same' | 'full' = 'same';
+      for (const arg of a.slice(2)) { if (isStr(arg) || (isMat(arg) && (arg as Mat).isChar)) { const o = asString(arg).toLowerCase(); if (o === 'conv') conv = true; else if (o === 'corr') { /* default */ } else if (o === 'same' || o === 'full') shape = o; else boundary = o; } else if (isMat(arg)) boundary = asScalar(arg); }
+      return ret(fromRows(filter2d(A, h, conv, boundary, shape)));
     },
     /** imgaussfilt(A[,sigma]) — Gaussian smoothing (default sigma 0.5), replicate padding. */
     imgaussfilt: (a) => { const sigma = a.length >= 2 && isMat(a[1]) ? asScalar(a[1]) : 0.5; const sz = 2 * Math.ceil(2 * sigma) + 1; return ret(fromRows(filter2d(matToRows(m(a[0])), fspecial('gaussian', [{ kind: 'num', rows: 1, cols: 2, data: Float64Array.of(sz, sz) } as Mat, scalar(sigma)]), false, 'replicate'))); },
@@ -570,9 +570,9 @@ function fspecial(type: string, args: Value[]): number[][] {
   }
 }
 /** 2-D correlation/convolution; boundary 0 (default), 'replicate', 'circular', or 'symmetric'. */
-function filter2d(A: number[][], h: number[][], conv: boolean, boundary: number | string): number[][] {
+function filter2d(A: number[][], h: number[][], conv: boolean, boundary: number | string, shape: 'same' | 'full' = 'same'): number[][] {
   const R = A.length, C = A[0]?.length ?? 0, hr = h.length, hc = h[0]?.length ?? 0;
-  const cy = Math.floor(hr / 2), cx = Math.floor(hc / 2);
+  const cy = Math.floor((hr - 1) / 2), cx = Math.floor((hc - 1) / 2);   // MATLAB kernel anchor (matches odd; correct for even)
   const ker = conv ? h.map((row) => [...row].reverse()).reverse() : h;
   const get = (i: number, j: number): number => {
     if (i >= 0 && i < R && j >= 0 && j < C) return A[i][j];
@@ -583,6 +583,12 @@ function filter2d(A: number[][], h: number[][], conv: boolean, boundary: number 
     return A[rf(i, R)][rf(j, C)];   // symmetric
   };
   const out: number[][] = [];
+  if (shape === 'full') {
+    // 'same' is the central crop of 'full'; shift the anchor by (hr-1, hc-1).
+    const oR = R + hr - 1, oC = C + hc - 1;
+    for (let p = 0; p < oR; p++) { out[p] = []; for (let q = 0; q < oC; q++) { let s = 0; for (let di = 0; di < hr; di++) for (let dj = 0; dj < hc; dj++) s += ker[di][dj] * get(p - (hr - 1) + di, q - (hc - 1) + dj); out[p][q] = s; } }
+    return out;
+  }
   for (let i = 0; i < R; i++) { out[i] = []; for (let j = 0; j < C; j++) { let s = 0; for (let di = 0; di < hr; di++) for (let dj = 0; dj < hc; dj++) s += ker[di][dj] * get(i + di - cy, j + dj - cx); out[i][j] = s; } }
   return out;
 }

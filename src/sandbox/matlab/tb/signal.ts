@@ -142,7 +142,7 @@ function psdWin(x: number[], w: number[], fs?: number): { Pxx: number[]; f: numb
   for (let k = 0; k <= half; k++) {
     let re = 0, im = 0;
     for (let n = 0; n < N; n++) { const ang = -2 * Math.PI * k * n / nfft, xw = x[n] * w[n]; re += xw * Math.cos(ang); im += xw * Math.sin(ang); }
-    let p = (re * re + im * im) / (Fs * sw2); if (k > 0 && k < half) p *= 2;
+    let p = (re * re + im * im) / (Fs * sw2); if (k > 0 && (k < half || nfft % 2 !== 0)) p *= 2; // odd nfft has no Nyquist bin → double the top bin too
     Pxx.push(p); f.push(fs ? k * fs / nfft : k * 2 * Math.PI / nfft);
   }
   return { Pxx, f };
@@ -762,7 +762,7 @@ export const SIGNAL: ToolboxModule = {
       for (let k = 0; k <= half; k++) {
         let re = 0, im = 0;
         for (let n = 0; n < N; n++) { const ang = -2 * Math.PI * k * n / nfft, xw = x[n] * w[n]; re += xw * Math.cos(ang); im += xw * Math.sin(ang); }
-        let p = (re * re + im * im) / (Fs * sumw2); if (k > 0 && k < half) p *= 2;
+        let p = (re * re + im * im) / (Fs * sumw2); if (k > 0 && (k < half || nfft % 2 !== 0)) p *= 2; // odd nfft has no Nyquist bin
         Pxx.push(p); f.push(fs ? k * fs / nfft : k * 2 * Math.PI / nfft);
       }
       return Promise.resolve(nargout >= 2 ? [colVec(Pxx), colVec(f)] : [colVec(Pxx)]);

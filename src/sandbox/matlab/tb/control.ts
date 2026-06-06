@@ -520,7 +520,7 @@ export const CONTROL: ToolboxModule = {
   docBase: 'https://www.mathworks.com/help/control/ref/',
   builtins: {
     /** tf(num,den) — transfer-function model. */
-    tf: (a) => ret(makeObject('tf', { num: rowVec(toArray(m(a[0]))), den: rowVec(toArray(m(a[1]))) })),
+    tf: (a) => ret(makeObject('tf', a.length >= 3 && isMatLike(a[2]) ? { num: rowVec(toArray(m(a[0]))), den: rowVec(toArray(m(a[1]))), Ts: scalar(asScalar(a[2])) } : { num: rowVec(toArray(m(a[0]))), den: rowVec(toArray(m(a[1]))) })),
     /** ss(A,B,C,D) — state-space model. */
     ss: (a) => ret(makeObject('ss', { A: m(a[0]), B: m(a[1]), C: m(a[2]), D: a.length >= 4 ? m(a[3]) : scalar(0) })),
     /** zpk(z,p,k) — zero-pole-gain model. */
@@ -532,7 +532,13 @@ export const CONTROL: ToolboxModule = {
     /** dcgain(sys) — steady-state (s=0) gain. */
     dcgain: (a) => { const { num, den } = getNumDen(a[0]); return ret(scalar(num[num.length - 1] / den[den.length - 1])); },
     /** isstable(sys) — true if all poles have negative real part (continuous). */
-    isstable: (a) => { const r = polyRoots(getNumDen(a[0]).den); return ret(bool(r.re.every((x) => x < 0))); },
+    isstable: (a) => {
+      const sys = a[0]; const r = polyRoots(getNumDen(sys).den);
+      const Ts = isObject(sys) && sys.props.has('Ts') ? asScalar(sys.props.get('Ts') as Value) : 0;
+      // Discrete (Ts>0): poles strictly inside the unit circle; continuous: in the left half-plane.
+      const stable = Ts > 0 ? r.re.every((re, i) => Math.hypot(re, r.im[i]) < 1) : r.re.every((x) => x < 0);
+      return ret(bool(stable));
+    },
     /** [z,p,k] = tf2zp(num,den) — transfer function to zero-pole-gain. */
     tf2zp: (a, n) => {
       const num = toArray(m(a[0])), den = toArray(m(a[1])); const z = sortRoots(polyRoots(num)), p = sortRoots(polyRoots(den));

@@ -772,10 +772,10 @@ async function maxpool_fn(args: Value[]): Promise<Value[]> {
   for (let i = 0; i < outR; i++) for (let j = 0; j < outC; j++) {
     let maxV = -Infinity;
     for (let di = 0; di < ph; di++) for (let dj = 0; dj < pw; dj++) {
-      const v = Xm.data[(i * ph + di) * cols + (j * pw + dj)] ?? -Infinity;
+      const v = Xm.data[(i * ph + di) + (j * pw + dj) * rows] ?? -Infinity;   // column-major
       if (v > maxV) maxV = v;
     }
-    out.data[i * outC + j] = maxV;
+    out.data[i + j * outR] = maxV;   // column-major
   }
   return [out];
 }
@@ -790,7 +790,7 @@ async function onehotdecode(args: Value[]): Promise<Value[]> {
   const labels = new Float64Array(N);
   for (let j = 0; j < N; j++) {
     let best = -Infinity, bestI = 0;
-    for (let i = 0; i < C; i++) if (B.data[i * N + j] > best) { best = B.data[i * N + j]; bestI = i; }
+    for (let i = 0; i < C; i++) if (B.data[i + j * C] > best) { best = B.data[i + j * C]; bestI = i; }   // column-major
     labels[j] = bestI + 1;
   }
   return [rowVec(Array.from(labels))];
