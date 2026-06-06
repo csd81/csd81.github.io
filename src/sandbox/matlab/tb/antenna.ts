@@ -103,11 +103,11 @@ export const ANTENNA: ToolboxModule = {
     phitheta2azel,
   },
   help: {
-    azel2uv: 'azel2uv(AzEl) — convert [az;el] angles (deg) to [u;v] direction cosines.',
-    uv2azel: 'uv2azel(UV) — convert [u;v] direction cosines to [az;el] angles (deg).',
-    phitheta2uv: 'phitheta2uv(PhiTheta) — convert [phi;theta] angles (deg) to [u;v] direction cosines.',
-    uv2phitheta: 'uv2phitheta(UV) — convert [u;v] direction cosines to [phi;theta] angles (deg).',
-    azel2phitheta: 'azel2phitheta(AzEl) — convert [az;el] angles to [phi;theta] angles (deg).',
-    phitheta2azel: 'phitheta2azel(PhiTheta) — convert [phi;theta] angles to [az;el] angles (deg).',
+    azel2uv: { summary: 'Convert azimuth-elevation to u-v coordinates', syntax: ['uv = azel2uv(az,el)'], seealso: ['uv2azel', 'phitheta2uv'] },
+    uv2azel: { summary: 'Convert u-v to azimuth-elevation coordinates', syntax: ['[az,el] = uv2azel(uv)'], seealso: ['azel2uv', 'uv2phitheta'] },
+    phitheta2uv: { summary: 'Convert phi-theta to u-v coordinates', syntax: ['uv = phitheta2uv(phi,theta)'], seealso: ['uv2phitheta', 'azel2uv'] },
+    uv2phitheta: { summary: 'Convert u-v to phi-theta coordinates', syntax: ['[phi,theta] = uv2phitheta(uv)'], seealso: ['phitheta2uv', 'uv2azel'] },
+    azel2phitheta: { summary: 'Convert azimuth-elevation to phi-theta coordinates', syntax: ['[phi,theta] = azel2phitheta(az,el)'], seealso: ['phitheta2azel', 'azel2uv'] },
+    phitheta2azel: { summary: 'Convert phi-theta to azimuth-elevation coordinates', syntax: ['[az,el] = phitheta2azel(phi,theta)'], seealso: ['azel2phitheta', 'uv2azel'] },
   },
 };

@@ -528,10 +528,10 @@ export const CURVEFIT: ToolboxModule = {
   },
   help: {
     ...SPLINE_HELP,
-    smooth:    'Smooth response data using moving average.',
-    datastats: 'Summary statistics (mean/median/std/min/max/range/num) of a data vector.',
-    polyfit2:  'Least-squares polynomial fit of degree n; returns coefficients high→low.',
-    polyval2:  'Evaluate a polynomial (coefficients high→low) at each element of x.',
-    rsquared:  'R² goodness-of-fit between observed y and fitted y_fit values.',
+    smooth: { summary: 'Smooths the response data in column vector y using a moving average filter.', syntax: ['yy = smooth(y)', 'yy = smooth(y,span)', 'yy = smooth(y,method)', 'yy = smooth(y,span,method)'], seealso: ['smoothdata', 'fit', 'sort'] },
+    datastats: { summary: 'Returns statistics for the column vector x to the structure xds.', syntax: ['xds = datastats(x) [xds,yds] = datastats(x,y)'], seealso: ['excludedata', 'smooth'] },
+    polyfit2: { summary: 'Polynomial curve fit (alias for polyfit with curve-fitting syntax)', syntax: ['p = polyfit2(x,y,n)'], seealso: ['polyfit', 'polyval'] },
+    polyval2: { summary: 'Evaluate polynomial (alias for polyval)', syntax: ['y = polyval2(p,x)'], seealso: ['polyval', 'polyfit'] },
+    rsquared: { summary: 'R-squared (coefficient of determination) of a fit', syntax: ['r2 = rsquared(y,yfit)'], seealso: ['fit', 'smooth'] },
   },
 };
