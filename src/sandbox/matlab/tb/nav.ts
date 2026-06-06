@@ -671,6 +671,11 @@ export const NAV: ToolboxModule = {
     quat2tform: ((args: Value[]) => ret(rotm2tformImpl([quat2rotmImpl(args)]))) as Builtin,
     tform2quat: ((args: Value[]) => ret(rotm2quatImpl([tform2rotmImpl(args)]))) as Builtin,
     rotm2axang: ((args: Value[]) => ret(quat2axangImpl([rotm2quatImpl(args)]))) as Builtin,
+    rotmat2vec3d: ((args: Value[]) => {
+      const a = m(quat2axangImpl([rotm2quatImpl(args)])); const N = a.rows; const out = new Float64Array(N * 3);
+      for (let i = 0; i < N; i++) { const th = a.data[i + 3 * N]; for (let k = 0; k < 3; k++) out[i + k * N] = a.data[i + k * N] * th; }
+      return ret(N === 1 ? rowVec([out[0], out[1], out[2]]) : mat(N, 3, out));
+    }) as Builtin,
   },
   constants: {
     WGS84_A: () => rowVec([WGS84_A]),
@@ -704,5 +709,6 @@ export const NAV: ToolboxModule = {
     quat2tform: 'Convert quaternion [w x y z] to homogeneous transform.',
     tform2quat: 'Extract quaternion [w x y z] from homogeneous transform.',
     rotm2axang: 'Convert rotation matrix to axis-angle.',
+    rotmat2vec3d: 'Convert 3-D rotation matrix to a rotation vector (axis times angle).',
   },
 };
