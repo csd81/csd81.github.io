@@ -456,6 +456,27 @@ export const SIGNAL: ToolboxModule = {
   builtins: {
     lin2mu: (a) => ret(map(m(a[0]), lin2muOne)),
     mu2lin: (a) => ret(map(m(a[0]), mu2linOne)),
+    // ── LPC parameter conversions (element-wise closed forms) ──
+    lar2rc: (a) => ret(map(m(a[0]), (g) => Math.tanh(g / 2))),
+    rc2lar: (a) => ret(map(m(a[0]), (k) => Math.log((1 + k) / (1 - k)))),
+    is2rc: (a) => ret(map(m(a[0]), (s) => Math.sin(s * Math.PI / 2))),
+    // ── convmtx(h,n): convolution (Toeplitz) matrix; row h → n×(n+L−1), column h → (n+L−1)×n ──
+    convmtx: (a) => {
+      const H = m(a[0]), h = toArray(H), L = h.length, n = Math.round(asScalar(a[1])), isRow = H.rows === 1;
+      if (isRow) { const cols = n + L - 1, data = new Float64Array(n * cols); for (let i = 0; i < n; i++) for (let j = 0; j < L; j++) data[i + (i + j) * n] = h[j]; return ret(mat(n, cols, data)); }
+      const rows = n + L - 1, data = new Float64Array(rows * n); for (let i = 0; i < n; i++) for (let j = 0; j < L; j++) data[(i + j) + i * rows] = h[j]; return ret(mat(rows, n, data));
+    },
+    // ── rc2ac(rc,R0): reflection coefficients + zero-lag → autocorrelation (inverse Levinson) ──
+    rc2ac: (a) => {
+      const rc = toArray(m(a[0])), R0 = asScalar(a[1]); let a1 = [1], E = R0; const R = [R0];
+      for (let i = 0; i < rc.length; i++) {
+        const k = rc[i]; let acc = 0; for (let j = 1; j <= i; j++) acc += a1[j] * R[i + 1 - j];
+        R.push(-k * E - acc);
+        const anew = new Array(i + 2).fill(0); anew[0] = 1; for (let j = 1; j <= i; j++) anew[j] = a1[j] + k * a1[i + 1 - j]; anew[i + 1] = k;
+        a1 = anew; E *= (1 - k * k);
+      }
+      return ret(colVec(R));
+    },
     // pulstran(t,d,func,...args): pulse train y(t)=Σ ampᵢ·func(t−delayᵢ). d vector→delays (amp 1),
     // d N×2→[delay amp]. Supported func: rectpuls, tripuls, sinc, gauspuls.
     pulstran: (a) => {
@@ -1294,6 +1315,8 @@ export const SIGNAL: ToolboxModule = {
   },
   help: {
     lin2mu: 'Convert linear audio signal to mu-law encoding', mu2lin: 'Convert mu-law encoding to linear signal',
+    lar2rc: 'Convert log area ratios to reflection coefficients', rc2lar: 'Convert reflection coefficients to log area ratios',
+    is2rc: 'Convert inverse sine parameters to reflection coefficients', convmtx: 'Convolution matrix', rc2ac: 'Convert reflection coefficients to autocorrelation sequence',
     vco: 'Voltage-controlled oscillator', pulstran: 'Pulse train generator',
     diric: 'Dirichlet or periodic sinc function', square: 'Square wave', gmonopuls: 'Gaussian monopulse',
     uencode: 'Quantize and encode to integer values', udecode: 'Decode 2^n-level quantized integers to floating point',
