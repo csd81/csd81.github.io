@@ -456,6 +456,14 @@ export const SIGNAL: ToolboxModule = {
   builtins: {
     lin2mu: (a) => ret(map(m(a[0]), lin2muOne)),
     mu2lin: (a) => ret(map(m(a[0]), mu2linOne)),
+    // vco(x,fc,fs): VCO — instantaneous freq from x∈[-1,1]; y=cos(phase). fc scalar→[0,2fc].
+    vco: (a) => {
+      const X = m(a[0]), x = toArray(X), fc = toArray(m(a[1])), fs = asScalar(a[2]);
+      const f = x.map((xi) => (fc.length >= 2 ? fc[0] + (fc[1] - fc[0]) * (xi + 1) / 2 : fc[0] * (xi + 1)));
+      const f0 = f.length ? f[0] : 0; const out: number[] = []; let c = 0;
+      for (let i = 0; i < f.length; i++) { c += f[i]; out.push(Math.cos(2 * Math.PI / fs * (c - f0))); }
+      return ret(X.cols === 1 && X.rows > 1 ? colVec(out) : rowVec(out));
+    },
     diric: (a) => { const N = asScalar(a[1]); return ret(map(m(a[0]), (x) => diricOne(x, N))); },
     square: (a) => { const duty = a.length > 1 ? asScalar(a[1]) : 50; const w0 = 2 * Math.PI * duty / 100; return ret(map(m(a[0]), (t) => squareOne(t, w0))); },
     gmonopuls: (a) => {
@@ -1267,6 +1275,7 @@ export const SIGNAL: ToolboxModule = {
   },
   help: {
     lin2mu: 'Convert linear audio signal to mu-law encoding', mu2lin: 'Convert mu-law encoding to linear signal',
+    vco: 'Voltage-controlled oscillator',
     diric: 'Dirichlet or periodic sinc function', square: 'Square wave', gmonopuls: 'Gaussian monopulse',
     uencode: 'Quantize and encode to integer values', udecode: 'Decode 2^n-level quantized integers to floating point',
     rectwin: 'Rectangular window', hann: 'Hann (Hanning) window', hanning: 'Hann window (symmetric)', hamming: 'Hamming window',
