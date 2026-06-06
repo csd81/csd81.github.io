@@ -104,6 +104,7 @@ export function numDen(e: SymExpr): { num: SymExpr; den: SymExpr } {
 /** Polynomial long division of numeric coeff arrays (highest-first): N = q·D + r. */
 function polyDivHi(N: number[], D: number[]): { q: number[]; r: number[] } {
   while (D.length > 1 && Math.abs(D[0]) < 1e-12) D = D.slice(1); // trim leading-zero divisor coeffs (avoid /0)
+  if (D.length === 1 && Math.abs(D[0]) < 1e-12) throw new MatError('division by a zero polynomial'); // would otherwise produce Inf/NaN
   const q: number[] = []; const rem = N.slice();
   while (rem.length >= D.length) { const c = rem[0] / D[0]; q.push(c); for (let i = 0; i < D.length; i++) rem[i] -= c * D[i]; rem.shift(); }
   while (rem.length && Math.abs(rem[0]) < 1e-12) rem.shift();

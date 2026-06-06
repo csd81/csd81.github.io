@@ -670,6 +670,9 @@ export class Demux extends Block {
         // Split the incoming bus (a vector on a single port) into scalar outputs.
         // Falls back to treating the input ports themselves as the elements (scalar wiring).
         const bus = (Array.isArray(u[0]) ? u[0] : u) as unknown as number[];
+        // A genuine bus whose width doesn't match the Demux is a dimension error (Simulink would error),
+        // not a silent zero-pad.
+        if (Array.isArray(u[0]) && bus.length !== this.numOutputs) throw new Error(`Demux '${this.name}': input width ${bus.length} does not match the ${this.numOutputs} outputs`);
         const y = new Array(this.numOutputs).fill(0);
         for (let i = 0; i < this.numOutputs; i++) if (i < bus.length) y[i] = bus[i];
         return y;

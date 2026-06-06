@@ -32,7 +32,9 @@ function loadVfs(): Map<string, Uint8Array> {
 }
 function saveVfs(m: Map<string, Uint8Array>) {
   let total = 0; const obj: Record<string, string> = {};
-  for (const [k, v] of m) { total += v.length; if (total > VFS_CAP) { console.warn('sandbox VFS exceeds storage budget; some files not persisted'); break; } obj[k] = b64encode(v); }
+  // Budget against the BASE64 size actually written (~4/3 of the raw bytes), not the raw length,
+  // so we stop before localStorage's real (UTF-16) quota is exceeded.
+  for (const [k, v] of m) { total += Math.ceil(v.length * 4 / 3); if (total > VFS_CAP) { console.warn('sandbox VFS exceeds storage budget; some files not persisted'); break; } obj[k] = b64encode(v); }
   try { localStorage.setItem(VFS_KEY, JSON.stringify(obj)); } catch { /* quota */ }
 }
 function triggerDownload(name: string, bytes: Uint8Array) {
@@ -55,6 +57,7 @@ export function useSandbox(folderId: string) {
   const awaitingInput = useRef(false);
   const runId = useRef(0);
   const vfsRef = useRef<Map<string, Uint8Array>>(loadVfs());
+  const pendingRef = useRef<Set<string>>(new Set());   // locally-added files not yet seen in a worker manifest
   const getFileWaiters = useRef(new Map<number, (b: Uint8Array | null) => void>());
   const getFileId = useRef(0);
 
@@ -72,6 +75,7 @@ export function useSandbox(folderId: string) {
   const syncFiles = useCallback((names: string[]) => {
     setUserFiles(names.slice().sort());
     const worker = workerRef.current; if (!worker) return;
+    for (const name of names) pendingRef.current.delete(name);   // worker now knows about these
     let pending = 0; let changed = false;
     for (const name of names) {
       pending++;
@@ -87,7 +91,9 @@ export function useSandbox(folderId: string) {
       });
       worker.postMessage({ type: 'getFile', id, name });
     }
-    for (const k of [...vfsRef.current.keys()]) if (!names.includes(k)) { vfsRef.current.delete(k); changed = true; }
+    // Mirror worker deletions — but never drop a file added locally that the worker's (possibly
+    // stale) manifest hasn't acknowledged yet, or we'd lose a just-uploaded file (race).
+    for (const k of [...vfsRef.current.keys()]) if (!names.includes(k) && !pendingRef.current.has(k)) { vfsRef.current.delete(k); changed = true; }
     if (changed && pending === 0) saveVfs(vfsRef.current);
   }, []);
 
@@ -184,7 +190,7 @@ export function useSandbox(folderId: string) {
 
   /** Put a file into the VFS (worker + mirror + persistence). */
   const putBytes = useCallback((name: string, bytes: Uint8Array) => {
-    vfsRef.current.set(name, bytes); saveVfs(vfsRef.current);
+    vfsRef.current.set(name, bytes); pendingRef.current.add(name); saveVfs(vfsRef.current);   // pending until the worker manifest confirms it
     workerRef.current?.postMessage({ type: 'putFile', name, bytes });
     setUserFiles([...vfsRef.current.keys()].sort());
   }, []);
@@ -221,7 +227,7 @@ export function useSandbox(folderId: string) {
   }, []);
 
   const deleteFile = useCallback((name: string) => {
-    vfsRef.current.delete(name); saveVfs(vfsRef.current);
+    vfsRef.current.delete(name); pendingRef.current.delete(name); saveVfs(vfsRef.current);
     workerRef.current?.postMessage({ type: 'deleteFile', name });
     setUserFiles([...vfsRef.current.keys()].sort());
   }, []);
