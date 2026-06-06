@@ -22,6 +22,7 @@ type FromWorker =
   | { type: 'figure'; fig: unknown }
   | { type: 'workspace'; vars: unknown }
   | { type: 'files'; names: string[] }
+  | { type: 'completions'; names: string[] }
   | { type: 'fileData'; id: number; name: string; bytes: Uint8Array | null }
   | { type: 'done'; id: number; error?: string };
 
@@ -58,6 +59,7 @@ self.onmessage = async (ev: MessageEvent<ToWorker>) => {
     case 'reset':
       preload = msg.preload;
       makeSession();
+      post({ type: 'completions', names: session!.completions() });
       return;
     case 'inputReply':
       { const r = inputResolve; inputResolve = null; r?.(msg.value); }
@@ -87,6 +89,7 @@ self.onmessage = async (ev: MessageEvent<ToWorker>) => {
       post({ type: 'figure', fig: session!.getFigure() });
       post({ type: 'workspace', vars: session!.workspace() });
       post({ type: 'files', names: session!.listFiles() });
+      post({ type: 'completions', names: session!.completions() });
       post({ type: 'done', id: msg.id, error: res.error });
       return;
     }

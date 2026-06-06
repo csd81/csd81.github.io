@@ -248,10 +248,21 @@
 .mlab__tex .katex { font-size: 1.06em; }
 .mlab__prompt-row { display: flex; align-items: baseline; gap: 0.4rem; }
 .mlab__caret { color: #7fd1ff; font-family: inherit; }
+.mlab__input-wrap { position: relative; flex: 1 1 auto; display: flex; }
 .mlab__input {
   flex: 1 1 auto; background: transparent; border: 0; outline: none;
-  color: #eaf1ff; font-family: inherit; font-size: inherit;
+  color: #eaf1ff; font-family: inherit; font-size: inherit; min-width: 0;
 }
+
+/* Tab-completion dropdown (floats above the prompt line). */
+.mlab__ac {
+  position: absolute; bottom: 100%; left: 0; z-index: 20; margin: 0 0 2px; padding: 4px;
+  list-style: none; max-height: 240px; overflow-y: auto; min-width: 220px;
+  background: #11192a; border: 1px solid #2b3a55; border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); font-family: inherit; font-size: 0.86rem;
+}
+.mlab__ac-item { padding: 3px 10px; border-radius: 5px; color: #d8dee9; cursor: pointer; white-space: nowrap; }
+.mlab__ac-item--sel { background: #2a4d7a; color: #fff; }
 
 /* Workspace */
 .mlab__ws-body { flex: 1 1 auto; min-height: 0; overflow: auto; }

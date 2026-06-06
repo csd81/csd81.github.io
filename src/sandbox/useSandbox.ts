@@ -18,6 +18,7 @@ type FromWorker =
   | { type: 'figure'; fig: FigureSpec }
   | { type: 'workspace'; vars: WsVar[] }
   | { type: 'files'; names: string[] }
+  | { type: 'completions'; names: string[] }
   | { type: 'fileData'; id: number; name: string; bytes: Uint8Array | null }
   | { type: 'done'; id: number; error?: string };
 
@@ -48,6 +49,7 @@ export function useSandbox(folderId: string) {
   const [busy, setBusy] = useState(false);
   const [prompt, setPrompt] = useState<string | null>(null);
   const [userFiles, setUserFiles] = useState<string[]>([]);
+  const [completions, setCompletions] = useState<string[]>([]);
 
   const workerRef = useRef<Worker | null>(null);
   const awaitingInput = useRef(false);
@@ -96,6 +98,7 @@ export function useSandbox(folderId: string) {
         case 'figure': setFig({ ...m.fig }); break;
         case 'workspace': setWorkspace(m.vars); break;
         case 'files': syncFiles(m.names); break;
+        case 'completions': setCompletions(m.names); break;
         case 'fileData': { const w = getFileWaiters.current.get(m.id); if (w) { getFileWaiters.current.delete(m.id); w(m.bytes); } break; }
         case 'done':
           awaitingInput.current = false;
@@ -219,7 +222,7 @@ export function useSandbox(folderId: string) {
   const readFileText = useCallback((name: string): string | null => { const b = vfsRef.current.get(name); return b ? new TextDecoder().decode(b) : null; }, []);
 
   return {
-    lines, workspace, fig, busy, prompt, userFiles,
+    lines, workspace, fig, busy, prompt, userFiles, completions,
     runSource, submit, clearConsole, resetSession, abort,
     importFiles, saveFile, downloadFile, deleteFile, readFileText,
   };

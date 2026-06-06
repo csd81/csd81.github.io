@@ -35,7 +35,7 @@ export default function Sandbox() {
   const centerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLElement>(null);
 
-  const { lines, workspace, fig, busy, prompt, userFiles, runSource, submit, clearConsole, resetSession, abort, importFiles, saveFile, downloadFile, deleteFile, readFileText } = useSandbox(folderId);
+  const { lines, workspace, fig, busy, prompt, userFiles, completions, runSource, submit, clearConsole, resetSession, abort, importFiles, saveFile, downloadFile, deleteFile, readFileText } = useSandbox(folderId);
 
   // A user (VFS) file open in the editor takes precedence over the bundled library file.
   const [userOpenName, setUserOpenName] = useState<string | null>(null);
@@ -209,7 +209,7 @@ export default function Sandbox() {
               ✎ {t('Editor', 'Szerkesztő')}{open ? ' — ' + open.file : ''} ▾
             </button>
           )}
-          <CommandWindow lines={lines} busy={busy} prompt={prompt} onSubmit={submit} onClear={clearConsole} />
+          <CommandWindow lines={lines} busy={busy} prompt={prompt} completions={completions} onSubmit={submit} onClear={clearConsole} />
         </div>
 
         {/* Figure + Workspace (or a collapsed rail) */}

@@ -25,6 +25,8 @@ export interface Session {
   getFile(name: string): Uint8Array | null;
   listFiles(): string[];
   deleteFile(name: string): void;
+  /** Identifiers available for command-window tab-completion. */
+  completions(): string[];
 }
 
 export function createSession(opts: SessionOptions): Session {
@@ -55,6 +57,7 @@ export function createSession(opts: SessionOptions): Session {
     getFile(name) { return interp.readFileBytes(name); },
     listFiles() { return interp.listFiles(); },
     deleteFile(name) { interp.deleteFile(name); },
+    completions() { return interp.completionNames(); },
   };
 }
 

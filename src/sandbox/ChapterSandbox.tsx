@@ -31,7 +31,7 @@ function ChapterRunner({ folderId, files }: { folderId: string; files: MFile[] }
   const lf = (s: string) => s.replace(/\r\n?/g, '\n');
   const [openId, setOpenId] = useState(files[0].id);
   const [editor, setEditor] = useState(lf(files[0].source));
-  const { lines, fig, busy, prompt, runSource, submit, clearConsole } = useSandbox(folderId);
+  const { lines, fig, busy, prompt, completions, runSource, submit, clearConsole } = useSandbox(folderId);
   useEffect(() => { const f = files.find((x) => x.id === openId); if (f) setEditor(lf(f.source)); }, [openId, files]);
   const t = (en: string, hu: string) => (lang === 'hu' ? hu : en);
 
@@ -49,7 +49,7 @@ function ChapterRunner({ folderId, files }: { folderId: string; files: MFile[] }
         <CodeEditor value={editor} wrapClassName="mlab-embed__code" onChange={(e) => setEditor(e.target.value)} />
         <div className="mlab-embed__fig"><FigurePane fig={fig} /></div>
       </div>
-      <CommandWindow lines={lines} busy={busy} prompt={prompt} onSubmit={submit} onClear={clearConsole} />
+      <CommandWindow lines={lines} busy={busy} prompt={prompt} completions={completions} onSubmit={submit} onClear={clearConsole} />
     </div>
   );
 }

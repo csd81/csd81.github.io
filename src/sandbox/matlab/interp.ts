@@ -138,6 +138,18 @@ export class Interpreter implements Env {
     for (const n of names) this.base.vars.delete(n);
   }
   workspaceVars() { return this.workspaceSnapshot().map(({ name, size, klass }) => ({ name, size, klass })); }
+  /** Sorted, de-duplicated identifiers for command-window tab-completion:
+   *  workspace variables, user-defined functions, every base/toolbox builtin,
+   *  and constants. */
+  completionNames(): string[] {
+    const set = new Set<string>();
+    for (const n of this.base.vars.keys()) set.add(n);
+    for (const n of this.funcs.keys()) set.add(n);
+    for (const n of NAME_OWNERS.keys()) set.add(n);
+    for (const n of Object.keys(BUILTINS)) set.add(n);
+    for (const n of Object.keys(CONSTANTS)) set.add(n);
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }
   /** In-memory MAT-file store (no real filesystem in the browser sandbox). */
   private matFiles = new Map<string, Map<string, Value>>();
   private matKey(f: string) { return f.replace(/\.mat$/i, '').trim() + '.mat'; }

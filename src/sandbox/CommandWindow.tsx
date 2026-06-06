@@ -106,23 +106,61 @@ function renderLine(text: string, onSubmit: (t: string) => void) {
   });
 }
 
+/** The identifier fragment immediately left of the cursor (letters/digits/_, MATLAB-style). */
+function wordBeforeCursor(text: string, caret: number): { word: string; start: number } {
+  const left = text.slice(0, caret);
+  const m = left.match(/[A-Za-z_]\w*$/);
+  return m ? { word: m[0], start: caret - m[0].length } : { word: '', start: caret };
+}
+
+const MAX_COMPLETIONS = 50; // cap the dropdown so a bare prefix doesn't list thousands
+
 export default function CommandWindow({
-  lines, busy, prompt, onSubmit, onClear,
+  lines, busy, prompt, completions = [], onSubmit, onClear,
 }: {
   lines: ConsoleLine[];
   busy: boolean;
   prompt: string | null;
+  completions?: string[];
   onSubmit: (text: string) => void;
   onClear: () => void;
 }) {
   const [value, setValue] = useState('');
   const [history, setHistory] = useState<string[]>([]);
   const [hIdx, setHIdx] = useState(-1);
+  const [menu, setMenu] = useState<{ items: string[]; sel: number; word: string; start: number } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [lines, prompt]);
   useEffect(() => { if (prompt !== null) inputRef.current?.focus(); }, [prompt]);
+
+  // Replace the word under the cursor with `name`, append "(" for functions if not present.
+  const applyCompletion = (name: string, start: number, word: string) => {
+    const input = inputRef.current;
+    const caret = start + word.length;
+    const next = value.slice(0, start) + name + value.slice(caret);
+    setValue(next);
+    setMenu(null);
+    requestAnimationFrame(() => { if (input) { const pos = start + name.length; input.selectionStart = input.selectionEnd = pos; input.focus(); } });
+  };
+
+  // Tab: complete the word under the cursor. Single match → fill; many → open a menu.
+  const tryComplete = () => {
+    const input = inputRef.current; if (!input) return;
+    const caret = input.selectionStart ?? value.length;
+    const { word, start } = wordBeforeCursor(value, caret);
+    if (!word) return;
+    const lc = word.toLowerCase();
+    // Prefix matches first (case-insensitive), exact-case prefixes ranked ahead.
+    const matches = completions.filter((n) => n.toLowerCase().startsWith(lc));
+    if (matches.length === 0) return;
+    if (matches.length === 1) { applyCompletion(matches[0], start, word); return; }
+    // Extend to the longest common prefix before showing the menu.
+    const lcp = matches.reduce((p, s) => { let i = 0; while (i < p.length && i < s.length && p[i].toLowerCase() === s[i].toLowerCase()) i++; return p.slice(0, i); });
+    if (lcp.length > word.length) { setValue(value.slice(0, start) + lcp + value.slice(start + word.length)); }
+    setMenu({ items: matches.slice(0, MAX_COMPLETIONS), sel: 0, word, start });
+  };
 
   const submit = () => {
     const v = value;
@@ -130,10 +168,20 @@ export default function CommandWindow({
     if (prompt === null && v.trim()) { setHistory((h) => [...h, v]); }
     setHIdx(-1);
     setValue('');
+    setMenu(null);
     onSubmit(v);
   };
 
   const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Tab autocompletion (disabled while answering an input() prompt).
+    if (e.key === 'Tab' && prompt === null) { e.preventDefault(); tryComplete(); return; }
+    // When the completion menu is open, arrows/Enter/Tab navigate & accept it.
+    if (menu) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setMenu({ ...menu, sel: (menu.sel + 1) % menu.items.length }); return; }
+      if (e.key === 'ArrowUp') { e.preventDefault(); setMenu({ ...menu, sel: (menu.sel - 1 + menu.items.length) % menu.items.length }); return; }
+      if (e.key === 'Enter') { e.preventDefault(); applyCompletion(menu.items[menu.sel], menu.start, wordBeforeCursor(value, inputRef.current?.selectionStart ?? value.length).word); return; }
+      if (e.key === 'Escape') { e.preventDefault(); setMenu(null); return; }
+    }
     if (e.key === 'Enter') { e.preventDefault(); submit(); return; }
     if (prompt !== null) return;
     if (e.key === 'ArrowUp') {
@@ -161,6 +209,21 @@ export default function CommandWindow({
         ))}
         <div className="mlab__prompt-row">
           <span className="mlab__caret">{prompt !== null ? '' : '>>'}</span>
+          <div className="mlab__input-wrap">
+          {menu && (
+            <ul className="mlab__ac" role="listbox">
+              {menu.items.map((it, j) => (
+                <li
+                  key={it}
+                  role="option"
+                  aria-selected={j === menu.sel}
+                  className={'mlab__ac-item' + (j === menu.sel ? ' mlab__ac-item--sel' : '')}
+                  onMouseDown={(e) => { e.preventDefault(); applyCompletion(it, menu.start, wordBeforeCursor(value, inputRef.current?.selectionStart ?? value.length).word); }}
+                  onMouseEnter={() => setMenu({ ...menu, sel: j })}
+                >{it}</li>
+              ))}
+            </ul>
+          )}
           <input
             ref={inputRef}
             className="mlab__input"
@@ -169,7 +232,8 @@ export default function CommandWindow({
             autoCapitalize="off"
             autoCorrect="off"
             placeholder={busy ? 'running…' : prompt !== null ? 'enter a value…' : ''}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => { setValue(e.target.value); setMenu(null); }}
+            onBlur={() => setMenu(null)}
             onKeyDown={onKey}
             onPaste={(e) => {
               // A single-line <input> would flatten pasted code; run multi-line
@@ -182,6 +246,7 @@ export default function CommandWindow({
               }
             }}
           />
+          </div>
         </div>
       </div>
     </div>
