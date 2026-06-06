@@ -270,6 +270,26 @@ export const IMAGES: ToolboxModule = {
     imopen: (a) => ret(openClose(m(a[0]), seNeighborhood(a[1]), 'open')),
     /** imclose(BW,SE) — dilation followed by erosion. */
     imclose: (a) => ret(openClose(m(a[0]), seNeighborhood(a[1]), 'close')),
+
+    // ── spatial-statistics filters & quality metrics (verified vs MATLAB R2026a) ──
+    /** imboxfilt(A[,filterSize][,'Padding',p][,'NormalizationFactor',f]) — 2-D box filter. */
+    imboxfilt: (a) => ret(imboxfiltFn(a)),
+    /** imboxfilt3(A[,filterSize][,'Padding',p][,'NormalizationFactor',f]) — 3-D box filter. */
+    imboxfilt3: (a) => ret(imboxfilt3Fn(a)),
+    /** imgaussfilt3(A[,sigma][,'FilterSize',sz][,'Padding',p]) — 3-D Gaussian smoothing. */
+    imgaussfilt3: (a) => ret(imgaussfilt3Fn(a)),
+    /** medfilt3(A[,filterSize][,padopt]) — 3-D median filter (default [3 3 3], symmetric). */
+    medfilt3: (a) => ret(medfilt3Fn(a)),
+    /** modefilt(A[,filterSize][,padopt]) — 2-D/3-D mode filter (default symmetric). */
+    modefilt: (a) => ret(modefiltFn(a)),
+    /** stdfilt(I[,nhood]) — local standard deviation (3x3 default, symmetric padding, double). */
+    stdfilt: (a) => ret(stdfiltFn(a)),
+    /** rangefilt(I[,nhood]) — local range = local max - local min (3x3 default). */
+    rangefilt: (a) => ret(rangefiltFn(a)),
+    /** entropyfilt(I[,nhood]) — local Shannon entropy (im2uint8, 256 bins, true(9) default). */
+    entropyfilt: (a) => ret(entropyfiltFn(a)),
+    /** ssim(A,ref[,Name,Value]) — Structural Similarity Index. [ssimval,ssimmap]. */
+    ssim: (a, nargout) => Promise.resolve(ssimFn(a, nargout ?? 1)),
   },
   help: {
     ind2rgb: { summary: 'Converts the indexed image X and corresponding colormap map to RGB (truecolor) format.', syntax: ['RGB = ind2rgb(X,map)'], seealso: ['image', 'imread', 'rgb2ind'] },
@@ -294,6 +314,15 @@ export const IMAGES: ToolboxModule = {
     imdilate: { summary: 'Dilates the grayscale, binary, or packed binary image I using the structuring element SE.', syntax: ['J = imdilate(I,SE)', 'J = imdilate(I,nhood)', 'J = imdilate( ___ ,packopt)', 'J = imdilate( ___ ,shape)'], seealso: ['bwpack', 'bwunpack', 'conv2', 'filter2', 'imclose'] },
     imopen: { summary: 'Performs morphological opening on the grayscale or binary image I using the structuring element SE.', syntax: ['J = imopen(I,SE)', 'J = imopen(I,nhood)'], seealso: ['imclose', 'imdilate', 'imerode'] },
     imclose: { summary: 'Performs morphological closing on the grayscale or binary image I, using the structuring element SE.', syntax: ['J = imclose(I,SE)', 'J = imclose(I,nhood)'], seealso: ['imopen', 'imdilate', 'imerode'] },
+    imboxfilt: { summary: 'Filters image A with a 2-D box filter of the given size (default 3).', syntax: ['B = imboxfilt(A)', 'B = imboxfilt(A,filterSize)', 'B = imboxfilt(___,Name,Value)'], seealso: ['imboxfilt3', 'imfilter', 'imgaussfilt', 'integralBoxFilter'] },
+    imboxfilt3: { summary: 'Filters 3-D volumetric image A with a 3-D box filter of the given size (default 3).', syntax: ['B = imboxfilt3(A)', 'B = imboxfilt3(A,filterSize)', 'B = imboxfilt3(___,Name,Value)'], seealso: ['imboxfilt', 'imgaussfilt3', 'integralBoxFilter3'] },
+    imgaussfilt3: { summary: 'Filters 3-D volumetric image A with a 3-D Gaussian smoothing kernel with standard deviation sigma.', syntax: ['B = imgaussfilt3(A)', 'B = imgaussfilt3(A,sigma)', 'B = imgaussfilt3(___,Name,Value)'], seealso: ['imgaussfilt', 'imboxfilt3', 'imfilter'] },
+    medfilt3: { summary: 'Performs median filtering of the 3-D image A in three dimensions. Default neighborhood is [3 3 3].', syntax: ['B = medfilt3(A)', 'B = medfilt3(A,[m n p])', 'B = medfilt3(___,padopt)'], seealso: ['medfilt2', 'modefilt'] },
+    modefilt: { summary: 'Performs mode filtering on the 2-D or 3-D image A, returning the most frequent value in each neighborhood.', syntax: ['B = modefilt(A)', 'B = modefilt(A,filtSize)', 'B = modefilt(___,padopt)'], seealso: ['medfilt2', 'medfilt3', 'mode'] },
+    stdfilt: { summary: 'Returns the array J, where each output pixel contains the standard deviation of the neighborhood around the corresponding pixel in input image I.', syntax: ['J = stdfilt(I)', 'J = stdfilt(I,nhood)'], seealso: ['std2', 'rangefilt', 'entropyfilt'] },
+    rangefilt: { summary: 'Returns the array J, where each output pixel contains the range (max - min) of the neighborhood around the corresponding pixel in input image I.', syntax: ['J = rangefilt(I)', 'J = rangefilt(I,nhood)'], seealso: ['stdfilt', 'entropyfilt'] },
+    entropyfilt: { summary: 'Returns the array J, where each output pixel contains the entropy value of the neighborhood around the corresponding pixel in input image I.', syntax: ['J = entropyfilt(I)', 'J = entropyfilt(I,nhood)'], seealso: ['entropy', 'rangefilt', 'stdfilt', 'imhist'] },
+    ssim: { summary: 'Computes the Structural Similarity Index (SSIM) value for image A using ref as the reference image.', syntax: ['ssimval = ssim(A,ref)', '[ssimval,ssimmap] = ssim(A,ref)', '[___] = ssim(A,ref,Name,Value)'], seealso: ['immse', 'psnr', 'multissim'] },
   },
 };
 
@@ -947,4 +976,388 @@ function ellipseParams(rows: number[], cols: number[], meanR: number, meanC: num
   else { num = 2 * uxy; den = uxx - uyy + Math.sqrt((uxx - uyy) ** 2 + 4 * uxy ** 2); }
   const orient = (num === 0 && den === 0) ? 0 : (180 / Math.PI) * Math.atan(num / den);
   return { major, minor, orient, ecc };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Spatial-statistics filters & quality metrics (verified vs MATLAB R2026a).
+// ND data are kept column-major in plain number[] with a size vector dims[].
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Read a Mat to {data: number[] (column-major, double), dims: number[]}. */
+function ndData(M: Mat): { data: number[]; dims: number[] } {
+  return { data: Array.from(toArray(M)), dims: ndSize(M) };
+}
+/** Build a Mat (2-D or N-D) from column-major data + dims. */
+function ndMat(data: number[], dims: number[]): Mat {
+  return makeND(dims, Float64Array.from(data));
+}
+const prodN = (a: number[]) => a.reduce((p, x) => p * x, 1);
+/** Strides for a column-major array of the given dims. */
+function ndStrides(dims: number[]): number[] {
+  const s = [1]; for (let i = 1; i < dims.length; i++) s[i] = s[i - 1] * dims[i - 1]; return s;
+}
+/** Map a (possibly out-of-range) per-dim index to a source index per padding method. */
+function padIdx(i: number, n: number, method: string): number {
+  if (i >= 0 && i < n) return i;
+  if (method === 'circular') return ((i % n) + n) % n;
+  if (method === 'replicate') return i < 0 ? 0 : n - 1;
+  if (method === 'symmetric') { const p = ((i % (2 * n)) + 2 * n) % (2 * n); return p < n ? p : 2 * n - 1 - p; }
+  return -1; // 'zeros'/numeric sentinel
+}
+/** Parse Name/Value 'Padding' (string method or numeric scalar) from arg list. */
+function parsePadding(args: Value[], dflt: string | number): { method: string; padVal: number } {
+  let method: string = typeof dflt === 'string' ? dflt : 'zeros';
+  let padVal = typeof dflt === 'number' ? dflt : 0;
+  for (let k = 0; k < args.length - 1; k++) {
+    if (isMat(args[k]) && (args[k] as Mat).isChar && asString(args[k]).toLowerCase() === 'padding') {
+      const v = args[k + 1];
+      if (isMat(v) && (v as Mat).isChar) { method = asString(v).toLowerCase(); }
+      else { method = 'zeros'; padVal = asScalar(v); }
+    }
+  }
+  return { method, padVal };
+}
+/** General ND box filter (mean / sum) with the given padding & normalization. */
+function boxFilterND(data: number[], dims: number[], fsz: number[], method: string, padVal: number, norm: number): number[] {
+  const ndim = dims.length;
+  const fs = fsz.slice(); while (fs.length < ndim) fs.push(1);
+  const rad = fs.map((s) => Math.floor(s / 2));
+  const str = ndStrides(dims);
+  const total = prodN(dims);
+  const out = new Array(total).fill(0);
+  const sub = new Array(ndim).fill(0);
+  for (let lin = 0; lin < total; lin++) {
+    // decode column-major subscript
+    let rem = lin; for (let d = 0; d < ndim; d++) { sub[d] = rem % dims[d]; rem = Math.floor(rem / dims[d]); }
+    let s = 0;
+    // iterate over the neighborhood window
+    const off = new Array(ndim).fill(0);
+    const wtot = prodN(fs);
+    for (let w = 0; w < wtot; w++) {
+      let wr = w, srcLin = 0, oob = false;
+      for (let d = 0; d < ndim; d++) {
+        const k = wr % fs[d]; wr = Math.floor(wr / fs[d]);
+        const idx = padIdx(sub[d] + k - rad[d], dims[d], method);
+        if (idx < 0) { oob = true; break; }
+        srcLin += idx * str[d];
+      }
+      void off;
+      s += oob ? padVal : data[srcLin];
+    }
+    out[lin] = s * norm;
+  }
+  return out;
+}
+function imboxfiltFn(a: Value[]): Mat {
+  const { data, dims } = ndData(m(a[0]));
+  // filterSize: first non-string arg after image
+  let fsz = [3, 3];
+  const rest = a.slice(1);
+  let nv = 0;
+  if (rest.length && isMat(rest[0]) && !(rest[0] as Mat).isChar) {
+    const s = toArray(m(rest[0])); fsz = s.length >= 2 ? [Math.round(s[0]), Math.round(s[1])] : [Math.round(s[0]), Math.round(s[0])]; nv = 1;
+  }
+  const { method, padVal } = parsePadding(rest.slice(nv), 'replicate');
+  let norm = 1 / (fsz[0] * fsz[1]);
+  for (let k = nv; k < rest.length - 1; k++) if (isMat(rest[k]) && (rest[k] as Mat).isChar && asString(rest[k]).toLowerCase() === 'normalizationfactor') norm = asScalar(rest[k + 1]);
+  const out = boxFilterND(data, dims.slice(0, 2), fsz, method, padVal, norm);
+  return ndMat(out, dims.slice(0, 2));
+}
+function imboxfilt3Fn(a: Value[]): Mat {
+  const { data, dims } = ndData(m(a[0]));
+  let fsz = [3, 3, 3];
+  const rest = a.slice(1);
+  let nv = 0;
+  if (rest.length && isMat(rest[0]) && !(rest[0] as Mat).isChar) {
+    const s = toArray(m(rest[0])); fsz = s.length >= 3 ? [Math.round(s[0]), Math.round(s[1]), Math.round(s[2])] : [Math.round(s[0]), Math.round(s[0]), Math.round(s[0])]; nv = 1;
+  }
+  const { method, padVal } = parsePadding(rest.slice(nv), 'replicate');
+  let norm = 1 / (fsz[0] * fsz[1] * fsz[2]);
+  for (let k = nv; k < rest.length - 1; k++) if (isMat(rest[k]) && (rest[k] as Mat).isChar && asString(rest[k]).toLowerCase() === 'normalizationfactor') norm = asScalar(rest[k + 1]);
+  const D = dims.length >= 3 ? dims.slice(0, 3) : [dims[0], dims[1], 1];
+  const out = boxFilterND(data, D, fsz, method, padVal, norm);
+  return ndMat(out, D);
+}
+
+/** 1-D Gaussian kernel matching images.internal.createGaussianKernel (eps suppression). */
+function gauss1D(sigma: number, hsize: number): number[] {
+  const r = (hsize - 1) / 2; const h: number[] = [];
+  for (let x = -r; x <= r; x++) h.push(Math.exp(-(x * x) / (sigma * sigma) / 2));
+  const mx = Math.max(...h); const EPS = 2.220446049250313e-16;
+  for (let i = 0; i < h.length; i++) if (h[i] < EPS * mx) h[i] = 0;
+  const sum = h.reduce((p, x) => p + x, 0);
+  return sum !== 0 ? h.map((v) => v / sum) : h;
+}
+/** Separable 1-D correlation along dimension `dim` (column-major), with padding. */
+function corr1D(data: number[], dims: number[], dim: number, ker: number[], method: string, padVal: number): number[] {
+  const ndim = dims.length; const str = ndStrides(dims); const total = prodN(dims);
+  const rad = Math.floor(ker.length / 2);
+  const n = dims[dim];
+  const out = new Array(total).fill(0);
+  const sub = new Array(ndim).fill(0);
+  for (let lin = 0; lin < total; lin++) {
+    let rem = lin; for (let d = 0; d < ndim; d++) { sub[d] = rem % dims[d]; rem = Math.floor(rem / dims[d]); }
+    let s = 0;
+    for (let t = 0; t < ker.length; t++) {
+      const idx = padIdx(sub[dim] + t - rad, n, method);
+      const v = idx < 0 ? padVal : data[lin + (idx - sub[dim]) * str[dim]];
+      s += ker[t] * v;
+    }
+    out[lin] = s;
+  }
+  return out;
+}
+function imgaussfilt3Fn(a: Value[]): Mat {
+  const { data, dims } = ndData(m(a[0]));
+  let sigma = 0.5;
+  const rest = a.slice(1);
+  let nv = 0;
+  if (rest.length && isMat(rest[0]) && !(rest[0] as Mat).isChar) { sigma = asScalar(rest[0]); nv = 1; }
+  const sig3 = [sigma, sigma, sigma];
+  let hsize = sig3.map((s) => 2 * Math.ceil(2 * s) + 1);
+  for (let k = nv; k < rest.length - 1; k++) {
+    if (!isMat(rest[k]) || !(rest[k] as Mat).isChar) continue;
+    const name = asString(rest[k]).toLowerCase();
+    if (name === 'filtersize') { const s = toArray(m(rest[k + 1])); hsize = s.length >= 3 ? [Math.round(s[0]), Math.round(s[1]), Math.round(s[2])] : [Math.round(s[0]), Math.round(s[0]), Math.round(s[0])]; }
+  }
+  const { method, padVal } = parsePadding(rest.slice(nv), 'replicate');
+  const D = dims.length >= 3 ? dims.slice(0, 3) : [dims[0], dims[1], 1];
+  let cur = data;
+  for (let d = 0; d < 3; d++) cur = corr1D(cur, D, d, gauss1D(sig3[d], hsize[d]), method, padVal);
+  return ndMat(cur, D);
+}
+
+/** Generic ND sliding-window reducer with the given neighborhood (column-major). */
+function windowReduce(data: number[], dims: number[], fs: number[], method: string, padVal: number, reduce: (win: number[], center: number) => number): number[] {
+  const ndim = dims.length; const str = ndStrides(dims); const total = prodN(dims);
+  const rad = fs.map((s) => Math.floor(s / 2)); const wtot = prodN(fs);
+  const out = new Array(total).fill(0); const sub = new Array(ndim).fill(0);
+  for (let lin = 0; lin < total; lin++) {
+    let rem = lin; for (let d = 0; d < ndim; d++) { sub[d] = rem % dims[d]; rem = Math.floor(rem / dims[d]); }
+    const win: number[] = [];
+    for (let w = 0; w < wtot; w++) {
+      let wr = w, srcLin = 0, oob = false;
+      for (let d = 0; d < ndim; d++) {
+        const k = wr % fs[d]; wr = Math.floor(wr / fs[d]);
+        const idx = padIdx(sub[d] + k - rad[d], dims[d], method);
+        if (idx < 0) { oob = true; break; }
+        srcLin += idx * str[d];
+      }
+      win.push(oob ? padVal : data[srcLin]);
+    }
+    // center of the (odd-sized) window is at the middle flattened index
+    const cw = Math.floor(wtot / 2);
+    out[lin] = reduce(win, win[cw]);
+  }
+  return out;
+}
+function parseSizePadopt(rest: Value[], ndim: number, dfltSize: number[]): { fs: number[]; method: string; padVal: number } {
+  let fs = dfltSize.slice(); let method = 'symmetric'; let padVal = 0;
+  for (const arg of rest) {
+    if (isMat(arg) && (arg as Mat).isChar) { const s = asString(arg).toLowerCase(); if (s === 'replicate' || s === 'symmetric' || s === 'circular') method = s; else if (s === 'zeros') { method = 'zeros'; padVal = 0; } }
+    else if (isMat(arg)) { const s = toArray(m(arg)); if (s.length >= ndim) fs = s.slice(0, ndim).map((x) => Math.round(x)); else fs = new Array(ndim).fill(Math.round(s[0])); }
+  }
+  return { fs, method, padVal };
+}
+function medfilt3Fn(a: Value[]): Mat {
+  const { data, dims } = ndData(m(a[0]));
+  const D = dims.length >= 3 ? dims.slice(0, 3) : [dims[0], dims[1], 1];
+  const { fs, method, padVal } = parseSizePadopt(a.slice(1), 3, [3, 3, 3]);
+  const out = windowReduce(data, D, fs, method, padVal, (win) => {
+    const w = win.slice().sort((x, y) => x - y); const n = w.length;
+    return n % 2 ? w[(n - 1) / 2] : (w[n / 2 - 1] + w[n / 2]) / 2;
+  });
+  return ndMat(out, D);
+}
+/** modefilt window reducer: the most-frequent value; on a tie, the center value if it
+ *  is among the max-count values, otherwise the smallest such value (matches R2026a). */
+function modeOf(win: number[], center: number): number {
+  const counts = new Map<number, number>();
+  for (const v of win) counts.set(v, (counts.get(v) ?? 0) + 1);
+  let maxCount = 0; for (const c of counts.values()) if (c > maxCount) maxCount = c;
+  if ((counts.get(center) ?? 0) === maxCount) return center;
+  let best = Infinity;
+  for (const [v, c] of counts) if (c === maxCount && v < best) best = v;
+  return best;
+}
+function modefiltFn(a: Value[]): Mat {
+  const Mt = m(a[0]); const { data, dims } = ndData(Mt);
+  const ndim = (dims.length >= 3 && dims[2] > 1) ? 3 : 2;
+  const D = ndim === 3 ? dims.slice(0, 3) : [dims[0], dims[1]];
+  const { fs, method, padVal } = parseSizePadopt(a.slice(1), ndim, new Array(ndim).fill(3));
+  const out = windowReduce(data, D, fs, method, padVal, modeOf);
+  const o = ndMat(out, D);
+  if (Mt.itype) return applyClass(o, Mt.itype); if (Mt.isBool) o.isBool = true;
+  return o;
+}
+
+/** stdfilt — per algstdfilt: conv1 = imfilter(I.^2, h/n1, 'symmetric');
+ *  conv2 = imfilter(I, h/sqrt(n*n1),'symmetric').^2; J = sqrt(max(conv1-conv2,0)). */
+function stdfiltFn(a: Value[]): Mat {
+  const Mt = m(a[0]); const { data, dims } = ndData(Mt);
+  let h: number[]; let hdims: number[];
+  if (a.length >= 2 && isMat(a[1])) { const hm = m(a[1]); h = Array.from(toArray(hm)); hdims = ndSize(hm); }
+  else { h = new Array(9).fill(1); hdims = [3, 3]; }
+  const n = h.reduce((p, x) => p + x, 0);
+  if (n === 1) return ndMat(new Array(prodN(dims)).fill(0), dims);
+  const n1 = n - 1;
+  const D = dims.slice();
+  const Hd = hdims.slice(); while (Hd.length < D.length) Hd.push(1);
+  const sq = data.map((x) => x * x);
+  const conv1 = corrNDmask(sq, D, h.map((x) => x / n1), Hd, 'symmetric', 0);
+  const c2 = corrNDmask(data, D, h.map((x) => x / Math.sqrt(n * n1)), Hd, 'symmetric', 0);
+  const out = conv1.map((v, i) => Math.sqrt(Math.max(v - c2[i] * c2[i], 0)));
+  return ndMat(out, D);
+}
+/** ND correlation with an explicit mask (kernel) array (column-major), symmetric/etc padding. */
+function corrNDmask(data: number[], dims: number[], ker: number[], kdims: number[], method: string, padVal: number): number[] {
+  const ndim = dims.length; const str = ndStrides(dims); const total = prodN(dims);
+  const kd = kdims.slice(); while (kd.length < ndim) kd.push(1);
+  const rad = kd.map((s) => Math.floor(s / 2)); const wtot = prodN(kd);
+  const out = new Array(total).fill(0); const sub = new Array(ndim).fill(0);
+  for (let lin = 0; lin < total; lin++) {
+    let rem = lin; for (let d = 0; d < ndim; d++) { sub[d] = rem % dims[d]; rem = Math.floor(rem / dims[d]); }
+    let s = 0;
+    for (let w = 0; w < wtot; w++) {
+      let wr = w, srcLin = 0, oob = false;
+      for (let d = 0; d < ndim; d++) {
+        const k = wr % kd[d]; wr = Math.floor(wr / kd[d]);
+        const idx = padIdx(sub[d] + k - rad[d], dims[d], method);
+        if (idx < 0) { oob = true; break; }
+        srcLin += idx * str[d];
+      }
+      s += ker[w] * (oob ? padVal : data[srcLin]);
+    }
+    out[lin] = s;
+  }
+  return out;
+}
+/** rangefilt — local max - local min over the neighborhood (zeros outside excluded). */
+function rangefiltFn(a: Value[]): Mat {
+  const Mt = m(a[0]); const { data, dims } = ndData(Mt);
+  let fs: number[]; let nhood: number[] | null = null; let hdims: number[];
+  if (a.length >= 2 && isMat(a[1])) { const hm = m(a[1]); nhood = Array.from(toArray(hm)); hdims = ndSize(hm); fs = hdims.slice(); }
+  else { fs = [3, 3]; hdims = [3, 3]; }
+  while (fs.length < dims.length) fs.push(1);
+  // imdilate/imerode use infinite padding so out-of-image neighbors don't affect max/min.
+  const D = dims.slice();
+  const ndim = D.length; const str = ndStrides(D); const total = prodN(D);
+  const Hd = hdims.slice(); while (Hd.length < ndim) Hd.push(1);
+  const rad = Hd.map((s) => Math.floor(s / 2)); const wtot = prodN(Hd);
+  const out = new Array(total).fill(0); const sub = new Array(ndim).fill(0);
+  for (let lin = 0; lin < total; lin++) {
+    let rem = lin; for (let d = 0; d < ndim; d++) { sub[d] = rem % D[d]; rem = Math.floor(rem / D[d]); }
+    let mx = -Infinity, mn = Infinity;
+    for (let w = 0; w < wtot; w++) {
+      if (nhood && !nhood[w]) continue;
+      let wr = w, srcLin = 0, oob = false;
+      for (let d = 0; d < ndim; d++) {
+        const k = wr % Hd[d]; wr = Math.floor(wr / Hd[d]);
+        const idx = sub[d] + k - rad[d]; if (idx < 0 || idx >= D[d]) { oob = true; break; }
+        srcLin += idx * str[d];
+      }
+      if (oob) continue;
+      const v = data[srcLin]; if (v > mx) mx = v; if (v < mn) mn = v;
+    }
+    out[lin] = mx - mn;
+  }
+  const o = ndMat(out, D);
+  // output class: same as input except signed int -> unsigned; logical -> logical
+  if (Mt.itype === 'int16') return applyClass(o, 'uint16');
+  if (Mt.itype) return applyClass(o, Mt.itype);
+  return o;
+}
+/** entropyfilt — im2uint8 then local Shannon entropy over the (true(9) default) neighborhood. */
+function entropyfiltFn(a: Value[]): Mat {
+  const Mt = m(a[0]); const dims = ndSize(Mt);
+  // im2uint8 of input (honor class)
+  const unit = toUnit(Mt); // double in [0,1] honoring class
+  const isBool = !!Mt.isBool;
+  const u8 = unit.map((x) => isBool ? (x ? 1 : 0) : Math.round(clamp01(x) * 255));
+  const nbins = isBool ? 2 : 256;
+  let fs: number[]; let nhood: number[] | null = null; let hdims: number[];
+  if (a.length >= 2 && isMat(a[1])) { const hm = m(a[1]); nhood = Array.from(toArray(hm)); hdims = ndSize(hm); fs = hdims.slice(); }
+  else { fs = [9, 9]; hdims = [9, 9]; nhood = new Array(81).fill(1); }
+  const D = dims.slice();
+  const ndim = D.length; const str = ndStrides(D); const total = prodN(D);
+  const Hd = hdims.slice(); while (Hd.length < ndim) Hd.push(1);
+  const rad = Hd.map((s) => Math.floor(s / 2)); const wtot = prodN(Hd);
+  const out = new Array(total).fill(0); const sub = new Array(ndim).fill(0);
+  for (let lin = 0; lin < total; lin++) {
+    let rem = lin; for (let d = 0; d < ndim; d++) { sub[d] = rem % D[d]; rem = Math.floor(rem / D[d]); }
+    const hist = new Map<number, number>(); let cnt = 0;
+    for (let w = 0; w < wtot; w++) {
+      if (nhood && !nhood[w]) continue;
+      let wr = w, srcLin = 0;
+      for (let d = 0; d < ndim; d++) {
+        const k = wr % Hd[d]; wr = Math.floor(wr / Hd[d]);
+        const idx = padIdx(sub[d] + k - rad[d], D[d], 'symmetric'); // entropyfilt pads symmetric
+        srcLin += idx * str[d];
+      }
+      const val = u8[srcLin]; hist.set(val, (hist.get(val) ?? 0) + 1); cnt++;
+    }
+    let e = 0; for (const c of hist.values()) { const p = c / cnt; if (p > 0) e -= p * Math.log2(p); }
+    out[lin] = e; void nbins;
+  }
+  return ndMat(out, D);
+}
+
+/** ssim(A,ref[,Name,Value]) — SSIM index and map. Verified vs MATLAB R2026a default path. */
+function ssimFn(a: Value[], nargout: number): Value[] {
+  const Am = m(a[0]), Rm = m(a[1]);
+  const dims = ndSize(Am);
+  const numSpatial = (dims.length >= 3 && dims[2] > 1) ? 3 : 2;
+  // class-derived dynamic range
+  const itype = Am.itype;
+  const dynRange = itype === 'uint8' ? 255 : itype === 'uint16' ? 65535 : itype === 'int16' ? 65535 : 1;
+  let radius = 1.5; let exponents = [1, 1, 1]; let C: number[] | null = null; let dynamicRange = dynRange;
+  const rest = a.slice(2);
+  for (let k = 0; k + 1 < rest.length; k += 2) {
+    if (!isMat(rest[k]) || !(rest[k] as Mat).isChar) continue;
+    const name = asString(rest[k]).toLowerCase();
+    if (name === 'radius') radius = asScalar(rest[k + 1]);
+    else if (name === 'exponents') exponents = Array.from(toArray(m(rest[k + 1])));
+    else if (name === 'dynamicrange') dynamicRange = asScalar(rest[k + 1]);
+    else if (name === 'regularizationconstants') C = Array.from(toArray(m(rest[k + 1])));
+  }
+  if (!C) C = [(0.01 * dynamicRange) ** 2, (0.03 * dynamicRange) ** 2, ((0.03 * dynamicRange) ** 2) / 2];
+  const filtRadius = Math.ceil(radius * 3); const filtSize = 2 * filtRadius + 1;
+  // signed-int offset
+  let A: number[], REF: number[];
+  if (itype === 'int16') { A = Array.from(toArray(Am)).map((x) => x + 32768); REF = Array.from(toArray(Rm)).map((x) => x + 32768); }
+  else { A = Array.from(toArray(Am)); REF = Array.from(toArray(Rm)); }
+  const D = numSpatial === 3 ? (dims.length >= 3 ? dims.slice(0, 3) : [dims[0], dims[1], 1]) : [dims[0], dims[1]];
+  const ker = gauss1D(radius, filtSize);
+  const gfilt = (x: number[]): number[] => { let cur = x; for (let d = 0; d < numSpatial; d++) cur = corr1D(cur, D, d, ker, 'replicate', 0); return cur; };
+  let mux = gfilt(A), muy = gfilt(REF);
+  const muxy = mux.map((v, i) => v * muy[i]);
+  const mux2 = mux.map((v) => v * v), muy2 = muy.map((v) => v * v);
+  const A2 = A.map((v) => v * v), R2 = REF.map((v) => v * v), AR = A.map((v, i) => v * REF[i]);
+  const gA2 = gfilt(A2), gR2 = gfilt(R2), gAR = gfilt(AR);
+  const sigmax2 = gA2.map((v, i) => Math.max(v - mux2[i], 0));
+  const sigmay2 = gR2.map((v, i) => Math.max(v - muy2[i], 0));
+  const sigmaxy = gAR.map((v, i) => v - muxy[i]);
+  const total = prodN(D);
+  const map = new Array(total);
+  const expOnes = exponents[0] === 1 && exponents[1] === 1 && exponents[2] === 1;
+  if (C[2] === C[1] / 2 && expOnes) {
+    for (let i = 0; i < total; i++) {
+      const num = (2 * muxy[i] + C[0]) * (2 * sigmaxy[i] + C[1]);
+      const den = (mux2[i] + muy2[i] + C[0]) * (sigmax2[i] + sigmay2[i] + C[1]);
+      map[i] = (C[0] > 0 && C[1] > 0) ? num / den : (den !== 0 ? num / den : 1);
+    }
+  } else {
+    for (let i = 0; i < total; i++) {
+      let v = 1;
+      if (exponents[0] > 0) { const num = 2 * muxy[i] + C[0], den = mux2[i] + muy2[i] + C[0]; let c = C[0] > 0 ? num / den : (den !== 0 ? num / den : 1); if (exponents[0] !== Math.floor(exponents[0])) c = Math.max(c, 0); v *= c ** exponents[0]; }
+      const ss = Math.sqrt(sigmax2[i] * sigmay2[i]);
+      if (exponents[1] > 0) { const num = 2 * ss + C[1], den = sigmax2[i] + sigmay2[i] + C[1]; let c = C[1] > 0 ? num / den : (den !== 0 ? num / den : 1); if (exponents[1] !== Math.floor(exponents[1])) c = Math.max(c, 0); v *= c ** exponents[1]; }
+      if (exponents[2] > 0) { const num = sigmaxy[i] + C[2], den = ss + C[2]; let c = C[2] > 0 ? num / den : (den !== 0 ? num / den : 1); if (exponents[2] !== Math.floor(exponents[2])) c = Math.max(c, 0); v *= c ** exponents[2]; }
+      map[i] = v;
+    }
+  }
+  const ssimval = map.reduce((p, x) => p + x, 0) / total;
+  void mux; void muy;
+  if (nargout >= 2) return [scalar(ssimval), ndMat(map, D)];
+  return [scalar(ssimval)];
 }

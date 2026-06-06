@@ -712,6 +712,198 @@ function acrubondImpl(args: Value[]): Value {
   return out.length === 1 ? scalar(out[0]) : colVec(out);
 }
 
+// ── Bond price/yield/duration/convexity (cfamounts-based) ───────────────────────────
+// Faithful subset of the Financial Toolbox bond suite for plain numeric args. Covers the
+// regular and odd-first-period paths via the existing coupon-date machinery. Conventions:
+//   • Cash flows: each coupon = Face*CouponRate/Period; the last adds Face.
+//   • Accrued interest uses the accrual Basis (accrfraci, as in cfamounts/acrubond).
+//   • TFactors (time factors, in coupon periods) are ALWAYS actual/actual (the SIA default
+//     DiscountBasis): TF(first coupon) = (nextQuasi-Settle)/(nextQuasi-prevQuasi), then +1.
+//   • Compounding frequency = Period for the discount exponent base (1+Yield/Freq), where
+//     Freq defaults to 2 for SIA bases (0-7,13) and 1 for ISMA bases (8-12).
+interface BondCF { cf: number[]; tf: number[]; accrued: number; freq: number; }
+
+/** cfamounts core for a single bond from plain args. EndMonthRule=1, no issue/first/last. */
+function bondCfamounts(coupon: number, settle: number, maturity: number, period: number, basis: number, face: number): BondCF {
+  const per = period === 0 ? (isISMABasis(basis) ? 1 : 2) : period;
+  const prevQ = cpndatepq(settle, maturity, per, 1, NaN, NaN);
+  const nextQ = cpndatenq(settle, maturity, per, 1, NaN, NaN);
+  // Actual/actual time fraction to the next quasi-coupon date.
+  const timeFraction = (nextQ - settle) / (nextQ - prevQ);
+  // Coupon dates from the next actual coupon to maturity.
+  const firstCoupon = cpndaten(settle, maturity, per, 1, NaN, NaN);
+  const dates: number[] = [];
+  let d = firstCoupon;
+  // walk coupon dates forward until maturity (inclusive) via dateoffset on maturity's day.
+  const [my, mm, md] = ymd(maturity);
+  let k = 0;
+  // number of whole periods between firstCoupon and maturity
+  const [fy, fm] = ymd(firstCoupon);
+  const monthsBetween = 12 * (my - fy) + (mm - fm);
+  const nWhole = Math.round(monthsBetween * per / 12);
+  for (k = 0; k <= nWhole; k++) {
+    const [cd, cmo, cyr] = dateoffset(md, mm, my, -(12 / per) * (nWhole - k), 0);
+    dates.push(datenum(cyr, cmo, cd));
+    void fm; void d;
+  }
+  d = dates[dates.length - 1];
+  const couponAmt = face * coupon / per;
+  const cfAll: number[] = []; const tfAll: number[] = [];
+  const accFrac = accrfraci(settle, maturity, period, basis, 1, NaN, NaN, NaN);
+  const accrued = Math.abs(face * (coupon / per) * accFrac);
+  cfAll.push(-accrued); tfAll.push(0);
+  for (let i = 0; i < dates.length; i++) {
+    let amt = couponAmt;
+    if (i === dates.length - 1) amt += face;
+    cfAll.push(amt);
+    tfAll.push(timeFraction + i);
+  }
+  const freq = isISMABasis(basis) ? 1 : 2;
+  return { cf: cfAll, tf: tfAll, accrued, freq };
+}
+
+/** Dirty price = sum CF*(1+y/freq)^(-TF). */
+function bondDirtyPrice(b: BondCF, yld: number): number {
+  let p = 0;
+  for (let i = 0; i < b.cf.length; i++) p += b.cf[i] / (1 + yld / b.freq) ** b.tf[i];
+  return p;
+}
+
+function bondScalarArgs(a: Value[], ctx: string): { settle: number; maturity: number; period: number; basis: number; face: number } {
+  const settle = asScalarSerial(a[2], ctx);
+  const maturity = asScalarSerial(a[3], ctx);
+  const period = a.length > 4 && isMat(a[4]) && (a[4] as Mat).rows ? Math.round(asScalar(a[4])) : 2;
+  const basis = a.length > 5 && isMat(a[5]) && (a[5] as Mat).rows ? Math.round(asScalar(a[5])) : 0;
+  const face = a.length > 11 && isMat(a[11]) && (a[11] as Mat).rows ? asScalar(a[11]) : 100;
+  return { settle, maturity, period, basis, face };
+}
+
+/** bndprice(Yield,CouponRate,Settle,Maturity[,Period,Basis,...,Face]) → [Price, AccruedInt]. */
+function bndpriceImpl(a: Value[]): Value[] {
+  const yld = asScalar(a[0]); const coupon = asScalar(a[1]);
+  const { settle, maturity, period, basis, face } = bondScalarArgs(a, 'bndprice');
+  const b = bondCfamounts(coupon, settle, maturity, period, basis, face);
+  // Sum of ALL cash flows (including the -accrued term at t=0) is the clean price.
+  const clean = bondDirtyPrice(b, yld);
+  return [scalar(clean), scalar(b.accrued)];
+}
+
+/** bndyield(Price,CouponRate,Settle,Maturity[,...]) → Yield (solve dirty price). */
+function bndyieldImpl(a: Value[]): Value {
+  const price = asScalar(a[0]); const coupon = asScalar(a[1]);
+  const { settle, maturity, period, basis, face } = bondScalarArgs(a, 'bndyield');
+  const b = bondCfamounts(coupon, settle, maturity, period, basis, face);
+  // bondDirtyPrice sums all CFs (incl. -accrued at t=0) → clean price; solve to match Price.
+  const f = (y: number) => bondDirtyPrice(b, y) - price;
+  // Bracket then bisection (price is monotone decreasing in yield).
+  let lo = -0.99 * b.freq + 1e-9, hi = 1.0;
+  let flo = f(lo), fhi = f(hi);
+  let tries = 0;
+  while (flo * fhi > 0 && tries < 60) { hi *= 1.5; fhi = f(hi); tries++; }
+  if (flo * fhi > 0) return scalar(NaN);
+  for (let i = 0; i < 200; i++) {
+    const mid = 0.5 * (lo + hi); const fm = f(mid);
+    if (Math.abs(fm) < 1e-12 || (hi - lo) < 1e-15) { lo = hi = mid; break; }
+    if (flo * fm < 0) { hi = mid; fhi = fm; } else { lo = mid; flo = fm; }
+  }
+  return scalar(0.5 * (lo + hi));
+}
+
+/** Periodic Macaulay duration A/B from cfamounts + yield. */
+function bondDuration(b: BondCF, yld: number): { per: number; year: number; mod: number } {
+  let A = 0, B = 0;
+  for (let i = 1; i < b.cf.length; i++) {
+    const disc = b.cf[i] / (1 + yld / b.freq) ** b.tf[i];
+    A += b.tf[i] * disc; B += disc;
+  }
+  const per = A / B;
+  const year = per / b.freq;
+  const mod = year / (1 + yld / b.freq);
+  return { per, year, mod };
+}
+
+/** Periodic/yearly convexity from cfamounts + yield. */
+function bondConvexity(b: BondCF, yld: number): { per: number; year: number } {
+  let A = 0, C = 0;
+  for (let i = 1; i < b.cf.length; i++) {
+    const tf1 = b.tf[i]; const tf2 = 1 + tf1;
+    const base = (1 + yld / b.freq) ** tf1;
+    A += tf1 * tf2 * b.cf[i] / base;
+    C += b.cf[i] / base;
+  }
+  const Bden = (1 + yld / b.freq) ** 2;
+  const per = A / (Bden * C);
+  const year = per / b.freq ** 2;
+  return { per, year };
+}
+
+/** bnddury(Yield,CouponRate,Settle,Maturity[,...]) → [ModDuration, YearDuration, PerDuration]. */
+function bnddffuryImpl(a: Value[]): Value[] {
+  const yld = asScalar(a[0]); const coupon = asScalar(a[1]);
+  const { settle, maturity, period, basis, face } = bondScalarArgs(a, 'bnddury');
+  const b = bondCfamounts(coupon, settle, maturity, period, basis, face);
+  const dur = bondDuration(b, yld);
+  return [scalar(dur.mod), scalar(dur.year), scalar(dur.per)];
+}
+
+/** bnddurp(Price,CouponRate,Settle,Maturity[,...]) → [ModDuration, YearDuration, PerDuration]. */
+function bnddurpImpl(a: Value[]): Value[] {
+  const yld = asScalar(bndyieldImpl(a));
+  const ya = [scalar(yld), ...a.slice(1)];
+  return bnddffuryImpl(ya);
+}
+
+/** bndconvy(Yield,...) → [YearConvexity, PerConvexity]. */
+function bndconvyImpl(a: Value[]): Value[] {
+  const yld = asScalar(a[0]); const coupon = asScalar(a[1]);
+  const { settle, maturity, period, basis, face } = bondScalarArgs(a, 'bndconvy');
+  const b = bondCfamounts(coupon, settle, maturity, period, basis, face);
+  const cv = bondConvexity(b, yld);
+  return [scalar(cv.year), scalar(cv.per)];
+}
+
+/** bndconvp(Price,...) → [YearConvexity, PerConvexity]. */
+function bndconvpImpl(a: Value[]): Value[] {
+  const yld = asScalar(bndyieldImpl(a));
+  return bndconvyImpl([scalar(yld), ...a.slice(1)]);
+}
+
+// ── ts2func — encapsulate a time series as a zero-order-hold function of time ─────────
+function ts2funcImpl(a: Value[]): Value {
+  const arr = m(a[0]);
+  // parse optional 'Times' name/value pair.
+  let times: number[] | null = null;
+  for (let i = 1; i + 1 < a.length; i += 2) {
+    const ai = a[i];
+    let nm = '';
+    if (isStr(ai)) nm = ai.items[0] ?? '';
+    else if (isMat(ai) && ai.isChar) nm = Array.from(ai.data).map((c) => String.fromCharCode(c)).join('');
+    if (nm.toLowerCase() === 'times') times = toArray(m(a[i + 1]));
+  }
+  // Interpret the array as a time series: rows = time (TimeDimension default 1).
+  const isVec = arr.rows === 1 || arr.cols === 1;
+  const nTime = isVec ? arr.rows * arr.cols : arr.rows;
+  const nVars = isVec ? 1 : arr.cols;
+  if (!times) { times = []; for (let i = 0; i < nTime; i++) times.push(i); }
+  // Row r as a column vector (NVARS x 1).
+  const rowOf = (r: number): Value => {
+    if (isVec) return scalar(arr.data[r]);
+    const out = new Float64Array(nVars);
+    for (let c = 0; c < nVars; c++) out[c] = arr.data[r + c * arr.rows];
+    return colVec(Array.from(out));
+  };
+  const tArr = times;
+  const call = (cargs: Value[]): Promise<Value[]> => {
+    const t = asScalar(cargs[0]);
+    // zero-order hold: largest index with times <= t; if t < times(1) → first.
+    let idx = 0;
+    if (t < tArr[0]) idx = 0;
+    else { idx = 0; for (let i = 0; i < tArr.length; i++) if (tArr[i] <= t) idx = i; }
+    return Promise.resolve([rowOf(idx)]);
+  };
+  return { kind: 'handle', name: 'ts2func', call } as Value;
+}
+
 // prcroc — Price Rate-Of-Change technical indicator (faithful port of prcroc.m).
 // PriceChangeRate(k) = (P(k) - P(k-N+1)) / P(k-N+1) * 100, NaN-padded for the first N-1.
 function prcrocImpl(args: Value[]): Value {
@@ -856,6 +1048,15 @@ export const FINANCIAL: ToolboxModule = {
     acrubond: (a) => ret(acrubondImpl(a)),
     prcroc: (a) => ret(prcrocImpl(a)),
 
+    // ── bond price / yield / duration / convexity (scalar plain-numeric forms) ──
+    bndprice: (a, nargout) => { const r = bndpriceImpl(a); return Promise.resolve((nargout ?? 1) >= 2 ? r : [r[0]]); },
+    bndyield: (a) => ret(bndyieldImpl(a)),
+    bnddury: (a, nargout) => { const r = bnddffuryImpl(a); return Promise.resolve((nargout ?? 1) >= 2 ? r.slice(0, nargout) : [r[0]]); },
+    bnddurp: (a, nargout) => { const r = bnddurpImpl(a); return Promise.resolve((nargout ?? 1) >= 2 ? r.slice(0, nargout) : [r[0]]); },
+    bndconvy: (a, nargout) => { const r = bndconvyImpl(a); return Promise.resolve((nargout ?? 1) >= 2 ? r : [r[0]]); },
+    bndconvp: (a, nargout) => { const r = bndconvpImpl(a); return Promise.resolve((nargout ?? 1) >= 2 ? r : [r[0]]); },
+    ts2func: (a) => ret(ts2funcImpl(a)),
+
     // ── portfolio constraint conversions ──
     abs2active: (a) => ret(convertConSet(a[0], a[1], 'abs2active', -1)),
     active2abs: (a) => ret(convertConSet(a[0], a[1], 'active2abs', 1)),
@@ -912,5 +1113,12 @@ export const FINANCIAL: ToolboxModule = {
     prcroc: { summary: 'Price rate-of-change technical indicator', syntax: ['PriceChangeRate = prcroc(Data)', 'PriceChangeRate = prcroc(Data,Name,Value)'], description: ['PriceChangeRate = prcroc(Data) calculates the price rate-of-change from closing prices, defined as (Price(t) - Price(t-n)) / Price(t-n) * 100.', 'Input Data can be a numeric vector, timetable, or table.'], seealso: ['rsindex', 'macd', 'volroc'] },
     abs2active: { summary: 'Transform absolute constraint matrix to active-weight format', syntax: ['ActiveConSet = abs2active(AbsConSet,Index)'], description: ['ActiveConSet = abs2active(AbsConSet,Index) transforms a constraint matrix expressed in absolute portfolio weights to an equivalent matrix in active weights (relative to benchmark Index).', 'Use this when the optimizer requires active-weight constraints but your constraints are in absolute terms.'], seealso: ['active2abs', 'pcalims', 'pcglims', 'portcons'] },
     active2abs: { summary: 'Transform active-weight constraint matrix to absolute format', syntax: ['AbsConSet = active2abs(ActiveConSet,Index)'], description: ['AbsConSet = active2abs(ActiveConSet,Index) transforms a constraint matrix expressed in active weights (relative to Index) back to absolute portfolio weight format.'], seealso: ['abs2active', 'pcalims', 'pcglims', 'portcons'] },
+    bndprice: { summary: 'Price a fixed-income security from yield to maturity', syntax: ['[Price,AccruedInt] = bndprice(Yield,CouponRate,Settle,Maturity)', '[Price,AccruedInt] = bndprice(Yield,CouponRate,Settle,Maturity,Period,Basis)'], description: ['[Price,AccruedInt] = bndprice(Yield,CouponRate,Settle,Maturity) returns the clean price per $100 face value and the accrued interest of a coupon bond, given its yield to maturity.', 'For SIA conventions Price + AccruedInt = sum(CashFlow*(1+Yield/2)^(-Time)); ISMA bases use annual compounding. Period (default 2) is coupons per year, Basis (default 0 = actual/actual) the day-count, and Face (default 100) the face value.'], seealso: ['bndyield', 'bnddurp', 'bndconvp', 'cfamounts'] },
+    bndyield: { summary: 'Yield to maturity of a fixed-income security from price', syntax: ['Yield = bndyield(Price,CouponRate,Settle,Maturity)', 'Yield = bndyield(Price,CouponRate,Settle,Maturity,Period,Basis)'], description: ['Yield = bndyield(Price,CouponRate,Settle,Maturity) returns the yield to maturity of a coupon bond given its clean price per $100 face value. The yield is found by inverting the bndprice relationship.'], seealso: ['bndprice', 'bnddury', 'bndconvy'] },
+    bnddurp: { summary: 'Bond duration given price', syntax: ['[ModDuration,YearDuration,PerDuration] = bnddurp(Price,CouponRate,Settle,Maturity)', '[...] = bnddurp(Price,CouponRate,Settle,Maturity,Period,Basis)'], description: ['[ModDuration,YearDuration,PerDuration] = bnddurp(Price,CouponRate,Settle,Maturity) returns the modified, annualized (Macaulay) and periodic Macaulay durations of a coupon bond, computing the yield from Price first.'], seealso: ['bnddury', 'bndconvp', 'bndprice'] },
+    bnddury: { summary: 'Bond duration given yield', syntax: ['[ModDuration,YearDuration,PerDuration] = bnddury(Yield,CouponRate,Settle,Maturity)', '[...] = bnddury(Yield,CouponRate,Settle,Maturity,Period,Basis)'], description: ['[ModDuration,YearDuration,PerDuration] = bnddury(Yield,CouponRate,Settle,Maturity) returns the modified, annualized (Macaulay) and periodic Macaulay durations of a coupon bond given its yield to maturity.'], seealso: ['bnddurp', 'bndconvy', 'bndyield'] },
+    bndconvp: { summary: 'Bond convexity given price', syntax: ['[YearConvexity,PerConvexity] = bndconvp(Price,CouponRate,Settle,Maturity)', '[...] = bndconvp(Price,CouponRate,Settle,Maturity,Period,Basis)'], description: ['[YearConvexity,PerConvexity] = bndconvp(Price,CouponRate,Settle,Maturity) returns the annualized and periodic convexity of a coupon bond, computing the yield from Price first.'], seealso: ['bndconvy', 'bnddurp', 'bndprice'] },
+    bndconvy: { summary: 'Bond convexity given yield', syntax: ['[YearConvexity,PerConvexity] = bndconvy(Yield,CouponRate,Settle,Maturity)', '[...] = bndconvy(Yield,CouponRate,Settle,Maturity,Period,Basis)'], description: ['[YearConvexity,PerConvexity] = bndconvy(Yield,CouponRate,Settle,Maturity) returns the annualized and periodic convexity of a coupon bond given its yield to maturity.'], seealso: ['bndconvp', 'bnddury', 'bndyield'] },
+    ts2func: { summary: 'Convert a time series array to a function of time', syntax: ['F = ts2func(Array)', "F = ts2func(Array,'Times',TimeVector)"], description: ['F = ts2func(Array) encapsulates a time-series Array within a callable function F(t) suitable for Monte Carlo simulation. Rows of Array correspond to observation times (default 0,1,2,...).', "Calling F(t) performs zero-order-hold interpolation, returning the row at the largest observation time <= t as an NVARS-by-1 column vector. If t precedes the first time, F returns the first observation. Specify custom times with the 'Times' name/value pair."], seealso: ['interp1'] },
   },
 };

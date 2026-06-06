@@ -301,6 +301,136 @@ function cheb1ap(n: number, rp: number): { z: Cx[]; p: Cx[]; k: number } {
   if (n % 2 === 0) kr = kr / Math.sqrt(1 + epsilon * epsilon);   // even-order gain patch
   return { z: [], p, k: kr };
 }
+/** N-th order Chebyshev Type II analog lowpass prototype zeros/poles/gain (cheb2ap), Rs dB stopband. */
+function cheb2ap(n: number, rs: number): { z: Cx[]; p: Cx[]; k: number } {
+  const delta = 1 / Math.sqrt(10 ** (0.1 * rs) - 1);
+  const mu = Math.asinh(1 / delta) / n;
+  // zeros: cos(theta)*pi/(2n) skipping the imaginary-axis center pair when odd
+  const idx: number[] = [];
+  if (n % 2) { for (let i = 1; i <= n - 2; i += 2) idx.push(i); for (let i = n + 2; i <= 2 * n - 1; i += 2) idx.push(i); }
+  else { for (let i = 1; i <= 2 * n - 1; i += 2) idx.push(i); }
+  const mval = n % 2 ? n - 1 : n;
+  let zr = idx.map((i) => Math.cos((i * Math.PI) / (2 * n)));        // real, length m
+  // z = (z - flipud(z))/2  then  z = 1i./z
+  const zsym = zr.map((v, i) => (v - zr[zr.length - 1 - i]) / 2);
+  let zc: Cx[] = zsym.map((v): Cx => cDiv([0, 1], [v, 0]));
+  // reorder into complex pairs: i = [1:m/2; m:-1:m/2+1]; z = z(i(:))
+  const zord: Cx[] = []; const half = mval / 2;
+  for (let r = 0; r < half; r++) { zord.push(zc[r]); zord.push(zc[mval - 1 - r]); }
+  zc = zord;
+  // poles: exp(1i*(pi*(1:2:2n-1)/(2n) + pi/2)); symmetrize; p = 1/p
+  const raw: Cx[] = [];
+  for (let i = 1; i <= 2 * n - 1; i += 2) { const th = (Math.PI * i) / (2 * n) + Math.PI / 2; raw.push([Math.cos(th), Math.sin(th)]); }
+  const N = raw.length, sh = Math.sinh(mu), ch = Math.cosh(mu);
+  const p: Cx[] = [];
+  for (let i = 0; i < N; i++) { const re = (raw[i][0] + raw[N - 1 - i][0]) / 2, im = (raw[i][1] - raw[N - 1 - i][1]) / 2; p.push(cDiv([1, 0], [sh * re, ch * im])); }
+  // k = real(prod(-p)/prod(-z))
+  let pp: Cx = [1, 0]; for (const pi of p) pp = cMul(pp, [-pi[0], -pi[1]]);
+  let pz: Cx = [1, 0]; for (const zi of zc) pz = cMul(pz, [-zi[0], -zi[1]]);
+  const k = cDiv(pp, pz)[0];
+  return { z: zc, p, k };
+}
+// ── elliptic-function helpers (Orfanidis), used by ellipap/ellipord ──
+/** Landen vector of descending moduli (landen.m), tol=eps. */
+function landen(k: number): number[] {
+  const tol = 2.220446049250313e-16; const v: number[] = [];
+  if (k === 0 || k === 1) return [k];
+  while (k > tol) { k = (k / (1 + Math.sqrt(1 - k * k))) ** 2; v.push(k); }
+  return v;
+}
+/** sn elliptic with normalized complex argument (sne.m). */
+function sne(u: Cx, k: number): Cx {
+  const v = landen(k); let w: Cx = [Math.sin((u[0] * Math.PI) / 2) * Math.cosh((u[1] * Math.PI) / 2), Math.cos((u[0] * Math.PI) / 2) * Math.sinh((u[1] * Math.PI) / 2)];
+  for (let n = v.length - 1; n >= 0; n--) { const num = cMul([1 + v[n], 0], w); const den = cAdd([1, 0], cMul([v[n], 0], cMul(w, w))); w = cDiv(num, den); }
+  return w;
+}
+/** cd elliptic with normalized complex argument (cde.m). */
+function cde(u: Cx, k: number): Cx {
+  const v = landen(k); let w: Cx = [Math.cos((u[0] * Math.PI) / 2) * Math.cosh((u[1] * Math.PI) / 2), -Math.sin((u[0] * Math.PI) / 2) * Math.sinh((u[1] * Math.PI) / 2)];
+  for (let n = v.length - 1; n >= 0; n--) { const num = cMul([1 + v[n], 0], w); const den = cAdd([1, 0], cMul([v[n], 0], cMul(w, w))); w = cDiv(num, den); }
+  return w;
+}
+/** Complete elliptic integral K(k) and K'(k) (ellipk.m). */
+function ellipkPair(k: number): [number, number] {
+  const kmin = 1e-6, kmax = Math.sqrt(1 - kmin * kmin); let K: number, Kp: number;
+  if (k === 1) K = Infinity;
+  else if (k > kmax) { const kp = Math.sqrt(1 - k * k), L = -Math.log(kp / 4); K = L + ((L - 1) * kp * kp) / 4; }
+  else { const v = landen(k); K = v.reduce((a, b) => a * (1 + b), 1) * (Math.PI / 2); }
+  if (k === 0) Kp = Infinity;
+  else if (k < kmin) { const L = -Math.log(k / 4); Kp = L + ((L - 1) * k * k) / 4; }
+  else { const kp = Math.sqrt(1 - k * k), vp = landen(kp); Kp = vp.reduce((a, b) => a * (1 + b), 1) * (Math.PI / 2); }
+  return [K, Kp];
+}
+/** Solve the degree equation N*K'/K = K1'/K1 for k (ellipdeg.m, k1>=1e-6 branch). */
+function ellipdeg(N: number, k1: number): number {
+  const L = Math.floor(N / 2); const ui: number[] = []; for (let i = 1; i <= L; i++) ui.push((2 * i - 1) / N);
+  const kc = Math.sqrt(1 - k1 * k1);
+  let prod = 1; for (const u of ui) prod *= sne([u, 0], kc)[0];
+  const kp = kc ** N * prod ** 4;
+  return Math.sqrt(1 - kp * kp);
+}
+/** acos for complex argument. */
+function cAcos(w: Cx): Cx {
+  // acos(w) = -i * log(w + i*sqrt(1-w^2))
+  const one: Cx = [1, 0]; const w2 = cMul(w, w); const s = cSqrtCx(cSub(one, w2));
+  const inside = cAdd(w, cMul([0, 1], s)); const lg = cLogCx(inside);
+  return cMul([0, -1], lg);
+}
+function cSqrtCx(z: Cx): Cx { const r = Math.hypot(z[0], z[1]); const re = Math.sqrt((r + z[0]) / 2); let im = Math.sqrt((r - z[0]) / 2); if (z[1] < 0) im = -im; return [re, im]; }
+function cLogCx(z: Cx): Cx { return [Math.log(Math.hypot(z[0], z[1])), Math.atan2(z[1], z[0])]; }
+function cAsin(w: Cx): Cx { const half: Cx = [Math.PI / 2, 0]; return cSub(half, cAcos(w)); }
+/** Inverse cd (acde.m). */
+function acde(w: Cx, k: number): Cx {
+  const v = landen(k);
+  for (let n = 0; n < v.length; n++) {
+    const v1 = n === 0 ? k : v[n - 1];
+    const w2 = cMul(w, w); const inner = cSub([1, 0], cMul([v1 * v1, 0], w2));
+    const denom = cAdd([1, 0], cSqrtCx(inner));
+    w = cMul(cDiv(w, denom), [2 / (1 + v[n]), 0]);
+  }
+  let u = cMul([2 / Math.PI, 0], cAcos(w));
+  // srem reduction
+  const [K, Kp] = ellipkPair(k); const R = Kp / K;
+  const srem = (x: number, y: number): number => { const z = x - Math.round(x / y) * y; return z; };
+  return [srem(u[0], 4), srem(u[1], 2 * R)];
+}
+/** Inverse sn (asne.m): u = 1 - acde(w,k). */
+function asne(w: Cx, k: number): Cx { const u = acde(w, k); return [1 - u[0], -u[1]]; }
+/** cplxpair-style: sort by real then imag, conj pairs together — emulate MATLAB cplxpair on a conj-closed set. */
+function cplxpairSort(arr: Cx[]): Cx[] {
+  // group conjugate pairs (neg-imag first), append reals sorted ascending
+  const reals = arr.filter((z) => Math.abs(z[1]) < 1e-12 * (1 + Math.abs(z[0]))).map((z): Cx => [z[0], 0]);
+  const cplx = arr.filter((z) => Math.abs(z[1]) >= 1e-12 * (1 + Math.abs(z[0])));
+  cplx.sort((a, b) => (a[0] - b[0]) || (Math.abs(a[1]) - Math.abs(b[1])));
+  const used = new Array(cplx.length).fill(false); const out: Cx[] = [];
+  for (let i = 0; i < cplx.length; i++) { if (used[i]) continue; used[i] = true; let j = -1; for (let l = i + 1; l < cplx.length; l++) { if (!used[l] && Math.abs(cplx[l][0] - cplx[i][0]) < 1e-9 && Math.abs(cplx[l][1] + cplx[i][1]) < 1e-9) { j = l; break; } } if (j >= 0) { used[j] = true; const lo = cplx[i][1] < 0 ? cplx[i] : cplx[j]; const hi = cplx[i][1] < 0 ? cplx[j] : cplx[i]; out.push(lo, hi); } else out.push(cplx[i]); }
+  reals.sort((a, b) => a[0] - b[0]);
+  return out.concat(reals);
+}
+/** N-th order elliptic analog lowpass prototype zeros/poles/gain (ellipap/ellipap2). */
+function ellipap(n: number, rp: number, rs: number): { z: Cx[]; p: Cx[]; k: number } {
+  const Gp = 10 ** (-rp / 20);
+  const ep = Math.sqrt(10 ** (rp / 10) - 1), es = Math.sqrt(10 ** (rs / 10) - 1);
+  const k1 = ep / es; const k = ellipdeg(n, k1);
+  const L = Math.floor(n / 2), r = n % 2;
+  const zr: Cx[] = []; for (let i = 1; i <= L; i++) { const u = (2 * i - 1) / n; const zeta = cde([u, 0], k); zr.push(cDiv([0, 1], cMul([k, 0], zeta))); }
+  // v0 = -1i*asne(j/ep,k1)/n
+  const as = asne([0, 1 / ep], k1); const v0: Cx = cMul([0, -1 / n], as);
+  const p: Cx[] = []; for (let i = 1; i <= L; i++) { const u = (2 * i - 1) / n; const arg: Cx = cSub([u, 0], cMul([0, 1], v0)); p.push(cMul([0, 1], cde(arg, k))); }
+  let p0: Cx = [0, 0]; if (r === 1) p0 = cMul([0, 1], sne(cMul([0, 1], v0), k));
+  // assemble z and p with conjugates
+  const zAll: Cx[] = []; for (const zi of zr) zAll.push(zi); for (const zi of zr) zAll.push([zi[0], -zi[1]]);
+  const pAll: Cx[] = []; for (const pi of p) pAll.push(pi); for (const pi of p) pAll.push([pi[0], -pi[1]]);
+  let zOut = cplxpairSort(zAll); let pOut = cplxpairSort(pAll);
+  if (r === 1) pOut = pOut.concat([[p0[0], 0]]);
+  const H0 = Gp ** (1 - r);
+  // k_gain = abs(H0*prod(p)/prod(z))
+  let prodP: Cx = [1, 0]; for (const pi of pOut) prodP = cMul(prodP, pi);
+  let prodZ: Cx = [1, 0]; for (const zi of zOut) prodZ = cMul(prodZ, zi);
+  const ratio = zOut.length ? cDiv(cMul([H0, 0], prodP), prodZ) : cMul([H0, 0], prodP);
+  const kg = Math.hypot(ratio[0], ratio[1]);
+  return { z: zOut, p: pOut, k: kg };
+}
 /** lp2lp on zpk: s → s/Wo. Scales zeros/poles by Wo and gain by Wo^(np-nz). */
 function lp2lpZpk(z: Cx[], p: Cx[], k: number, wo: number): { z: Cx[]; p: Cx[]; k: number } {
   const zn = z.map((v): Cx => [v[0] * wo, v[1] * wo]);
@@ -1326,8 +1456,112 @@ export const SIGNAL: ToolboxModule = {
       const { b, a: den } = zpk2tf(z, p, k);
       return Promise.resolve(nargout >= 2 ? [rowVec(b), rowVec(den)] : [rowVec(b)]);
     },
+    // ── [b,a] = cheby2(n,Rs,Ws[,ftype]) — Chebyshev Type II IIR (lowpass/highpass, digital) ──
+    cheby2: (a, nargout) => {
+      const n = Math.round(asScalar(a[0])); const Rs = asScalar(a[1]); const Ws = asScalar(a[2]);
+      const ftype = a.length >= 4 && (isStr(a[3]) || (isMat(a[3]) && (a[3] as Mat).isChar)) ? asString(a[3]).toLowerCase() : '';
+      const high = ftype.startsWith('high');
+      const fs = 2; const u = 2 * fs * Math.tan((Math.PI * Ws) / fs);    // prewarp
+      let { z, p, k } = cheb2ap(n, Rs);                                  // analog prototype
+      ({ z, p, k } = high ? lp2hpZpk(z, p, k, u) : lp2lpZpk(z, p, k, u));
+      ({ z, p, k } = bilinearZpk(z, p, k, fs));                          // → digital
+      const { b, a: den } = zpk2tf(z, p, k);
+      return Promise.resolve(nargout >= 2 ? [rowVec(b), rowVec(den)] : [rowVec(b)]);
+    },
+    // ── [b,a] = ellip(n,Rp,Rs,Wp[,ftype]) — elliptic IIR (lowpass/highpass, digital) ──
+    ellip: (a, nargout) => {
+      const n = Math.round(asScalar(a[0])); const Rp = asScalar(a[1]); const Rs = asScalar(a[2]); const Wp = asScalar(a[3]);
+      const ftype = a.length >= 5 && (isStr(a[4]) || (isMat(a[4]) && (a[4] as Mat).isChar)) ? asString(a[4]).toLowerCase() : '';
+      const high = ftype.startsWith('high');
+      const fs = 2; const u = 2 * fs * Math.tan((Math.PI * Wp) / fs);    // prewarp
+      let { z, p, k } = ellipap(n, Rp, Rs);                             // analog prototype
+      ({ z, p, k } = high ? lp2hpZpk(z, p, k, u) : lp2lpZpk(z, p, k, u));
+      ({ z, p, k } = bilinearZpk(z, p, k, fs));                          // → digital
+      const { b, a: den } = zpk2tf(z, p, k);
+      return Promise.resolve(nargout >= 2 ? [rowVec(b), rowVec(den)] : [rowVec(b)]);
+    },
+    // ── b = fir2(n,f,m[,npt][,lap][,window]) — frequency-sampled FIR via inverse FFT + window ──
+    fir2: (a) => {
+      let nn = Math.round(asScalar(a[0])); const ff = toArray(m(a[1])).slice(); const aa = toArray(m(a[2])).slice();
+      nn = nn + 1;                                       // filter length
+      let npt = nn < 1024 ? 512 : 2 ** Math.ceil(Math.log(nn) / Math.log(2));
+      const lap = Math.trunc(npt / 25);
+      const wind = a.length >= 6 && isMat(a[5]) ? toArray(m(a[5])) : hammingWin(nn);
+      const nbrk = aa.length; ff[0] = 0; ff[nbrk - 1] = 1;
+      const df: number[] = []; for (let i = 0; i + 1 < nbrk; i++) df.push(ff[i + 1] - ff[i]);
+      const nint = nbrk - 1; const nptp = npt + 1;       // length of [dc..nyquist]
+      const H = new Array(nptp).fill(0); let nb = 1; H[0] = aa[0];        // 1-indexed conceptually
+      for (let i = 0; i < nint; i++) {
+        let ne: number;
+        if (df[i] === 0) { nb = Math.ceil(nb - lap / 2); ne = nb + lap; }
+        else ne = Math.trunc(ff[i + 1] * nptp);
+        for (let j = nb; j <= ne; j++) { const inc = nb === ne ? 0 : (j - nb) / (ne - nb); H[j - 1] = inc * aa[i + 1] + (1 - inc) * aa[i]; }
+        nb = ne + 1;
+      }
+      // apply linear phase delay dt = 0.5*(nn-1)
+      const dt = 0.5 * (nn - 1); const Hr = new Array(nptp), Hi = new Array(nptp);
+      for (let kk = 0; kk < nptp; kk++) { const ang = -dt * Math.PI * kk / (nptp - 1); Hr[kk] = H[kk] * Math.cos(ang); Hi[kk] = H[kk] * Math.sin(ang); }
+      // mirror to full spectrum (conj of H(npt-1:-1:2) in 1-index → indices nptp-2..1)
+      const fullR = Hr.slice(), fullI = Hi.slice();
+      for (let kk = nptp - 2; kk >= 1; kk--) { fullR.push(Hr[kk]); fullI.push(-Hi[kk]); }
+      const Nf = fullR.length; const ht = idftCol(fullR, fullI, Nf).re;
+      const b = new Array(nn); for (let i = 0; i < nn; i++) b[i] = ht[i] * wind[i];
+      return ret(rowVec(b));
+    },
+    // ── [n,Wn] = buttord(Wp,Ws,Rp,Rs) — Butterworth order estimate (lowpass/highpass digital) ──
+    buttord: (a, nargout) => {
+      const wp = asScalar(a[0]), ws = asScalar(a[1]), rp = asScalar(a[2]), rs = asScalar(a[3]);
+      const high = wp >= ws;
+      const WP = Math.tan((Math.PI * wp) / 2), WS = Math.tan((Math.PI * ws) / 2);
+      const WA = Math.abs(high ? WP / WS : WS / WP);
+      const order = Math.ceil(Math.log10((10 ** (0.1 * Math.abs(rs)) - 1) / (10 ** (0.1 * Math.abs(rp)) - 1)) / (2 * Math.log10(WA)));
+      const W0 = WA / (10 ** (0.1 * Math.abs(rs)) - 1) ** (1 / (2 * Math.abs(order)));
+      const WN = high ? WP / W0 : W0 * WP;
+      const wn = (2 / Math.PI) * Math.atan(WN);
+      return Promise.resolve(nargout >= 2 ? [scalar(order), scalar(wn)] : [scalar(order)]);
+    },
+    // ── [n,Wn] = cheb1ord(Wp,Ws,Rp,Rs) — Chebyshev I order estimate (lowpass/highpass digital) ──
+    cheb1ord: (a, nargout) => {
+      const wp = asScalar(a[0]), ws = asScalar(a[1]), rp = asScalar(a[2]), rs = asScalar(a[3]);
+      const high = wp >= ws;
+      const WPA = Math.tan((Math.PI * wp) / 2), WSA = Math.tan((Math.PI * ws) / 2);
+      const WA = Math.abs(high ? WPA / WSA : WSA / WPA);
+      const order = Math.ceil(Math.acosh(Math.sqrt((10 ** (0.1 * Math.abs(rs)) - 1) / (10 ** (0.1 * Math.abs(rp)) - 1))) / Math.acosh(WA));
+      return Promise.resolve(nargout >= 2 ? [scalar(order), scalar(wp)] : [scalar(order)]);
+    },
+    // ── [n,Wn] = cheb2ord(Wp,Ws,Rp,Rs) — Chebyshev II order estimate (lowpass/highpass digital) ──
+    cheb2ord: (a, nargout) => {
+      const wp = asScalar(a[0]), ws = asScalar(a[1]), rp = asScalar(a[2]), rs = asScalar(a[3]);
+      const high = wp >= ws;
+      const WPA = Math.tan((Math.PI * wp) / 2), WSA = Math.tan((Math.PI * ws) / 2);
+      const WA = Math.abs(high ? WPA / WSA : WSA / WPA);
+      const order = Math.ceil(Math.acosh(Math.sqrt((10 ** (0.1 * Math.abs(rs)) - 1) / (10 ** (0.1 * Math.abs(rp)) - 1))) / Math.acosh(WA));
+      // wn = ws (the digital stopband edge) per cheb2ord.m
+      return Promise.resolve(nargout >= 2 ? [scalar(order), scalar(ws)] : [scalar(order)]);
+    },
+    // ── [n,Wn] = ellipord(Wp,Ws,Rp,Rs) — elliptic order estimate (lowpass/highpass digital) ──
+    ellipord: (a, nargout) => {
+      const wp = asScalar(a[0]), ws = asScalar(a[1]), rp = asScalar(a[2]), rs = asScalar(a[3]);
+      const high = wp >= ws;
+      const WP = Math.tan((Math.PI * wp) / 2), WS = Math.tan((Math.PI * ws) / 2);
+      const WA = Math.abs(high ? WP / WS : WS / WP);
+      const epsilon = Math.sqrt(10 ** (0.1 * rp) - 1);
+      const k1 = epsilon / Math.sqrt(10 ** (0.1 * rs) - 1);
+      const kk = 1 / WA;
+      const [capk, capkp] = ellipkPair(kk);              // ellipke([k^2 1-k^2]) -> K(k),K(k')
+      const [capk1, capk1p] = ellipkPair(k1);
+      const order = Math.ceil((capk * capk1p) / (capkp * capk1));
+      return Promise.resolve(nargout >= 2 ? [scalar(order), scalar(wp)] : [scalar(order)]);
+    },
   },
   help: {
+    cheby2: { summary: 'Designs an order n lowpass digital Chebyshev Type II filter with normalized stopband edge frequency Ws and stopband attenuation Rs dB.', syntax: ['[b,a] = cheby2(n,Rs,Ws)', '[b,a] = cheby2(n,Rs,Ws,ftype)'], seealso: ['cheb2ap', 'cheb2ord', 'butter', 'cheby1', 'ellip'] },
+    ellip: { summary: 'Designs an order n lowpass digital elliptic filter with normalized passband edge frequency Wp, Rp dB of passband ripple, and Rs dB of stopband attenuation.', syntax: ['[b,a] = ellip(n,Rp,Rs,Wp)', '[b,a] = ellip(n,Rp,Rs,Wp,ftype)'], seealso: ['ellipap', 'ellipord', 'butter', 'cheby1', 'cheby2'] },
+    fir2: { summary: 'Returns an order n FIR filter with frequency-magnitude characteristics specified in the vectors f and m, designed by inverse Fourier transform and windowing.', syntax: ['b = fir2(n,f,m)', 'b = fir2(n,f,m,npt)', 'b = fir2(n,f,m,npt,lap)', 'b = fir2(___,window)'], seealso: ['fir1', 'firls', 'firpm', 'cfirpm'] },
+    buttord: { summary: 'Returns the lowest order n of the digital Butterworth filter with normalized passband edge Wp, stopband edge Ws, Rp dB passband ripple, and Rs dB stopband attenuation, plus the Butterworth natural frequency Wn.', syntax: ['[n,Wn] = buttord(Wp,Ws,Rp,Rs)'], seealso: ['butter', 'cheb1ord', 'cheb2ord', 'ellipord'] },
+    cheb1ord: { summary: 'Returns the lowest order n of the Chebyshev Type I filter that loses no more than Rp dB in the passband and has at least Rs dB of attenuation in the stopband, with cutoff Wn.', syntax: ['[n,Wn] = cheb1ord(Wp,Ws,Rp,Rs)'], seealso: ['cheby1', 'buttord', 'cheb2ord', 'ellipord'] },
+    cheb2ord: { summary: 'Returns the lowest order n of the Chebyshev Type II filter that loses no more than Rp dB in the passband and has at least Rs dB of attenuation in the stopband, with cutoff Wn.', syntax: ['[n,Wn] = cheb2ord(Wp,Ws,Rp,Rs)'], seealso: ['cheby2', 'buttord', 'cheb1ord', 'ellipord'] },
+    ellipord: { summary: 'Returns the lowest order n of the elliptic filter that loses no more than Rp dB in the passband and has at least Rs dB of attenuation in the stopband, with cutoff Wn.', syntax: ['[n,Wn] = ellipord(Wp,Ws,Rp,Rs)'], seealso: ['ellip', 'buttord', 'cheb1ord', 'cheb2ord'] },
     lin2mu: { summary: 'Convert linear to mu-law compressed values (G.711)', syntax: ['y = lin2mu(x)'], seealso: ['mu2lin'] },
     xcorr2: { summary: '2-D cross-correlation', syntax: ['c = xcorr2(a,b)', 'c = xcorr2(a)'], seealso: ['xcorr', 'conv2'] },
     qmf: { summary: 'Quadrature mirror filter', syntax: ['y = qmf(x)', 'y = qmf(x,p)'], seealso: ['wfilters'] },

@@ -476,6 +476,175 @@ function binopdfS(k: number, n: number, p: number): number { if (k < 0 || k > n)
 function binocdfS(k: number, n: number, p: number): number { k = Math.floor(k); if (k < 0) return 0; if (k >= n) return 1; return betainc(1 - p, n - k, k + 1); }
 /** Binomial inverse: smallest k with cdf(k) >= pr. */
 function binoinvS(pr: number, n: number, p: number): number { for (let k = 0; k <= n; k++) if (binocdfS(k, n, p) >= pr - 1e-12) return k; return n; }
+
+// ── bivariate/multivariate normal CDF (Genz) ────────────────────────────────
+const BVN_W = [
+  [0.1713244923791705, 0.3607615730481384, 0.4679139345726904],
+  [0.04717533638651177, 0.1069393259953183, 0.1600783285433464, 0.2031674267230659, 0.2334925365383547, 0.2491470458134029],
+  [0.01761400713915212, 0.04060142980038694, 0.06267204833410906, 0.08327674157670475, 0.1019301198172404, 0.1181945319615184, 0.1316886384491766, 0.1420961093183821, 0.1491729864726037, 0.1527533871307259],
+];
+const BVN_X = [
+  [-0.9324695142031522, -0.6612093864662647, -0.2386191860831970],
+  [-0.9815606342467191, -0.9041172563704750, -0.7699026741943050, -0.5873179542866171, -0.3678314989981802, -0.1252334085114692],
+  [-0.9931285991850949, -0.9639719272779138, -0.9122344282513259, -0.8391169718222188, -0.7463319064601508, -0.6360536807265150, -0.5108670019508271, -0.3737060887154196, -0.2277858511416451, -0.07652652113349733],
+];
+/** Upper-tail bivariate normal P(X>=h, Y>=k), correlation r — Genz BVNU (tvpack). */
+function bvnu(h: number, k: number, r: number): number {
+  const phi = (z: number) => 0.5 * erfc(-z / Math.SQRT2);
+  if (!Number.isFinite(h) && h > 0) return 0;
+  if (!Number.isFinite(k) && k > 0) return 0;
+  if (!Number.isFinite(h)) return phi(-k);
+  if (!Number.isFinite(k)) return phi(-h);
+  const ar = Math.abs(r);
+  const idx = ar < 0.3 ? 0 : ar < 0.75 ? 1 : 2;
+  const w = BVN_W[idx], x = BVN_X[idx], lg = w.length;
+  const hk = h * k; let bvn = 0;
+  if (ar < 0.925) {
+    const hs = (h * h + k * k) / 2, asr = Math.asin(r) / 2;
+    for (let i = 0; i < lg; i++) for (const sgn of [-1, 1]) {
+      const sn = Math.sin(asr * (sgn * x[i] + 1));
+      bvn += w[i] * Math.exp((sn * hk - hs) / (1 - sn * sn));
+    }
+    bvn = bvn * asr / (2 * Math.PI) + phi(-h) * phi(-k);
+  } else {
+    let kk = k, hkk = hk;
+    if (r < 0) { kk = -k; hkk = -hk; }
+    const a = Math.sqrt(1 - r * r), b = Math.abs(h - kk), bs = b * b, c = (4 - hkk) / 8, d = (12 - hkk) / 16;
+    let asr = -(bs / (a * a) + hkk) / 2;
+    if (asr > -100) bvn = a * Math.exp(asr) * (1 - c * (bs - a * a) * (1 - d * bs / 5) / 3 + c * d * a * a * a * a / 5);
+    if (hkk < 100) { const bb = Math.sqrt(bs); bvn -= Math.exp(-hkk / 2) * Math.sqrt(2 * Math.PI) * phi(-bb / a) * bb * (1 - c * bs * (1 - d * bs / 5) / 3); }
+    const aHalf = a / 2;
+    for (let i = 0; i < lg; i++) for (const sgn of [-1, 1]) {
+      const xs = (aHalf * (sgn * x[i] + 1)) ** 2, rs = Math.sqrt(1 - xs);
+      const asr2 = -(bs / xs + hkk) / 2;
+      if (asr2 > -100) bvn += aHalf * w[i] * Math.exp(asr2) * (Math.exp(-hkk * xs / (2 * (1 + rs) * (1 + rs))) / rs - (1 + c * xs * (1 + d * xs)));
+    }
+    bvn = -bvn / (2 * Math.PI);
+    if (r > 0) bvn += phi(-Math.max(h, kk));
+    else { bvn = -bvn; if (kk > h) bvn += phi(kk) - phi(h); }
+  }
+  return Math.max(0, Math.min(1, bvn));
+}
+/** Standard bivariate normal CDF P(X<=h, Y<=k), correlation r. */
+const bvncdf = (h: number, k: number, r: number): number => bvnu(-h, -k, r);
+/** Cholesky lower factor of a symmetric positive-definite matrix (row-major arrays). */
+function chol_(S: number[][]): number[][] {
+  const d = S.length, L = Array.from({ length: d }, () => new Array(d).fill(0));
+  for (let i = 0; i < d; i++) for (let j = 0; j <= i; j++) {
+    let s = S[i][j]; for (let k = 0; k < j; k++) s -= L[i][k] * L[j][k];
+    L[i][j] = i === j ? Math.sqrt(s) : s / L[j][j];
+  }
+  return L;
+}
+/** Correlation matrix + standardized upper limits from covariance Sigma and bounds b (mean 0). */
+function toCorr(Sigma: number[][], b: number[]): { R: number[][]; z: number[] } {
+  const d = b.length, sd = Sigma.map((row, i) => Math.sqrt(row[i]));
+  const R = Sigma.map((row, i) => row.map((v, j) => v / (sd[i] * sd[j])));
+  return { R, z: b.map((v, i) => v / sd[i]) };
+}
+/** P(X<=b) for X~N(0,Sigma), via Genz separation-of-variables (deterministic Gauss-Legendre on
+ *  the (d-1)-cube). d=1 → normal cdf; d=2 → exact bvncdf; d>=3 → nested quadrature. */
+function mvncdfG(Sigma: number[][], b: number[]): number {
+  const d = b.length;
+  if (d === 1) return normcdfS(b[0], 0, Math.sqrt(Sigma[0][0]));
+  if (d === 2) { const { R, z } = toCorr(Sigma, b); return bvncdf(z[0], z[1], R[0][1]); }
+  const C = chol_(Sigma);
+  // 64-node Gauss-Legendre on [0,1] per inner dimension (transform e ~ U via Phi)
+  const { nodes, wts } = gaussLegendre01(48);
+  const Phi = (x: number) => 0.5 * erfc(-x / Math.SQRT2);
+  // recursive: integrate over y_1..y_{d-1}, last factor closed-form
+  const rec = (level: number, y: number[]): number => {
+    // upper bound for component `level`
+    let s = b[level]; for (let k = 0; k < level; k++) s -= C[level][k] * y[k];
+    const lim = s / C[level][level];
+    if (level === d - 1) return Phi(lim);
+    let acc = 0; const e = Phi(lim);
+    for (let g = 0; g < nodes.length; g++) {
+      const u = e * nodes[g]; const yk = norminvStd(u);
+      acc += wts[g] * rec(level + 1, [...y, yk]);
+    }
+    return e * acc;
+  };
+  return rec(0, []);
+}
+/** P(T<=b) for T~multivariate t with correlation R and nu dof, via the scale-mixture
+ *  T = Z/sqrt(W/nu), Z~N(0,R), W~chi2_nu: P = ∫ Phi_R(b·sqrt(w/nu)) f_chi2(w) dw. */
+function mvtcdfG(R: number[][], b: number[], nu: number): number {
+  const d = b.length;
+  // integrate over s where w = nu*s^2 isn't needed; integrate in w with a change of variable.
+  // Use w = nu * exp(t) won't be finite-bounded; instead Gauss-Legendre over a generous w-range.
+  const { nodes, wts } = gaussLegendre01(96);
+  // map u in (0,1) -> w via inverse-chi2 CDF for good resolution
+  let acc = 0;
+  for (let g = 0; g < nodes.length; g++) {
+    const u = nodes[g];
+    const w = chi2invS(u, nu);            // sample point of W by its own quantile
+    const s = Math.sqrt(w / nu);
+    const bb = b.map((v) => v * s);
+    acc += wts[g] * mvncdfG(R, bb);       // E over W (uniform-quantile average = expectation)
+  }
+  return Math.max(0, Math.min(1, acc));
+}
+/** One-way ANOVA F-test p-value for values x grouped by integer label g. */
+function anova1P(x: number[], g: number[]): number {
+  const byLab = new Map<number, number[]>();
+  x.forEach((v, i) => { if (!byLab.has(g[i])) byLab.set(g[i], []); byLab.get(g[i])!.push(v); });
+  const groups = [...byLab.values()]; const k = groups.length, N = x.length;
+  const gm = x.reduce((s, v) => s + v, 0) / N;
+  let SSB = 0, SSW = 0;
+  for (const grp of groups) { const m0 = mean_(grp); SSB += grp.length * (m0 - gm) ** 2; for (const v of grp) SSW += (v - m0) ** 2; }
+  const dfB = k - 1, dfW = N - k, F = (SSB / dfB) / (SSW / dfW);
+  return fUpperTail(F, dfB, dfW);
+}
+/** Solve L·z = x (forward substitution; L lower-triangular). */
+function solveLowerT(L: number[][], x: number[]): number[] {
+  const d = x.length, z = new Array(d).fill(0);
+  for (let i = 0; i < d; i++) { let s = x[i]; for (let k = 0; k < i; k++) s -= L[i][k] * z[k]; z[i] = s / L[i][i]; }
+  return z;
+}
+/** Build a d×d correlation matrix from a scalar (2×2) or a full matrix value. */
+function corrMat(v: Value, d: number): number[][] {
+  const M = m(v);
+  if (numel(M) === 1) { const r = asScalar(M); return [[1, r], [r, 1]]; }
+  return matRows(M);
+}
+/** Rectangle probability P(xl<=X<=xu) for X~N(mu,Sigma) by inclusion-exclusion over corners. */
+function mvnRect(xl: number[], xu: number[], mu: number[], S: number[][]): number {
+  const d = xu.length; let sum = 0;
+  for (let mask = 0; mask < (1 << d); mask++) {
+    let sign = 1; const b = new Array(d);
+    for (let i = 0; i < d; i++) { if (mask & (1 << i)) { b[i] = xl[i] - mu[i]; sign = -sign; } else b[i] = xu[i] - mu[i]; }
+    sum += sign * mvncdfG(S, b);
+  }
+  return Math.max(0, Math.min(1, sum));
+}
+/** Rectangle probability for multivariate t (correlation C, nu dof). */
+function mvtRect(xl: number[], xu: number[], C: number[][], nu: number): number {
+  const d = xu.length; let sum = 0;
+  for (let mask = 0; mask < (1 << d); mask++) {
+    let sign = 1; const b = new Array(d);
+    for (let i = 0; i < d; i++) { if (mask & (1 << i)) { b[i] = xl[i]; sign = -sign; } else b[i] = xu[i]; }
+    sum += sign * mvtcdfG(C, b, nu);
+  }
+  return Math.max(0, Math.min(1, sum));
+}
+/** Gauss-Legendre nodes/weights mapped to [0,1]. */
+function gaussLegendre01(n: number): { nodes: number[]; wts: number[] } {
+  // Golub-Welsch via Newton on Legendre polynomials.
+  const nodes: number[] = [], wts: number[] = [];
+  for (let i = 1; i <= n; i++) {
+    let x = Math.cos(Math.PI * (i - 0.25) / (n + 0.5)), dp = 0;
+    for (let it = 0; it < 100; it++) {
+      let p0 = 1, p1 = x;
+      for (let k = 2; k <= n; k++) { const p2 = ((2 * k - 1) * x * p1 - (k - 1) * p0) / k; p0 = p1; p1 = p2; }
+      dp = n * (x * p1 - p0) / (x * x - 1);
+      const dx = p1 / dp; x -= dx; if (Math.abs(dx) < 1e-15) break;
+    }
+    nodes.push((x + 1) / 2); wts.push(1 / ((1 - x * x) * dp * dp));
+  }
+  return { nodes, wts };
+}
+
 /** Brent's method root-finder on a bracket [a,b] with f(a)·f(b)<0. */
 function brent(f: (x: number) => number, a: number, b: number, tol = 1e-9): number {
   let fa = f(a), fb = f(b);
@@ -794,6 +963,103 @@ export const STATS: ToolboxModule = {
       const h = Number.isNaN(p) ? NaN : (p <= alpha ? 1 : 0);
       const stats = mkStruct([['W', scalar(W)], ['Wstar', scalar(Wstar)]]);
       return Promise.resolve([scalar(h), scalar(p), stats].slice(0, Math.max(1, nargout)));
+    },
+    /** [h,p,ksstat]=kstest2(x1,x2[,'Alpha',a][,'Tail',t]) — two-sample Kolmogorov-Smirnov test. */
+    kstest2: (a, nargout) => {
+      const x1 = toArray(m(a[0])).filter((v) => !Number.isNaN(v)), x2 = toArray(m(a[1])).filter((v) => !Number.isNaN(v));
+      let alpha = 0.05, tail = 0; const opts = a.slice(2);
+      for (let i = 0; i < opts.length; i++) { const s = isMat(opts[i]) && (opts[i] as Mat).isChar ? asString(opts[i]).toLowerCase() : ''; if (s === 'alpha') alpha = asScalar(opts[++i]); else if (s === 'tail') tail = tailCode(opts[++i]); else if (i === 0 && isMat(opts[i]) && !(opts[i] as Mat).isChar) { alpha = asScalar(opts[i]); if (opts[i + 1] !== undefined) tail = tailCode(opts[++i]); } }
+      const pts = [...x1, ...x2].slice().sort((p, q) => p - q), n1 = x1.length, n2 = x2.length;
+      let ks = 0;
+      for (const e of pts) { const f1 = x1.filter((v) => v <= e).length / n1, f2 = x2.filter((v) => v <= e).length / n2; const dlt = tail === 0 ? Math.abs(f1 - f2) : tail === -1 ? f2 - f1 : f1 - f2; if (dlt > ks) ks = dlt; }
+      const n = n1 * n2 / (n1 + n2), lambda = Math.max((Math.sqrt(n) + 0.12 + 0.11 / Math.sqrt(n)) * ks, 0);
+      let p: number;
+      if (tail !== 0) p = Math.exp(-2 * lambda * lambda);
+      else { p = 0; for (let j = 1; j <= 101; j++) p += (j % 2 ? 1 : -1) * Math.exp(-2 * lambda * lambda * j * j); p = Math.min(Math.max(2 * p, 0), 1); }
+      const h = alpha >= p ? 1 : 0;
+      return Promise.resolve([scalar(h), scalar(p), scalar(ks)].slice(0, Math.max(1, nargout)));
+    },
+    /** [p,h,stats]=signtest(x[,y][,'Alpha',a][,'Tail',t][,'Method',m]) — sign test. */
+    signtest: (a, nargout) => {
+      const x = toArray(m(a[0])); let yArg: number[] | null = null; const opts: Value[] = [];
+      if (a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar) { const M = m(a[1]); yArg = numel(M) === 1 ? x.map(() => asScalar(M)) : toArray(M); for (let i = 2; i < a.length; i++) opts.push(a[i]); }
+      else for (let i = 1; i < a.length; i++) opts.push(a[i]);
+      const yv = yArg ?? x.map(() => 0);
+      const diff = x.map((v, i) => v - yv[i]).filter((v) => !Number.isNaN(v));
+      let alpha = 0.05, tail = 0, method = '';
+      for (let i = 0; i < opts.length; i++) { const s = isMat(opts[i]) && (opts[i] as Mat).isChar ? asString(opts[i]).toLowerCase() : ''; if (s === 'alpha') alpha = asScalar(opts[++i]); else if (s === 'tail') tail = tailCode(opts[++i]); else if (s === 'method') method = asString(opts[++i]).toLowerCase(); else if (i === 0 && isMat(opts[i]) && !(opts[i] as Mat).isChar) alpha = asScalar(opts[i]); }
+      const npos = diff.filter((d) => d > 0).length, nneg = diff.filter((d) => d < 0).length, n = npos + nneg;
+      if (n === 0) return Promise.resolve([scalar(1), scalar(0), mkStruct([['zval', scalar(NaN)], ['sign', scalar(0)]])].slice(0, Math.max(1, nargout)));
+      if (!method) method = n < 100 ? 'exact' : 'approximate';
+      let p: number, z = NaN;
+      if (method === 'exact') {
+        if (tail === 0) p = Math.min(1, 2 * binocdfS(Math.min(nneg, npos), n, 0.5));
+        else if (tail === 1) p = binocdfS(nneg, n, 0.5); else p = binocdfS(npos, n, 0.5);
+      } else {
+        if (tail === 0) { z = (npos - nneg - Math.sign(npos - nneg)) / Math.sqrt(n); p = 2 * normcdfL(-Math.abs(z)); }
+        else if (tail === 1) { z = (npos - nneg - 1) / Math.sqrt(n); p = normcdfL(-z); }
+        else { z = (npos - nneg + 1) / Math.sqrt(n); p = normcdfL(z); }
+      }
+      const h = p <= alpha ? 1 : 0;
+      const stats = mkStruct([['zval', scalar(z)], ['sign', scalar(npos)]]);
+      return Promise.resolve([scalar(p), scalar(h), stats].slice(0, Math.max(1, nargout)));
+    },
+    /** [p,tbl,stats]=friedman(X,reps[,displayopt]) — Friedman's nonparametric two-way ANOVA. */
+    friedman: (a, nargout) => {
+      const X = m(a[0]), r0 = X.rows, c = X.cols;
+      const reps = a.length > 1 && isMat(a[1]) && numel(m(a[1])) > 0 ? Math.round(asScalar(a[1])) : 1;
+      const r = r0 / reps; // number of blocks
+      const rk: number[][] = Array.from({ length: r0 }, () => new Array(c).fill(0)); let sumta = 0;
+      for (let j = 0; j < r; j++) {
+        const block: number[] = []; for (let rr = 0; rr < reps; rr++) for (let cc = 0; cc < c; cc++) block.push(X.data[(j * reps + rr) + cc * r0]);
+        const { ranks, tieadj } = tiedrank(block); sumta += 2 * tieadj;
+        let idx = 0; for (let rr = 0; rr < reps; rr++) for (let cc = 0; cc < c; cc++) rk[j * reps + rr][cc] = ranks[idx++];
+      }
+      const grand = rk.flat().reduce((s, v) => s + v, 0) / (r0 * c);
+      let sscol = 0; for (let cc = 0; cc < c; cc++) { let cs = 0; for (let rr = 0; rr < r0; rr++) cs += rk[rr][cc]; const cm = cs / r0; sscol += r0 * (cm - grand) ** 2; }
+      let sigmasq = c * reps * (reps * c + 1) / 12;
+      if (sumta > 0) sigmasq -= sumta / (12 * r * (reps * c - 1));
+      const chistat = sscol > 0 ? sscol / sigmasq : 0;
+      const p = 1 - chi2cdfS(chistat, c - 1);
+      const meanranks: number[] = []; for (let cc = 0; cc < c; cc++) { let cs = 0; for (let rr = 0; rr < r0; rr++) cs += rk[rr][cc]; meanranks.push(cs / r0); }
+      const stats = mkStruct([['source', str('friedman')], ['n', scalar(r)], ['meanranks', rowVec(meanranks)], ['sigma', scalar(Math.sqrt(sigmasq))]]);
+      return Promise.resolve([scalar(p), makeCell(1, 1, [str('friedman')]), stats].slice(0, Math.max(1, nargout)));
+    },
+    /** p=vartestn(x,group,'Display','off','TestType',t) — test equal variances across groups. */
+    vartestn: (a, nargout) => {
+      const x0 = toArray(m(a[0])); let groups: string[]; let testType = 'leveneabsolute';
+      const opts: Value[] = [];
+      const second = a[1];
+      const secondIsOpt = second !== undefined && isMat(second) && (second as Mat).isChar && ['display', 'testtype', 'alpha'].includes(asString(second).toLowerCase());
+      if (a.length >= 2 && second !== undefined && !secondIsOpt && !(isMat(second) && numel(m(second)) === 0)) {
+        groups = labelKeys(second).keys; for (let i = 2; i < a.length; i++) opts.push(a[i]);
+      } else { const M = m(a[0]); groups = []; for (let cc = 0; cc < M.cols; cc++) for (let rr = 0; rr < M.rows; rr++) groups.push(String(cc)); for (let i = 1; i < a.length; i++) opts.push(a[i]); }
+      for (let i = 0; i < opts.length; i++) { const s = isMat(opts[i]) && (opts[i] as Mat).isChar ? asString(opts[i]).toLowerCase() : ''; if (s === 'testtype') testType = asString(opts[++i]).toLowerCase(); else if (s === 'display') i++; else if (s === 'alpha') i++; }
+      const map2 = new Map<string, number[]>();
+      x0.forEach((v, i) => { if (Number.isNaN(v)) return; const g = groups[i]; if (!map2.has(g)) map2.set(g, []); map2.get(g)!.push(v); });
+      const gk = [...map2.keys()]; const gx = gk.map((k) => map2.get(k)!);
+      const gcount = gx.map((g) => g.length), gmean = gx.map((g) => mean_(g)), gmedian = gx.map((g) => median_(g));
+      const gvar = gx.map((g) => var_(g));
+      if (testType === 'bartlett' || testType === 'classical') {
+        const df = gcount.map((n) => n - 1), sumdf = df.reduce((s, v) => s + v, 0);
+        const vp = df.reduce((s, d, i) => s + d * gvar[i], 0) / sumdf;
+        const tpos = df.map((d) => d > 0); const Bdf = Math.max(0, tpos.filter(Boolean).length - 1);
+        let B = Math.log(vp) * sumdf - df.reduce((s, d, i) => s + (tpos[i] ? d * Math.log(gvar[i]) : 0), 0);
+        const C = 1 + (df.reduce((s, d, i) => s + (tpos[i] ? 1 / d : 0), 0) - 1 / sumdf) / (3 * Bdf);
+        B = B / C; const p = 1 - chi2cdfS(B, Bdf);
+        return Promise.resolve([scalar(p)].slice(0, Math.max(1, nargout)));
+      }
+      const transformed: number[] = [], glab: number[] = [];
+      gx.forEach((g, gi) => { if (g.length < 2) return; g.forEach((v) => {
+        let t: number;
+        if (testType === 'brownforsythe') t = Math.abs(v - gmedian[gi]);
+        else if (testType === 'levenequadratic' || testType === 'robust' || testType === 'levene') t = (v - gmean[gi]) ** 2;
+        else if (testType === 'obrien') { const ni = g.length; const W = 0.5; t = ((W + ni - 2) * ni * (v - gmean[gi]) ** 2 - W * (ni - 1) * gvar[gi]) / ((ni - 1) * (ni - 2)); }
+        else t = Math.abs(v - gmean[gi]);
+        transformed.push(t); glab.push(gi);
+      }); });
+      const p = anova1P(transformed, glab);
+      return Promise.resolve([scalar(p)].slice(0, Math.max(1, nargout)));
     },
     /** Y=nearcorr(A[,'Method',m][,'Tolerance',t][,'MaxIterations',k][,'Weights',w]) — nearest
      *  correlation matrix by Frobenius distance via Higham's alternating projections (Dykstra
@@ -1339,6 +1605,86 @@ export const STATS: ToolboxModule = {
       for (let i = 2; i + 1 < a.length; i++) if (isMat(a[i]) && (a[i] as Mat).isChar && asString(a[i]).toLowerCase() === 'type') type = asString(a[i + 1]).toLowerCase();
       return ret(scalar(type === 'spearman' ? (6 / Math.PI) * Math.asin(rho / 2) : (2 / Math.PI) * Math.asin(rho)));
     },
+    // ── copulapdf(family,U,params...) — density of the named copula at the rows of U ──
+    copulapdf: (a) => {
+      const fam = asString(a[0]).toLowerCase(); const U = m(a[1]); const rows = matRows(U); const d = U.cols;
+      const inRange = (u: number[]) => u.every((v) => v >= 0 && v <= 1);
+      if (fam === 'gaussian' || fam === 't') {
+        let Rho = corrMat(a[2], d); const R = chol_(Rho); // R is lower; use as upper via transpose solve
+        const logSqrtDet = R.reduce((s, _, i) => s + Math.log(R[i][i]), 0);
+        const out = rows.map((u) => {
+          if (!inRange(u)) return 0;
+          if (fam === 'gaussian') {
+            const x = u.map((v) => norminvStd(v)); const z = solveLowerT(R, x);
+            return Math.exp(-0.5 * (z.reduce((s, v, i) => s + v * v - x[i] * x[i], 0)) - logSqrtDet);
+          }
+          const nu = asScalar(a[3]); const t = u.map((v) => tinvL(v, nu)); const z = solveLowerT(R, t);
+          const cst = logGamma((nu + d) / 2) + (d - 1) * logGamma(nu / 2) - d * logGamma((nu + 1) / 2) - logSqrtDet;
+          const numer = -((nu + d) / 2) * Math.log(1 + z.reduce((s, v) => s + v * v, 0) / nu);
+          const denom = t.reduce((s, v) => s + (-((nu + 1) / 2) * Math.log(1 + v * v / nu)), 0);
+          return Math.exp(cst + numer - denom);
+        });
+        return ret(out.length === 1 ? scalar(out[0]) : colVec(out));
+      }
+      const alpha = asScalar(a[2]);
+      const out = rows.map(([u1, u2]) => {
+        if (!inRange([u1, u2])) return 0;
+        if (fam === 'clayton') { if (alpha === 0) return 1; const logC = (-1 / alpha) * Math.log(u1 ** -alpha + u2 ** -alpha - 1); return (alpha + 1) * Math.exp((2 * alpha + 1) * logC - (alpha + 1) * (Math.log(u1) + Math.log(u2))); }
+        if (fam === 'frank') { if (alpha === 0) return 1; return alpha * (1 - Math.exp(-alpha)) / (Math.cosh(alpha * (u2 - u1) / 2) * 2 - Math.exp(alpha * (u1 + u2 - 2) / 2) - Math.exp(-alpha * (u1 + u2) / 2)) ** 2; }
+        // gumbel
+        if (alpha === 1) return 1; const v1 = -Math.log(u1), v2 = -Math.log(u2); const vmin = Math.min(v1, v2), vmax = Math.max(v1, v2);
+        const nlogC = vmax * (1 + (vmin / vmax) ** alpha) ** (1 / alpha);
+        return (alpha - 1 + nlogC) * Math.exp(-nlogC + ((alpha - 1) * Math.log(v1) + v1) + ((alpha - 1) * Math.log(v2) + v2) + (1 - 2 * alpha) * Math.log(nlogC));
+      });
+      return ret(out.length === 1 ? scalar(out[0]) : colVec(out));
+    },
+    // ── copulacdf(family,U,params...) — CDF of the named copula at the rows of U ──
+    copulacdf: (a) => {
+      const fam = asString(a[0]).toLowerCase(); const U = m(a[1]); const rows = matRows(U); const d = U.cols;
+      if (fam === 'gaussian' || fam === 't') {
+        const Rho = corrMat(a[2], d);
+        const out = rows.map((u) => {
+          if (fam === 'gaussian') { const x = u.map((v) => norminvStd(v)); return mvncdfG(Rho, x); }
+          const nu = asScalar(a[3]); const t = u.map((v) => tinvL(v, nu)); return mvtcdfG(Rho, t, nu);
+        });
+        return ret(out.length === 1 ? scalar(out[0]) : colVec(out));
+      }
+      const alpha = asScalar(a[2]);
+      const out = rows.map(([u1, u2]) => {
+        if (fam === 'clayton') { if (alpha === 0) return u1 * u2; return (u1 ** -alpha + u2 ** -alpha - 1) ** (-1 / alpha); }
+        if (fam === 'frank') { if (alpha === 0) return u1 * u2; return -Math.log((Math.exp(-alpha) + (Math.exp(-alpha * (u1 + u2)) - (Math.exp(-alpha * u1) + Math.exp(-alpha * u2)))) / Math.expm1(-alpha)) / alpha; }
+        if (alpha === 1) return u1 * u2; const v1 = -Math.log(u1), v2 = -Math.log(u2); const vmin = Math.min(v1, v2), vmax = Math.max(v1, v2);
+        return Math.exp(-vmax * (1 + (vmin / vmax) ** alpha) ** (1 / alpha));
+      });
+      return ret(out.length === 1 ? scalar(out[0]) : colVec(out));
+    },
+    // ── mvncdf: multivariate normal CDF P(X<=x) (Genz). mvncdf(X) | (X,mu,Sigma) | (xl,xu,mu,Sigma) ──
+    mvncdf: (a) => {
+      // rectangle form: mvncdf(xl, xu, mu, Sigma) — 4 args, first two same-size row/matrix bounds
+      if (a.length === 4 && isMat(a[0]) && isMat(a[1])) {
+        const XL = m(a[0]), XU = m(a[1]), d = XU.cols, rl = matRows(XL), ru = matRows(XU);
+        const mu = toArray(m(a[2])), S = matRows(m(a[3]));
+        const out = ru.map((xu, idx) => mvnRect(rl[idx], xu, mu, S));
+        return ret(out.length === 1 ? scalar(out[0]) : colVec(out));
+      }
+      const Xm = m(a[0]), d = Xm.cols, rows = matRows(Xm);
+      const mu = a.length > 1 && isMat(a[1]) && numel(m(a[1])) > 0 ? toArray(m(a[1])) : new Array(d).fill(0);
+      const S = a.length > 2 && isMat(a[2]) && numel(m(a[2])) > 0 ? matRows(m(a[2])) : Array.from({ length: d }, (_, i) => Array.from({ length: d }, (_, j) => (i === j ? 1 : 0)));
+      const out = rows.map((x) => mvncdfG(S, x.map((v, i) => v - mu[i])));
+      return ret(out.length === 1 ? scalar(out[0]) : colVec(out));
+    },
+    // ── mvtcdf: multivariate t CDF P(T<=x). mvtcdf(X,C,nu) | (xl,xu,C,nu) ──
+    mvtcdf: (a) => {
+      if (a.length >= 4 && isMat(a[0]) && isMat(a[1]) && numel(m(a[1])) === numel(m(a[0]))) {
+        const XL = m(a[0]), XU = m(a[1]), rl = matRows(XL), ru = matRows(XU);
+        const C = matRows(m(a[2])), nu = asScalar(a[3]);
+        const out = ru.map((xu, idx) => mvtRect(rl[idx], xu, C, nu));
+        return ret(out.length === 1 ? scalar(out[0]) : colVec(out));
+      }
+      const Xm = m(a[0]), rows = matRows(Xm), C = matRows(m(a[1])), nu = asScalar(a[2]);
+      const out = rows.map((x) => mvtcdfG(C, x, nu));
+      return ret(out.length === 1 ? scalar(out[0]) : colVec(out));
+    },
     // ── ecdf: empirical (Kaplan-Meier) CDF, no censoring. Returns [f,x] with f(1)=0, x(1)=x(2). ──
     ecdf: (a) => {
       const x = toArray(m(a[0])).slice().sort((p, q) => p - q), N = x.length;
@@ -1844,6 +2190,14 @@ export const STATS: ToolboxModule = {
     ranksum: { summary: 'Returns the p-value of a two-sided Wilcoxon rank sum test.', syntax: ['p = ranksum(x,y)', '[ ___ ] = ranksum(x,y,Name,Value)'], seealso: ['kruskalwallis', 'signrank', 'signtest', 'ttest2'] },
     adtest: { summary: 'Returns a test decision for the null hypothesis that the data in vector x is from a population with a normal distribution, using the Anderson-Darling test.', syntax: ['h = adtest(x)', 'h = adtest(x,Name,Value)'], seealso: ['kstest', 'jbtest'] },
     ansaribradley: { summary: 'Returns a test decision for the null hypothesis that the data in vectors x and y comes from the same distribution, using the Ansari-Bradley test.', syntax: ['h = ansaribradley(x,y)', 'h = ansaribradley(x,y,Name,Value)'], seealso: ['vartest2', 'vartestn', 'ttest2'] },
+    kstest2: { summary: 'Returns a test decision for the null hypothesis that the data in vectors x1 and x2 are from the same continuous distribution, using the two-sample Kolmogorov-Smirnov test.', syntax: ['h = kstest2(x1,x2)', '[h,p] = kstest2(x1,x2)', '[h,p,ks2stat] = kstest2(x1,x2)', '[ ___ ] = kstest2(x1,x2,Name,Value)'], seealso: ['kstest', 'adtest', 'lillietest'] },
+    signtest: { summary: 'Returns the p-value of a two-sided sign test for the null hypothesis that data in x has zero median (or that x and y have equal medians).', syntax: ['p = signtest(x)', 'p = signtest(x,y)', '[p,h,stats] = signtest( ___ )'], seealso: ['signrank', 'ranksum', 'ttest'] },
+    friedman: { summary: "Returns the p-value for a balanced two-way ANOVA by ranks (Friedman's test) for the data in matrix x.", syntax: ['p = friedman(x,reps)', '[p,tbl] = friedman(x,reps)', '[p,tbl,stats] = friedman( ___ )'], seealso: ['anova2', 'kruskalwallis', 'multcompare'] },
+    vartestn: { summary: 'Returns the p-value for the test of the null hypothesis that the columns of the data matrix x come from normal distributions with the same variance.', syntax: ['p = vartestn(x)', 'p = vartestn(x,group)', 'p = vartestn( ___ ,Name,Value)'], seealso: ['vartest', 'vartest2', 'ansaribradley'] },
+    copulapdf: { summary: 'Returns the probability density of the copula family, evaluated at the points in the n-by-d matrix u.', syntax: ['y = copulapdf(family,u,rho)', "y = copulapdf('t',u,rho,nu)", 'y = copulapdf(family,u,alpha)'], seealso: ['copulacdf', 'copulastat', 'copulaparam'] },
+    copulacdf: { summary: 'Returns the cumulative probability of the copula family, evaluated at the points in the n-by-d matrix u.', syntax: ['p = copulacdf(family,u,rho)', "p = copulacdf('t',u,rho,nu)", 'p = copulacdf(family,u,alpha)'], seealso: ['copulapdf', 'copulastat', 'copularnd'] },
+    mvncdf: { summary: 'Returns the cumulative probability of the multivariate normal distribution with zero mean and identity covariance matrix, evaluated at each row of X.', syntax: ['y = mvncdf(X)', 'y = mvncdf(X,mu,Sigma)', 'y = mvncdf(xl,xu,mu,Sigma)'], seealso: ['mvnpdf', 'mvncdf', 'normcdf', 'mvtcdf'] },
+    mvtcdf: { summary: 'Returns the cumulative probability of the multivariate Student t distribution with correlation matrix C and nu degrees of freedom, evaluated at each row of X.', syntax: ['y = mvtcdf(X,C,nu)', 'y = mvtcdf(xl,xu,C,nu)'], seealso: ['mvncdf', 'mvtpdf', 'tcdf'] },
     sampsizepwr: { summary: 'Sampsizepwr computes the sample size, power, or alternative parameter value for a hypothesis test, given the other two values.', syntax: ['nout = sampsizepwr(testtype,p0,p1)', 'nout = sampsizepwr(testtype,p0,p1,pwr)', 'pwrout = sampsizepwr(testtype,p0,p1,[],n)', 'p1out = sampsizepwr(testtype,p0,[],pwr,n)'], seealso: ['vartest', 'ttest', 'ttest2', 'ztest', 'binocdf'] },
     normpdf: { summary: 'Returns the probability density function (pdf) of the standard normal distribution, evaluated at the values in x.', syntax: ['y = normpdf(x)', 'y = normpdf(x,mu)', 'y = normpdf(x,mu,sigma)'], seealso: ['pdf', 'normcdf', 'norminv', 'normrnd', 'mvnpdf'] },
     tpdf: "Student's t probability density function", tcdf: "Student's t cumulative distribution function", tinv: "Student's t inverse cumulative distribution function",
