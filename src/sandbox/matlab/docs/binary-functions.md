@@ -5,7 +5,7 @@ toolbox/, per the former classification.tsv) vs **binary** (compiled built-in, e
 Only the binary built-ins are kept here, each cross-checked against the sandbox interpreter
 registry. A checkmark means the function is implemented (callable in the sandbox).
 
-**49 / 196 binary built-ins implemented.**
+**50 / 196 binary built-ins implemented.**
 
 | Implemented | Function |
 | :---: | :--- |
@@ -190,7 +190,7 @@ registry. A checkmark means the function is implemented (callable in the sandbox
 | ✅ | `symbfact` |
 | ✅ | `symrcm` |
 |    | `textBoundary` |
-|    | `textscan` |
+| ✅ | `textscan` |
 |    | `uicontextmenu` |
 |    | `uicontrol` |
 |    | `uimenu` |
