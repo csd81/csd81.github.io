@@ -151,6 +151,13 @@ export const COMM: ToolboxModule = {
   name: 'Communications Toolbox',
   docBase: 'https://www.mathworks.com/help/comm/',
   builtins: {
+    // ── zadoffChuSeq(R,N): seq(m) = exp(-iπ·R·m(m+1)/N), m=0..N-1 (column, complex) ──
+    zadoffChuSeq: (a) => {
+      const R = asScalar(a[0]), N = asScalar(a[1]);
+      const re = new Float64Array(N), im = new Float64Array(N);
+      for (let mm = 0; mm < N; mm++) { const ph = -Math.PI * R * mm * (mm + 1) / N; re[mm] = Math.cos(ph); im[mm] = Math.sin(ph); }
+      return ret({ kind: 'num', rows: N, cols: 1, data: re, idata: im } as Mat);
+    },
     // ── Q-function (Gaussian tail) — qfunc(x)=0.5*erfc(x/√2), qfuncinv(p)=√2*erfinv(1−2p) ──
     qfunc: (a) => ret(map(m(a[0]), (x) => 0.5 * erfc(x / SQRT2))),
     qfuncinv: (a) => ret(map(m(a[0]), (p) => SQRT2 * erfinv(1 - 2 * p))),
@@ -447,6 +454,7 @@ export const COMM: ToolboxModule = {
     },
   },
   help: {
+    zadoffChuSeq: 'Generate a Zadoff-Chu sequence',
     qfunc: 'Q function (Gaussian tail probability)', quantiz: 'Produce a quantization index and quantized output value', qfuncinv: 'Inverse Q function',
     oct2dec: 'Convert octal to decimal numbers', vec2mat: 'Convert vector into matrix (row-major, padded)',
     compand: 'Source code mu-law or A-law compressor or expander',
