@@ -1003,7 +1003,9 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(rowVec(out));
   },
   repmat: async (a) => {
-    const A = m(a[0]); const mr = asScalar(a[1]); const nc = a.length >= 3 ? asScalar(a[2]) : mr;
+    const A = m(a[0]); let mr: number, nc: number;
+    if (a.length >= 3) { mr = Math.round(asScalar(a[1])); nc = Math.round(asScalar(a[2])); }
+    else { const v = toArray(m(a[1])); mr = Math.round(v[0]); nc = Math.round(v.length >= 2 ? v[1] : v[0]); }  // repmat(A,[m n]) size-vector form
     const out = zeros(A.rows * mr, A.cols * nc); if (A.idata) out.idata = new Float64Array(out.data.length); out.isChar = A.isChar;
     for (let br = 0; br < mr; br++) for (let bc = 0; bc < nc; bc++)
       for (let c = 0; c < A.cols; c++) for (let r = 0; r < A.rows; r++) { const dst = (br * A.rows + r) + (bc * A.cols + c) * out.rows, src = r + c * A.rows; out.data[dst] = A.data[src]; if (A.idata) out.idata![dst] = A.idata[src]; }
@@ -1070,7 +1072,7 @@ export const BUILTINS: Record<string, Builtin> = {
     if (n >= 2) {
       const rows = sel.map((i) => (i % A.rows) + 1);
       const cols = sel.map((i) => Math.floor(i / A.rows) + 1);
-      if (n >= 3) return [orient(rows), orient(cols), orient(sel.map((i) => A.data[i]))];
+      if (n >= 3) { const vv = orient(sel.map((i) => A.data[i])); if (A.idata) (vv as Mat).idata = Float64Array.from(sel.map((i) => A.idata![i])); return [orient(rows), orient(cols), vv]; }
       return [orient(rows), orient(cols)];
     }
     return [orient(sel.map((i) => i + 1))];
@@ -1304,7 +1306,7 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   svd: async (a, n) => {
     const A = m(a[0]);
-    if (isComplex(A)) { const { U, s, V } = svdCplx(A); const k = s.length; if (n >= 3) { const S = zeros(k, k); for (let i = 0; i < k; i++) S.data[i + i * k] = s[i]; return [U, S, V]; } return [colVec(s)]; }
+    if (isComplex(A)) { const { U, s, V } = svdCplx(A); const k = s.length; if (n >= 3) { const S = zeros(A.rows, A.cols); for (let i = 0; i < k; i++) S.data[i + i * A.rows] = s[i]; return [U, S, V]; } return [colVec(s)]; }
     // singular-VALUES path: one-sided Jacobi (svdCplx) resolves tiny σ accurately; the AtA-based
     // svdReal loses ~half the digits (e.g. svd(magic(4)) smallest σ → 1.97e-7 instead of ~0).
     if (n < 3) { const { s } = svdCplx(A); return [colVec(s)]; }
@@ -1718,7 +1720,19 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   randperm: async (a) => { const nn = Math.round(asScalar(a[0])); const p = Array.from({ length: nn }, (_, i) => i + 1); for (let i = nn - 1; i > 0; i--) { const j = Math.floor(rngNext() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; } const k = a.length >= 2 ? Math.round(asScalar(a[1])) : nn; return ret(rowVec(p.slice(0, k))); },
   mad: async (a) => { const flag = a.length >= 2 ? asScalar(a[1]) : 0; return ret(colReduce(m(a[0]), (c) => { if (flag === 1) { const s = [...c].sort((x, y) => x - y); const md = s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2; const d = c.map((x) => Math.abs(x - md)).sort((x, y) => x - y); return d.length % 2 ? d[(d.length - 1) / 2] : (d[d.length / 2 - 1] + d[d.length / 2]) / 2; } const mu = c.reduce((s2, x) => s2 + x, 0) / c.length; return c.reduce((s2, x) => s2 + Math.abs(x - mu), 0) / c.length; })); },
-  poly: async (a) => { const A = m(a[0]); if (A.rows > 1 && A.cols > 1) return ret(rowVec(charpolyC(A))); let c = [1]; for (const r of toArray(A)) { const nc = new Array(c.length + 1).fill(0); for (let i = 0; i < c.length; i++) { nc[i] += c[i]; nc[i + 1] -= c[i] * r; } c = nc; } return ret(rowVec(c)); },
+  poly: async (a) => {
+    const A = m(a[0]); if (A.rows > 1 && A.cols > 1) return ret(rowVec(charpolyC(A)));
+    // multiply out ∏(x - rᵢ) with complex roots; imaginary parts cancel for conjugate pairs
+    const rr = A.data, ri = A.idata ?? new Float64Array(A.data.length);
+    let cr = [1], ci = [0];
+    for (let j = 0; j < rr.length; j++) {
+      const ncr = new Array(cr.length + 1).fill(0), nci = new Array(cr.length + 1).fill(0);
+      for (let i = 0; i < cr.length; i++) { ncr[i] += cr[i]; nci[i] += ci[i]; ncr[i + 1] -= cr[i] * rr[j] - ci[i] * ri[j]; nci[i + 1] -= cr[i] * ri[j] + ci[i] * rr[j]; }
+      cr = ncr; ci = nci;
+    }
+    if (ci.every((v) => Math.abs(v) < 1e-12)) return ret(rowVec(cr));
+    return ret({ kind: 'num', rows: 1, cols: cr.length, data: Float64Array.from(cr), idata: Float64Array.from(ci) } as Mat);
+  },
   // ── type tests / conversions ──
   isnumeric: async (a) => ret(bool(isMat(a[0]) && !(a[0] as Mat).isChar)),
   ischar: async (a) => ret(bool(isMat(a[0]) && !!(a[0] as Mat).isChar)),
@@ -2796,7 +2810,8 @@ export const BUILTINS: Record<string, Builtin> = {
   interp1: async (a) => {
     const x = toArray(m(a[0])), v = toArray(m(a[1])), xq = m(a[2]); const method = (a.length >= 4 ? asString(a[3]) : 'linear').toLowerCase(); const L = x.length - 1;
     if (method === 'spline') { const C = splineCoefs(x, v); const at = (q: number) => { let i = 0; while (i < L - 1 && q >= x[i + 1]) i++; const t = q - x[i]; let val = 0; for (let j = 0; j < 4; j++) val = val * t + C.data[i + j * L]; return val; }; return ret(map(xq, at)); }
-    if (method === 'pchip' || method === 'cubic' || method === 'makima') { const d = pchipSlopes(x, v); return ret(map(xq, (q) => hermiteEval(x, v, d, q))); }
+    if (method === 'makima') { const d = akimaSlopes(x, v); return ret(map(xq, (q) => hermiteEval(x, v, d, q))); }
+    if (method === 'pchip' || method === 'cubic') { const d = pchipSlopes(x, v); return ret(map(xq, (q) => hermiteEval(x, v, d, q))); }
     const interp = (q: number) => {
       if (method === 'previous') { let i = 0; while (i < L && q >= x[i + 1]) i++; return q < x[0] ? NaN : v[i]; }
       if (method === 'next') { let i = L; while (i > 0 && q <= x[i - 1]) i--; return q > x[L] ? NaN : v[i]; }
@@ -3789,7 +3804,9 @@ export const BUILTINS: Record<string, Builtin> = {
     const grids: number[][] = [];
     for (let k = 0; k < D; k++) {
       const nk = ed[k] ?? 1;
-      grids.push(gridded ? Array.from({ length: nk }, (_, t) => m(a[k]).data[t * stride[k]]) : Array.from({ length: nk }, (_, t) => t + 1));
+      // a coordinate vector has length nk (stride 1); an ndgrid full matrix uses the V stride
+      const gm = gridded ? m(a[k]) : null; const gstride = gm && gm.data.length === nk ? 1 : stride[k];
+      grids.push(gm ? Array.from({ length: nk }, (_, t) => gm.data[t * gstride]) : Array.from({ length: nk }, (_, t) => t + 1));
     }
     const qStart = gridded ? D + 1 : 1; const qs = Array.from({ length: D }, (_, k) => m(a[qStart + k]));
     const loc = (g: number[], q: number): [number, number] => { let i = 0; while (i < g.length - 2 && q > g[i + 1]) i++; const t = g[i + 1] === g[i] ? 0 : (q - g[i]) / (g[i + 1] - g[i]); return [i, t]; };
