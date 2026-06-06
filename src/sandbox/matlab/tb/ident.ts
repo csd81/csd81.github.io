@@ -251,11 +251,63 @@ async function arxstruc(args: Value[]): Promise<Value[]> {
   return [rowVec([na, nb, nk, loss])];
 }
 
+// ── SPA: spectral analysis — estimate frequency response via Welch's cross-power method
+// G(w) = Syu(w) / Suu(w) where Syu and Suu are cross/auto-power spectral estimates.
+async function spa(args: Value[]): Promise<Value[]> {
+  if (args.length < 1) throw new MatError('spa: requires data (u and y as columns, or timetable)');
+  // Expect spa(u, y [, winSize, freq])  or  spa(data)
+  let u: number[], y: number[];
+  if (args.length >= 2 && isMat(args[0]) && isMat(args[1])) {
+    u = coerce(args[0]); y = coerce(args[1]);
+  } else if (isMat(args[0])) {
+    // treat as y only — AR spectral estimate
+    y = coerce(args[0]); u = Array(y.length).fill(1);
+  } else {
+    throw new MatError('spa: expected numeric u and y');
+  }
+  const N = y.length;
+  const winSize = args.length > 2 && isMat(args[2]) ? Math.round(asScalar(m(args[2]))) : Math.min(256, N);
+  // Compute DFT-based cross-spectral estimate using a rectangular window segment average
+  const nFreq = Math.floor(winSize / 2) + 1;
+  const Syu = new Float64Array(nFreq * 2); // interleaved re/im
+  const Suu = new Float64Array(nFreq);
+  const nSeg = Math.max(1, Math.floor(N / winSize));
+  for (let seg = 0; seg < nSeg; seg++) {
+    const start = seg * winSize;
+    for (let k = 0; k < nFreq; k++) {
+      let ure = 0, uim = 0, yre = 0, yim = 0;
+      for (let n = 0; n < winSize; n++) {
+        const idx = start + n;
+        if (idx >= N) break;
+        const phi = -2 * Math.PI * k * n / winSize;
+        const c = Math.cos(phi), s = Math.sin(phi);
+        ure += u[idx] * c; uim += u[idx] * s;
+        yre += y[idx] * c; yim += y[idx] * s;
+      }
+      // Syu += conj(U) * Y / winSize^2
+      Syu[k * 2] += (ure * yre + uim * yim) / (winSize * winSize);
+      Syu[k * 2 + 1] += (ure * yim - uim * yre) / (winSize * winSize);
+      Suu[k] += (ure * ure + uim * uim) / (winSize * winSize);
+    }
+  }
+  // G = Syu / Suu
+  const freq = Array.from({ length: nFreq }, (_, k) => 2 * Math.PI * k / winSize);
+  const Gre = Array.from({ length: nFreq }, (_, k) => Suu[k] > 1e-30 ? Syu[k * 2] / Suu[k] : 0);
+  const Gim = Array.from({ length: nFreq }, (_, k) => Suu[k] > 1e-30 ? Syu[k * 2 + 1] / Suu[k] : 0);
+  const props = new Map<string, Value>();
+  props.set('Frequency', rowVec(freq));
+  props.set('ResponseData', rowVec(Gre)); // magnitude (real part stored; imaginary in GimData)
+  props.set('ImagData', rowVec(Gim));
+  props.set('Ts', scalar(1));
+  props.set('WindowSize', scalar(winSize));
+  return [makeObject('idfrd', props)];
+}
+
 export const IDENT: ToolboxModule = {
   id: 'ident',
   name: 'System Identification Toolbox',
   docBase: 'https://www.mathworks.com/help/ident/',
-  builtins: { arx, armax, n4sid, ssest, tfest, compare, bj, ar, arxstruc },
+  builtins: { arx, armax, n4sid, ssest, tfest, compare, bj, ar, arxstruc, spa },
   help: {
     arx: {
       summary: 'Estimate parameters of ARX, ARIX, AR, or ARI model',
@@ -361,6 +413,21 @@ export const IDENT: ToolboxModule = {
         'v = arxstruc(u,y,nn) returns the prediction error loss for the ARX structure nn=[na nb nk].',
       ],
       seealso: ['arx', 'selstruc'],
+    },
+    spa: {
+      summary: 'Estimate frequency response with fixed frequency resolution using spectral analysis',
+      syntax: [
+        'G = spa(data)',
+        'G = spa(data,winSize,freq)',
+        'G = spa(u,y)',
+        'G = spa(u,y,winSize)',
+      ],
+      description: [
+        'G = spa(u,y) estimates the empirical transfer function G(w) = Syu(w)/Suu(w) via Welch cross-spectral averaging.',
+        'winSize sets the segment length (default min(256,N)).',
+        'Returns an idfrd object with fields Frequency, ResponseData (real), ImagData (imag), WindowSize, Ts.',
+      ],
+      seealso: ['tfest', 'arx', 'bodeplot', 'etfe'],
     },
   },
 };

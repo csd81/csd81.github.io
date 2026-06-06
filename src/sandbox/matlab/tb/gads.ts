@@ -188,11 +188,70 @@ async function particleswarm(args: Value[]): Promise<Value[]> {
   return [mat(1, nvars, new Float64Array(gbest)), scalar(gbestF), scalar(0), scalar(ITER)];
 }
 
+// ── Multi-objective GA (NSGA-II style) ─────────────────────────────────────────────────
+// Returns Pareto-front solutions x (nPareto×nvars) and their objective values fval (nPareto×nObj).
+async function gamultiobj(args: Value[]): Promise<Value[]> {
+  if (args.length < 2) throw new MatError('gamultiobj: requires fun and nvars');
+  const fn = args[0];
+  if (!isFn(fn)) throw new MatError('gamultiobj: first argument must be a function handle');
+  const nvars = asScalar(m(args[1]));
+  const lb = args.length > 6 && isMat(args[6]) ? toArray(m(args[6])) : Array(nvars).fill(-5);
+  const ub = args.length > 7 && isMat(args[7]) ? toArray(m(args[7])) : Array(nvars).fill(5);
+  const lo = lb.map((v, i) => isFinite(v) ? v : -5);
+  const hi = ub.map((v, i) => isFinite(v) ? v : 5);
+
+  const h = fn as unknown as { fn: (args: Value[]) => Promise<Value[]> };
+  const evaluate = async (x: number[]): Promise<number[]> => {
+    const res = await h.fn([mat(1, nvars, new Float64Array(x))]);
+    const fv = res[0];
+    return isMat(fv) ? toArray(fv as any) : [asScalar(m(fv))];
+  };
+
+  const POP = 40, GENS = 100;
+  type Ind = { x: number[]; f: number[] };
+
+  // initialise
+  let pop: Ind[] = [];
+  for (let p = 0; p < POP; p++) {
+    const x = lo.map((l, i) => l + Math.random() * (hi[i] - l));
+    pop.push({ x, f: await evaluate(x) });
+  }
+
+  const dominates = (a: number[], b: number[]) =>
+    a.every((v, i) => v <= b[i]) && a.some((v, i) => v < b[i]);
+
+  for (let gen = 0; gen < GENS; gen++) {
+    // generate offspring via crossover + mutation
+    const offspring: Ind[] = [];
+    while (offspring.length < POP) {
+      const p1 = pop[Math.random() * POP | 0], p2 = pop[Math.random() * POP | 0];
+      const x = p1.x.map((xi, i) => {
+        const alpha = Math.random();
+        let c = alpha * xi + (1 - alpha) * p2.x[i];
+        if (Math.random() < 1 / nvars) c += (Math.random() * 2 - 1) * 0.1 * (hi[i] - lo[i]);
+        return Math.max(lo[i], Math.min(hi[i], c));
+      });
+      offspring.push({ x, f: await evaluate(x) });
+    }
+    // non-dominated sort of combined population
+    const combined = [...pop, ...offspring];
+    const nonDom = combined.filter(a => !combined.some(b => b !== a && dominates(b.f, a.f)));
+    pop = nonDom.length >= POP ? nonDom.slice(0, POP) : [...nonDom, ...combined.filter(a => !nonDom.includes(a)).slice(0, POP - nonDom.length)];
+  }
+
+  // extract Pareto front
+  const pareto = pop.filter(a => !pop.some(b => b !== a && dominates(b.f, a.f)));
+  const nP = pareto.length, nObj = pareto[0]?.f.length ?? 1;
+  const xOut = mat(nP, nvars, new Float64Array(pareto.flatMap(p => p.x)));
+  const fOut = mat(nP, nObj, new Float64Array(pareto.flatMap(p => p.f)));
+  return [xOut, fOut, scalar(0)];
+}
+
 export const GADS: ToolboxModule = {
   id: 'gads',
   name: 'Global Optimization Toolbox',
   docBase: 'https://www.mathworks.com/help/gads/',
-  builtins: { ga, simulannealbnd, patternsearch, particleswarm },
+  builtins: { ga, simulannealbnd, patternsearch, particleswarm, gamultiobj },
   help: {
     ga: {
       summary: 'Find minimum of function using genetic algorithm',
@@ -254,8 +313,17 @@ export const GADS: ToolboxModule = {
     },
     gamultiobj: {
       summary: 'Find Pareto front using multiobjective genetic algorithm',
-      syntax: ['x = gamultiobj(fun,nvars)', '[x,fval] = gamultiobj(fun,nvars,A,b,Aeq,beq,lb,ub)'],
-      seealso: ['ga', 'paretosearch'],
+      syntax: [
+        'x = gamultiobj(fun,nvars)',
+        'x = gamultiobj(fun,nvars,A,b,Aeq,beq,lb,ub)',
+        '[x,fval,exitflag] = gamultiobj(___)',
+      ],
+      description: [
+        'x = gamultiobj(fun,nvars) finds the Pareto front of a multiobjective function using an NSGA-II-style genetic algorithm.',
+        'fun must return a row vector of objective values.',
+        'Returns x (nPareto×nvars) and fval (nPareto×nObj) for all non-dominated solutions.',
+      ],
+      seealso: ['ga', 'paretosearch', 'particleswarm'],
     },
     paretosearch: {
       summary: 'Find Pareto front using pattern search',

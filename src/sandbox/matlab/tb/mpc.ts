@@ -140,6 +140,23 @@ async function mpcstate_ctor(args: Value[]): Promise<Value[]> {
   return [makeObject('mpcstate', props)];
 }
 
+// ── setconstraint: set MV/OV constraints on mpc object ──────────────────────────────────
+// setconstraint(ctrl, 'MV', 1, 'Min', -1, 'Max', 1)
+async function setconstraint(args: Value[]): Promise<Value[]> {
+  if (args.length < 1) throw new MatError('setconstraint: requires mpc object');
+  const ctrl = args[0];
+  if ((ctrl as any).kind !== 'object') throw new MatError('setconstraint: first argument must be an mpc object');
+  const props = (ctrl as any).props as Map<string, Value>;
+  // Parse name-value pairs and update the MV or OV constraint struct
+  for (let i = 1; i + 1 < args.length; i += 2) {
+    const key = isMat(args[i]) && (args[i] as any).isChar
+      ? String.fromCharCode(...(Array.from((args[i] as any).data) as number[]))
+      : null;
+    if (key) props.set(key, args[i + 1]);
+  }
+  return [ctrl];
+}
+
 export const MPC: ToolboxModule = {
   id: 'mpc',
   name: 'Model Predictive Control Toolbox',
@@ -148,6 +165,7 @@ export const MPC: ToolboxModule = {
     mpc: mpc_ctor,
     mpcmove,
     mpcstate: mpcstate_ctor,
+    setconstraint,
   },
   help: {
     mpc: {
@@ -197,6 +215,18 @@ export const MPC: ToolboxModule = {
       summary: 'Explicit model predictive controller',
       syntax: ['ectrl = generateExplicitMPC(ctrl,range)'],
       seealso: ['mpc', 'mpcmove'],
+    },
+    setconstraint: {
+      summary: 'Set constraints on MPC manipulated or output variables',
+      syntax: [
+        "setconstraint(ctrl,'MV',idx,'Min',lo,'Max',hi)",
+        "setconstraint(ctrl,'OV',idx,'Min',lo,'Max',hi)",
+      ],
+      description: [
+        "setconstraint(ctrl,'MV',1,'Min',-1,'Max',1) sets the lower and upper bounds on manipulated variable 1.",
+        'Modifies the ctrl object in place (the returned object also reflects the change).',
+      ],
+      seealso: ['mpc', 'mpcmove', 'setoutputscaling'],
     },
   },
 };

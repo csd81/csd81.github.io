@@ -171,6 +171,44 @@ async function fipref(args: Value[]): Promise<Value[]> {
 // ── fixdt: return numerictype for Simulink fixed-point ─────────────────────────────────
 async function fixdt(args: Value[]): Promise<Value[]> { return numerictype(args); }
 
+// ── accumneg: subtract two fi values with fixed-point rounding/overflow control ────────
+// c = accumneg(a, b) returns a - b quantized to the format of a.
+async function accumneg(args: Value[]): Promise<Value[]> {
+  if (args.length < 2) throw new MatError('accumneg: requires two operands');
+  const getVal = (v: Value): number => {
+    if ((v as any).kind === 'object') {
+      const data = (v as any).props?.get('data');
+      return data && isMat(data) ? asScalar(data as any) : 0;
+    }
+    return asScalar(m(v));
+  };
+  const getFormat = (v: Value): [number, number, boolean] => {
+    if ((v as any).kind === 'object') {
+      const p = (v as any).props as Map<string, Value>;
+      const wl = p.get('WordLength') && isMat(p.get('WordLength')!) ? asScalar(p.get('WordLength') as any) : 16;
+      const fl = p.get('FractionLength') && isMat(p.get('FractionLength')!) ? asScalar(p.get('FractionLength') as any) : 15;
+      const sg = p.get('Signed') && isMat(p.get('Signed')!) ? asScalar(p.get('Signed') as any) !== 0 : true;
+      return [wl, fl, sg];
+    }
+    return [16, 15, true];
+  };
+  const a = getVal(args[0]), b = getVal(args[1]);
+  const [wl, fl, signed] = getFormat(args[0]);
+  const roundMode = args.length > 2 && isMat(args[2]) && (args[2] as any).isChar
+    ? String.fromCharCode(...(Array.from((args[2] as any).data) as number[])).toLowerCase()
+    : 'nearest';
+  const ovMode = args.length > 3 && isMat(args[3]) && (args[3] as any).isChar
+    ? String.fromCharCode(...(Array.from((args[3] as any).data) as number[])).toLowerCase()
+    : 'saturate';
+  const result = quantize(a - b, wl, fl, signed, roundMode, ovMode);
+  const props = new Map<string, Value>();
+  props.set('data', scalar(result));
+  props.set('WordLength', scalar(wl));
+  props.set('FractionLength', scalar(fl));
+  props.set('Signed', bool(signed));
+  return [makeObject('fi', props)];
+}
+
 export const FIXEDPOINT: ToolboxModule = {
   id: 'fixedpoint',
   name: 'Fixed-Point Designer',
@@ -185,6 +223,7 @@ export const FIXEDPOINT: ToolboxModule = {
     bin2num,
     fipref,
     fixdt,
+    accumneg,
   },
   help: {
     fi: {
@@ -269,6 +308,20 @@ export const FIXEDPOINT: ToolboxModule = {
       syntax: ['T = fixdt(isSigned,wl,fl)', 'T = fixdt(isSigned,wl,slope,bias)'],
       description: ['T = fixdt(isSigned,wl,fl) returns a numerictype for use in Simulink block data-type parameters.'],
       seealso: ['numerictype', 'fi'],
+    },
+    accumneg: {
+      summary: 'Subtract two fi objects or values',
+      syntax: [
+        'c = accumneg(a,b)',
+        "c = accumneg(a,b,RoundingMethod)",
+        "c = accumneg(a,b,RoundingMethod,OverflowAction)",
+      ],
+      description: [
+        'c = accumneg(a,b) computes a - b and quantizes the result to the fixed-point format of a.',
+        'RoundingMethod: "nearest" (default), "floor", "ceil", "zero".',
+        'OverflowAction: "saturate" (default), "wrap".',
+      ],
+      seealso: ['fi', 'fimath', 'quantize'],
     },
   },
 };

@@ -1,7 +1,7 @@
 // Financial Instruments Toolbox — interest-rate environments, cash-flow pricing,
 // bond futures, Black model, and option pricing wrappers.
 import {
-  type Value, scalar, rowVec, colVec, toArray, asScalar, toMat as m, isMat, isStruct, MatError,
+  type Value, scalar, rowVec, colVec, toArray, asScalar, toMat as m, isMat, isStruct, isStr, MatError,
   mat, zeros, makeObject, str,
 } from '../values';
 import type { ToolboxModule } from './types';
@@ -236,12 +236,30 @@ async function lookbackbyls(args: Value[]): Promise<Value[]> {
   return [scalar(Math.max(0, price))];
 }
 
+// ── intenvget: retrieve a named property from a RateSpec structure ─────────────────────
+async function intenvget(args: Value[]): Promise<Value[]> {
+  if (args.length < 2) throw new MatError('intenvget: requires RateSpec and ParameterName');
+  const rateSpec = args[0];
+  if ((rateSpec as any).kind !== 'object') throw new MatError('intenvget: first argument must be a RateSpec object');
+  const props = (rateSpec as any).props as Map<string, Value>;
+  const rawKey = isMat(args[1]) && (args[1] as any).isChar
+    ? String.fromCharCode(...(Array.from((args[1] as any).data) as number[]))
+    : isStr(args[1]) ? (args[1] as any).items?.[0] ?? '' : '';
+  // Case-insensitive lookup
+  const lower = rawKey.toLowerCase();
+  for (const [k, v] of props) {
+    if (k.toLowerCase() === lower) return [v];
+  }
+  throw new MatError(`intenvget: property '${rawKey}' not found in RateSpec`);
+}
+
 export const FININST: ToolboxModule = {
   id: 'fininst',
   name: 'Financial Instruments Toolbox',
   docBase: 'https://www.mathworks.com/help/fininst/',
   builtins: {
     intenvset,
+    intenvget,
     cfbyzero,
     intenvprice,
     bndfutprice,
@@ -357,6 +375,18 @@ export const FININST: ToolboxModule = {
     intenvprice: {
       summary: 'Price instruments from set of zero curves',
       syntax: ['Price = intenvprice(RateSpec,InstSet)'],
+      seealso: ['intenvset', 'cfbyzero'],
+    },
+    intenvget: {
+      summary: 'Properties of interest-rate structure',
+      syntax: [
+        'ParameterValue = intenvget(RateSpec,ParameterName)',
+        "rates = intenvget(RateSpec,'Rates')",
+      ],
+      description: [
+        "intenvget(RateSpec,'Rates') retrieves the zero rates from the RateSpec object built by intenvset.",
+        'Field names are case-insensitive. Available fields: Rates, StartDates, EndDates, Basis, Compounding.',
+      ],
       seealso: ['intenvset', 'cfbyzero'],
     },
   },

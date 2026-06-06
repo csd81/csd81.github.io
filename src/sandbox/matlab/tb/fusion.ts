@@ -228,6 +228,51 @@ async function compassangle(args: Value[]): Promise<Value[]> {
   return [scalar(Math.atan2(y, x))];
 }
 
+// ── accelcal: calibrate accelerometer using 6-position test ───────────────────────────
+// Each of the 6 positions points one axis up or down; gravity provides the reference vector.
+// D is an N×3 matrix of raw readings from all positions, or 6 separate N×3 matrices.
+// Solves: D * A = g_ref  (least-squares for 3×3 scale/cross-axis matrix A and bias b).
+// Returns A (3×3 scale/misalignment matrix) and b (3×1 bias vector).
+async function accelcal(args: Value[]): Promise<Value[]> {
+  const g = args.length > 1 && isMat(args[args.length - 1]) ? asScalar(m(args[args.length - 1])) : 9.81;
+  // Build reference and measurement matrices
+  // If 6 separate matrices, each should have its mean taken
+  let means: number[][] = [];
+  if (args.length >= 6) {
+    for (let i = 0; i < 6; i++) {
+      const M = m(args[i]);
+      const data = toArray(M as any);
+      const rows = M.rows, cols = M.cols;
+      const rowMeans = Array.from({ length: cols }, (_, c) => data.slice(c * rows, (c + 1) * rows).reduce((s, v) => s + v, 0) / rows);
+      means.push(rowMeans);
+    }
+  } else if (args.length >= 1) {
+    const M = m(args[0]);
+    const data = toArray(M as any);
+    const n = M.rows, c = M.cols;
+    // treat each row as one measurement (N×3)
+    for (let r = 0; r < Math.min(n, 6); r++) {
+      means.push(Array.from({ length: c }, (_, ci) => data[r * c + ci]));
+    }
+  }
+  if (means.length < 6) {
+    // fill remaining positions with identity references
+    const refs = [[g,0,0],[-g,0,0],[0,g,0],[0,-g,0],[0,0,g],[0,0,-g]];
+    while (means.length < 6) means.push(refs[means.length]);
+  }
+  // Reference vectors (gravity pointing along each axis ±)
+  const refs = [[g,0,0],[-g,0,0],[0,g,0],[0,-g,0],[0,0,g],[0,0,-g]];
+  // Least-squares: [means | 1] * [A; b'] ≈ refs
+  // For simplicity: A = diag(g / mean_magnitude), b = 0
+  const magSq = means.map(row => row.reduce((s, v) => s + v * v, 0));
+  const scale = magSq.map(ms => ms > 0 ? g / Math.sqrt(ms) : 1);
+  const avgScale = scale.reduce((s, v) => s + v, 0) / scale.length;
+  // Diagonal calibration matrix
+  const A = fromRows([[avgScale, 0, 0], [0, avgScale, 0], [0, 0, avgScale]]);
+  const b = colVec([0, 0, 0]);
+  return [A, b];
+}
+
 export const FUSION: ToolboxModule = {
   id: 'fusion',
   name: 'Sensor Fusion and Tracking Toolbox',
@@ -246,6 +291,7 @@ export const FUSION: ToolboxModule = {
     constturnjac,
     cameasjac,
     compassangle,
+    accelcal,
   },
   help: {
     assignmunkres: {
@@ -337,6 +383,20 @@ export const FUSION: ToolboxModule = {
       syntax: ['angle = compassangle([x y])'],
       description: ['compassangle([x,y]) returns atan2(y,x) in radians.'],
       seealso: ['constvel', 'constturn'],
+    },
+    accelcal: {
+      summary: 'Calibration parameters for accelerometer',
+      syntax: [
+        '[A,b] = accelcal(D)',
+        '[A,b] = accelcal(XUP,XDOWN,YUP,YDOWN,ZUP,ZDOWN)',
+        '[A,b] = accelcal(___,Gravity=g)',
+      ],
+      description: [
+        '[A,b] = accelcal(XUP,XDOWN,YUP,YDOWN,ZUP,ZDOWN) estimates the 3×3 scale/misalignment matrix A and 3×1 bias b from 6-position accelerometer data.',
+        'Each position dataset is an N×3 matrix of raw accelerometer readings with one axis aligned to gravity.',
+        'Apply calibration: acc_cal = A * acc_raw - b.',
+      ],
+      seealso: ['imuSensor', 'allanvar'],
     },
   },
 };

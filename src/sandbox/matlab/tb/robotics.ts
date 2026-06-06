@@ -266,6 +266,24 @@ async function bsplinepolytraj(args: Value[]): Promise<Value[]> {
   return [pos];
 }
 
+// ── quatnormalize: normalize quaternion(s) to unit length ─────────────────────────────
+async function quatnormalize(args: Value[]): Promise<Value[]> {
+  if (args.length < 1) throw new MatError('quatnormalize: requires quaternion input');
+  const q = args[0] as any;
+  if (!isMat(q)) throw new MatError('quatnormalize: expected numeric matrix');
+  const data = toArray(q);
+  const rows = q.rows, cols = q.cols;
+  const out = new Float64Array(data.length);
+  // Each row is one quaternion [w x y z]
+  for (let r = 0; r < rows; r++) {
+    let norm = 0;
+    for (let c = 0; c < cols; c++) norm += data[r * cols + c] ** 2;
+    norm = Math.sqrt(norm) || 1;
+    for (let c = 0; c < cols; c++) out[r * cols + c] = data[r * cols + c] / norm;
+  }
+  return [mat(rows, cols, out)];
+}
+
 export const ROBOTICS: ToolboxModule = {
   id: 'robotics',
   name: 'Robotics System Toolbox',
@@ -291,6 +309,7 @@ export const ROBOTICS: ToolboxModule = {
     tform2trvec,
     rigidBodyTree,
     bsplinepolytraj,
+    quatnormalize,
   },
   help: {
     angdiff: {
@@ -411,6 +430,15 @@ export const ROBOTICS: ToolboxModule = {
       syntax: ['[q,qd,qdd] = bsplinepolytraj(waypoints,timePoints,tSamples)'],
       description: ['Computes a smooth B-spline trajectory through waypoints at timePoints, sampled at tSamples.'],
       seealso: ['minjerkpolytraj', 'quinticpolytraj'],
+    },
+    quatnormalize: {
+      summary: 'Normalize quaternion',
+      syntax: ['qnorm = quatnormalize(q)'],
+      description: [
+        'qnorm = quatnormalize(q) normalizes each row of q (a quaternion [w x y z]) to unit length.',
+        'If q is N×4, each of the N quaternions is normalized independently.',
+      ],
+      seealso: ['quat2rotm', 'axang2quat', 'eul2quat'],
     },
   },
 };
