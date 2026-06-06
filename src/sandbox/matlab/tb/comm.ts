@@ -487,6 +487,22 @@ export const COMM: ToolboxModule = {
 
     // ── I/Q imbalance ──
     /** [ampDB,phaseDeg] = iqcoef2imbal(c) — imbalance a compensator coefficient corrects. */
+    // iqimbal2coef(ampDB,phaseDeg): I/Q imbalance → complex compensator coefficient (inverse of iqcoef2imbal).
+    iqimbal2coef: (a) => {
+      const src = m(a[0]), Aarr = toArray(src), Parr = toArray(m(a[1])); const re: number[] = [], im: number[] = [];
+      for (let i = 0; i < Aarr.length; i++) {
+        const A = Aarr[i], P = Parr.length === 1 ? Parr[0] : Parr[i];
+        const Ig = 10 ** (0.5 * A / 20), Qg = 10 ** (-0.5 * A / 20);
+        const ai = -0.5 * P * Math.PI / 180, aq = Math.PI / 2 + 0.5 * P * Math.PI / 180;
+        const K11 = Ig * Math.cos(ai), K12 = Qg * Math.cos(aq), K21 = Ig * Math.sin(ai), K22 = Qg * Math.sin(aq);
+        const det = K11 * K22 - K12 * K21;
+        const R11 = K22 / det, R12 = -K12 / det, R21 = -K21 / det, R22 = K11 / det;
+        const w1r = (R11 + R22) / 2, w1i = (R21 - R12) / 2, w2r = (R11 - R22) / 2, w2i = (R21 + R12) / 2;
+        const d = w1r * w1r + w1i * w1i;
+        re.push((w2r * w1r + w2i * w1i) / d); im.push((w2i * w1r - w2r * w1i) / d);
+      }
+      return ret(cplx(src, re, im));
+    },
     iqcoef2imbal: (a, nargout) => {
       const C = m(a[0]); const cre = toArray(C), cim = C.idata ? Array.from(C.idata) : new Array(cre.length).fill(0);
       const amp: number[] = [], ph: number[] = [];
@@ -604,6 +620,7 @@ export const COMM: ToolboxModule = {
     primpoly: { summary: 'Find primitive polynomials for a Galois field', syntax: ['pr = primpoly(m)', 'pr = primpoly(m,opt)', 'pr = primpoly(___,"nodisplay")'], description: ['pr = primpoly(m) returns the default primitive polynomial for GF(2^m) as a decimal integer (coefficient bit-mask).', 'opt can be \'min\', \'max\', \'all\', or \'all+p\' to select which primitive polynomials are returned.', '"nodisplay" suppresses the polynomial printout; the numeric result is unaffected.'], seealso: ['gf', 'isprimitive'] },
     gfminpol: { summary: 'Find the minimal polynomial of an element of a Galois field', syntax: ['pol = gfminpol(k,m)', 'pol = gfminpol(k,m,p)', 'pol = gfminpol(k,prim_poly,p)'], description: ['pol = gfminpol(k,m) returns the minimal polynomial of alpha^k over GF(2), where alpha is a root of the default primitive polynomial for GF(2^m).', 'If k is a vector, pol is a matrix with one row per element.', 'The polynomial is represented as a row vector of GF(2) coefficients in ascending power order.'], seealso: ['gfprimdf', 'gfcosets', 'gfroots'] },
     gftrunc: { summary: 'Minimize the length of a polynomial representation over GF', syntax: ['c = gftrunc(a)'], description: ['c = gftrunc(a) removes trailing (high-order) zeros from the row-vector representation of a polynomial over a Galois field.', 'If the polynomial has degree d, trailing zeros beyond position d+1 are removed.', 'Middle or leading zeros are preserved since they represent non-zero intermediate coefficients.'], seealso: ['gfadd', 'gfsub', 'gfconv', 'gfdeconv'] },
+    iqimbal2coef: { summary: 'Convert I/Q imbalance to compensator coefficient', syntax: ['c = iqimbal2coef(ampImbalanceDB,phaseImbalanceDeg)'], seealso: ['iqcoef2imbal'] },
     iqcoef2imbal: { summary: 'Convert compensator coefficient to amplitude and phase imbalance', syntax: ['[A,P] = iqcoef2imbal(C)'], description: ['[A,P] = iqcoef2imbal(C) converts a complex IQ imbalance compensator coefficient C to its equivalent amplitude imbalance A (dB) and phase imbalance P (degrees).', 'C is typically the output of the step function of an IQImbalanceCompensator System object.', 'Use imbal2iqcoef to convert in the opposite direction.'], seealso: [] },
     fmmod: { summary: 'Frequency modulation', syntax: ['y = fmmod(x,Fc,Fs,freqdev)', 'y = fmmod(x,Fc,Fs,freqdev,ini_phase)'], description: ['y = fmmod(x,Fc,Fs,freqdev) returns the FM-modulated signal y for message x with carrier frequency Fc (Hz), sample rate Fs (Hz), and frequency deviation freqdev (Hz).', 'Requires Fs >= 2*Fc and freqdev < Fc.', 'ini_phase sets the initial phase of the carrier in radians (default 0).'], seealso: ['fmdemod', 'ammod', 'pmmod'] },
     matdeintrlv: { summary: 'Restore ordering of symbols using a matrix interleaver', syntax: ['deintrlvd = matdeintrlv(data,Nrows,Ncols)'], description: ['deintrlvd = matdeintrlv(data,Nrows,Ncols) is the inverse of matintrlv: it fills an Nrows-by-Ncols matrix column-by-column with the elements of data, then reads out the rows sequentially.', 'data must have length Nrows*Ncols.', 'Interleaving spreads burst errors across multiple codewords to improve error-correction performance.'], seealso: ['matintrlv', 'algdeintrlv'] },
