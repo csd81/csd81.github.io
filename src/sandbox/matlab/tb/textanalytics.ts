@@ -29,14 +29,33 @@ function tokenize(text: string): string[] {
     .replace(/[^a-z0-9'\-\s]/g, ' ')  // keep apostrophe/hyphen inside words
     .split(/\s+/)
     .map(w => w.replace(/^['\-]+|['\-]+$/g, ''))  // strip leading/trailing punctuation
-    .filter(w => w.length > 1);
+    .filter(w => w.length > 0);                    // MATLAB keeps single-char tokens
 }
 
 // ── Extract raw string from a Value ───────────────────────────────────────────────────
 function valToString(v: Value): string {
   if (isMat(v) && (v as any).isChar) return String.fromCharCode(...(Array.from((v as any).data) as number[]));
-  if ((v as any).kind === 'str') return (v as any).value ?? '';
+  // Sandbox string type (the `"…"` string class): items is column-major string[].
+  if ((v as any).kind === 'str') {
+    const items = (v as any).items as string[] | undefined;
+    if (items && items.length) return items.join(' ');
+    return (v as any).value ?? '';
+  }
   return '';
+}
+
+// Split a Value into one raw string per element (scalar → 1, char row → 1,
+// string array → one per element, cellstr → one per cell). Used to expand
+// multi-element string/char/cell inputs into separate documents.
+function valToStrings(v: Value): string[] {
+  if ((v as any).kind === 'str') {
+    const items = (v as any).items as string[] | undefined;
+    if (items) return items.slice();
+    return [(v as any).value ?? ''];
+  }
+  if (isMat(v) && (v as any).isChar) return [valToString(v)];
+  if ((v as any).kind === 'cell') return (v as any).items.flatMap((it: Value) => valToStrings(it));
+  return [];
 }
 
 // ── Extract token arrays from a tokenizedDocument object or cell array ────────────────
@@ -49,8 +68,9 @@ function unpackDocs(v: Value): string[][] {
     return [];
   }
   if ((v as any).kind === 'cell') return (v as any).items.map((item: Value) => unpackDocs(item)[0] ?? []);
-  const s = valToString(v);
-  if (s) return [tokenize(s)];
+  // Bare string array / char / cellstr: one document per element.
+  const strings = valToStrings(v);
+  if (strings.length) return strings.map(s => tokenize(s));
   return [];
 }
 
@@ -76,18 +96,12 @@ function packTokenDoc(docs: string[][]): Value {
 // ── tokenizedDocument ─────────────────────────────────────────────────────────────────
 async function tokenizedDocument(args: Value[]): Promise<Value[]> {
   if (args.length < 1) throw new MatError('tokenizedDocument: requires text input');
-  const docs: string[][] = [];
   const v = args[0];
-  if ((v as any).kind === 'cell') {
-    for (const item of (v as any).items) {
-      const s = valToString(item);
-      docs.push(tokenize(s));
-    }
-  } else {
-    const s = valToString(v);
-    if (!s) throw new MatError('tokenizedDocument: input must be a string or cell array of strings');
-    docs.push(tokenize(s));
-  }
+  // Accept the sandbox string class ("…"), char matrices, and cell arrays of either.
+  // Each element of a string array / cellstr becomes its own document.
+  const strings = valToStrings(v);
+  if (strings.length === 0) throw new MatError('tokenizedDocument: input must be a string or cell array of strings');
+  const docs: string[][] = strings.map(s => tokenize(s));
   return [packTokenDoc(docs)];
 }
 
@@ -113,18 +127,17 @@ async function bagOfWords(args: Value[]): Promise<Value[]> {
   if (args.length < 1) throw new MatError('bagOfWords: requires tokenizedDocument');
   const docs = unpackDocs(args[0]);
 
-  // Build vocabulary (sorted for determinism)
-  const vocabSet = new Set<string>();
-  for (const d of docs) for (const t of d) vocabSet.add(t);
-  const vocab = [...vocabSet].sort();
-  const wordIdx = new Map(vocab.map((w, i) => [w, i]));
+  // Build vocabulary in first-appearance order (matches MATLAB element-by-element).
+  const wordIdx = new Map<string, number>();
+  const vocab: string[] = [];
+  for (const d of docs) for (const t of d) if (!wordIdx.has(t)) { wordIdx.set(t, vocab.length); vocab.push(t); }
   const V = vocab.length, D = docs.length;
 
-  // Count matrix [D × V]
+  // Count matrix [D × V], stored column-major (Mat convention: (d,i) at d + i*D)
   const counts = new Float64Array(D * V);
   for (let d = 0; d < D; d++) for (const t of docs[d]) {
     const i = wordIdx.get(t);
-    if (i !== undefined) counts[d * V + i]++;
+    if (i !== undefined) counts[d + i * D]++;
   }
 
   const vocabCell: Value = { kind: 'cell', items: vocab.map(w => str(w)) } as unknown as Value;
@@ -151,28 +164,20 @@ async function tfidf(args: Value[]): Promise<Value[]> {
   const D = countsMat.rows, V = countsMat.cols;
   const N = D;
 
-  // Document frequencies
+  // Document frequencies (counts stored column-major: (d,v) at d + v*D)
   const df = new Float64Array(V);
-  for (let d = 0; d < D; d++) for (let v = 0; v < V; v++) if (countsMat.data[d*V+v] > 0) df[v]++;
+  for (let v = 0; v < V; v++) for (let d = 0; d < D; d++) if (countsMat.data[d + v*D] > 0) df[v]++;
 
-  // IDF (smooth)
-  const idf = df.map(dfw => Math.log((1 + N) / (1 + dfw)) + 1);
+  // MATLAB default: TFIDF(d,w) = tf(d,w) * log(N / df(w))
+  //   tf = raw count (no per-document normalisation)
+  //   idf = log(N/df)  (no smoothing)  → 0 when a word appears in every document
+  const idf = df.map(dfw => (dfw > 0 ? Math.log(N / dfw) : 0));
 
-  // TF * IDF
-  const result = new Float64Array(D * V);
-  for (let d = 0; d < D; d++) {
-    let rowSum = 0;
-    for (let v = 0; v < V; v++) rowSum += countsMat.data[d*V+v];
-    if (rowSum === 0) continue;
-    let norm = 0;
-    for (let v = 0; v < V; v++) {
-      const val = (countsMat.data[d*V+v] / rowSum) * idf[v];
-      result[d*V+v] = val;
-      norm += val * val;
+  const result = new Float64Array(D * V); // column-major
+  for (let v = 0; v < V; v++) {
+    for (let d = 0; d < D; d++) {
+      result[d + v*D] = countsMat.data[d + v*D] * idf[v];
     }
-    // L2 normalise
-    norm = Math.sqrt(norm) || 1;
-    for (let v = 0; v < V; v++) result[d*V+v] /= norm;
   }
 
   return [mat(D, V, result)];
@@ -211,7 +216,7 @@ async function fitlda(args: Value[]): Promise<Value[]> {
   for (let d = 0; d < D; d++) {
     const words: number[] = [];
     for (let v = 0; v < V; v++) {
-      const cnt = Math.round(countsMat.data[d*V+v]);
+      const cnt = Math.round(countsMat.data[d + v*D]); // column-major Counts
       for (let c = 0; c < cnt; c++) words.push(v);
     }
     docs.push(words);
@@ -272,26 +277,26 @@ async function fitlda(args: Value[]): Promise<Value[]> {
     }
   }
 
-  // Compute phi = P(w | topic k): [K × V]
+  // Compute phi = P(w | topic k): [K × V], stored column-major: (k,v) at k + v*K
   const phi = new Float64Array(K * V);
   for (let k = 0; k < K; k++) {
     const denom = nk[k] + Vbeta;
-    for (let v = 0; v < V; v++) phi[k*V+v] = (nkv[k*V+v] + beta) / denom;
+    for (let v = 0; v < V; v++) phi[k + v*K] = (nkv[k*V+v] + beta) / denom;
   }
 
-  // Compute theta = P(topic k | doc d): [D × K]
+  // Compute theta = P(topic k | doc d): [D × K], column-major: (d,k) at d + k*D
   const theta = new Float64Array(D * K);
   for (let d = 0; d < D; d++) {
     const docLen = docs[d].length;
     const denom = docLen + K * alpha;
-    for (let k = 0; k < K; k++) theta[d*K+k] = (ndk[d*K+k] + alpha) / denom;
+    for (let k = 0; k < K; k++) theta[d + k*D] = (ndk[d*K+k] + alpha) / denom;
   }
 
   // Perplexity = exp(-log-likelihood / total_words)
   let loglik = 0;
   for (let d = 0; d < D; d++) for (const v of docs[d]) {
     let pWD = 0;
-    for (let k = 0; k < K; k++) pWD += theta[d*K+k] * phi[k*V+v];
+    for (let k = 0; k < K; k++) pWD += theta[d + k*D] * phi[k + v*K];
     loglik += Math.log(Math.max(pWD, 1e-300));
   }
   const perplexity = Math.exp(-loglik / totalWords);
@@ -342,7 +347,7 @@ export const TEXTANALYTICS: ToolboxModule = {
       syntax: ['bag = bagOfWords(documents)', 'bag = bagOfWords(documents,customVocab)'],
       description: [
         'bag = bagOfWords(documents) creates a bag-of-words model from a tokenizedDocument array.',
-        'bag.Vocabulary is a cell array of all unique words (sorted alphabetically).',
+        'bag.Vocabulary lists all unique words in first-appearance order (matching MATLAB).',
         'bag.Counts is an [nDocs × nVocab] matrix of word occurrence counts.',
         'bag.NumDocuments and bag.NumWords give the corpus and vocabulary sizes.',
         'Pass bag to tfidf for TF-IDF weighting or fitlda for topic modelling.',
@@ -354,9 +359,9 @@ export const TEXTANALYTICS: ToolboxModule = {
       syntax: ['M = tfidf(bag)', 'M = tfidf(bag,documents)'],
       description: [
         'M = tfidf(bag) returns an [nDocs × nVocab] matrix of TF-IDF weights.',
-        'TF(d,w) = count(d,w) / total_words(d)',
-        'IDF(w) = log((1 + N) / (1 + df(w))) + 1  [smooth IDF, sklearn convention]',
-        'Each document row is L2-normalised so the matrix is ready for cosine-similarity search.',
+        'TF(d,w) = count(d,w)   (raw term frequency, no per-document normalisation)',
+        'IDF(w) = log(N / df(w))   (no smoothing; 0 if the word occurs in every document)',
+        'TFIDF(d,w) = TF(d,w) * IDF(w), matching the MATLAB default.',
         'Use for document similarity, clustering, or as feature matrix for classifiers.',
       ],
       seealso: ['bagOfWords', 'fitlda', 'tokenizedDocument'],

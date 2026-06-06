@@ -3,7 +3,7 @@
 // matchFeatures, estimateFundamentalMatrix (8-point algorithm).
 import {
   type Value, scalar, rowVec, colVec, toArray, asScalar, toMat as m, isMat,
-  MatError, mat, zeros, makeObject, fromRows, str, bool,
+  MatError, mat, zeros, makeObject, fromRows, str, bool, isStr, asString,
 } from '../values';
 import type { ToolboxModule } from './types';
 
@@ -244,37 +244,113 @@ async function extractFeatures(args: Value[]): Promise<Value[]> {
 async function matchFeatures(args: Value[]): Promise<Value[]> {
   if (args.length < 2) throw new MatError('matchFeatures: requires features1 and features2');
   const F1 = m(args[0]), F2 = m(args[1]);
-  const ratio = args.length > 2 && isMat(args[2]) ? asScalar(m(args[2])) : 0.6;
-  const unique = !(args.length > 3 && isMat(args[3]) && asScalar(m(args[3])) === 0);
 
+  // Defaults match MATLAB R2026a: Metric=ssd, MatchThreshold=1 (percent),
+  // Method=exhaustive, MaxRatio=0.6, Prenormalized=false, Unique=false.
+  let maxRatio = 0.6;
+  let unique = false;
+  let metric = 'ssd';            // 'ssd' or 'sad'
+  let matchThreshold = 1.0;      // percent of feature space
+  let prenormalized = false;
+  const truthy = (val: Value): boolean => {
+    if (isStr(val)) return asString(val).toLowerCase() === 'true';
+    if (isMat(val) && (val as any).isChar) return asString(val).toLowerCase() === 'true';
+    return isMat(val) && asScalar(m(val)) !== 0;
+  };
+  for (let a = 2; a < args.length; a++) {
+    const v = args[a];
+    const name = (isStr(v) ? asString(v) : (isMat(v) && (v as any).isChar ? asString(v) : '')).toLowerCase();
+    if (name === '') {
+      // legacy positional ratio: matchFeatures(F1,F2,ratio)
+      if (isMat(v)) maxRatio = asScalar(m(v));
+      continue;
+    }
+    const val = args[++a];
+    if (val === undefined) throw new MatError(`matchFeatures: missing value for '${name}'`);
+    switch (name) {
+      case 'maxratio': maxRatio = asScalar(m(val)); break;
+      case 'matchthreshold': matchThreshold = asScalar(m(val)); break;
+      case 'metric': metric = (isStr(val) || (isMat(val) && (val as any).isChar) ? asString(val) : '').toLowerCase(); break;
+      case 'prenormalized': prenormalized = truthy(val); break;
+      case 'unique': unique = truthy(val); break;
+      case 'method': break; // 'Exhaustive' / 'Approximate' — both exhaustive here
+      default: break;       // ignore unknown options gracefully
+    }
+  }
+
+  // Column-major access: element (r,c) of an n×dim feature matrix is at data[r + c*n].
   const n1 = F1.rows, n2 = F2.rows, dim = F1.cols;
-  const pairs: number[][] = [];
 
+  // MATLAB L2-normalizes each descriptor to a unit vector before matching
+  // (unless Prenormalized). Zero vectors are left as-is.
+  const norm1 = new Float64Array(n1 * dim);
+  const norm2 = new Float64Array(n2 * dim);
+  const fill = (src: Float64Array, dst: Float64Array, n: number) => {
+    for (let i = 0; i < n; i++) {
+      let nrm = 0;
+      for (let k = 0; k < dim; k++) { const x = src[i + k * n]; nrm += x * x; }
+      nrm = Math.sqrt(nrm);
+      const inv = prenormalized || nrm === 0 ? 1 : 1 / nrm;
+      for (let k = 0; k < dim; k++) dst[i + k * n] = src[i + k * n] * inv;
+    }
+  };
+  fill(F1.data, norm1, n1);
+  fill(F2.data, norm2, n2);
+
+  const dist = (i: number, j: number): number => {
+    let d = 0;
+    for (let k = 0; k < dim; k++) {
+      const diff = norm1[i + k * n1] - norm2[j + k * n2];
+      d += metric === 'sad' ? Math.abs(diff) : diff * diff;
+    }
+    return d;
+  };
+
+  // percentToLevel: for ssd max_val=4, for sad max_val=2*sqrt(dim) (on unit vectors).
+  const maxVal = metric === 'sad' ? 2 * Math.sqrt(dim) : 4;
+  const absThreshold = matchThreshold * 0.01 * maxVal;
+
+  // For each feature1, find nearest (and second-nearest) feature2.
+  const performRatioTest = maxRatio !== 1;
+  const pairs: { i: number; j: number; d: number }[] = [];
   for (let i = 0; i < n1; i++) {
     let best1 = Infinity, best2 = Infinity, bestJ = -1;
     for (let j = 0; j < n2; j++) {
-      let d2 = 0;
-      for (let k = 0; k < dim; k++) { const diff = F1.data[i*dim+k] - F2.data[j*dim+k]; d2 += diff*diff; }
-      if (d2 < best1) { best2 = best1; best1 = d2; bestJ = j; }
-      else if (d2 < best2) best2 = d2;
+      const d = dist(i, j);
+      if (d < best1) { best2 = best1; best1 = d; bestJ = j; }
+      else if (d < best2) best2 = d;
     }
-    // Lowe's ratio test
-    if (best1 < ratio * ratio * best2 && bestJ >= 0) pairs.push([i+1, bestJ+1]);
+    if (bestJ < 0) continue;
+    // removeWeakMatches: drop matches whose best distance exceeds the threshold.
+    if (best1 > absThreshold) continue;
+    // Ratio test (only when MaxRatio != 1 and there are ≥2 candidates).
+    if (performRatioTest && n2 > 1) {
+      let d1 = best1, d2 = best2;
+      if (d2 < 1e-6) { d1 = 1; d2 = 1; } // division-by-zero guard (matches MATLAB)
+      if (d1 / d2 > maxRatio) continue;
+    }
+    pairs.push({ i, j: bestJ, d: best1 });
   }
 
-  // Unique matches: remove duplicate target indices (keep best)
-  const result = unique ? (() => {
-    const seen = new Map<number, {src:number;d:number}>();
-    for (const [i, j] of pairs) {
-      const prev = seen.get(j);
-      if (!prev || i < prev.src) seen.set(j, {src:i, d:0});
-    }
-    return [...seen.entries()].map(([j, {src}]) => [src, j]);
-  })() : pairs;
+  // Unique: bidirectional check — keep a pair only if, among all feature1's, the
+  // matched feature2 column's minimum-distance row is exactly this feature1.
+  let kept = pairs;
+  if (unique) {
+    kept = pairs.filter((p) => {
+      let minRow = -1, minD = Infinity;
+      for (let r = 0; r < n1; r++) {
+        const d = dist(r, p.j);
+        if (d < minD) { minD = d; minRow = r; }
+      }
+      return minRow === p.i;
+    });
+  }
 
-  const pairData = new Float64Array(result.length * 2);
-  for (let i = 0; i < result.length; i++) { pairData[i*2] = result[i][0]; pairData[i*2+1] = result[i][1]; }
-  return [mat(result.length, 2, pairData)];
+  // Output is column-major: column 1 = indices into F1, column 2 = indices into F2.
+  const M = kept.length;
+  const pairData = new Float64Array(M * 2);
+  for (let r = 0; r < M; r++) { pairData[r] = kept[r].i + 1; pairData[r + M] = kept[r].j + 1; }
+  return [mat(M, 2, pairData)];
 }
 
 // ── estimateFundamentalMatrix ─────────────────────────────────────────────────────────
@@ -288,15 +364,18 @@ async function estimateFundamentalMatrix(args: Value[]): Promise<Value[]> {
   if (n < 8) throw new MatError('estimateFundamentalMatrix: need at least 8 point correspondences');
 
   // ── Normalize points ───────────────────────────────────────────────────────────
+  // P is an n×2 column-major matrix: x = data[i], y = data[i+n].
   function normPts(P: typeof P1): { pts: number[][]; T: number[][] } {
+    const X = (i: number) => P.data[i];
+    const Y = (i: number) => P.data[i + n];
     let mx = 0, my = 0;
-    for (let i = 0; i < n; i++) { mx += P.data[i*2]; my += P.data[i*2+1]; }
+    for (let i = 0; i < n; i++) { mx += X(i); my += Y(i); }
     mx /= n; my /= n;
     let meanDist = 0;
-    for (let i = 0; i < n; i++) meanDist += Math.sqrt((P.data[i*2]-mx)**2 + (P.data[i*2+1]-my)**2);
+    for (let i = 0; i < n; i++) meanDist += Math.sqrt((X(i)-mx)**2 + (Y(i)-my)**2);
     meanDist /= n;
     const s = Math.SQRT2 / (meanDist || 1);
-    const pts = Array.from({length: n}, (_, i) => [(P.data[i*2]-mx)*s, (P.data[i*2+1]-my)*s]);
+    const pts = Array.from({length: n}, (_, i) => [(X(i)-mx)*s, (Y(i)-my)*s]);
     const T = [[s,0,-s*mx],[0,s,-s*my],[0,0,1]];
     return { pts, T };
   }
@@ -320,70 +399,78 @@ async function estimateFundamentalMatrix(args: Value[]): Promise<Value[]> {
     return s;
   }));
 
-  // Power iteration on AtA for smallest eigenvector: use shifted inverse power iteration
-  // Shift λ_shift ≈ smallest eigenvalue; AtA - λI should be near-singular.
-  // Simple: just use nullspace via Gaussian elimination + SVD approximation.
-  // Use the classical "column sweep" null space from AtA via direct Gaussian elimination.
-  function svdLast(M: number[][]): number[] {
-    // QR decomposition via Gram-Schmidt to get last right singular vector
-    // Actually: smallest eigenvector of symmetric M via power iteration on (shift*I - M)^{-1}
-    const dim = M.length;
-    // Estimate largest eigenvalue (Gershgorin)
-    let shift = M.reduce((s, row, i) => s + Math.abs(row[i]), 0) / dim + 1;
-    // B = shift*I - M (so largest eigenvalue of B = shift - lambda_min of M)
-    const B = M.map((row, i) => row.map((v, j) => (i===j ? shift : 0) - v));
-    // Power iteration on B
-    let v: number[] = Array(dim).fill(0).map((_,i) => i===0?1:0);
-    for (let iter=0; iter<200; iter++) {
-      const Bv = B.map(row => row.reduce((s,bij,j)=>s+bij*v[j], 0));
-      const norm = Math.sqrt(Bv.reduce((s,x)=>s+x*x, 0)) || 1;
-      v = Bv.map(x=>x/norm);
+  // Smallest right-singular vector of A = eigenvector of A'A for the smallest
+  // eigenvalue. Compute the full symmetric eigendecomposition of the 9×9 A'A with
+  // the classical cyclic Jacobi method, then pick the eigenvector whose eigenvalue
+  // is minimal. (A shifted power iteration converges to the WRONG eigenvector here.)
+  function jacobiEig(Min: number[][]): { vals: number[]; vecs: number[][] } {
+    const dim = Min.length;
+    const Aj = Min.map((r) => [...r]);
+    // Q holds eigenvectors as columns.
+    const Q: number[][] = Array.from({ length: dim }, (_, i) =>
+      Array.from({ length: dim }, (_, j) => (i === j ? 1 : 0)));
+    for (let sweep = 0; sweep < 100; sweep++) {
+      // off-diagonal Frobenius norm
+      let off = 0;
+      for (let i = 0; i < dim; i++) for (let j = i + 1; j < dim; j++) off += Aj[i][j] * Aj[i][j];
+      if (off < 1e-30) break;
+      for (let p = 0; p < dim; p++) {
+        for (let q = p + 1; q < dim; q++) {
+          const apq = Aj[p][q];
+          if (Math.abs(apq) < 1e-300) continue;
+          const theta = (Aj[q][q] - Aj[p][p]) / (2 * apq);
+          const t = Math.sign(theta || 1) / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
+          const c = 1 / Math.sqrt(t * t + 1);
+          const s = t * c;
+          // Apply rotation J' A J (rows/cols p,q)
+          for (let k = 0; k < dim; k++) {
+            const akp = Aj[k][p], akq = Aj[k][q];
+            Aj[k][p] = c * akp - s * akq;
+            Aj[k][q] = s * akp + c * akq;
+          }
+          for (let k = 0; k < dim; k++) {
+            const apk = Aj[p][k], aqk = Aj[q][k];
+            Aj[p][k] = c * apk - s * aqk;
+            Aj[q][k] = s * apk + c * aqk;
+          }
+          // Accumulate eigenvectors: Q ← Q J
+          for (let k = 0; k < dim; k++) {
+            const qkp = Q[k][p], qkq = Q[k][q];
+            Q[k][p] = c * qkp - s * qkq;
+            Q[k][q] = s * qkp + c * qkq;
+          }
+        }
+      }
     }
-    return v;
+    const vals = Aj.map((_, i) => Aj[i][i]);
+    const vecs = Q;
+    return { vals, vecs };
   }
 
-  const fVec = svdLast(AtA);
+  const { vals, vecs } = jacobiEig(AtA);
+  // Index of smallest eigenvalue.
+  let minIdx = 0;
+  for (let i = 1; i < vals.length; i++) if (vals[i] < vals[minIdx]) minIdx = i;
+  // Eigenvector is column minIdx of vecs.
+  const fVec = vecs.map((row) => row[minIdx]);
   // Reshape to 3×3 F matrix
   let F: number[][] = Array.from({length:3}, (_,i) => Array.from({length:3}, (_,j) => fVec[i*3+j]));
 
   // ── Enforce rank-2 constraint: F ← U * diag(s1,s2,0) * V' ────────────────────
   // SVD of 3×3 F using power iteration for each singular value
   function svd3x3(M: number[][]): { U: number[][]; S: number[]; V: number[][] } {
-    // Compute eigendecomposition of M'M for right singular vectors
+    // Right singular vectors = eigenvectors of M'M. Reuse the robust cyclic-Jacobi
+    // eigensolver above (the prior single-rotation 3×3 sweep failed to converge,
+    // producing wildly wrong singular values and breaking the rank-2 step).
     const MtM = Array.from({length:3}, (_,i) => Array.from({length:3}, (_,j) => {
       let s = 0; for (let k=0; k<3; k++) s += M[k][i]*M[k][j]; return s;
     }));
-    // Jacobi eigenvalue for symmetric 3×3
-    let Q = [[1,0,0],[0,1,0],[0,0,1]];
-    let A = MtM.map(r=>[...r]);
-    for (let sweep=0; sweep<50; sweep++) {
-      let maxOff = 0, p = 0, q = 1;
-      for (let i=0;i<3;i++) for (let j=i+1;j<3;j++) if (Math.abs(A[i][j])>maxOff){maxOff=Math.abs(A[i][j]);p=i;q=j;}
-      if (maxOff<1e-12) break;
-      const theta = (A[q][q]-A[p][p])/(2*A[p][q]+1e-30);
-      const t = Math.sign(theta)/(Math.abs(theta)+Math.sqrt(1+theta**2));
-      const c = 1/Math.sqrt(1+t**2), s2 = t*c;
-      const G = [[1,0,0],[0,1,0],[0,0,1]]; G[p][p]=c; G[p][q]=-s2; G[q][p]=s2; G[q][q]=c;
-      // A ← G' A G
-      const newA = A.map(r=>[...r]);
-      for (let i=0;i<3;i++) for (let j=0;j<3;j++) {
-        let s=0; for (let k=0;k<3;k++) s += G[k][i]*A[k][j]; newA[i][j]=s;
-      }
-      for (let i=0;i<3;i++) for (let j=0;j<3;j++) {
-        let s=0; for (let k=0;k<3;k++) s += newA[i][k]*G[k][j]; A[i][j]=s;
-      }
-      // Q ← Q G
-      const newQ = Q.map(r=>[...r]);
-      for (let i=0;i<3;i++) for (let j=0;j<3;j++) {
-        let s=0; for (let k=0;k<3;k++) s += Q[i][k]*G[k][j]; newQ[i][j]=s;
-      }
-      Q = newQ;
-    }
-    const S = [Math.sqrt(Math.max(0,A[0][0])), Math.sqrt(Math.max(0,A[1][1])), Math.sqrt(Math.max(0,A[2][2]))];
-    // Sort descending
+    const { vals, vecs } = jacobiEig(MtM);          // vecs: eigenvectors as columns
+    const S = vals.map(v => Math.sqrt(Math.max(0, v)));
+    // Sort descending by singular value.
     const idx = [0,1,2].sort((a,b)=>S[b]-S[a]);
-    const Vs = idx.map(i=>Q.map(r=>r[i]));
-    const Ss = idx.map(i=>S[i]);
+    const Vs = idx.map(i => vecs.map(r => r[i]));    // Vs[c] = c-th right singular vector
+    const Ss = idx.map(i => S[i]);
     // U = M V / sigma
     const V: number[][] = [[Vs[0][0],Vs[1][0],Vs[2][0]],[Vs[0][1],Vs[1][1],Vs[2][1]],[Vs[0][2],Vs[1][2],Vs[2][2]]];
     const U: number[][] = Array.from({length:3}, (_,i) => Array.from({length:3}, (_,j) => {
@@ -409,9 +496,9 @@ async function estimateFundamentalMatrix(args: Value[]): Promise<Value[]> {
   const T2t: number[][] = [[T2[0][0],T2[1][0],T2[2][0]],[T2[0][1],T2[1][1],T2[2][1]],[T2[0][2],T2[1][2],T2[2][2]]];
   const Ffinal = mat3mul(mat3mul(T2t, Fnew), T1);
 
-  // Return as 3×3 matrix
+  // Return as 3×3 matrix. Mat storage is column-major: element (i,j) → data[i + j*3].
   const Fdata = new Float64Array(9);
-  for (let i=0;i<3;i++) for (let j=0;j<3;j++) Fdata[i*3+j] = Ffinal[i][j];
+  for (let i=0;i<3;i++) for (let j=0;j<3;j++) Fdata[i + j*3] = Ffinal[i][j];
   return [mat(3, 3, Fdata)];
 }
 

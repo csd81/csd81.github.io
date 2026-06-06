@@ -3,28 +3,56 @@
 // pcregistericp (ICP registration), pcsegdist (Euclidean clustering),
 // pcfitplane (RANSAC plane fitting).
 import {
-  type Value, scalar, rowVec, colVec, toArray, asScalar, toMat as m, isMat,
-  MatError, mat, zeros, makeObject, str, bool,
+  type Value, type Mat, scalar, rowVec, colVec, toArray, asScalar, toMat as m, isMat,
+  MatError, mat, zeros, makeObject, str, bool, asString,
 } from '../values';
 import type { ToolboxModule } from './types';
 
+function isCharLike(v: Value): boolean {
+  return (isMat(v) && !!(v as Mat).isChar) || (v as any).kind === 'str';
+}
+
 // ── Point cloud pack / unpack ──────────────────────────────────────────────────────────
 interface PC { xyz: Float64Array; n: number } // xyz is [n×3] row-major
+
+// Mat data is COLUMN-MAJOR (element (r,c) at data[r + c*rows]); the internal xyz
+// buffer is ROW-MAJOR ([x0 y0 z0 x1 y1 z1 ...]). Convert on both pack and unpack.
+function matToRowMajorXYZ(mv: { rows: number; cols: number; data: Float64Array }): Float64Array {
+  const n = mv.rows;
+  const xyz = new Float64Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    xyz[i*3+0] = mv.data[i + 0*mv.rows];
+    xyz[i*3+1] = mv.data[i + 1*mv.rows];
+    xyz[i*3+2] = mv.data[i + 2*mv.rows];
+  }
+  return xyz;
+}
+
+function rowMajorXYZtoMat(xyz: Float64Array, n: number): Value {
+  // Produce a column-major [n×3] Mat.
+  const data = new Float64Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    data[i + 0*n] = xyz[i*3+0];
+    data[i + 1*n] = xyz[i*3+1];
+    data[i + 2*n] = xyz[i*3+2];
+  }
+  return mat(n, 3, data);
+}
 
 function unpackPC(v: Value): PC {
   if ((v as any).kind === 'object') {
     const props = (v as any).props as Map<string, Value>;
     const loc = m(props.get('Location')!);
-    return { xyz: Float64Array.from(loc.data), n: loc.rows };
+    return { xyz: matToRowMajorXYZ(loc), n: loc.rows };
   }
   const mv = m(v);
   if (mv.cols < 3) throw new MatError('pointCloud: Location must have at least 3 columns');
-  return { xyz: Float64Array.from(mv.data), n: mv.rows };
+  return { xyz: matToRowMajorXYZ(mv), n: mv.rows };
 }
 
 function packPC(xyz: Float64Array, n: number): Value {
   const props = new Map<string, Value>();
-  props.set('Location', mat(n, 3, xyz));
+  props.set('Location', rowMajorXYZtoMat(xyz, n));
   props.set('Count', scalar(n));
   // Bounding limits
   let xMin=Infinity,xMax=-Infinity,yMin=Infinity,yMax=-Infinity,zMin=Infinity,zMax=-Infinity;
@@ -49,9 +77,9 @@ async function pointCloud(args: Value[]): Promise<Value[]> {
   const n = mv.rows;
   const xyz = new Float64Array(n * 3);
   for (let i = 0; i < n; i++) {
-    xyz[i*3+0] = mv.data[i*mv.cols+0];
-    xyz[i*3+1] = mv.data[i*mv.cols+1];
-    xyz[i*3+2] = mv.data[i*mv.cols+2];
+    xyz[i*3+0] = mv.data[i + 0*mv.rows];
+    xyz[i*3+1] = mv.data[i + 1*mv.rows];
+    xyz[i*3+2] = mv.data[i + 2*mv.rows];
   }
   return [packPC(xyz, n)];
 }
@@ -62,7 +90,17 @@ async function pointCloud(args: Value[]): Promise<Value[]> {
 async function pcdownsample(args: Value[]): Promise<Value[]> {
   if (args.length < 2) throw new MatError('pcdownsample: requires ptCloud and gridStep');
   const { xyz, n } = unpackPC(args[0]);
-  const step = asScalar(m(args[1]));
+  // Accept both pcdownsample(pc,gridStep) and pcdownsample(pc,'gridAverage',gridStep).
+  let stepArg: Value;
+  if (isCharLike(args[1])) {
+    const method = asString(args[1]).toLowerCase();
+    if (method !== 'gridaverage') throw new MatError(`pcdownsample: unsupported method '${method}'`);
+    if (args.length < 3) throw new MatError("pcdownsample: 'gridAverage' requires a gridStep");
+    stepArg = args[2];
+  } else {
+    stepArg = args[1];
+  }
+  const step = asScalar(m(stepArg));
   if (step <= 0) throw new MatError('pcdownsample: gridStep must be positive');
 
   // Bin each point into a voxel key
@@ -147,8 +185,47 @@ function nearestNeighbors(A: Float64Array, nA: number, B: Float64Array, nB: numb
   return { idx, dist2 };
 }
 
-// ── Optimal rigid transform from point correspondences (SVD method) ───────────────────
-// Given matched pairs (src[i] → dst[idx[i]]), solve for R, t minimising sum ||R*src_i + t - dst_i||^2
+// ── 3×3 symmetric eigendecomposition via cyclic Jacobi ────────────────────────────────
+// Returns eigenvalues (ascending) and matching eigenvector columns V[:,k].
+function jacobiEig3(Ain: number[][]): { vals: number[]; vecs: number[][] } {
+  const A = Ain.map(r => [...r]);
+  const V = [[1,0,0],[0,1,0],[0,0,1]];
+  for (let sweep = 0; sweep < 100; sweep++) {
+    let off = 0;
+    for (let i = 0; i < 3; i++) for (let j = i+1; j < 3; j++) off += A[i][j]*A[i][j];
+    if (off < 1e-30) break;
+    for (let p = 0; p < 3; p++) for (let q = p+1; q < 3; q++) {
+      if (Math.abs(A[p][q]) < 1e-300) continue;
+      const theta = (A[q][q]-A[p][p])/(2*A[p][q]);
+      const t = Math.sign(theta || 1)/(Math.abs(theta)+Math.sqrt(theta*theta+1));
+      const c = 1/Math.sqrt(t*t+1), s = t*c;
+      // Apply Givens rotation A = G' A G
+      for (let k = 0; k < 3; k++) {
+        const akp = A[k][p], akq = A[k][q];
+        A[k][p] = c*akp - s*akq;
+        A[k][q] = s*akp + c*akq;
+      }
+      for (let k = 0; k < 3; k++) {
+        const apk = A[p][k], aqk = A[q][k];
+        A[p][k] = c*apk - s*aqk;
+        A[q][k] = s*apk + c*aqk;
+      }
+      for (let k = 0; k < 3; k++) {
+        const vkp = V[k][p], vkq = V[k][q];
+        V[k][p] = c*vkp - s*vkq;
+        V[k][q] = s*vkp + c*vkq;
+      }
+    }
+  }
+  const idx = [0,1,2].sort((a,b) => A[a][a]-A[b][b]);
+  const vals = idx.map(k => A[k][k]);
+  const vecs = [0,1,2].map(r => idx.map(k => V[r][k]));
+  return { vals, vecs };
+}
+
+// ── Optimal rigid transform from point correspondences (Kabuti/SVD via eig) ────────────
+// Given matched pairs (src[i] → dst[idx[i]]), solve for R, t minimising sum ||R*src_i + t - dst_i||^2.
+// H = Σ (src-μs)(dst-μd)' ; SVD H = UΣV' ; R = V*diag([1 1 det(V*U')])*U' ; t = μd - R*μs.
 function optimalRigid(src: Float64Array, dst: Float64Array, matchIdx: Int32Array, n: number): { R: number[][]; t: number[] } {
   // Centroids
   let sx=0,sy=0,sz=0,dx=0,dy=0,dz=0;
@@ -158,7 +235,7 @@ function optimalRigid(src: Float64Array, dst: Float64Array, matchIdx: Int32Array
   }
   sx/=n;sy/=n;sz/=n; dx/=n;dy/=n;dz/=n;
 
-  // Cross-covariance H = sum (src_i - sc)' * (dst_i - dc)
+  // Cross-covariance H = Σ (src_i - μs)(dst_i - μd)'   (3×3)
   const H = [[0,0,0],[0,0,0],[0,0,0]];
   for (let i=0;i<n;i++){
     const j=matchIdx[i];
@@ -167,50 +244,54 @@ function optimalRigid(src: Float64Array, dst: Float64Array, matchIdx: Int32Array
     for (let r=0;r<3;r++) for (let c=0;c<3;c++) H[r][c]+=ps[r]*pd[c];
   }
 
-  // SVD of H (3×3) via Jacobi
-  let U=[[1,0,0],[0,1,0],[0,0,1]];
-  let V=[[1,0,0],[0,1,0],[0,0,1]];
-  let A=H.map(r=>[...r]);
-  // One-sided Jacobi on A'A for V, then U = A*V*S^{-1}
-  const AtA=Array.from({length:3},(_,i)=>Array.from({length:3},(_,j)=>{let s=0;for(let k=0;k<3;k++)s+=A[k][i]*A[k][j];return s;}));
-  let Vtmp=[[1,0,0],[0,1,0],[0,0,1]];
-  for (let sweep=0;sweep<30;sweep++){
-    let maxOff=0,p=0,q=1;
-    for(let i=0;i<3;i++)for(let j=i+1;j<3;j++)if(Math.abs(AtA[i][j])>maxOff){maxOff=Math.abs(AtA[i][j]);p=i;q=j;}
-    if(maxOff<1e-12)break;
-    const theta=(AtA[q][q]-AtA[p][p])/(2*AtA[p][q]+1e-30);
-    const t2=Math.sign(theta)/(Math.abs(theta)+Math.sqrt(1+theta**2));
-    const c2=1/Math.sqrt(1+t2**2), s2=t2*c2;
-    const G=[[1,0,0],[0,1,0],[0,0,1]];G[p][p]=c2;G[p][q]=-s2;G[q][p]=s2;G[q][q]=c2;
-    const newA=AtA.map(r=>[...r]);
-    for(let i=0;i<3;i++)for(let j=0;j<3;j++){let s=0;for(let k=0;k<3;k++)s+=G[k][i]*AtA[k][j];newA[i][j]=s;}
-    for(let i=0;i<3;i++)for(let j=0;j<3;j++){let s=0;for(let k=0;k<3;k++)s+=newA[i][k]*G[k][j];AtA[i][j]=s;}
-    const nQ=Vtmp.map(r=>[...r]);
-    for(let i=0;i<3;i++)for(let j=0;j<3;j++){let s=0;for(let k=0;k<3;k++)s+=Vtmp[i][k]*G[k][j];nQ[i][j]=s;}
-    Vtmp=nQ;
-  }
-  V=Vtmp;
-  // S = diag(sqrt(eigenvalues)), U = A*V*S^{-1}
-  const sigmas=[Math.sqrt(Math.max(0,AtA[0][0])),Math.sqrt(Math.max(0,AtA[1][1])),Math.sqrt(Math.max(0,AtA[2][2]))];
-  U=Array.from({length:3},(_,i)=>Array.from({length:3},(_,j)=>{
-    let s=0;for(let k=0;k<3;k++)s+=A[i][k]*V[k][j];return sigmas[j]>1e-10?s/sigmas[j]:0;
-  }));
+  // SVD of H via symmetric eigendecompositions.
+  // V = eigenvectors of H'H, U = eigenvectors of HH', singular values = sqrt(eigvals).
+  // Pair the columns so that H = U Σ V' with consistent signs: U[:,k] = H V[:,k]/σ_k.
+  const HtH = Array.from({length:3},(_,i)=>Array.from({length:3},(_,j)=>{let s=0;for(let k=0;k<3;k++)s+=H[k][i]*H[k][j];return s;}));
+  // Eigenvectors ascending; reorder to descending singular value.
+  const { vals, vecs } = jacobiEig3(HtH);
+  // descending order
+  const order = [2,1,0];
+  const V = Array.from({length:3},(_,r)=>order.map(k=>vecs[r][k]));
+  const sigmas = order.map(k => Math.sqrt(Math.max(0, vals[k])));
 
-  // R = V * U'
-  let R=Array.from({length:3},(_,i)=>Array.from({length:3},(_,j)=>{
-    let s=0;for(let k=0;k<3;k++)s+=V[i][k]*U[j][k];return s;
-  }));
-  // Ensure proper rotation (det = +1)
-  const det=R[0][0]*(R[1][1]*R[2][2]-R[1][2]*R[2][1])
-           -R[0][1]*(R[1][0]*R[2][2]-R[1][2]*R[2][0])
-           +R[0][2]*(R[1][0]*R[2][1]-R[1][1]*R[2][0]);
-  if (det < 0) {
-    const Vcopy=V.map(r=>[...r]);
-    for(let i=0;i<3;i++)Vcopy[i][2]*=-1;
-    R=Array.from({length:3},(_,i)=>Array.from({length:3},(_,j)=>{
-      let s=0;for(let k=0;k<3;k++)s+=Vcopy[i][k]*U[j][k];return s;
-    }));
+  // Degenerate: H≈0 (e.g. all correspondences point at one fixed point, or no spread).
+  // The optimal rotation is undefined → identity; translation is the centroid offset.
+  if (sigmas[0] < 1e-12) {
+    const R = [[1,0,0],[0,1,0],[0,0,1]];
+    return { R, t: [dx-sx, dy-sy, dz-sz] };
   }
+
+  // U[:,k] = H V[:,k] / σ_k (fall back to orthogonal completion for tiny σ)
+  const U = [[0,0,0],[0,0,0],[0,0,0]];
+  for (let k=0;k<3;k++){
+    const hv=[0,0,0];
+    for (let r=0;r<3;r++){let s=0;for(let c=0;c<3;c++)s+=H[r][c]*V[c][k];hv[r]=s;}
+    if (sigmas[k] > 1e-12){
+      for (let r=0;r<3;r++) U[r][k]=hv[r]/sigmas[k];
+    } else {
+      // u2 = u0 × u1 to keep U orthonormal/right-handed
+      if (k===2){
+        U[0][2]=U[1][0]*U[2][1]-U[2][0]*U[1][1];
+        U[1][2]=U[2][0]*U[0][1]-U[0][0]*U[2][1];
+        U[2][2]=U[0][0]*U[1][1]-U[1][0]*U[0][1];
+      } else {
+        U[k][k]=1; // degenerate; rare
+      }
+    }
+  }
+
+  // d = det(V U')
+  const VUt = Array.from({length:3},(_,i)=>Array.from({length:3},(_,j)=>{let s=0;for(let k=0;k<3;k++)s+=V[i][k]*U[j][k];return s;}));
+  const d = VUt[0][0]*(VUt[1][1]*VUt[2][2]-VUt[1][2]*VUt[2][1])
+          - VUt[0][1]*(VUt[1][0]*VUt[2][2]-VUt[1][2]*VUt[2][0])
+          + VUt[0][2]*(VUt[1][0]*VUt[2][1]-VUt[1][1]*VUt[2][0]);
+  const D = [1, 1, d < 0 ? -1 : 1];
+
+  // R = V diag(D) U'
+  const R = Array.from({length:3},(_,i)=>Array.from({length:3},(_,j)=>{
+    let s=0;for(let k=0;k<3;k++)s+=V[i][k]*D[k]*U[j][k];return s;
+  }));
   const t=[dx-R[0][0]*sx-R[0][1]*sy-R[0][2]*sz,
            dy-R[1][0]*sx-R[1][1]*sy-R[1][2]*sz,
            dz-R[2][0]*sx-R[2][1]*sy-R[2][2]*sz];
@@ -239,7 +320,7 @@ async function pcregistericp(args: Value[]): Promise<Value[]> {
   // Options
   let maxIter = 20, tolerance = 1e-6, maxDist = Infinity;
   for (let i = 2; i+1 < args.length; i += 2) {
-    const key = ((args[i] as any).value ?? '').toLowerCase();
+    const key = (isCharLike(args[i]) ? asString(args[i]) : '').toLowerCase();
     if (key === 'maxiterations') maxIter = Math.round(asScalar(m(args[i+1])));
     if (key === 'tolerance') tolerance = asScalar(m(args[i+1]));
     if (key === 'maxdistance') maxDist = asScalar(m(args[i+1]));

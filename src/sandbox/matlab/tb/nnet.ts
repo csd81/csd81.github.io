@@ -59,13 +59,20 @@ function mScale(A: M2, s: number): M2 { const B = alloc(A.rows, A.cols); B.d.set
 function mAdd(A: M2, B: M2): M2 { const C = alloc(A.rows, A.cols); for (let i = 0; i < A.d.length; i++) C.d[i] = A.d[i] + B.d[i]; return C; }
 function mSub(A: M2, B: M2): M2 { const C = alloc(A.rows, A.cols); for (let i = 0; i < A.d.length; i++) C.d[i] = A.d[i] - B.d[i]; return C; }
 
+// Mat.data is COLUMN-major (element (r,c) at data[r + c*rows]); the M2 helpers in this
+// file index ROW-major (d[r*cols+c]). Transpose the layout on load and reverse on store
+// so the M2 buffer is genuinely row-major.
 function toM2(v: Value): M2 {
   const mv = m(v);
-  return { rows: mv.rows, cols: mv.cols, d: Float64Array.from(mv.data) };
+  const A = alloc(mv.rows, mv.cols);
+  for (let r = 0; r < mv.rows; r++) for (let c = 0; c < mv.cols; c++) A.d[r * mv.cols + c] = mv.data[r + c * mv.rows];
+  return A;
 }
 
 function fromM2(A: M2): Value {
-  return mat(A.rows, A.cols, Float64Array.from(A.d));
+  const out = new Float64Array(A.rows * A.cols);
+  for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) out[r + c * A.rows] = A.d[r * A.cols + c];
+  return mat(A.rows, A.cols, out);
 }
 
 // ── Xavier / Glorot weight initialisation ─────────────────────────────────────────────
@@ -95,8 +102,15 @@ function tanhBwd(dA: M2, A: M2): M2 { return ewMul(dA, ewApply(A, v => 1 - v * v
 function leakyReluFwd(Z: M2, alpha = 0.01): M2 { return ewApply(Z, v => v > 0 ? v : alpha * v); }
 function leakyReluBwd(dA: M2, Z: M2, alpha = 0.01): M2 { return ewMul(dA, ewApply(Z, v => v > 0 ? 1 : alpha)); }
 
+// Exact GELU: 0.5*x*(1 + erf(x/sqrt(2))) — matches MATLAB R2026a.
+function erf(x: number): number {
+  // Abramowitz & Stegun 7.1.26 — max abs error ~1.5e-7, well within 1e-4.
+  const t = 1 / (1 + 0.3275911 * Math.abs(x));
+  const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
+  return x >= 0 ? y : -y;
+}
 function geluFwd(Z: M2): M2 {
-  return ewApply(Z, v => 0.5 * v * (1 + Math.tanh(Math.sqrt(2 / Math.PI) * (v + 0.044715 * v * v * v))));
+  return ewApply(Z, v => 0.5 * v * (1 + erf(v / Math.SQRT2)));
 }
 function geluBwd(dA: M2, Z: M2): M2 {
   // Approximate GELU derivative
@@ -680,20 +694,10 @@ async function adamupdate_fn(args: Value[]): Promise<Value[]> {
   return [net, avgGradV, avgSqGradV];
 }
 
-// ── dlfeval: evaluate function (no tape AD — thin wrapper) ────────────────────────────
-async function dlfeval(args: Value[]): Promise<Value[]> {
-  if (args.length < 1) throw new MatError('dlfeval: requires function');
-  const fn = args[0] as unknown as { fn: (a: Value[]) => Promise<Value[]> };
-  if (typeof fn.fn !== 'function') throw new MatError('dlfeval: first argument must be a function handle');
-  return fn.fn(args.slice(1));
-}
-
-// ── dlgradient: stub (returns zero gradient — proper AD not implemented) ─────────────
-async function dlgradient(args: Value[]): Promise<Value[]> {
-  if (args.length < 2) throw new MatError('dlgradient: requires loss and parameters');
-  // Return zero gradients matching shape of each parameter
-  return args.slice(1).map(p => isMat(p) ? zeros((p as any).rows, (p as any).cols) : scalar(0));
-}
+// QUARANTINED: dlfeval + dlgradient removed. There is no autodiff/tape engine, so
+// dlgradient could only ever return ZERO gradients (a dangerous silent fake), and
+// dlfeval existed solely to drive that broken custom-training loop. Both were removed
+// from builtins + help rather than shipping incorrect results.
 
 // ── Layer operation functions (dlarray API) ───────────────────────────────────────────
 async function fullyconnect(args: Value[]): Promise<Value[]> {
@@ -844,11 +848,13 @@ async function gru_fn(args: Value[]): Promise<Value[]> {
     for (let i = 0; i < X.rows; i++) xt.d[i] = X.d[i * seqLen + t];
     const gateWx = addBias(mmul(W, xt), b);
     const gateRh = mmul(R, H);
-    const z = alloc(H_size, 1), r = alloc(H_size, 1);
+    // MATLAB GRU gate order is [reset; update; candidate] (reset block first).
+    const r = alloc(H_size, 1), z = alloc(H_size, 1);
     for (let j = 0; j < H_size; j++) {
-      z.d[j] = sig(gateWx.d[j] + gateRh.d[j]);
-      r.d[j] = sig(gateWx.d[H_size + j] + gateRh.d[H_size + j]);
+      r.d[j] = sig(gateWx.d[j] + gateRh.d[j]);
+      z.d[j] = sig(gateWx.d[H_size + j] + gateRh.d[H_size + j]);
     }
+    // Default ResetGateMode = "after-multiplication": reset multiplies the recurrent term R*h.
     const hCand = alloc(H_size, 1);
     for (let j = 0; j < H_size; j++) hCand.d[j] = Math.tanh(gateWx.d[2 * H_size + j] + r.d[j] * gateRh.d[2 * H_size + j]);
     const Hnew = alloc(H_size, 1);
@@ -963,8 +969,9 @@ export const NNET: ToolboxModule = {
     dlarray: dlarray_fn,
     extractdata,
     adamupdate: adamupdate_fn,
-    dlfeval,
-    dlgradient,
+    // QUARANTINED: dlgradient — no autodiff engine; returns ZERO gradients (a dangerous fake).
+    // QUARANTINED: dlfeval — only exists to drive dlgradient's custom training loop, which
+    //              cannot produce correct gradients, so the loop is meaningless.
     // dlarray operation functions
     fullyconnect,
     relu: relu_fn,
@@ -1144,9 +1151,9 @@ export const NNET: ToolboxModule = {
       syntax: ['net = dlnetwork(layers)', 'net = dlnetwork(lgraph)'],
       description: [
         'net = dlnetwork(layers) creates a network from a layer array for use in custom training loops.',
-        'Use with dlfeval, dlgradient, and adamupdate.',
+        'Use with adamupdate for parameter updates.',
       ],
-      seealso: ['trainNetwork', 'dlfeval', 'adamupdate', 'dlarray'],
+      seealso: ['trainNetwork', 'adamupdate', 'dlarray'],
     },
     dlarray: {
       summary: 'Labelled array for deep learning',
@@ -1155,13 +1162,13 @@ export const NNET: ToolboxModule = {
         "X = dlarray(data,fmt) wraps data with a dimension label string for use with dlarray operations.",
         "Common formats: 'CB' (channel×batch), 'SSCB' (spatial×spatial×channel×batch).",
       ],
-      seealso: ['extractdata', 'dlfeval', 'dlgradient'],
+      seealso: ['extractdata', 'fullyconnect', 'relu'],
     },
     extractdata: {
       summary: 'Extract data from dlarray',
       syntax: ['Y = extractdata(X)'],
       description: ['Y = extractdata(X) returns the underlying numeric array from a dlarray object.'],
-      seealso: ['dlarray', 'dlfeval'],
+      seealso: ['dlarray'],
     },
     adamupdate: {
       summary: 'Update parameters using adaptive moment estimation (Adam)',
@@ -1173,27 +1180,10 @@ export const NNET: ToolboxModule = {
         'Performs one Adam step: m = beta1*m + (1-beta1)*grad; v = beta2*v + (1-beta2)*grad^2;',
         'p = p - lr * mHat/(sqrt(vHat)+eps).  Default lr=0.001, beta1=0.9, beta2=0.999.',
       ],
-      seealso: ['dlfeval', 'dlgradient', 'trainingOptions'],
+      seealso: ['dlnetwork', 'trainingOptions'],
     },
-    dlfeval: {
-      summary: 'Evaluate deep learning model for custom training loop',
-      syntax: ['[y1,...,yk] = dlfeval(fun,x1,...,xn)'],
-      description: [
-        'dlfeval(fun,x1,...) evaluates fun(x1,...) enabling gradient computation via dlgradient.',
-        'In this sandbox, dlfeval is a thin wrapper — call it to match MATLAB custom-loop patterns.',
-      ],
-      seealso: ['dlgradient', 'adamupdate', 'dlnetwork'],
-    },
-    dlgradient: {
-      summary: 'Compute gradients for custom training loop',
-      syntax: ['grad = dlgradient(loss,params)', '[g1,g2,...] = dlgradient(loss,p1,p2,...)'],
-      description: [
-        'dlgradient(loss,params) returns the gradient of loss with respect to params.',
-        'NOTE: automatic differentiation is not implemented in the sandbox — returns zero gradients.',
-        'Use trainNetwork for gradient-based training instead.',
-      ],
-      seealso: ['dlfeval', 'adamupdate'],
-    },
+    // QUARANTINED: dlgradient help removed (no autodiff; zero-gradient fake).
+    // QUARANTINED: dlfeval help removed (only drove the broken dlgradient loop).
     fullyconnect: {
       summary: 'Sum all weighted input data and apply a bias',
       syntax: ['Y = fullyconnect(X,weights,bias)'],

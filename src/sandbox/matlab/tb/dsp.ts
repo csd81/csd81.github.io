@@ -126,12 +126,16 @@ function besselPoly(n: number): number[] {
 // ── besself — analog Bessel lowpass prototype ─────────────────────────────────────────
 // Returns zeros, poles, gain for Bessel analog LP prototype (cutoff at ~1 rad/s, max-flat group delay)
 function besselpap(n: number): { z: C[]; p: C[]; k: number } {
-  const poly = besselPoly(n);
-  // Roots of the Bessel polynomial are the poles (left half plane)
-  const poles = polyRoots(poly).filter(r => r[0] < 0);
-  // Normalize: scale so group delay at ω=0 is 1s (factor = poly[0]/poly[poly.length-1])
-  // Actually normalize so H(0)=1: H(s) = θ_n(0)/θ_n(s) = poly[n]/θ_n(s)
-  const k = poly[poly.length - 1]; // constant term = θ_n(0)
+  if (n === 0) return { z: [], p: [], k: 1 };
+  const polyAsc = besselPoly(n);              // reverse Bessel poly θ_n in ASCENDING powers
+  const polyDesc = [...polyAsc].reverse();    // descending for the root finder
+  const rawPoles = polyRoots(polyDesc);
+  // MATLAB besselap normalizes so the magnitude cutoff is at ω=1: divide poles by
+  // (constant term)^(1/n), and the (analog) gain is prod(-p_k) so that H(0)=1.
+  const c0 = polyAsc[0];                      // θ_n(0) = constant term
+  const scale = Math.pow(c0, 1 / n);
+  const poles = rawPoles.map(r => [r[0] / scale, r[1] / scale] as C);
+  const k = poles.reduce<C>((acc, pk) => cMul(acc, [-pk[0], -pk[1]]), [1, 0])[0];
   return { z: [], p: poles, k };
 }
 
@@ -242,23 +246,67 @@ async function besself(args: Value[]): Promise<Value[]> {
   const { z, p, k } = besselpap(n);
   // Scale to analog cutoff Wo (LP only; besself is analog, no bilinear here)
   const { z: za, p: pa, k: ka } = analogTransform(z, p, k, btype === 'highpass' ? 'highpass' : 'lowpass', [Wo]);
-  const [b, a] = zpk2ba(za, pa, ka);
-  return [rowVec(Array.from(b)), rowVec(Array.from(a))];
+  const [bRaw, a] = zpk2ba(za, pa, ka);
+  // MATLAB returns b padded (with leading zeros) to the length of a.
+  const b = Array.from(bRaw);
+  while (b.length < a.length) b.unshift(0);
+  return [rowVec(b), rowVec(Array.from(a))];
 }
 
 // ── bilinear (standalone) ─────────────────────────────────────────────────────────────
 // [Bz,Az] = bilinear(B,A,Fs) — bilinear transform of analog [B,A] with sample rate Fs
 async function bilinear(args: Value[]): Promise<Value[]> {
   if (args.length < 3) throw new MatError('bilinear: requires B, A, Fs');
-  const B = toArray(m(args[0])), A = toArray(m(args[1]));
+  let B = toArray(m(args[0])), A = toArray(m(args[1]));
   const Fs = asScalar(m(args[2]));
   const k = 2 * Fs;
-  // Get analog zeros/poles via root finding
-  const aZ = polyRoots(B), aP = polyRoots(A);
-  const gain = B[0] / A[0];
-  const { z, p, k: kg } = bilinearZpk(aZ, aP, gain);
-  const [Bz, Az] = zpk2ba(z, p, kg);
-  return [rowVec(Array.from(Bz)), rowVec(Array.from(Az))];
+  // Direct polynomial bilinear transform via substitution s = k*(z-1)/(z+1).
+  // Pad both numerator and denominator (descending powers) to the same length N+1,
+  // where N = max(deg(B),deg(A)); the common (z+1)^N denominator cancels.
+  const N = Math.max(B.length, A.length) - 1;
+  // pad on the LEFT (high powers of s) with zeros so both are length N+1
+  const padLeft = (p: number[]) => { const q = p.slice(); while (q.length < N + 1) q.unshift(0); return q; };
+  B = padLeft(B); A = padLeft(A);
+  // Transform a polynomial in s (descending, length N+1) into a polynomial in z (descending, length N+1).
+  // p(s) = sum_{i=0}^{N} c[i] s^{N-i}; s = k*(z-1)/(z+1).
+  // result(z) = sum_i c[i] * k^{N-i} * (z-1)^{N-i} * (z+1)^{i}   [common (z+1)^N cancels]
+  const binomPow = (a: number, b: number, deg: number): number[] => {
+    // expand (z*a + b)^deg as descending poly of length deg+1
+    let r = [1];
+    const base = [a, b]; // a*z + b
+    for (let t = 0; t < deg; t++) {
+      const nr = Array(r.length + 1).fill(0);
+      for (let i = 0; i < r.length; i++) { nr[i] += r[i] * base[0]; nr[i + 1] += r[i] * base[1]; }
+      r = nr;
+    }
+    return r;
+  };
+  const transform = (c: number[]): number[] => {
+    const out = Array(N + 1).fill(0);
+    for (let i = 0; i <= N; i++) {
+      const ci = c[i];
+      if (ci === 0) continue;
+      const pe = N - i; // power of (z-1)
+      const qe = i;     // power of (z+1)
+      const scale = ci * Math.pow(k, pe);
+      const term = polyMulReal(binomPow(1, -1, pe), binomPow(1, 1, qe)); // (z-1)^pe (z+1)^qe, length N+1
+      for (let j = 0; j < term.length; j++) out[j] += scale * term[j];
+    }
+    return out;
+  };
+  let Bz = transform(B), Az = transform(A);
+  // Normalize so Az[0] = 1
+  const a0 = Az[0] || 1;
+  Bz = Bz.map(v => v / a0);
+  Az = Az.map(v => v / a0);
+  return [rowVec(Bz), rowVec(Az)];
+}
+
+// real polynomial multiply (descending powers)
+function polyMulReal(p: number[], q: number[]): number[] {
+  const r = Array(p.length + q.length - 1).fill(0);
+  for (let i = 0; i < p.length; i++) for (let j = 0; j < q.length; j++) r[i + j] += p[i] * q[j];
+  return r;
 }
 
 // ── grpdelay ──────────────────────────────────────────────────────────────────────────
@@ -268,37 +316,26 @@ async function grpdelay(args: Value[]): Promise<Value[]> {
   const b = toArray(m(args[0]));
   const a = args.length > 1 && isMat(args[1]) ? toArray(m(args[1])) : [1];
   const nfft = args.length > 2 && isMat(args[2]) ? Math.round(asScalar(m(args[2]))) : 512;
-  // gd(ω) = Re{d/dω [log H(e^jω)]} = Re{-jω * H'(e^jω)/H(e^jω)}
-  // Computed as: gd = Re{C(z)/A(z)} where C = polyder(a)*conv(b,...) - polyder(b)*conv(a,...)
-  // Simpler: gd(ω) = (Re[B'(ω)/B(ω)] - Re[A'(ω)/A(ω)]) where B'(ω) = sum k*b[k]*e^{-jkω} * (-j)
+  // Robust formula (matches MATLAB): with c = conv(b, reverse(a)),
+  //   gd(w) = Re{ sum_n n*c[n] e^{-jnw} / sum_n c[n] e^{-jnw} } - (length(a)-1)
+  const arev = [...a].reverse();
+  const c: number[] = Array(b.length + arev.length - 1).fill(0);
+  for (let i = 0; i < b.length; i++) for (let j = 0; j < arev.length; j++) c[i + j] += b[i] * arev[j];
+  const oa = a.length - 1;
   const gd = new Float64Array(nfft);
   const w = new Float64Array(nfft);
-  for (let i = 0; i < nfft; i++) {
-    w[i] = Math.PI * i / nfft;
-    const omega = w[i];
-    // Evaluate B(e^jω) and its derivative (multiplied by -j)
-    let Bre=0, Bim=0, dBre=0, dBim=0;
-    for (let k=0; k<b.length; k++) {
-      const cs=Math.cos(-k*omega), sn=Math.sin(-k*omega);
-      Bre += b[k]*cs; Bim += b[k]*sn;
-      dBre += -k*b[k]*(-sn); // d/dω of b[k]*e^{-jkω} real part
-      dBim += -k*b[k]*cs;   // imag part
+  for (let idx = 0; idx < nfft; idx++) {
+    const omega = Math.PI * idx / nfft;
+    w[idx] = omega;
+    let Nre = 0, Nim = 0, Dre = 0, Dim = 0;
+    for (let k = 0; k < c.length; k++) {
+      const cs = Math.cos(-k * omega), sn = Math.sin(-k * omega);
+      Dre += c[k] * cs; Dim += c[k] * sn;
+      Nre += k * c[k] * cs; Nim += k * c[k] * sn;
     }
-    let Are=0, Aim=0, dAre=0, dAim=0;
-    for (let k=0; k<a.length; k++) {
-      const cs=Math.cos(-k*omega), sn=Math.sin(-k*omega);
-      Are += a[k]*cs; Aim += a[k]*sn;
-      dAre += -k*a[k]*(-sn);
-      dAim += -k*a[k]*cs;
-    }
-    // gd = Re{(dB/dω)/B} - Re{(dA/dω)/A} ... but with -j factored:
-    // H'(ω)/H(ω) = B'(ω)/B(ω) - A'(ω)/A(ω)  [using logarithmic derivative]
-    // d/dω B(ω) = sum (-jk)*b[k]*e^{-jkω} = -j * [sum k*b[k]*cos(-kω) + j*sum k*b[k]*sin(-kω)]
-    const Bd2 = Bre**2+Bim**2, Ad2 = Are**2+Aim**2;
-    // Re{B'/B}: numerator real part of (dBre+j*dBim)*(Bre-j*Bim)
-    const Bnum_re = dBre*Bre + dBim*Bim;
-    const Anum_re = dAre*Are + dAim*Aim;
-    gd[i] = (Bd2 > 1e-30 ? Bnum_re/Bd2 : 0) - (Ad2 > 1e-30 ? Anum_re/Ad2 : 0);
+    const d2 = Dre * Dre + Dim * Dim;
+    // Re{ N / D } = (Nre*Dre + Nim*Dim)/|D|^2
+    gd[idx] = d2 > 1e-30 ? (Nre * Dre + Nim * Dim) / d2 - oa : 0;
   }
   return [rowVec(Array.from(gd)), rowVec(Array.from(w))];
 }
@@ -350,11 +387,12 @@ async function sosfilt(args: Value[]): Promise<Value[]> {
   const sosM = m(args[0]);
   const xArr = toArray(m(args[1]));
   const nSecs = sosM.rows;
+  const R = sosM.rows;
   const sos: [number, number, number, number, number, number][] = [];
   for (let i = 0; i < nSecs; i++) {
     sos.push([
-      sosM.data[i*6+0], sosM.data[i*6+1], sosM.data[i*6+2],
-      sosM.data[i*6+3], sosM.data[i*6+4], sosM.data[i*6+5],
+      sosM.data[i+0*R], sosM.data[i+1*R], sosM.data[i+2*R],
+      sosM.data[i+3*R], sosM.data[i+4*R], sosM.data[i+5*R],
     ]);
   }
   let y = Float64Array.from(xArr);
@@ -416,9 +454,10 @@ async function sos2tf(args: Value[]): Promise<Value[]> {
   const sosM = m(args[0]);
   const g = args.length > 1 ? asScalar(m(args[1])) : 1;
   let b: number[] = [g], a: number[] = [1];
+  const R = sosM.rows;
   for (let i = 0; i < sosM.rows; i++) {
-    const bi = [sosM.data[i*6+0], sosM.data[i*6+1], sosM.data[i*6+2]];
-    const ai = [sosM.data[i*6+3], sosM.data[i*6+4], sosM.data[i*6+5]];
+    const bi = [sosM.data[i+0*R], sosM.data[i+1*R], sosM.data[i+2*R]];
+    const ai = [sosM.data[i+3*R], sosM.data[i+4*R], sosM.data[i+5*R]];
     const mul_poly = (p: number[], q: number[]): number[] => {
       const r = Array(p.length+q.length-1).fill(0);
       for (let ii=0; ii<p.length; ii++) for (let jj=0; jj<q.length; jj++) r[ii+jj]+=p[ii]*q[jj];
@@ -481,10 +520,12 @@ async function zp2sos_impl(Z: C[], P: C[], k: number): Promise<[Value, Value]> {
     // Pad to length 3
     while (b.length < 3) b.push(0);
     while (a.length < 3) a.push(0);
-    sosData.set([b[0],b[1],b[2],a[0],a[1],a[2]], i*6);
+    // Column-major write: element (i, col) at index i + col*nSecs.
+    const row = [b[0], b[1], b[2], a[0], a[1], a[2]];
+    for (let col = 0; col < 6; col++) sosData[i + col * nSecs] = row[col];
   }
-  // Apply overall gain to first section's numerator
-  sosData[0] *= k; sosData[1] *= k; sosData[2] *= k;
+  // Apply overall gain to the first section's numerator (b0,b1,b2 of row 0).
+  sosData[0 + 0 * nSecs] *= k; sosData[0 + 1 * nSecs] *= k; sosData[0 + 2 * nSecs] *= k;
   return [mat(nSecs, 6, sosData), scalar(k)];
 }
 
@@ -672,101 +713,183 @@ function selectRemezRefs(extrema: number[], E: number[], nRef: number): number[]
 // Alias: remez = firpm
 const remez = firpm;
 
+// ── Chebyshev Type I analog lowpass prototype (cheb1ap), digitized via bilinear ─────────
+// Returns digital [b,a] for an order-n Chebyshev-I lowpass with Rp dB passband ripple
+// and normalized cutoff Wp in (0,1) (Nyquist = 1). Mirrors MATLAB's cheby1(n,Rp,Wp).
+function cheby1LP(n: number, Rp: number, Wp: number): { b: number[]; a: number[] } {
+  const fs = 2;
+  const u = 2 * fs * Math.tan((Math.PI * Wp) / fs);   // prewarped analog cutoff
+  // Analog Chebyshev-I prototype poles/zeros/gain (cutoff 1 rad/s).
+  const eps = Math.sqrt(10 ** (Rp / 10) - 1);
+  const mu = Math.asinh(1 / eps) / n;
+  const poles: C[] = [];
+  for (let k = 1; k <= n; k++) {
+    const theta = (Math.PI * (2 * k - 1)) / (2 * n);
+    poles.push([-Math.sinh(mu) * Math.sin(theta), Math.cosh(mu) * Math.cos(theta)]);
+  }
+  // gain so |H(0)| = 1 (n odd) or = 1/sqrt(1+eps^2) (n even), matching MATLAB
+  let k0 = poles.reduce<C>((acc, p) => cMul(acc, [-p[0], -p[1]]), [1, 0])[0];
+  if (n % 2 === 0) k0 /= Math.sqrt(1 + eps * eps);
+  // LP→LP scale to cutoff u
+  const pa = poles.map(p => cSc(p, u));
+  // Analog DC gain (invariant under LP→LP): H(0) = k0 / prod(-poles).
+  const desiredDC = k0 / poles.reduce<C>((acc, p) => cMul(acc, [-p[0], -p[1]]), [1, 0])[0];
+  // bilinear (Fs=fs): s = 2*fs*(z-1)/(z+1)
+  const fs2 = 2 * fs;
+  const digitize = (s: C): C => cDiv(cAdd([fs2, 0], s), cSub([fs2, 0], s));
+  const dz: C[] = []; const dp = pa.map(digitize);
+  for (let i = 0; i < pa.length; i++) dz.push([-1, 0]); // analog zeros at infinity → z=-1
+  // Choose gain so digital DC gain (z=1) equals the analog DC gain.
+  const prodNum = dz.reduce<C>((acc, z0) => cMul(acc, cSub([1, 0], z0)), [1, 0]);
+  const prodDen = dp.reduce<C>((acc, p0) => cMul(acc, cSub([1, 0], p0)), [1, 0]);
+  const kg = desiredDC * prodDen[0] / prodNum[0];
+  const [bF, aF] = zpk2ba(dz, dp, kg);
+  return { b: Array.from(bF), a: Array.from(aF) };
+}
+
+// ── filtfilt — zero-phase forward/reverse IIR filtering (edge reflection + steady-state zi) ──
+function filtfiltZiDsp(b: number[], a: number[]): number[] {
+  const a0 = a[0]; const B = b.map(v => v / a0), A = a.map(v => v / a0);
+  const M = Math.max(B.length, A.length);
+  while (B.length < M) B.push(0); while (A.length < M) A.push(0);
+  if (M <= 1) return [];
+  const mm = M - 1;
+  const mtx: number[][] = []; const rhs: number[] = [];
+  for (let i = 0; i < mm; i++) { mtx.push(new Array(mm).fill(0)); rhs.push(B[i + 1] - B[0] * A[i + 1]); }
+  for (let i = 0; i < mm; i++) for (let j = 0; j < mm; j++) {
+    const eyeM1 = i === j ? 1 : 0;
+    let block = 0;
+    if (j === 0) block = -A[i + 1];
+    else if (i === j - 1) block = 1;
+    mtx[i][j] = eyeM1 - block;
+  }
+  return gaussElim(mtx, rhs);
+}
+
+// Direct-form II transposed IIR filter with initial state zi.
+function filterDf2tDsp(b: number[], a: number[], x: number[], zi: number[]): number[] {
+  const a0 = a[0]; const B = b.map(v => v / a0), A = a.map(v => v / a0);
+  const n = Math.max(B.length, A.length);
+  while (B.length < n) B.push(0); while (A.length < n) A.push(0);
+  const z = new Array(n - 1).fill(0);
+  for (let i = 0; i < zi.length && i < z.length; i++) z[i] = zi[i];
+  const y = new Array(x.length).fill(0);
+  for (let i = 0; i < x.length; i++) {
+    const xi = x[i];
+    const yi = B[0] * xi + (z[0] ?? 0);
+    for (let k = 0; k < n - 2; k++) z[k] = B[k + 1] * xi + (z[k + 1] ?? 0) - A[k + 1] * yi;
+    if (n - 2 >= 0) z[n - 2] = B[n - 1] * xi - A[n - 1] * yi;
+    y[i] = yi;
+  }
+  return y;
+}
+
+function filtfiltDsp(b: number[], a: number[], x: number[]): number[] {
+  const ord = Math.max(b.length, a.length) - 1;
+  const nfact = Math.max(1, 3 * ord);
+  if (x.length <= nfact) return x.slice();
+  const zi = filtfiltZiDsp(b, a);
+  const ext: number[] = [];
+  for (let i = nfact; i >= 1; i--) ext.push(2 * x[0] - x[i]);
+  for (const v of x) ext.push(v);
+  for (let i = 1; i <= nfact; i++) ext.push(2 * x[x.length - 1] - x[x.length - 1 - i]);
+  let yt = filterDf2tDsp(b, a, ext, zi.map(v => v * ext[0]));
+  yt.reverse();
+  yt = filterDf2tDsp(b, a, yt, zi.map(v => v * yt[0]));
+  yt.reverse();
+  return yt.slice(nfact, nfact + x.length);
+}
+
 // ── decimate ─────────────────────────────────────────────────────────────────────────
-// y = decimate(x, r) — downsample by r with anti-aliasing FIR filter
+// y = decimate(x, r) — lowpass anti-alias filter then downsample by r.
+// Default: order-8 Chebyshev Type I (0.05 dB ripple, cutoff 0.8/r) applied with filtfilt
+// (zero-phase), then y = odata(nbeg:r:nd) — matching MATLAB's decimate.
 async function decimate_fn(args: Value[]): Promise<Value[]> {
   if (args.length < 2) throw new MatError('decimate: requires x and r');
   const x = toArray(m(args[0]));
   const r = Math.round(asScalar(m(args[1])));
-  const n = args.length > 2 && isMat(args[2]) ? Math.round(asScalar(m(args[2]))) : 30;
-  // Design anti-aliasing LP FIR with cutoff 1/r
-  const Wn = 1 / r;
-  const M = n; // filter order
-  // fir1 equivalent: hamming window LP
-  const L2 = M / 2;
-  const h = new Float64Array(M + 1);
-  for (let k = 0; k <= M; k++) {
-    const kc = k - L2;
-    h[k] = kc === 0 ? Wn : Wn * Math.sin(Math.PI * Wn * kc) / (Math.PI * Wn * kc);
-    // Hamming window
-    h[k] *= 0.54 - 0.46 * Math.cos(2 * Math.PI * k / M);
-  }
-  // Apply filter then downsample
-  const filtered = new Float64Array(x.length);
-  const order = h.length - 1;
-  for (let i = 0; i < x.length; i++) {
-    let y = 0;
-    for (let k = 0; k < h.length; k++) { if (i-k >= 0) y += h[k] * x[i-k]; }
-    filtered[i] = y;
-  }
-  const yn = Float64Array.from({length: Math.ceil(x.length / r)}, (_, i) => filtered[i * r]);
-  return [colVec(Array.from(yn))];
+  const nfilt = args.length > 2 && isMat(args[2]) ? Math.round(asScalar(m(args[2]))) : 8;
+  const nd = x.length;
+  const nout = Math.ceil(nd / r);
+  const { b, a } = cheby1LP(nfilt, 0.05, 0.8 / r);
+  const odata = filtfiltDsp(b, a, x);
+  const nbeg = r - (r * nout - nd); // 1-based start index in MATLAB
+  const y: number[] = [];
+  for (let i = nbeg - 1; i < nd; i += r) y.push(odata[i]);
+  return [colVec(y)];
 }
 
-// ── interp ───────────────────────────────────────────────────────────────────────────
-// y = interp(x, r) — upsample by r with interpolating LP FIR
-async function interp_fn(args: Value[]): Promise<Value[]> {
-  if (args.length < 2) throw new MatError('interp: requires x and r');
-  const x = toArray(m(args[0]));
-  const r = Math.round(asScalar(m(args[1])));
-  const n = args.length > 2 ? Math.round(asScalar(m(args[2]))) : 4;
-  // Upsample (insert zeros)
-  const xu = new Float64Array(x.length * r);
-  for (let i = 0; i < x.length; i++) xu[i * r] = x[i];
-  // LP FIR interpolation filter: cutoff = 1/r, gain = r
-  const M = 2 * n * r;
-  const h = new Float64Array(M + 1);
-  const L2 = M / 2;
-  const Wn = 1 / r;
-  for (let k = 0; k <= M; k++) {
-    const kc = k - L2;
-    h[k] = kc === 0 ? Wn * r : r * Wn * Math.sin(Math.PI * Wn * kc) / (Math.PI * Wn * kc);
-    h[k] *= 0.54 - 0.46 * Math.cos(2 * Math.PI * k / M);
+// QUARANTINED: interp — MATLAB's double-precision interp uses a polyphase
+// least-squares (sinc-subspace, Cholesky) filter design that is too large to
+// replicate to 1e-4 here; the previous windowed-sinc version produced wrong
+// interpolated samples. Removed from builtins until a correct port is feasible.
+
+// ── kaiser window (modified Bessel I0) ─────────────────────────────────────────────────
+function besselI0(x: number): number {
+  let sum = 1, term = 1;
+  const x2 = (x / 2) ** 2;
+  for (let k = 1; k < 60; k++) { term *= x2 / (k * k); sum += term; if (term < 1e-12 * sum) break; }
+  return sum;
+}
+function kaiserWin(L: number, beta: number): number[] {
+  const w = new Array(L);
+  const denom = besselI0(beta);
+  const N = L - 1;
+  for (let i = 0; i < L; i++) {
+    const r = (2 * i - N) / N;
+    w[i] = besselI0(beta * Math.sqrt(1 - r * r)) / denom;
   }
-  const yn = new Float64Array(xu.length);
-  for (let i = 0; i < xu.length; i++) {
-    let y = 0;
-    for (let k = 0; k < h.length; k++) { if (i-k >= 0) y += h[k] * xu[i-k]; }
-    yn[i] = y;
+  return w;
+}
+// fir1 lowpass: h[k] = win[k]*sinc(Wn*(k-N/2))*Wn, normalized so the DC gain is 1.
+function fir1LP(order: number, Wn: number, win: number[]): number[] {
+  const N = order;
+  const h = new Array(N + 1);
+  const c = N / 2;
+  for (let k = 0; k <= N; k++) {
+    const x = k - c;
+    const sinc = x === 0 ? Wn : Math.sin(Math.PI * Wn * x) / (Math.PI * x);
+    h[k] = sinc * win[k];
   }
-  return [colVec(Array.from(yn))];
+  const s = h.reduce((a, b) => a + b, 0);
+  return h.map(v => v / s);
+}
+// upfirdn: upsample x by p, FIR filter h, downsample by q.
+function upfirdn(x: number[], h: number[], p: number, q: number): number[] {
+  const xu = new Array(x.length * p).fill(0);
+  for (let i = 0; i < x.length; i++) xu[i * p] = x[i];
+  const conv = new Array(xu.length + h.length - 1).fill(0);
+  for (let i = 0; i < xu.length; i++) { const xi = xu[i]; if (xi === 0) continue; for (let k = 0; k < h.length; k++) conv[i + k] += xi * h[k]; }
+  const out: number[] = [];
+  for (let i = 0; i < conv.length; i += q) out.push(conv[i]);
+  return out;
 }
 
 // ── resample ──────────────────────────────────────────────────────────────────────────
-// y = resample(x, p, q) — rational resampling: upsample by p, filter, downsample by q
+// y = resample(x, p, q) — rational resampling via a kaiser-windowed FIR (matches MATLAB).
+//   h = p*fir1(2*N*max(p,q), 1/max(p,q), kaiser(2*N*max(p,q)+1, beta)); y = upfirdn(x,h,p,q),
+//   trimmed by the filter group delay floor(((L-1)/2)/q).
 async function resample_fn(args: Value[]): Promise<Value[]> {
   if (args.length < 3) throw new MatError('resample: requires x, p, q');
   const x = toArray(m(args[0]));
-  const p = Math.round(asScalar(m(args[1])));
-  const q = Math.round(asScalar(m(args[2])));
-  const n = 10; // filter half-length per polyphase branch
-
-  // Upsample by p
-  const xu = new Float64Array(x.length * p);
-  for (let i = 0; i < x.length; i++) xu[i * p] = x[i];
-
-  // LP anti-alias filter: cutoff = min(1/p, 1/q) * min(p,q) = 1/max(p,q), gain = p
-  const Wn = 1 / Math.max(p, q);
-  const M = 2 * n * Math.max(p, q);
-  const h = new Float64Array(M + 1);
-  const L2 = M / 2;
-  for (let k = 0; k <= M; k++) {
-    const kc = k - L2;
-    h[k] = kc === 0 ? Wn * p : p * Wn * Math.sin(Math.PI * Wn * kc) / (Math.PI * Wn * kc);
-    h[k] *= 0.54 - 0.46 * Math.cos(2 * Math.PI * k / M);
-  }
-
-  // Apply filter
-  const filtered = new Float64Array(xu.length);
-  for (let i = 0; i < xu.length; i++) {
-    let y = 0;
-    for (let k = 0; k < h.length; k++) { if (i-k >= 0) y += h[k] * xu[i-k]; }
-    filtered[i] = y;
-  }
-
-  // Downsample by q
-  const yn = Float64Array.from({length: Math.ceil(xu.length / q)}, (_, i) => filtered[i * q]);
-  return [colVec(Array.from(yn))];
+  let p = Math.round(asScalar(m(args[1])));
+  let q = Math.round(asScalar(m(args[2])));
+  // reduce by gcd as MATLAB does
+  const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
+  const g = gcd(p, q); p /= g; q /= g;
+  const N = 10, beta = 5;
+  const pqmax = Math.max(p, q);
+  const fc = 1 / (2 * pqmax);
+  const L = 2 * N * pqmax + 1;
+  const win = kaiserWin(L, beta);
+  const h = fir1LP(L - 1, 2 * fc, win).map(v => v * p);
+  const y = upfirdn(x, h, p, q);
+  const Lhalf = (L - 1) / 2;
+  const nz = Math.floor(Lhalf / q);
+  const Ly = Math.ceil((x.length * p) / q);
+  const out = y.slice(nz, nz + Ly);
+  while (out.length < Ly) out.push(0);
+  return [colVec(out)];
 }
 
 // ── DSP System objects ─────────────────────────────────────────────────────────────────
@@ -813,38 +936,18 @@ async function dspFIRDecimator(args: Value[]): Promise<Value[]> {
 
 async function dspFIRInterpolator(args: Value[]): Promise<Value[]> {
   const r = args.length > 0 ? asScalar(m(args[0])) : 2;
+  const h = args.length > 1 && isMat(args[1]) ? toArray(m(args[1])) : [1];
   const props = new Map<string, Value>();
   props.set('InterpolationFactor', scalar(r));
+  props.set('Numerator', rowVec(h));
   return [makeObject('dsp.FIRInterpolator', props)];
 }
 
-async function dspRMS(args: Value[]): Promise<Value[]> {
-  const props = new Map<string, Value>();
-  props.set('_running', scalar(0));
-  props.set('_count', scalar(0));
-  return [makeObject('dsp.RMS', props)];
-}
-
-async function dspMean(args: Value[]): Promise<Value[]> {
-  const props = new Map<string, Value>();
-  props.set('_sum', scalar(0));
-  props.set('_count', scalar(0));
-  return [makeObject('dsp.Mean', props)];
-}
-
-async function dspVariance(args: Value[]): Promise<Value[]> {
-  const props = new Map<string, Value>();
-  props.set('_sum', scalar(0));
-  props.set('_sum2', scalar(0));
-  props.set('_count', scalar(0));
-  return [makeObject('dsp.Variance', props)];
-}
-
-async function dspSpectrumAnalyzer(args: Value[]): Promise<Value[]> {
-  const props = new Map<string, Value>();
-  props.set('SampleRate', args.length > 0 ? args[0] : scalar(1));
-  return [makeObject('dsp.SpectrumAnalyzer', props)];
-}
+// QUARANTINED: dsp.RMS / dsp.Mean / dsp.Variance — these System objects were
+// REMOVED in MATLAB R2026a ('dsp.RMS' has been removed; use 'rms'/'mean'/'var').
+// Unverifiable against the live release, so they are not registered.
+// QUARANTINED: dsp.SpectrumAnalyzer — a visual scope; a step() pass-through is
+// meaningless and cannot be validated numerically. Not registered.
 
 // step() method — process a block of samples through a System object
 async function dspStep(args: Value[]): Promise<Value[]> {
@@ -873,35 +976,50 @@ async function dspStep(args: Value[]): Promise<Value[]> {
   }
 
   if (className === 'dsp.FIRDecimator') {
+    // Full FIR filtering with carried state, then keep every r-th sample (phase 0).
     const r = Math.round(asScalar(m(props.get('DecimationFactor')!)));
     const h = toArray(m(props.get('Numerator')!));
+    const stateArr = props.has('_state') ? toArray(m(props.get('_state')!)) : Array(h.length - 1).fill(0);
+    const state = [...stateArr];        // most-recent samples, state[0] = x[n-1]
+    const phaseV = props.has('_phase') ? Math.round(asScalar(m(props.get('_phase')!))) : 0;
+    let phase = phaseV;
     const yn: number[] = [];
     for (let i = 0; i < x.length; i++) {
-      if (i % r === r-1) {
-        let acc = 0;
-        for (let k = 0; k < h.length; k++) acc += h[k] * (x[i-k*(r)] ?? 0);
-        yn.push(acc);
-      }
+      let acc = h[0] * x[i];
+      for (let k = 0; k < state.length; k++) acc += h[k + 1] * (state[k] ?? 0);
+      if (phase === 0) yn.push(acc);
+      phase = (phase + 1) % r;
+      for (let k = state.length - 1; k > 0; k--) state[k] = state[k - 1];
+      if (state.length > 0) state[0] = x[i];
     }
+    props.set('_state', rowVec(state));
+    props.set('_phase', scalar(phase));
     return [colVec(yn)];
   }
 
-  if (className === 'dsp.RMS') {
-    const xArr = toArray(m(args[1]));
-    const rms = Math.sqrt(xArr.reduce((s, v) => s + v*v, 0) / xArr.length);
-    return [scalar(rms)];
-  }
-
-  if (className === 'dsp.Mean') {
-    const xArr = toArray(m(args[1]));
-    return [scalar(xArr.reduce((s, v) => s + v, 0) / xArr.length)];
-  }
-
-  if (className === 'dsp.Variance') {
-    const xArr = toArray(m(args[1]));
-    const mean = xArr.reduce((s, v) => s + v, 0) / xArr.length;
-    const variance = xArr.reduce((s, v) => s + (v-mean)**2, 0) / xArr.length;
-    return [scalar(variance)];
+  if (className === 'dsp.FIRInterpolator') {
+    // Polyphase upsample-by-L FIR interpolation with carried state.
+    const L = Math.round(asScalar(m(props.get('InterpolationFactor')!)));
+    const h = toArray(m(props.get('Numerator')!));
+    const stateArr = props.has('_state') ? toArray(m(props.get('_state')!)) : Array(Math.ceil(h.length / L)).fill(0);
+    const state = [...stateArr];        // state[0] = x[n-1]
+    const yn: number[] = [];
+    for (let i = 0; i < x.length; i++) {
+      // shift in current sample
+      for (let k = state.length - 1; k > 0; k--) state[k] = state[k - 1];
+      if (state.length > 0) state[0] = x[i];
+      for (let phase = 0; phase < L; phase++) {
+        let acc = 0;
+        for (let k = 0; ; k++) {
+          const hi = phase + k * L;
+          if (hi >= h.length) break;
+          acc += h[hi] * (state[k] ?? 0);
+        }
+        yn.push(acc);
+      }
+    }
+    props.set('_state', rowVec(state));
+    return [colVec(yn)];
   }
 
   // Unknown system object: pass through
@@ -925,35 +1043,80 @@ async function firpmord(args: Value[]): Promise<Value[]> {
   // Estimate order for firpm: [n,fo,ao,w] = firpmord(f,a,dev[,fs])
   if (args.length < 3) throw new MatError('firpmord: requires f, a, dev');
   const f = toArray(m(args[0])), a = toArray(m(args[1])), dev = toArray(m(args[2]));
-  const fs = args.length > 3 ? asScalar(m(args[3])) : 1;
-  // Kaiser formula estimate for minimum transition band width
-  const dmin = Math.min(...dev), dmax = Math.max(...dev);
-  const A = -20 * Math.log10(dmin); // stopband attenuation
-  let n = Math.ceil((A - 8) / (2.285 * Math.PI * Math.min(...f.filter((_,i)=>i>0).map((v,i)=>Math.abs(v-f[i]))) * fs));
-  if (n % 2 !== 0) n++;
-  return [scalar(n), rowVec(f.map(v => v/fs)), rowVec(a), scalar(0.5)];
+  const fs = args.length > 3 ? asScalar(m(args[3])) : 2; // edges are in [0,fs/2]; default fs=2 → [0,1]
+  // Normalise band edges to [0, 0.5] (cycles/sample).
+  const fn = f.map(v => v / fs);
+  // Herrmann/Rabiner equiripple FIR order estimate (the formula MATLAB's firpmord uses).
+  const dinf = (d1: number, d2: number): number => {
+    const L1 = Math.log10(d1), L2 = Math.log10(d2);
+    const a1 = 0.005309, a2 = 0.07114, a3 = -0.4761;
+    const a4 = 0.00266, a5 = 0.5941, a6 = 0.4278;
+    return (a1 * L1 * L1 + a2 * L1 + a3) * L2 - (a4 * L1 * L1 + a5 * L1 + a6);
+  };
+  const fFun = (d1: number, d2: number): number => 11.01217 + 0.51244 * (Math.log10(d1) - Math.log10(d2));
+  // For each transition band, estimate order; take the maximum.
+  let nmax = 0;
+  const nBands = a.length;
+  for (let i = 0; i < nBands - 1; i++) {
+    const df = Math.abs(fn[2 * i + 1] - fn[2 * i]); // transition width (normalised)
+    if (df <= 0) continue;
+    const d1 = dev[i], d2 = dev[i + 1];
+    const D = dinf(d1, d2);
+    const F = fFun(d1, d2);
+    const n = (D - F * df * df) / df - df * (nBands - 2);
+    nmax = Math.max(nmax, n);
+  }
+  const nOrder = Math.ceil(nmax);
+  // Build output spec for firpm: edges normalised to [0,1] (Nyquist=1).
+  const fo: number[] = [0];
+  for (let i = 0; i < f.length; i++) fo.push(f[i] / (fs / 2));
+  fo.push(1);
+  const ao: number[] = [];
+  for (let i = 0; i < a.length; i++) { ao.push(a[i]); ao.push(a[i]); }
+  const dmax = Math.max(...dev);
+  const w = dev.map(d => dmax / d);
+  return [scalar(nOrder), rowVec(fo), rowVec(ao), rowVec(w)];
 }
 
 async function chebwin(args: Value[]): Promise<Value[]> {
   if (args.length < 1) throw new MatError('chebwin: requires n');
   const n = Math.round(asScalar(m(args[0])));
   const rs = args.length > 1 ? asScalar(m(args[1])) : 100;
-  // Dolph-Chebyshev window via DFT
-  const r = 10**(rs/20);
-  const x0 = Math.cosh(Math.acosh(r) / (n-1));
-  const w = new Float64Array(n);
+  if (n === 1) return [colVec([1])];
+  // Dolph-Chebyshev window via inverse-DFT of the Chebyshev frequency response.
+  // Chebyshev polynomial of order m, T_m(x), valid for all real x.
+  const cheb = (m: number, x: number): number => {
+    if (Math.abs(x) <= 1) return Math.cos(m * Math.acos(x));
+    if (x > 1) return Math.cosh(m * Math.acosh(x));
+    return (m % 2 === 0 ? 1 : -1) * Math.cosh(m * Math.acosh(-x));
+  };
+  const order = n - 1;
+  const r = 10 ** (rs / 20);          // ripple ratio
+  const beta = Math.cosh(Math.acosh(r) / order);
+  const even = n % 2 === 0;
+  // Frequency-domain samples W[k] = T_order(beta*cos(pi*k/n)); for even n apply a
+  // half-sample phase shift exp(j*pi*k/n). Window = fftshift(real(ifft(W))).
+  const Wre = new Float64Array(n), Wim = new Float64Array(n);
+  for (let k = 0; k < n; k++) {
+    const Wk = cheb(order, beta * Math.cos(Math.PI * k / n));
+    if (even) { const ph = Math.PI * k / n; Wre[k] = Wk * Math.cos(ph); Wim[k] = Wk * Math.sin(ph); }
+    else { Wre[k] = Wk; Wim[k] = 0; }
+  }
+  // ifft (real part) then fftshift
+  const raw = new Float64Array(n);
   for (let i = 0; i < n; i++) {
     let s = 0;
-    for (let k = 1; k <= Math.floor((n-1)/2); k++) {
-      const x = x0 * Math.cos(Math.PI * k / n);
-      const T = Math.abs(x) >= 1 ? Math.cosh((n-1)*Math.acosh(Math.abs(x)))*Math.sign(x) : Math.cos((n-1)*Math.acos(x));
-      s += T * Math.cos(2 * Math.PI * k * i / n);
+    for (let k = 0; k < n; k++) {
+      const ang = 2 * Math.PI * k * i / n;
+      s += Wre[k] * Math.cos(ang) - Wim[k] * Math.sin(ang);
     }
-    w[i] = r + 2 * s;
+    raw[i] = s / n;
   }
-  // Normalize
+  const w = new Float64Array(n);
+  for (let i = 0; i < n; i++) w[i] = raw[(i + Math.ceil(n / 2)) % n];
   const wmax = Math.max(...w);
-  return [rowVec(Array.from(w.map(v => v/wmax)))];
+  for (let i = 0; i < n; i++) w[i] /= wmax;
+  return [colVec(Array.from(w))];
 }
 
 async function taylorwin(args: Value[]): Promise<Value[]> {
@@ -961,23 +1124,28 @@ async function taylorwin(args: Value[]): Promise<Value[]> {
   const n = Math.round(asScalar(m(args[0])));
   const nbar = args.length > 1 ? Math.round(asScalar(m(args[1]))) : 4;
   const sll = args.length > 2 ? asScalar(m(args[2])) : -30;
-  // Taylor window: approximation via cosine series
-  const A = -sll / 20; // in decades... actually A = sll is already in dB (negative)
-  const sigma2 = nbar**2 / (A**2 + (nbar - 0.5)**2);
+  // MATLAB taylorwin convention (no [0,1] normalization).
+  // A = acosh(10^(-sll/20))/pi  (sll is a negative dB value)
+  const A = Math.acosh(10 ** (-sll / 20)) / Math.PI;
+  const sigma2 = (nbar * nbar) / (A * A + (nbar - 0.5) ** 2);
+  // Coefficients Fm for m = 1..nbar-1
+  const Fm = new Float64Array(nbar); // index m
+  for (let mm = 1; mm <= nbar - 1; mm++) {
+    let num = 1, den = 1;
+    for (let i = 1; i <= nbar - 1; i++) {
+      num *= (1 - (mm * mm) / (sigma2 * (A * A + (i - 0.5) ** 2)));
+      if (i !== mm) den *= (1 - (mm * mm) / (i * i));
+    }
+    Fm[mm] = ((mm % 2 === 0 ? -1 : 1) * num) / (2 * den);
+  }
   const w = new Float64Array(n);
   for (let i = 0; i < n; i++) {
-    const xi = (i - (n-1)/2) / n;
-    let s = 1;
-    for (let m = 1; m < nbar; m++) {
-      let num = 1, den = 1;
-      for (let ni = 1; ni < nbar; ni++) { if (ni !== m) { num *= 1 - m**2/sigma2/(ni**2); den *= 1 - m**2/(ni**2); } }
-      s += (num/den) * 2 * Math.cos(2*Math.PI*m*xi) * (m%2===0?-1:1);
-    }
-    w[i] = s;
+    let s = 0;
+    const xi = (i - (n - 1) / 2) / n;
+    for (let mm = 1; mm <= nbar - 1; mm++) s += Fm[mm] * Math.cos(2 * Math.PI * mm * xi);
+    w[i] = 1 + 2 * s;
   }
-  const wmin = Math.min(...w);
-  const wmax = Math.max(...w);
-  return [rowVec(Array.from(w.map(v => (v-wmin)/(wmax-wmin))))];
+  return [colVec(Array.from(w))];
 }
 
 async function tukeywin(args: Value[]): Promise<Value[]> {
@@ -985,13 +1153,17 @@ async function tukeywin(args: Value[]): Promise<Value[]> {
   const n = Math.round(asScalar(m(args[0])));
   const r = args.length > 1 ? asScalar(m(args[1])) : 0.5;
   const w = new Float64Array(n);
-  const half = Math.floor(r*n/2);
+  if (n === 1) { w[0] = 1; return [colVec([1])]; }
+  if (r <= 0) { w.fill(1); return [colVec(Array.from(w))]; }
+  const rc = Math.min(r, 1);
+  const per = rc / 2;
   for (let i = 0; i < n; i++) {
-    if (i < half) w[i] = 0.5*(1 - Math.cos(Math.PI*i/half));
-    else if (i <= n-half-1) w[i] = 1;
-    else w[i] = 0.5*(1 - Math.cos(Math.PI*(n-1-i)/half));
+    const x = i / (n - 1); // 0..1
+    if (x < per) w[i] = 0.5 * (1 + Math.cos(Math.PI * (x / per - 1)));
+    else if (x <= 1 - per) w[i] = 1;
+    else w[i] = 0.5 * (1 + Math.cos(Math.PI * (x / per - 2 / rc + 1)));
   }
-  return [rowVec(Array.from(w))];
+  return [colVec(Array.from(w))];
 }
 
 async function gausswin(args: Value[]): Promise<Value[]> {
@@ -1030,7 +1202,7 @@ export const DSP: ToolboxModule = {
     zp2sos: zp2sos_fn,
     // Multirate
     decimate: decimate_fn,
-    interp: interp_fn,
+    // QUARANTINED: interp — needs MATLAB's polyphase least-squares filter design (too large to port to 1e-4)
     resample: resample_fn,
     // Windows (additional, not in signal.ts)
     chebwin,
@@ -1048,20 +1220,14 @@ export const DSP: ToolboxModule = {
     'dsp.BiquadFilter': { create: dspBiquadFilter, step: dspStep, release: dspRelease },
     'dsp.FIRDecimator': { create: dspFIRDecimator, step: dspStep, release: dspRelease },
     'dsp.FIRInterpolator': { create: dspFIRInterpolator, step: dspStep, release: dspRelease },
-    'dsp.RMS': { create: dspRMS, step: dspStep },
-    'dsp.Mean': { create: dspMean, step: dspStep },
-    'dsp.Variance': { create: dspVariance, step: dspStep },
-    'dsp.SpectrumAnalyzer': { create: dspSpectrumAnalyzer, step: dspStep },
+    // QUARANTINED: dsp.RMS/dsp.Mean/dsp.Variance removed in R2026a; dsp.SpectrumAnalyzer is a non-numeric scope
   },
   constants: {
     'dsp.FIRFilter': dspFIRFilter as any,
     'dsp.BiquadFilter': dspBiquadFilter as any,
     'dsp.FIRDecimator': dspFIRDecimator as any,
     'dsp.FIRInterpolator': dspFIRInterpolator as any,
-    'dsp.RMS': dspRMS as any,
-    'dsp.Mean': dspMean as any,
-    'dsp.Variance': dspVariance as any,
-    'dsp.SpectrumAnalyzer': dspSpectrumAnalyzer as any,
+    // QUARANTINED: dsp.RMS/dsp.Mean/dsp.Variance/dsp.SpectrumAnalyzer (see methods)
   },
   help: {
     firpm: {
@@ -1181,15 +1347,7 @@ export const DSP: ToolboxModule = {
       ],
       seealso: ['interp', 'resample', 'upfirdn', 'downsample'],
     },
-    interp: {
-      summary: 'Interpolate signal by integer factor',
-      syntax: ['y = interp(x,r)', 'y = interp(x,r,l)'],
-      description: [
-        'y = interp(x,r) increases the sample rate of x by the integer factor r using a low-pass FIR interpolation filter.',
-        'The output has r*length(x) samples.',
-      ],
-      seealso: ['decimate', 'resample', 'upfirdn', 'upsample'],
-    },
+    // QUARANTINED: interp (see implementation note above)
     resample: {
       summary: 'Resample signal at new sample rate',
       syntax: ['y = resample(x,p,q)', 'y = resample(x,p,q,n)'],
@@ -1234,7 +1392,7 @@ export const DSP: ToolboxModule = {
       syntax: ['y = step(h,x)', 'step(h,x)'],
       description: [
         'y = step(h,x) processes input x through System object h and returns output y.',
-        'Works with: dsp.FIRFilter, dsp.BiquadFilter, dsp.FIRDecimator, dsp.FIRInterpolator, dsp.RMS, dsp.Mean, dsp.Variance.',
+        'Works with: dsp.FIRFilter, dsp.BiquadFilter, dsp.FIRDecimator, dsp.FIRInterpolator.',
         'System objects maintain internal state between calls.',
       ],
       seealso: ['release', 'reset'],
