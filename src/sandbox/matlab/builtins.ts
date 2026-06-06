@@ -1743,8 +1743,14 @@ export const BUILTINS: Record<string, Builtin> = {
   int64: async (a) => ret(applyClass(m(a[0]), 'int64')), uint64: async (a) => ret(applyClass(m(a[0]), 'uint64')),
   cast: async (a) => { const A = m(a[0]); const ty = asString(a[1]); if (ty in INT_LIMITS || ty === 'single') return ret(applyClass(A, ty)); if (ty === 'char') return ret(A.isChar ? A : str(toArray(A).map((x) => String.fromCharCode(Math.round(x))).join(''))); return ret(mat(A.rows, A.cols, Float64Array.from(A.data))); },
   // ── special matrices / index conversion ──
-  invhilb: async (a) => { const n = Math.round(asScalar(a[0])); const H = zeros(n, n); for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) H.data[r + c * n] = 1 / (r + c + 1); return ret(map(inv(H), (x) => Math.round(x))); },
-  hadamard: async (a) => { let n = Math.round(asScalar(a[0])); let H = mat(1, 1, Float64Array.of(1)); while (H.rows < n) { const k = H.rows; const o = zeros(2 * k, 2 * k); for (let r = 0; r < k; r++) for (let c = 0; c < k; c++) { const v = H.data[r + c * k]; o.data[r + c * 2 * k] = v; o.data[r + (c + k) * 2 * k] = v; o.data[(r + k) + c * 2 * k] = v; o.data[(r + k) + (c + k) * 2 * k] = -v; } H = o; } return ret(H); },
+  invhilb: async (a) => {
+    // exact integer inverse Hilbert matrix (avoids inv() round-off on the ill-conditioned H for large n)
+    const n = Math.round(asScalar(a[0])); const H = zeros(n, n);
+    const binom = (p: number, q: number) => { if (q < 0 || q > p) return 0; let r = 1; for (let k = 0; k < q; k++) r = r * (p - k) / (k + 1); return Math.round(r); };
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) { const i = r + 1, j = c + 1; H.data[r + c * n] = ((i + j) % 2 === 0 ? 1 : -1) * (i + j - 1) * binom(n + i - 1, n - j) * binom(n + j - 1, n - i) * binom(i + j - 2, i - 1) ** 2; }
+    return ret(H);
+  },
+  hadamard: async (a) => { let n = Math.round(asScalar(a[0])); if (n < 1 || (n & (n - 1)) !== 0) throw new MatError('hadamard: only power-of-2 sizes are supported in this implementation (Paley sizes such as 12 and 20 are not implemented).'); let H = mat(1, 1, Float64Array.of(1)); while (H.rows < n) { const k = H.rows; const o = zeros(2 * k, 2 * k); for (let r = 0; r < k; r++) for (let c = 0; c < k; c++) { const v = H.data[r + c * k]; o.data[r + c * 2 * k] = v; o.data[r + (c + k) * 2 * k] = v; o.data[(r + k) + c * 2 * k] = v; o.data[(r + k) + (c + k) * 2 * k] = -v; } H = o; } return ret(H); },
   hankel: async (a) => { const c = toArray(m(a[0])); const r = a.length >= 2 ? toArray(m(a[1])) : c.map((_, i) => (i === 0 ? c[c.length - 1] : 0)); const nr = c.length, nc = r.length; const o = zeros(nr, nc); for (let i = 0; i < nr; i++) for (let j = 0; j < nc; j++) { const k = i + j; o.data[i + j * nr] = k < nr ? c[k] : (k - nr + 1 < nc ? r[k - nr + 1] : 0); } return ret(o); },
   compan: async (a) => { const p = toArray(m(a[0])); const n = p.length - 1; if (n < 1) return ret(zeros(0, 0)); const o = zeros(n, n); for (let j = 0; j < n; j++) o.data[0 + j * n] = -p[j + 1] / p[0]; for (let i = 1; i < n; i++) o.data[i + (i - 1) * n] = 1; return ret(o); },
   sub2ind: async (a) => { const sz = toArray(m(a[0])); const rows = sz[0]; const R = m(a[1]), C = a.length >= 3 ? m(a[2]) : null; return ret(C ? elementwise(R, C, (r, c) => (c - 1) * rows + r) : R); },
@@ -3226,7 +3232,10 @@ export const BUILTINS: Record<string, Builtin> = {
   interp2: async (a) => {
     // interp2(V,Xq,Yq) or interp2(X,Y,V,Xq,Yq)
     let V: Mat, xq: Mat, yq: Mat, xv: number[], yv: number[];
-    if (a.length >= 5) { const X = m(a[0]), Y = m(a[1]); V = m(a[2]); xq = m(a[3]); yq = m(a[4]); xv = []; for (let c = 0; c < X.cols; c++) xv.push(X.data[0 + c * X.rows]); yv = []; for (let r = 0; r < Y.rows; r++) yv.push(Y.data[r]); }
+    if (a.length >= 5) { const X = m(a[0]), Y = m(a[1]); V = m(a[2]); xq = m(a[3]); yq = m(a[4]);
+      // X/Y may be coordinate vectors (any orientation) or meshgrid matrices — read accordingly
+      xv = (X.rows === 1 || X.cols === 1) ? toArray(X) : Array.from({ length: X.cols }, (_, c) => X.data[0 + c * X.rows]);
+      yv = (Y.rows === 1 || Y.cols === 1) ? toArray(Y) : Array.from({ length: Y.rows }, (_, r) => Y.data[r]); }
     else { V = m(a[0]); xq = m(a[1]); yq = m(a[2]); xv = Array.from({ length: V.cols }, (_, i) => i + 1); yv = Array.from({ length: V.rows }, (_, i) => i + 1); }
     const bilerp = (X: number, Y: number) => {
       let i = 0; while (i < xv.length - 2 && X > xv[i + 1]) i++; let j = 0; while (j < yv.length - 2 && Y > yv[j + 1]) j++;
@@ -3829,15 +3838,21 @@ export const BUILTINS: Record<string, Builtin> = {
   coeffvalues: async (a) => ret(rowVec((a[0] as unknown as { coeffValues?: number[] }).coeffValues ?? [])),
   coeffnames: async (a) => { const ns = (a[0] as unknown as { coeffNames?: string[] }).coeffNames ?? (isStruct(a[0]) && (a[0] as StructV).fields.get('coefficients') ? ((a[0] as StructV).fields.get('coefficients')![0] as Cell).items.map((c) => asString(c)) : []); return ret(makeCell(ns.length, 1, ns.map((c) => str(c)))); },
   interpft: async (a) => {
-    // FFT resample x to length ny: insert zero high-frequencies, inverse transform.
-    const x = toArray(m(a[0])); const ny = Math.round(asScalar(a[1])); const nx = x.length;
-    const F = fftVec(x, new Array(nx).fill(0), -1);
+    // FFT resample to length ny — faithful port of interpft.m: when downsampling (ny<=m), upsample
+    // by an integer factor (incr) so ny>m, then decimate by taking every incr-th sample.
+    const x = toArray(m(a[0])); const m0 = x.length; const nyArg = Math.round(asScalar(a[1]));
+    let incr: number, ny: number;
+    if (nyArg > m0) { incr = 1; ny = nyArg; }
+    else { if (nyArg === 0) return ret(rowVec([])); incr = Math.floor(m0 / nyArg) + 1; ny = incr * nyArg; }
+    const F = fftVec(x, new Array(m0).fill(0), -1);          // a = fft(x), length m0
+    const nyqst = Math.ceil((m0 + 1) / 2);
     const Re = new Array(ny).fill(0), Im = new Array(ny).fill(0);
-    const half = Math.floor(nx / 2);
-    for (let k = 0; k <= half; k++) { Re[k] = F.re[k]; Im[k] = F.im[k]; }
-    for (let k = 1; k < nx - half; k++) { Re[ny - k] = F.re[nx - k]; Im[ny - k] = F.im[nx - k]; }
-    const inv = fftVec(Re, Im, 1);          // unscaled inverse
-    const res = inv.re.map((v) => v / nx);  // = (inv/ny)*(ny/nx)
+    for (let k = 0; k < nyqst; k++) { Re[k] = F.re[k]; Im[k] = F.im[k]; }
+    for (let k = nyqst; k < m0; k++) { Re[k + (ny - m0)] = F.re[k]; Im[k + (ny - m0)] = F.im[k]; }
+    if (m0 % 2 === 0) { Re[nyqst - 1] /= 2; Im[nyqst - 1] /= 2; Re[nyqst - 1 + (ny - m0)] = Re[nyqst - 1]; Im[nyqst - 1 + (ny - m0)] = Im[nyqst - 1]; }
+    const inv = fftVec(Re, Im, 1);                          // unscaled inverse → ifft(b)*ny/m == inv/m0
+    const full = inv.re.map((v) => v / m0);
+    const res: number[] = []; for (let k = 0; k < ny; k += incr) res.push(full[k]);
     return ret(m(a[0]).cols === 1 ? colVec(res) : rowVec(res));
   },
   integral2: async (a, _n, env) => {
