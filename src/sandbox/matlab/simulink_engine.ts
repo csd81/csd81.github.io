@@ -645,11 +645,11 @@ export class Mux extends Block {
     }
 
     public computeOutputs(t: number, x: number[], xd: number[], u: number[]): number[] {
-        // Mux just concatenates the scalar inputs into an array, 
-        // but since our signal lines are arrays of numbers, it flattens them into one big array.
-        // Wait, our block computeOutputs returns number[].
-        // So Mux outputs a single array combining all u.
-        return [...u];
+        // Single output port carrying ALL inputs as one vector (bus) signal. Flattens any
+        // already-vector inputs so a Mux of muxes still yields a flat bus.
+        const bus: number[] = [];
+        for (const v of u) { if (Array.isArray(v)) bus.push(...(v as number[])); else bus.push(v); }
+        return [bus as unknown as number];   // port value is the vector (see Demux / Outport logging)
     }
 }
 
@@ -667,11 +667,11 @@ export class Demux extends Block {
     }
 
     public computeOutputs(t: number, x: number[], xd: number[], u: number[]): number[] {
-        // Demux splits the input array into individual scalar outputs.
+        // Split the incoming bus (a vector on a single port) into scalar outputs.
+        // Falls back to treating the input ports themselves as the elements (scalar wiring).
+        const bus = (Array.isArray(u[0]) ? u[0] : u) as unknown as number[];
         const y = new Array(this.numOutputs).fill(0);
-        for(let i=0; i<this.numOutputs; i++) {
-            if (i < u.length) y[i] = u[i];
-        }
+        for (let i = 0; i < this.numOutputs; i++) if (i < bus.length) y[i] = bus[i];
         return y;
     }
 }
@@ -1213,7 +1213,8 @@ export class Solver {
                      if (line.destBlock === outBlock.name && line.destPort === 0) {
                          const srcOuts = blockOutputs.get(line.srcBlock);
                          if (srcOuts && line.srcPort < srcOuts.length) {
-                             currentY.push(srcOuts[line.srcPort]);
+                             const val = srcOuts[line.srcPort] as unknown;   // a bus value is an array → log each element
+                             if (Array.isArray(val)) for (const e of val) currentY.push(e as number); else currentY.push(val as number);
                          }
                      }
                  }
