@@ -306,6 +306,49 @@ function eomday(y: number, m: number): number {
   return [31, isLeap(y) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1];
 }
 
+const DAYTOTAL365 = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+
+/** Element-wise over two date operands (serial datenums) with scalar expansion. */
+function ewDates(args: Value[], f: (d1: number, d2: number) => number): Value {
+  const s1 = asSerials(args[0], 'date'), s2 = asSerials(args[1], 'date');
+  const n = Math.max(s1.length, s2.length);
+  const g = (arr: number[], i: number) => (arr.length === 1 ? arr[0] : arr[i]);
+  const out: number[] = []; for (let i = 0; i < n; i++) out.push(f(g(s1, i), g(s2, i)));
+  if (out.length === 1) return scalar(out[0]);
+  const src = isMat(args[0]) && !(args[0] as Mat).isChar && s1.length === n ? m(args[0]) : isMat(args[1]) && !(args[1] as Mat).isChar ? m(args[1]) : null;
+  return src ? mat(src.rows, src.cols, Float64Array.from(out)) : colVec(out);
+}
+
+/** yeardays(Y[,basis]) — number of days in the year for a day-count basis. Mirrors yeardays.m. */
+function yeardaysImpl(args: Value[]): Value {
+  const Y = m(args[0]); const ya = toArray(Y);
+  const basis = args.length > 1 && isMat(args[1]) && (args[1] as Mat).rows ? asScalar(args[1]) : 0;
+  const f = (y: number) => {
+    if (basis === 0 || basis === 8 || basis === 10 || basis === 12) return isLeap(y) ? 366 : 365;  // actual
+    if (basis === 3 || basis === 7) return 365;                                                     // actual/365
+    return 360;                                                                                     // 30/360 family
+  };
+  const out = ya.map(f);
+  return out.length === 1 ? scalar(out[0]) : mat(Y.rows, Y.cols, Float64Array.from(out));
+}
+
+/** thirdwednesday(Month,Year) → [3rd-Wednesday serial, +3 months serial]. Mirrors thirdwednesday.m. */
+function thirdwednesdayImpl(args: Value[]): Value[] {
+  const ma = toArray(m(args[0])), ya = toArray(m(args[1]));
+  const n = Math.max(ma.length, ya.length);
+  const g = (arr: number[], i: number) => (arr.length === 1 ? arr[0] : arr[i]);
+  const begin: number[] = [], end: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const mo = g(ma, i), yr = g(ya, i);
+    const w = weekday(datenum(yr, mo, 1));                 // 1=Sun..7=Sat
+    const thirdWed = 1 + ((4 - w + 7) % 7) + 14;           // first Wednesday + 2 weeks
+    begin.push(datenum(yr, mo, thirdWed));
+    end.push(datenum(yr, mo + 3, thirdWed));
+  }
+  const wrap = (c: number[]): Value => (c.length === 1 ? scalar(c[0]) : colVec(c));
+  return [wrap(begin), wrap(end)];
+}
+
 /** calendar(Y,M) — 6×7 day matrix, column 1 = Sunday. Mirrors calendar.m. */
 function calendarImpl(args: Value[]): Value {
   const Y = Math.trunc(asScalar(args[0])), M = Math.trunc(asScalar(args[1]));
@@ -731,6 +774,10 @@ export const FINANCIAL: ToolboxModule = {
     days252bus: (a) => ret(days252busImpl(a)),
     eomdate: (a) => ret(eomdateImpl(a)),
     calendar: (a) => ret(calendarImpl(a)),
+    daysact: (a) => ret(ewDates(a, (d1, d2) => d2 - d1)),
+    days365: (a) => ret(ewDates(a, (d1, d2) => { const [y1, m1, dd1] = ymd(d1), [y2, m2, dd2] = ymd(d2); return 365 * (y2 - y1) + DAYTOTAL365[m2 - 1] - DAYTOTAL365[m1 - 1] + dd2 - dd1; })),
+    yeardays: (a) => ret(yeardaysImpl(a)),
+    thirdwednesday: (a) => Promise.resolve(thirdwednesdayImpl(a)),
     juliandate: (a) => ret(juliandateImpl(a)),
     weeknum: (a) => ret(weeknumImpl(a)),
 
@@ -756,6 +803,8 @@ export const FINANCIAL: ToolboxModule = {
     days252bus: 'Number of business days between dates',
     eomdate: 'Last date of the month (serial date number)',
     calendar: 'Calendar for specified month as a 6-by-7 matrix',
+    daysact: 'Actual number of days between dates', days365: 'Days between dates based on a 365-day year',
+    yeardays: 'Number of days in year for a given basis', thirdwednesday: 'Third Wednesday of month (futures dates)',
     juliandate: 'Julian date from year/month/day (and optional time)',
     weeknum: 'Week of the year for a date',
     payadv: 'Periodic payment given number of advance payments',
