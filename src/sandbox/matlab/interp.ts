@@ -451,8 +451,9 @@ export class Interpreter implements Env {
         return;
       }
       case 'cell': {
-        // c{subs} = val : content assignment (grows the cell as needed)
-        const curC = lv.target.t === 'ident' ? scope.vars.get(lv.target.name) : undefined;
+        // c{subs} = val : content assignment (grows the cell as needed). Fetch the existing
+        // cell via readContainer so nested targets (S.c{1}=…, A{2}{1}=…) don't wipe it.
+        const curC = await this.readContainer(lv.target, scope);
         let cell: Cell = curC && isCell(curC) ? makeCell(curC.rows, curC.cols, curC.items.slice()) : makeCell(0, 0, []);
         const subs = await this.evalSubsN(lv.args, cell.rows, cell.cols, cell.items.length, scope);
         const lin = this.cellLinear(subs, cell.rows, cell.cols, cell.items.length);
@@ -517,7 +518,21 @@ export class Interpreter implements Env {
   /** Current value of an assignment target (empty matrix if undefined → grows). */
   private async readContainer(lv: LValue, scope: Scope): Promise<Value> {
     if (lv.t === 'ident') return scope.vars.get(lv.name) ?? empty();
-    if (lv.t === 'index' || lv.t === 'cell') {
+    // Field of a struct (S.a, S.x.y): read the current value, or empty if the path is new.
+    if (lv.t === 'field') {
+      try { return await this.evalExpr(lv as unknown as Expr, scope); } catch { return empty(); }
+    }
+    // Cell content (C{i}): return the stored element, not the parent cell.
+    if (lv.t === 'cell') {
+      const parent = await this.readContainer(lv.target, scope);
+      if (isCell(parent)) {
+        const subs = await this.evalSubsN(lv.args, parent.rows, parent.cols, parent.items.length, scope);
+        const lin = this.cellLinear(subs, parent.rows, parent.cols, parent.items.length);
+        return parent.items[lin[0] - 1] ?? empty();
+      }
+      return empty();
+    }
+    if (lv.t === 'index') {
       const base = asMat(await this.readContainer(lv.target, scope));
       const subs = await this.evalSubs(lv.args, base, scope);
       return indexGet(base, subs);

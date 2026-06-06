@@ -242,9 +242,12 @@ async function gamultiobj(args: Value[]): Promise<Value[]> {
   // extract Pareto front
   const pareto = pop.filter(a => !pop.some(b => b !== a && dominates(b.f, a.f)));
   const nP = pareto.length, nObj = pareto[0]?.f.length ?? 1;
-  const xOut = mat(nP, nvars, new Float64Array(pareto.flatMap(p => p.x)));
-  const fOut = mat(nP, nObj, new Float64Array(pareto.flatMap(p => p.f)));
-  return [xOut, fOut, scalar(0)];
+  // pareto[i] is one solution (a row); pack into column-major buffers so row i = solution i.
+  const xData = new Float64Array(nP * nvars);
+  for (let i = 0; i < nP; i++) for (let j = 0; j < nvars; j++) xData[i + j * nP] = pareto[i].x[j];
+  const fData = new Float64Array(nP * nObj);
+  for (let i = 0; i < nP; i++) for (let j = 0; j < nObj; j++) fData[i + j * nP] = pareto[i].f[j];
+  return [mat(nP, nvars, xData), mat(nP, nObj, fData), scalar(0)];
 }
 
 export const GADS: ToolboxModule = {
