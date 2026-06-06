@@ -322,7 +322,7 @@ export const COMM: ToolboxModule = {
       const nums = a.slice(1).filter((x) => isMat(x) && !(x as Mat).isChar).map((x) => Math.round(asScalar(x)));
       const n = nums.length >= 1 ? nums[0] : -1;          // requested digit count
       const base = nums.length >= 2 ? nums[1] : 2;
-      const need = Math.max(1, ...d.map((v) => (v <= 0 ? 1 : Math.floor(Math.log(v) / Math.log(base)) + 1)));
+      let need = 1; for (const v of d) { const w = v <= 0 ? 1 : Math.floor(Math.log(v) / Math.log(base)) + 1; if (w > need) need = w; }   // loop (spread would overflow on large arrays)
       const ncol = n > 0 ? n : need;
       const out = zeros(d.length, ncol);
       d.forEach((v, r) => { let x = v; for (let c = 0; c < ncol; c++) { const digit = x % base; x = Math.floor(x / base); out.data[r + (msb ? ncol - 1 - c : c) * d.length] = digit; } });
@@ -344,13 +344,14 @@ export const COMM: ToolboxModule = {
     /** [num,rate] = biterr(a,b) — bit error count and ratio (elements compared bitwise). */
     biterr: (a, nargout) => {
       const x = toArray(m(a[0])).map((v) => Math.round(v)), y = toArray(m(a[1])).map((v) => Math.round(v));
-      const w = bitWidth(Math.max(1, ...x, ...y)); let num = 0;
-      for (let i = 0; i < x.length; i++) { let diff = x[i] ^ y[i]; while (diff) { num += diff & 1; diff >>>= 1; } }
+      let mx = 1; for (const v of x) if (v > mx) mx = v; for (const v of y) if (v > mx) mx = v;   // loop, not spread
+      const w = bitWidth(mx); let num = 0;
+      for (let i = 0; i < x.length; i++) { let diff = BigInt(x[i]) ^ BigInt(y[i]); while (diff > 0n) { num += Number(diff & 1n); diff >>= 1n; } }   // BigInt: full >32-bit width
       return nargout >= 2 ? Promise.resolve([scalar(num), scalar(num / (x.length * w))]) : ret(scalar(num));
     },
     /** bin2gray(x) / gray2bin(x) — integer binary-reflected Gray code (element-wise). */
-    bin2gray: (a) => ret(map2(m(a[0]), (v) => v ^ (v >>> 1))),
-    gray2bin: (a) => ret(map2(m(a[0]), (v) => { let b = 0; for (let x = v; x; x >>>= 1) b ^= x; return b; })),
+    bin2gray: (a) => ret(map2(m(a[0]), (v) => Number(BigInt(Math.round(v)) ^ (BigInt(Math.round(v)) >> 1n)))),   // BigInt: >32-bit safe
+    gray2bin: (a) => ret(map2(m(a[0]), (v) => { let b = 0n; for (let x = BigInt(Math.round(v)); x > 0n; x >>= 1n) b ^= x; return Number(b); })),
 
     // ── modulation (square QAM + PSK, MATLAB Gray mapping, default scaling) ──
     qammod: (a) => { const x = toArray(m(a[0])).map((v) => Math.round(v)); const M = Math.round(asScalar(a[1])); const side = Math.round(Math.sqrt(M)), kHalf = Math.round(Math.log2(side)); const re: number[] = [], im: number[] = []; for (const xi of x) { const [I, Q] = qamPoint(xi, side, kHalf); re.push(I); im.push(Q); } return ret(cplx(m(a[0]), re, im)); },

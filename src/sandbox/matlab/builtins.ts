@@ -777,6 +777,7 @@ export const BUILTINS: Record<string, Builtin> = {
       return ret(makeSym(1, fac.length, fac));
     }
     const A0 = m(a[0]); let n = Math.round(asScalar(A0)); const orig = n; const out: number[] = [];
+    if (!Number.isFinite(n) || n < 1) throw new MatError('factor: input must be a positive integer'); // 0/negative have no finite factorization
     for (let d = 2; d * d <= n; d++) while (n % d === 0) { out.push(d); n /= d; }
     if (n > 1) out.push(n);
     const res = rowVec(out.length ? out : [orig]);
@@ -931,7 +932,19 @@ export const BUILTINS: Record<string, Builtin> = {
     else if (shape === 'valid') { const len = Math.max(u.length - v.length + 1, 0); out = full.slice(v.length - 1, v.length - 1 + len); }
     return ret(U.cols === 1 && U.rows > 1 ? colVec(out) : rowVec(out));
   },
-  polyder: async (a) => { const p = toArray(m(a[0])); const n = p.length - 1; if (n <= 0) return ret(scalar(0)); const d: number[] = []; for (let i = 0; i < n; i++) d.push(p[i] * (n - i)); return ret(rowVec(d)); },
+  polyder: async (a, nargout) => {
+    const der = (p: number[]): number[] => { const n = p.length - 1; if (n <= 0) return [0]; const d: number[] = []; for (let i = 0; i < n; i++) d.push(p[i] * (n - i)); return d; };
+    const conv1 = (p: number[], q: number[]): number[] => { const r = new Array(p.length + q.length - 1).fill(0); for (let i = 0; i < p.length; i++) for (let j = 0; j < q.length; j++) r[i + j] += p[i] * q[j]; return r; };
+    const addP = (p: number[], q: number[]): number[] => { const L = Math.max(p.length, q.length); const r = new Array(L).fill(0); for (let i = 0; i < p.length; i++) r[L - p.length + i] += p[i]; for (let i = 0; i < q.length; i++) r[L - q.length + i] += q[i]; return r; };
+    const trim = (p: number[]): number[] => { let i = 0; while (i < p.length - 1 && p[i] === 0) i++; return p.slice(i); };   // drop leading zeros (MATLAB)
+    if (a.length < 2) return ret(rowVec(der(toArray(m(a[0])))));
+    const u = toArray(m(a[0])), v = toArray(m(a[1]));
+    if (nargout >= 2) {   // [q,d] = polyder(u,v): derivative of u/v = (u'v − uv')/v²
+      const num = addP(conv1(der(u), v), conv1(u, der(v)).map((x) => -x));
+      return [rowVec(trim(num)), rowVec(conv1(v, v))];
+    }
+    return ret(rowVec(trim(addP(conv1(der(u), v), conv1(u, der(v))))));   // derivative of product u*v
+  },
   polyint: async (a) => { const p = toArray(m(a[0])); const k = a.length >= 2 ? asScalar(a[1]) : 0; const n = p.length; const out: number[] = []; for (let i = 0; i < n; i++) out.push(p[i] / (n - i)); out.push(k); return ret(rowVec(out)); },
 
   // ═══════════════════════ REDUCTIONS & SHAPE ═══════════════════════
@@ -1113,6 +1126,7 @@ export const BUILTINS: Record<string, Builtin> = {
     for (let i = 0; i < A.data.length; i++) if (A.data[i] !== 0 || (ai && ai[i] !== 0)) all.push(i); // 0-based linear; nonzero incl. complex
     const last = a.some((x) => (isStr(x) || (isMat(x) && (x as Mat).isChar)) && asString(x).toLowerCase() === 'last');
     const k = a.length >= 2 && isMat(a[1]) && !(a[1] as Mat).isChar ? Math.round(asScalar(a[1])) : all.length;
+    if (k < 0) throw new MatError('find: the requested number of indices K must be a nonnegative integer');
     const sel = last ? all.slice(Math.max(0, all.length - k)) : all.slice(0, Math.max(0, k));
     const orient = (arr: number[]) => (A.rows === 1 ? rowVec(arr) : colVec(arr));
     if (n >= 2) {
@@ -1812,6 +1826,7 @@ export const BUILTINS: Record<string, Builtin> = {
     const binLimits = opt('binlimits') ? toArray(m(opt('binlimits')!)) : undefined;
     let edges: number[];
     if (a.length >= 2 && isMat(a[1]) && numel(a[1]) > 1) edges = toArray(m(a[1]));
+    else if (x.length === 0 && !binLimits) edges = [0, 1];   // empty data → MATLAB default [0 1] (avoids ±Inf limits)
     else {
       const mn = binLimits ? binLimits[0] : Math.min(...x), mx = binLimits ? binLimits[1] : Math.max(...x);
       if (binWidth) { edges = []; for (let e = mn; e <= mx + binWidth / 2; e += binWidth) edges.push(e); if (edges.length < 2) edges = [mn, mn + (binWidth || 1)]; }
@@ -1877,7 +1892,15 @@ export const BUILTINS: Record<string, Builtin> = {
   hadamard: async (a) => { let n = Math.round(asScalar(a[0])); if (n < 1 || (n & (n - 1)) !== 0) throw new MatError('hadamard: only power-of-2 sizes are supported in this implementation (Paley sizes such as 12 and 20 are not implemented).'); let H = mat(1, 1, Float64Array.of(1)); while (H.rows < n) { const k = H.rows; const o = zeros(2 * k, 2 * k); for (let r = 0; r < k; r++) for (let c = 0; c < k; c++) { const v = H.data[r + c * k]; o.data[r + c * 2 * k] = v; o.data[r + (c + k) * 2 * k] = v; o.data[(r + k) + c * 2 * k] = v; o.data[(r + k) + (c + k) * 2 * k] = -v; } H = o; } return ret(H); },
   hankel: async (a) => { const c = toArray(m(a[0])); const r = a.length >= 2 ? toArray(m(a[1])) : c.map((_, i) => (i === 0 ? c[c.length - 1] : 0)); const nr = c.length, nc = r.length; const o = zeros(nr, nc); for (let i = 0; i < nr; i++) for (let j = 0; j < nc; j++) { const k = i + j; o.data[i + j * nr] = k < nr ? c[k] : (k - nr + 1 < nc ? r[k - nr + 1] : 0); } return ret(o); },
   compan: async (a) => { const p = toArray(m(a[0])); const n = p.length - 1; if (n < 1) return ret(zeros(0, 0)); const o = zeros(n, n); for (let j = 0; j < n; j++) o.data[0 + j * n] = -p[j + 1] / p[0]; for (let i = 1; i < n; i++) o.data[i + (i - 1) * n] = 1; return ret(o); },
-  sub2ind: async (a) => { const sz = toArray(m(a[0])); const rows = sz[0]; const R = m(a[1]), C = a.length >= 3 ? m(a[2]) : null; return ret(C ? elementwise(R, C, (r, c) => (c - 1) * rows + r) : R); },
+  sub2ind: async (a) => {
+    const sz = toArray(m(a[0])).map((x) => Math.round(x)); const subs = a.slice(1).map((v) => m(v));
+    if (subs.length < 2) return ret(subs[0] ?? scalar(1));
+    const ndim = subs.length; const dimSz = sz.slice(); while (dimSz.length < ndim) dimSz.push(1);
+    const strides = [1]; for (let i = 1; i < ndim; i++) strides[i] = strides[i - 1] * dimSz[i - 1];
+    const first = subs[0]; const out = zeros(first.rows, first.cols);
+    for (let e = 0; e < first.data.length; e++) { let lin = 1; for (let d = 0; d < ndim; d++) lin += (Math.round(subs[d].data[e]) - 1) * strides[d]; out.data[e] = lin; }
+    return ret(out);
+  },
   ind2sub: async (a, n) => {
     const sz = toArray(m(a[0])); const I = m(a[1]); const nOut = Math.max(1, n);
     // dims for the requested outputs; the last output absorbs any remaining dimensions
@@ -4090,7 +4113,9 @@ export const BUILTINS: Record<string, Builtin> = {
     const hi = first.length >= 2 ? Math.round(first[1]) : Math.round(first[0]);
     const d = dimsN(a.slice(1));
     const total = d.reduce((p, x) => p * x, 1);
-    const data = new Float64Array(total); const range = hi - lo + 1;
+    const range = hi - lo + 1;
+    if (range < 1) throw new MatError('randi: the interval [imin imax] must have imax >= imin');
+    const data = new Float64Array(total);
     for (let i = 0; i < total; i++) data[i] = lo + Math.floor(rngNext() * range);
     return ret(makeND(d, data));
   },
@@ -4104,11 +4129,14 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   ndgrid: async (a, n) => {
     const x = toArray(m(a[0])); const y = a.length >= 2 ? toArray(m(a[1])) : x;
-    if (n >= 3 || a.length >= 3) {   // 3-D: [X,Y,Z] = ndgrid(x,y,z)
-      const z = a.length >= 3 ? toArray(m(a[2])) : x; const nx = x.length, ny = y.length, nz = z.length; const sz = nx * ny * nz;
-      const X = new Float64Array(sz), Y = new Float64Array(sz), Z = new Float64Array(sz);
-      for (let k = 0; k < nz; k++) for (let c = 0; c < ny; c++) for (let r = 0; r < nx; r++) { const idx = r + c * nx + k * nx * ny; X[idx] = x[r]; Y[idx] = y[c]; Z[idx] = z[k]; }
-      return [makeND([nx, ny, nz], X), makeND([nx, ny, nz], Y), makeND([nx, ny, nz], Z)];
+    if (n >= 3 || a.length >= 3) {   // N-D: [X1,…,XD] = ndgrid(x1,…,xD) for any D ≥ 3
+      const D = Math.max(a.length, n);
+      const vecs: number[][] = []; for (let i = 0; i < D; i++) vecs.push(toArray(m(a[i] ?? a[0])));   // replicate the single input if fewer given
+      const dims = vecs.map((v) => v.length); const total = dims.reduce((p, q) => p * q, 1);
+      const strides = [1]; for (let i = 1; i < D; i++) strides[i] = strides[i - 1] * dims[i - 1];
+      const out: Value[] = [];
+      for (let g = 0; g < D; g++) { const data = new Float64Array(total); for (let lin = 0; lin < total; lin++) data[lin] = vecs[g][Math.floor(lin / strides[g]) % dims[g]]; out.push(makeND(dims.slice(), data)); }
+      return out;
     }
     const X = zeros(x.length, y.length), Y = zeros(x.length, y.length);
     for (let r = 0; r < x.length; r++) for (let c = 0; c < y.length; c++) { X.data[r + c * x.length] = x[r]; Y.data[r + c * x.length] = y[c]; }
@@ -4157,7 +4185,19 @@ export const BUILTINS: Record<string, Builtin> = {
     for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) { const nr = mod(r + sr, A.rows), nc = mod(c + sc, A.cols); o.data[nr + nc * A.rows] = A.data[r + c * A.rows]; if (im) im[nr + nc * A.rows] = A.idata![r + c * A.rows]; }
     if (im) o.idata = im; return ret(o);
   },
-  bsxfun: async (a, _n, env) => { const f = handle(a[0], 'bsxfun'); return env.callHandle(f, [a[1], a[2]], 1); },
+  bsxfun: async (a, _n, env) => {
+    const f = handle(a[0], 'bsxfun'); const A = m(a[1]), B = m(a[2]);
+    // Expand singleton dims to the common size, then call f ONCE (works for custom handles
+    // that aren't internally broadcasting, as well as vectorised builtins).
+    const R = Math.max(A.rows, B.rows), C = Math.max(A.cols, B.cols);
+    const exp = (M: Mat): Mat => {
+      if (M.rows === R && M.cols === C) return M;
+      const o = zeros(R, C); if (M.idata) o.idata = new Float64Array(R * C); o.isBool = M.isBool; o.itype = M.itype;
+      for (let c = 0; c < C; c++) for (let r = 0; r < R; r++) { const sr = M.rows === 1 ? 0 : r, sc = M.cols === 1 ? 0 : c; o.data[r + c * R] = M.data[sr + sc * M.rows]; if (M.idata) o.idata![r + c * R] = M.idata[sr + sc * M.rows]; }
+      return o;
+    };
+    return env.callHandle(f, [exp(A), exp(B)], 1);
+  },
   // ── operator functions (named forms, for feval/arrayfun/bsxfun) ──
   plus: async (a) => ret(ewAdd(m(a[0]), m(a[1]))),
   minus: async (a) => ret(ewSub(m(a[0]), m(a[1]))),

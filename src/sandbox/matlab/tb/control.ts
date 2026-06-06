@@ -247,7 +247,8 @@ function matExp(A: number[][]): number[][] {
   // scaling: choose s so that ‖A/2^s‖∞ ≤ 1/2
   let normInf = 0;
   for (let i = 0; i < n; i++) { let s = 0; for (let j = 0; j < n; j++) s += Math.abs(A[i][j]); normInf = Math.max(normInf, s); }
-  let s = 0; while (normInf / 2 ** s > 0.5) s++;
+  if (!Number.isFinite(normInf)) return A.map((row) => row.map(() => NaN));   // Inf/NaN entries → NaN result (avoid an infinite scaling loop)
+  let s = 0; while (normInf / 2 ** s > 0.5 && s < 1024) s++;
   const Asc = matScale(A, 1 / 2 ** s);
   // [6/6] Padé: N = Σ c_k A^k, D = Σ (-1)^k c_k A^k
   const c = [1, 1 / 2, 5 / 44, 1 / 66, 1 / 792, 1 / 15840, 1 / 665280];

@@ -50,6 +50,7 @@ function runReg(y: number[], T: number, lags: number, model: string): AdfReg {
     for (let j = 1; j <= lags; j++) row.push(lev(t, j) - lev(t, j + 1)); // Δy_{t-j}
     X.push(row); Y.push(y[t]);
   }
+  if (X.length === 0) throw new MatError('adftest/pptest: the time series is too short for the requested number of lags');
   const p = X[0].length;
   const XtX = Array.from({ length: p }, (_, i) => Array.from({ length: p }, (_, j) => { let s = 0; for (let r = 0; r < X.length; r++) s += X[r][i] * X[r][j]; return s; }));
   const Xty = Array.from({ length: p }, (_, i) => { let s = 0; for (let r = 0; r < X.length; r++) s += X[r][i] * Y[r]; return s; });
@@ -120,6 +121,7 @@ const pptest: Builtin = async (args, nargout) => {
   const X: number[][] = [], Y: number[] = [];
   const numNonDelta = model === 'AR' ? 1 : model === 'ARD' ? 2 : 3;
   for (let t = 1; t < N; t++) { const row: number[] = []; if (model !== 'AR') row.push(1); if (model === 'TS') row.push(t); row.push(y[t - 1]); X.push(row); Y.push(y[t]); }
+  if (X.length === 0) throw new MatError('adftest/pptest: the time series is too short for the requested number of lags');
   const p = X[0].length;
   const XtX = Array.from({ length: p }, (_, i) => Array.from({ length: p }, (_, j) => { let s = 0; for (let r = 0; r < X.length; r++) s += X[r][i] * X[r][j]; return s; }));
   const Xty = Array.from({ length: p }, (_, i) => { let s = 0; for (let r = 0; r < X.length; r++) s += X[r][i] * Y[r]; return s; });
