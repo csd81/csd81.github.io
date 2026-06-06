@@ -431,6 +431,46 @@ export const AEROSPACE: ToolboxModule = {
       const wrap = (c: number[]): Value => (c.length === 1 ? scalar(c[0]) : mat(vMat.rows, vMat.cols, Float64Array.from(c)));
       return ret([M_, T_, P_, rho_, M2_, P0_, P1_].map(wrap).slice(0, Math.max(1, nargout)));
     },
+    // flowfanno(gamma,mach[,'mach']) → [mach, T, P, rho, V, P0, fanno] (forward/mach mode).
+    flowfanno: (a, nargout) => {
+      const gArr = Array.from(m(a[0]).data), vMat = m(a[1]), vArr = Array.from(vMat.data);
+      if (a[2] !== undefined && asString(a[2]).toLowerCase() !== 'mach') throw new Error('aero:flowfanno: only mach mode supported');
+      const n = Math.max(gArr.length, vArr.length);
+      const gAt = (i: number) => (gArr.length === 1 ? gArr[0] : gArr[i]); const vAt = (i: number) => (vArr.length === 1 ? vArr[0] : vArr[i]);
+      const cols: number[][] = [[], [], [], [], [], [], []];
+      for (let i = 0; i < n; i++) {
+        const g = gAt(i), M = vAt(i), M2 = M * M, denom = 2 + (g - 1) * M2;
+        cols[0].push(M);
+        cols[1].push((g + 1) / denom);                                          // T/T*
+        cols[2].push((1 / M) * Math.sqrt((g + 1) / denom));                      // P/P*
+        cols[3].push((1 / M) * Math.sqrt(denom / (g + 1)));                      // rho/rho*
+        cols[4].push(M * Math.sqrt((g + 1) / denom));                           // V/V*
+        cols[5].push((1 / M) * (denom / (g + 1)) ** ((g + 1) / (2 * (g - 1)))); // P0/P0*
+        cols[6].push((1 - M2) / (g * M2) + (g + 1) / (2 * g) * Math.log((g + 1) * M2 / denom)); // 4fL*/D
+      }
+      const wrap = (c: number[]): Value => (c.length === 1 ? scalar(c[0]) : mat(vMat.rows, vMat.cols, Float64Array.from(c)));
+      return ret(cols.map(wrap).slice(0, Math.max(1, nargout)));
+    },
+    // flowrayleigh(gamma,mach[,'mach']) → [mach, T, P, rho, V, P0, T0] (forward/mach mode).
+    flowrayleigh: (a, nargout) => {
+      const gArr = Array.from(m(a[0]).data), vMat = m(a[1]), vArr = Array.from(vMat.data);
+      if (a[2] !== undefined && asString(a[2]).toLowerCase() !== 'mach') throw new Error('aero:flowrayleigh: only mach mode supported');
+      const n = Math.max(gArr.length, vArr.length);
+      const gAt = (i: number) => (gArr.length === 1 ? gArr[0] : gArr[i]); const vAt = (i: number) => (vArr.length === 1 ? vArr[0] : vArr[i]);
+      const cols: number[][] = [[], [], [], [], [], [], []];
+      for (let i = 0; i < n; i++) {
+        const g = gAt(i), M = vAt(i), M2 = M * M, gm = 1 + g * M2;
+        cols[0].push(M);
+        cols[1].push(M2 * (g + 1) * (g + 1) / (gm * gm));                       // T/T*
+        cols[2].push((g + 1) / gm);                                             // P/P*
+        cols[3].push(gm / ((g + 1) * M2));                                      // rho/rho*
+        cols[4].push((g + 1) * M2 / gm);                                        // V/V*
+        cols[5].push((g + 1) * M2 * (2 + (g - 1) * M2) / (gm * gm));            // (MATLAB 6th output)
+        cols[6].push((g + 1) / gm * ((2 + (g - 1) * M2) / (g + 1)) ** (g / (g - 1))); // (MATLAB 7th output)
+      }
+      const wrap = (c: number[]): Value => (c.length === 1 ? scalar(c[0]) : mat(vMat.rows, vMat.cols, Float64Array.from(c)));
+      return ret(cols.map(wrap).slice(0, Math.max(1, nargout)));
+    },
     // mach = machnumber(vel,a) = airspeed(vel)./a (vel rows are velocity vectors)
     machnumber: (a) => {
       const v = rowsOf(m(a[0])).map((r) => Math.hypot(r[0], r[1], r[2]));
@@ -478,6 +518,8 @@ export const AEROSPACE: ToolboxModule = {
     machnumber: 'Compute Mach number from velocity and speed of sound',
     flowprandtlmeyer: 'Prandtl-Meyer expansion: [mach, nu, mu] from Mach (degrees)',
     flownormalshock: 'Normal shock relations: [M, T, P, rho, M2, P0, P1] from Mach',
+    flowfanno: 'Fanno line flow relations: [mach, T, P, rho, V, P0, fanno] from Mach',
+    flowrayleigh: 'Rayleigh line flow relations: [mach, T, P, rho, V, P0, T0] from Mach',
     rrdelta: 'Compute relative pressure ratio', rrtheta: 'Compute relative temperature ratio', rrsigma: 'Compute relative density ratio',
     flowisentropic: 'Calculate isentropic flow ratios',
   },
