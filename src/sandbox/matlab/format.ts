@@ -16,7 +16,9 @@ export const HELP_CLOSE = '';
 /** Format a complex scalar as `a + bi` / `a - bi`. */
 function fmtC(re: number, im: number): string {
   const sign = im < 0 || Object.is(im, -0) ? '-' : '+';
-  return `${formatScalar(re)} ${sign} ${formatScalar(Math.abs(im))}i`;
+  // MATLAB displays complex values with the common decimal format on both parts
+  // (no integer/zero special-case): 0 + 2i → '0.0000 + 2.0000i'.
+  return `${formatScalar(re, true)} ${sign} ${formatScalar(Math.abs(im), true)}i`;
 }
 function complexMatrixLines(m: Mat): string[] {
   const cells: string[][] = []; let w = 0;
@@ -62,12 +64,14 @@ function charLines(v: Mat): string[] {
   return out;
 }
 const z2 = (s: string) => s.replace(/e([+-])(\d)$/, 'e$10$2');   // MATLAB pads the exponent to ≥2 digits
-export function formatScalar(x: number): string {
+export function formatScalar(x: number, forceDec = false): string {
   if (Number.isNaN(x)) return fmtMode === 'rat' ? '*' : 'NaN';
   if (x === Infinity) return fmtMode === 'rat' ? '1/0' : 'Inf';
   if (x === -Infinity) return fmtMode === 'rat' ? '-1/0' : '-Inf';
   if (fmtMode === 'rat') return toRational(x);
-  if (Number.isInteger(x) && Math.abs(x) < 1e15) return String(x);
+  // forceDec: caller (a non-integer array / a complex part) wants the common decimal
+  // format applied even to integer-valued elements, e.g. 1 → '1.0000', matching MATLAB.
+  if (!forceDec && Number.isInteger(x) && Math.abs(x) < 1e15) return String(x);
   const a = Math.abs(x);
   switch (fmtMode) {
     case 'longe': return z2(x.toExponential(15));
@@ -103,7 +107,9 @@ export function matrixLines(m: Mat): string[] {
     const row: string[] = [];
     for (let c = 0; c < m.cols; c++) {
       const v = m.data[r + c * m.rows];
-      const s = isInt ? String(Math.round(v)) : ints && Math.abs(v) < 1e15 ? String(v) : formatScalar(v);
+      // Non-integer real array: every element uses the common decimal format except an
+      // exact 0, which stays '0' (MATLAB: linspace(0,1,5) → 0  0.2500 … 1.0000).
+      const s = isInt ? String(Math.round(v)) : ints && Math.abs(v) < 1e15 ? String(v) : v === 0 ? '0' : formatScalar(v, true);
       row.push(s);
       width = Math.max(width, s.length);
     }
