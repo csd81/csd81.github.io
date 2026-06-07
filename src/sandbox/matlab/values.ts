@@ -153,12 +153,20 @@ export function scalar(x: number): Mat { return mat(1, 1, Float64Array.of(x)); }
 export function bool(b: boolean): Mat { return { ...scalar(b ? 1 : 0), isBool: true }; }
 export function empty(): Mat { return mat(0, 0, new Float64Array(0)); }
 
+// Canonical row-array → column-major Mat. Ragged-safe (pads short rows) so it is the single
+// adapter for every toolbox; do not reimplement this per-file.
 export function fromRows(rowsArr: number[][]): Mat {
   const rows = rowsArr.length;
-  const cols = rows ? rowsArr[0].length : 0;
+  const cols = rows ? Math.max(...rowsArr.map((r) => r.length)) : 0;
   const m = zeros(rows, cols);
-  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) m.data[r + c * rows] = rowsArr[r][c];
+  for (let r = 0; r < rows; r++) for (let c = 0; c < (rowsArr[r]?.length ?? 0); c++) m.data[r + c * rows] = rowsArr[r][c];
   return m;
+}
+// Canonical column-major Mat → row-array (inverse of fromRows).
+export function matRows(m: Mat): number[][] {
+  const out: number[][] = [];
+  for (let r = 0; r < m.rows; r++) { const row: number[] = []; for (let c = 0; c < m.cols; c++) row.push(m.data[r + c * m.rows]); out.push(row); }
+  return out;
 }
 export function rowVec(arr: number[]): Mat {
   const m = zeros(1, arr.length);

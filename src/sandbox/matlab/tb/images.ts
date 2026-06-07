@@ -4,7 +4,7 @@
 import type { Builtin } from '../builtins';
 import {
   type Value, type Mat, type StructV, isMat, isStr, scalar, colVec, zeros, toArray, asScalar, asString, toMat as m, applyClass,
-  ndSize, makeND, mat,
+  ndSize, makeND, mat, fromRows,
 } from '../values';
 import type { ToolboxModule } from './types';
 
@@ -521,7 +521,6 @@ function padarray(args: Value[]): Mat {
   return A.itype ? applyClass(o, A.itype) : o;
 }
 /** Build a column-major Mat from number[][]. */
-function fromRows(rows: number[][]): Mat { const R = rows.length, C = R ? Math.max(...rows.map((r) => r.length)) : 0; const o = zeros(R, C); for (let r = 0; r < R; r++) for (let c = 0; c < (rows[r]?.length ?? 0); c++) o.data[r + c * R] = rows[r][c]; return o; }
 
 /** adaptthresh(I[,sensitivity][,'Name',Value,...]) — locally adaptive threshold (Bradley).
  *  Mirrors MATLAB's adaptthresh: convert image to double in [0,1], compute a local

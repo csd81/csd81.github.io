@@ -3,7 +3,7 @@
 // the live Control System Toolbox. See plan §1 (ClassV) / §7.
 import type { Builtin } from '../builtins';
 import {
-  type Value, type Mat, type StructV, type Cell, type ClassV, isObject, isCell, makeObject, makeCell, scalar, bool, colVec, rowVec, toArray, asScalar, asString, toMat as m, makeStr,
+  type Value, type Mat, type StructV, type Cell, type ClassV, isObject, isCell, makeObject, makeCell, scalar, bool, colVec, rowVec, toArray, asScalar, asString, toMat as m, makeStr, matRows, fromRows,
 } from '../values';
 import { schur, schurEig, expm } from '../linalg';   // shared robust LA core (Francis QR / scaling-squaring), not a local reimpl
 import type { ToolboxModule } from './types';
@@ -50,9 +50,7 @@ const getNumDen = (v: Value): { num: number[]; den: number[] } => {
 };
 function rootsValue(r: { re: number[]; im: number[] }): Value { const c = colVec(r.re); if (r.im.some((x) => x !== 0)) c.idata = Float64Array.from(r.im); return c; }
 
-// ── small dense-matrix + polynomial helpers ──
-function matRows(M: Mat): number[][] { const o: number[][] = []; for (let r = 0; r < M.rows; r++) { const row: number[] = []; for (let c = 0; c < M.cols; c++) row.push(M.data[r + c * M.rows]); o.push(row); } return o; }
-function fromRows(rows: number[][]): Mat { const R = rows.length, C = R ? rows[0].length : 0; const o = { kind: 'num' as const, rows: R, cols: C, data: new Float64Array(R * C) } as Mat; for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) o.data[r + c * R] = rows[r][c]; return o; }
+// ── small dense-matrix + polynomial helpers (matRows/fromRows are the shared adapters from values) ──
 const mmul = (A: number[][], B: number[][]): number[][] => { const n = A.length, p = B.length, m = B[0]?.length ?? 0; const C: number[][] = []; for (let i = 0; i < n; i++) { C[i] = []; for (let j = 0; j < m; j++) { let s = 0; for (let k = 0; k < p; k++) s += A[i][k] * B[k][j]; C[i][j] = s; } } return C; };
 const eye = (n: number): number[][] => Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)));
 /** Dense matrix inverse via Gauss-Jordan with partial pivoting. */

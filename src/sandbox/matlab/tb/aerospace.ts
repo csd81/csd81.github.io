@@ -4,7 +4,7 @@
 // MATLAB's quaternion-to-DCM map is the coordinate-transformation (transposed) form, quatnorm is
 // the SUM of squares (not its root), and quatdivide(q,r) = r⁻¹⊗q. See aerospace.VALIDATION.md.
 import type { Builtin } from '../builtins';
-import { type Value, type Mat, mat, map, toMat as m, asScalar, asString, scalar, colVec, makeND } from '../values';
+import { type Value, type Mat, mat, map, toMat as m, asScalar, asString, scalar, colVec, makeND, fromRows } from '../values';
 import type { ToolboxModule } from './types';
 
 const ret = (v: Value | Value[]): Promise<Value[]> => Promise.resolve(Array.isArray(v) ? v : [v]);
@@ -27,11 +27,6 @@ function rowsOf(M: Mat): number[][] {
   const out: number[][] = [];
   for (let i = 0; i < M.rows; i++) { const r: number[] = []; for (let j = 0; j < M.cols; j++) r.push(M.data[i + j * M.rows]); out.push(r); }
   return out;
-}
-function fromRows(rows: number[][]): Mat {
-  const R = rows.length, C = rows[0].length, d = new Float64Array(R * C);
-  for (let i = 0; i < R; i++) for (let j = 0; j < C; j++) d[i + j * R] = rows[i][j];
-  return mat(R, C, d);
 }
 /** 3×3 row-major number[][] → column-major Mat. */
 function mat3(C: number[][]): Mat {

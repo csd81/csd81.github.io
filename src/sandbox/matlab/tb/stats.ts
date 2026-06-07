@@ -5,15 +5,13 @@
 import type { Builtin } from '../builtins';
 import {
   type Value, type Mat, isMat, isObject, makeObject, str, scalar, zeros, rowVec, colVec, toArray, map, numel,
-  asString, asScalar, toMat as m, MatError, mat, fromRows, isCell, isStr, makeCell, bool,
+  asString, asScalar, toMat as m, MatError, mat, fromRows, matRows, isCell, isStr, makeCell, bool,
 } from '../values';
 import type { ToolboxModule } from './types';
 import { inv, det, schur, svd, qr } from '../linalg';
 import { matmul, transpose } from '../values';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
-/** Rows of a matrix as number[][] (local copy of the builtins.ts helper, kept self-contained). */
-function matRows(P: Mat): number[][] { const out: number[][] = []; for (let r = 0; r < P.rows; r++) { const row: number[] = []; for (let c = 0; c < P.cols; c++) row.push(P.data[r + c * P.rows]); out.push(row); } return out; }
 
 // ─────────────────────────── special functions ───────────────────────────
 const LN2PI = Math.log(2 * Math.PI);
