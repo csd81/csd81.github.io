@@ -43,8 +43,11 @@ function [x, k] = broyden_inverse(F, x0, tol, max_iter)
         
         % Sherman-Morrison formulán alapuló rang-1 inverz frissítés
         % (Broyden "jó" módszerének inverz alakja)
-        H = H + ((dx - H*dF) * (dx' * H)) / (dx' * H * dF);
-        
+        den = dx' * H * dF;
+        if abs(den) > 1e-12              % degenerált nevező esetén kihagyjuk a frissítést
+            H = H + ((dx - H*dF) * (dx' * H)) / den;
+        end
+
         Fx = Fn;
     end
     

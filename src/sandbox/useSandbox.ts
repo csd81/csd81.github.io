@@ -196,11 +196,12 @@ export function useSandbox(folderId: string) {
   const clearConsole = useCallback(() => setLines([]), []);
 
   const resetSession = useCallback(() => {
+    clearFileWaiters();   // resolve pending getFile waiters before killing the worker
     workerRef.current?.terminate();
     workerRef.current = spawn();
     setLines([]); setWorkspace([]); setFig(EMPTY_FIG); setPrompt(null);
     awaitingInput.current = false; setBusy(false);
-  }, [spawn]);
+  }, [spawn, clearFileWaiters]);
 
   /** Put a file into the VFS (worker + mirror + persistence). */
   const putBytes = useCallback((name: string, bytes: Uint8Array) => {

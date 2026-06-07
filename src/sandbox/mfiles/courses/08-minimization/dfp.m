@@ -62,11 +62,14 @@ function [x, k] = dfp_robust(f, grad, x0, tol, max_iter)
         y = g_new - g; 
         sy = s' * y;
         
-        % DFP frissítés (csak ha a görbületi feltétel teljesül)
+        % DFP frissítés (csak ha mindkét nevező pozitív: görbületi feltétel + y'*H*y)
         if sy > 1e-12
             Hy = H * y;
-            % DFP inverz frissítési formula
-            H = H + (s * s') / sy - (Hy * Hy') / (y' * Hy);
+            yHy = y' * Hy;
+            if yHy > 1e-12
+                % DFP inverz frissítési formula
+                H = H + (s * s') / sy - (Hy * Hy') / yHy;
+            end
         end
         
         x = x_new; 

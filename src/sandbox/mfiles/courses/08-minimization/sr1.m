@@ -48,9 +48,16 @@ function [x, k] = sr1(f, grad, x0, tol, max_iter)
         fx = f(x); 
         gd = g'*d;
         while f(x + t*d) > fx + 1e-4 * t * gd
-            t = t / 2; 
+            t = t / 2;
+            if t < 1e-15   % biztonsági leállás: nincs csökkenő lépés (NaN/Inf esetén is)
+                break;
+            end
         end
-        
+        if t < 1e-15
+            warning('A vonalkeresés nem talált csökkenő lépést (%d. iteráció).', k);
+            return;
+        end
+
         % Új pont és gradiens kiszámítása
         s = t * d; 
         x_new = x + s; 
