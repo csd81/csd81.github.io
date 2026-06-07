@@ -41,6 +41,9 @@ let aborted = false;
 let inputResolve: ((v: string) => void) | null = null;
 let preload: string[] = [];
 let session: Session | null = null;
+// Bumped on every reset/run so a run that resumes after being superseded (e.g. a reset
+// arrived mid-run and rebuilt `session`) can detect it and not post stale figure/done.
+let runToken = 0;
 
 function makeSession() {
   session = createSession({
@@ -60,6 +63,7 @@ self.onmessage = async (ev: MessageEvent<ToWorker>) => {
   switch (msg.type) {
     case 'reset':
       // Stop any in-flight run and unblock a pending input() before rebuilding.
+      runToken++;        // supersede any in-flight run so it won't post against the new session
       aborted = true;
       if (inputResolve) { const r = inputResolve; inputResolve = null; r(''); }
       preload = msg.preload;
@@ -89,14 +93,18 @@ self.onmessage = async (ev: MessageEvent<ToWorker>) => {
       post({ type: 'files', names: session!.listFiles() });
       return;
     case 'run': {
+      const token = ++runToken;
       if (!session) makeSession();
+      const runSession = session!;     // capture: a mid-run reset may replace `session`
       aborted = false;
-      const res = await session!.run(msg.src);
+      const res = await runSession.run(msg.src);
+      // If a reset or newer run superseded us while awaiting, don't post stale state.
+      if (token !== runToken || session !== runSession) return;
       // Stream the resulting figure + workspace + file list back, then signal completion.
-      post({ type: 'figure', fig: session!.getFigure() });
-      post({ type: 'workspace', vars: session!.workspace() });
-      post({ type: 'files', names: session!.listFiles() });
-      post({ type: 'completions', names: session!.completions() });
+      post({ type: 'figure', fig: runSession.getFigure() });
+      post({ type: 'workspace', vars: runSession.workspace() });
+      post({ type: 'files', names: runSession.listFiles() });
+      post({ type: 'completions', names: runSession.completions() });
       post({ type: 'done', id: msg.id, error: res.error });
       return;
     }

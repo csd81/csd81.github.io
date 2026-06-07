@@ -23,7 +23,7 @@ type FromWorker =
   | { type: 'done'; id: number; error?: string };
 
 // ── localStorage VFS mirror (base64) ──
-const b64encode = (b: Uint8Array): string => { let s = ''; for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i]); return btoa(s); };
+const b64encode = (b: Uint8Array): string => { let s = ''; const C = 0x8000; for (let i = 0; i < b.length; i += C) s += String.fromCharCode(...b.subarray(i, i + C)); return btoa(s); };  // chunked: avoid O(n) string-grow per byte
 const b64decode = (s: string): Uint8Array => { const bin = atob(s); const b = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i); return b; };
 function loadVfs(): Map<string, Uint8Array> {
   const m = new Map<string, Uint8Array>();
@@ -97,6 +97,13 @@ export function useSandbox(folderId: string) {
     if (changed && pending === 0) saveVfs(vfsRef.current);
   }, []);
 
+  // Resolve any pending getFile waiters (with null) so a reset/terminate before the worker
+  // replies can't leak their callbacks forever.
+  const clearFileWaiters = useCallback(() => {
+    for (const w of getFileWaiters.current.values()) w(null);
+    getFileWaiters.current.clear();
+  }, []);
+
   const attach = useCallback((worker: Worker) => {
     worker.onmessage = (ev: MessageEvent<FromWorker>) => {
       const m = ev.data;
@@ -114,6 +121,7 @@ export function useSandbox(folderId: string) {
         case 'completions': setCompletions(m.names); break;
         case 'fileData': { const w = getFileWaiters.current.get(m.id); if (w) { getFileWaiters.current.delete(m.id); w(m.bytes); } break; }
         case 'done':
+          if (m.id !== runId.current) break;   // ignore a stale 'done' from a superseded/aborted run
           awaitingInput.current = false;
           setPrompt(null);
           setBusy(false);
@@ -142,16 +150,17 @@ export function useSandbox(folderId: string) {
     worker.postMessage({ type: 'reset', preload: folderSources(folderId) });
     replayFiles(worker);
     workerRef.current = worker;
-    return () => { worker.terminate(); workerRef.current = null; };
+    return () => { clearFileWaiters(); worker.terminate(); workerRef.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attach, replayFiles]);
 
   useEffect(() => {
+    clearFileWaiters();   // a folder-change reset rebuilds the session — drop any pending file waiters
     workerRef.current?.postMessage({ type: 'reset', preload: folderSources(folderId) });
     if (workerRef.current) replayFiles(workerRef.current);
     setLines([]); setWorkspace([]); setFig(EMPTY_FIG); setPrompt(null);
     awaitingInput.current = false; setBusy(false);
-  }, [folderId, replayFiles]);
+  }, [folderId, replayFiles, clearFileWaiters]);
 
   const dispatchRun = useCallback((src: string) => {
     const worker = workerRef.current; if (!worker) return;
