@@ -5,7 +5,7 @@ import type { Builtin } from '../builtins';
 import {
   type Value, type Mat, type StructV, type Cell, type ClassV, isObject, isCell, makeObject, makeCell, scalar, bool, colVec, rowVec, toArray, asScalar, asString, toMat as m, makeStr,
 } from '../values';
-import { schur, schurEig } from '../linalg';   // shared robust LA core (Francis QR), not a local reimpl
+import { schur, schurEig, expm } from '../linalg';   // shared robust LA core (Francis QR / scaling-squaring), not a local reimpl
 import type { ToolboxModule } from './types';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
@@ -248,26 +248,13 @@ function lqrResult(K: number[][], S: number[][], Acl: number[][], n: number): Pr
 }
 
 // ── matrix exponential (scaling & squaring with [6/6] Padé) ──
+// Matrix exponential via the shared linalg core (scaling-and-squaring + Padé). Keeps the
+// non-finite guard so Inf/NaN entries short-circuit to NaN instead of looping.
 function matExp(A: number[][]): number[][] {
-  const n = A.length;
-  if (n === 0) return [];
-  // scaling: choose s so that ‖A/2^s‖∞ ≤ 1/2
-  let normInf = 0;
-  for (let i = 0; i < n; i++) { let s = 0; for (let j = 0; j < n; j++) s += Math.abs(A[i][j]); normInf = Math.max(normInf, s); }
-  if (!Number.isFinite(normInf)) return A.map((row) => row.map(() => NaN));   // Inf/NaN entries → NaN result (avoid an infinite scaling loop)
-  let s = 0; while (normInf / 2 ** s > 0.5 && s < 1024) s++;
-  const Asc = matScale(A, 1 / 2 ** s);
-  // [6/6] Padé: N = Σ c_k A^k, D = Σ (-1)^k c_k A^k
-  const c = [1, 1 / 2, 5 / 44, 1 / 66, 1 / 792, 1 / 15840, 1 / 665280];
-  let Ak = eye(n); let Np = matScale(eye(n), c[0]); let Dp = matScale(eye(n), c[0]);
-  for (let k = 1; k <= 6; k++) {
-    Ak = mmul(Ak, Asc);
-    Np = matAdd2(Np, matScale(Ak, c[k]));
-    Dp = matAdd2(Dp, matScale(Ak, (k % 2 ? -1 : 1) * c[k]));
-  }
-  let E = mmul(matInv(Dp), Np);
-  for (let i = 0; i < s; i++) E = mmul(E, E);   // squaring
-  return E;
+  const n = A.length; if (n === 0) return [];
+  let normInf = 0; for (let i = 0; i < n; i++) { let s = 0; for (let j = 0; j < n; j++) s += Math.abs(A[i][j]); normInf = Math.max(normInf, s); }
+  if (!Number.isFinite(normInf)) return A.map((row) => row.map(() => NaN));
+  return matRows(expm(fromRows(A)));
 }
 
 // ── Lyapunov / Sylvester (Kronecker linear-solve) helpers ──
