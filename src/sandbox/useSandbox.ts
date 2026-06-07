@@ -74,7 +74,9 @@ export function useSandbox(folderId: string) {
 
   // Pull any worker-created files (e.g. writematrix output) into the local mirror, then persist.
   const syncFiles = useCallback((names: string[]) => {
-    setUserFiles(names.slice().sort());
+    // Show the worker's manifest UNION locally-pending uploads, so a just-uploaded file the
+    // (possibly stale) manifest hasn't acknowledged yet doesn't vanish from the list.
+    setUserFiles([...new Set([...names, ...pendingRef.current])].sort());
     const worker = workerRef.current; if (!worker) return;
     for (const name of names) pendingRef.current.delete(name);   // worker now knows about these
     let pending = 0; let changed = false;
@@ -160,12 +162,14 @@ export function useSandbox(folderId: string) {
     // Skip the first render: the mount effect above already did reset+replay for the initial
     // folderId, so running here too would double the preload + VFS replay on the fresh worker.
     if (!didMount.current) { didMount.current = true; return; }
-    clearFileWaiters();   // a folder-change reset rebuilds the session — drop any pending file waiters
-    workerRef.current?.postMessage({ type: 'reset', preload: folderSources(folderId) });
-    if (workerRef.current) replayFiles(workerRef.current);
+    clearFileWaiters();
+    // Terminate + respawn (not a 'reset' message): a worker locked in a non-yielding loop would
+    // never process a reset, and a fresh worker can't deliver stale messages into the new folder.
+    workerRef.current?.terminate();
+    workerRef.current = spawn();   // spawn() preloads the new folder + replays the VFS
     setLines([]); setWorkspace([]); setFig(EMPTY_FIG); setPrompt(null);
     awaitingInput.current = false; setBusy(false);
-  }, [folderId, replayFiles, clearFileWaiters]);
+  }, [folderId, spawn, clearFileWaiters]);
 
   const dispatchRun = useCallback((src: string) => {
     const worker = workerRef.current; if (!worker) return;

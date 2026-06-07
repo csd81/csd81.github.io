@@ -62,7 +62,7 @@ export default function PlotlyFigure({ fig, dark, xScale = 'auto', yScale = 'aut
   panels.forEach((p, idx) => {
     if (!p || (!p.series?.length && !p.surfaces?.length && !p.reflines?.length && !p.meshes?.length && !p.annotations?.length && !p.heatmap && !p.parcoords)) return;
     const colorscale = CMAP[(p.colormap ?? 'parula').toLowerCase()] ?? 'Viridis';
-    const has3D = !!p.surfaces?.some((s) => s.kind !== 'contour') || p.series.some((s) => s.z) || !!p.meshes?.length;
+    const has3D = !!p.surfaces?.some((s) => s.kind !== 'contour') || (p.series ?? []).some((s) => s.z) || !!p.meshes?.length;
     const N = idx + 1; const suf = N === 1 ? '' : String(N);
     const r = Math.floor(idx / (fig.cols || 1)), c = idx % (fig.cols || 1);
     // Cell domain (top row first), with padding for axis labels.
@@ -73,7 +73,7 @@ export default function PlotlyFigure({ fig, dark, xScale = 'auto', yScale = 'aut
 
     if (p.polar) {
       const pk = 'polar' + suf; const deg = (t: number[]) => t.map((v) => (v * 180) / Math.PI);
-      for (const s of p.series) {
+      for (const s of p.series ?? []) {
         if (s.polarType === 'bar') data.push({ type: 'barpolar', subplot: pk, theta: deg(s.theta ?? []), r: s.r ?? [], marker: { color: s.color } });
         else data.push({ type: 'scatterpolar', subplot: pk, theta: deg(s.theta ?? []), r: s.r ?? [], mode: s.mode, line: { color: s.color, width: 2 }, marker: { color: s.color, symbol: s.symbol ?? 'circle', size: s.sizes ?? 7 } });
       }
@@ -114,15 +114,15 @@ export default function PlotlyFigure({ fig, dark, xScale = 'auto', yScale = 'aut
         if (mesh.wire) {
           const lx: number[] = [], ly: number[] = [], lz: number[] = [];
           for (let t = 0; t < mesh.i.length; t++) { const a = mesh.i[t], b = mesh.j[t], cc = mesh.k[t]; lx.push(mesh.x[a], mesh.x[b], mesh.x[cc], mesh.x[a], NaN); ly.push(mesh.y[a], mesh.y[b], mesh.y[cc], mesh.y[a], NaN); lz.push(mesh.z[a], mesh.z[b], mesh.z[cc], mesh.z[a], NaN); }
-          data.push({ type: 'scatter3d', scene: sceneKey, x: lx, y: ly, z: lz, mode: 'lines', line: { color: p.series[0]?.color ?? '#2f6fed', width: 2 } });
+          data.push({ type: 'scatter3d', scene: sceneKey, x: lx, y: ly, z: lz, mode: 'lines', line: { color: p.series?.[0]?.color ?? '#2f6fed', width: 2 } });
         } else {
           data.push({ type: 'mesh3d', scene: sceneKey, x: mesh.x, y: mesh.y, z: mesh.z, i: mesh.i, j: mesh.j, k: mesh.k, intensity: mesh.z, colorscale, showscale: !!p.colorbar, opacity: 1, flatshading: true });
         }
       }
-      for (const s of p.series) if (s.z) data.push({ type: 'scatter3d', scene: sceneKey, x: s.x, y: s.y, z: s.z, mode: s.mode, line: { color: s.color, width: 4 }, marker: { color: s.color, size: s.sizes ?? 4 } });
+      for (const s of p.series ?? []) if (s.z) data.push({ type: 'scatter3d', scene: sceneKey, x: s.x, y: s.y, z: s.z, mode: s.mode, line: { color: s.color, width: 4 }, marker: { color: s.color, size: s.sizes ?? 4 } });
       layout[sceneKey] = { domain: { x: xdom, y: ydom }, xaxis: { title: { text: p.xlabel ?? 'x' }, gridcolor: grid, color: fg }, yaxis: { title: { text: p.ylabel ?? 'y' }, gridcolor: grid, color: fg }, zaxis: { title: { text: p.zlabel ?? 'z' }, gridcolor: grid, color: fg } };
     } else {
-      p.series.forEach((s, i) => {
+      (p.series ?? []).forEach((s, i) => {
         const name = s.name ?? p.legend?.[i] ?? `data${i + 1}`;
         const line = { color: s.color, dash: s.dash, width: s.width ?? 2 };
         const marker = {
@@ -152,7 +152,7 @@ export default function PlotlyFigure({ fig, dark, xScale = 'auto', yScale = 'aut
           ? { type: 'line', xref: xa, x0: rf.value, x1: rf.value, yref: ya + ' domain', y0: 0, y1: 1, line: { color: rf.color ?? fg, dash: rf.dash, width: 1.5 } }
           : { type: 'line', yref: ya, y0: rf.value, y1: rf.value, xref: xa + ' domain', x0: 0, x1: 1, line: { color: rf.color ?? fg, dash: rf.dash, width: 1.5 } })));
       }
-      if (p.legend?.length || p.series.length > 1) layout.showlegend = single ? true : layout.showlegend;
+      if (p.legend?.length || (p.series?.length ?? 0) > 1) layout.showlegend = single ? true : layout.showlegend;
       for (const an of p.annotations ?? []) annotations.push({ x: an.x, y: an.y, text: an.text, xref: xa, yref: ya, showarrow: false, xanchor: 'left', yanchor: 'middle', font: { color: an.color ?? fg, size: single ? 12 : 10 } });
     }
     // Per-panel title (subplot title) as an annotation above the cell.
