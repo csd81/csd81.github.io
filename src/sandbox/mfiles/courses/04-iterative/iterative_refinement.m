@@ -8,7 +8,7 @@ function [x, k] = iterative_refinement(A, b, tol, max_iter)
 
     % Ha paraméterek nélkül futtatjuk, elindul a beépített demó
     if nargin == 0
-        run_demo();
+        iterative_refinement_demo();
         return;
     end
 
@@ -39,7 +39,7 @@ function [x, k] = iterative_refinement(A, b, tol, max_iter)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function run_demo()
+function iterative_refinement_demo()
     clc;
     fprintf('=== Iteratív Javítás (Iterative Refinement) Teszt ===\n\n');
 

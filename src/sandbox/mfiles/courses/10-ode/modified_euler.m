@@ -9,7 +9,7 @@ function y = modified_euler(f, t0, y0, h, n)
 
     % Ha paraméterek nélkül futtatjuk, elindul a beépített demó
     if nargin == 0
-        run_demo();
+        modified_euler_demo();
         return;
     end
 
@@ -28,7 +28,7 @@ function y = modified_euler(f, t0, y0, h, n)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function run_demo()
+function modified_euler_demo()
     clc;
     fprintf('=== Módosított Euler-módszer (RK2) Teszt ===\n\n');
 

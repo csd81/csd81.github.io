@@ -9,7 +9,7 @@ function [x, k] = gradient_descent(grad, x0, alpha, tol, max_iter)
 
     % Ha paraméterek nélkül futtatjuk, elindul a beépített demó
     if nargin == 0
-        run_demo();
+        gradient_descent_demo();
         return;
     end
 
@@ -37,7 +37,7 @@ function [x, k] = gradient_descent(grad, x0, alpha, tol, max_iter)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function run_demo()
+function gradient_descent_demo()
     clc;
     fprintf('=== Gradiens Módszer (Gradient Descent) Teszt ===\n\n');
 

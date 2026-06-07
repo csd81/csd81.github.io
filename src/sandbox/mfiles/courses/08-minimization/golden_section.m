@@ -7,7 +7,7 @@ function m = golden_section(f, a, b, tol)
 
     % Ha paraméterek nélkül futtatjuk, elindul a beépített demó
     if nargin == 0
-        run_demo();
+        golden_section_demo();
         return;
     end
 
@@ -45,7 +45,7 @@ function m = golden_section(f, a, b, tol)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function run_demo()
+function golden_section_demo()
     clc;
     fprintf('=== Aranymetszéses Keresés Teszt ===\n\n');
 

@@ -6,7 +6,7 @@ function Inv = minv(A)
 
     % Ha paraméterek nélkül futtatjuk, elindul a beépített demó
     if nargin == 0
-        Inv_demo = run_demo();
+        Inv_demo = minv_demo();
         if nargout > 0, Inv = Inv_demo; end
         return;
     end
@@ -55,7 +55,7 @@ function Inv = minv(A)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function Inv_sol = run_demo()
+function Inv_sol = minv_demo()
     clc;
     fprintf('=== Mátrixinvertálás (Gauss–Jordan) Teszt ===\n\n');
 

@@ -8,7 +8,7 @@ function I = gauss_quad(f, a, b, n, N)
 
     % Ha főprogramként futtatjuk (bemeneti paraméterek nélkül), indítsa el a demót
     if nargin == 0
-        run_demo();
+        gauss_quad_demo();
         return;
     end
 
@@ -41,7 +41,7 @@ function I = gauss_quad(f, a, b, n, N)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function run_demo()
+function gauss_quad_demo()
     clc;
     fprintf('=== Gauss-Legendre Kvadratúra Teszt ===\n\n');
     

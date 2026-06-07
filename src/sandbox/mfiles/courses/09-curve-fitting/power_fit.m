@@ -8,7 +8,7 @@ function [a, b] = power_fit(t, y)
 
     % Ha paraméterek nélkül futtatjuk, elindul a beépített demó
     if nargin == 0
-        run_demo();
+        power_fit_demo();
         return;
     end
 
@@ -30,7 +30,7 @@ function [a, b] = power_fit(t, y)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function run_demo()
+function power_fit_demo()
     clc;
     clf; % Grafikus ablak törlése
     fprintf('=== Hatványfüggvény Illesztése (Log-Log Regresszió) Teszt ===\n\n');

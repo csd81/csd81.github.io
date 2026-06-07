@@ -9,7 +9,7 @@ function [T, S] = composite_quadrature(f, a, b, n)
 
     % Ha paraméterek nélkül futtatjuk, elindul a beépített demó
     if nargin == 0
-        run_demo();
+        composite_quadrature_demo();
         return;
     end
 
@@ -35,7 +35,7 @@ function [T, S] = composite_quadrature(f, a, b, n)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function run_demo()
+function composite_quadrature_demo()
     f = @(x) exp(x);    % Vektorizált függvény
     a = 0;              % Alsó határ
     b = 1;              % Felső határ

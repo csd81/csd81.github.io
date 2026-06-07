@@ -9,7 +9,7 @@ function c = poly_fit(t, y, degree)
 
     % Ha paraméterek nélkül futtatjuk, elindul a beépített demó
     if nargin == 0
-        run_demo();
+        poly_fit_demo();
         return;
     end
 
@@ -29,7 +29,7 @@ function c = poly_fit(t, y, degree)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function run_demo()
+function poly_fit_demo()
     clc;
     clf; % Grafikus ablak törlése
     fprintf('=== Polinomiális Regresszió (Legkisebb Négyzetek) Teszt ===\n\n');

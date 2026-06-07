@@ -9,7 +9,7 @@ function [x, k] = jacobi(A, b, x0, tol, max_iter)
 
     % Ha paraméterek nélkül futtatjuk, elindul a beépített demó
     if nargin == 0
-        run_demo();
+        jacobi_demo();
         return;
     end
 
@@ -40,7 +40,7 @@ function [x, k] = jacobi(A, b, x0, tol, max_iter)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function run_demo()
+function jacobi_demo()
     clc;
     fprintf('=== Jacobi-iteráció Teszt ===\n\n');
 

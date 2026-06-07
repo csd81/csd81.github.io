@@ -9,7 +9,7 @@ function [x, k] = newton(f, df, x0, tol, max_iter)
 
     % Ha paraméterek nélkül futtatjuk, elindul a beépített demó
     if nargin == 0
-        run_demo();
+        newton_demo();
         return;
     end
 
@@ -39,7 +39,7 @@ function [x, k] = newton(f, df, x0, tol, max_iter)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function run_demo()
+function newton_demo()
     clc;
     fprintf('=== Newton–Raphson-módszer Teszt ===\n\n');
 

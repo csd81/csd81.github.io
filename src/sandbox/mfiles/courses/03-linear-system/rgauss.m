@@ -7,7 +7,7 @@ function x = rgauss(A, b)
 
     % Ha paraméterek nélkül futtatjuk, elindul a beépített demó
     if nargin == 0
-        x_demo = run_demo();
+        x_demo = rgauss_demo();
         if nargout > 0, x = x_demo; end
         return;
     end
@@ -82,7 +82,7 @@ function x = rgauss(A, b)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function x_sol = run_demo()
+function x_sol = rgauss_demo()
     clc;
     fprintf('=== Gauss-elimináció Részleges Főelemkiválasztással Teszt ===\n\n');
 

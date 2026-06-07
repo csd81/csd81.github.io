@@ -12,7 +12,7 @@ function [x, k] = psb(f, grad, x0, tol, max_iter)
 
     % Ha paraméterek nélkül futtatjuk, elindul a beépített demó
     if nargin == 0
-        run_demo();
+        psb_demo();
         return;
     end
 
@@ -76,7 +76,7 @@ function [x, k] = psb(f, grad, x0, tol, max_iter)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function run_demo()
+function psb_demo()
     clc;
     fprintf('=== Powell-Symmetric-Broyden (PSB) Kvázi-Newton Teszt ===\n\n');
 

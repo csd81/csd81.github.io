@@ -7,7 +7,7 @@ function I = trapezoid(f, a, b, n)
 
     % Ha paraméterek nélkül futtatjuk, elindul a beépített demó
     if nargin == 0
-        run_demo();
+        trapezoid_demo();
         return;
     end
 
@@ -25,7 +25,7 @@ function I = trapezoid(f, a, b, n)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function run_demo()
+function trapezoid_demo()
     clc;
     fprintf('=== Összetett Trapézszabály Teszt ===\n\n');
 

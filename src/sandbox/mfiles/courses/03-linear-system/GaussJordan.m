@@ -7,7 +7,7 @@ function x = GaussJordan(A, b)
 
     % Ha paraméterek nélkül futtatjuk, elindul a beépített demó
     if nargin == 0
-        x_demo = run_demo();
+        x_demo = GaussJordan_demo();
         if nargout > 0, x = x_demo; end
         return;
     end
@@ -59,7 +59,7 @@ function x = GaussJordan(A, b)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function x_sol = run_demo()
+function x_sol = GaussJordan_demo()
     clc;
     fprintf('=== Gauss–Jordan-elimináció Teszt ===\n\n');
 

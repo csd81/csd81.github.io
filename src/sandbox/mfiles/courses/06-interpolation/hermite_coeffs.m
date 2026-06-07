@@ -9,7 +9,7 @@ function [z, a] = hermite_coeffs(x, y, dy)
 
     % Ha paraméterek nélkül futtatjuk, elindul a beépített demó
     if nargin == 0
-        run_demo();
+        hermite_coeffs_demo();
         return;
     end
 
@@ -62,7 +62,7 @@ function p = hermite_eval(t, z, a)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function run_demo()
+function hermite_coeffs_demo()
     clc;
     fprintf('=== Hermite-interpoláció Teszt (Osztott differenciák) ===\n\n');
 

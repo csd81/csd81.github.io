@@ -7,7 +7,7 @@ function a = NewtIntp(x, y)
 
     % Ha paraméterek nélkül futtatjuk, elindul a beépített demó
     if nargin == 0
-        a_demo = run_demo();
+        a_demo = NewtIntp_demo();
         if nargout > 0, a = a_demo; end
         return;
     end
@@ -42,7 +42,7 @@ function a = NewtIntp(x, y)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function a_sol = run_demo()
+function a_sol = NewtIntp_demo()
     clc;
     fprintf('=== Newton-interpoláció (Osztott Differenciák) Teszt ===\n\n');
 

@@ -11,7 +11,7 @@ function y = taylor3(f, df, d2f, t0, y0, h, n)
 
     % Ha paraméterek nélkül futtatjuk, elinteli a beépített demót
     if nargin == 0
-        run_demo();
+        taylor3_demo();
         return;
     end
 
@@ -27,7 +27,7 @@ function y = taylor3(f, df, d2f, t0, y0, h, n)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function run_demo()
+function taylor3_demo()
     clc;
     fprintf('=== Harmadrendű Taylor-módszer Teszt ===\n\n');
 

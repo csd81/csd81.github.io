@@ -8,7 +8,7 @@ function [a, b] = line_fit(x, y)
 
     % Ha paraméterek nélkül futtatjuk, elindul a beépített demó
     if nargin == 0
-        run_demo();
+        line_fit_demo();
         return;
     end
 
@@ -29,7 +29,7 @@ function [a, b] = line_fit(x, y)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function run_demo()
+function line_fit_demo()
     clc;
     clf; % Grafikus ablak törlése
     fprintf('=== Legkisebb Négyzetek Módszere (Egyenes illesztés) ===\n\n');

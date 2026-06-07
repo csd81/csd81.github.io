@@ -11,7 +11,7 @@ function [x, k] = sr1(f, grad, x0, tol, max_iter)
 
     % Ha paraméterek nélkül futtatjuk, elindul a beépített demó
     if nargin == 0
-        run_demo();
+        sr1_demo();
         return;
     end
 
@@ -74,7 +74,7 @@ function [x, k] = sr1(f, grad, x0, tol, max_iter)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function run_demo()
+function sr1_demo()
     clc;
     fprintf('=== SR1 (Symmetric Rank-One) Kvázi-Newton Teszt ===\n\n');
 

@@ -9,7 +9,7 @@ function y = rk4(f, t0, y0, h, n)
 
     % Ha paraméterek nélkül futtatjuk, elindul a beépített demó
     if nargin == 0
-        run_demo();
+        rk4_demo();
         return;
     end
 
@@ -30,7 +30,7 @@ function y = rk4(f, t0, y0, h, n)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function run_demo()
+function rk4_demo()
     clc;
     fprintf('=== Klasszikus Negyedrendű Runge–Kutta (RK4) Teszt ===\n\n');
 

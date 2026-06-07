@@ -8,7 +8,7 @@ function [x1, k] = secant(f, x0, x1, tol, max_iter)
 
     % Ha paraméterek nélkül futtatjuk, elindul a beépített demó
     if nargin == 0
-        run_demo();
+        secant_demo();
         return;
     end
 
@@ -45,7 +45,7 @@ function [x1, k] = secant(f, x0, x1, tol, max_iter)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function run_demo()
+function secant_demo()
     clc;
     fprintf('=== Szelőmódszer Teszt ===\n\n');
 

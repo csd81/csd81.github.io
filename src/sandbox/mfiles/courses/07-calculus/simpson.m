@@ -7,7 +7,7 @@ function I = simpson(f, a, b, n)
 
     % Ha paraméterek nélkül futtatjuk, elindul a beépített demó
     if nargin == 0
-        run_demo();
+        simpson_demo();
         return;
     end
 
@@ -31,7 +31,7 @@ function I = simpson(f, a, b, n)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function run_demo()
+function simpson_demo()
     clc;
     fprintf('=== Összetett Simpson-szabály Teszt ===\n\n');
 

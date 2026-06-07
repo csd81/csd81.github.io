@@ -10,7 +10,7 @@ function y = taylor2(f, df, t0, y0, h, n)
 
     % Ha paraméterek nélkül futtatjuk, elindul a beépített demó
     if nargin == 0
-        run_demo();
+        taylor2_demo();
         return;
     end
 
@@ -26,7 +26,7 @@ function y = taylor2(f, df, t0, y0, h, n)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function run_demo()
+function taylor2_demo()
     clc;
     fprintf('=== Másodrendű Taylor-módszer Teszt ===\n\n');
 

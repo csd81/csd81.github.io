@@ -9,7 +9,7 @@ function a = lagrange_coeffs(x, y)
 
     % Ha paraméterek nélkül futtatjuk, elindul a beépített demó
     if nargin == 0
-        run_demo();
+        lagrange_coeffs_demo();
         return;
     end
 
@@ -30,7 +30,7 @@ function a = lagrange_coeffs(x, y)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function run_demo()
+function lagrange_coeffs_demo()
     clc;
     fprintf('=== Lagrange-interpoláció Teszt (Vandermonde-mátrix) ===\n\n');
 

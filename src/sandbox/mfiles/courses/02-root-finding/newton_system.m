@@ -2,14 +2,15 @@ function [x, k] = newton_system(F, J, x0, tol, max_iter)
 % NEWTON_SYSTEM  Nemlineáris egyenletrendszer megoldása többváltozós Newton-módszerrel.
 %   [x, k] = newton_system(F, J, x0, tol, max_iter)
 %   F:        Az egyenletrendszer függvénye (vektort ad vissza, F(x) = 0)
-%   J:        A függvény Jacobi-mátrixa (függvényhandle, ami egy n x n-es mátrixot ad vissza)
+%   J:        A függvény Jacobi-mátrixa (függvényhandle, ami egy n x n-es mátrixot ad vissza),
+%             vagy []  -> ekkor a Jacobi-mátrixot véges differenciával közelítjük (sandbox-barát)
 %   x0:       Kezdőpont vektora (n x 1)
 %   tol:      Konvergencia-tolerancia a függvényérték inf-normájára (alapértelmezett: 1e-12)
 %   max_iter: Maximális iterációszám (alapértelmezett: 100)
 
     % Ha paraméterek nélkül futtatjuk, elindul a beépített demó
     if nargin == 0
-        run_demo();
+        newton_system_demo();
         return;
     end
 
@@ -28,16 +29,35 @@ function [x, k] = newton_system(F, J, x0, tol, max_iter)
             return; 
         end
         
+        % A Jacobi-mátrix: analitikus handle, vagy véges differencia, ha J üres
+        if isempty(J)
+            Jx = fd_jacobian(F, x, Fx);
+        else
+            Jx = J(x);
+        end
+
         % Newton-lépés több dimenzióban: x_{k+1} = x_k - J(x_k)^{-1} * F(x_k)
         % A \ (backslash) operátor hatékonyan és numerikusan stabilan oldja meg a J(x) * d = F(x) rendszert
-        x = x - J(x) \ Fx;
+        x = x - Jx \ Fx;
     end
-    
+
     warning('A módszer elérte a maximális (%d) iterációszámot a kívánt tolerancia nélkül!', max_iter);
 end
 
+% --- Jacobi-mátrix előre-differencia közelítése: J(:,j) ≈ (F(x+h*e_j) - F(x)) / h ---
+function Jx = fd_jacobian(F, x, Fx)
+    n = numel(x);
+    m = numel(Fx);
+    Jx = zeros(m, n);
+    for j = 1:n
+        h = 1e-7 * max(1, abs(x(j)));
+        xp = x; xp(j) = xp(j) + h;
+        Jx(:, j) = (F(xp) - Fx) / h;
+    end
+end
+
 % --- Helyi függvény a demó futtatásához ---
-function run_demo()
+function newton_system_demo()
     clc;
     fprintf('=== Többváltozós Newton-módszer Teszt ===\n\n');
 

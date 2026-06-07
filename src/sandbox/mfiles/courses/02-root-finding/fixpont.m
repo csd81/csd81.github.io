@@ -8,7 +8,7 @@ function [a, l] = fixpont(f, x0, t, max_iter)
 
     % Ha paraméterek nélkül futtatjuk, elindul a beépített demó
     if nargin == 0
-        run_demo();
+        fixpont_demo();
         return;
     end
 
@@ -36,7 +36,7 @@ function [a, l] = fixpont(f, x0, t, max_iter)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function run_demo()
+function fixpont_demo()
     clc;
     fprintf('=== Fixpont-iteráció Teszt ===\n\n');
 

@@ -9,7 +9,7 @@ function y = heun(f, t0, y0, h, n)
 
     % Ha paraméterek nélkül futtatjuk, elindul a beépített demó
     if nargin == 0
-        run_demo();
+        heun_demo();
         return;
     end
 
@@ -27,7 +27,7 @@ function y = heun(f, t0, y0, h, n)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function run_demo()
+function heun_demo()
     clc;
     fprintf('=== Heun-módszer (RK2) Teszt ===\n\n');
 

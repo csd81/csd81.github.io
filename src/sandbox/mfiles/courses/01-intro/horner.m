@@ -7,7 +7,7 @@ function y = horner(a, x)
 
     % Ha paraméterek nélkül futtatjuk, elindul a beépített demó
     if nargin == 0
-        run_demo();
+        horner_demo();
         return;
     end
 
@@ -23,7 +23,7 @@ function y = horner(a, x)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function run_demo()
+function horner_demo()
     clc;
     fprintf('=== Horner-módszer Teszt ===\n\n');
 

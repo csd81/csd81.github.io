@@ -8,7 +8,7 @@ function [x, oind] = tgauss(A, b)
 
     % Ha paraméterek nélkül futtatjuk, elindul a beépített demó
     if nargin == 0
-        [x_demo, oind_demo] = run_demo();
+        [x_demo, oind_demo] = tgauss_demo();
         if nargout > 0, x = x_demo; oind = oind_demo; end
         return;
     end
@@ -111,7 +111,7 @@ function [x, oind] = tgauss(A, b)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function [x_sol, oind_sol] = run_demo()
+function [x_sol, oind_sol] = tgauss_demo()
     clc;
     fprintf('=== Gauss-elimináció Teljes Főelemkiválasztással Teszt ===\n\n');
 

@@ -8,7 +8,7 @@ function [c, l] = intfel(f, a, b, t, max_iter)
 
     % Ha paraméterek nélkül futtatjuk, elindul a beépített demó
     if nargin == 0
-        [c_demo, l_demo] = run_demo();
+        [c_demo, l_demo] = intfel_demo();
         if nargout > 0, c = c_demo; l = l_demo; end
         return;
     end
@@ -53,7 +53,7 @@ function [c, l] = intfel(f, a, b, t, max_iter)
 end
 
 % --- Helyi függvény a demó futtatásához ---
-function [c_sol, l_sol] = run_demo()
+function [c_sol, l_sol] = intfel_demo()
     clc;
     fprintf('=== Intervallumfelezési Módszer (Bisection) Teszt ===\n\n');
 
