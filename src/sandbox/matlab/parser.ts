@@ -186,7 +186,7 @@ class Parser {
       clauses.push({ vals, body });
     }
     if (this.atKw('otherwise')) { this.next(); elseBody = this.parseBlock(new Set(['end', 'endswitch'])); }
-    if (this.atKw('end') || this.atKw('endswitch')) this.next();
+    if (this.atKw('end') || this.atKw('endswitch')) this.next(); else this.err("expected 'end'");   // match if/for/while
     return { t: 'switch', subject, clauses, elseBody };
   }
 

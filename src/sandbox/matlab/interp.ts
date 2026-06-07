@@ -599,7 +599,7 @@ export class Interpreter implements Env {
         idx.srcRows = mv.rows; idx.srcCols = mv.cols; idx.srcLogical = true;
         subs.push(idx);
       } else {
-        const idx: IdxList = toArray(mv).map((x) => Math.round(x));
+        const idx: IdxList = toArray(mv).map((x) => { if (!Number.isInteger(x)) throw new MatError('Array indices must be positive integers or logical values.'); return x; });
         idx.srcRows = mv.rows; idx.srcCols = mv.cols; idx.srcLogical = false;
         subs.push(idx);
       }
