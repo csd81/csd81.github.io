@@ -151,8 +151,78 @@ function structLines(v: { rows: number; cols: number; fields: Map<string, Value[
   if (v.rows === 1 && v.cols === 1) return [...v.fields.entries()].map(([k, vals]) => `    ${k}: ${brief(vals[0])}`);
   return [`  ${v.rows}×${v.cols} struct array with fields:`, ...[...v.fields.keys()].map((k) => `    ${k}`)];
 }
+// ── LTI model pretty-printing (tf fraction / ss matrices / zpk factored / frd) ──
+const ltiNum = (x: number): string => (Math.abs(x - Math.round(x)) < 1e-10 && Math.abs(x) < 1e6 ? String(Math.round(x)) : formatScalar(x).trim());
+function polyStr(c: number[], x: string): string {
+  const n = c.length - 1, terms: string[] = [];
+  for (let i = 0; i < c.length; i++) {
+    const p = n - i, a = c[i]; if (Math.abs(a) < 1e-12) continue;
+    const aa = Math.abs(a), one = Math.abs(aa - 1) < 1e-12;
+    const body = p === 0 ? ltiNum(aa) : `${one ? '' : ltiNum(aa) + ' '}${x}${p === 1 ? '' : '^' + p}`;
+    terms.push((a < 0 ? '- ' : '+ ') + body);
+  }
+  if (!terms.length) return '0';
+  const s = terms.join(' '); return s.startsWith('+ ') ? s.slice(2) : '-' + s.slice(2);
+}
+function fractionLines(numS: string, denS: string): string[] {
+  if (denS === '1') return ['  ' + numS];
+  const w = Math.max(numS.length, denS.length), ctr = (s: string) => ' '.repeat(Math.floor((w - s.length) / 2)) + s;
+  return ['  ' + ctr(numS), '  ' + '-'.repeat(w), '  ' + ctr(denS)];
+}
+const ltiTs = (v: { props: Map<string, Value> }): number => (v.props.has('Ts') ? (v.props.get('Ts') as Mat).data[0] : 0);
+function ltiVarOf(v: { props: Map<string, Value> }): string {
+  const vv = v.props.get('Variable'); if (vv) { try { return asString(vv); } catch { /* fall through */ } }
+  return ltiTs(v) !== 0 ? 'z' : 's';
+}
+function ltiFooter(v: { props: Map<string, Value> }, kind: string): string[] {
+  const Ts = ltiTs(v);
+  return ['', Ts > 0 ? `Sample time: ${ltiNum(Ts)} seconds\nDiscrete-time ${kind}.` : Ts !== 0 ? `Discrete-time ${kind}.` : `Continuous-time ${kind}.`];
+}
+function factoredStr(rootsMat: Mat | undefined, x: string): string {
+  if (!rootsMat || rootsMat.data.length === 0) return '1';
+  const re = Array.from(rootsMat.data), im = rootsMat.idata ? Array.from(rootsMat.idata) : re.map(() => 0), used = re.map(() => false), facs: string[] = [];
+  for (let i = 0; i < re.length; i++) {
+    if (used[i]) continue; used[i] = true;
+    if (Math.abs(im[i]) > 1e-9) {
+      for (let k = i + 1; k < re.length; k++) if (!used[k] && Math.abs(re[k] - re[i]) < 1e-9 && Math.abs(im[k] + im[i]) < 1e-9) { used[k] = true; break; }
+      const b = -2 * re[i], c = re[i] * re[i] + im[i] * im[i];
+      facs.push(`(${x}^2 ${b < 0 ? '- ' : '+ '}${ltiNum(Math.abs(b))} ${x} ${c < 0 ? '- ' : '+ '}${ltiNum(Math.abs(c))})`);
+    } else { const r = re[i]; facs.push(r === 0 ? x : `(${x} ${r < 0 ? '+ ' : '- '}${ltiNum(Math.abs(r))})`); }
+  }
+  return facs.join(' ');
+}
+function ltiLines(v: { className: string; props: Map<string, Value> }): string[] {
+  const x = ltiVarOf(v);
+  if (v.className === 'tf') {
+    const numP = v.props.get('num'), denP = v.props.get('den');
+    if (numP && numP.kind === 'cell') {
+      const nyc = numP as { rows: number; cols: number; items: Value[] }, dyc = denP as { items: Value[] }, out: string[] = [];
+      for (let j = 0; j < nyc.cols; j++) for (let i = 0; i < nyc.rows; i++) {
+        out.push('', `  From input ${j + 1} to output ${i + 1}:`, ...fractionLines(polyStr(Array.from((nyc.items[i + j * nyc.rows] as Mat).data), x), polyStr(Array.from((dyc.items[i + j * nyc.rows] as Mat).data), x)));
+      }
+      return [...out, ...ltiFooter(v, 'transfer function')];
+    }
+    return [...fractionLines(polyStr(Array.from((numP as Mat).data), x), polyStr(Array.from((denP as Mat).data), x)), ...ltiFooter(v, 'transfer function')];
+  }
+  if (v.className === 'ss' || v.className === 'dss') {
+    const out: string[] = [];
+    for (const L of ['A', 'B', 'C', 'D', 'E']) { const Mt = v.props.get(L); if (!Mt) continue; out.push(`  ${L} = `, ...matrixLines(Mt as Mat).map((s) => '  ' + s), ''); }
+    return [...out, ...ltiFooter(v, 'state-space model')];
+  }
+  if (v.className === 'zpk') {
+    const k = v.props.has('k') ? (v.props.get('k') as Mat).data[0] : 1;
+    const numS = ((Math.abs(k - 1) < 1e-12 ? '' : ltiNum(k) + ' ') + factoredStr(v.props.get('z') as Mat, x)).trim() || ltiNum(k);
+    return [...fractionLines(numS, factoredStr(v.props.get('p') as Mat, x)), ...ltiFooter(v, 'zero-pole-gain model')];
+  }
+  if (v.className === 'frd') {
+    const f = v.props.get('Frequency') as Mat | undefined, nf = f ? f.rows * f.cols : 0;
+    return [`  Frequency-response data model with ${nf} frequency points.`, ...ltiFooter(v, 'frequency-response data model')];
+  }
+  return [];
+}
 /** Generic toolbox-object display: `className with properties:` then `name: brief(value)`. */
 function objectLines(v: { className: string; props: Map<string, Value> }): string[] {
+  if (v.className === 'tf' || v.className === 'ss' || v.className === 'dss' || v.className === 'zpk' || v.className === 'frd') return ltiLines(v);
   return [`  ${v.className} with properties:`, '', ...[...v.props.entries()].map(([k, val]) => `    ${k}: ${brief(val)}`)];
 }
 /** MATLAB-style sparse display: a column-major list of `(i,j)  value` lines. */

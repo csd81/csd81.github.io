@@ -861,6 +861,29 @@ export const CONTROL: ToolboxModule = {
     append: ltiAppend,
     /** order(sys) — number of states (denominator degree). */
     order: (a) => ret(scalar(toSS(a[0]).A.length)),
+    /** isct(sys) — true if sys is continuous-time (Ts==0). */
+    isct: (a) => ret(bool(getTsV(a[0]) === 0)),
+    /** isdt(sys) — true if sys is discrete-time (Ts~=0). */
+    isdt: (a) => ret(bool(getTsV(a[0]) !== 0)),
+    /** sminreal(sys) — structural minimal realization: keep only states that are structurally
+     *  reachable from an input AND structurally connected to an output. */
+    sminreal: (a) => {
+      const s = toSS(a[0]); const n = s.A.length; if (n === 0) return ret(a[0]);
+      const reach = new Array(n).fill(false); let st: number[] = [];
+      for (let i = 0; i < n; i++) if (s.B[i].some((x) => Math.abs(x) > 1e-12)) { reach[i] = true; st.push(i); }
+      while (st.length) { const i = st.pop() as number; for (let j = 0; j < n; j++) if (!reach[j] && Math.abs(s.A[j][i]) > 1e-12) { reach[j] = true; st.push(j); } }
+      const obs = new Array(n).fill(false); st = [];
+      for (let j = 0; j < n; j++) if (s.C.some((row) => Math.abs(row[j]) > 1e-12)) { obs[j] = true; st.push(j); }
+      while (st.length) { const j = st.pop() as number; for (let i = 0; i < n; i++) if (!obs[i] && Math.abs(s.A[j][i]) > 1e-12) { obs[i] = true; st.push(i); } }
+      const keep: number[] = []; for (let i = 0; i < n; i++) if (reach[i] && obs[i]) keep.push(i);
+      const A2 = keep.map((i) => keep.map((j) => s.A[i][j])), B2 = keep.map((i) => s.B[i].slice()), C2 = s.C.map((row) => keep.map((j) => row[j]));
+      return ret(fromSS({ A: A2, B: B2, C: C2, D: s.D, Ts: s.Ts }, clsOf(a[0])));
+    },
+    /** [mag,phase,w] = nichols(sys[,w]) — Nichols frequency response data (magnitude, phase deg). */
+    nichols: (a, n) => {
+      const { mag, phase, w } = bodeData(a[0], a[1]); const magV = colVec(mag);
+      return n >= 3 ? Promise.resolve([magV, colVec(phase), colVec(w)]) : n >= 2 ? Promise.resolve([magV, colVec(phase)]) : ret(magV);
+    },
     /** [K,S,e] = lqr(A,B,Q,R[,N]) — continuous LQR. Solves CARE A'S+SA−SBR⁻¹B'S+Q=0,
      *  K=R⁻¹(B'S+N'), e=eig(A−BK). */
     lqr: (a, n) => {
@@ -1198,6 +1221,15 @@ export const CONTROL: ToolboxModule = {
     parallel: { summary: 'Parallel connection of two dynamic systems', syntax: ['sys = parallel(sys1,sys2)'], description: ['sys = parallel(sys1,sys2) connects sys1 and sys2 in parallel: the outputs are summed and inputs are shared.', 'Equivalent to sys1 + sys2 for LTI models.'], seealso: ['series', 'feedback', 'connect'] },
     feedback: { summary: 'Feedback connection of two dynamic systems', syntax: ['sys = feedback(sys1,sys2)', 'sys = feedback(sys1,sys2,sign)'], description: ['sys = feedback(sys1,sys2) forms the negative feedback loop: output of sys2 feeds back to the input of sys1.', 'sign=+1 selects positive feedback; default is -1 (negative feedback).'], seealso: ['parallel', 'series', 'connect'] },
     order: { summary: 'Model order (number of states)', syntax: ['n = order(sys)'], description: ['n = order(sys) returns the number of states of the dynamic system sys.', 'For a transfer function it returns the degree of the denominator polynomial.'], seealso: ['pole', 'minreal', 'ss'] },
+    append: { summary: 'Block-diagonal append of dynamic systems', syntax: ['sys = append(sys1,sys2,...)'], description: ['sys = append(sys1,sys2,...) groups the models by appending their inputs and outputs into one block-diagonal MIMO model.'], seealso: ['series', 'parallel', 'feedback'] },
+    tfdata: { summary: 'Access transfer-function data', syntax: ["[num,den] = tfdata(sys)", "[num,den] = tfdata(sys,'v')"], description: ['[num,den] = tfdata(sys) returns the numerator/denominator coefficients as cell arrays (one cell per I/O channel).', "With the 'v' flag, a SISO model returns num and den as row vectors."], seealso: ['ssdata', 'zpkdata', 'tf'] },
+    ssdata: { summary: 'Access state-space data matrices', syntax: ['[A,B,C,D] = ssdata(sys)'], description: ['[A,B,C,D] = ssdata(sys) returns the state-space matrices of sys (converting from tf/zpk if needed).'], seealso: ['tfdata', 'zpkdata', 'dssdata', 'ss'] },
+    zpkdata: { summary: 'Access zero-pole-gain data', syntax: ["[z,p,k] = zpkdata(sys)", "[z,p,k] = zpkdata(sys,'v')"], description: ['[z,p,k] = zpkdata(sys) returns zeros, poles (cell arrays) and gains (matrix).', "With 'v', a SISO model returns z and p as vectors and k as a scalar."], seealso: ['tfdata', 'ssdata', 'zpk'] },
+    dssdata: { summary: 'Access descriptor state-space data', syntax: ['[A,B,C,D,E] = dssdata(sys)'], description: ['[A,B,C,D,E] = dssdata(sys) returns the descriptor state-space matrices (E is identity for an explicit ss model).'], seealso: ['ssdata', 'dss'] },
+    isct: { summary: 'Determine if a model is continuous-time', syntax: ['tf = isct(sys)'], description: ['isct(sys) returns true if sys is a continuous-time model (sample time Ts == 0).'], seealso: ['isdt', 'isstable'] },
+    isdt: { summary: 'Determine if a model is discrete-time', syntax: ['tf = isdt(sys)'], description: ['isdt(sys) returns true if sys is a discrete-time model (sample time Ts ~= 0).'], seealso: ['isct', 'isstable'] },
+    sminreal: { summary: 'Structurally minimal realization', syntax: ['msys = sminreal(sys)'], description: ['msys = sminreal(sys) eliminates states that are structurally disconnected from the inputs or outputs, keeping only states reachable from an input and connected to an output.'], seealso: ['minreal', 'balreal', 'ss'] },
+    nichols: { summary: 'Nichols frequency response', syntax: ['[mag,phase,w] = nichols(sys)', '[mag,phase,w] = nichols(sys,w)'], description: ['[mag,phase,w] = nichols(sys) returns the magnitude (absolute) and phase (degrees) of the frequency response over the grid w, the data underlying a Nichols chart.'], seealso: ['bode', 'nyquist', 'sigma'] },
     series: { summary: 'Series (cascade) connection of two dynamic systems', syntax: ['sys = series(sys1,sys2)'], description: ['sys = series(sys1,sys2) connects sys1 and sys2 in series: the output of sys1 feeds the input of sys2.', 'Equivalent to sys1 * sys2 for LTI models.'], seealso: ['parallel', 'feedback', 'connect'] },
     ss2ss: { summary: 'State coordinate transformation for state-space models', syntax: ['sys2 = ss2ss(sys,T)'], seealso: ['ss', 'canon', 'balreal'] },
     lqr: { summary: 'Linear-quadratic regulator design (continuous time)', syntax: ['[K,S,e] = lqr(sys,Q,R)', '[K,S,e] = lqr(A,B,Q,R)'], seealso: ['dlqr', 'lqe', 'place'] },
