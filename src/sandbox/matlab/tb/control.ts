@@ -3,7 +3,7 @@
 // the live Control System Toolbox. See plan §1 (ClassV) / §7.
 import type { Builtin } from '../builtins';
 import {
-  type Value, type Mat, type StructV, isObject, makeObject, scalar, bool, colVec, rowVec, toArray, asScalar, asString, toMat as m,
+  type Value, type Mat, type StructV, isObject, makeObject, scalar, bool, colVec, rowVec, toArray, asScalar, asString, toMat as m, makeStr,
 } from '../values';
 import type { ToolboxModule } from './types';
 
@@ -526,8 +526,18 @@ export const CONTROL: ToolboxModule = {
     ss: (a) => ret(makeObject('ss', { A: m(a[0]), B: m(a[1]), C: m(a[2]), D: a.length >= 4 ? m(a[3]) : scalar(0) })),
     /** zpk(z,p,k) — zero-pole-gain model. */
     zpk: (a) => ret(makeObject('zpk', { z: colVec(toArray(m(a[0]))), p: colVec(toArray(m(a[1]))), k: scalar(asScalar(a[2])) })),
-    /** pole(sys) — system poles (roots of the denominator). */
-    pole: (a) => ret(rootsValue(sortRoots(polyRoots(getNumDen(a[0]).den)))),
+    /** pole(sys) — system poles (roots of the denominator, or eigenvalues of A for ss/dss). */
+    pole: (a) => {
+      const sys = a[0];
+      if (isObject(sys) && (sys.className === 'ss' || sys.className === 'dss')) {
+        const A = matRows(m(sys.props.get('A') as Mat));
+        const N = A.length; if (N === 0) return ret(colVec([]));
+        const p = [1]; let Mk = eye(N);
+        for (let k = 1; k <= N; k++) { const AM = mmul(A, Mk); p[k] = -traceM(AM) / k; Mk = AM.map((row, i) => row.map((vv, j) => vv + (i === j ? p[k] : 0))); }
+        return ret(rootsValue(sortRoots(polyRoots(p))));
+      }
+      return ret(rootsValue(sortRoots(polyRoots(getNumDen(a[0]).den))));
+    },
     /** zero(sys) — system (transmission) zeros (roots of the numerator). */
     zero: (a) => ret(rootsValue(sortRoots(polyRoots(getNumDen(a[0]).num)))),
     /** dcgain(sys) — steady-state (s=0) gain. */
@@ -801,6 +811,118 @@ export const CONTROL: ToolboxModule = {
       const r = minrealTf(num, den, Math.max(tol, 1e-9));
       return ret(makeObject('tf', { num: rowVec(r.num), den: rowVec(r.den) }));
     },
+
+    /** frd(response,freq[,Ts]) — frequency-response-data model. */
+    frd: (a) => {
+      const Ts = a.length >= 3 ? asScalar(a[2]) : 0;
+      return ret(makeObject('frd', {
+        ResponseData: m(a[0]),
+        Frequency: colVec(toArray(m(a[1]))),
+        Ts: scalar(Ts),
+      }));
+    },
+
+    /** [resp,freq] = frdata(sys) — extract frequency-response data from an frd model. */
+    frdata: (a, n) => {
+      const sys = a[0];
+      if (!isObject(sys) || sys.className !== 'frd') throw new Error('frdata: expected an frd model');
+      const resp = sys.props.get('ResponseData') as Mat;
+      const freq = sys.props.get('Frequency') as Mat;
+      if (n >= 2) return Promise.resolve([resp, freq]);
+      return ret(resp);
+    },
+
+    /** filt(num,den[,Ts]) — DSP-convention filter (z^-1 ascending powers). Stored as tf with Variable='z^-1'. */
+    filt: (a) => {
+      // MATLAB filt pads num/den to equal length (ascending z^-1 powers → stored as descending z coeffs)
+      const numIn = toArray(m(a[0])), denIn = toArray(m(a[1]));
+      const Ts = a.length >= 3 ? asScalar(a[2]) : -1;
+      const len = Math.max(numIn.length, denIn.length);
+      const numPad = new Array(len).fill(0), denPad = new Array(len).fill(0);
+      // Pad with trailing zeros (ascending powers → just pad to same length)
+      for (let i = 0; i < numIn.length; i++) numPad[i] = numIn[i];
+      for (let i = 0; i < denIn.length; i++) denPad[i] = denIn[i];
+      return ret(makeObject('tf', {
+        num: rowVec(numPad),
+        den: rowVec(denPad),
+        Ts: scalar(Ts),
+        Variable: makeStr('z^-1'),
+      }));
+    },
+
+    /** dss(A,B,C,D,E[,Ts]) — descriptor state-space model E*xdot = A*x + B*u. */
+    dss: (a) => {
+      const Ts = a.length >= 6 ? asScalar(a[5]) : 0;
+      return ret(makeObject('dss', {
+        A: m(a[0]), B: m(a[1]), C: m(a[2]), D: m(a[3]), E: m(a[4]), Ts: scalar(Ts),
+      }));
+    },
+
+    /** rss(n[,p,m]) — random CONTINUOUS stable state-space of order n (p outputs, m inputs). */
+    rss: (a) => {
+      const n = Math.max(1, Math.round(asScalar(a[0])));
+      const p = a.length >= 2 ? Math.max(1, Math.round(asScalar(a[1]))) : 1;
+      const mIn = a.length >= 3 ? Math.max(1, Math.round(asScalar(a[2]))) : 1;
+      // Build a stable random A: use diagonal of negative values, then add random perturbation
+      // Strategy: random eigenvalues with negative real part, build via real random matrix then shift
+      const A: number[][] = Array.from({ length: n }, () => Array.from({ length: n }, () => (Math.random() * 2 - 1)));
+      // Shift eigenvalues to ensure stability: compute trace and shift diagonal down
+      // Compute Gershgorin-based shift: for each row, row_sum = sum of |off-diag|
+      // Ensure A[i][i] - sum_offdiag < 0 → set A[i][i] = -(sum + rand)
+      for (let i = 0; i < n; i++) {
+        let offSum = 0; for (let j = 0; j < n; j++) if (j !== i) offSum += Math.abs(A[i][j]);
+        A[i][i] = -(offSum + Math.random() + 0.1);
+      }
+      const B: number[][] = Array.from({ length: n }, () => Array.from({ length: mIn }, () => Math.random() * 2 - 1));
+      const C: number[][] = Array.from({ length: p }, () => Array.from({ length: n }, () => Math.random() * 2 - 1));
+      const D: number[][] = Array.from({ length: p }, () => Array.from({ length: mIn }, () => 0));
+      return ret(makeObject('ss', { A: fromRows(A), B: fromRows(B), C: fromRows(C), D: fromRows(D) }));
+    },
+
+    /** drss(n[,p,m]) — random DISCRETE stable state-space of order n, all poles inside unit circle. */
+    drss: (a) => {
+      const n = Math.max(1, Math.round(asScalar(a[0])));
+      const p = a.length >= 2 ? Math.max(1, Math.round(asScalar(a[1]))) : 1;
+      const mIn = a.length >= 3 ? Math.max(1, Math.round(asScalar(a[2]))) : 1;
+      // Build stable A: random matrix scaled so spectral radius < 1
+      // Use random matrix and normalize by (spectral_radius + epsilon)
+      const A: number[][] = Array.from({ length: n }, () => Array.from({ length: n }, () => (Math.random() * 2 - 1)));
+      // Scale A so all eigenvalues lie strictly inside unit circle:
+      // Simple approach: scale by 0.5/(norm_inf + 1) then won't exceed 0.5
+      let normInfA = 0;
+      for (let i = 0; i < n; i++) { let s = 0; for (let j = 0; j < n; j++) s += Math.abs(A[i][j]); normInfA = Math.max(normInfA, s); }
+      const scale = 0.6 / (normInfA + 1e-10);
+      for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) A[i][j] *= scale;
+      const B: number[][] = Array.from({ length: n }, () => Array.from({ length: mIn }, () => Math.random() * 2 - 1));
+      const C: number[][] = Array.from({ length: p }, () => Array.from({ length: n }, () => Math.random() * 2 - 1));
+      const D: number[][] = Array.from({ length: p }, () => Array.from({ length: mIn }, () => 0));
+      return ret(makeObject('ss', { A: fromRows(A), B: fromRows(B), C: fromRows(C), D: fromRows(D), Ts: scalar(-1) }));
+    },
+
+    /** W = gram(sys,type) — controllability ('c') or observability ('o') Gramian via Lyapunov eqn. */
+    gram: (a) => {
+      const sys = a[0]; const type = asString(a[1]).toLowerCase()[0];
+      if (!isObject(sys) || sys.className !== 'ss') throw new Error('gram: sys must be an ss model');
+      const A = matRows(m(sys.props.get('A') as Mat));
+      const B = matRows(m(sys.props.get('B') as Mat));
+      const C = matRows(m(sys.props.get('C') as Mat));
+      const Ts = sys.props.has('Ts') ? asScalar(sys.props.get('Ts') as Value) : 0;
+      const isDisc = Ts !== 0;
+      if (type === 'c') {
+        // Controllability Gramian: A*Wc + Wc*A' + B*B' = 0 (continuous)
+        //                          A*Wc*A' - Wc + B*B' = 0 (discrete)
+        const BB = mmul(B, matT(B));
+        const W = isDisc ? dlyapSolve(A, BB) : lyapSolve(A, BB);
+        return ret(fromRows(W));
+      } else {
+        // Observability Gramian: A'*Wo + Wo*A + C'*C = 0 (continuous)
+        //                        A'*Wo*A - Wo + C'*C = 0 (discrete)
+        const CC = mmul(matT(C), C);
+        const At = matT(A);
+        const W = isDisc ? dlyapSolve(At, CC) : lyapSolve(At, CC);
+        return ret(fromRows(W));
+      }
+    },
   },
   help: {
     tf: { summary: 'Create a transfer-function model', syntax: ['sys = tf(num,den)', 'sys = tf(num,den,Ts)'], seealso: ['zpk', 'ss', 'bode', 'step'] },
@@ -839,6 +961,13 @@ export const CONTROL: ToolboxModule = {
     lqrd: { summary: 'Discrete LQR design from a continuous cost function', syntax: ['[K,S,e] = lqrd(A,B,Q,R,Ts)'], description: ['[K,S,e] = lqrd(A,B,Q,R,Ts) computes the discrete state-feedback gain K that minimizes the continuous-time LQR cost for the plant (A,B) sampled with period Ts.', 'S is the solution of the associated discrete Riccati equation and e are the discrete closed-loop eigenvalues.'], seealso: ['lqr', 'dlqr', 'c2d'] },
     gensig: { summary: 'Generate a periodic test input signal', syntax: ['[u,t] = gensig(type,tau)', '[u,t] = gensig(type,tau,Tf,Ts)'], description: ['[u,t] = gensig(type,tau) generates a unit-amplitude periodic signal of period tau. type is \'sin\', \'square\', or \'pulse\'.', 'Tf sets the signal duration (default 5*tau) and Ts the sample spacing (default tau/64).'], seealso: ['lsim', 'square', 'sawtooth'] },
     lsiminfo: { summary: 'Compute linear-response characteristics', syntax: ['S = lsiminfo(y,t)', 'S = lsiminfo(y,t,yfinal,yinit)'], description: ['S = lsiminfo(y,t) returns a struct with TransientTime, SettlingTime, Peak, PeakTime, Min, MinTime, Max, MaxTime for the response data (t,y).', 'yfinal defaults to the last sample of y and yinit defaults to 0.'], seealso: ['stepinfo', 'lsim', 'impulse'] },
+    frd: { summary: 'Create a frequency-response data model', syntax: ['sys = frd(response,freq)', 'sys = frd(response,freq,Ts)'], description: ['sys = frd(response,freq) creates a frequency-response-data (frd) model from a vector of complex frequency response values and a corresponding frequency vector in rad/s.', 'sys = frd(response,freq,Ts) specifies the sample time Ts.'], seealso: ['frdata', 'bode', 'tf', 'ss'] },
+    frdata: { summary: 'Extract frequency-response data from an frd model', syntax: ['[resp,freq] = frdata(sys)'], description: ['[resp,freq] = frdata(sys) returns the response data vector resp and the frequency vector freq (rad/s) from an frd model created with frd().'], seealso: ['frd', 'bode'] },
+    filt: { summary: 'Create discrete-time filter model (DSP convention, z^-1 ascending powers)', syntax: ['sys = filt(num,den)', 'sys = filt(num,den,Ts)'], description: ['sys = filt(num,den) creates a discrete-time transfer function using DSP convention where coefficients are listed in ascending powers of z^-1.', 'sys = filt(num,den,Ts) specifies the sample time Ts (default -1, unspecified).'], seealso: ['tf', 'c2d', 'pole'] },
+    dss: { summary: 'Create a descriptor state-space model', syntax: ['sys = dss(A,B,C,D,E)', 'sys = dss(A,B,C,D,E,Ts)'], description: ['sys = dss(A,B,C,D,E) creates a descriptor (generalized) state-space model E*xdot = A*x + B*u, y = C*x + D*u.', 'sys = dss(A,B,C,D,E,Ts) creates a discrete-time descriptor model with sample time Ts.'], seealso: ['ss', 'tf', 'eig'] },
+    rss: { summary: 'Generate a random stable continuous-time state-space model', syntax: ['sys = rss(n)', 'sys = rss(n,p,m)'], description: ['sys = rss(n) generates a random stable single-input single-output (SISO) state-space model of order n with all poles in the open left half-plane.', 'sys = rss(n,p,m) specifies p outputs and m inputs.'], seealso: ['drss', 'ss', 'pole'] },
+    drss: { summary: 'Generate a random stable discrete-time state-space model', syntax: ['sys = drss(n)', 'sys = drss(n,p,m)'], description: ['sys = drss(n) generates a random stable discrete-time SISO state-space model of order n with all poles strictly inside the unit circle.', 'sys = drss(n,p,m) specifies p outputs and m inputs.'], seealso: ['rss', 'ss', 'pole'] },
+    gram: { summary: 'Controllability or observability Gramian', syntax: ['W = gram(sys,\'c\')', 'W = gram(sys,\'o\')'], description: ['W = gram(sys,\'c\') computes the controllability Gramian by solving A*W + W*A\' + B*B\' = 0 (continuous) or A*W*A\' - W + B*B\' = 0 (discrete).', 'W = gram(sys,\'o\') computes the observability Gramian by solving A\'*W + W*A + C\'*C = 0 (continuous) or A\'*W*A - W + C\'*C = 0 (discrete).'], seealso: ['lyap', 'dlyap', 'balreal', 'ctrb', 'obsv'] },
   },
   // OOP method dispatch (see tb/types.ts): series(tf,…) routes here; series(sym,…) → Symbolic.
   methods: {
