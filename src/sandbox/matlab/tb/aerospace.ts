@@ -10,11 +10,15 @@ import { HELP_AEROSPACE } from './help-aerospace';
 
 const ret = (v: Value | Value[]): Promise<Value[]> => Promise.resolve(Array.isArray(v) ? v : [v]);
 const D2R = Math.PI / 180;
+/** Clamp to [-1,1] before asin/acos so float drift in a derived DCM/dot product can't yield NaN. */
+const clamp1 = (x: number) => (x < -1 ? -1 : x > 1 ? 1 : x);
 
 /** Element-wise over three operands with scalar expansion; shape follows the first length-n input. */
 function ew3(A: Mat, B: Mat, C: Mat, f: (a: number, b: number, c: number) => number): Value {
   const a = Array.from(A.data), b = Array.from(B.data), c = Array.from(C.data);
   const n = Math.max(a.length, b.length, c.length);
+  // MATLAB-style: a non-scalar operand must match the broadcast length, else error (not silent NaN).
+  for (const len of [a.length, b.length, c.length]) if (len !== 1 && len !== n) throw new MatError('arrays have incompatible sizes for this operation');
   const g = (arr: number[], i: number) => (arr.length === 1 ? arr[0] : arr[i]);
   const out = new Float64Array(n);
   for (let i = 0; i < n; i++) out[i] = f(g(a, i), g(b, i), g(c, i));
@@ -99,13 +103,14 @@ function ang2q(r1: number, r2: number, r3: number, seq: string): number[] {
 /** DCM → Euler angles for the given sequence. Full support for 'ZYX' (MATLAB default); other
  *  Tait-Bryan sequences handled via the same first-row/last-column extraction. */
 function dcm2ang(C: number[][], seq: string): [number, number, number] {
-  if (seq === 'ZYX') return [Math.atan2(C[0][1], C[0][0]), Math.asin(-C[0][2]), Math.atan2(C[1][2], C[2][2])];
-  if (seq === 'ZXY') return [Math.atan2(-C[1][0], C[1][1]), Math.asin(C[1][2]), Math.atan2(-C[0][2], C[2][2])];
-  if (seq === 'YXZ') return [Math.atan2(C[2][0], C[2][2]), Math.asin(-C[2][1]), Math.atan2(C[0][1], C[1][1])];
-  if (seq === 'YZX') return [Math.atan2(-C[0][2], C[0][0]), Math.asin(C[0][1]), Math.atan2(-C[2][1], C[1][1])];
-  if (seq === 'XYZ') return [Math.atan2(-C[2][1], C[2][2]), Math.asin(C[2][0]), Math.atan2(-C[1][0], C[0][0])];
-  if (seq === 'XZY') return [Math.atan2(C[1][2], C[1][1]), Math.asin(-C[1][0]), Math.atan2(C[2][0], C[0][0])];
-  return [Math.atan2(C[0][1], C[0][0]), Math.asin(-C[0][2]), Math.atan2(C[1][2], C[2][2])];
+  const as = (x: number) => Math.asin(clamp1(x));   // clamp guards against float drift past ±1
+  if (seq === 'ZYX') return [Math.atan2(C[0][1], C[0][0]), as(-C[0][2]), Math.atan2(C[1][2], C[2][2])];
+  if (seq === 'ZXY') return [Math.atan2(-C[1][0], C[1][1]), as(C[1][2]), Math.atan2(-C[0][2], C[2][2])];
+  if (seq === 'YXZ') return [Math.atan2(C[2][0], C[2][2]), as(-C[2][1]), Math.atan2(C[0][1], C[1][1])];
+  if (seq === 'YZX') return [Math.atan2(-C[0][2], C[0][0]), as(C[0][1]), Math.atan2(-C[2][1], C[1][1])];
+  if (seq === 'XYZ') return [Math.atan2(-C[2][1], C[2][2]), as(C[2][0]), Math.atan2(-C[1][0], C[0][0])];
+  if (seq === 'XZY') return [Math.atan2(C[1][2], C[1][1]), as(-C[1][0]), Math.atan2(C[2][0], C[0][0])];
+  return [Math.atan2(C[0][1], C[0][0]), as(-C[0][2]), Math.atan2(C[1][2], C[2][2])];
 }
 const seqArg = (a: Value[], i: number) => (a[i] !== undefined ? asString(a[i]).toUpperCase() : 'ZYX');
 
@@ -297,7 +302,7 @@ export const AEROSPACE: ToolboxModule = {
       if (dot < 0) { q = q.map((x) => -x); dot = -dot; }
       let r: number[];
       if (method === 'slerp' && dot < 0.9999995) {
-        const th = Math.acos(dot), s = Math.sin(th), c0 = Math.sin((1 - f) * th) / s, c1 = Math.sin(f * th) / s;
+        const th = Math.acos(clamp1(dot)), s = Math.sin(th), c0 = Math.sin((1 - f) * th) / s, c1 = Math.sin(f * th) / s;
         r = [0, 1, 2, 3].map((i) => c0 * p[i] + c1 * q[i]);
       } else { r = [0, 1, 2, 3].map((i) => (1 - f) * p[i] + f * q[i]); }
       return ret(fromRows([qnorm(r)]));
