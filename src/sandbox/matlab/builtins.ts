@@ -1445,14 +1445,38 @@ export const BUILTINS: Record<string, Builtin> = {
     return [finishComplex(N, 1, Float64Array.from(D.re), Float64Array.from(D.im))];
   },
   // structure predicates
-  issymmetric: async (a) => ret(bool(isSymmetric(m(a[0])))),
-  ishermitian: async (a) => ret(bool(isSymmetric(m(a[0])))),
+  issymmetric: async (a) => {
+    // A == A.' (non-conjugate transpose): both real and imaginary parts must be symmetric.
+    // (the shared isSymmetric ignores the imaginary part — fine for its real-only callers).
+    // issymmetric(A,'skew') tests A == -A.'.
+    const A = m(a[0]); if (A.rows !== A.cols) return ret(bool(false));
+    const N = A.rows, skew = a.length >= 2 && asString(a[1]).toLowerCase() === 'skew';
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+      const i1 = r + c * N, i2 = c + r * N;
+      const re = A.data[i1], reT = A.data[i2], im = A.idata ? A.idata[i1] : 0, imT = A.idata ? A.idata[i2] : 0;
+      if (skew ? (re !== -reT || im !== -imT) : (re !== reT || im !== imT)) return ret(bool(false));
+    }
+    return ret(bool(true));
+  },
+  ishermitian: async (a) => {
+    // A == A' (conjugate transpose). For real A this equals symmetry; for complex it must
+    // conjugate the imaginary part. ishermitian(A,'skew') tests A == -A'.
+    const A = m(a[0]); if (A.rows !== A.cols) return ret(bool(false));
+    const N = A.rows, skew = a.length >= 2 && asString(a[1]).toLowerCase() === 'skew';
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+      const i1 = r + c * N, i2 = c + r * N;
+      const re = A.data[i1], reT = A.data[i2], im = A.idata ? A.idata[i1] : 0, imT = A.idata ? A.idata[i2] : 0;
+      if (skew ? (re !== -reT || im !== imT) : (re !== reT || im !== -imT)) return ret(bool(false));
+    }
+    return ret(bool(true));
+  },
   isdiag: async (a) => { const A = m(a[0]); const nz = (i: number) => A.data[i] !== 0 || (A.idata != null && A.idata[i] !== 0); for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) if (r !== c && nz(r + c * A.rows)) return ret(bool(false)); return ret(bool(true)); },
   istriu: async (a) => { const A = m(a[0]); const nz = (i: number) => A.data[i] !== 0 || (A.idata != null && A.idata[i] !== 0); for (let c = 0; c < A.cols; c++) for (let r = c + 1; r < A.rows; r++) if (nz(r + c * A.rows)) return ret(bool(false)); return ret(bool(true)); },
   istril: async (a) => { const A = m(a[0]); const nz = (i: number) => A.data[i] !== 0 || (A.idata != null && A.idata[i] !== 0); for (let r = 0; r < A.rows; r++) for (let c = r + 1; c < A.cols; c++) if (nz(r + c * A.rows)) return ret(bool(false)); return ret(bool(true)); },
   bandwidth: async (a, n) => {
     const A = m(a[0]); let lower = 0, upper = 0;
-    for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) if (A.data[r + c * A.rows] !== 0) { if (r > c) lower = Math.max(lower, r - c); else if (c > r) upper = Math.max(upper, c - r); }
+    const nz = (i: number) => A.data[i] !== 0 || (A.idata != null && A.idata[i] !== 0);
+    for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) if (nz(r + c * A.rows)) { if (r > c) lower = Math.max(lower, r - c); else if (c > r) upper = Math.max(upper, c - r); }
     // bandwidth(A,'lower'|'upper') selects one; otherwise [lower,upper] (or just lower).
     if (a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar))) return ret(asString(a[1]).toLowerCase() === 'upper' ? scalar(upper) : scalar(lower));
     return n >= 2 ? [scalar(lower), scalar(upper)] : [scalar(lower)];
@@ -3813,7 +3837,7 @@ export const BUILTINS: Record<string, Builtin> = {
   inedges: async (a) => { const g = gArg(a[0]); const i = nodeIds(g, a[1])[0]; const idx: number[] = []; g.edges.forEach((e, k) => { if (e.t === i || (!g.directed && e.s === i)) idx.push(k + 1); }); return ret(colVec(idx)); },
   nearest: async (a, n) => { const g = gArg(a[0]); const src = nodeIds(g, a[1])[0]; const d = asScalar(a[2]); const { dist } = dijkstra(g, src); const nodes: number[] = [], ds: number[] = []; for (let i = 0; i < g.n; i++) if (i !== src && dist[i] <= d + 1e-12) { nodes.push(i + 1); ds.push(dist[i]); } return n >= 2 ? [colVec(nodes), colVec(ds)] : [colVec(nodes)]; },
   hascycles: async (a) => { const g = gArg(a[0]); if (g.directed) return ret(bool(topoSort(g) === null)); const comps = new Set(connComp(g)).size; return ret(bool(g.edges.length >= g.n - comps + 1)); },
-  shortestpathtree: async (a) => { const g = gArg(a[0]); const src = nodeIds(g, a[1])[0]; const { prev } = dijkstra(g, src); const edges: { s: number; t: number; w: number }[] = []; for (let i = 0; i < g.n; i++) if (prev[i] >= 0) edges.push({ s: prev[i], t: i, w: 1 }); return ret(makeGraph(true, g.n, edges, g.names)); },
+  shortestpathtree: async (a) => { const g = gArg(a[0]); const src = nodeIds(g, a[1])[0]; const { dist, prev } = dijkstra(g, src); const edges: { s: number; t: number; w: number }[] = []; for (let i = 0; i < g.n; i++) if (prev[i] >= 0) edges.push({ s: prev[i], t: i, w: dist[i] - dist[prev[i]] }); return ret(makeGraph(true, g.n, edges, g.names)); },
   condensation: async (a) => { const g = gArg(a[0]); const { comp, count } = sccKosaraju(g); const seen = new Set<string>(); const edges: { s: number; t: number; w: number }[] = []; for (const e of g.edges) if (comp[e.s] !== comp[e.t]) { const k = `${comp[e.s]}_${comp[e.t]}`; if (!seen.has(k)) { seen.add(k); edges.push({ s: comp[e.s], t: comp[e.t], w: 1 }); } } return ret(makeGraph(true, count, edges)); },
   transclosure: async (a) => { const g = gArg(a[0]); const R = reachMatrix(g); const edges: { s: number; t: number; w: number }[] = []; for (let i = 0; i < g.n; i++) for (let j = 0; j < g.n; j++) if (i !== j && R[i][j] && (g.directed || i < j)) edges.push({ s: i, t: j, w: 1 }); return ret(makeGraph(g.directed, g.n, edges, g.names)); },
   transreduction: async (a) => { const g = gArg(a[0]); const R = reachMatrix(g); const keep: { s: number; t: number; w: number }[] = []; for (const e of g.edges) { let redundant = false; for (let k = 0; k < g.n; k++) if (k !== e.s && k !== e.t && R[e.s][k] && R[k][e.t]) { redundant = true; break; } if (!redundant) keep.push(e); } return ret(makeGraph(g.directed, g.n, keep, g.names)); },

@@ -4,7 +4,7 @@
 // MATLAB's quaternion-to-DCM map is the coordinate-transformation (transposed) form, quatnorm is
 // the SUM of squares (not its root), and quatdivide(q,r) = r⁻¹⊗q. See aerospace.VALIDATION.md.
 import type { Builtin } from '../builtins';
-import { type Value, type Mat, mat, map, toMat as m, asScalar, asString, scalar, colVec, makeND, fromRows } from '../values';
+import { type Value, type Mat, mat, map, toMat as m, asScalar, asString, scalar, colVec, makeND, fromRows, MatError } from '../values';
 import type { ToolboxModule } from './types';
 import { HELP_AEROSPACE } from './help-aerospace';
 
@@ -40,6 +40,19 @@ function read3(M: Mat): number[][] {
   const C: number[][] = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
   for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) C[r][c] = M.data[r + c * 3];
   return C;
+}
+/** Read a 3×3 or 3×3×N page-stack Mat into an array of row-major 3×3 matrices. */
+function pages3(M: Mat): number[][][] {
+  const np = Math.max(1, Math.round(M.data.length / 9)); const out: number[][][] = [];
+  for (let k = 0; k < np; k++) { const C: number[][] = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]; for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) C[r][c] = M.data[r + c * 3 + k * 9]; out.push(C); }
+  return out;
+}
+/** Stack row-major 3×3 matrices into a 3×3 Mat (N=1) or a 3×3×N page stack. */
+function stack3(Cs: number[][][]): Mat {
+  if (Cs.length <= 1) return mat3(Cs[0] ?? [[1, 0, 0], [0, 1, 0], [0, 0, 1]]);
+  const d = new Float64Array(9 * Cs.length);
+  Cs.forEach((C, k) => { for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) d[r + c * 3 + k * 9] = C[r][c]; });
+  return makeND([3, 3, Cs.length], d);
 }
 
 // ---- quaternion core (operate on number[4] = [w x y z]) ----------------------------------------
@@ -111,8 +124,8 @@ const F_ANGACC: Record<string, number> = { 'deg/s^2': D2R, 'rad/s^2': 1, 'rpm/s'
 function makeConv(table: Record<string, number>, label: string): Builtin {
   return (a) => {
     const from = asString(a[1]), to = asString(a[2]);
-    if (!(from in table)) throw new Error(`Unknown ${label} conversion input unit, ${from}`);
-    if (!(to in table)) throw new Error(`Unknown ${label} conversion output unit, ${to}`);
+    if (!(from in table)) throw new MatError(`Unknown ${label} conversion input unit, ${from}`);
+    if (!(to in table)) throw new MatError(`Unknown ${label} conversion output unit, ${to}`);
     const f = table[from] / table[to];
     return ret(map(m(a[0]), (x) => x * f));
   };
@@ -141,7 +154,8 @@ function isa1976(h: number): [number, number, number, number] {
 function atmosOut(M: Mat, f: (h: number) => number[], nargout: number): Value[] {
   const hs = Array.from(M.data); const cols: number[][] = [[], [], [], []];
   for (const h of hs) { const r = f(h); for (let k = 0; k < 4; k++) cols[k].push(r[k]); }
-  const wrap = (c: number[]): Value => (c.length === 1 ? scalar(c[0]) : colVec(c));
+  // Each output matches the shape of the height input (MATLAB), not a forced column.
+  const wrap = (c: number[]): Value => (c.length === 1 ? scalar(c[0]) : mat(M.rows, M.cols, Float64Array.from(c)));
   return cols.slice(0, Math.max(1, nargout)).map(wrap);
 }
 
@@ -201,6 +215,7 @@ function qBinary(op: (q: number[], p: number[]) => number[]): Builtin {
     const n = Math.max(A.length, B.length);
     if (A.length === 1 && n > 1) A = Array.from({ length: n }, () => A[0]);
     if (B.length === 1 && n > 1) B = Array.from({ length: n }, () => B[0]);
+    if (A.length !== B.length) throw new MatError('quaternion arrays must be the same size (or one a single quaternion)');
     return ret(fromRows(A.map((q, i) => op(q, B[i]))));
   };
 }
@@ -227,8 +242,8 @@ export const AEROSPACE: ToolboxModule = {
     convangvel: makeConv(F_ANGVEL, 'angular velocity'), convangacc: makeConv(F_ANGACC, 'angular acceleration'),
     convtemp: (a) => {
       const from = asString(a[1]), to = asString(a[2]);
-      if (!(from in toK)) throw new Error(`Unknown temperature conversion input unit, ${from}`);
-      if (!(to in fromK)) throw new Error(`Unknown temperature conversion output unit, ${to}`);
+      if (!(from in toK)) throw new MatError(`Unknown temperature conversion input unit, ${from}`);
+      if (!(to in fromK)) throw new MatError(`Unknown temperature conversion output unit, ${to}`);
       return ret(map(m(a[0]), (x) => fromK[to](toK[from](x))));
     },
     // --- quaternion algebra ---
@@ -249,8 +264,8 @@ export const AEROSPACE: ToolboxModule = {
       }
       return ret(fromRows(out));
     },
-    quat2dcm: (a) => ret(mat3(q2dcm(rowsOf(m(a[0]))[0]))),
-    dcm2quat: (a) => ret(fromRows([dcm2q(read3(m(a[0])))])),
+    quat2dcm: (a) => ret(stack3(rowsOf(m(a[0])).map(q2dcm))),
+    dcm2quat: (a) => ret(fromRows(pages3(m(a[0])).map(dcm2q))),
     quat2rod: qElem((q) => { const n = qnorm(q); return [n[1] / n[0], n[2] / n[0], n[3] / n[0]]; }),
     rod2quat: qElem((b) => { const s = Math.sqrt(1 + b[0] * b[0] + b[1] * b[1] + b[2] * b[2]); return [1 / s, b[0] / s, b[1] / s, b[2] / s]; }),
     quatexp: qElem((q) => {
@@ -291,17 +306,24 @@ export const AEROSPACE: ToolboxModule = {
     angle2quat: (a) => {
       const seq = seqArg(a, 3);
       const r1 = Array.from(m(a[0]).data), r2 = Array.from(m(a[1]).data), r3 = Array.from(m(a[2]).data);
+      if (r1.length !== r2.length || r1.length !== r3.length) throw new MatError('angle2quat: Rotations are not all arrays of M');
       return ret(fromRows(r1.map((_, i) => ang2q(r1[i], r2[i], r3[i], seq))));
     },
     quat2angle: (a) => {
       const seq = seqArg(a, 1); const angs = rowsOf(m(a[0])).map((q) => dcm2ang(q2dcm(q), seq));
       return ret(spreadAngles(angs));
     },
-    angle2dcm: (a) => ret(mat3(q2dcm(ang2q(asScalar(a[0]), asScalar(a[1]), asScalar(a[2]), seqArg(a, 3))))),
-    dcm2angle: (a) => ret(spreadAngles([dcm2ang(read3(m(a[0])), seqArg(a, 1))])),
+    angle2dcm: (a) => {
+      const seq = seqArg(a, 3);
+      const r1 = Array.from(m(a[0]).data), r2 = Array.from(m(a[1]).data), r3 = Array.from(m(a[2]).data);
+      if (r1.length !== r2.length || r1.length !== r3.length) throw new MatError('angle2dcm: Rotations are not all arrays of M');
+      return ret(stack3(r1.map((_, i) => q2dcm(ang2q(r1[i], r2[i], r3[i], seq)))));
+    },
+    dcm2angle: (a) => ret(spreadAngles(pages3(m(a[0])).map((C) => dcm2ang(C, seqArg(a, 1))))),
     angle2rod: (a) => {
       const seq = seqArg(a, 3);
       const r1 = Array.from(m(a[0]).data), r2 = Array.from(m(a[1]).data), r3 = Array.from(m(a[2]).data);
+      if (r1.length !== r2.length || r1.length !== r3.length) throw new MatError('angle2rod: Rotations are not all arrays of M');
       return ret(fromRows(r1.map((_, i) => { const n = qnorm(ang2q(r1[i], r2[i], r3[i], seq)); return [n[1] / n[0], n[2] / n[0], n[3] / n[0]]; })));
     },
     rod2angle: (a) => {
@@ -309,8 +331,8 @@ export const AEROSPACE: ToolboxModule = {
       const angs = rowsOf(m(a[0])).map((b) => { const s = Math.sqrt(1 + b[0] * b[0] + b[1] * b[1] + b[2] * b[2]); return dcm2ang(q2dcm([1 / s, b[0] / s, b[1] / s, b[2] / s]), seq); });
       return ret(spreadAngles(angs));
     },
-    rod2dcm: (a) => { const b = rowsOf(m(a[0]))[0]; const s = Math.sqrt(1 + b[0] * b[0] + b[1] * b[1] + b[2] * b[2]); return ret(mat3(q2dcm([1 / s, b[0] / s, b[1] / s, b[2] / s]))); },
-    dcm2rod: (a) => { const n = dcm2q(read3(m(a[0]))); return ret(fromRows([[n[1] / n[0], n[2] / n[0], n[3] / n[0]]])); },
+    rod2dcm: (a) => ret(stack3(rowsOf(m(a[0])).map((b) => { const s = Math.sqrt(1 + b[0] * b[0] + b[1] * b[1] + b[2] * b[2]); return q2dcm([1 / s, b[0] / s, b[1] / s, b[2] / s]); }))),
+    dcm2rod: (a) => ret(fromRows(pages3(m(a[0])).map((C) => { const n = dcm2q(C); return [n[1] / n[0], n[2] / n[0], n[3] / n[0]]; }))),
     // --- atmosphere ---
     atmosisa: (a, nargout) => ret(atmosOut(m(a[0]), isa1976, nargout)),
     atmoscoesa: (a, nargout) => ret(atmosOut(m(a[0]), isa1976, nargout)),
@@ -356,7 +378,7 @@ export const AEROSPACE: ToolboxModule = {
       const vMat = m(a[1]);
       const gArr = Array.from(gMat.data);
       const vArr = Array.from(vMat.data);
-      if (gArr.some((g) => g <= 1)) throw new Error('aero:flowisentropic: gamma must be greater than 1');
+      if (gArr.some((g) => g <= 1)) throw new MatError('aero:flowisentropic: gamma must be greater than 1');
       let mtype = 'mach';
       if (a[2] !== undefined) {
         const s = asString(a[2]).toLowerCase();
@@ -366,7 +388,7 @@ export const AEROSPACE: ToolboxModule = {
         else if (s.startsWith('dens')) mtype = 'densityratio';
         else if (s.startsWith('sub')) mtype = 'subsonicarearatio';
         else if (s.startsWith('sup')) mtype = 'supersonicarearatio';
-        else throw new Error('aero:flowisentropic:paramSelectWrongInput');
+        else throw new MatError('aero:flowisentropic:paramSelectWrongInput');
       }
       // broadcast gamma & var
       const n = Math.max(gArr.length, vArr.length);
@@ -403,9 +425,10 @@ export const AEROSPACE: ToolboxModule = {
     },
     // flowprandtlmeyer(gamma,mach[,'mach']) → [mach, nu(deg), mu(deg)] (forward/mach mode).
     flowprandtlmeyer: (a, nargout) => {
-      const gArr = Array.from(m(a[0]).data), vMat = m(a[1]), vArr = Array.from(vMat.data);
-      if (a[2] !== undefined && asString(a[2]).toLowerCase() !== 'mach') throw new Error('aero:flowprandtlmeyer: only mach mode supported');
+      const gMat = m(a[0]), gArr = Array.from(gMat.data), vMat = m(a[1]), vArr = Array.from(vMat.data);
+      if (a[2] !== undefined && asString(a[2]).toLowerCase() !== 'mach') throw new MatError('aero:flowprandtlmeyer: only mach mode supported');
       const n = Math.max(gArr.length, vArr.length);
+      const shapeMat = vArr.length === n ? vMat : gMat;   // output follows the non-scalar input's shape
       const gAt = (i: number) => (gArr.length === 1 ? gArr[0] : gArr[i]); const vAt = (i: number) => (vArr.length === 1 ? vArr[0] : vArr[i]);
       const machA: number[] = [], nuA: number[] = [], muA: number[] = [];
       for (let i = 0; i < n; i++) {
@@ -413,14 +436,15 @@ export const AEROSPACE: ToolboxModule = {
         const nu = (Math.sqrt((g + 1) / (g - 1)) * Math.atan(Math.sqrt((g - 1) / (g + 1) * (M * M - 1))) - Math.atan(Math.sqrt(M * M - 1))) * 180 / Math.PI;
         machA.push(M); nuA.push(nu); muA.push(Math.asin(1 / M) * 180 / Math.PI);
       }
-      const wrap = (c: number[]): Value => (c.length === 1 ? scalar(c[0]) : mat(vMat.rows, vMat.cols, Float64Array.from(c)));
+      const wrap = (c: number[]): Value => (c.length === 1 ? scalar(c[0]) : mat(shapeMat.rows, shapeMat.cols, Float64Array.from(c)));
       return ret([machA, nuA, muA].map(wrap).slice(0, Math.max(1, nargout)));
     },
     // flownormalshock(gamma,mach[,'mach']) → [M, T, P, rho, M2, P0, P1] (forward/mach mode).
     flownormalshock: (a, nargout) => {
-      const gArr = Array.from(m(a[0]).data), vMat = m(a[1]), vArr = Array.from(vMat.data);
-      if (a[2] !== undefined && asString(a[2]).toLowerCase() !== 'mach') throw new Error('aero:flownormalshock: only mach mode supported');
+      const gMat = m(a[0]), gArr = Array.from(gMat.data), vMat = m(a[1]), vArr = Array.from(vMat.data);
+      if (a[2] !== undefined && asString(a[2]).toLowerCase() !== 'mach') throw new MatError('aero:flownormalshock: only mach mode supported');
       const n = Math.max(gArr.length, vArr.length);
+      const shapeMat = vArr.length === n ? vMat : gMat;   // output follows the non-scalar input's shape
       const gAt = (i: number) => (gArr.length === 1 ? gArr[0] : gArr[i]); const vAt = (i: number) => (vArr.length === 1 ? vArr[0] : vArr[i]);
       const M_: number[] = [], T_: number[] = [], P_: number[] = [], rho_: number[] = [], M2_: number[] = [], P0_: number[] = [], P1_: number[] = [];
       for (let i = 0; i < n; i++) {
@@ -433,14 +457,15 @@ export const AEROSPACE: ToolboxModule = {
         const P1 = (1 + (g - 1) / 2 * M2) ** (-g / (g - 1)) / P0;
         M_.push(M); T_.push(T); P_.push(P); rho_.push(rho); M2_.push(Md); P0_.push(P0); P1_.push(P1);
       }
-      const wrap = (c: number[]): Value => (c.length === 1 ? scalar(c[0]) : mat(vMat.rows, vMat.cols, Float64Array.from(c)));
+      const wrap = (c: number[]): Value => (c.length === 1 ? scalar(c[0]) : mat(shapeMat.rows, shapeMat.cols, Float64Array.from(c)));
       return ret([M_, T_, P_, rho_, M2_, P0_, P1_].map(wrap).slice(0, Math.max(1, nargout)));
     },
     // flowfanno(gamma,mach[,'mach']) → [mach, T, P, rho, V, P0, fanno] (forward/mach mode).
     flowfanno: (a, nargout) => {
-      const gArr = Array.from(m(a[0]).data), vMat = m(a[1]), vArr = Array.from(vMat.data);
-      if (a[2] !== undefined && asString(a[2]).toLowerCase() !== 'mach') throw new Error('aero:flowfanno: only mach mode supported');
+      const gMat = m(a[0]), gArr = Array.from(gMat.data), vMat = m(a[1]), vArr = Array.from(vMat.data);
+      if (a[2] !== undefined && asString(a[2]).toLowerCase() !== 'mach') throw new MatError('aero:flowfanno: only mach mode supported');
       const n = Math.max(gArr.length, vArr.length);
+      const shapeMat = vArr.length === n ? vMat : gMat;   // output follows the non-scalar input's shape
       const gAt = (i: number) => (gArr.length === 1 ? gArr[0] : gArr[i]); const vAt = (i: number) => (vArr.length === 1 ? vArr[0] : vArr[i]);
       const cols: number[][] = [[], [], [], [], [], [], []];
       for (let i = 0; i < n; i++) {
@@ -453,14 +478,15 @@ export const AEROSPACE: ToolboxModule = {
         cols[5].push((1 / M) * (denom / (g + 1)) ** ((g + 1) / (2 * (g - 1)))); // P0/P0*
         cols[6].push((1 - M2) / (g * M2) + (g + 1) / (2 * g) * Math.log((g + 1) * M2 / denom)); // 4fL*/D
       }
-      const wrap = (c: number[]): Value => (c.length === 1 ? scalar(c[0]) : mat(vMat.rows, vMat.cols, Float64Array.from(c)));
+      const wrap = (c: number[]): Value => (c.length === 1 ? scalar(c[0]) : mat(shapeMat.rows, shapeMat.cols, Float64Array.from(c)));
       return ret(cols.map(wrap).slice(0, Math.max(1, nargout)));
     },
     // flowrayleigh(gamma,mach[,'mach']) → [mach, T, P, rho, V, P0, T0] (forward/mach mode).
     flowrayleigh: (a, nargout) => {
-      const gArr = Array.from(m(a[0]).data), vMat = m(a[1]), vArr = Array.from(vMat.data);
-      if (a[2] !== undefined && asString(a[2]).toLowerCase() !== 'mach') throw new Error('aero:flowrayleigh: only mach mode supported');
+      const gMat = m(a[0]), gArr = Array.from(gMat.data), vMat = m(a[1]), vArr = Array.from(vMat.data);
+      if (a[2] !== undefined && asString(a[2]).toLowerCase() !== 'mach') throw new MatError('aero:flowrayleigh: only mach mode supported');
       const n = Math.max(gArr.length, vArr.length);
+      const shapeMat = vArr.length === n ? vMat : gMat;   // output follows the non-scalar input's shape
       const gAt = (i: number) => (gArr.length === 1 ? gArr[0] : gArr[i]); const vAt = (i: number) => (vArr.length === 1 ? vArr[0] : vArr[i]);
       const cols: number[][] = [[], [], [], [], [], [], []];
       for (let i = 0; i < n; i++) {
@@ -473,7 +499,7 @@ export const AEROSPACE: ToolboxModule = {
         cols[5].push((g + 1) * M2 * (2 + (g - 1) * M2) / (gm * gm));            // (MATLAB 6th output)
         cols[6].push((g + 1) / gm * ((2 + (g - 1) * M2) / (g + 1)) ** (g / (g - 1))); // (MATLAB 7th output)
       }
-      const wrap = (c: number[]): Value => (c.length === 1 ? scalar(c[0]) : mat(vMat.rows, vMat.cols, Float64Array.from(c)));
+      const wrap = (c: number[]): Value => (c.length === 1 ? scalar(c[0]) : mat(shapeMat.rows, shapeMat.cols, Float64Array.from(c)));
       return ret(cols.map(wrap).slice(0, Math.max(1, nargout)));
     },
     // mach = machnumber(vel,a) = airspeed(vel)./a (vel rows are velocity vectors)
