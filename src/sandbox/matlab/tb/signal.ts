@@ -784,6 +784,8 @@ export const SIGNAL: ToolboxModule = {
       let range = 'centered';
       if (frArg !== undefined) range = asString(frArg).toLowerCase();
       else if (centeredArg !== undefined) range = asScalar(centeredArg) ? 'centered' : 'twosided';
+      if (noverlap < 0 || noverlap >= nwin) throw new Error('stft: OverlapLength must be nonnegative and less than the window length');   // hop>0 ⇒ no infinite/invalid frame loop
+      if (nfft < nwin) throw new Error('stft: FFTLength must be at least the window length');
       const hop = nwin - noverlap, nCol = Math.floor((nx - noverlap) / hop);
       const cols: { re: number[]; im: number[] }[] = [], offs: number[] = [];
       for (let c = 0; c < nCol; c++) { const off = c * hop; offs.push(off); const re: number[] = [], im: number[] = []; for (let i = 0; i < nwin; i++) { re.push(x[off + i] * win[i]); im.push((xIm ? xIm[off + i] : 0) * win[i]); } cols.push(dftCol(re, im, nfft)); }
@@ -868,6 +870,7 @@ export const SIGNAL: ToolboxModule = {
       const fs = a.length > 4 && isMat(a[4]) ? asScalar(a[4]) : null;
       const Fs = fs ?? 2 * Math.PI;
       const range = isRealX ? 'onesided' : 'twosided';
+      if (noverlap < 0 || noverlap >= nwin) throw new Error('spectrogram: noverlap must be nonnegative and less than the window length');   // hop>0 ⇒ no infinite/invalid frame loop
       const hop = nwin - noverlap, nCol = Math.floor((nx - noverlap) / hop);
       const cols: { re: number[]; im: number[] }[] = [], offs: number[] = [];
       for (let c = 0; c < nCol; c++) { const off = c * hop; offs.push(off); const re: number[] = [], im: number[] = []; for (let i = 0; i < nwin; i++) { re.push(x[off + i] * win[i]); im.push((xIm ? xIm[off + i] : 0) * win[i]); } cols.push(dftCol(re, im, nfft)); }

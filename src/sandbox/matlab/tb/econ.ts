@@ -19,7 +19,8 @@ function solveSym(A: number[][], b: number[]): { x: number[]; inv: number[][] } 
   for (let c = 0; c < n; c++) {
     let piv = c; for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[piv][c])) piv = r;
     [M[c], M[piv]] = [M[piv], M[c]];
-    const d = M[c][c] || 1e-300;
+    const d = M[c][c];
+    if (!isFinite(d) || Math.abs(d) < 1e-12) throw new MatError('regression design matrix is singular or rank deficient');
     for (let cc = c; cc < 2 * n + 1; cc++) M[c][cc] /= d;
     for (let r = 0; r < n; r++) if (r !== c) { const f = M[r][c]; for (let cc = c; cc < 2 * n + 1; cc++) M[r][cc] -= f * M[c][cc]; }
   }
@@ -145,14 +146,27 @@ const pptest: Builtin = async (args, nargout) => {
 };
 
 // ── price/return conversions and design helpers (deterministic, validated vs R2026a) ──
-/** price2ret(P): continuous (log) returns log(Pₜ/Pₜ₋₁). */
-const price2ret: Builtin = (a) => { const P = toArray(m(a[0])); const out: number[] = []; for (let i = 1; i < P.length; i++) out.push(Math.log(P[i] / P[i - 1])); return Promise.resolve([colVec(out)]); };
+// Per-column return transform (rows = observations). A vector is treated as a single series and
+// keeps its orientation; a matrix of price series is processed column-by-column (one per asset).
+function colReturns(M: Mat, f: (prev: number, cur: number) => number): Value {
+  const R = M.rows, C = M.cols;
+  if (R === 1 || C === 1) { const P = toArray(M); const out: number[] = []; for (let i = 1; i < P.length; i++) out.push(f(P[i - 1], P[i])); return R === 1 ? rowVec(out) : colVec(out); }
+  const o = new Float64Array((R - 1) * C); for (let c = 0; c < C; c++) for (let r = 1; r < R; r++) o[(r - 1) + c * (R - 1)] = f(M.data[(r - 1) + c * R], M.data[r + c * R]); return mat(R - 1, C, o);
+}
+function colCumul(M: Mat, s0: number, step: (prev: number, r: number) => number): Value {
+  const R = M.rows, C = M.cols;
+  if (R === 1 || C === 1) { const Rr = toArray(M); const out = [s0]; for (const r of Rr) out.push(step(out[out.length - 1], r)); return R === 1 ? rowVec(out) : colVec(out); }
+  const o = new Float64Array((R + 1) * C); for (let c = 0; c < C; c++) { o[c * (R + 1)] = s0; for (let r = 0; r < R; r++) o[(r + 1) + c * (R + 1)] = step(o[r + c * (R + 1)], M.data[r + c * R]); } return mat(R + 1, C, o);
+}
+const startVal = (a: Value[]): number => (a.length > 1 && isMat(a[1]) && !(a[1] as Mat).isChar && (a[1] as Mat).rows ? asScalar(a[1]) : 1);
+/** price2ret(P): continuous (log) returns log(Pₜ/Pₜ₋₁), column-wise for a price matrix. */
+const price2ret: Builtin = (a) => Promise.resolve([colReturns(m(a[0]), (p, c) => Math.log(c / p))]);
 /** ret2price(R[,S0]): inverse of price2ret (continuous); default start price 1. */
-const ret2price: Builtin = (a) => { const R = toArray(m(a[0])); let s0 = 1; if (a.length > 1 && isMat(a[1]) && !(a[1] as Mat).isChar && (a[1] as Mat).rows) s0 = asScalar(a[1]); const out = [s0]; for (const r of R) out.push(out[out.length - 1] * Math.exp(r)); return Promise.resolve([colVec(out)]); };
-/** tick2ret(P): simple returns Pₜ/Pₜ₋₁−1 (+ unit intervals). */
-const tick2ret: Builtin = (a, nargout) => { const P = toArray(m(a[0])); const r: number[] = []; for (let i = 1; i < P.length; i++) r.push(P[i] / P[i - 1] - 1); const outs: Value[] = [colVec(r)]; if (nargout >= 2) outs.push(colVec(new Array(r.length).fill(1))); return Promise.resolve(outs); };
+const ret2price: Builtin = (a) => Promise.resolve([colCumul(m(a[0]), startVal(a), (prev, r) => prev * Math.exp(r))]);
+/** tick2ret(P): simple returns Pₜ/Pₜ₋₁−1 (+ unit intervals), column-wise. */
+const tick2ret: Builtin = (a, nargout) => { const out = colReturns(m(a[0]), (p, c) => c / p - 1); const res: Value[] = [out]; if (nargout >= 2) res.push(colVec(new Array(Math.max(0, m(a[0]).rows - 1)).fill(1))); return Promise.resolve(res); };
 /** ret2tick(R[,S0]): inverse of tick2ret (simple); default start price 1. */
-const ret2tick: Builtin = (a) => { const R = toArray(m(a[0])); let s0 = 1; if (a.length > 1 && isMat(a[1]) && !(a[1] as Mat).isChar && (a[1] as Mat).rows) s0 = asScalar(a[1]); const out = [s0]; for (const r of R) out.push(out[out.length - 1] * (1 + r)); return Promise.resolve([colVec(out)]); };
+const ret2tick: Builtin = (a) => Promise.resolve([colCumul(m(a[0]), startVal(a), (prev, r) => prev * (1 + r))]);
 /** lagmatrix(Y,lags): lagged series, NaN-filled (column j shifts down by lags(j)). */
 const lagmatrix: Builtin = (a) => {
   const Y = m(a[0]), lags = toArray(m(a[1])).map(Math.round), N = Y.rows, mc = Y.cols;

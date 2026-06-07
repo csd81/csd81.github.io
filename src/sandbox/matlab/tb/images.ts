@@ -1346,7 +1346,8 @@ function entropyfiltFn(a: Value[]): Mat {
 /** ssim(A,ref[,Name,Value]) — SSIM index and map. Verified vs MATLAB R2026a default path. */
 function ssimFn(a: Value[], nargout: number): Value[] {
   const Am = m(a[0]), Rm = m(a[1]);
-  const dims = ndSize(Am);
+  const dims = ndSize(Am), dimsR = ndSize(Rm);
+  if (dims.length !== dimsR.length || dims.some((d, i) => d !== dimsR[i])) throw new Error('ssim: A and ref must be of the same size');
   const numSpatial = (dims.length >= 3 && dims[2] > 1) ? 3 : 2;
   // class-derived dynamic range
   const itype = Am.itype;
