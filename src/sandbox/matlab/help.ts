@@ -4840,12 +4840,17 @@ const SYM_REF = new Set<string>((
   'jacobiSC jacobiSD jacobiCD jacobiCS jacobiDC jacobiDS jacobiNC jacobiND jacobiNS texlabel cell2sym sym2cell series dsolve piecewise pade matlabFunction colspace hermiteForm smithForm functionalDerivative eliminate symfun symtrue symfalse vpasum vpaintegral odeToVectorField'
 ).split(/\s+/));
 
+/** MATLAB language keywords that have a direct ref/<kw>.html documentation page. */
+const LANG_KEYWORDS = new Set(['function', 'if', 'elseif', 'else', 'for', 'while', 'switch', 'case', 'otherwise', 'break', 'continue', 'return', 'end', 'try', 'catch', 'global', 'persistent', 'parfor', 'spmd']);
+
 export function docUrl(name: string): string {
   // Class-qualified request (MATLAB `help sym/asin` / `help sym.asin`) → the
   // Symbolic Math Toolbox method page, even for functions whose default page is numeric.
   const symQual = name.match(/^sym[./](\w+)$/);
   if (symQual) { const b = symQual[1]; return `https://www.mathworks.com/help/symbolic/${b === 'sym' ? 'sym' : `sym.${b.toLowerCase()}`}.html`; }
   const low = name.toLowerCase();
+  // MATLAB language keywords have a direct reference page (ref/function.html, ref/if.html, …).
+  if (LANG_KEYWORDS.has(low)) return `https://www.mathworks.com/help/matlab/ref/${low}.html`;
   // Direct reference page for base functions; doc-search for toolbox/aliases
   // (prctile/quantile/iqr → Statistics; xcorr/xcov → Signal; etc. would 404 under ref/).
   if (DOUBLE_REF.has(low)) return `https://www.mathworks.com/help/matlab/ref/double.${low}.html`;
@@ -5329,6 +5334,60 @@ const EXTRA_SYNTAX: Record<string, string[]> = {
 };
 
 /** MATLAB-style help block for a built-in, or null if unknown. */
+/** Help for MATLAB language keywords (function, if, for, …). These are reserved words, not
+ *  builtins, so they never appear in HELP/BUILTINS; without this table `help function` reports
+ *  "not found". Mirrors the keyword reference pages at mathworks.com/help/matlab/ref/<kw>.html. */
+const KEYWORD_HELP: Record<string, HelpEntry> = {
+  function: { summary: 'Declare function name, inputs, and outputs', syntax: ['function [y1,...,yN] = myfun(x1,...,xM)', 'function name', 'function y = myfun(x)'],
+    description: ['function [y1,...,yN] = myfun(x1,...,xM) declares a function named myfun that accepts the inputs x1,...,xM and returns the outputs y1,...,yN.', 'This declaration statement must be the first executable line of the function, and the file is usually named myfun.m to match.', 'You can call a function with fewer inputs or outputs than declared; use nargin and nargout to detect how many were supplied.', 'Functions defined after the first one in a file, or nested inside another function, are local/nested functions visible only within that file.', 'A function ends at the next function declaration, at a matching end (required for nested functions), or at the end of the file.'],
+    seealso: ['return', 'nargin', 'nargout', 'varargin', 'varargout', 'end'] },
+  if: { summary: 'Execute statements if condition is true', syntax: ['if expression, statements, end', 'if expr1 ... elseif expr2 ... else ... end'],
+    description: ['if expression, statements, end evaluates an expression and runs the enclosed statements when the expression is true.', 'An expression is true when all of its (real, nonzero) elements are nonzero; use && and || for short-circuit scalar logic.', 'Optional elseif and else blocks provide alternative branches that are tested in order.', 'Each if must be closed with a matching end.'],
+    seealso: ['elseif', 'else', 'switch', 'end', 'while'] },
+  elseif: { summary: 'Conditionally execute statements (within an if block)', syntax: ['if expr1 ... elseif expr2 ... end'],
+    description: ['elseif introduces an additional condition inside an if block, tested only when all preceding if/elseif conditions were false.', 'You may use any number of elseif branches; the first whose expression is true runs, and the rest are skipped.'],
+    seealso: ['if', 'else', 'end'] },
+  else: { summary: 'Execute statements when no if/elseif condition is true', syntax: ['if expr ... else ... end'],
+    description: ['else introduces the block that runs when the if condition and all elseif conditions are false. It takes no expression and must be the last branch of the if construct.'],
+    seealso: ['if', 'elseif', 'end'] },
+  for: { summary: 'Repeat statements a specific number of times', syntax: ['for index = values, statements, end'],
+    description: ['for index = values, statements, end runs the loop body once for each column of values, with index set to that column each time.', 'values is most often a row vector such as 1:10, but for a matrix the loop iterates over its columns.', 'Use break to exit the loop early and continue to skip to the next iteration.', 'Avoid changing the loop index inside the body; preallocate arrays you grow in the loop for speed.'],
+    seealso: ['while', 'parfor', 'break', 'continue', 'end'] },
+  while: { summary: 'Repeat statements an indefinite number of times', syntax: ['while expression, statements, end'],
+    description: ['while expression, statements, end repeats the loop body as long as expression remains true.', 'The expression is true when all of its elements are nonzero; the loop checks it before each iteration.', 'Use break to exit early and continue to skip to the next test. Ensure the condition eventually becomes false to avoid an infinite loop.'],
+    seealso: ['for', 'if', 'break', 'continue', 'end'] },
+  switch: { summary: 'Switch among several cases based on expression', syntax: ['switch expr, case v1, ..., case {v2,v3}, ..., otherwise, ..., end'],
+    description: ['switch evaluates an expression and runs the case block whose value matches it.', 'A case value may be a single value or a cell array of values, matching if the expression equals any element.', 'Exactly one matching case runs (no fall-through); the optional otherwise block runs when no case matches.', 'Matching uses isequal for values and strcmp-style comparison for strings.'],
+    seealso: ['case', 'otherwise', 'if', 'end'] },
+  case: { summary: 'Case-block within a switch statement', syntax: ['switch expr, case value, statements, end'],
+    description: ['case value, statements introduces a block of a switch that runs when the switch expression matches value. value can be a cell array to match any of several values. There is no fall-through to the next case.'],
+    seealso: ['switch', 'otherwise', 'end'] },
+  otherwise: { summary: 'Default block of a switch statement', syntax: ['switch expr, case ..., otherwise, statements, end'],
+    description: ['otherwise introduces the block of a switch that runs when no case matches the switch expression. It is optional and, if present, must be the last block before end.'],
+    seealso: ['switch', 'case', 'end'] },
+  break: { summary: 'Terminate execution of for or while loop', syntax: ['break'],
+    description: ['break immediately exits the innermost for or while loop that contains it, continuing execution at the statement after that loop.', 'In nested loops, break exits only the innermost enclosing loop. To skip to the next iteration instead of exiting, use continue.'],
+    seealso: ['continue', 'for', 'while', 'return'] },
+  continue: { summary: 'Pass control to next iteration of loop', syntax: ['continue'],
+    description: ['continue skips the remaining statements in the body of the innermost for or while loop and proceeds with the next iteration. To exit the loop entirely instead, use break.'],
+    seealso: ['break', 'for', 'while'] },
+  return: { summary: 'Return control to invoking function', syntax: ['return'],
+    description: ['return forces an immediate exit from the currently running function or script, returning control to the caller.', 'Output variables already assigned keep their current values. return is typically used inside a conditional to stop early once a result is known.'],
+    seealso: ['function', 'break', 'end'] },
+  end: { summary: 'Terminate block of code, or indicate last array index', syntax: ['end'],
+    description: ['end terminates for, while, switch, try, if, and function blocks, matching the most recent unterminated keyword.', 'Within an array index expression, end refers to the last index in that dimension, as in A(end) or A(end-1,:). It can be used in arithmetic, e.g. X(2:end).'],
+    seealso: ['for', 'while', 'if', 'switch', 'try', 'function'] },
+  try: { summary: 'Execute statements and catch resulting errors', syntax: ['try, statements, catch ME, statements, end'],
+    description: ['try, statements, catch, statements, end runs the statements in the try block and, if any of them throws an error, transfers control to the catch block instead of stopping execution.', 'catch ME captures the error as an MException object ME, whose identifier, message, and stack you can inspect.', 'Use rethrow(ME) to re-raise the original error.'],
+    seealso: ['catch', 'error', 'rethrow', 'end'] },
+  catch: { summary: 'Catch block of a try statement', syntax: ['try ... catch ME ... end'],
+    description: ['catch introduces the block of a try statement that runs when an error occurs in the try block. The optional variable (catch ME) receives an MException describing the error.'],
+    seealso: ['try', 'error', 'rethrow', 'end'] },
+  global: { summary: 'Declare global variables', syntax: ['global var1 var2 ...'],
+    description: ['global var1 var2 declares the named variables as global, so they are shared across the base workspace and any function that also declares them global.', 'A global declaration must appear before the variable is used in a function. Globals can make code hard to follow; passing arguments is usually preferable.'],
+    seealso: ['persistent', 'clear'] },
+};
+
 export function builtinHelp(name: string): string | null {
   // Class-qualified symbolic help: `help sym/asin` / `help sym.asin` → the symbolic
   // overload's page, even when the bare name defaults to the numeric (double) page.
@@ -5351,7 +5410,7 @@ export function builtinHelp(name: string): string | null {
     if (overloaded && !list.includes(`sym.${name}`)) list.push(`sym.${name}`);
     return list;
   };
-  const entry = HELP[name] ?? (typeof TOOLBOX_HELP[name] === 'object' ? TOOLBOX_HELP[name] as HelpEntry : undefined);
+  const entry = HELP[name] ?? KEYWORD_HELP[name] ?? (typeof TOOLBOX_HELP[name] === 'object' ? TOOLBOX_HELP[name] as HelpEntry : undefined);
   if (entry) {
     const e = entry;
     let s = ` ${name} - ${e.summary}\n\n    Syntax\n` + e.syntax.map((x) => '      ' + x).join('\n');

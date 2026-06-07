@@ -240,12 +240,14 @@ class Parser {
     const t = this.peek();
     if (t.kind !== 'ident' || !COMMAND_FNS.has(t.value)) return null;
     const a1 = this.peek(1);
-    // Must look like `name word` — next is a bareword/number on same line, not `(` / `=` / operator.
-    if (a1.kind !== 'ident' && a1.kind !== 'str' && a1.kind !== 'num') return null;
+    // Must look like `name word` — next is a bareword/number/keyword on same line, not `(` / `=` / operator.
+    // Keywords count as barewords here so `help function`, `help if`, `help end` work (MATLAB treats the
+    // word following a command-syntax call as a literal string, even reserved words).
+    if (a1.kind !== 'ident' && a1.kind !== 'str' && a1.kind !== 'num' && a1.kind !== 'kw') return null;
     if (a1.kind === 'ident' && this.peek(2).kind === 'op' && this.peek(2).value === '=') return null;
     const name = this.next().value;
     const args: Expr[] = [];
-    while (this.peek().kind === 'ident' || this.peek().kind === 'str' || this.peek().kind === 'num') {
+    while (this.peek().kind === 'ident' || this.peek().kind === 'str' || this.peek().kind === 'num' || this.peek().kind === 'kw') {
       const w = this.next();
       let word = w.value;
       // capture a symbolic-function signature like `y(t)` as one word (e.g. `syms y(t)`)
