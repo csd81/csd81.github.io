@@ -66,17 +66,29 @@ function x = nelder_mead_robust(f, x0, step, tol, max_iter)
             P(end,:) = xr; fv(end) = fr;
         else
             % --- 3. Összehúzás (Contraction) ---
-            xc = c + 0.5*(P(end,:) - c); 
-            fc = f(xc'); 
-            if fc < fv(end)
-                P(end,:) = xc; fv(end) = fc;
-            else
-                % --- 4. Zsugorítás (Shrink) a legjobb (első) pont felé ---
-                % Vektorizált zsugorítás a for ciklus helyett a nagyobb hatékonyságért
-                for i = 2:n+1
-                    P(i,:) = P(1,:) + 0.5*(P(i,:) - P(1,:)); 
-                    fv(i) = f(P(i,:)'); 
+            if fr < fv(end)
+                % Külső összehúzás: xr rosszabb a 2. legrosszabbnál, de jobb a
+                % legrosszabbnál -> a súlypont és a tükrözött pont közé húzunk.
+                xc = c + 0.5*(xr - c);
+                fc = f(xc');
+                if fc <= fr
+                    P(end,:) = xc; fv(end) = fc;
+                    continue;   % elfogadtuk, nincs zsugorítás
                 end
+            else
+                % Belső összehúzás: xr a legrosszabbnál is rosszabb -> befelé húzunk.
+                xc = c + 0.5*(P(end,:) - c);
+                fc = f(xc');
+                if fc < fv(end)
+                    P(end,:) = xc; fv(end) = fc;
+                    continue;   % elfogadtuk, nincs zsugorítás
+                end
+            end
+
+            % --- 4. Zsugorítás (Shrink) a legjobb (első) pont felé ---
+            for i = 2:n+1
+                P(i,:) = P(1,:) + 0.5*(P(i,:) - P(1,:));
+                fv(i) = f(P(i,:)');
             end
         end
     end
