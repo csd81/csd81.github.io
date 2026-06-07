@@ -496,6 +496,12 @@ function minmax(args: Value[], nargout: number, pick: (a: number, b: number) => 
 function dimArg(args: Value[], i: number): number | undefined {
   return args.length > i && isMat(args[i]) && !(args[i] as Mat).isChar ? asScalar(args[i]) : undefined;   // a char/string arg (e.g. 'omitnan') is not a dim
 }
+/** Element-wise logical predicate over a (possibly complex) Mat — f sees both parts; shape preserved. */
+function cplxPred(A: Mat, f: (re: number, im: number) => boolean): Mat {
+  const o: Mat = { ...A, data: new Float64Array(A.data.length), idata: undefined, isBool: true, isChar: false, itype: undefined };
+  for (let i = 0; i < A.data.length; i++) o.data[i] = f(A.data[i], A.idata ? A.idata[i] : 0) ? 1 : 0;
+  return o;
+}
 /** all/any: honor a dimension scalar, a vector of dimensions, or the 'all' option; returns logical. */
 function boolReduce(args: Value[], init: number, f: (acc: number, x: number) => number): Value[] {
   const A = m(args[0]);
@@ -533,9 +539,10 @@ function dimsN(args: Value[]): number[] {
     if (isStr(a) || (isMat(a) && (a as Mat).isChar)) { if (asString(a).toLowerCase() === 'like') i++; continue; }
     dims.push(a);
   }
+  const dim = (x: number) => Math.max(0, Math.round(x));   // MATLAB clamps a negative size to 0
   if (dims.length === 0) return [1, 1];
-  if (dims.length === 1) { const a = m(dims[0]); if (numel(a) >= 2) return toArray(a).map((x) => Math.round(x)); const n = Math.round(asScalar(a)); return [n, n]; }
-  return dims.map((x) => Math.round(asScalar(x)));
+  if (dims.length === 1) { const a = m(dims[0]); if (numel(a) >= 2) return toArray(a).map(dim); const n = dim(asScalar(a)); return [n, n]; }
+  return dims.map((x) => dim(asScalar(x)));
 }
 /** Apply a trailing class argument to a freshly-built array, e.g. zeros(2,3,'int8')
  *  or ones(2,'like',proto). Returns the array coerced to the requested class. */
@@ -4557,11 +4564,13 @@ export const BUILTINS: Record<string, Builtin> = {
   str2double: async (a) => ret(scalar(parseFloat(asString(a[0])))),
 
   // logical helpers
-  isnan: async (a) => ret(map(m(a[0]), (x) => (Number.isNaN(x) ? 1 : 0))),
-  isinf: async (a) => ret(map(m(a[0]), (x) => (!Number.isFinite(x) && !Number.isNaN(x) ? 1 : 0))),
-  isfinite: async (a) => ret(map(m(a[0]), (x) => (Number.isFinite(x) ? 1 : 0))),
-  any: async (a) => boolReduce(a, 0, (s, x) => (s || x !== 0 ? 1 : 0)),
-  all: async (a) => boolReduce(a, 1, (s, x) => (s && x !== 0 ? 1 : 0)),
+  // Complex semantics (MATLAB): is{nan,inf} true if EITHER part qualifies; isfinite true if BOTH finite.
+  isnan: async (a) => ret(cplxPred(m(a[0]), (re, im) => Number.isNaN(re) || Number.isNaN(im))),
+  isinf: async (a) => { const inf = (x: number) => x === Infinity || x === -Infinity; return ret(cplxPred(m(a[0]), (re, im) => inf(re) || inf(im))); },
+  isfinite: async (a) => ret(cplxPred(m(a[0]), (re, im) => Number.isFinite(re) && Number.isFinite(im))),
+  // any/all: a nonzero imaginary part counts as nonzero (z ≠ 0 ⟺ re ≠ 0 OR im ≠ 0).
+  any: async (a) => { const A = m(a[0]); const src = isComplex(A) ? [cplxPred(A, (re, im) => re !== 0 || im !== 0), ...a.slice(1)] : a; return boolReduce(src, 0, (s, x) => (s || x !== 0 ? 1 : 0)); },
+  all: async (a) => { const A = m(a[0]); const src = isComplex(A) ? [cplxPred(A, (re, im) => re !== 0 || im !== 0), ...a.slice(1)] : a; return boolReduce(src, 1, (s, x) => (s && x !== 0 ? 1 : 0)); },
 
   // I/O
   disp: async (a, _n, env) => { env.output((isSym(a[0]) ? symTexLines(a[0] as Sym).join('\n') : dispValue(a[0])) + '\n'); return []; },
