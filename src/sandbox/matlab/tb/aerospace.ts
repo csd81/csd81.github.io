@@ -71,6 +71,23 @@ const qmul = (a: number[], b: number[]) => [
   a[0] * b[2] - a[1] * b[3] + a[2] * b[0] + a[3] * b[1],
   a[0] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[0],
 ];
+/** Quaternion exponential (scalar-first); pure-real for a zero vector part. */
+function qexpRaw(q: number[]): number[] {
+  const ew = Math.exp(q[0]), nv = Math.hypot(q[1], q[2], q[3]);
+  if (nv < 1e-12) return [ew, 0, 0, 0];
+  const s = ew * Math.sin(nv) / nv; return [ew * Math.cos(nv), s * q[1], s * q[2], s * q[3]];
+}
+/** Quaternion logarithm (scalar-first). */
+function qlogRaw(q: number[]): number[] {
+  const nq = Math.sqrt(qn2(q)), nv = Math.hypot(q[1], q[2], q[3]);
+  if (nv < 1e-12) return [Math.log(nq), 0, 0, 0];
+  const th = Math.atan2(nv, q[0]) / nv; return [Math.log(nq), th * q[1], th * q[2], th * q[3]];
+}
+/** Rodrigues (Gibbs) vector → unit quaternion (scalar-first). */
+function rodToQuat(b: number[]): number[] { const s = Math.sqrt(1 + b[0] * b[0] + b[1] * b[1] + b[2] * b[2]); return [1 / s, b[0] / s, b[1] / s, b[2] / s]; }
+/** Unit quaternion → Rodrigues (Gibbs) vector. */
+function quatToRod(q: number[]): number[] { const n = qnorm(q); return [n[1] / n[0], n[2] / n[0], n[3] / n[0]]; }
+
 /** MATLAB quat2dcm — standard rotation-matrix convention, e.g. DCM(1,2)=2(xy+wz). */
 function q2dcm(qin: number[]): number[][] {
   const [w, x, y, z] = qnorm(qin);
@@ -225,6 +242,22 @@ function qBinary(op: (q: number[], p: number[]) => number[]): Builtin {
   };
 }
 
+/** Shared scaffold for the mach-only flow functions (flowprandtlmeyer/normalshock/fanno/rayleigh):
+ *  read gamma+mach, reject non-'mach' mode, broadcast (output shape follows the non-scalar input),
+ *  run the per-element kernel, then wrap each column to a Value sliced to nargout. */
+function flowMachMode(ctx: string, a: Value[], nargout: number, kernel: (g: number, M: number, M2: number) => number[]): Promise<Value[]> {
+  const gMat = m(a[0]), gArr = Array.from(gMat.data), vMat = m(a[1]), vArr = Array.from(vMat.data);
+  if (a[2] !== undefined && asString(a[2]).toLowerCase() !== 'mach') throw new MatError(`aero:${ctx}: only mach mode supported`);
+  const n = Math.max(gArr.length, vArr.length);
+  const shapeMat = vArr.length === n ? vMat : gMat;
+  const gAt = (i: number) => (gArr.length === 1 ? gArr[0] : gArr[i]); const vAt = (i: number) => (vArr.length === 1 ? vArr[0] : vArr[i]);
+  let cols: number[][] | null = null;
+  for (let i = 0; i < n; i++) { const M = vAt(i); const res = kernel(gAt(i), M, M * M); if (!cols) cols = res.map(() => []); res.forEach((v, j) => cols![j].push(v)); }
+  if (!cols) cols = [[]];   // empty input → one empty output
+  const wrap = (c: number[]): Value => (c.length === 1 ? scalar(c[0]) : mat(shapeMat.rows, shapeMat.cols, Float64Array.from(c)));
+  return ret(cols.map(wrap).slice(0, Math.max(1, nargout)));
+}
+
 export const AEROSPACE: ToolboxModule = {
   id: 'aero',
   name: 'Aerospace Toolbox',
@@ -271,30 +304,11 @@ export const AEROSPACE: ToolboxModule = {
     },
     quat2dcm: (a) => ret(stack3(rowsOf(m(a[0])).map(q2dcm))),
     dcm2quat: (a) => ret(fromRows(pages3(m(a[0])).map(dcm2q))),
-    quat2rod: qElem((q) => { const n = qnorm(q); return [n[1] / n[0], n[2] / n[0], n[3] / n[0]]; }),
-    rod2quat: qElem((b) => { const s = Math.sqrt(1 + b[0] * b[0] + b[1] * b[1] + b[2] * b[2]); return [1 / s, b[0] / s, b[1] / s, b[2] / s]; }),
-    quatexp: qElem((q) => {
-      const w = q[0], nv = Math.hypot(q[1], q[2], q[3]), ew = Math.exp(w);
-      if (nv < 1e-12) return [ew, 0, 0, 0];
-      const s = ew * Math.sin(nv) / nv; return [ew * Math.cos(nv), s * q[1], s * q[2], s * q[3]];
-    }),
-    quatlog: qElem((q) => {
-      const nq = Math.sqrt(qn2(q)), nv = Math.hypot(q[1], q[2], q[3]);
-      if (nv < 1e-12) return [Math.log(nq), 0, 0, 0];
-      const th = Math.atan2(nv, q[0]) / nv; return [Math.log(nq), th * q[1], th * q[2], th * q[3]];
-    }),
-    quatpower: (a) => {
-      const n = asScalar(a[1]);
-      const pow = (q: number[]) => {
-        const nq = Math.sqrt(qn2(q)), nv = Math.hypot(q[1], q[2], q[3]);
-        const lg = nv < 1e-12 ? [Math.log(nq), 0, 0, 0] : (() => { const th = Math.atan2(nv, q[0]) / nv; return [Math.log(nq), th * q[1], th * q[2], th * q[3]]; })();
-        const e = lg.map((x) => x * n);
-        const ew = Math.exp(e[0]), ev = Math.hypot(e[1], e[2], e[3]);
-        if (ev < 1e-12) return [ew, 0, 0, 0];
-        const s = ew * Math.sin(ev) / ev; return [ew * Math.cos(ev), s * e[1], s * e[2], s * e[3]];
-      };
-      return ret(fromRows(rowsOf(m(a[0])).map(pow)));
-    },
+    quat2rod: qElem(quatToRod),
+    rod2quat: qElem(rodToQuat),
+    quatexp: qElem(qexpRaw),
+    quatlog: qElem(qlogRaw),
+    quatpower: (a) => { const n = asScalar(a[1]); return ret(fromRows(rowsOf(m(a[0])).map((q) => qexpRaw(qlogRaw(q).map((x) => x * n))))); },
     quatinterp: (a) => {
       const p = rowsOf(m(a[0]))[0], q0 = rowsOf(m(a[1]))[0], f = asScalar(a[2]);
       const method = a[3] !== undefined ? asString(a[3]).toLowerCase() : 'slerp';
@@ -333,10 +347,10 @@ export const AEROSPACE: ToolboxModule = {
     },
     rod2angle: (a) => {
       const seq = seqArg(a, 1);
-      const angs = rowsOf(m(a[0])).map((b) => { const s = Math.sqrt(1 + b[0] * b[0] + b[1] * b[1] + b[2] * b[2]); return dcm2ang(q2dcm([1 / s, b[0] / s, b[1] / s, b[2] / s]), seq); });
+      const angs = rowsOf(m(a[0])).map((b) => dcm2ang(q2dcm(rodToQuat(b)), seq));
       return ret(spreadAngles(angs));
     },
-    rod2dcm: (a) => ret(stack3(rowsOf(m(a[0])).map((b) => { const s = Math.sqrt(1 + b[0] * b[0] + b[1] * b[1] + b[2] * b[2]); return q2dcm([1 / s, b[0] / s, b[1] / s, b[2] / s]); }))),
+    rod2dcm: (a) => ret(stack3(rowsOf(m(a[0])).map((b) => q2dcm(rodToQuat(b))))),
     dcm2rod: (a) => ret(fromRows(pages3(m(a[0])).map((C) => { const n = dcm2q(C); return [n[1] / n[0], n[2] / n[0], n[3] / n[0]]; }))),
     // --- atmosphere ---
     atmosisa: (a, nargout) => ret(atmosOut(m(a[0]), isa1976, nargout)),
@@ -429,84 +443,43 @@ export const AEROSPACE: ToolboxModule = {
       return ret(outs.slice(0, Math.max(1, nargout)));
     },
     // flowprandtlmeyer(gamma,mach[,'mach']) → [mach, nu(deg), mu(deg)] (forward/mach mode).
-    flowprandtlmeyer: (a, nargout) => {
-      const gMat = m(a[0]), gArr = Array.from(gMat.data), vMat = m(a[1]), vArr = Array.from(vMat.data);
-      if (a[2] !== undefined && asString(a[2]).toLowerCase() !== 'mach') throw new MatError('aero:flowprandtlmeyer: only mach mode supported');
-      const n = Math.max(gArr.length, vArr.length);
-      const shapeMat = vArr.length === n ? vMat : gMat;   // output follows the non-scalar input's shape
-      const gAt = (i: number) => (gArr.length === 1 ? gArr[0] : gArr[i]); const vAt = (i: number) => (vArr.length === 1 ? vArr[0] : vArr[i]);
-      const machA: number[] = [], nuA: number[] = [], muA: number[] = [];
-      for (let i = 0; i < n; i++) {
-        const g = gAt(i), M = vAt(i);
-        const nu = (Math.sqrt((g + 1) / (g - 1)) * Math.atan(Math.sqrt((g - 1) / (g + 1) * (M * M - 1))) - Math.atan(Math.sqrt(M * M - 1))) * 180 / Math.PI;
-        machA.push(M); nuA.push(nu); muA.push(Math.asin(1 / M) * 180 / Math.PI);
-      }
-      const wrap = (c: number[]): Value => (c.length === 1 ? scalar(c[0]) : mat(shapeMat.rows, shapeMat.cols, Float64Array.from(c)));
-      return ret([machA, nuA, muA].map(wrap).slice(0, Math.max(1, nargout)));
-    },
+    flowprandtlmeyer: (a, nargout) => flowMachMode('flowprandtlmeyer', a, nargout, (g, M) => {
+      const nu = (Math.sqrt((g + 1) / (g - 1)) * Math.atan(Math.sqrt((g - 1) / (g + 1) * (M * M - 1))) - Math.atan(Math.sqrt(M * M - 1))) * 180 / Math.PI;
+      return [M, nu, Math.asin(1 / M) * 180 / Math.PI];
+    }),
     // flownormalshock(gamma,mach[,'mach']) → [M, T, P, rho, M2, P0, P1] (forward/mach mode).
-    flownormalshock: (a, nargout) => {
-      const gMat = m(a[0]), gArr = Array.from(gMat.data), vMat = m(a[1]), vArr = Array.from(vMat.data);
-      if (a[2] !== undefined && asString(a[2]).toLowerCase() !== 'mach') throw new MatError('aero:flownormalshock: only mach mode supported');
-      const n = Math.max(gArr.length, vArr.length);
-      const shapeMat = vArr.length === n ? vMat : gMat;   // output follows the non-scalar input's shape
-      const gAt = (i: number) => (gArr.length === 1 ? gArr[0] : gArr[i]); const vAt = (i: number) => (vArr.length === 1 ? vArr[0] : vArr[i]);
-      const M_: number[] = [], T_: number[] = [], P_: number[] = [], rho_: number[] = [], M2_: number[] = [], P0_: number[] = [], P1_: number[] = [];
-      for (let i = 0; i < n; i++) {
-        const g = gAt(i), M = vAt(i), M2 = M * M;
-        const T = (2 + (g - 1) * M2) * (2 * g * M2 - (g - 1)) / ((g + 1) * (g + 1) * M2);
-        const P = (2 * g * M2 - (g - 1)) / (g + 1);
-        const rho = (g + 1) * M2 / ((g - 1) * M2 + 2);
-        const Md = Math.sqrt((M2 + 2 / (g - 1)) / (2 * g / (g - 1) * M2 - 1));
-        const P0 = ((g + 1) * M2 / ((g - 1) * M2 + 2)) ** (g / (g - 1)) * ((g + 1) / (2 * g * M2 - (g - 1))) ** (1 / (g - 1));
-        const P1 = (1 + (g - 1) / 2 * M2) ** (-g / (g - 1)) / P0;
-        M_.push(M); T_.push(T); P_.push(P); rho_.push(rho); M2_.push(Md); P0_.push(P0); P1_.push(P1);
-      }
-      const wrap = (c: number[]): Value => (c.length === 1 ? scalar(c[0]) : mat(shapeMat.rows, shapeMat.cols, Float64Array.from(c)));
-      return ret([M_, T_, P_, rho_, M2_, P0_, P1_].map(wrap).slice(0, Math.max(1, nargout)));
-    },
+    flownormalshock: (a, nargout) => flowMachMode('flownormalshock', a, nargout, (g, M, M2) => {
+      const P0 = ((g + 1) * M2 / ((g - 1) * M2 + 2)) ** (g / (g - 1)) * ((g + 1) / (2 * g * M2 - (g - 1))) ** (1 / (g - 1));
+      return [M,
+        (2 + (g - 1) * M2) * (2 * g * M2 - (g - 1)) / ((g + 1) * (g + 1) * M2),   // T/T1
+        (2 * g * M2 - (g - 1)) / (g + 1),                                          // P/P1
+        (g + 1) * M2 / ((g - 1) * M2 + 2),                                         // rho/rho1
+        Math.sqrt((M2 + 2 / (g - 1)) / (2 * g / (g - 1) * M2 - 1)),                // M2 (downstream)
+        P0,                                                                        // P0/P0_1
+        (1 + (g - 1) / 2 * M2) ** (-g / (g - 1)) / P0];                            // P1/P0_1
+    }),
     // flowfanno(gamma,mach[,'mach']) → [mach, T, P, rho, V, P0, fanno] (forward/mach mode).
-    flowfanno: (a, nargout) => {
-      const gMat = m(a[0]), gArr = Array.from(gMat.data), vMat = m(a[1]), vArr = Array.from(vMat.data);
-      if (a[2] !== undefined && asString(a[2]).toLowerCase() !== 'mach') throw new MatError('aero:flowfanno: only mach mode supported');
-      const n = Math.max(gArr.length, vArr.length);
-      const shapeMat = vArr.length === n ? vMat : gMat;   // output follows the non-scalar input's shape
-      const gAt = (i: number) => (gArr.length === 1 ? gArr[0] : gArr[i]); const vAt = (i: number) => (vArr.length === 1 ? vArr[0] : vArr[i]);
-      const cols: number[][] = [[], [], [], [], [], [], []];
-      for (let i = 0; i < n; i++) {
-        const g = gAt(i), M = vAt(i), M2 = M * M, denom = 2 + (g - 1) * M2;
-        cols[0].push(M);
-        cols[1].push((g + 1) / denom);                                          // T/T*
-        cols[2].push((1 / M) * Math.sqrt((g + 1) / denom));                      // P/P*
-        cols[3].push((1 / M) * Math.sqrt(denom / (g + 1)));                      // rho/rho*
-        cols[4].push(M * Math.sqrt((g + 1) / denom));                           // V/V*
-        cols[5].push((1 / M) * (denom / (g + 1)) ** ((g + 1) / (2 * (g - 1)))); // P0/P0*
-        cols[6].push((1 - M2) / (g * M2) + (g + 1) / (2 * g) * Math.log((g + 1) * M2 / denom)); // 4fL*/D
-      }
-      const wrap = (c: number[]): Value => (c.length === 1 ? scalar(c[0]) : mat(shapeMat.rows, shapeMat.cols, Float64Array.from(c)));
-      return ret(cols.map(wrap).slice(0, Math.max(1, nargout)));
-    },
+    flowfanno: (a, nargout) => flowMachMode('flowfanno', a, nargout, (g, M, M2) => {
+      const denom = 2 + (g - 1) * M2;
+      return [M,
+        (g + 1) / denom,                                          // T/T*
+        (1 / M) * Math.sqrt((g + 1) / denom),                     // P/P*
+        (1 / M) * Math.sqrt(denom / (g + 1)),                     // rho/rho*
+        M * Math.sqrt((g + 1) / denom),                           // V/V*
+        (1 / M) * (denom / (g + 1)) ** ((g + 1) / (2 * (g - 1))), // P0/P0*
+        (1 - M2) / (g * M2) + (g + 1) / (2 * g) * Math.log((g + 1) * M2 / denom)]; // 4fL*/D
+    }),
     // flowrayleigh(gamma,mach[,'mach']) → [mach, T, P, rho, V, P0, T0] (forward/mach mode).
-    flowrayleigh: (a, nargout) => {
-      const gMat = m(a[0]), gArr = Array.from(gMat.data), vMat = m(a[1]), vArr = Array.from(vMat.data);
-      if (a[2] !== undefined && asString(a[2]).toLowerCase() !== 'mach') throw new MatError('aero:flowrayleigh: only mach mode supported');
-      const n = Math.max(gArr.length, vArr.length);
-      const shapeMat = vArr.length === n ? vMat : gMat;   // output follows the non-scalar input's shape
-      const gAt = (i: number) => (gArr.length === 1 ? gArr[0] : gArr[i]); const vAt = (i: number) => (vArr.length === 1 ? vArr[0] : vArr[i]);
-      const cols: number[][] = [[], [], [], [], [], [], []];
-      for (let i = 0; i < n; i++) {
-        const g = gAt(i), M = vAt(i), M2 = M * M, gm = 1 + g * M2;
-        cols[0].push(M);
-        cols[1].push(M2 * (g + 1) * (g + 1) / (gm * gm));                       // T/T*
-        cols[2].push((g + 1) / gm);                                             // P/P*
-        cols[3].push(gm / ((g + 1) * M2));                                      // rho/rho*
-        cols[4].push((g + 1) * M2 / gm);                                        // V/V*
-        cols[5].push((g + 1) * M2 * (2 + (g - 1) * M2) / (gm * gm));            // (MATLAB 6th output)
-        cols[6].push((g + 1) / gm * ((2 + (g - 1) * M2) / (g + 1)) ** (g / (g - 1))); // (MATLAB 7th output)
-      }
-      const wrap = (c: number[]): Value => (c.length === 1 ? scalar(c[0]) : mat(shapeMat.rows, shapeMat.cols, Float64Array.from(c)));
-      return ret(cols.map(wrap).slice(0, Math.max(1, nargout)));
-    },
+    flowrayleigh: (a, nargout) => flowMachMode('flowrayleigh', a, nargout, (g, M, M2) => {
+      const gm = 1 + g * M2;
+      return [M,
+        M2 * (g + 1) * (g + 1) / (gm * gm),                       // T/T*
+        (g + 1) / gm,                                             // P/P*
+        gm / ((g + 1) * M2),                                      // rho/rho*
+        (g + 1) * M2 / gm,                                        // V/V*
+        (g + 1) * M2 * (2 + (g - 1) * M2) / (gm * gm),            // (MATLAB 6th output)
+        (g + 1) / gm * ((2 + (g - 1) * M2) / (g + 1)) ** (g / (g - 1))]; // (MATLAB 7th output)
+    }),
     // mach = machnumber(vel,a) = airspeed(vel)./a (vel rows are velocity vectors)
     machnumber: (a) => {
       const v = rowsOf(m(a[0])).map((r) => Math.hypot(r[0], r[1], r[2]));
