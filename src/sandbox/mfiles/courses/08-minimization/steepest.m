@@ -44,7 +44,11 @@ function [x, k] = steepest_descent_robust(f, grad, x0, tol, max_iter)
                 break;
             end
         end
-        
+        if t < 1e-15   % a vonalkeresés nem talált csökkenést -> nincs értelme tovább lépni
+            warning('A vonalkeresés nem talált csökkenő lépést (%d. iteráció).', k);
+            return;
+        end
+
         % Új pont kiszámítása
         x = x + t * d;
     end
