@@ -5001,7 +5001,7 @@ const BASE_REF = new Set<string>((
   'isnan isinf isfinite isreal isfloat plus minus times rdivide ldivide mtimes mrdivide mldivide power mpower uminus uplus transpose ctranspose ' +
   'eq ne lt gt le ge and or not xor isequal isequaln isapprox unique ismember logical find nnz any all ' +
   'disp fprintf sprintf num2str str2num str2double mat2str int2str error warning input feval arrayfun bsxfun kron cross vecnorm ' +
-  'isdiag issymmetric ishermitian istriu istril isbanded bandwidth gamma gammaln erf erfc erfinv beta filter filter2 conv2 detrend ' +
+  'isdiag issymmetric ishermitian istriu istril isbanded bandwidth gamma gammaln gammainc erf erfc erfinv erfcinv beta betaln betainc filter filter2 conv2 detrend ' +
   'normalize rescale clip smoothdata isoutlier filloutliers rmoutliers islocalmax islocalmin sinpi cospi pi ' +
   'plot fplot hold title xlabel ylabel zlabel legend grid axis xlim ylim set gca gcf figure clf cla close clc format who whos clear help doc ans dot repmat ' +
   'surf surfc surfl mesh meshc surface contour contourf contour3 pcolor shading colorbar colormap view peaks xline yline ' +
@@ -5227,7 +5227,10 @@ export function builtinHelp(name: string): string | null {
     if (overloaded && !list.includes(`sym.${name}`)) list.push(`sym.${name}`);
     return list;
   };
-  const entry = HELP[name] ?? KEYWORD_HELP[name] ?? (typeof TOOLBOX_HELP[name] === 'object' ? TOOLBOX_HELP[name] as HelpEntry : undefined);
+  const baseE = HELP[name] ?? KEYWORD_HELP[name];
+  const tbE = typeof TOOLBOX_HELP[name] === 'object' ? TOOLBOX_HELP[name] as HelpEntry : undefined;
+  // A summary-only base entry must not shadow a richer toolbox entry (e.g. lyap → Control System Toolbox).
+  const entry = baseE && (baseE.description?.length || baseE.syntax?.length) ? baseE : (tbE ?? baseE);
   if (entry) {
     const e = entry;
     let s = ` ${name} - ${e.summary}`;
