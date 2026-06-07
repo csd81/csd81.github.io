@@ -16,7 +16,8 @@ export interface Series {
   markerSize?: number;       // MarkerSize
   markerFaceColor?: string;  // MarkerFaceColor
   markerEdgeColor?: string;  // MarkerEdgeColor
-  type?: 'line' | 'bar' | 'barh' | 'area' | 'stem' | 'stairs' | 'pie';
+  type?: 'line' | 'bar' | 'barh' | 'area' | 'stem' | 'stairs' | 'pie' | 'box';
+  fillMode?: 'toself' | 'tonexty';   // filled polygon (fill/patch) or filled area
   z?: number[];        // present → 3-D line/scatter
   error?: number[];    // symmetric y error-bar half-widths
   sizes?: number[];    // per-point marker areas (scatter)
@@ -44,6 +45,13 @@ export interface Surface {
   xm?: number[][];     // optional full 2-D x/y coordinate matrices (slice planes)
   ym?: number[][];
   cdata?: number[][];  // optional surface-colour override (slice value field)
+}
+/** An in-chart text annotation at data coordinates (text/annotation). */
+export interface Annotation {
+  x: number;
+  y: number;
+  text: string;
+  color?: string;
 }
 /** A constant reference line drawn across the axes (xline/yline). */
 export interface RefLine {
@@ -82,6 +90,7 @@ export interface Panel {
   yticks?: number[];
   xticklabels?: string[];
   yticklabels?: string[];
+  annotations?: Annotation[];
   subtitle?: string;
 }
 export interface FigureSpec {
@@ -241,6 +250,44 @@ export class Graphics {
     this.touch();
   }
   pie(args: Value[]) { this.startPlot(); const v = toArray((args.find((a) => isMat(a)) as Mat)); this.cur().series.push({ x: [], y: v, type: 'pie', mode: 'markers', color: this.nextColor() }); this.touch(); }
+  /** fill(X,Y,C) / patch(X,Y,C) — a filled polygon (Plotly fill:'toself'). */
+  fill(args: Value[]) {
+    args = normSpec(args);
+    this.startPlot();
+    const { x, y } = this.xyVec(args);
+    const spec = args.find((a) => isMat(a) && (a as Mat).isChar) as Mat | undefined;
+    const color = (spec ? resolveColorStr(asString(spec)) : undefined) ?? this.nextColor();
+    this.cur().series.push({ x, y, mode: 'lines', fillMode: 'toself', color });
+    this.touch();
+  }
+  /** boxplot(Y)/boxchart(Y) — one box per column; boxchart(g,y) groups y by the values in g. */
+  boxchart(args: Value[]) {
+    this.startPlot();
+    const mats = args.filter((a): a is Mat => isMat(a) && !(a as Mat).isChar);
+    if (!mats.length) { this.touch(); return; }
+    if (mats.length >= 2) {
+      // (group, data): split data into one box per distinct group value.
+      const g = toArray(mats[0]), yv = toArray(mats[1]);
+      const groups = new Map<number, number[]>();
+      for (let i = 0; i < yv.length; i++) { const k = g[i]; (groups.get(k) ?? groups.set(k, []).get(k)!).push(yv[i]); }
+      for (const [k, vals] of [...groups.entries()].sort((p, q) => p[0] - q[0])) this.cur().series.push({ x: vals.map(() => k), y: vals, type: 'box', mode: 'markers', name: String(k), color: this.nextColor() });
+    } else {
+      const M = mats[0];
+      if (M.cols > 1 && M.rows > 1) { // matrix → one box per column
+        for (let cIdx = 0; cIdx < M.cols; cIdx++) { const col: number[] = []; for (let r = 0; r < M.rows; r++) col.push(M.data[r + cIdx * M.rows]); this.cur().series.push({ x: col.map(() => cIdx + 1), y: col, type: 'box', mode: 'markers', name: String(cIdx + 1), color: this.nextColor() }); }
+      } else { // vector → a single box
+        this.cur().series.push({ x: [], y: toArray(M), type: 'box', mode: 'markers', name: '1', color: this.nextColor() });
+      }
+    }
+    this.touch();
+  }
+  /** text(x,y,'str') — in-chart annotations at data coordinates (vectorized). */
+  text(xs: number[], ys: number[], txts: string[], color?: string) {
+    const cp = this.cur(); cp.annotations = cp.annotations ?? [];
+    const n = Math.max(xs.length, ys.length, txts.length);
+    for (let i = 0; i < n; i++) cp.annotations.push({ x: xs[i] ?? xs[0] ?? 0, y: ys[i] ?? ys[0] ?? 0, text: txts[i] ?? txts[txts.length - 1] ?? '', color });
+    this.touch();
+  }
   /** plot3/scatter3 — a 3-D line or scatter. */
   line3(args: Value[], mode: 'lines' | 'markers') {
     args = normSpec(args);
@@ -452,6 +499,8 @@ export class Graphics {
       case 'ytick': this.setTicks('y', isMat(value) ? toArray(value) : undefined); break;
       case 'xticklabel': this.setTickLabels('x', tickLabelList(value)); break;
       case 'yticklabel': this.setTickLabels('y', tickLabelList(value)); break;
+      case 'xscale': this.setScale('x', isMat(value) && value.isChar && asString(value) === 'log' ? 'log' : 'linear'); break;
+      case 'yscale': this.setScale('y', isMat(value) && value.isChar && asString(value) === 'log' ? 'log' : 'linear'); break;
       case 'title': if (isMat(value) && value.isChar) this.cur().title = asString(value); break;
       default: break; // ignore unknown axes properties
     }
@@ -504,6 +553,9 @@ export class Graphics {
       case 'shading': { const sf = this.cur().surfaces; if (arg0 && sf) { for (const s of sf) s.shading = (arg0 as Surface['shading']); this.touch(); } break; }
       case 'colorbar': this.cur().colorbar = arg0 !== 'off'; this.touch(); break;
       case 'colormap': if (arg0) { this.cur().colormap = arg0; this.touch(); } break;
+      case 'xscale': if (arg0 === 'log' || arg0 === 'linear') this.setScale('x', arg0); break;
+      case 'yscale': if (arg0 === 'log' || arg0 === 'linear') this.setScale('y', arg0); break;
+      case 'box': /* box on/off — outline is always drawn; accepted as a no-op toggle */ break;
       case 'view': /* camera angle — Plotly default; ignored */ break;
       case 'clf': case 'cla': case 'close': this.reset(); break;
       case 'figure': this.reset(); break;

@@ -4694,7 +4694,29 @@ export const BUILTINS: Record<string, Builtin> = {
     env.graphics.setTicks('y', toArray(m(a[0]))); return [];
   },
   zticks: async () => [],
-  text: async () => [],
+  text: async (a, _n, env) => {
+    // Leading numeric args are coordinates (x, y[, z]); the first char/string/cellstr is the label.
+    const nums = a.filter((v) => isMat(v) && !(v as Mat).isChar);
+    const xs = nums.length >= 1 ? toArray(m(nums[0])) : [0];
+    const ys = nums.length >= 2 ? toArray(m(nums[1])) : [0];
+    const lbl = a.find((v) => (isMat(v) && (v as Mat).isChar) || isStr(v) || isCell(v));
+    let txts: string[] = [];
+    if (lbl) {
+      if (isCell(lbl)) txts = (lbl as Cell).items.map((it) => asString(it));
+      else if (isStr(lbl)) txts = [...(lbl as Str).items];
+      else txts = [asString(lbl as Mat)];
+    }
+    // optional 'Color', <char|name> name-value pair
+    let color: string | undefined;
+    for (let i = 0; i + 1 < a.length; i++) if (isMat(a[i]) && (a[i] as Mat).isChar && asString(a[i] as Mat).toLowerCase() === 'color' && isMat(a[i + 1]) && (a[i + 1] as Mat).isChar) color = asString(a[i + 1] as Mat);
+    env.graphics.text(xs, ys, txts, color);
+    return gret(_n);
+  },
+  fill: async (a, n, env) => { env.graphics.fill(a); return gret(n); },
+  fill3: async (a, n, env) => { env.graphics.fill(a); return gret(n); },   // z ignored — 2-D projection
+  patch: async (a, n, env) => { env.graphics.fill(a); return gret(n); },
+  boxplot: async (a, n, env) => { env.graphics.boxchart(a); return gret(n); },
+  boxchart: async (a, n, env) => { env.graphics.boxchart(a); return gret(n); },
   xline: async (a, _n, env) => { const vals = toArray(m(a[0])); const spec = a.length >= 2 && isMat(a[1]) && (a[1] as Mat).isChar ? asString(a[1]) : undefined; const label = a.length >= 3 && isMat(a[2]) && (a[2] as Mat).isChar ? asString(a[2]) : undefined; env.graphics.refline('x', vals, spec, label); return []; },
   yline: async (a, _n, env) => { const vals = toArray(m(a[0])); const spec = a.length >= 2 && isMat(a[1]) && (a[1] as Mat).isChar ? asString(a[1]) : undefined; const label = a.length >= 3 && isMat(a[2]) && (a[2] as Mat).isChar ? asString(a[2]) : undefined; env.graphics.refline('y', vals, spec, label); return []; },
   peaks: async (a, nargout, env) => {

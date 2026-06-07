@@ -11,6 +11,20 @@ const CMAP: Record<string, string> = {
   gray: 'Greys', bone: 'Greys', autumn: 'YlOrRd', winter: 'Blues', spring: 'Pinkjet', summer: 'YlGn', copper: 'Hot', turbo: 'Turbo', viridis: 'Viridis',
 };
 
+/** Convert a #rgb/#rrggbb (or already-rgb()) colour to an rgba() string for translucent fills. */
+function fillRgba(color: string | undefined, alpha: number): string {
+  const c = color ?? '#2f6fed';
+  const hex = c.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i)?.[1];
+  if (hex) {
+    const h = hex.length === 3 ? hex.split('').map((d) => d + d).join('') : hex;
+    const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+  const rgb = c.match(/^rgb\(([^)]+)\)$/i)?.[1];
+  if (rgb) return `rgba(${rgb},${alpha})`;
+  return c;   // named colour — Plotly handles it (opaque)
+}
+
 export default function PlotlyFigure({ fig, dark }: { fig: FigureSpec; dark: boolean }) {
   const fg = dark ? '#d8dee9' : '#1f2733';
   const grid = dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.10)';
@@ -40,7 +54,7 @@ export default function PlotlyFigure({ fig, dark }: { fig: FigureSpec; dark: boo
   const annotations: any[] = [];
 
   panels.forEach((p, idx) => {
-    if (!p || (!p.series?.length && !p.surfaces?.length && !p.reflines?.length && !p.meshes?.length)) return;
+    if (!p || (!p.series?.length && !p.surfaces?.length && !p.reflines?.length && !p.meshes?.length && !p.annotations?.length)) return;
     const colorscale = CMAP[(p.colormap ?? 'parula').toLowerCase()] ?? 'Viridis';
     const has3D = !!p.surfaces?.some((s) => s.kind !== 'contour') || p.series.some((s) => s.z) || !!p.meshes?.length;
     const N = idx + 1; const suf = N === 1 ? '' : String(N);
@@ -104,7 +118,8 @@ export default function PlotlyFigure({ fig, dark }: { fig: FigureSpec; dark: boo
           data.push({ type: 'scatter', ...ax, x: s.x, y: s.y, mode: 'markers', marker: { color: s.color, symbol: 'circle', size: 7 }, name });
           return;
         }
-        data.push({ type: 'scatter', ...ax, x: s.x, y: s.y, mode: s.mode, line: { ...line, shape: s.type === 'stairs' ? 'hv' : 'linear' }, marker, name, ...(s.type === 'area' ? { fill: 'tozeroy' } : {}), ...(s.error ? { error_y: { type: 'data', array: s.error, visible: true } } : {}) });
+        if (s.type === 'box') { data.push({ type: 'box', ...ax, y: s.y, ...(s.x.length ? { x: s.x } : {}), name, marker: { color: s.color }, line: { color: s.color }, boxpoints: 'outliers' }); return; }
+        data.push({ type: 'scatter', ...ax, x: s.x, y: s.y, mode: s.mode, line: { ...line, shape: s.type === 'stairs' ? 'hv' : 'linear' }, marker, name, ...(s.type === 'area' ? { fill: 'tozeroy' } : {}), ...(s.fillMode ? { fill: s.fillMode, fillcolor: fillRgba(s.color, 0.35) } : {}), ...(s.error ? { error_y: { type: 'data', array: s.error, visible: true } } : {}) });
       });
       for (const s of p.surfaces ?? []) if (s.kind === 'contour') data.push({ type: 'contour', xaxis: xa, yaxis: ya, x: s.x, y: s.y, z: s.z, colorscale, showscale: !!p.colorbar, contours: { coloring: 'fill' } });
       layout['xaxis' + suf] = { ...axisStyle(p.xRange, p.xOrigin, p.xlabel, p.xScale, p.xticks, p.xticklabels), anchor: ya, ...(single ? {} : { domain: xdom }) };
@@ -115,6 +130,7 @@ export default function PlotlyFigure({ fig, dark }: { fig: FigureSpec; dark: boo
           : { type: 'line', yref: ya, y0: rf.value, y1: rf.value, xref: xa + ' domain', x0: 0, x1: 1, line: { color: rf.color ?? fg, dash: rf.dash, width: 1.5 } })));
       }
       if (p.legend?.length || p.series.length > 1) layout.showlegend = single ? true : layout.showlegend;
+      for (const an of p.annotations ?? []) annotations.push({ x: an.x, y: an.y, text: an.text, xref: xa, yref: ya, showarrow: false, xanchor: 'left', yanchor: 'middle', font: { color: an.color ?? fg, size: single ? 12 : 10 } });
     }
     // Per-panel title (subplot title) as an annotation above the cell.
     const ttl = p.subtitle && p.title ? `${p.title} — ${p.subtitle}` : (p.title ?? '');
