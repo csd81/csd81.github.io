@@ -16,7 +16,7 @@ export interface Series {
   markerSize?: number;       // MarkerSize
   markerFaceColor?: string;  // MarkerFaceColor
   markerEdgeColor?: string;  // MarkerEdgeColor
-  type?: 'line' | 'bar' | 'barh' | 'area' | 'stem' | 'stairs' | 'pie' | 'box';
+  type?: 'line' | 'bar' | 'barh' | 'area' | 'stem' | 'stairs' | 'pie' | 'box' | 'violin';
   fillMode?: 'toself' | 'tonexty';   // filled polygon (fill/patch) or filled area
   z?: number[];        // present → 3-D line/scatter
   error?: number[];    // symmetric y error-bar half-widths
@@ -91,6 +91,8 @@ export interface Panel {
   xticklabels?: string[];
   yticklabels?: string[];
   annotations?: Annotation[];
+  heatmap?: { z: number[][]; x?: (string | number)[]; y?: (string | number)[] };   // heatmap/imagesc/binscatter
+  parcoords?: { label: string; values: number[] }[];                                // parallelplot
   subtitle?: string;
 }
 export interface FigureSpec {
@@ -294,8 +296,65 @@ export class Graphics {
     this.startPlot(); const mats = args.filter((a): a is Mat => isMat(a) && !(a as Mat).isChar);
     const spec = args.find((a) => isMat(a) && (a as Mat).isChar);
     const s = spec ? parseLineSpec(asString(spec as Mat)) : {};
-    this.cur().series.push({ x: toArray(mats[0]), y: toArray(mats[1]), z: toArray(mats[2]), mode: spec ? (s.mode ?? mode) : mode, symbol: s.symbol, dash: s.dash, color: s.color ?? this.nextColor() });
+    // scatter3/bubblechart3(x,y,z,sz): a 4th numeric vector sets per-point marker sizes.
+    const sizes = mode === 'markers' && mats.length >= 4 && numel(mats[3]) > 1 ? toArray(mats[3]) : undefined;
+    this.cur().series.push({ x: toArray(mats[0]), y: toArray(mats[1]), z: toArray(mats[2]), sizes, mode: spec ? (s.mode ?? mode) : mode, symbol: s.symbol, dash: s.dash, color: s.color ?? this.nextColor() });
     this.touch();
+  }
+  /** swarmchart(x,y[,sz]) / swarmchart3(x,y,z[,sz]) — scatter with points spread along x to avoid overlap. */
+  swarm(args: Value[], threeD: boolean) {
+    this.startPlot();
+    const mats = args.filter((a): a is Mat => isMat(a) && !(a as Mat).isChar);
+    const xv = toArray(mats[0]).slice(), yv = toArray(mats[1]);
+    const zv = threeD ? toArray(mats[2]) : undefined;
+    const szIdx = threeD ? 3 : 2;
+    const sizes = mats.length > szIdx && numel(mats[szIdx]) > 1 ? toArray(mats[szIdx]) : undefined;
+    // Beeswarm jitter: spread each group of equal-x points symmetrically across a small width.
+    const groups = new Map<number, number[]>();
+    xv.forEach((x, i) => { const g = groups.get(x); if (g) g.push(i); else groups.set(x, [i]); });
+    for (const idxs of groups.values()) { const k = idxs.length; const w = Math.min(0.4, 0.045 * k); idxs.forEach((idx, j) => { xv[idx] = xv[idx] + (k > 1 ? (j / (k - 1) - 0.5) * 2 * w : 0); }); }
+    this.cur().series.push({ x: xv, y: yv, z: zv, sizes, mode: 'markers', symbol: 'circle', color: this.nextColor() });
+    this.touch();
+  }
+  /** heatmap(C) / heatmap(xvals,yvals,C) — a coloured matrix grid (also used by imagesc/binscatter). */
+  heatmap(z: number[][], x?: (string | number)[], y?: (string | number)[]) {
+    this.startPlot(); this.cur().heatmap = { z, x, y }; this.cur().colorbar = true; this.touch();
+  }
+  /** violinplot(Y) — one violin per column; violinplot(g,y) groups y by g (kernel density via Plotly). */
+  violin(args: Value[]) {
+    this.startPlot();
+    const mats = args.filter((a): a is Mat => isMat(a) && !(a as Mat).isChar);
+    if (!mats.length) { this.touch(); return; }
+    if (mats.length >= 2) {
+      const g = toArray(mats[0]), yv = toArray(mats[1]); const groups = new Map<number, number[]>();
+      for (let i = 0; i < yv.length; i++) { const k = g[i]; const arr = groups.get(k); if (arr) arr.push(yv[i]); else groups.set(k, [yv[i]]); }
+      for (const [k, vals] of [...groups.entries()].sort((p, q) => p[0] - q[0])) this.cur().series.push({ x: vals.map(() => k), y: vals, type: 'violin', mode: 'markers', name: String(k), color: this.nextColor() });
+    } else {
+      const M = mats[0];
+      if (M.cols > 1 && M.rows > 1) for (let c = 0; c < M.cols; c++) { const col: number[] = []; for (let r = 0; r < M.rows; r++) col.push(M.data[r + c * M.rows]); this.cur().series.push({ x: col.map(() => c + 1), y: col, type: 'violin', mode: 'markers', name: String(c + 1), color: this.nextColor() }); }
+      else this.cur().series.push({ x: [], y: toArray(M), type: 'violin', mode: 'markers', name: '1', color: this.nextColor() });
+    }
+    this.touch();
+  }
+  /** parallelplot(M) — parallel-coordinates: one axis per column, one polyline per row. */
+  parallelcoords(M: Mat, labels?: string[]) {
+    this.startPlot();
+    const dims: { label: string; values: number[] }[] = [];
+    for (let c = 0; c < M.cols; c++) { const v: number[] = []; for (let r = 0; r < M.rows; r++) v.push(M.data[r + c * M.rows]); dims.push({ label: labels?.[c] ?? `Var${c + 1}`, values: v }); }
+    this.cur().parcoords = dims; this.touch();
+  }
+  /** binscatter(x,y) — 2-D density: bin points into a grid and render as a heatmap. */
+  binscatter(xs: number[], ys: number[], nb = 20) {
+    const fin = (v: number) => Number.isFinite(v);
+    const xf = xs.filter((_, i) => fin(xs[i]) && fin(ys[i])), yf = ys.filter((_, i) => fin(xs[i]) && fin(ys[i]));
+    if (!xf.length) { this.startPlot(); this.touch(); return; }
+    const xlo = Math.min(...xf), xhi = Math.max(...xf), ylo = Math.min(...yf), yhi = Math.max(...yf);
+    const z: number[][] = Array.from({ length: nb }, () => new Array(nb).fill(0));
+    const bin = (v: number, lo: number, hi: number) => (hi > lo ? Math.min(nb - 1, Math.floor((v - lo) / (hi - lo) * nb)) : 0);
+    for (let i = 0; i < xf.length; i++) z[bin(yf[i], ylo, yhi)][bin(xf[i], xlo, xhi)]++;
+    const xc = Array.from({ length: nb }, (_, i) => xlo + (xhi - xlo) * (i + 0.5) / nb);
+    const yc = Array.from({ length: nb }, (_, i) => ylo + (yhi - ylo) * (i + 0.5) / nb);
+    this.heatmap(z, xc, yc);
   }
 
   /** plot(x, y, x2, y2, 'spec', ...) — also plot(y) and plot(x, Ymatrix). */
@@ -390,7 +449,9 @@ export class Graphics {
       theta = counts.map((_, i) => (i + 0.5) * 2 * Math.PI / nb); r = counts;
     } else if (mats.length >= 2) { theta = toArray(mats[0]); r = toArray(mats[1]); }
     else { r = toArray(mats[0]); theta = r.map((_, i) => 2 * Math.PI * i / r.length); }
-    c.series.push({ x: [], y: [], theta, r, polarType: mode === 'bar' ? 'bar' : undefined, mode: mode === 'bar' ? 'lines' : mode, symbol: mode === 'markers' ? 'circle' : undefined, color: this.nextColor() });
+    // polarscatter/polarbubblechart(theta,r,sz): a 3rd numeric vector sets per-point marker sizes.
+    const sizes = mode === 'markers' && mats.length >= 3 && numel(mats[2]) > 1 ? toArray(mats[2]) : undefined;
+    c.series.push({ x: [], y: [], theta, r, sizes, polarType: mode === 'bar' ? 'bar' : undefined, mode: mode === 'bar' ? 'lines' : mode, symbol: mode === 'markers' ? 'circle' : undefined, color: this.nextColor() });
     this.touch();
   }
   /** compass(u,v): arrows from the origin in polar axes. */

@@ -4688,6 +4688,21 @@ export const BUILTINS: Record<string, Builtin> = {
   stem: async (a, n, env) => { env.graphics.chart2d(a, 'stem'); return gret(n); },
   stairs: async (a, n, env) => { env.graphics.chart2d(a, 'stairs'); return gret(n); },
   scatter: async (a, n, env) => { env.graphics.scatter(a); return gret(n); },
+  bubblechart: async (a, n, env) => { env.graphics.scatter(a); return gret(n); },          // scatter with per-point sizes (3rd arg)
+  bubblechart3: async (a, n, env) => { env.graphics.line3(a, 'markers'); return gret(n); }, // scatter3 with per-point sizes (4th arg)
+  swarmchart: async (a, n, env) => { env.graphics.swarm(a, false); return gret(n); },
+  swarmchart3: async (a, n, env) => { env.graphics.swarm(a, true); return gret(n); },
+  binscatter: async (a, n, env) => { env.graphics.binscatter(toArray(m(a[0])), toArray(m(a[1])), a.length >= 3 && isMat(a[2]) && numel(a[2]) === 1 ? Math.round(asScalar(a[2])) : 20); return gret(n); },
+  heatmap: async (a, n, env) => {
+    // heatmap(C) or heatmap(xvalues, yvalues, C); label args may be cellstr/string arrays.
+    const nums = a.filter((v) => isMat(v) && !(v as Mat).isChar) as Mat[];
+    const labelList = (v: Value): (string | number)[] => isCell(v) ? (v as Cell).items.map((it) => asString(it)) : isStr(v) ? [...(v as Str).items] : isMat(v) ? toArray(v as Mat) : [];
+    const C = nums[nums.length - 1]; const z: number[][] = []; for (let r = 0; r < C.rows; r++) { const row: number[] = []; for (let c = 0; c < C.cols; c++) row.push(C.data[r + c * C.rows]); z.push(row); }
+    const x = a.length >= 3 ? labelList(a[0]) : undefined, y = a.length >= 3 ? labelList(a[1]) : undefined;
+    env.graphics.heatmap(z, x, y); return gret(n);
+  },
+  violinplot: async (a, n, env) => { env.graphics.violin(a); return gret(n); },
+  parallelplot: async (a, n, env) => { env.graphics.parallelcoords(m(a[0])); return gret(n); },
   errorbar: async (a, n, env) => { env.graphics.errorbar(a); return gret(n); },
   pie: async (a, n, env) => { env.graphics.pie(a); return gret(n); },
   plot3: async (a, n, env) => { env.graphics.line3(a, 'lines'); return gret(n); },
@@ -4806,6 +4821,7 @@ export const BUILTINS: Record<string, Builtin> = {
   feather: async (a, n, env) => { const u = toArray(m(a[0])), v = toArray(m(a[1])); env.graphics.quiver(u.map((_, i) => i + 1), u.map(() => 0), u, v); return gret(n); },
   geoplot: async (a, n, env) => { const lat = a[0], lon = a[1]; env.graphics.plot([lon, lat, ...a.slice(2)]); return gret(n); },
   geoscatter: async (a, n, env) => { env.graphics.scatter([a[1], a[0], ...a.slice(2)]); return gret(n); },
+  geobubble: async (a, n, env) => { env.graphics.scatter([a[1], a[0], ...a.slice(2)]); return gret(n); },  // geoscatter with per-point sizes
   animatedline: async (a, n, env) => { env.graphics.animatedline(); return gret(n); },
   addpoints: async (a, _n, env) => { env.graphics.addpoints(toArray(m(a[1])), toArray(m(a[2]))); return []; },
   clearpoints: async (_a, _n, env) => { env.graphics.clearpoints(); return []; },
@@ -4952,9 +4968,19 @@ export const BUILTINS: Record<string, Builtin> = {
   // polar plots
   polarplot: async (a, n, env) => { env.graphics.polar(a, 'lines'); return gret(n); },
   polarscatter: async (a, n, env) => { env.graphics.polar(a, 'markers'); return gret(n); },
+  polarbubblechart: async (a, n, env) => { env.graphics.polar(a, 'markers'); return gret(n); },  // polar scatter with sizes (3rd arg)
+  fpolarplot: async (a, n, env) => {
+    const f = a[0]; if (!isHandle(f)) throw new MatError('fpolarplot: expected a function handle');
+    let lo = 0, hi = 2 * Math.PI; const rg = a.find((v, i) => i >= 1 && isMat(v) && !(v as Mat).isChar && numel(v) >= 2);
+    if (rg) { const r = toArray(rg as Mat); lo = r[0]; hi = r[1]; }
+    const N = 400, th: number[] = [], rr: number[] = [];
+    for (let i = 0; i < N; i++) { const t = lo + (hi - lo) * i / (N - 1); const res = await env.callHandle(f, [scalar(t)], 1); th.push(t); rr.push(res.length && isMat(res[0]) ? asScalar(res[0]) : NaN); }
+    env.graphics.polar([rowVec(th), rowVec(rr)], 'lines'); return gret(n);
+  },
   polarhistogram: async (a, n, env) => { env.graphics.polar(a, 'bar'); return gret(n); },
   polaraxes: async (_a, _n, env) => { env.graphics.setPolarProp('rticks', []); return []; },
   compass: async (a, n, env) => { let us: number[], vs: number[]; if (a.length >= 2) { us = toArray(m(a[0])); vs = toArray(m(a[1])); } else { const z = m(a[0]); us = z.idata ? toArray(z) : toArray(z); vs = z.idata ? Array.from(z.idata) : us.map(() => 0); } env.graphics.compass(us, vs); return gret(n); },
+  compassplot: async (a, n, env) => { let us: number[], vs: number[]; if (a.length >= 2) { us = toArray(m(a[0])); vs = toArray(m(a[1])); } else { const z = m(a[0]); us = toArray(z); vs = z.idata ? Array.from(z.idata) : us.map(() => 0); } env.graphics.compass(us, vs); return gret(n); },
   rlim: async (a, _n, env) => { if (a.length && isMat(a[0]) && !(a[0] as Mat).isChar) env.graphics.setPolarProp('rlim', toArray(m(a[0]))); return []; },
   thetalim: async (a, _n, env) => { if (a.length && isMat(a[0]) && !(a[0] as Mat).isChar) env.graphics.setPolarProp('thetalim', toArray(m(a[0])).map((d) => d * Math.PI / 180)); return []; },
   rticks: async (a, _n, env) => { if (a.length && isMat(a[0]) && !(a[0] as Mat).isChar) env.graphics.setPolarProp('rticks', toArray(m(a[0]))); return []; },

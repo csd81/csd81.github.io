@@ -60,7 +60,7 @@ export default function PlotlyFigure({ fig, dark, xScale = 'auto', yScale = 'aut
   const annotations: any[] = [];
 
   panels.forEach((p, idx) => {
-    if (!p || (!p.series?.length && !p.surfaces?.length && !p.reflines?.length && !p.meshes?.length && !p.annotations?.length)) return;
+    if (!p || (!p.series?.length && !p.surfaces?.length && !p.reflines?.length && !p.meshes?.length && !p.annotations?.length && !p.heatmap && !p.parcoords)) return;
     const colorscale = CMAP[(p.colormap ?? 'parula').toLowerCase()] ?? 'Viridis';
     const has3D = !!p.surfaces?.some((s) => s.kind !== 'contour') || p.series.some((s) => s.z) || !!p.meshes?.length;
     const N = idx + 1; const suf = N === 1 ? '' : String(N);
@@ -75,7 +75,7 @@ export default function PlotlyFigure({ fig, dark, xScale = 'auto', yScale = 'aut
       const pk = 'polar' + suf; const deg = (t: number[]) => t.map((v) => (v * 180) / Math.PI);
       for (const s of p.series) {
         if (s.polarType === 'bar') data.push({ type: 'barpolar', subplot: pk, theta: deg(s.theta ?? []), r: s.r ?? [], marker: { color: s.color } });
-        else data.push({ type: 'scatterpolar', subplot: pk, theta: deg(s.theta ?? []), r: s.r ?? [], mode: s.mode, line: { color: s.color, width: 2 }, marker: { color: s.color, symbol: s.symbol ?? 'circle', size: 7 } });
+        else data.push({ type: 'scatterpolar', subplot: pk, theta: deg(s.theta ?? []), r: s.r ?? [], mode: s.mode, line: { color: s.color, width: 2 }, marker: { color: s.color, symbol: s.symbol ?? 'circle', size: s.sizes ?? 7 } });
       }
       layout[pk] = {
         domain: { x: xdom, y: ydom },
@@ -85,6 +85,22 @@ export default function PlotlyFigure({ fig, dark, xScale = 'auto', yScale = 'aut
       };
       const ttl0 = p.title ?? '';
       if (ttl0) annotations.push({ text: ttl0, showarrow: false, xref: 'paper', yref: 'paper', x: (xdom[0] + xdom[1]) / 2, y: Math.min(1, ydom[1] + 0.02), xanchor: 'center', yanchor: 'bottom', font: { color: fg, size: single ? 14 : 12 } });
+      return;
+    }
+
+    // Title annotation shared by the heatmap/parcoords branches below.
+    const panelTitle = () => { const t = p.subtitle && p.title ? `${p.title} — ${p.subtitle}` : (p.title ?? ''); if (t) annotations.push({ text: t, showarrow: false, xref: 'paper', yref: 'paper', x: (xdom[0] + xdom[1]) / 2, y: Math.min(1, ydom[1] + 0.02), xanchor: 'center', yanchor: 'bottom', font: { color: fg, size: single ? 14 : 12 } }); };
+
+    if (p.heatmap) {
+      data.push({ type: 'heatmap', xaxis: xa, yaxis: ya, z: p.heatmap.z, x: p.heatmap.x, y: p.heatmap.y, colorscale, showscale: p.colorbar !== false });
+      layout['xaxis' + suf] = { ...axisStyle(p.xRange, false, p.xlabel, undefined), anchor: ya, ...(single ? {} : { domain: xdom }) };
+      layout['yaxis' + suf] = { ...axisStyle(p.yRange, false, p.ylabel, undefined), anchor: xa, ...(single ? {} : { domain: ydom }) };
+      panelTitle();
+      return;
+    }
+    if (p.parcoords) {
+      data.push({ type: 'parcoords', domain: { x: xdom, y: ydom }, line: { color: '#2f6fed' }, dimensions: p.parcoords.map((d) => ({ label: d.label, values: d.values })), labelfont: { color: fg }, tickfont: { color: fg }, rangefont: { color: fg } });
+      panelTitle();
       return;
     }
 
@@ -103,7 +119,7 @@ export default function PlotlyFigure({ fig, dark, xScale = 'auto', yScale = 'aut
           data.push({ type: 'mesh3d', scene: sceneKey, x: mesh.x, y: mesh.y, z: mesh.z, i: mesh.i, j: mesh.j, k: mesh.k, intensity: mesh.z, colorscale, showscale: !!p.colorbar, opacity: 1, flatshading: true });
         }
       }
-      for (const s of p.series) if (s.z) data.push({ type: 'scatter3d', scene: sceneKey, x: s.x, y: s.y, z: s.z, mode: s.mode, line: { color: s.color, width: 4 }, marker: { color: s.color, size: 4 } });
+      for (const s of p.series) if (s.z) data.push({ type: 'scatter3d', scene: sceneKey, x: s.x, y: s.y, z: s.z, mode: s.mode, line: { color: s.color, width: 4 }, marker: { color: s.color, size: s.sizes ?? 4 } });
       layout[sceneKey] = { domain: { x: xdom, y: ydom }, xaxis: { title: { text: p.xlabel ?? 'x' }, gridcolor: grid, color: fg }, yaxis: { title: { text: p.ylabel ?? 'y' }, gridcolor: grid, color: fg }, zaxis: { title: { text: p.zlabel ?? 'z' }, gridcolor: grid, color: fg } };
     } else {
       p.series.forEach((s, i) => {
@@ -125,6 +141,7 @@ export default function PlotlyFigure({ fig, dark, xScale = 'auto', yScale = 'aut
           return;
         }
         if (s.type === 'box') { data.push({ type: 'box', ...ax, y: s.y, ...(s.x.length ? { x: s.x } : {}), name, marker: { color: s.color }, line: { color: s.color }, boxpoints: 'outliers' }); return; }
+        if (s.type === 'violin') { data.push({ type: 'violin', ...ax, y: s.y, ...(s.x.length ? { x: s.x } : {}), name, line: { color: s.color }, fillcolor: fillRgba(s.color, 0.35), meanline: { visible: true }, points: false }); return; }
         data.push({ type: 'scatter', ...ax, x: s.x, y: s.y, mode: s.mode, line: { ...line, shape: s.type === 'stairs' ? 'hv' : 'linear' }, marker, name, ...(s.type === 'area' ? { fill: 'tozeroy' } : {}), ...(s.fillMode ? { fill: s.fillMode, fillcolor: fillRgba(s.color, 0.35) } : {}), ...(s.error ? { error_y: { type: 'data', array: s.error, visible: true } } : {}) });
       });
       for (const s of p.surfaces ?? []) if (s.kind === 'contour') data.push({ type: 'contour', xaxis: xa, yaxis: ya, x: s.x, y: s.y, z: s.z, colorscale, showscale: !!p.colorbar, contours: { coloring: 'fill' } });

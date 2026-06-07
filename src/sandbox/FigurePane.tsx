@@ -14,12 +14,12 @@ export default function FigurePane({ fig }: { fig: FigureSpec }) {
   const [yLog, setYLog] = useState(false);
 
   const panels = fig.panels ?? [];
-  const hasContent = panels.some((p) => p && (p.series?.length || p.surfaces?.length || p.reflines?.length || p.meshes?.length));
+  const hasContent = panels.some((p) => p && (p.series?.length || p.surfaces?.length || p.reflines?.length || p.meshes?.length || p.heatmap || p.parcoords));
   if (!hasContent) {
     return <div className="mlab__fig-empty">No figure yet — call <code>plot</code>, <code>surf</code>, <code>fplot</code>…</div>;
   }
-  // Log scaling only applies to 2-D Cartesian axes — hide the toggles for 3-D/polar figures.
-  const is2D = !panels.some((p) => p && (p.polar || p.meshes?.length || p.surfaces?.some((s) => s.kind !== 'contour') || p.series?.some((s) => s.z)));
+  // Log scaling only applies to 2-D Cartesian axes — hide the toggles for 3-D/polar/heatmap/parcoords.
+  const is2D = !panels.some((p) => p && (p.polar || p.heatmap || p.parcoords || p.meshes?.length || p.surfaces?.some((s) => s.kind !== 'contour') || p.series?.some((s) => s.z)));
 
   const btn = (on: boolean): React.CSSProperties => ({
     cursor: 'pointer', fontSize: '0.72rem', lineHeight: 1, padding: '3px 7px', borderRadius: 5,
