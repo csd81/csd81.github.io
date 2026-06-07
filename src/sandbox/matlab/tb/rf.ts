@@ -165,7 +165,7 @@ function powergain(args: Value[]): Promise<Value[]> {
   const last = args[args.length - 1];
   let typeArgGiven = false;
   if (last && isMat(last) && last.isChar) {
-    const s = String.fromCharCode(...Array.from(last.data));
+    const s = String.fromCharCode(...(Array.from(last.data) as number[]));
     const found = GAINTYPES.find((g) => g.toLowerCase() === s.toLowerCase());
     if (found) { gaintype = found; typeArgGiven = true; }
   }

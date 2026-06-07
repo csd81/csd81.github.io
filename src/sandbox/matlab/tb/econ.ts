@@ -199,7 +199,7 @@ const crosscorr: Builtin = (a) => {
   return Promise.resolve([colVec(xcf)]);
 };
 /** aicbic(logL,numParam[,numObs]): Akaike (and Bayesian) information criteria. */
-const aicbic: Builtin = (a, nargout) => { const L = asScalar(a[0]), k = asScalar(a[1]); const outs: Value[] = [scalar(-2 * L + 2 * k)]; if (nargout >= 2) outs.push(scalar(-2 * L + k * Math.log(asScalar(a[2])))); return Promise.resolve(outs); };
+const aicbic: Builtin = (a, nargout) => { const L = asScalar(a[0]), k = asScalar(a[1]); const outs: Value[] = [scalar(-2 * L + 2 * k)]; if (nargout >= 2) { if (a.length < 3 || !isMat(a[2])) throw new MatError('aicbic: numObs is required to compute the Bayesian information criterion (BIC)'); outs.push(scalar(-2 * L + k * Math.log(asScalar(a[2])))); } return Promise.resolve(outs); };
 
 export const ECON: ToolboxModule = {
   id: 'econ',

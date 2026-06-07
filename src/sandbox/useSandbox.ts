@@ -136,9 +136,14 @@ export function useSandbox(folderId: string) {
   useEffect(() => {
     const worker = new Worker(new URL('./matlab/worker.ts', import.meta.url), { type: 'module' });
     attach(worker);
-    workerRef.current = worker;
+    // Preload the toolbox/library BEFORE replaying user files (same order as spawn()), otherwise the
+    // VFS replay can race ahead of the reset/preload and get wiped. Initial folderId captured here;
+    // later folder changes are handled by the effect below.
+    worker.postMessage({ type: 'reset', preload: folderSources(folderId) });
     replayFiles(worker);
+    workerRef.current = worker;
     return () => { worker.terminate(); workerRef.current = null; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attach, replayFiles]);
 
   useEffect(() => {

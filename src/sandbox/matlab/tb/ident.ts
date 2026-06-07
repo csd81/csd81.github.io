@@ -13,6 +13,12 @@ function lstsq(A: number[][], b: number[]): number[] {
   const AtA: number[][] = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (__, j) =>
     A.reduce((s, r) => s + r[i] * r[j], 0)));
   const Atb: number[] = Array.from({ length: n }, (_, i) => A.reduce((s, r, k) => s + r[i] * b[k], 0));
+  // Tikhonov (ridge) regularization: keep AtA positive-definite so a rank-deficient / ill-conditioned
+  // design matrix yields the minimum-norm-style solution instead of fabricated coefficients from a
+  // skipped zero pivot. The ridge is tiny relative to the problem scale, so well-posed fits are unaffected.
+  let tr = 0; for (let i = 0; i < n; i++) tr += AtA[i][i];
+  const ridge = (tr > 0 ? tr / n : 1) * 1e-12;
+  for (let i = 0; i < n; i++) AtA[i][i] += ridge;
   // augmented matrix
   const M = AtA.map((r, i) => [...r, Atb[i]]);
   for (let col = 0; col < n; col++) {

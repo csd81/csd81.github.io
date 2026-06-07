@@ -84,7 +84,7 @@ async function hom2cart(args: Value[]): Promise<Value[]> {
   const rows = c.rows, cols = c.cols - 1;
   const out = zeros(rows, cols);
   for (let r = 0; r < rows; r++) {
-    const w = c.data[r + cols * rows] || 1;   // last (homogeneous) column, column-major
+    const w = c.data[r + cols * rows];   // last (homogeneous) column, column-major (w=0 ⇒ point at infinity)
     for (let col = 0; col < cols; col++) out.data[r + col * rows] = c.data[r + col * rows] / w;
   }
   return [out];
@@ -94,7 +94,10 @@ async function hom2cart(args: Value[]): Promise<Value[]> {
 async function quat2rotm(args: Value[]): Promise<Value[]> {
   if (args.length < 1) throw new MatError('quat2rotm: requires quaternion [w x y z]');
   const q = toArray(m(args[0]));
-  const [w, x, y, z] = q;
+  const [w0, x0, y0, z0] = q;
+  const nrm = Math.hypot(w0, x0, y0, z0);   // normalize so a non-unit quaternion still yields an orthonormal R
+  if (nrm === 0) throw new MatError('quat2rotm: quaternion must be nonzero');
+  const w = w0 / nrm, x = x0 / nrm, y = y0 / nrm, z = z0 / nrm;
   const R = [
     [1 - 2 * (y * y + z * z), 2 * (x * y - w * z), 2 * (x * z + w * y)],
     [2 * (x * y + w * z), 1 - 2 * (x * x + z * z), 2 * (y * z - w * x)],
@@ -153,7 +156,7 @@ async function eul2rotm(args: Value[]): Promise<Value[]> {
   const matMul3 = (A: any, B: any): any => {
     const C = zeros(3, 3);
     for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) for (let k = 0; k < 3; k++)
-      C.data[i * 3 + j] += A.data[i * 3 + k] * B.data[k * 3 + j];
+      C.data[i + j * 3] += A.data[i + k * 3] * B.data[k + j * 3];   // column-major (data[r + c*rows])
     return C;
   };
   const rotFn = { X: Rx, Y: Ry, Z: Rz } as Record<string, (a: number) => any>;

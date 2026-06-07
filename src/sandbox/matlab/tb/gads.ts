@@ -10,6 +10,16 @@ const retv = (...vs: Value[]): Promise<Value[]> => Promise.resolve(vs);
 
 function isFn(v: Value): v is { kind: 'handle' } & Value { return v?.kind === 'handle'; }
 
+// Read a bound (lb/ub) argument, treating a missing OR empty ([]) matrix as "no bound" → fill the
+// default, and padding a short vector so every variable gets a value. Fixes MATLAB-style empty
+// bounds like ga(fun,nvars,[],[],[],[],[],[]) which otherwise yield length-0 population vectors.
+function boundVec(v: Value | undefined, n: number, def: number): number[] {
+  if (!v || !isMat(v)) return Array(n).fill(def);
+  const a = toArray(m(v));
+  if (a.length === 0) return Array(n).fill(def);
+  return Array.from({ length: n }, (_, i) => (a[i] ?? def));
+}
+
 async function callFn(fn: Value, xArr: number[]): Promise<number> {
   if (!isFn(fn)) throw new MatError('gads: objective must be a function handle');
   const h = fn as unknown as { call: (args: Value[], nargout: number) => Promise<Value[]> };
@@ -24,8 +34,8 @@ async function ga(args: Value[]): Promise<Value[]> {
   if (args.length < 2) throw new MatError('ga: at least 2 arguments required (fun, nvars)');
   const fn = args[0];
   const nvars = asScalar(m(args[1]));
-  const lb = args.length > 6 && isMat(args[6]) ? toArray(m(args[6])) : Array(nvars).fill(-Infinity);
-  const ub = args.length > 7 && isMat(args[7]) ? toArray(m(args[7])) : Array(nvars).fill(Infinity);
+  const lb = boundVec(args[6], nvars, -Infinity);
+  const ub = boundVec(args[7], nvars, Infinity);
 
   // clip infinite bounds to search domain
   const lo = lb.map((v, i) => isFinite(v) ? v : -5);
@@ -97,8 +107,8 @@ async function simulannealbnd(args: Value[]): Promise<Value[]> {
   const fn = args[0];
   const x0 = toArray(m(args[1]));
   const n = x0.length;
-  const lb = args.length > 2 && isMat(args[2]) ? toArray(m(args[2])) : Array(n).fill(-Infinity);
-  const ub = args.length > 3 && isMat(args[3]) ? toArray(m(args[3])) : Array(n).fill(Infinity);
+  const lb = boundVec(args[2], n, -Infinity);
+  const ub = boundVec(args[3], n, Infinity);
   const lo = lb.map((v, i) => isFinite(v) ? v : x0[i] - 5);
   const hi = ub.map((v, i) => isFinite(v) ? v : x0[i] + 5);
   const clamp = (v: number, i: number) => Math.max(lo[i], Math.min(hi[i], v));
@@ -124,8 +134,8 @@ async function patternsearch(args: Value[]): Promise<Value[]> {
   const fn = args[0];
   const x0 = toArray(m(args[1]));
   const n = x0.length;
-  const lb = args.length > 6 && isMat(args[6]) ? toArray(m(args[6])) : Array(n).fill(-Infinity);
-  const ub = args.length > 7 && isMat(args[7]) ? toArray(m(args[7])) : Array(n).fill(Infinity);
+  const lb = boundVec(args[6], n, -Infinity);
+  const ub = boundVec(args[7], n, Infinity);
   const clamp = (v: number, i: number) => isFinite(lb[i]) && v < lb[i] ? lb[i] : isFinite(ub[i]) && v > ub[i] ? ub[i] : v;
 
   let x = [...x0];
@@ -153,8 +163,8 @@ async function particleswarm(args: Value[]): Promise<Value[]> {
   if (args.length < 2) throw new MatError('particleswarm: requires fun and nvars');
   const fn = args[0];
   const nvars = asScalar(m(args[1]));
-  const lb = args.length > 2 && isMat(args[2]) ? toArray(m(args[2])) : Array(nvars).fill(-Infinity);
-  const ub = args.length > 3 && isMat(args[3]) ? toArray(m(args[3])) : Array(nvars).fill(Infinity);
+  const lb = boundVec(args[2], nvars, -Infinity);
+  const ub = boundVec(args[3], nvars, Infinity);
   const lo = lb.map((v, i) => isFinite(v) ? v : -5);
   const hi = ub.map((v, i) => isFinite(v) ? v : 5);
 
@@ -195,8 +205,8 @@ async function gamultiobj(args: Value[]): Promise<Value[]> {
   const fn = args[0];
   if (!isFn(fn)) throw new MatError('gamultiobj: first argument must be a function handle');
   const nvars = asScalar(m(args[1]));
-  const lb = args.length > 6 && isMat(args[6]) ? toArray(m(args[6])) : Array(nvars).fill(-5);
-  const ub = args.length > 7 && isMat(args[7]) ? toArray(m(args[7])) : Array(nvars).fill(5);
+  const lb = boundVec(args[6], nvars, -5);
+  const ub = boundVec(args[7], nvars, 5);
   const lo = lb.map((v, i) => isFinite(v) ? v : -5);
   const hi = ub.map((v, i) => isFinite(v) ? v : 5);
 

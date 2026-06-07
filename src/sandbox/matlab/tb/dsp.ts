@@ -4,7 +4,7 @@
 // bilinear (standalone), besself, decimate/interp/resample,
 // dsp.FIRFilter/BiquadFilter/FIRDecimator/FIRInterpolator/RMS/Mean/Variance System objects.
 import {
-  type Value, scalar, rowVec, colVec, toArray, asScalar, toMat as m, isMat,
+  type Value, type Mat, scalar, rowVec, colVec, toArray, asScalar, toMat as m, isMat,
   MatError, mat, zeros, makeObject, fromRows, str, bool,
 } from '../values';
 import type { ToolboxModule } from './types';
@@ -468,14 +468,12 @@ async function sos2tf(args: Value[]): Promise<Value[]> {
   return [rowVec(b), rowVec(a)];
 }
 
+// Read a (possibly complex) root vector as C[] pairs, preserving imaginary parts (idata).
+const mReim = (M: Mat): C[] => Array.from(M.data).map<C>((re, i) => [re, M.idata ? M.idata[i] : 0]);
+
 async function zp2tf(args: Value[]): Promise<Value[]> {
   if (args.length < 3) throw new MatError('zp2tf: requires z, p, k');
-  const Z = toArray(m(args[0])).map<C>((v, i, arr) => i%2===0&&arr[i+1]!==undefined ? [v, arr[i+1]] as C : [v,0]);
-  const P = toArray(m(args[1])).map<C>((v, i, arr) => i%2===0&&arr[i+1]!==undefined ? [v, arr[i+1]] as C : [v,0]);
-  // Actually z and p are real arrays of real roots (complex roots not in pairs here)
-  // More correctly: just use as real roots
-  const Zarr = toArray(m(args[0])).map<C>(v => [v, 0]);
-  const Parr = toArray(m(args[1])).map<C>(v => [v, 0]);
+  const Zarr = mReim(m(args[0])), Parr = mReim(m(args[1]));   // preserve complex conjugate roots
   const k = asScalar(m(args[2]));
   const [b, a] = zpk2ba(Zarr, Parr, k);
   return [rowVec(Array.from(b)), rowVec(Array.from(a))];
@@ -486,16 +484,14 @@ async function tf2zp(args: Value[]): Promise<Value[]> {
   const b = toArray(m(args[0])), a = toArray(m(args[1]));
   const Z = polyRoots(b), P = polyRoots(a);
   const k = b[0] / a[0];
-  // Return real parts only if imaginary parts tiny
-  const zr = Z.map(c => Math.abs(c[1]) < 1e-9 ? c[0] : c[0]);
-  const pr = P.map(c => Math.abs(c[1]) < 1e-9 ? c[0] : c[0]);
-  return [colVec(zr), colVec(pr), scalar(k)];
+  // preserve complex zeros/poles: attach idata when any imaginary part is non-negligible
+  const cv = (R: C[]): Value => { const re = R.map((c) => c[0]), im = R.map((c) => c[1]); const v = colVec(re); if (im.some((x) => Math.abs(x) > 1e-9)) v.idata = Float64Array.from(im); return v; };
+  return [cv(Z), cv(P), scalar(k)];
 }
 
 async function zp2sos_fn(args: Value[]): Promise<Value[]> {
   if (args.length < 3) throw new MatError('zp2sos: requires z, p, k');
-  const Z = toArray(m(args[0])).map<C>(v => [v, 0]);
-  const P = toArray(m(args[1])).map<C>(v => [v, 0]);
+  const Z = mReim(m(args[0])), P = mReim(m(args[1]));   // preserve complex conjugate roots
   const k = asScalar(m(args[2]));
   const [sos, kg] = await zp2sos_impl(Z, P, k);
   return [sos, kg];

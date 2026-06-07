@@ -2,7 +2,7 @@
 // batchnorm + dropout), custom-loop API (dlnetwork/dlfeval/adamupdate), dlarray operations,
 // LSTM/GRU forward, and inference utilities.
 import {
-  type Value, scalar, rowVec, colVec, toArray, asScalar, toMat as m, isMat, MatError,
+  type Value, type Cell, type Str, scalar, rowVec, colVec, toArray, asScalar, toMat as m, isMat, isStr, isCell, makeStrArr, makeCell, MatError,
   mat, zeros, makeObject, fromRows, str, bool,
 } from '../values';
 import type { ToolboxModule } from './types';
@@ -783,17 +783,17 @@ async function maxpool_fn(args: Value[]): Promise<Value[]> {
 // ── onehotdecode ─────────────────────────────────────────────────────────────────────
 async function onehotdecode(args: Value[]): Promise<Value[]> {
   if (args.length < 2) throw new MatError('onehotdecode: requires B and classes');
-  const B = m(args[0]); // [classes × N] probability matrix
+  const B = m(args[0]); // probability/score matrix
   const dim = args.length > 2 && isMat(args[2]) ? Math.round(asScalar(m(args[2]))) : 1;
-  // Argmax along rows (class dimension)
-  const N = B.cols, C = B.rows;
-  const labels = new Float64Array(N);
-  for (let j = 0; j < N; j++) {
-    let best = -Infinity, bestI = 0;
-    for (let i = 0; i < C; i++) if (B.data[i + j * C] > best) { best = B.data[i + j * C]; bestI = i; }   // column-major
-    labels[j] = bestI + 1;
-  }
-  return [rowVec(Array.from(labels))];
+  // Argmax along the class dimension → one winning class index per observation.
+  const idx: number[] = [];
+  if (dim === 2) { for (let i = 0; i < B.rows; i++) { let best = -Infinity, bi = 0; for (let j = 0; j < B.cols; j++) if (B.data[i + j * B.rows] > best) { best = B.data[i + j * B.rows]; bi = j; } idx.push(bi); } }
+  else { for (let j = 0; j < B.cols; j++) { let best = -Infinity, bi = 0; for (let i = 0; i < B.rows; i++) if (B.data[i + j * B.rows] > best) { best = B.data[i + j * B.rows]; bi = i; } idx.push(bi); } }
+  // Map indices to the supplied class labels, preserving the classes' type (string/cell/numeric).
+  const cls = args[1];
+  if (isStr(cls)) { const c = cls as Str; return [makeStrArr(idx.length, 1, idx.map((i) => c.items[i] ?? ''))]; }
+  if (isCell(cls)) { const c = cls as Cell; return [makeCell(idx.length, 1, idx.map((i) => c.items[i]))]; }
+  const cm = m(cls); return [colVec(idx.map((i) => cm.data[i]))];
 }
 
 // ── LSTM forward pass ─────────────────────────────────────────────────────────────────
