@@ -5,6 +5,7 @@ import type { Builtin } from '../builtins';
 import {
   type Value, type Mat, type StructV, type Cell, type ClassV, isObject, isCell, makeObject, makeCell, scalar, bool, colVec, rowVec, toArray, asScalar, asString, toMat as m, makeStr,
 } from '../values';
+import { schur, schurEig } from '../linalg';   // shared robust LA core (Francis QR), not a local reimpl
 import type { ToolboxModule } from './types';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
@@ -858,9 +859,7 @@ const sisoND = (sys: Value): { num: number[]; den: number[] } => ssSub(toSS(sys)
 // (num,den) for any SISO model: exact for a tf, else via the state-space core (handles ss/zpk).
 const numDenAny = (sys: Value): { num: number[]; den: number[] } => (isObject(sys) && sys.className === 'tf' ? getNumDen(sys) : sisoND(sys));
 function polesOf(sys: Value): { re: number[]; im: number[] } {
-  const A = toSS(sys).A, N = A.length; if (N === 0) return { re: [], im: [] };
-  const p = [1]; let Mk = eye(N); for (let k = 1; k <= N; k++) { const AM = mmul(A, Mk); p[k] = -traceM(AM) / k; Mk = AM.map((row, i) => row.map((vv, j) => vv + (i === j ? p[k] : 0))); }
-  return polyRoots(p);
+  return eigOfMat(toSS(sys).A);   // shared Schur-based eigenvalues
 }
 function tfChannelsAny(sys: Value): { ny: number; nu: number; num: number[][][]; den: number[][][] } {
   if (isObject(sys) && sys.className === 'tf') return tfChannels(sys);
@@ -876,11 +875,12 @@ function ctrbMat(A: number[][], B: number[][]): number[][] {
   for (let i = 1; i < n; i++) { cur = smul(A, cur); for (let r = 0; r < n; r++) cols[r].push(...cur[r]); }
   return cols;
 }
-// Eigenvalues of a raw matrix (characteristic polynomial via Faddeev-LeVerrier → roots).
+// Eigenvalues of a raw matrix via the shared linalg core (real Schur / Francis double-shift QR) —
+// replaces the local Faddeev-LeVerrier char-poly + Durand-Kerner, which lost accuracy on repeated/
+// clustered eigenvalues (e.g. pole() showed -1 ± 6e-9i for a double pole).
 function eigOfMat(A: number[][]): { re: number[]; im: number[] } {
   const N = A.length; if (N === 0) return { re: [], im: [] };
-  const p = [1]; let Mk = eye(N); for (let k = 1; k <= N; k++) { const AM = smul(A, Mk); p[k] = -traceM(AM) / k; Mk = AM.map((row, i) => row.map((vv, j) => vv + (i === j ? p[k] : 0))); }
-  return polyRoots(p);
+  return schurEig(schur(fromRows(A)).T);
 }
 const polesArg = (v: Value): { re: number[]; im: number[] } => { const M = m(v); return { re: Array.from(M.data), im: M.idata ? Array.from(M.idata) : Array.from(M.data, () => 0) }; };
 // Ackermann single-input pole placement: K = e_n' · inv(ctrb(A,B)) · φ(A), φ = desired char poly.
