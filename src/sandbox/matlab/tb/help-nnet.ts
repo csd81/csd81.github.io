@@ -196,8 +196,8 @@ export const HELP_NNET: Record<string, HelpEntry | string> = {
       ],
       seealso: ['dlnetwork', 'trainingOptions'],
     },
-    // QUARANTINED: dlgradient help removed (no autodiff; zero-gradient fake).
-    // QUARANTINED: dlfeval help removed (only drove the broken dlgradient loop).
+    dlgradient: { summary: 'Gradients via automatic differentiation', syntax: ['[g1,…] = dlgradient(loss, x1, …)'], description: ['dlgradient(loss, x1, …) returns the gradients of the scalar dlarray loss with respect to each traced dlarray xi, by reverse-mode automatic differentiation. Build loss from dlarray inputs using the supported ops (+, -, .*, ./, *, .^, sum, mean, exp, log, sqrt, sigmoid, tanh, relu, mse). Typically called inside dlfeval.'], seealso: ['dlfeval', 'dlarray', 'adamupdate'] },
+    dlfeval: { summary: 'Evaluate a function enabling automatic differentiation', syntax: ['[…] = dlfeval(fcn, x1, …)'], description: ['dlfeval(fcn, x1, …) calls fcn with automatic differentiation enabled and returns its outputs. Use it to wrap a model/loss function that calls dlgradient, e.g. [loss,grad] = dlfeval(@modelLoss, x).'], seealso: ['dlgradient', 'dlarray'] },
     fullyconnect: {
       summary: 'Sum all weighted input data and apply a bias',
       syntax: ['Y = fullyconnect(X,weights,bias)'],

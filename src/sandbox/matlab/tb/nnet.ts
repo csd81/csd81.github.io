@@ -2,10 +2,11 @@
 // batchnorm + dropout), custom-loop API (dlnetwork/dlfeval/adamupdate), dlarray operations,
 // LSTM/GRU forward, and inference utilities.
 import {
-  type Value, type Cell, type Str, scalar, rowVec, colVec, toArray, asScalar, toMat as m, isMat, isStr, isCell, makeStrArr, makeCell, MatError,
+  type Value, type Mat, type Cell, type Str, scalar, rowVec, colVec, toArray, asScalar, toMat as m, isMat, isStr, isCell, isObject, isHandle, makeStrArr, makeCell, MatError,
   mat, zeros, makeObject, fromRows, str, bool,
 } from '../values';
 import { erf } from '../specfun';
+import type { Builtin } from '../builtins';
 import type { ToolboxModule } from './types';
 import { HELP_NNET } from './help-nnet';
 
@@ -627,7 +628,9 @@ async function dlarray_fn(args: Value[]): Promise<Value[]> {
   const props = new Map<string, Value>();
   props.set('data', args[0]);
   props.set('dims', str(fmt));
-  return [makeObject('dlarray', props)];
+  const o = makeObject('dlarray', props);
+  (o.props as Map<string, unknown>).set('__node', dlNode(m(args[0])));   // leaf node so gradients can flow to it
+  return [o];
 }
 
 async function extractdata(args: Value[]): Promise<Value[]> {
@@ -691,10 +694,97 @@ async function adamupdate_fn(args: Value[]): Promise<Value[]> {
   return [net, avgGradV, avgSqGradV];
 }
 
-// QUARANTINED: dlfeval + dlgradient removed. There is no autodiff/tape engine, so
-// dlgradient could only ever return ZERO gradients (a dangerous silent fake), and
-// dlfeval existed solely to drive that broken custom-training loop. Both were removed
-// from builtins + help rather than shipping incorrect results.
+// ── Reverse-mode autodiff for dlarray (define-by-run tape) ────────────────────────────
+// Each traced dlarray carries a DLNode (stored in props.__node): its primal value plus a list
+// of parents with per-op backward closures. dlgradient seeds the scalar loss with grad 1 and
+// back-propagates topologically. v1: scalar-loss reverse mode over the elementary ops below.
+
+interface DLParent { node: DLNode; backward: (up: Mat) => Mat }
+interface DLNode { value: Mat; grad: Mat | null; parents: DLParent[] }
+const dlNode = (value: Mat, parents: DLParent[] = []): DLNode => ({ value, grad: null, parents });
+
+// — small column-major Mat helpers (the tape works on plain Mats) —
+const aMap = (a: Mat, f: (x: number) => number): Mat => { const o = zeros(a.rows, a.cols); for (let i = 0; i < a.data.length; i++) o.data[i] = f(a.data[i]); return o; };
+function aEw(a: Mat, b: Mat, f: (x: number, y: number) => number): Mat {   // same-shape or scalar broadcast
+  if (a.data.length === 1) return aMap(b, (y) => f(a.data[0], y));
+  if (b.data.length === 1) return aMap(a, (x) => f(x, b.data[0]));
+  const o = zeros(a.rows, a.cols); for (let i = 0; i < a.data.length; i++) o.data[i] = f(a.data[i], b.data[i]); return o;
+}
+function aMul(a: Mat, b: Mat): Mat { const R = a.rows, K = a.cols, C = b.cols; const o = zeros(R, C); for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) { let s = 0; for (let k = 0; k < K; k++) s += a.data[r + k * R] * b.data[k + c * K]; o.data[r + c * R] = s; } return o; }
+function aT(a: Mat): Mat { const o = zeros(a.cols, a.rows); for (let r = 0; r < a.rows; r++) for (let c = 0; c < a.cols; c++) o.data[c + r * a.cols] = a.data[r + c * a.rows]; return o; }
+const aSum = (a: Mat): number => { let s = 0; for (const v of a.data) s += v; return s; };
+/** Reduce an upstream gradient back to a smaller operand's shape (undo broadcasting). */
+function reduceTo(g: Mat, rows: number, cols: number): Mat {
+  if (g.rows === rows && g.cols === cols) return g;
+  if (rows === 1 && cols === 1) return scalar(aSum(g));
+  if (rows === 1) { const o = zeros(1, cols); for (let c = 0; c < cols; c++) { let s = 0; for (let r = 0; r < g.rows; r++) s += g.data[r + c * g.rows]; o.data[c] = s; } return o; }
+  if (cols === 1) { const o = zeros(rows, 1); for (let r = 0; r < rows; r++) { let s = 0; for (let c = 0; c < g.cols; c++) s += g.data[r + c * g.rows]; o.data[r] = s; } return o; }
+  return g;
+}
+
+/** A traced dlarray carrying a tape node. */
+function mkDl(node: DLNode): Value { const p = new Map<string, Value>([['data', node.value], ['dims', str('CB')]]); const o = makeObject('dlarray', p); (o.props as Map<string, unknown>).set('__node', node); return o; }
+/** Read an operand's primal + tape node (null = a constant, no gradient flows to it). */
+function opnd(v: Value): { mat: Mat; node: DLNode | null } {
+  if (isObject(v) && v.className === 'dlarray') return { mat: m(v.props.get('data')!), node: ((v.props as Map<string, unknown>).get('__node') as DLNode | undefined) ?? null };
+  return { mat: m(v), node: null };
+}
+
+const adUnary = (a: Value, fwd: (x: Mat) => Mat, dF: (up: Mat, x: Mat, y: Mat) => Mat): Promise<Value[]> => {
+  const A = opnd(a); const value = fwd(A.mat);
+  return Promise.resolve([mkDl(dlNode(value, A.node ? [{ node: A.node, backward: (up) => dF(up, A.mat, value) }] : []))]);
+};
+const adBinary = (a: Value, b: Value, fwd: (x: Mat, y: Mat) => Mat, dA: (up: Mat, x: Mat, y: Mat) => Mat, dB: (up: Mat, x: Mat, y: Mat) => Mat): Promise<Value[]> => {
+  const A = opnd(a), B = opnd(b); const value = fwd(A.mat, B.mat); const parents: DLParent[] = [];
+  if (A.node) parents.push({ node: A.node, backward: (up) => reduceTo(dA(up, A.mat, B.mat), A.mat.rows, A.mat.cols) });
+  if (B.node) parents.push({ node: B.node, backward: (up) => reduceTo(dB(up, A.mat, B.mat), B.mat.rows, B.mat.cols) });
+  return Promise.resolve([mkDl(dlNode(value, parents))]);
+};
+
+const DLARRAY_METHODS: Record<string, Builtin> = {
+  plus: (a) => adBinary(a[0], a[1], (x, y) => aEw(x, y, (p, q) => p + q), (up) => up, (up) => up),
+  minus: (a) => adBinary(a[0], a[1], (x, y) => aEw(x, y, (p, q) => p - q), (up) => up, (up) => aMap(up, (v) => -v)),
+  times: (a) => adBinary(a[0], a[1], (x, y) => aEw(x, y, (p, q) => p * q), (up, x, y) => aEw(up, y, (g, q) => g * q), (up, x) => aEw(up, x, (g, p) => g * p)),
+  rdivide: (a) => adBinary(a[0], a[1], (x, y) => aEw(x, y, (p, q) => p / q), (up, x, y) => aEw(up, y, (g, q) => g / q), (up, x, y) => aEw(aEw(up, x, (g, p) => -g * p), aEw(y, y, (p, q) => p * q), (n, d) => n / d)),
+  mtimes: (a) => {   // a scalar operand means scalar-multiply (element-wise), else matrix product
+    const A = opnd(a[0]), B = opnd(a[1]);
+    if (A.mat.data.length === 1 || B.mat.data.length === 1) return adBinary(a[0], a[1], (x, y) => aEw(x, y, (p, q) => p * q), (up, x, y) => aEw(up, y, (g, q) => g * q), (up, x) => aEw(up, x, (g, p) => g * p));
+    return adBinary(a[0], a[1], aMul, (up, x, y) => aMul(up, aT(y)), (up, x) => aMul(aT(x), up));
+  },
+  power: (a) => { const p = asScalar(m(a[1])); return adUnary(a[0], (x) => aMap(x, (v) => v ** p), (up, x) => aEw(up, aMap(x, (v) => p * v ** (p - 1)), (g, d) => g * d)); },
+  uminus: (a) => adUnary(a[0], (x) => aMap(x, (v) => -v), (up) => aMap(up, (v) => -v)),
+  exp: (a) => adUnary(a[0], (x) => aMap(x, Math.exp), (up, x, y) => aEw(up, y, (g, e) => g * e)),
+  log: (a) => adUnary(a[0], (x) => aMap(x, Math.log), (up, x) => aEw(up, x, (g, v) => g / v)),
+  sqrt: (a) => adUnary(a[0], (x) => aMap(x, Math.sqrt), (up, x, y) => aEw(up, y, (g, s) => g / (2 * s))),
+  sigmoid: (a) => adUnary(a[0], (x) => aMap(x, (v) => 1 / (1 + Math.exp(-v))), (up, x, y) => aEw(up, y, (g, s) => g * s * (1 - s))),
+  tanh: (a) => adUnary(a[0], (x) => aMap(x, Math.tanh), (up, x, y) => aEw(up, y, (g, t) => g * (1 - t * t))),
+  relu: (a) => adUnary(a[0], (x) => aMap(x, (v) => (v > 0 ? v : 0)), (up, x) => aEw(up, x, (g, v) => (v > 0 ? g : 0))),
+  sum: (a) => adUnary(a[0], (x) => scalar(aSum(x)), (up, x) => aMap(x, () => up.data[0])),
+  mean: (a) => adUnary(a[0], (x) => scalar(aSum(x) / x.data.length), (up, x) => aMap(x, () => up.data[0] / x.data.length)),
+  mse: (a) => { const P = opnd(a[0]), T = opnd(a[1]); const n = P.mat.data.length; const diff = aEw(P.mat, T.mat, (p, q) => p - q); const value = scalar(aSum(aMap(diff, (d) => d * d)) / n); const parents: DLParent[] = []; if (P.node) parents.push({ node: P.node, backward: (up) => aMap(diff, (d) => (up.data[0] * 2 * d) / n) }); if (T.node) parents.push({ node: T.node, backward: (up) => aMap(diff, (d) => (-up.data[0] * 2 * d) / n) }); return Promise.resolve([mkDl(dlNode(value, parents))]); },
+};
+
+// dlgradient(loss, x1, x2, …): reverse-mode gradients of a SCALAR loss w.r.t. each xi.
+const dlgradient_fn: Builtin = async (args) => {
+  const lossNode = opnd(args[0]).node;
+  if (!lossNode) throw new MatError('dlgradient: the loss must be a traced dlarray (compute it from dlarray inputs).');
+  if (lossNode.value.data.length !== 1) throw new MatError('dlgradient: the value to differentiate must be a scalar.');
+  const topo: DLNode[] = []; const seen = new Set<DLNode>();
+  const build = (nd: DLNode) => { if (seen.has(nd)) return; seen.add(nd); for (const p of nd.parents) build(p.node); topo.push(nd); };
+  build(lossNode);
+  for (const nd of topo) nd.grad = null;
+  lossNode.grad = scalar(1);
+  for (let i = topo.length - 1; i >= 0; i--) { const nd = topo[i]; if (!nd.grad) continue; for (const p of nd.parents) { const g = p.backward(nd.grad); p.node.grad = p.node.grad ? aEw(p.node.grad, g, (x, y) => x + y) : g; } }
+  const out: Value[] = [];
+  for (let k = 1; k < args.length; k++) { const o = opnd(args[k]); out.push(mkDl(dlNode(o.node?.grad ?? zeros(o.mat.rows, o.mat.cols)))); }
+  return out;
+};
+
+// dlfeval(fcn, x1, …): the tape is always live, so this just evaluates fcn (forwarding nargout).
+const dlfeval_fn: Builtin = async (args, n, env) => {
+  if (!isHandle(args[0])) throw new MatError('dlfeval: the first argument must be a function handle.');
+  return env.callHandle(args[0], args.slice(1), Math.max(1, n));
+};
 
 // ── Layer operation functions (dlarray API) ───────────────────────────────────────────
 async function fullyconnect(args: Value[]): Promise<Value[]> {
@@ -966,9 +1056,8 @@ export const NNET: ToolboxModule = {
     dlarray: dlarray_fn,
     extractdata,
     adamupdate: adamupdate_fn,
-    // QUARANTINED: dlgradient — no autodiff engine; returns ZERO gradients (a dangerous fake).
-    // QUARANTINED: dlfeval — only exists to drive dlgradient's custom training loop, which
-    //              cannot produce correct gradients, so the loop is meaningless.
+    dlfeval: dlfeval_fn,
+    dlgradient: dlgradient_fn,   // now backed by the reverse-mode tape above
     // dlarray operation functions
     fullyconnect,
     relu: relu_fn,
@@ -985,5 +1074,8 @@ export const NNET: ToolboxModule = {
     gru: gru_fn,
     onehotdecode,
   },
+  // Tape-aware overloads so operators (x.^2, x+y, 2*x) and functions (sigmoid/sum/mse/…) on a
+  // traced dlarray build the autodiff graph instead of hitting the base numeric builtins.
+  methods: { dlarray: DLARRAY_METHODS },
   help: HELP_NNET,
 };
