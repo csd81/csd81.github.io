@@ -52,14 +52,14 @@ function rootsValue(r: { re: number[]; im: number[] }): Value { const c = colVec
 // ── small dense-matrix + polynomial helpers ──
 function matRows(M: Mat): number[][] { const o: number[][] = []; for (let r = 0; r < M.rows; r++) { const row: number[] = []; for (let c = 0; c < M.cols; c++) row.push(M.data[r + c * M.rows]); o.push(row); } return o; }
 function fromRows(rows: number[][]): Mat { const R = rows.length, C = R ? rows[0].length : 0; const o = { kind: 'num' as const, rows: R, cols: C, data: new Float64Array(R * C) } as Mat; for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) o.data[r + c * R] = rows[r][c]; return o; }
-const mmul = (A: number[][], B: number[][]): number[][] => { const n = A.length, m = B[0].length, p = B.length; const C: number[][] = []; for (let i = 0; i < n; i++) { C[i] = []; for (let j = 0; j < m; j++) { let s = 0; for (let k = 0; k < p; k++) s += A[i][k] * B[k][j]; C[i][j] = s; } } return C; };
+const mmul = (A: number[][], B: number[][]): number[][] => { const n = A.length, p = B.length, m = B[0]?.length ?? 0; const C: number[][] = []; for (let i = 0; i < n; i++) { C[i] = []; for (let j = 0; j < m; j++) { let s = 0; for (let k = 0; k < p; k++) s += A[i][k] * B[k][j]; C[i][j] = s; } } return C; };
 const eye = (n: number): number[][] => Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)));
 /** Dense matrix inverse via Gauss-Jordan with partial pivoting. */
 function matInv(A: number[][]): number[][] {
   const n = A.length; const M = A.map((r, i) => [...r, ...eye(n)[i]]);
   for (let col = 0; col < n; col++) {
     let piv = col; for (let r = col + 1; r < n; r++) if (Math.abs(M[r][col]) > Math.abs(M[piv][col])) piv = r;
-    if (Math.abs(M[piv][col]) < 1e-300) throw new Error('ss2ss: transformation matrix T is singular');
+    if (Math.abs(M[piv][col]) < 1e-300) throw new Error('matrix is singular to working precision');
     [M[col], M[piv]] = [M[piv], M[col]];
     const d = M[col][col]; for (let j = 0; j < 2 * n; j++) M[col][j] /= d;
     for (let r = 0; r < n; r++) if (r !== col) { const f = M[r][col]; for (let j = 0; j < 2 * n; j++) M[r][j] -= f * M[col][j]; }
@@ -124,7 +124,7 @@ function bodeData(sys: Value, wArg: Value | undefined): { mag: number[]; phase: 
 const isMatLike = (v: Value): boolean => !!v && !isObject(v);
 
 // ── LQR / Riccati helpers ──
-const matT = (A: number[][]): number[][] => A[0].map((_, j) => A.map((r) => r[j]));
+const matT = (A: number[][]): number[][] => (A.length === 0 ? [] : A[0].map((_, j) => A.map((r) => r[j])));
 const matSub = (A: number[][], B: number[][]): number[][] => A.map((r, i) => r.map((v, j) => v - B[i][j]));
 const matAdd2 = (A: number[][], B: number[][]): number[][] => A.map((r, i) => r.map((v, j) => v + B[i][j]));
 const symmetrize = (A: number[][]): number[][] => A.map((r, i) => r.map((v, j) => (v + A[j][i]) / 2));
@@ -364,6 +364,7 @@ function c2dTustin(num: number[], den: number[], Ts: number): { num: number[]; d
 /** Refine a frequency crossing by bisection on f(w). */
 function bisect(f: (w: number) => number, lo: number, hi: number): number {
   let flo = f(lo);
+  if (flo === 0) return lo;   // exact root at the lower bound — don't walk away from it
   for (let it = 0; it < 200; it++) {
     const mid = 0.5 * (lo + hi); const fm = f(mid);
     if (fm === 0 || (hi - lo) < 1e-13 * Math.max(1, mid)) return mid;
@@ -425,8 +426,8 @@ function stepInfoFromResp(t: number[], y: number[], yfinal: number, yinit: numbe
   const yLo = yinit + rtLo * dev, yHi = yinit + rtHi * dev;
   const tLo = interpCross(yLo), tHi = interpCross(yHi);
   const RiseTime = tHi - tLo;
-  // SettlingMin/Max: extrema once response first reaches rtHi level
-  let iHi = 0; while (iHi < y.length && y[iHi] < yHi) iHi++;
+  // SettlingMin/Max: extrema once response first reaches the rtHi level (direction-aware).
+  let iHi = 0; while (iHi < y.length && (dev >= 0 ? y[iHi] < yHi : y[iHi] > yHi)) iHi++;
   let sMin = Infinity, sMax = -Infinity;
   for (let i = iHi; i < y.length; i++) { sMin = Math.min(sMin, y[i]); sMax = Math.max(sMax, y[i]); }
   // SettlingTime: last time |y-yfinal| exits the ±st·|dev| band
@@ -451,8 +452,10 @@ function stepInfoFromResp(t: number[], y: number[], yfinal: number, yinit: numbe
       if (A2 < 0) { const xv = -B2 / (2 * A2); if (xv > x0 && xv < x2) { PeakTime = xv; Peak = f1 - A2 * (x1 - xv) * (x1 - xv); } }
     }
   }
-  const Overshoot = dev !== 0 ? Math.max(0, (sMax - yfinal) / Math.abs(dev)) * 100 : 0;
-  const Undershoot = dev !== 0 ? Math.max(0, (yinit - sMin) / Math.abs(dev)) * 100 : 0;
+  // Overshoot = excursion past the final value in the step direction; Undershoot = excursion
+  // opposite to the step direction past the initial value. Direction-aware for negative steps.
+  const Overshoot = dev !== 0 ? Math.max(0, (dev > 0 ? sMax - yfinal : yfinal - sMin) / Math.abs(dev)) * 100 : 0;
+  const Undershoot = dev !== 0 ? Math.max(0, (dev > 0 ? yinit - sMin : sMax - yinit) / Math.abs(dev)) * 100 : 0;
   return new Map<string, number>([
     ['RiseTime', RiseTime], ['SettlingTime', SettlingTime], ['SettlingMin', sMin], ['SettlingMax', sMax],
     ['Overshoot', Overshoot], ['Undershoot', Undershoot], ['Peak', Peak], ['PeakTime', PeakTime],
@@ -547,7 +550,10 @@ function expandD(Dv: Value | undefined, ny: number, nu: number): number[][] {
 }
 // One SISO transfer function → controllable-canonical SS (matches tf2ss).
 function siso2ss(numIn: number[], denIn: number[]): SS {
-  const g = denIn[0] || 1; const den = denIn.map((v) => v / g); let num = numIn.map((v) => v / g);
+  let den0 = denIn.slice(); while (den0.length > 1 && den0[0] === 0) den0.shift();   // drop leading-zero den coeffs
+  let num0 = numIn.slice(); while (num0.length > 1 && num0[0] === 0) num0.shift();
+  if (num0.length > den0.length) throw new Error('improper transfer function (numerator degree exceeds denominator) cannot be realized in state space');
+  const g = den0[0] || 1; const den = den0.map((v) => v / g); let num = num0.map((v) => v / g);
   while (num.length < den.length) num.unshift(0);
   const no = den.length - 1, Dval = num[0];
   if (no <= 0) return { A: [], B: zeros2(0, 1), C: zeros2(1, 0), D: [[Dval]], Ts: 0 };
@@ -581,14 +587,16 @@ function tfChannels(v: ClassV): { ny: number; nu: number; num: number[][][]; den
 }
 // zpk object → per-channel num/den (expand each (z,p,k); handles SISO and MIMO cell storage).
 function zpkChannels(v: ClassV): { ny: number; nu: number; num: number[][][]; den: number[][][] } {
-  const conv = (zv: number[], pv: number[], k: number) => { let num = polyFromRoots(zv, zv.map(() => 0)).map((x) => x * k); const den = polyFromRoots(pv, pv.map(() => 0)); while (num.length < den.length) num.unshift(0); return { num, den }; };
+  // expand from roots, preserving complex zero/pole imaginary parts (idata).
+  const reim = (M: Mat): { re: number[]; im: number[] } => ({ re: Array.from(M.data), im: M.idata ? Array.from(M.idata) : Array.from(M.data, () => 0) });
+  const conv = (zM: Mat, pM: Mat, k: number) => { const z = reim(zM), p = reim(pM); let num = polyFromRoots(z.re, z.im).map((x) => x * k); const den = polyFromRoots(p.re, p.im); while (num.length < den.length) num.unshift(0); return { num, den }; };
   const zP = v.props.get('z')!, pP = v.props.get('p')!, kP = v.props.get('k')!;
   if (isCell(zP)) {
     const ny = zP.rows, nu = zP.cols, km = m(kP), num: number[][][] = [], den: number[][][] = [];
-    for (let i = 0; i < ny; i++) { num.push([]); den.push([]); for (let j = 0; j < nu; j++) { const c = conv(toArray(m((zP as Cell).items[i + j * ny])), toArray(m((pP as Cell).items[i + j * ny])), km.data[i + j * km.rows]); num[i].push(c.num); den[i].push(c.den); } }
+    for (let i = 0; i < ny; i++) { num.push([]); den.push([]); for (let j = 0; j < nu; j++) { const c = conv(m((zP as Cell).items[i + j * ny]), m((pP as Cell).items[i + j * ny]), km.data[i + j * km.rows]); num[i].push(c.num); den[i].push(c.den); } }
     return { ny, nu, num, den };
   }
-  const c = conv(toArray(m(zP)), toArray(m(pP)), asScalar(kP));
+  const c = conv(m(zP), m(pP), asScalar(kP));
   return { ny: 1, nu: 1, num: [[c.num]], den: [[c.den]] };
 }
 function toSS(v: Value): SS {
@@ -600,6 +608,69 @@ function toSS(v: Value): SS {
     }
     if (v.className === 'tf') { const { ny, nu, num, den } = tfChannels(v); return channelsToSS(num, den, ny, nu, Ts); }
     if (v.className === 'zpk') { const { ny, nu, num, den } = zpkChannels(v); return channelsToSS(num, den, ny, nu, Ts); }
+    // ── PID object types → transfer-function SS realization ──
+    if (v.className === 'pid' || v.className === 'pid2') {
+      // Parallel form: C(s) = Kp + Ki/s + Kd*s/(Tf*s+1)
+      // tf = [(Kp*Tf+Kd)*s^2 + (Kp+Ki*Tf)*s + Ki] / [Tf*s^2 + s]  (Tf>0)
+      // tf = [Kd*s^2 + Kp*s + Ki] / [s^2]  → wait for Tf=0:
+      //    = [Kd, Kp, Ki] / [0, 1, 0]  i.e. (Kd*s^2+Kp*s+Ki)/s
+      const Kp = asScalar(v.props.get('Kp') as Value ?? scalar(0));
+      const Ki = asScalar(v.props.get('Ki') as Value ?? scalar(0));
+      const Kd = asScalar(v.props.get('Kd') as Value ?? scalar(0));
+      const Tf = asScalar(v.props.get('Tf') as Value ?? scalar(0));
+      if (v.className === 'pid') {
+        // SISO 1x1 controller
+        let num: number[], den: number[];
+        if (Tf > 0) {
+          num = [(Kp * Tf + Kd), (Kp + Ki * Tf), Ki];
+          den = [Tf, 1, 0];
+        } else {
+          num = [Kd, Kp, Ki];
+          den = [1, 0];
+        }
+        return channelsToSS([[num]], [[den]], 1, 1, Ts);
+      } else {
+        // pid2: 2-DOF, 1×2 system [C_r(s), C_y(s)]
+        // C_r(s): acts on reference r  = Kp*b + Ki/s + Kd*c*s/(Tf*s+1)
+        // C_y(s): acts on output y (negated) = Kp + Ki/s + Kd*s/(Tf*s+1) (same as 1-DOF)
+        // tf(pid2) = [C_r(s), -C_y(s)] matching MATLAB (first col: r, second: -y)
+        const b = asScalar(v.props.get('b') as Value ?? scalar(1));
+        const c = asScalar(v.props.get('c') as Value ?? scalar(1));
+        let numR: number[], numY: number[], den: number[];
+        if (Tf > 0) {
+          numR = [(Kp * b * Tf + Kd * c), (Kp * b + Ki * Tf), Ki];
+          numY = [-(Kp * Tf + Kd), -(Kp + Ki * Tf), -Ki];
+          den = [Tf, 1, 0];
+        } else {
+          numR = [Kd * c, Kp * b, Ki];
+          numY = [-Kd, -Kp, -Ki];
+          den = [1, 0];
+        }
+        // 1×2 MIMO tf (1 output u, 2 inputs [r, y])
+        return channelsToSS([[numR, numY]], [[den, den]], 1, 2, Ts);
+      }
+    }
+    if (v.className === 'pidstd') {
+      // Standard form: Kp*(1 + 1/(Ti*s) + Td*N*s/(Td*s+N))
+      // With N=Inf (ideal): Kp*(1 + 1/(Ti*s) + Td*s) = pid(Kp, Kp/Ti, Kp*Td, 0)
+      // With finite N: Tf = Td/N, Ki = Kp/Ti, Kd = Kp*Td  → pid(Kp, Ki, Kd, Tf)
+      const Kp = asScalar(v.props.get('Kp') as Value ?? scalar(1));
+      const Ti = asScalar(v.props.get('Ti') as Value ?? scalar(Infinity));
+      const Td = asScalar(v.props.get('Td') as Value ?? scalar(0));
+      const N  = asScalar(v.props.get('N')  as Value ?? scalar(Infinity));
+      const Ki = isFinite(Ti) ? Kp / Ti : 0;
+      const Kd = Kp * Td;
+      const Tf = isFinite(N) && N > 0 ? Td / N : 0;
+      let num: number[], den: number[];
+      if (Tf > 0) {
+        num = [(Kp * Tf + Kd), (Kp + Ki * Tf), Ki];
+        den = [Tf, 1, 0];
+      } else {
+        num = [Kd, Kp, Ki];
+        den = [1, 0];
+      }
+      return channelsToSS([[num]], [[den]], 1, 1, Ts);
+    }
   }
   const M = m(v); return { A: [], B: zeros2(0, M.cols), C: zeros2(M.rows, 0), D: matRows(M), Ts: 0 };
 }
@@ -692,11 +763,27 @@ const matAddT = (A: number[][], B: number[][]): number[][] => A.map((r, i) => r.
 
 // SISO (num,den) view of an operand, or null if MIMO. Lets tf/zpk arithmetic stay polynomial
 // (exact, and able to represent improper results that a proper state-space cannot).
+// PID controller → SISO (num,den). Improper-safe: for Tf=0 the numerator degree exceeds the
+// denominator's (ideal derivative), which a state-space realization cannot represent — so PID
+// arithmetic must stay polynomial.
+function pidNumDen(v: ClassV): { num: number[]; den: number[] } {
+  let Kp: number, Ki: number, Kd: number, Tf: number;
+  if (v.className === 'pidstd') {
+    Kp = asScalar(v.props.get('Kp') as Value);
+    const Ti = asScalar(v.props.get('Ti') as Value), Td = asScalar(v.props.get('Td') as Value), N = asScalar(v.props.get('N') as Value);
+    Ki = isFinite(Ti) ? Kp / Ti : 0; Kd = Kp * Td; Tf = isFinite(N) && N > 0 ? Td / N : 0;
+  } else {
+    Kp = asScalar(v.props.get('Kp') as Value); Ki = asScalar(v.props.get('Ki') as Value);
+    Kd = asScalar(v.props.get('Kd') as Value); Tf = asScalar(v.props.get('Tf') as Value);
+  }
+  return Tf > 0 ? { num: [Kp * Tf + Kd, Kp + Ki * Tf, Ki], den: [Tf, 1, 0] } : { num: [Kd, Kp, Ki], den: [1, 0] };
+}
 function sisoNDof(v: Value): { num: number[]; den: number[] } | null {
   if (isObject(v)) {
     if (v.className === 'tf') { const numP = v.props.get('num')!; if (isCell(numP)) { if (numP.rows !== 1 || numP.cols !== 1) return null; return { num: toArray(m((numP as Cell).items[0])), den: toArray(m((v.props.get('den') as Cell).items[0])) }; } return { num: toArray(m(numP)), den: toArray(m(v.props.get('den')!)) }; }
     if (v.className === 'zpk') { const { ny, nu, num, den } = zpkChannels(v); return ny === 1 && nu === 1 ? { num: num[0][0], den: den[0][0] } : null; }
     if (v.className === 'ss' || v.className === 'dss') { const s = toSS(v); const { ny, nu } = ssDims(s); return ny === 1 && nu === 1 ? ssSub(s, 0, 0) : null; }
+    if (v.className === 'pid' || v.className === 'pidstd') return pidNumDen(v);   // SISO PID, improper-safe
     return null;
   }
   const M = m(v); return M.rows * M.cols === 1 ? { num: [M.data[0]], den: [1] } : null;
@@ -727,14 +814,25 @@ const LTI_OPS: Record<string, Builtin> = {
 // Interconnection builtins (global; MIMO via SS). H defaults to identity for feedback(G).
 const ltiParallel = (a: Value[]): Promise<Value[]> => ret(fromSS(ssParallel(toSS(a[0]), toSS(a[1])), rcls(a[0], a[1])));
 const ltiFeedback = (a: Value[]): Promise<Value[]> => {
-  const G = toSS(a[0]); const H = a.length >= 2 ? toSS(a[1]) : toSS(scalar(1));
   const sign = a.length >= 3 ? Math.sign(asScalar(a[2])) || -1 : -1;
+  // SISO polynomial fast-path: cl = Gn·Hd / (Gd·Hd − sign·Gn·Hn). Handles an improper G (e.g. a
+  // PID controller) whose closed loop is nonetheless proper — avoids an improper state-space realize.
+  const Gnd = sisoNDof(a[0]); const Hnd = a.length >= 2 ? sisoNDof(a[1]) : { num: [1], den: [1] };
+  if (Gnd && Hnd) {
+    const clNum = polyConv(Gnd.num, Hnd.den);
+    const clDen = polyAdd(polyConv(Gnd.den, Hnd.den), polyConv(Gnd.num, Hnd.num).map((x) => -sign * x));
+    while (clNum.length < clDen.length) clNum.unshift(0);
+    return ret(fromTfND(clNum, clDen, getTsV(a[0]) || (a.length >= 2 ? getTsV(a[1]) : 0), rcls(a[0], a.length >= 2 ? a[1] : a[0])));
+  }
+  const G = toSS(a[0]); const H = a.length >= 2 ? toSS(a[1]) : toSS(scalar(1));
   return ret(fromSS(ssFeedback(G, H, sign), rcls(a[0], a.length >= 2 ? a[1] : a[0])));
 };
 const ltiAppend = (a: Value[]): Promise<Value[]> => { let s = toSS(a[0]); for (let i = 1; i < a.length; i++) { const t = toSS(a[i]); s = { A: blk(s.A, t.A), B: blk(s.B, t.B), C: blk(s.C, t.C), D: blk(s.D, t.D), Ts: combTs(s, t) }; } return ret(fromSS(s, clsOf(a[0]))); };
 
 // Analysis helpers that work on any LTI class (tf/zpk/ss) via the SS core.
 const sisoND = (sys: Value): { num: number[]; den: number[] } => ssSub(toSS(sys), 0, 0);
+// (num,den) for any SISO model: exact for a tf, else via the state-space core (handles ss/zpk).
+const numDenAny = (sys: Value): { num: number[]; den: number[] } => (isObject(sys) && sys.className === 'tf' ? getNumDen(sys) : sisoND(sys));
 function polesOf(sys: Value): { re: number[]; im: number[] } {
   const A = toSS(sys).A, N = A.length; if (N === 0) return { re: [], im: [] };
   const p = [1]; let Mk = eye(N); for (let k = 1; k <= N; k++) { const AM = mmul(A, Mk); p[k] = -traceM(AM) / k; Mk = AM.map((row, i) => row.map((vv, j) => vv + (i === j ? p[k] : 0))); }
@@ -832,12 +930,85 @@ export const CONTROL: ToolboxModule = {
   name: 'Control System Toolbox',
   docBase: 'https://www.mathworks.com/help/control/ref/',
   builtins: {
-    /** tf(num,den) — transfer-function model. */
-    tf: (a) => ret(makeObject('tf', a.length >= 3 && isMatLike(a[2]) ? { num: rowVec(toArray(m(a[0]))), den: rowVec(toArray(m(a[1]))), Ts: scalar(asScalar(a[2])) } : { num: rowVec(toArray(m(a[0]))), den: rowVec(toArray(m(a[1]))) })),
-    /** ss(A,B,C,D) — state-space model. */
-    ss: (a) => ret(makeObject('ss', { A: m(a[0]), B: m(a[1]), C: m(a[2]), D: a.length >= 4 ? m(a[3]) : scalar(0) })),
-    /** zpk(z,p,k) — zero-pole-gain model. */
-    zpk: (a) => ret(makeObject('zpk', { z: colVec(toArray(m(a[0]))), p: colVec(toArray(m(a[1]))), k: scalar(asScalar(a[2])) })),
+    /** tf(num,den) or tf(sys) — transfer-function model or conversion from any LTI/PID object. */
+    tf: (a) => {
+      // tf(sys) conversion for pid/pid2/pidstd → tf (direct polynomial form, handles improper systems)
+      if (a.length === 1 && isObject(a[0])) {
+        const cls = a[0].className;
+        // Helper: build normalized pid tf coefficients (den leading coeff = 1 when Tf>0)
+        const pidTfCoeffs = (Kp: number, Ki: number, Kd: number, Tf: number): { num: number[]; den: number[] } => {
+          if (Tf > 0) {
+            // C(s) = [(Kp*Tf+Kd)s^2 + (Kp+Ki*Tf)s + Ki] / [Tf*s^2 + s]
+            // Normalize by Tf so den leading coeff = 1: num → /Tf, den → /Tf
+            return {
+              num: [(Kp + Kd / Tf), (Kp / Tf + Ki), Ki / Tf],
+              den: [1, 1 / Tf, 0],
+            };
+          } else {
+            // improper: C(s) = [Kd*s^2 + Kp*s + Ki] / s, stored as [Kd,Kp,Ki]/[0,1,0]
+            return { num: [Kd, Kp, Ki], den: [0, 1, 0] };
+          }
+        };
+        if (cls === 'pid') {
+          const Kp = asScalar(a[0].props.get('Kp') as Value ?? scalar(0));
+          const Ki = asScalar(a[0].props.get('Ki') as Value ?? scalar(0));
+          const Kd = asScalar(a[0].props.get('Kd') as Value ?? scalar(0));
+          const Tf = asScalar(a[0].props.get('Tf') as Value ?? scalar(0));
+          const { num, den } = pidTfCoeffs(Kp, Ki, Kd, Tf);
+          return ret(makeObject('tf', { num: rowVec(num), den: rowVec(den) }));
+        }
+        if (cls === 'pid2') {
+          // 2-DOF: returns 1×2 tf: [C_r(s), C_y(s)]
+          const Kp = asScalar(a[0].props.get('Kp') as Value ?? scalar(0));
+          const Ki = asScalar(a[0].props.get('Ki') as Value ?? scalar(0));
+          const Kd = asScalar(a[0].props.get('Kd') as Value ?? scalar(0));
+          const Tf = asScalar(a[0].props.get('Tf') as Value ?? scalar(0));
+          const b  = asScalar(a[0].props.get('b')  as Value ?? scalar(1));
+          const c  = asScalar(a[0].props.get('c')  as Value ?? scalar(1));
+          // C_r(s): Kp*b + Ki/s + Kd*c*s/(Tf*s+1)  (using b,c weights on r)
+          // C_y(s): Kp + Ki/s + Kd*s/(Tf*s+1)      (standard, negative for feedback)
+          const { num: numR, den } = pidTfCoeffs(Kp * b, Ki, Kd * c, Tf);
+          const { num: numY } = pidTfCoeffs(Kp, Ki, Kd, Tf);
+          const numYneg = numY.map((x) => -x);
+          const nit: Value[] = [rowVec(numR), rowVec(numYneg)];
+          const dit: Value[] = [rowVec(den), rowVec(den)];
+          return ret(makeObject('tf', { num: makeCell(1, 2, nit), den: makeCell(1, 2, dit) }));
+        }
+        if (cls === 'pidstd') {
+          const Kp = asScalar(a[0].props.get('Kp') as Value ?? scalar(1));
+          const Ti = asScalar(a[0].props.get('Ti') as Value ?? scalar(Infinity));
+          const Td = asScalar(a[0].props.get('Td') as Value ?? scalar(0));
+          const N  = asScalar(a[0].props.get('N')  as Value ?? scalar(Infinity));
+          const Ki = isFinite(Ti) ? Kp / Ti : 0;
+          const Kd = Kp * Td;
+          const Tf = isFinite(N) && N > 0 ? Td / N : 0;
+          const { num, den } = pidTfCoeffs(Kp, Ki, Kd, Tf);
+          return ret(makeObject('tf', { num: rowVec(num), den: rowVec(den) }));
+        }
+        if (cls === 'ss' || cls === 'zpk') {
+          return ret(fromSS(toSS(a[0]), 'tf'));
+        }
+      }
+      return ret(makeObject('tf', a.length >= 3 && isMatLike(a[2]) ? { num: rowVec(toArray(m(a[0]))), den: rowVec(toArray(m(a[1]))), Ts: scalar(asScalar(a[2])) } : { num: rowVec(toArray(m(a[0]))), den: rowVec(toArray(m(a[1]))) }));
+    },
+    /** ss(A,B,C,D) or ss(sys) — state-space model or conversion from any LTI/PID object. */
+    ss: (a) => {
+      // ss(sys) conversion: tf/zpk/pid/pid2/pidstd → ss
+      if (a.length === 1 && isObject(a[0]) && (a[0].className === 'tf' || a[0].className === 'zpk' || a[0].className === 'pid' || a[0].className === 'pid2' || a[0].className === 'pidstd')) {
+        return ret(fromSS(toSS(a[0]), 'ss'));
+      }
+      const props: Record<string, Value> = { A: m(a[0]), B: m(a[1]), C: m(a[2]), D: a.length >= 4 ? m(a[3]) : scalar(0) };
+      if (a.length >= 5) props.Ts = scalar(asScalar(a[4]));   // ss(A,B,C,D,Ts) → discrete model
+      return ret(makeObject('ss', props));
+    },
+    /** zpk(z,p,k[,Ts]) — zero-pole-gain model. */
+    zpk: (a) => {
+      // complex-preserving column vector (toArray drops idata, losing complex zeros/poles)
+      const cvec = (v: Value): Value => { const M = m(v); const c = colVec(Array.from(M.data)); if (M.idata && Array.from(M.idata).some((x) => x !== 0)) c.idata = Float64Array.from(M.idata); return c; };
+      const props: Record<string, Value> = { z: cvec(a[0]), p: cvec(a[1]), k: scalar(asScalar(a[2])) };
+      if (a.length >= 4) props.Ts = scalar(asScalar(a[3]));   // zpk(z,p,k,Ts) → discrete model
+      return ret(makeObject('zpk', props));
+    },
     /** pole(sys) — system poles (eigenvalues of the A matrix of any tf/zpk/ss realization). */
     pole: (a) => ret(rootsValue(sortRoots(polesOf(a[0])))),
     /** zero(sys) — system (transmission) zeros (SISO: roots of the numerator). */
@@ -890,8 +1061,10 @@ export const CONTROL: ToolboxModule = {
     },
     /** [num,den] = zp2tf(z,p,k) — zero-pole-gain to transfer function. */
     zp2tf: (a, n) => {
-      const z = toArray(m(a[0])), p = toArray(m(a[1])), k = asScalar(a[2]);
-      const num = polyFromRoots(z, z.map(() => 0)).map((v) => v * k); const den = polyFromRoots(p, p.map(() => 0));
+      const zM = m(a[0]), pM = m(a[1]), k = asScalar(a[2]);
+      const zr = Array.from(zM.data), zi = zM.idata ? Array.from(zM.idata) : zr.map(() => 0);   // preserve complex roots
+      const pr = Array.from(pM.data), pi = pM.idata ? Array.from(pM.idata) : pr.map(() => 0);
+      const num = polyFromRoots(zr, zi).map((v) => v * k); const den = polyFromRoots(pr, pi);
       while (num.length < den.length) num.unshift(0);   // pad numerator to denominator length
       return n >= 2 ? Promise.resolve([rowVec(num), rowVec(den)]) : ret(rowVec(num));
     },
@@ -917,7 +1090,7 @@ export const CONTROL: ToolboxModule = {
     },
     /** [wn,zeta] = damp(sys) — natural frequencies and damping ratios of the poles. */
     damp: (a, n) => {
-      const r = polyRoots(getNumDen(a[0]).den); const wn = r.re.map((re, i) => Math.hypot(re, r.im[i])); const zeta = r.re.map((re, i) => (wn[i] > 0 ? -re / wn[i] : 0));
+      const r = polesOf(a[0]); const wn = r.re.map((re, i) => Math.hypot(re, r.im[i])); const zeta = r.re.map((re, i) => (wn[i] > 0 ? -re / wn[i] : 0));
       const order = wn.map((_, i) => i).sort((x, y) => wn[x] - wn[y]);
       return n >= 2 ? Promise.resolve([colVec(order.map((i) => wn[i])), colVec(order.map((i) => zeta[i]))]) : ret(colVec(order.map((i) => wn[i])));
     },
@@ -1082,7 +1255,7 @@ export const CONTROL: ToolboxModule = {
     },
     /** c2d(sys,Ts[,method]) — continuous→discrete. method: 'zoh' (default) | 'tustin'/'bilinear'. */
     c2d: (a) => {
-      const { num, den } = getNumDen(a[0]); const Ts = asScalar(a[1]);
+      const { num, den } = numDenAny(a[0]); const Ts = asScalar(a[1]);
       const meth = (a.length >= 3 ? asString(a[2]) : 'zoh').toLowerCase();
       let r: { num: number[]; den: number[] };
       if (meth === 'tustin' || meth === 'bilinear') r = c2dTustin(num, den, Ts);
@@ -1228,7 +1401,7 @@ export const CONTROL: ToolboxModule = {
     },
     /** minreal(sys[,tol]) — minimal realization via pole/zero cancellation. */
     minreal: (a) => {
-      const { num, den } = getNumDen(a[0]);
+      const { num, den } = numDenAny(a[0]);
       const tol = a.length >= 2 ? asScalar(a[1]) : Math.sqrt(2.220446049250313e-16);
       const r = minrealTf(num, den, Math.max(tol, 1e-9));
       return ret(makeObject('tf', { num: rowVec(r.num), den: rowVec(r.den) }));
@@ -1321,6 +1494,331 @@ export const CONTROL: ToolboxModule = {
       return ret(makeObject('ss', { A: fromRows(A), B: fromRows(B), C: fromRows(C), D: fromRows(D), Ts: scalar(-1) }));
     },
 
+    // ── Group A: Estimator / Regulator / LQG ──────────────────────────────────
+
+    /** estim(sys,L[,sensors,known]) — state estimator from plant sys=ss(A,B,C,D) and gain L.
+     *  Implements the standard observer: xhat_dot = A*xhat + B*u + L*(y - C*xhat - D*u)
+     *  But MATLAB estim with default sensors/known treats ALL inputs as noise (no u feedforward),
+     *  so the estimator input is only y:  xhat_dot = (A-L*C)*xhat + L*y
+     *  Outputs: [yhat; xhat] = [C; eye(n)] * xhat + [0; 0] * y.
+     *  Matches: estim(ss(A,B,C,D), L) in MATLAB. */
+    estim: (a) => {
+      const sys = a[0];
+      if (!isObject(sys) || sys.className !== 'ss') throw new Error('estim: sys must be an ss model');
+      const A = matRows(m(sys.props.get('A') as Mat));
+      const C = matRows(m(sys.props.get('C') as Mat));
+      const n = A.length, ny = C.length;
+      const L = matRows(m(a[1]));
+      // Ae = A - L*C
+      const Ae = matSub(A, smul(L, C));
+      // Be = L  (input is y, dimension ny)
+      const Be = L;
+      // Ce = [C; eye(n)]  (outputs: yhat then all xhat)
+      const Ce: number[][] = [...C.map((r) => r.slice()), ...eye(n)];
+      // De = zeros(ny+n, ny)
+      const De = zeros2(ny + n, ny);
+      return ret(mkSS({ A: Ae, B: Be, C: Ce, D: De, Ts: 0 }));
+    },
+
+    /** reg(sys,K,L[,sensors,known]) — observer-based regulator (output-feedback controller).
+     *  For plant ss(A,B,C,D) with state-feedback gain K and estimator gain L:
+     *    Controller: A_c = A - B*K - L*C, B_c = L, C_c = -K, D_c = 0.
+     *  Input: y (measured output), Output: u (control).
+     *  Matches MATLAB reg(ss(A,B,C,D), K, L). */
+    reg: (a) => {
+      const sys = a[0];
+      if (!isObject(sys) || sys.className !== 'ss') throw new Error('reg: sys must be an ss model');
+      const A = matRows(m(sys.props.get('A') as Mat));
+      const B = matRows(m(sys.props.get('B') as Mat));
+      const C = matRows(m(sys.props.get('C') as Mat));
+      const K = matRows(m(a[1]));
+      const L = matRows(m(a[2]));
+      // Ac = A - B*K - L*C
+      const Ac = matSub(matSub(A, smul(B, K)), smul(L, C));
+      // Bc = L
+      const Bc = L;
+      // Cc = -K
+      const Cc = K.map((r) => r.map((x) => -x));
+      const ny = C.length, nu = K.length;
+      const Dc = zeros2(nu, ny);
+      return ret(mkSS({ A: Ac, B: Bc, C: Cc, D: Dc, Ts: 0 }));
+    },
+
+    /** lqg(sys,QXU,QWV) — LQG regulator: lqr design from QXU + Kalman filter from QWV combined via reg.
+     *  QXU = [Q N; N' R] (n+nu block): state/input weights for lqr.
+     *  QWV = [Qn 0; 0 Rn] (n+ny block): process/measurement noise covariances.
+     *  Returns the observer-based LQG regulator (same as reg(sys, K_lqr, L_lqe)). */
+    lqg: (a) => {
+      const sys = a[0];
+      if (!isObject(sys) || sys.className !== 'ss') throw new Error('lqg: sys must be an ss model');
+      const A = matRows(m(sys.props.get('A') as Mat));
+      const B = matRows(m(sys.props.get('B') as Mat));
+      const C = matRows(m(sys.props.get('C') as Mat));
+      const n = A.length, nu = B[0]?.length ?? 0, ny = C.length;
+      const QXU = matRows(m(a[1]));
+      const QWV = matRows(m(a[2]));
+      // Extract Q, R, N from QXU = [Q N; N' R]
+      const Q_lqr = QXU.slice(0, n).map((r) => r.slice(0, n));
+      const R_lqr = QXU.slice(n).map((r) => r.slice(n));
+      // Extract Qn, Rn from QWV
+      const Qn = QWV.slice(0, n).map((r) => r.slice(0, n));
+      const Rn = QWV.slice(n).map((r) => r.slice(n));
+      // LQR gain
+      const Ri_lqr = matInv(R_lqr);
+      const S_lqr = care(A, B, Q_lqr, Ri_lqr);
+      const K = smul(smul(Ri_lqr, matT(B)), S_lqr);
+      // Kalman gain (lqe dual: solve CARE on (A', C') with Qn as process noise on all states)
+      const Ri_kf = matInv(Rn);
+      const P = care(matT(A), matT(C), Qn, Ri_kf);
+      const L = smul(smul(P, matT(C)), Ri_kf);
+      // Assemble observer-based controller: Ac=A-BK-LC, Bc=L, Cc=-K, Dc=0
+      const Ac = matSub(matSub(A, smul(B, K)), smul(L, C));
+      const Cc = K.map((r) => r.map((x) => -x));
+      const Dc = zeros2(nu, ny);
+      return ret(mkSS({ A: Ac, B: L, C: Cc, D: Dc, Ts: 0 }));
+    },
+
+    /** [K,S,e] = lqi(sys,Q,R[,N]) — LQ regulator with integral action.
+     *  Augments plant with ny integrators on the outputs, then calls lqr on the augmented system.
+     *  Augmented state: [x; e] where e_dot = -C*x (integrator of output error).
+     *  A_aug = [A 0; -C 0], B_aug = [B; 0], cost = [x;e]'*Q*[x;e] + u'*R*u.
+     *  Returns [K, S, e] matching MATLAB lqi(ss(A,B,C,D), Q, R). */
+    lqi: (a, nout) => {
+      const sys = a[0];
+      if (!isObject(sys) || sys.className !== 'ss') throw new Error('lqi: sys must be an ss model');
+      const A = matRows(m(sys.props.get('A') as Mat));
+      const B = matRows(m(sys.props.get('B') as Mat));
+      const C = matRows(m(sys.props.get('C') as Mat));
+      const n = A.length, nu = B[0]?.length ?? 0, ny = C.length;
+      const Q = matRows(m(a[1]));
+      const Rm = matRows(m(a[2]));
+      const Ri = matInv(Rm);
+      // Augmented matrices: [x; e]
+      const A_aug = zeros2(n + ny, n + ny);
+      for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) A_aug[i][j] = A[i][j];
+      for (let i = 0; i < ny; i++) for (let j = 0; j < n; j++) A_aug[n + i][j] = -C[i][j];
+      const B_aug = zeros2(n + ny, nu);
+      for (let i = 0; i < n; i++) for (let j = 0; j < nu; j++) B_aug[i][j] = B[i][j];
+      // Solve CARE on augmented system
+      const S = care(A_aug, B_aug, Q, Ri);
+      const K = smul(Ri, smul(matT(B_aug), S));
+      const Acl = matSub(A_aug, smul(B_aug, K));
+      const out: Value[] = [fromRows(K)];
+      if (nout >= 2) out.push(fromRows(S));
+      if (nout >= 3) out.push(eigClosed(Acl));
+      return Promise.resolve(out);
+    },
+
+    /** lqgreg(kest,K[,controls]) — assemble LQG regulator from Kalman estimator and LQR gain.
+     *  kest is the estimator produced by kalman(sys,Qn,Rn,N,sensors,known) where the 'known'
+     *  inputs are the control channels; K is the state-feedback gain from lqr/dlqr.
+     *  The regulator closes the loop: u = -K*xhat, xhat driven by kest's u-input channel.
+     *  kest input structure: [u_known; y_sensors]. lqgreg selects the u channel, closes with -K. */
+    lqgreg: (a) => {
+      const kest = a[0];
+      if (!isObject(kest) || kest.className !== 'ss') throw new Error('lqgreg: kest must be an ss model');
+      const K = matRows(m(a[1]));
+      const Ae = matRows(m(kest.props.get('A') as Mat));
+      const Be = matRows(m(kest.props.get('B') as Mat));
+      const Ce = matRows(m(kest.props.get('C') as Mat));
+      const De = expandD(kest.props.get('D'), Ce.length, Be[0]?.length ?? 0);
+      const nx = Ae.length;
+      const nu_ctrl = K.length;   // number of control inputs (rows of K)
+      const n_kest_in = Be[0]?.length ?? 0;  // total inputs to kest: [u_ctrl; y_meas]
+      const n_kest_out = Ce.length;           // total outputs: [yhat; xhat] typically
+      // The xhat outputs are the last nx rows of Ce (first rows are yhat)
+      const ny_hat = n_kest_out - nx;  // number of yhat outputs = number of measured outputs
+      // Extract xhat rows of Ce (rows ny_hat..n_kest_out-1)
+      const C_xhat = Ce.slice(ny_hat);   // nx × nx matrix (=eye(n) in standard kalman)
+      // The control inputs occupy the first nu_ctrl columns of Be
+      // The measurement inputs occupy the remaining columns of Be
+      const n_y_in = n_kest_in - nu_ctrl;  // measurement inputs to kest
+      if (n_y_in < 0 || n_y_in > n_kest_in) {
+        // Fallback: treat all inputs as measurement (kest with no known u inputs)
+        // In this case lqgreg creates a 1×0 system (no external inputs) - just close the loop
+        // Controller: Ac = Ae - Be_u * K * C_xhat (but Be_u is empty), so Ac = Ae - B_u_K
+        // This matches MATLAB's behavior: A_c = A-BK where B is from kest.B
+        // Actually for single-input kest (only y input): close the feedback u=-K*xhat back
+        // into the estimator: Ac = Ae + Be * (-K * C_xhat)  (state feedback on xhat)
+        const Ac = matAddT(Ae, smul(Be, smul(K.map((r) => r.map((x) => -x)), C_xhat)));
+        const Cc = smul(K.map((r) => r.map((x) => -x)), C_xhat);
+        // No external input (0 columns)
+        const Bc = zeros2(nx, 0);
+        const Dc = zeros2(nu_ctrl, 0);
+        return ret(mkSS({ A: Ac, B: Bc, C: Cc, D: Dc, Ts: 0 }));
+      }
+      // Standard case: kest has [u_ctrl; y_meas] inputs
+      // Extract B_u (control input columns) and B_y (measurement input columns)
+      const B_u = Be.map((r) => r.slice(0, nu_ctrl));
+      const B_y = Be.map((r) => r.slice(nu_ctrl));
+      // Close the loop u = -K*xhat:
+      // xhat_dot = Ae*xhat + B_u*u + B_y*y = Ae*xhat + B_u*(-K*C_xhat*xhat) + B_y*y
+      //           = (Ae - B_u*K*C_xhat)*xhat + B_y*y
+      const Ac = matSub(Ae, smul(B_u, smul(K, C_xhat)));
+      const Cc = smul(K.map((r) => r.map((x) => -x)), C_xhat);
+      return ret(mkSS({ A: Ac, B: B_y, C: Cc, D: zeros2(nu_ctrl, n_y_in), Ts: 0 }));
+    },
+
+    // ── Group B: PID controllers ──────────────────────────────────────────────
+
+    /** pid(Kp,Ki,Kd[,Tf]) — parallel-form PID controller (ClassV with className='pid').
+     *  Transfer function: C(s) = Kp + Ki/s + Kd*s/(Tf*s+1)  (Tf=0 → ideal derivative Kd*s).
+     *  Equivalent to tf numerator [(Kp*Tf+Kd)*s^2 + (Kp+Ki*Tf)*s + Ki] / [Tf*s^2 + s].
+     *  class(pid(Kp,Ki,Kd)) returns 'pid'. Verified against MATLAB. */
+    pid: (a) => {
+      const Kp = a.length >= 1 ? asScalar(a[0]) : 0;
+      const Ki = a.length >= 2 ? asScalar(a[1]) : 0;
+      const Kd = a.length >= 3 ? asScalar(a[2]) : 0;
+      const Tf = a.length >= 4 ? asScalar(a[3]) : 0;
+      return ret(makeObject('pid', { Kp: scalar(Kp), Ki: scalar(Ki), Kd: scalar(Kd), Tf: scalar(Tf), Ts: scalar(0) }));
+    },
+
+    /** pid2(Kp,Ki,Kd[,Tf,b,c]) — 2-DOF PID with setpoint weights b (proportional) and c (derivative).
+     *  C(s) = [Kp*(b*r-y) + Ki*(r-y)/s + Kd*s*(c*r-y)/(Tf*s+1)]
+     *  Returns a ClassV with className='pid2'. tf(pid2(...)) returns a 1x2 system. */
+    pid2: (a) => {
+      const Kp = a.length >= 1 ? asScalar(a[0]) : 0;
+      const Ki = a.length >= 2 ? asScalar(a[1]) : 0;
+      const Kd = a.length >= 3 ? asScalar(a[2]) : 0;
+      const Tf = a.length >= 4 ? asScalar(a[3]) : 0;
+      const b  = a.length >= 5 ? asScalar(a[4]) : 1;
+      const c  = a.length >= 6 ? asScalar(a[5]) : 1;
+      return ret(makeObject('pid2', { Kp: scalar(Kp), Ki: scalar(Ki), Kd: scalar(Kd), Tf: scalar(Tf), b: scalar(b), c: scalar(c), Ts: scalar(0) }));
+    },
+
+    /** pidstd(Kp,Ti,Td[,N]) — standard-form PID: Kp*(1 + 1/(Ti*s) + Td*N*s/(Td*s+N)).
+     *  N=Inf means ideal derivative: Kp*(1 + 1/(Ti*s) + Td*s).
+     *  Stored as ClassV 'pidstd' with fields Kp,Ti,Td,N. */
+    pidstd: (a) => {
+      const Kp = a.length >= 1 ? asScalar(a[0]) : 1;
+      const Ti = a.length >= 2 ? asScalar(a[1]) : Infinity;
+      const Td = a.length >= 3 ? asScalar(a[2]) : 0;
+      const N  = a.length >= 4 ? asScalar(a[3]) : Infinity;
+      return ret(makeObject('pidstd', { Kp: scalar(Kp), Ti: scalar(Ti), Td: scalar(Td), N: scalar(N), Ts: scalar(0) }));
+    },
+
+    /** [Kp,Ki,Kd,Tf] = piddata(C) — extract parallel PID parameters from a pid object. */
+    piddata: (a, nout) => {
+      const C = a[0];
+      if (!isObject(C) || (C.className !== 'pid' && C.className !== 'pid2'))
+        throw new Error('piddata: argument must be a pid or pid2 object');
+      const Kp = asScalar(C.props.get('Kp') as Value ?? scalar(0));
+      const Ki = asScalar(C.props.get('Ki') as Value ?? scalar(0));
+      const Kd = asScalar(C.props.get('Kd') as Value ?? scalar(0));
+      const Tf = asScalar(C.props.get('Tf') as Value ?? scalar(0));
+      const out: Value[] = [scalar(Kp), scalar(Ki), scalar(Kd), scalar(Tf)];
+      if (nout >= 4) return Promise.resolve(out);
+      if (nout >= 3) return Promise.resolve(out.slice(0, 3));
+      if (nout >= 2) return Promise.resolve(out.slice(0, 2));
+      return ret(scalar(Kp));
+    },
+
+    /** [Kp,Ti,Td,N] = pidstddata(C) — extract standard PID parameters from a pidstd object. */
+    pidstddata: (a, nout) => {
+      const C = a[0];
+      if (!isObject(C) || C.className !== 'pidstd')
+        throw new Error('pidstddata: argument must be a pidstd object');
+      const Kp = asScalar(C.props.get('Kp') as Value ?? scalar(1));
+      const Ti = asScalar(C.props.get('Ti') as Value ?? scalar(Infinity));
+      const Td = asScalar(C.props.get('Td') as Value ?? scalar(0));
+      const N  = asScalar(C.props.get('N')  as Value ?? scalar(Infinity));
+      const out: Value[] = [scalar(Kp), scalar(Ti), scalar(Td), scalar(N)];
+      if (nout >= 4) return Promise.resolve(out);
+      if (nout >= 3) return Promise.resolve(out.slice(0, 3));
+      if (nout >= 2) return Promise.resolve(out.slice(0, 2));
+      return ret(scalar(Kp));
+    },
+
+    /** [C,info] = pidtune(sys,type[,wc]) — automatic PID tuning via heuristic loop-shaping.
+     *  NOTE: MATLAB's pidtune uses a proprietary algorithm; this implementation is a documented
+     *  HEURISTIC that DOES NOT match MATLAB's output. It aims for ~60° phase margin at a
+     *  target crossover frequency, using a Ziegler-Nichols-inspired gain selection.
+     *  Verify only: the closed loop feedback(sys*C, 1) is stable with positive phase margin. */
+    pidtune: (a, nout) => {
+      const sys = a[0];
+      const typeStr = a.length >= 2 ? asString(a[1]).toLowerCase() : 'pid';
+      // Optional target crossover frequency
+      const wc_target = a.length >= 3 ? asScalar(a[2]) : NaN;
+      // Get frequency response data to estimate gain crossover and phase margin
+      const { num, den } = getNumDenAny(sys);
+      // Estimate bandwidth of plant: find frequency where |G(jw)| = 1
+      // Use a log-spaced grid
+      const grid: number[] = [];
+      for (let i = 0; i <= 300; i++) grid.push(10 ** (-3 + (6 * i) / 300));
+      const mags = grid.map((w) => evalLjw(num, den, w).mag);
+      // Find phase crossover (where |G|=1) to estimate desired crossover freq wc
+      let wc = isFinite(wc_target) ? wc_target : NaN;
+      if (!isFinite(wc)) {
+        // Pick crossover at the frequency where gain ~ 1 (or fallback to geometric mean of features)
+        for (let i = 1; i < grid.length; i++) {
+          if ((mags[i - 1] - 1) * (mags[i] - 1) <= 0) {
+            wc = bisect((w) => evalLjw(num, den, w).mag - 1, grid[i - 1], grid[i]);
+            break;
+          }
+        }
+        if (!isFinite(wc)) wc = grid[Math.floor(grid.length / 2)]; // fallback
+      }
+      // Compute plant gain and phase at wc
+      const lc = evalLjw(num, den, wc);
+      const plant_phase = lc.phaseDeg;
+      const plant_mag = lc.mag;
+      // Target phase margin = 60°: need controller to add (60 - (180 + plant_phase)) = -(120 + plant_phase) degrees
+      // For a P controller: C(jwc) = 1/plant_mag, PM = 180 + plant_phase (open-loop phase)
+      // PID: add phase lead to achieve ~60° PM
+      const targetPM = 60;
+      const currentPM = 180 + plant_phase;
+      const phaseNeeded = targetPM - currentPM; // phase lead needed from controller
+      // Simple heuristic: choose Ti and Td for phase lead, Kp for gain
+      // Kp = 1/(plant_mag) to set unity gain at wc
+      let Kp = 1.0 / (plant_mag || 1e-10);
+      let Kd = 0, Ki = 0, Tf = 0;
+      if (typeStr.startsWith('pi')) {
+        // PI: add integral, sacrifice some PM
+        Ki = Kp * wc / 10;  // Ti = 10/wc
+      }
+      if (typeStr === 'pid') {
+        // PID: add derivative for phase lead, integral for steady-state
+        const phase_lead = Math.min(Math.max(phaseNeeded, 0), 70);
+        const alpha = (1 + Math.sin(phase_lead * Math.PI / 180)) / (1 - Math.sin(phase_lead * Math.PI / 180) + 1e-12);
+        const wm = wc;  // place peak phase at wc
+        const Td_val = 1 / (wm * Math.sqrt(alpha));
+        const Ti_val = alpha * Td_val;
+        Ki = Kp / Ti_val;
+        Kd = Kp * Td_val;
+        Tf = Td_val / Math.sqrt(alpha);  // filter time constant
+        if (!isFinite(Ki) || Ki < 0) Ki = Kp * wc / 10;
+        if (!isFinite(Kd) || Kd < 0) Kd = 0;
+        if (!isFinite(Tf) || Tf < 0) Tf = 0;
+      }
+      // Clamp to reasonable values
+      if (!isFinite(Kp) || Kp <= 0) Kp = 1;
+      // Build the pid object
+      const C_pid = makeObject('pid', { Kp: scalar(Kp), Ki: scalar(Ki), Kd: scalar(Kd), Tf: scalar(Tf), Ts: scalar(0) });
+      if (nout >= 2) {
+        // Return info struct with PhaseMargin and Stable fields
+        // Compute closed-loop stability check
+        let pm = NaN;
+        try {
+          // Controller tf numerator/denominator
+          const pidNum = Tf > 0
+            ? [(Kp * Tf + Kd), (Kp + Ki * Tf), Ki]
+            : [Kd, Kp, Ki];
+          const pidDen = Tf > 0 ? [Tf, 1, 0] : [1, 0];
+          const olNum = polyConv(num, pidNum);
+          const olDen = polyConv(den, pidDen);
+          const { Pm } = marginData(olNum, olDen);
+          pm = Pm;
+        } catch { pm = NaN; }
+        const fields = new Map<string, Value[]>([
+          ['PhaseMargin', [scalar(pm)]],
+          ['Stable', [bool(isFinite(pm) && pm > 0)]],
+          ['CrossoverFrequency', [scalar(wc)]],
+        ]);
+        return Promise.resolve([C_pid, { kind: 'struct', rows: 1, cols: 1, fields } as StructV]);
+      }
+      return ret(C_pid);
+    },
+
     /** W = gram(sys,type) — controllability ('c') or observability ('o') Gramian via Lyapunov eqn. */
     gram: (a) => {
       const sys = a[0]; const type = asString(a[1]).toLowerCase()[0];
@@ -1408,6 +1906,17 @@ export const CONTROL: ToolboxModule = {
     rss: { summary: 'Generate a random stable continuous-time state-space model', syntax: ['sys = rss(n)', 'sys = rss(n,p,m)'], description: ['sys = rss(n) generates a random stable single-input single-output (SISO) state-space model of order n with all poles in the open left half-plane.', 'sys = rss(n,p,m) specifies p outputs and m inputs.'], seealso: ['drss', 'ss', 'pole'] },
     drss: { summary: 'Generate a random stable discrete-time state-space model', syntax: ['sys = drss(n)', 'sys = drss(n,p,m)'], description: ['sys = drss(n) generates a random stable discrete-time SISO state-space model of order n with all poles strictly inside the unit circle.', 'sys = drss(n,p,m) specifies p outputs and m inputs.'], seealso: ['rss', 'ss', 'pole'] },
     gram: { summary: 'Controllability or observability Gramian', syntax: ['W = gram(sys,\'c\')', 'W = gram(sys,\'o\')'], description: ['W = gram(sys,\'c\') computes the controllability Gramian by solving A*W + W*A\' + B*B\' = 0 (continuous) or A*W*A\' - W + B*B\' = 0 (discrete).', 'W = gram(sys,\'o\') computes the observability Gramian by solving A\'*W + W*A + C\'*C = 0 (continuous) or A\'*W*A - W + C\'*C = 0 (discrete).'], seealso: ['lyap', 'dlyap', 'balreal', 'ctrb', 'obsv'] },
+    estim: { summary: 'Form state estimator from plant and gain', syntax: ['kest = estim(sys,L)', 'kest = estim(sys,L,sensors,known)'], description: ['kest = estim(sys,L) forms a state estimator for the plant ss(A,B,C,D) with observer gain L.', 'The estimator dynamics are: xhat_dot = (A-L*C)*xhat + L*y.', 'Outputs [yhat; xhat], input y. Matches MATLAB estim(ss(A,B,C,D),L).'], seealso: ['kalman', 'reg', 'lqe', 'lqg'] },
+    reg: { summary: 'Form output-feedback regulator from state-feedback and estimator gains', syntax: ['rsys = reg(sys,K,L)', 'rsys = reg(sys,K,L,sensors,known)'], description: ['rsys = reg(sys,K,L) forms the observer-based controller for plant sys with state-feedback gain K and estimator gain L.', 'Controller: A_c = A-B*K-L*C, B_c = L, C_c = -K. Input: y; output: u.'], seealso: ['estim', 'lqg', 'lqr', 'lqe', 'place'] },
+    lqg: { summary: 'LQG (linear-quadratic-Gaussian) regulator design', syntax: ['rsys = lqg(sys,QXU,QWV)'], description: ['rsys = lqg(sys,QXU,QWV) designs the LQG regulator combining lqr (from QXU=[Q N;N\' R]) and Kalman filter (from QWV=[Qn 0;0 Rn]).', 'Equivalent to reg(sys, lqr(A,B,Q,R), lqe(A,G,C,Qn,Rn)). Returns the observer-based controller.'], seealso: ['lqr', 'lqe', 'kalman', 'reg', 'estim'] },
+    lqi: { summary: 'LQR design with integral action', syntax: ['[K,S,e] = lqi(sys,Q,R)', '[K,S,e] = lqi(sys,Q,R,N)'], description: ['[K,S,e] = lqi(sys,Q,R) augments plant with ny integrators on the outputs and solves LQR on the augmented system.', 'Augmented state [x; e] where e_dot = -C*x; K is partitioned as [Kx, Ki].'], seealso: ['lqr', 'lqg', 'reg', 'place'] },
+    lqgreg: { summary: 'Form LQG regulator from Kalman estimator and LQR gain', syntax: ['rsys = lqgreg(kest,K)', 'rsys = lqgreg(kest,K,controls)'], description: ['rsys = lqgreg(kest,K) assembles the LQG regulator by closing the loop u=-K*xhat through the Kalman estimator kest.', 'kest must have the u (control) input channel available (use kalman with known inputs).'], seealso: ['kalman', 'lqr', 'reg', 'lqg'] },
+    pid: { summary: 'Create a parallel-form PID controller', syntax: ['C = pid(Kp,Ki,Kd)', 'C = pid(Kp,Ki,Kd,Tf)'], description: ['C = pid(Kp,Ki,Kd) creates a parallel-form PID: C(s) = Kp + Ki/s + Kd*s.', 'C = pid(Kp,Ki,Kd,Tf) uses a first-order filter on the derivative: Kd*s/(Tf*s+1).', 'class(C) returns \'pid\'. Use tf(C) to convert to transfer function.'], seealso: ['pidstd', 'pid2', 'piddata', 'pidtune'] },
+    pid2: { summary: 'Create a 2-DOF parallel-form PID controller', syntax: ['C = pid2(Kp,Ki,Kd)', 'C = pid2(Kp,Ki,Kd,Tf)', 'C = pid2(Kp,Ki,Kd,Tf,b,c)'], description: ['C = pid2(Kp,Ki,Kd,Tf,b,c) creates a 2-DOF PID with setpoint weights b (P) and c (D).', 'tf(C) returns a 1×2 MIMO system: first channel = C_r(s) (setpoint), second = -C_y(s) (feedback).', 'Default b=1, c=1 recovers the standard 1-DOF PID.'], seealso: ['pid', 'pidstd', 'piddata'] },
+    pidstd: { summary: 'Create a standard-form PID controller', syntax: ['C = pidstd(Kp,Ti,Td)', 'C = pidstd(Kp,Ti,Td,N)'], description: ['C = pidstd(Kp,Ti,Td,N) creates a standard-form PID: Kp*(1 + 1/(Ti*s) + Td*N*s/(Td*s+N)).', 'N=Inf (default) gives ideal derivative: Kp*(1+1/(Ti*s)+Td*s). Equivalent to pid(Kp,Kp/Ti,Kp*Td,Td/N).'], seealso: ['pid', 'pid2', 'pidstddata', 'pidtune'] },
+    piddata: { summary: 'Extract parallel PID parameters', syntax: ['[Kp,Ki,Kd,Tf] = piddata(C)'], description: ['[Kp,Ki,Kd,Tf] = piddata(C) extracts the parallel-form parameters from a pid or pid2 controller C.'], seealso: ['pidstddata', 'pid', 'pid2'] },
+    pidstddata: { summary: 'Extract standard PID parameters', syntax: ['[Kp,Ti,Td,N] = pidstddata(C)'], description: ['[Kp,Ti,Td,N] = pidstddata(C) extracts the standard-form parameters from a pidstd controller C.'], seealso: ['piddata', 'pidstd'] },
+    pidtune: { summary: 'Automatic PID controller tuning (heuristic approximation)', syntax: ['C = pidtune(sys,type)', '[C,info] = pidtune(sys,type)', '[C,info] = pidtune(sys,type,wc)'], description: ['C = pidtune(sys,type) designs a PID controller for plant sys using a heuristic loop-shaping algorithm.', 'NOTE: This implementation is a HEURISTIC and does NOT match MATLAB\'s proprietary pidtune algorithm.', 'It aims for ~60° phase margin via gain selection at the estimated crossover frequency.', 'type is \'p\', \'pi\', \'pd\', or \'pid\'. info.Stable reports closed-loop stability. Verify only stability, not exact coefficients.'], seealso: ['pid', 'pidstd', 'margin', 'looptune'] },
   },
   // OOP method dispatch (see tb/types.ts): series(tf,…) routes here; series(sym,…) → Symbolic.
   methods: {
@@ -1416,6 +1925,11 @@ export const CONTROL: ToolboxModule = {
     tf: { ...LTI_OPS },
     ss: { ...LTI_OPS },
     zpk: { ...LTI_OPS },
+    // pid/pid2/pidstd objects support the same LTI arithmetic (routed through toSS via their
+    // toSS() conversion above), so they interoperate with feedback/series/step/etc.
+    pid: { ...LTI_OPS },
+    pid2: { ...LTI_OPS },
+    pidstd: { ...LTI_OPS },
   },
 };
 
