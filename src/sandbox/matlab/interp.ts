@@ -23,6 +23,12 @@ import { TOOLBOX_METHODS, METHOD_NAMES, TOOLBOX_BY_ID, NAME_OWNERS, TOOLBOX_BUIL
 import { displayValue, dispValue } from './format';
 import { Graphics } from './graphics';
 
+/** Binary-operator → MATLAB method name, for class-object operator overloading (e.g. LTI models). */
+const OBJ_BINOP: Record<string, string> = {
+  '*': 'mtimes', '+': 'plus', '-': 'minus', '/': 'mrdivide', '\\': 'mldivide', '^': 'mpower',
+  '.*': 'times', './': 'rdivide', '.^': 'power',
+};
+
 /** Snapshot a value for save() so later in-place edits don't mutate the stored copy. */
 function cloneForSave(v: Value): Value {
   if (isMat(v)) return { ...v, data: v.data.slice(), idata: v.idata ? v.idata.slice() : undefined };
@@ -653,6 +659,11 @@ export class Interpreter implements Env {
           if (e.op === '-') return [makeSym(raw.rows, raw.cols, raw.exprs.map((x) => simplifyExpr(sMul(sN(-1), x))))];
           return [makeSym(raw.rows, raw.cols, raw.exprs.map((x) => simplifyExpr(sFn('not', x))))];
         }
+        if (raw.kind === 'object' && (e.op === '-' || e.op === '+')) {   // class uminus/uplus overload (e.g. -sys)
+          if (e.op === '+') return [raw];
+          const meth = TOOLBOX_METHODS.get(raw.className)?.uminus;
+          if (meth) { const r = await meth([raw], 1, this); return [Array.isArray(r) ? r[0] : r]; }
+        }
         const v = asMat(raw);
         if (e.op === '-') { const neg = isComplex(v) ? cmap(v, (re, im) => [-re, -im]) : map(v, (x) => -x); return [v.itype ? applyClass(neg, v.itype) : neg]; }
         if (e.op === '+') return [v];
@@ -663,6 +674,10 @@ export class Interpreter implements Env {
         // Transpose of a cell or string array rearranges elements (no conjugation).
         if (isCell(raw)) { const R = raw.rows, C = raw.cols, it = new Array(R * C); for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) it[c + r * C] = raw.items[r + c * R]; return [makeCell(C, R, it)]; }
         if (isStr(raw)) { const R = raw.rows, C = raw.cols, it = new Array(R * C); for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) it[c + r * C] = raw.items[r + c * R]; return [makeStrArr(C, R, it)]; }
+        if (raw.kind === 'object') {   // class ctranspose/transpose overload (e.g. sys')
+          const meth = TOOLBOX_METHODS.get(raw.className)?.[e.op === "'" ? 'ctranspose' : 'transpose'];
+          if (meth) { const r = await meth([raw], 1, this); return [Array.isArray(r) ? r[0] : r]; }
+        }
         const v = asMat(raw);
         return [e.op === "'" ? ctranspose(v) : transpose(v)];
       }
@@ -907,6 +922,16 @@ export class Interpreter implements Env {
     if (op === '&&') return bool(truthy(await this.evalExpr(ae, scope)) && truthy(await this.evalExpr(be, scope)));
     if (op === '||') return bool(truthy(await this.evalExpr(ae, scope)) || truthy(await this.evalExpr(be, scope)));
     const av = await this.evalExpr(ae, scope), bv = await this.evalExpr(be, scope);
+    // Class-object operator overloading (e.g. LTI models: sys1*sys2, sys+sys, sys/sys): route to
+    // the class's mtimes/plus/minus/mrdivide/mldivide/mpower/times/rdivide method if registered.
+    if (av.kind === 'object' || bv.kind === 'object') {
+      const mname = OBJ_BINOP[op];
+      if (mname) {
+        const cls = av.kind === 'object' ? av.className : (bv as { className: string }).className;
+        const meth = TOOLBOX_METHODS.get(cls)?.[mname];
+        if (meth) { const r = await meth([av, bv], 1, this); return Array.isArray(r) ? r[0] : r; }
+      }
+    }
     // symbolic arithmetic (build expression trees element-wise).
     if (isSym(av) || isSym(bv)) return symBinary(op, av, bv);
     // datetime/duration arithmetic and comparison.

@@ -3,7 +3,7 @@
 // the live Control System Toolbox. See plan §1 (ClassV) / §7.
 import type { Builtin } from '../builtins';
 import {
-  type Value, type Mat, type StructV, isObject, makeObject, scalar, bool, colVec, rowVec, toArray, asScalar, asString, toMat as m, makeStr,
+  type Value, type Mat, type StructV, type Cell, type ClassV, isObject, isCell, makeObject, makeCell, scalar, bool, colVec, rowVec, toArray, asScalar, asString, toMat as m, makeStr,
 } from '../values';
 import type { ToolboxModule } from './types';
 
@@ -515,6 +515,239 @@ function minrealTf(num: number[], den: number[], tol: number): { num: number[]; 
   return { num: n2.map((v) => (Math.abs(v) < 1e-10 ? 0 : v)), den: d2.map((v) => (Math.abs(v) < 1e-10 ? 0 : v)) };
 }
 
+// ════════════════════════════ Unified MIMO LTI core ════════════════════════════
+// Canonical computational form = state-space. Every tf/zpk/ss/static-gain converts to an `SS`
+// struct via toSS(); the result of an operation converts back to the primary operand's class via
+// fromSS(). Operators (*, +, -, /, \, ^, ', unary -) and interconnections (series/parallel/
+// feedback/append/lft) are all implemented once on SS, so they work uniformly and MIMO.
+interface SS { A: number[][]; B: number[][]; C: number[][]; D: number[][]; Ts: number }
+const zeros2 = (r: number, c: number): number[][] => Array.from({ length: r }, () => new Array(c).fill(0));
+// Dimension-safe dense multiply (returns a correctly-shaped zero block when an inner/outer dim is 0).
+function smul(A: number[][], B: number[][]): number[][] {
+  const n = A.length, inner = A[0]?.length ?? 0, c = B[0]?.length ?? 0;
+  const out = zeros2(n, c); if (!n || !c || !inner) return out;
+  for (let i = 0; i < n; i++) for (let j = 0; j < c; j++) { let s = 0; for (let k = 0; k < inner; k++) s += A[i][k] * B[k][j]; out[i][j] = s; } return out;
+}
+const blk = (X: number[][], Y: number[][]): number[][] => {
+  const r1 = X.length, c1 = X[0]?.length ?? 0, r2 = Y.length, c2 = Y[0]?.length ?? 0, M = zeros2(r1 + r2, c1 + c2);
+  for (let i = 0; i < r1; i++) for (let j = 0; j < c1; j++) M[i][j] = X[i][j];
+  for (let i = 0; i < r2; i++) for (let j = 0; j < c2; j++) M[r1 + i][c1 + j] = Y[i][j];
+  return M;
+};
+const getTsV = (sys: Value): number => (isObject(sys) && sys.props.has('Ts') ? asScalar(sys.props.get('Ts') as Value) : 0);
+const clsOf = (v: Value): string => (isObject(v) ? v.className : 'tf');
+const rcls = (a: Value, b: Value): string => (isObject(a) ? a.className : isObject(b) ? b.className : 'tf');
+// Expand a possibly-scalar D Value to a ny×nu dense matrix.
+function expandD(Dv: Value | undefined, ny: number, nu: number): number[][] {
+  if (Dv === undefined) return zeros2(ny, nu);
+  const Dm = m(Dv);
+  if (Dm.rows === ny && Dm.cols === nu) return matRows(Dm);
+  const o = zeros2(ny, nu); if (Dm.rows * Dm.cols === 1) { const v = Dm.data[0]; for (let i = 0; i < ny; i++) for (let j = 0; j < nu; j++) o[i][j] = v; }
+  return o;
+}
+// One SISO transfer function → controllable-canonical SS (matches tf2ss).
+function siso2ss(numIn: number[], denIn: number[]): SS {
+  const g = denIn[0] || 1; const den = denIn.map((v) => v / g); let num = numIn.map((v) => v / g);
+  while (num.length < den.length) num.unshift(0);
+  const no = den.length - 1, Dval = num[0];
+  if (no <= 0) return { A: [], B: zeros2(0, 1), C: zeros2(1, 0), D: [[Dval]], Ts: 0 };
+  const A = zeros2(no, no); for (let j = 0; j < no; j++) A[0][j] = -den[j + 1]; for (let i = 1; i < no; i++) A[i][i - 1] = 1;
+  const B = zeros2(no, 1); B[0][0] = 1;
+  const C = [Array.from({ length: no }, (_, j) => num[j + 1] - Dval * den[j + 1])];
+  return { A, B, C, D: [[Dval]], Ts: 0 };
+}
+// Assemble a MIMO SS from per-channel (num,den) by block-diagonal stacking of SISO realizations.
+function channelsToSS(num: number[][][], den: number[][][], ny: number, nu: number, Ts: number): SS {
+  const subs: { s: SS; i: number; j: number }[] = []; let ntot = 0;
+  for (let i = 0; i < ny; i++) for (let j = 0; j < nu; j++) { const s = siso2ss(num[i][j], den[i][j]); subs.push({ s, i, j }); ntot += s.A.length; }
+  const A = zeros2(ntot, ntot), B = zeros2(ntot, nu), C = zeros2(ny, ntot), D = zeros2(ny, nu); let off = 0;
+  for (const { s, i, j } of subs) { const n = s.A.length;
+    for (let a = 0; a < n; a++) for (let b = 0; b < n; b++) A[off + a][off + b] = s.A[a][b];
+    for (let a = 0; a < n; a++) B[off + a][j] = s.B[a][0];
+    for (let b = 0; b < n; b++) C[i][off + b] = s.C[0][b];
+    D[i][j] = s.D[0][0]; off += n;
+  }
+  return { A, B, C, D, Ts };
+}
+// tf object → per-channel num/den (handles SISO rowVec and MIMO cell storage).
+function tfChannels(v: ClassV): { ny: number; nu: number; num: number[][][]; den: number[][][] } {
+  const numP = v.props.get('num')!, denP = v.props.get('den')!;
+  if (isCell(numP)) {
+    const ny = numP.rows, nu = numP.cols, num: number[][][] = [], den: number[][][] = [];
+    for (let i = 0; i < ny; i++) { num.push([]); den.push([]); for (let j = 0; j < nu; j++) { num[i].push(toArray(m((numP as Cell).items[i + j * ny]))); den[i].push(toArray(m((denP as Cell).items[i + j * ny]))); } }
+    return { ny, nu, num, den };
+  }
+  return { ny: 1, nu: 1, num: [[toArray(m(numP))]], den: [[toArray(m(denP))]] };
+}
+// zpk object → per-channel num/den (expand each (z,p,k); handles SISO and MIMO cell storage).
+function zpkChannels(v: ClassV): { ny: number; nu: number; num: number[][][]; den: number[][][] } {
+  const conv = (zv: number[], pv: number[], k: number) => { let num = polyFromRoots(zv, zv.map(() => 0)).map((x) => x * k); const den = polyFromRoots(pv, pv.map(() => 0)); while (num.length < den.length) num.unshift(0); return { num, den }; };
+  const zP = v.props.get('z')!, pP = v.props.get('p')!, kP = v.props.get('k')!;
+  if (isCell(zP)) {
+    const ny = zP.rows, nu = zP.cols, km = m(kP), num: number[][][] = [], den: number[][][] = [];
+    for (let i = 0; i < ny; i++) { num.push([]); den.push([]); for (let j = 0; j < nu; j++) { const c = conv(toArray(m((zP as Cell).items[i + j * ny])), toArray(m((pP as Cell).items[i + j * ny])), km.data[i + j * km.rows]); num[i].push(c.num); den[i].push(c.den); } }
+    return { ny, nu, num, den };
+  }
+  const c = conv(toArray(m(zP)), toArray(m(pP)), asScalar(kP));
+  return { ny: 1, nu: 1, num: [[c.num]], den: [[c.den]] };
+}
+function toSS(v: Value): SS {
+  if (isObject(v)) {
+    const Ts = getTsV(v);
+    if (v.className === 'ss' || v.className === 'dss') {
+      const Bmat = m(v.props.get('B') as Mat), Cmat = m(v.props.get('C') as Mat);
+      return { A: matRows(m(v.props.get('A') as Mat)), B: matRows(Bmat), C: matRows(Cmat), D: expandD(v.props.get('D'), Cmat.rows, Bmat.cols), Ts };
+    }
+    if (v.className === 'tf') { const { ny, nu, num, den } = tfChannels(v); return channelsToSS(num, den, ny, nu, Ts); }
+    if (v.className === 'zpk') { const { ny, nu, num, den } = zpkChannels(v); return channelsToSS(num, den, ny, nu, Ts); }
+  }
+  const M = m(v); return { A: [], B: zeros2(0, M.cols), C: zeros2(M.rows, 0), D: matRows(M), Ts: 0 };
+}
+const ssDims = (s: SS): { ny: number; nu: number } => ({ ny: s.D.length, nu: s.D[0]?.length ?? 0 });
+// SISO sub-system (output i, input j) of an SS → (num,den).
+function ssSub(s: SS, i: number, j: number): { num: number[]; den: number[] } {
+  const Dij = s.D[i]?.[j] ?? 0;
+  if (s.A.length === 0) return { num: [Dij], den: [1] };
+  return ss2tfFL(s.A, s.B.map((r) => [r[j]]), [s.C[i].slice()], Dij);
+}
+function mkSS(s: SS): Value {
+  const props: Record<string, Value> = { A: fromRows(s.A), B: fromRows(s.B), C: fromRows(s.C), D: fromRows(s.D) };
+  if (s.Ts) props.Ts = scalar(s.Ts); return makeObject('ss', props);
+}
+const kFromPoly = (num: number[], den: number[]): number => { let i = 0; while (i < num.length && num[i] === 0) i++; let j = 0; while (j < den.length && den[j] === 0) j++; return (num[i] ?? 0) / (den[j] ?? 1); };
+function fromSS(s: SS, cls: string): Value {
+  if (cls === 'ss' || cls === 'dss' || cls === 'frd') return mkSS(s);
+  const { ny, nu } = ssDims(s);
+  // MIMO results stay in state-space: per-channel tf/zpk cells lose the shared-state structure
+  // (each channel would carry the full characteristic polynomial), so keep the minimal SS form.
+  if (ny > 1 || nu > 1) return mkSS(s);
+  if (cls === 'zpk') {
+    if (ny === 1 && nu === 1) { const { num, den } = ssSub(s, 0, 0); const props: Record<string, Value> = { z: rootsValue(sortRoots(polyRoots(num))), p: rootsValue(sortRoots(polyRoots(den))), k: scalar(kFromPoly(num, den)) }; if (s.Ts) props.Ts = scalar(s.Ts); return makeObject('zpk', props); }
+    const zit: Value[] = new Array(ny * nu), pit: Value[] = new Array(ny * nu), kk = zeros2(ny, nu);
+    for (let i = 0; i < ny; i++) for (let j = 0; j < nu; j++) { const { num, den } = ssSub(s, i, j); zit[i + j * ny] = rootsValue(sortRoots(polyRoots(num))); pit[i + j * ny] = rootsValue(sortRoots(polyRoots(den))); kk[i][j] = kFromPoly(num, den); }
+    const props: Record<string, Value> = { z: makeCell(ny, nu, zit), p: makeCell(ny, nu, pit), k: fromRows(kk) }; if (s.Ts) props.Ts = scalar(s.Ts); return makeObject('zpk', props);
+  }
+  // tf (default)
+  if (ny === 1 && nu === 1) { const { num, den } = ssSub(s, 0, 0); const props: Record<string, Value> = { num: rowVec(num), den: rowVec(den) }; if (s.Ts) props.Ts = scalar(s.Ts); return makeObject('tf', props); }
+  const nit: Value[] = new Array(ny * nu), dit: Value[] = new Array(ny * nu);
+  for (let i = 0; i < ny; i++) for (let j = 0; j < nu; j++) { const { num, den } = ssSub(s, i, j); nit[i + j * ny] = rowVec(num); dit[i + j * ny] = rowVec(den); }
+  const props: Record<string, Value> = { num: makeCell(ny, nu, nit), den: makeCell(ny, nu, dit) }; if (s.Ts) props.Ts = scalar(s.Ts); return makeObject('tf', props);
+}
+
+// ── SS algebra ──
+const combTs = (a: SS, b: SS): number => a.Ts || b.Ts;
+const ssNeg = (s: SS): SS => ({ A: s.A, B: s.B, C: s.C.map((r) => r.map((x) => -x)), D: s.D.map((r) => r.map((x) => -x)), Ts: s.Ts });
+const ssTranspose = (s: SS): SS => ({ A: matT(s.A), B: matT(s.C), C: matT(s.B), D: matT(s.D), Ts: s.Ts });
+// Cascade: signal u → P → Q → y (so series(P,Q); mtimes(a,b)=a*b uses cascade(b,a)).
+function ssCascade(P: SS, Q: SS): SS {
+  const nP = P.A.length, nQ = Q.A.length, mP = P.D[0]?.length ?? 0, pQ = Q.D.length;
+  const A = blk(P.A, Q.A); const BQCP = smul(Q.B, P.C); for (let i = 0; i < nQ; i++) for (let j = 0; j < nP; j++) A[nP + i][j] = BQCP[i][j];
+  const B = zeros2(nP + nQ, mP); for (let i = 0; i < nP; i++) for (let j = 0; j < mP; j++) B[i][j] = P.B[i][j];
+  const BQDP = smul(Q.B, P.D); for (let i = 0; i < nQ; i++) for (let j = 0; j < mP; j++) B[nP + i][j] = BQDP[i][j];
+  const C = zeros2(pQ, nP + nQ); const DQCP = smul(Q.D, P.C); for (let i = 0; i < pQ; i++) for (let j = 0; j < nP; j++) C[i][j] = DQCP[i][j];
+  for (let i = 0; i < pQ; i++) for (let j = 0; j < nQ; j++) C[i][nP + j] = Q.C[i][j];
+  return { A, B, C, D: smul(Q.D, P.D), Ts: combTs(P, Q) };
+}
+function ssParallel(s1: SS, s2: SS): SS {
+  const n1 = s1.A.length, n2 = s2.A.length, m1 = s1.D[0]?.length ?? 0, p1 = s1.D.length, A = blk(s1.A, s2.A);
+  const B = zeros2(n1 + n2, m1); for (let i = 0; i < n1; i++) for (let j = 0; j < m1; j++) B[i][j] = s1.B[i][j]; for (let i = 0; i < n2; i++) for (let j = 0; j < m1; j++) B[n1 + i][j] = s2.B[i][j];
+  const C = zeros2(p1, n1 + n2); for (let i = 0; i < p1; i++) for (let j = 0; j < n1; j++) C[i][j] = s1.C[i][j]; for (let i = 0; i < p1; i++) for (let j = 0; j < n2; j++) C[i][n1 + j] = s2.C[i][j];
+  return { A, B, C, D: s1.D.map((r, i) => r.map((x, j) => x + s2.D[i][j])), Ts: combTs(s1, s2) };
+}
+function ssInv(s: SS): SS {
+  const p = s.D.length, mm = s.D[0]?.length ?? 0; if (p !== mm) throw new Error('inv: system must be square');
+  const Di = matInv(s.D), n = s.A.length;
+  return { A: n ? matSub(s.A, smul(smul(s.B, Di), s.C)) : [], B: n ? smul(s.B, Di) : zeros2(0, mm), C: n ? smul(Di, s.C).map((r) => r.map((x) => -x)) : zeros2(p, 0), D: Di, Ts: s.Ts };
+}
+// Integer matrix power: sys^k (k>0 cascade, k=0 identity gain, k<0 inverse then power).
+function ssPow(s: SS, k: number): SS {
+  const p = s.D.length; if (k === 0) { const I = zeros2(p, p); for (let i = 0; i < p; i++) I[i][i] = 1; return { A: [], B: zeros2(0, p), C: zeros2(p, 0), D: I, Ts: s.Ts }; }
+  const base = k < 0 ? ssInv(s) : s; let r = base; for (let i = 1; i < Math.abs(k); i++) r = ssCascade(r, base); return r;
+}
+// feedback(G,H,sign): closed loop r→y with e = r + sign*(H*y), default sign=-1 (negative).
+function ssFeedback(G: SS, H: SS, sign: number): SS {
+  const nG = G.A.length, nH = H.A.length, pG = G.D.length, mG = G.D[0]?.length ?? 0;
+  const I = zeros2(pG, pG); for (let i = 0; i < pG; i++) I[i][i] = 1;
+  const Ei = matInv(matSub(I, smul(G.D, H.D).map((r) => r.map((x) => sign * x))));   // (I - sign*DG*DH)^-1
+  const Cy1 = smul(Ei, G.C);                                   // pG×nG
+  const Cy2 = smul(Ei, smul(G.D, H.C).map((r) => r.map((x) => sign * x)));   // pG×nH
+  const Dyr = smul(Ei, G.D);                                   // pG×mG
+  const sBGDH = smul(G.B, H.D).map((r) => r.map((x) => sign * x));   // nG×pG
+  const A11 = matAddT(G.A, smul(sBGDH, Cy1));
+  const sBGCH = smul(G.B, H.C).map((r) => r.map((x) => sign * x));   // nG×nH
+  const A12 = matAddT(sBGCH, smul(sBGDH, Cy2));
+  const A21 = smul(H.B, Cy1);                                  // nH×nG
+  const A22 = matAddT(H.A, smul(H.B, Cy2));
+  const A = zeros2(nG + nH, nG + nH);
+  for (let i = 0; i < nG; i++) { for (let j = 0; j < nG; j++) A[i][j] = A11[i]?.[j] ?? 0; for (let j = 0; j < nH; j++) A[i][nG + j] = A12[i]?.[j] ?? 0; }
+  for (let i = 0; i < nH; i++) { for (let j = 0; j < nG; j++) A[nG + i][j] = A21[i]?.[j] ?? 0; for (let j = 0; j < nH; j++) A[nG + i][nG + j] = A22[i]?.[j] ?? 0; }
+  const B = zeros2(nG + nH, mG); const B1 = matAddT(G.B, smul(sBGDH, Dyr)), B2 = smul(H.B, Dyr);
+  for (let i = 0; i < nG; i++) for (let j = 0; j < mG; j++) B[i][j] = B1[i]?.[j] ?? 0;
+  for (let i = 0; i < nH; i++) for (let j = 0; j < mG; j++) B[nG + i][j] = B2[i]?.[j] ?? 0;
+  const C = zeros2(pG, nG + nH); for (let i = 0; i < pG; i++) { for (let j = 0; j < nG; j++) C[i][j] = Cy1[i]?.[j] ?? 0; for (let j = 0; j < nH; j++) C[i][nG + j] = Cy2[i]?.[j] ?? 0; }
+  return { A, B, C, D: Dyr, Ts: combTs(G, H) };
+}
+// add two same-shape matrices, tolerating empty operands
+const matAddT = (A: number[][], B: number[][]): number[][] => A.map((r, i) => r.map((x, j) => x + (B[i]?.[j] ?? 0)));
+
+// SISO (num,den) view of an operand, or null if MIMO. Lets tf/zpk arithmetic stay polynomial
+// (exact, and able to represent improper results that a proper state-space cannot).
+function sisoNDof(v: Value): { num: number[]; den: number[] } | null {
+  if (isObject(v)) {
+    if (v.className === 'tf') { const numP = v.props.get('num')!; if (isCell(numP)) { if (numP.rows !== 1 || numP.cols !== 1) return null; return { num: toArray(m((numP as Cell).items[0])), den: toArray(m((v.props.get('den') as Cell).items[0])) }; } return { num: toArray(m(numP)), den: toArray(m(v.props.get('den')!)) }; }
+    if (v.className === 'zpk') { const { ny, nu, num, den } = zpkChannels(v); return ny === 1 && nu === 1 ? { num: num[0][0], den: den[0][0] } : null; }
+    if (v.className === 'ss' || v.className === 'dss') { const s = toSS(v); const { ny, nu } = ssDims(s); return ny === 1 && nu === 1 ? ssSub(s, 0, 0) : null; }
+    return null;
+  }
+  const M = m(v); return M.rows * M.cols === 1 ? { num: [M.data[0]], den: [1] } : null;
+}
+function fromTfND(num: number[], den: number[], Ts: number, cls: string): Value {
+  const n2 = num.map((v) => (Math.abs(v) < 1e-12 ? 0 : v)), d2 = den.map((v) => (Math.abs(v) < 1e-12 ? 0 : v));
+  if (cls === 'zpk') { const props: Record<string, Value> = { z: rootsValue(sortRoots(polyRoots(n2))), p: rootsValue(sortRoots(polyRoots(d2))), k: scalar(kFromPoly(n2, d2)) }; if (Ts) props.Ts = scalar(Ts); return makeObject('zpk', props); }
+  if (cls === 'ss' || cls === 'dss') return mkSS(channelsToSS([[n2]], [[d2]], 1, 1, Ts));
+  const props: Record<string, Value> = { num: rowVec(n2), den: rowVec(d2) }; if (Ts) props.Ts = scalar(Ts); return makeObject('tf', props);
+}
+// LTI operator-method table shared by tf/ss/zpk registration. Each receives [a,b] (the operands).
+// SISO tf/zpk/scalar operands use polynomial arithmetic; anything MIMO routes through state-space.
+const tsOf2 = (a: Value, b: Value): number => getTsV(a) || getTsV(b);
+const LTI_OPS: Record<string, Builtin> = {
+  mtimes: (a) => { const A = sisoNDof(a[0]), B = sisoNDof(a[1]); return A && B ? ret(fromTfND(polyConv(A.num, B.num), polyConv(A.den, B.den), tsOf2(a[0], a[1]), rcls(a[0], a[1]))) : ret(fromSS(ssCascade(toSS(a[1]), toSS(a[0])), rcls(a[0], a[1]))); },
+  plus: (a) => { const A = sisoNDof(a[0]), B = sisoNDof(a[1]); return A && B ? ret(fromTfND(polyAdd(polyConv(A.num, B.den), polyConv(B.num, A.den)), polyConv(A.den, B.den), tsOf2(a[0], a[1]), rcls(a[0], a[1]))) : ret(fromSS(ssParallel(toSS(a[0]), toSS(a[1])), rcls(a[0], a[1]))); },
+  minus: (a) => { const A = sisoNDof(a[0]), B = sisoNDof(a[1]); return A && B ? ret(fromTfND(polyAdd(polyConv(A.num, B.den), polyConv(B.num.map((x) => -x), A.den)), polyConv(A.den, B.den), tsOf2(a[0], a[1]), rcls(a[0], a[1]))) : ret(fromSS(ssParallel(toSS(a[0]), ssNeg(toSS(a[1]))), rcls(a[0], a[1]))); },
+  uminus: (a) => { const A = sisoNDof(a[0]); return A ? ret(fromTfND(A.num.map((x) => -x), A.den, getTsV(a[0]), clsOf(a[0]))) : ret(fromSS(ssNeg(toSS(a[0])), clsOf(a[0]))); },
+  inv: (a) => { const A = sisoNDof(a[0]); return A ? ret(fromTfND(A.den, A.num, getTsV(a[0]), clsOf(a[0]))) : ret(fromSS(ssInv(toSS(a[0])), clsOf(a[0]))); },
+  mrdivide: (a) => { const A = sisoNDof(a[0]), B = sisoNDof(a[1]); return A && B ? ret(fromTfND(polyConv(A.num, B.den), polyConv(A.den, B.num), tsOf2(a[0], a[1]), rcls(a[0], a[1]))) : ret(fromSS(ssCascade(ssInv(toSS(a[1])), toSS(a[0])), rcls(a[0], a[1]))); },
+  mldivide: (a) => { const A = sisoNDof(a[0]), B = sisoNDof(a[1]); return A && B ? ret(fromTfND(polyConv(B.num, A.den), polyConv(B.den, A.num), tsOf2(a[0], a[1]), rcls(a[0], a[1]))) : ret(fromSS(ssCascade(toSS(a[1]), ssInv(toSS(a[0]))), rcls(a[0], a[1]))); },
+  mpower: (a) => { const k = Math.round(asScalar(a[1])); const A = sisoNDof(a[0]); if (A) { let num = [1], den = [1]; const base = k < 0 ? { num: A.den, den: A.num } : A; for (let i = 0; i < Math.abs(k); i++) { num = polyConv(num, base.num); den = polyConv(den, base.den); } return ret(fromTfND(num, den, getTsV(a[0]), clsOf(a[0]))); } return ret(fromSS(ssPow(toSS(a[0]), k), clsOf(a[0]))); },
+  ctranspose: (a) => ret(fromSS(ssTranspose(toSS(a[0])), clsOf(a[0]))),
+  transpose: (a) => ret(fromSS(ssTranspose(toSS(a[0])), clsOf(a[0]))),
+  series: (a) => { const A = sisoNDof(a[0]), B = sisoNDof(a[1]); return A && B ? ret(fromTfND(polyConv(A.num, B.num), polyConv(A.den, B.den), tsOf2(a[0], a[1]), rcls(a[0], a[1]))) : ret(fromSS(ssCascade(toSS(a[0]), toSS(a[1])), rcls(a[0], a[1]))); },
+  append: (a) => ltiAppend(a),   // registered as a method so it isn't shadowed by the base string `append`
+};
+// Interconnection builtins (global; MIMO via SS). H defaults to identity for feedback(G).
+const ltiParallel = (a: Value[]): Promise<Value[]> => ret(fromSS(ssParallel(toSS(a[0]), toSS(a[1])), rcls(a[0], a[1])));
+const ltiFeedback = (a: Value[]): Promise<Value[]> => {
+  const G = toSS(a[0]); const H = a.length >= 2 ? toSS(a[1]) : toSS(scalar(1));
+  const sign = a.length >= 3 ? Math.sign(asScalar(a[2])) || -1 : -1;
+  return ret(fromSS(ssFeedback(G, H, sign), rcls(a[0], a.length >= 2 ? a[1] : a[0])));
+};
+const ltiAppend = (a: Value[]): Promise<Value[]> => { let s = toSS(a[0]); for (let i = 1; i < a.length; i++) { const t = toSS(a[i]); s = { A: blk(s.A, t.A), B: blk(s.B, t.B), C: blk(s.C, t.C), D: blk(s.D, t.D), Ts: combTs(s, t) }; } return ret(fromSS(s, clsOf(a[0]))); };
+
+// Analysis helpers that work on any LTI class (tf/zpk/ss) via the SS core.
+const sisoND = (sys: Value): { num: number[]; den: number[] } => ssSub(toSS(sys), 0, 0);
+function polesOf(sys: Value): { re: number[]; im: number[] } {
+  const A = toSS(sys).A, N = A.length; if (N === 0) return { re: [], im: [] };
+  const p = [1]; let Mk = eye(N); for (let k = 1; k <= N; k++) { const AM = mmul(A, Mk); p[k] = -traceM(AM) / k; Mk = AM.map((row, i) => row.map((vv, j) => vv + (i === j ? p[k] : 0))); }
+  return polyRoots(p);
+}
+function tfChannelsAny(sys: Value): { ny: number; nu: number; num: number[][][]; den: number[][][] } {
+  if (isObject(sys) && sys.className === 'tf') return tfChannels(sys);
+  const s = toSS(sys), { ny, nu } = ssDims(s), num: number[][][] = [], den: number[][][] = [];
+  for (let i = 0; i < ny; i++) { num.push([]); den.push([]); for (let j = 0; j < nu; j++) { const c = ssSub(s, i, j); num[i].push(c.num); den[i].push(c.den); } }
+  return { ny, nu, num, den };
+}
+const isVflag = (v: Value | undefined): boolean => { if (!v) return false; try { return asString(v).toLowerCase() === 'v'; } catch { return false; } };
+
 export const CONTROL: ToolboxModule = {
   id: 'control',
   name: 'Control System Toolbox',
@@ -526,29 +759,48 @@ export const CONTROL: ToolboxModule = {
     ss: (a) => ret(makeObject('ss', { A: m(a[0]), B: m(a[1]), C: m(a[2]), D: a.length >= 4 ? m(a[3]) : scalar(0) })),
     /** zpk(z,p,k) — zero-pole-gain model. */
     zpk: (a) => ret(makeObject('zpk', { z: colVec(toArray(m(a[0]))), p: colVec(toArray(m(a[1]))), k: scalar(asScalar(a[2])) })),
-    /** pole(sys) — system poles (roots of the denominator, or eigenvalues of A for ss/dss). */
-    pole: (a) => {
-      const sys = a[0];
-      if (isObject(sys) && (sys.className === 'ss' || sys.className === 'dss')) {
-        const A = matRows(m(sys.props.get('A') as Mat));
-        const N = A.length; if (N === 0) return ret(colVec([]));
-        const p = [1]; let Mk = eye(N);
-        for (let k = 1; k <= N; k++) { const AM = mmul(A, Mk); p[k] = -traceM(AM) / k; Mk = AM.map((row, i) => row.map((vv, j) => vv + (i === j ? p[k] : 0))); }
-        return ret(rootsValue(sortRoots(polyRoots(p))));
-      }
-      return ret(rootsValue(sortRoots(polyRoots(getNumDen(a[0]).den))));
+    /** pole(sys) — system poles (eigenvalues of the A matrix of any tf/zpk/ss realization). */
+    pole: (a) => ret(rootsValue(sortRoots(polesOf(a[0])))),
+    /** zero(sys) — system (transmission) zeros (SISO: roots of the numerator). */
+    zero: (a) => ret(rootsValue(sortRoots(polyRoots(sisoND(a[0]).num)))),
+    /** dcgain(sys) — steady-state gain. Continuous: D−C·A⁻¹·B; discrete: D+C·(I−A)⁻¹·B (MIMO). */
+    dcgain: (a) => {
+      const s = toSS(a[0]); const { ny, nu } = ssDims(s); const n = s.A.length;
+      let G: number[][];
+      if (n === 0) G = s.D;
+      else if (s.Ts) { const I = eye(n); G = matAddT(s.D, smul(smul(s.C, matInv(matSub(I, s.A))), s.B)); }
+      else G = matSub(s.D, smul(smul(s.C, matInv(s.A)), s.B));
+      return ret(ny === 1 && nu === 1 ? scalar(G[0]?.[0] ?? 0) : fromRows(G));
     },
-    /** zero(sys) — system (transmission) zeros (roots of the numerator). */
-    zero: (a) => ret(rootsValue(sortRoots(polyRoots(getNumDen(a[0]).num)))),
-    /** dcgain(sys) — steady-state (s=0) gain. */
-    dcgain: (a) => { const { num, den } = getNumDen(a[0]); return ret(scalar(num[num.length - 1] / den[den.length - 1])); },
-    /** isstable(sys) — true if all poles have negative real part (continuous). */
+    /** isstable(sys) — poles in the open LHP (continuous) or inside the unit disk (discrete). */
     isstable: (a) => {
-      const sys = a[0]; const r = polyRoots(getNumDen(sys).den);
-      const Ts = isObject(sys) && sys.props.has('Ts') ? asScalar(sys.props.get('Ts') as Value) : 0;
-      // Discrete (Ts>0): poles strictly inside the unit circle; continuous: in the left half-plane.
-      const stable = Ts > 0 ? r.re.every((re, i) => Math.hypot(re, r.im[i]) < 1) : r.re.every((x) => x < 0);
+      const sys = a[0]; const r = polesOf(sys); const Ts = getTsV(sys);
+      const stable = Ts !== 0 ? r.re.every((re, i) => Math.hypot(re, r.im[i]) < 1) : r.re.every((x) => x < 0);
       return ret(bool(stable));
+    },
+    /** [num,den]=tfdata(sys[,'v']) — transfer-function data (cells, or row vectors with 'v'). */
+    tfdata: (a) => {
+      const { ny, nu, num, den } = tfChannelsAny(a[0]);
+      if (isVflag(a[1]) && ny === 1 && nu === 1) return Promise.resolve([rowVec(num[0][0]), rowVec(den[0][0])]);
+      const nit: Value[] = new Array(ny * nu), dit: Value[] = new Array(ny * nu);
+      for (let i = 0; i < ny; i++) for (let j = 0; j < nu; j++) { nit[i + j * ny] = rowVec(num[i][j]); dit[i + j * ny] = rowVec(den[i][j]); }
+      return Promise.resolve([makeCell(ny, nu, nit), makeCell(ny, nu, dit)]);
+    },
+    /** [A,B,C,D]=ssdata(sys) — state-space data matrices. */
+    ssdata: (a) => { const s = toSS(a[0]); return Promise.resolve([fromRows(s.A), fromRows(s.B), fromRows(s.C), fromRows(s.D)]); },
+    /** [z,p,k]=zpkdata(sys[,'v']) — zero-pole-gain data. */
+    zpkdata: (a) => {
+      const { ny, nu, num, den } = tfChannelsAny(a[0]);
+      if (isVflag(a[1]) && ny === 1 && nu === 1) return Promise.resolve([rootsValue(sortRoots(polyRoots(num[0][0]))), rootsValue(sortRoots(polyRoots(den[0][0]))), scalar(kFromPoly(num[0][0], den[0][0]))]);
+      const zit: Value[] = new Array(ny * nu), pit: Value[] = new Array(ny * nu), kk = zeros2(ny, nu);
+      for (let i = 0; i < ny; i++) for (let j = 0; j < nu; j++) { zit[i + j * ny] = rootsValue(sortRoots(polyRoots(num[i][j]))); pit[i + j * ny] = rootsValue(sortRoots(polyRoots(den[i][j]))); kk[i][j] = kFromPoly(num[i][j], den[i][j]); }
+      return Promise.resolve([makeCell(ny, nu, zit), makeCell(ny, nu, pit), fromRows(kk)]);
+    },
+    /** [A,B,C,D,E]=dssdata(sys) — descriptor state-space data. */
+    dssdata: (a) => {
+      const sys = a[0];
+      if (isObject(sys) && sys.className === 'dss') return Promise.resolve([m(sys.props.get('A') as Mat), m(sys.props.get('B') as Mat), m(sys.props.get('C') as Mat), m(sys.props.get('D') as Mat), m(sys.props.get('E') as Mat)]);
+      const s = toSS(sys); return Promise.resolve([fromRows(s.A), fromRows(s.B), fromRows(s.C), fromRows(s.D), fromRows(eye(s.A.length))]);
     },
     /** [z,p,k] = tf2zp(num,den) — transfer function to zero-pole-gain. */
     tf2zp: (a, n) => {
@@ -601,12 +853,14 @@ export const CONTROL: ToolboxModule = {
     // `series` is registered as a CLASS METHOD (below) rather than a global builtin, because the
     // name collides with Symbolic's `series`. OOP dispatch routes series(tf,…) here, series(sym,…)
     // to Symbolic — matching MATLAB.
-    /** parallel(sys1,sys2) — parallel connection sys1+sys2. */
-    parallel: (a) => { const g1 = getNumDen(a[0]), g2 = getNumDen(a[1]); return ret(tfModel(polyAdd(polyConv(g1.num, g2.den), polyConv(g2.num, g1.den)), polyConv(g1.den, g2.den))); },
-    /** feedback(sys1,sys2) — negative-feedback closed loop sys1/(1+sys1·sys2). */
-    feedback: (a) => { const g1 = getNumDen(a[0]); const g2 = a.length >= 2 && isObject(a[1]) ? getNumDen(a[1]) : { num: [asScalar(a[1] ?? scalar(1))], den: [1] }; return ret(tfModel(polyConv(g1.num, g2.den), polyAdd(polyConv(g1.den, g2.den), polyConv(g1.num, g2.num)))); },
+    /** parallel(sys1,sys2) — parallel connection sys1+sys2 (MIMO via state-space). */
+    parallel: ltiParallel,
+    /** feedback(sys1,sys2[,sign]) — feedback loop r→y, e=r+sign·(sys2·y); sign default −1 (MIMO via ss). */
+    feedback: ltiFeedback,
+    /** append(sys1,sys2,…) — block-diagonal append (stack inputs and outputs). */
+    append: ltiAppend,
     /** order(sys) — number of states (denominator degree). */
-    order: (a) => ret(scalar(getNumDen(a[0]).den.length - 1)),
+    order: (a) => ret(scalar(toSS(a[0]).A.length)),
     /** [K,S,e] = lqr(A,B,Q,R[,N]) — continuous LQR. Solves CARE A'S+SA−SBR⁻¹B'S+Q=0,
      *  K=R⁻¹(B'S+N'), e=eig(A−BK). */
     lqr: (a, n) => {
@@ -971,7 +1225,11 @@ export const CONTROL: ToolboxModule = {
   },
   // OOP method dispatch (see tb/types.ts): series(tf,…) routes here; series(sym,…) → Symbolic.
   methods: {
-    tf: { series: (a) => { const g1 = getNumDen(a[0]), g2 = getNumDen(a[1]); return ret(tfModel(polyConv(g1.num, g2.num), polyConv(g1.den, g2.den))); } },
+    // Operator + interconnection overloads (mtimes/plus/minus/inv/series/…) for every LTI class.
+    // All implemented once on state-space via LTI_OPS, so tf/ss/zpk behave uniformly and MIMO.
+    tf: { ...LTI_OPS },
+    ss: { ...LTI_OPS },
+    zpk: { ...LTI_OPS },
   },
 };
 
