@@ -8,7 +8,8 @@ import {
   asString, asScalar, toMat as m, MatError, mat, fromRows, isCell, isStr, makeCell, bool,
 } from '../values';
 import type { ToolboxModule } from './types';
-import { inv, det, schur } from '../linalg';
+import { inv, det, schur, svd, qr } from '../linalg';
+import { matmul, transpose } from '../values';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
 /** Rows of a matrix as number[][] (local copy of the builtins.ts helper, kept self-contained). */
@@ -2217,6 +2218,300 @@ export const STATS: ToolboxModule = {
       ]);
       return Promise.resolve([bMat, stats]);
     },
+
+    // ── pcares(X,ndim): PCA residuals and reconstruction ──
+    pcares: (a, nargout) => {
+      const X = m(a[0]); const ndim = Math.round(asScalar(a[1]));
+      const nr = X.rows, nc = X.cols;
+      // Center X column-wise
+      const mu: number[] = [];
+      for (let c = 0; c < nc; c++) { let s = 0; for (let r = 0; r < nr; r++) s += X.data[r + c * nr]; mu.push(s / nr); }
+      const Xc = mat(nr, nc, new Float64Array(nr * nc));
+      for (let c = 0; c < nc; c++) for (let r = 0; r < nr; r++) Xc.data[r + c * nr] = X.data[r + c * nr] - mu[c];
+      // SVD of centered matrix; first ndim PCs are the first ndim right-singular vectors (V columns)
+      const { V } = svd(Xc);
+      // Reconstruct from ndim PCs: proj = Xc * V_k * V_k'
+      const k = Math.min(ndim, V.cols);
+      // V_k is the first k columns of V (nc × k)
+      const VkData = new Float64Array(nc * k);
+      for (let c = 0; c < k; c++) for (let r = 0; r < nc; r++) VkData[r + c * nc] = V.data[r + c * nc];
+      const Vk = mat(nc, k, VkData);
+      // scores = Xc * Vk (nr × k)
+      const scores = matmul(Xc, Vk);
+      // recon_centered = scores * Vk' (nr × nc)
+      const VkT = transpose(Vk);
+      const reconCentered = matmul(scores, VkT);
+      // Add back column means to get reconstructed X
+      const reconst = mat(nr, nc, new Float64Array(nr * nc));
+      for (let c = 0; c < nc; c++) for (let r = 0; r < nr; r++) reconst.data[r + c * nr] = reconCentered.data[r + c * nr] + mu[c];
+      // Residuals = X - reconst
+      const resid = mat(nr, nc, new Float64Array(nr * nc));
+      for (let i = 0; i < nr * nc; i++) resid.data[i] = X.data[i] - reconst.data[i];
+      return Promise.resolve([resid, reconst].slice(0, Math.max(1, nargout)));
+    },
+
+    // ── ksdensity(x[,xi],...): kernel density estimate ──
+    ksdensity: (a, nargout) => {
+      const xv = toArray(m(a[0])); const n = xv.length;
+      // Parse trailing Name-Value pairs
+      let kernelName = 'normal', bwOverride = NaN, fnType = 'pdf';
+      let evalPts: number[] | null = null;
+      // second positional arg may be evaluation points (numeric, non-string)
+      let argIdx = 1;
+      if (a.length > 1 && isMat(a[1]) && !(a[1] as Mat).isChar) { evalPts = toArray(m(a[1])); argIdx = 2; }
+      for (let i = argIdx; i + 1 < a.length; i += 2) {
+        const key = asString(a[i]).toLowerCase();
+        if (key === 'kernel') kernelName = asString(a[i + 1]).toLowerCase();
+        else if (key === 'bandwidth') bwOverride = asScalar(a[i + 1]);
+        else if (key === 'function') fnType = asString(a[i + 1]).toLowerCase();
+      }
+      // Silverman bandwidth with robust sigma (min(std, iqr/1.349))
+      // MATLAB uses Hazen (p/100)*n + 0.5 quantile formula (prctile default)
+      const mu0 = xv.reduce((s, v) => s + v, 0) / n;
+      const sig = Math.sqrt(xv.reduce((s, v) => s + (v - mu0) ** 2, 0) / (n - 1 || 1));
+      const sorted = xv.slice().sort((p, q) => p - q);
+      const hazenQ = (pct: number): number => {
+        const r = (pct / 100) * n + 0.5;
+        const k = Math.max(1, Math.min(n, Math.floor(r)));
+        const kp1 = Math.max(1, Math.min(n, k + 1));
+        const frac = Math.max(0, Math.min(1, r - k));
+        return sorted[k - 1] * (1 - frac) + sorted[kp1 - 1] * frac;
+      };
+      const iqr = hazenQ(75) - hazenQ(25);
+      const robustSig = Math.min(sig, iqr > 0 ? iqr / 1.349 : sig);
+      // MATLAB uses (4/(3*n))^(1/5) * robustSig — equivalent to (4/3)^(1/5) * n^(-1/5) * sig
+      const h = isNaN(bwOverride) ? Math.pow(4 / (3 * n), 0.2) * robustSig : bwOverride;
+      // Evaluation grid: 100 points spanning data ± 3h (if not provided)
+      if (evalPts === null) {
+        const lo = Math.min(...xv) - 3 * h, hi = Math.max(...xv) + 3 * h;
+        evalPts = Array.from({ length: 100 }, (_, i) => lo + (hi - lo) * i / 99);
+      }
+      // Kernel functions
+      const kfn = (u: number) => {
+        if (kernelName === 'box' || kernelName === 'uniform') return Math.abs(u) <= 1 ? 0.5 : 0;
+        if (kernelName === 'triangle' || kernelName === 'triangular') return Math.abs(u) < 1 ? 1 - Math.abs(u) : 0;
+        if (kernelName === 'epanechnikov') return Math.abs(u) < 1 ? 0.75 * (1 - u * u) : 0;
+        // default: normal
+        return Math.exp(-0.5 * u * u) / Math.sqrt(2 * Math.PI);
+      };
+      const fArr = evalPts.map((xi) => {
+        let s = 0; for (const xj of xv) s += kfn((xi - xj) / h);
+        if (fnType === 'pdf') return s / (n * h);
+        if (fnType === 'cdf') {
+          // integrate numerically via cumulative sum using trapezoidal rule
+          // For efficiency compute it inline below; here fallback
+          let cdf = 0; for (const xj of xv) cdf += 0.5 * (1 + erf((xi - xj) / (h * Math.SQRT2)));
+          return cdf / n;
+        }
+        if (fnType === 'survivor') {
+          let cdf = 0; for (const xj of xv) cdf += 0.5 * (1 + erf((xi - xj) / (h * Math.SQRT2)));
+          return 1 - cdf / n;
+        }
+        return s / (n * h);
+      });
+      const fMat = rowVec(fArr); const xiMat = rowVec(evalPts);
+      return Promise.resolve([fMat, xiMat].slice(0, Math.max(1, nargout)));
+    },
+
+    // ── nlinfit(X,y,modelfun,beta0): nonlinear least squares (Levenberg-Marquardt) ──
+    nlinfit: (a, nargout) => {
+      const X = m(a[0]); const yv = toArray(m(a[1]));
+      const fn = a[2]; // function handle
+      const beta0 = toArray(m(a[3]));
+      const n = yv.length, p = beta0.length;
+      // Evaluate model: call function handle with (beta, X)
+      const evalModel = async (beta: number[]): Promise<number[]> => {
+        if (fn.kind === 'handle') {
+          const bMat = colVec(beta);
+          const res = await fn.call([bMat, X], 1);
+          return toArray(m(res[0]));
+        }
+        throw new MatError('nlinfit: modelfun must be a function handle');
+      };
+      return (async () => {
+        let beta = beta0.slice();
+        const eps = Math.sqrt(Number.EPSILON);
+        let lambda = 0.01;
+        const maxIter = 400;
+        // Finite-difference Jacobian
+        const jacFD = async (b: number[], yhat: number[]): Promise<number[][]> => {
+          const J: number[][] = Array.from({ length: n }, () => new Array<number>(p).fill(0));
+          for (let j = 0; j < p; j++) {
+            const db = Math.max(eps, Math.abs(b[j]) * eps);
+            const bph = b.slice(); bph[j] += db;
+            const yp = await evalModel(bph);
+            for (let i = 0; i < n; i++) J[i][j] = (yp[i] - yhat[i]) / db;
+          }
+          return J;
+        };
+        let yhat = await evalModel(beta);
+        let resid = yv.map((v, i) => v - yhat[i]);
+        let sse = resid.reduce((s, v) => s + v * v, 0);
+        for (let iter = 0; iter < maxIter; iter++) {
+          const J = await jacFD(beta, yhat);
+          // JtJ + lambda * diag(JtJ)
+          const JtJ = Array.from({ length: p }, () => new Array<number>(p).fill(0));
+          const Jtr = new Array<number>(p).fill(0);
+          for (let i = 0; i < n; i++) for (let j = 0; j < p; j++) {
+            Jtr[j] += J[i][j] * resid[i];
+            for (let k = 0; k < p; k++) JtJ[j][k] += J[i][j] * J[i][k];
+          }
+          const damp = JtJ.map((row, i) => row.map((v, j) => i === j ? v * (1 + lambda) : v));
+          const step = solveLin(damp, Jtr);
+          const betaNew = beta.map((v, i) => v + step[i]);
+          const yNew = await evalModel(betaNew);
+          const rNew = yv.map((v, i) => v - yNew[i]);
+          const sseNew = rNew.reduce((s, v) => s + v * v, 0);
+          if (sseNew < sse) { beta = betaNew; yhat = yNew; resid = rNew; sse = sseNew; lambda *= 0.1; }
+          else { lambda *= 10; }
+          if (lambda > 1e16 || step.every((s) => Math.abs(s) < 1e-10 * (1 + Math.abs(beta[beta.findIndex((_, ii) => ii === step.indexOf(s))])))) break;
+        }
+        const betaMat = colVec(beta);
+        if (nargout < 2) return [betaMat];
+        const residMat = colVec(resid);
+        if (nargout < 3) return [betaMat, residMat];
+        // Jacobian at final params
+        const JFinal = await jacFD(beta, yhat);
+        const JMat = fromRows(JFinal);
+        if (nargout < 4) return [betaMat, residMat, JMat];
+        // CovB = MSE * inv(J'J)
+        const MSE = sse / Math.max(1, n - p);
+        const JtJ2 = Array.from({ length: p }, () => new Array<number>(p).fill(0));
+        for (let i = 0; i < n; i++) for (let j = 0; j < p; j++) for (let k = 0; k < p; k++) JtJ2[j][k] += JFinal[i][j] * JFinal[i][k];
+        const JtJMat = fromRows(JtJ2);
+        const JtJInv = inv(JtJMat);
+        const CovBData = new Float64Array(p * p);
+        for (let i = 0; i < p * p; i++) CovBData[i] = JtJInv.data[i] * MSE;
+        const CovB = mat(p, p, CovBData);
+        return [betaMat, residMat, JMat, CovB, scalar(MSE)];
+      })();
+    },
+
+    // ── procrustes(X,Y): orthogonal Procrustes analysis ──
+    procrustes: (a, nargout) => {
+      const X = m(a[0]), Y = m(a[1]);
+      const n = X.rows, pX = X.cols, pY = Y.cols;
+      const p = pX; // output columns match X
+      // Center both matrices
+      const muX: number[] = [], muY: number[] = [];
+      for (let c = 0; c < p; c++) { let sx = 0; for (let r = 0; r < n; r++) sx += X.data[r + c * n]; muX.push(sx / n); }
+      for (let c = 0; c < pY; c++) { let sy = 0; for (let r = 0; r < n; r++) sy += Y.data[r + c * n]; muY.push(sy / n); }
+      const X0 = mat(n, p, new Float64Array(n * p));
+      for (let c = 0; c < p; c++) for (let r = 0; r < n; r++) X0.data[r + c * n] = X.data[r + c * n] - muX[c];
+      // Y0 may have fewer cols than X; pad with zeros to match p
+      const Y0 = mat(n, p, new Float64Array(n * p));
+      for (let c = 0; c < pY; c++) for (let r = 0; r < n; r++) Y0.data[r + c * n] = Y.data[r + c * n] - muY[c];
+      // Frobenius norms
+      let normX0sq = 0; for (const v of X0.data) normX0sq += v * v;
+      let normY0sq = 0; for (const v of Y0.data) normY0sq += v * v;
+      const normX = Math.sqrt(normX0sq), normY = Math.sqrt(normY0sq);
+      if (normX === 0 || normY === 0) {
+        return Promise.resolve([scalar(normX === 0 ? 0 : 1), mat(n, p, new Float64Array(n * p)), mkStruct([['T', mat(p, p, new Float64Array(p * p))], ['b', scalar(0)], ['c', mat(n, p, new Float64Array(n * p))]])].slice(0, Math.max(1, nargout)));
+      }
+      // Normalize to unit norm (MATLAB approach)
+      const X0n = mat(n, p, new Float64Array(X0.data.map((v) => v / normX)));
+      const Y0n = mat(n, p, new Float64Array(Y0.data.map((v) => v / normY)));
+      // SVD of A = X0n' * Y0n → L D M': T = M * L'
+      const A = matmul(transpose(X0n), Y0n);   // p × p
+      const { U: L, s: Ds, V: M } = svd(A);
+      const T = matmul(M, transpose(L));        // p × p rotation matrix
+      // Trace of D (singular values)
+      const traceTA = Ds.reduce((acc, v) => acc + v, 0);
+      // Scaling: b = traceTA * normX / normY
+      const b = traceTA * normX / normY;
+      // Standardized distance: d = 1 - traceTA²
+      const d = Math.max(0, 1 - traceTA * traceTA);
+      // Z = normX * traceTA * Y0n * T + repmat(muX, n, 1)
+      const Y0nT = matmul(Y0n, T);   // n × p
+      const Z = mat(n, p, new Float64Array(n * p));
+      for (let c = 0; c < p; c++) for (let r = 0; r < n; r++) Z.data[r + c * n] = normX * traceTA * Y0nT.data[r + c * n] + muX[c];
+      if (nargout < 2) return Promise.resolve([scalar(d)]);
+      if (nargout < 3) return Promise.resolve([scalar(d), Z]);
+      // transform struct: T (p×p), b (scalar), c (1×p translation such that Z = b*Y*T + repmat(c,n,1))
+      // c = muX - b * muY * T  (1 × p)
+      const cRow = new Float64Array(p);
+      for (let c = 0; c < p; c++) { cRow[c] = muX[c]; for (let k = 0; k < pY; k++) cRow[c] -= b * muY[k] * T.data[k + c * p]; }
+      // MATLAB returns c as n×p (same row repeated)
+      const cArr = new Float64Array(n * p);
+      for (let r = 0; r < n; r++) for (let c = 0; c < p; c++) cArr[r + c * n] = cRow[c];
+      const tr = mkStruct([['T', T], ['b', scalar(b)], ['c', mat(n, p, cArr)]]);
+      return Promise.resolve([scalar(d), Z, tr]);
+    },
+
+    // ── canoncorr(X,Y): canonical correlation analysis ──
+    canoncorr: (a, nargout) => {
+      const X = m(a[0]), Y = m(a[1]);
+      const n = X.rows, px = X.cols, py = Y.cols;
+      // Center X and Y
+      const centerMat = (M: Mat): Mat => {
+        const nr = M.rows, nc = M.cols;
+        const out = mat(nr, nc, new Float64Array(nr * nc));
+        for (let c = 0; c < nc; c++) { let s = 0; for (let r = 0; r < nr; r++) s += M.data[r + c * nr]; s /= nr; for (let r = 0; r < nr; r++) out.data[r + c * nr] = M.data[r + c * nr] - s; }
+        return out;
+      };
+      const Xc = centerMat(X), Yc = centerMat(Y);
+      // Economy QR decompositions
+      const { Q: Qx, R: Rx } = qr(Xc);   // Q: n×n, R: n×px
+      const { Q: Qy, R: Ry } = qr(Yc);
+      // Extract economy Q (first px and py columns)
+      const qxCols = Math.min(px, n), qyCols = Math.min(py, n);
+      const extractQ = (Q: Mat, k: number): Mat => {
+        const nr = Q.rows, out = mat(nr, k, new Float64Array(nr * k));
+        for (let c = 0; c < k; c++) for (let r = 0; r < nr; r++) out.data[r + c * nr] = Q.data[r + c * nr];
+        return out;
+      };
+      const Q1 = extractQ(Qx, qxCols);  // n × px
+      const Q2 = extractQ(Qy, qyCols);  // n × py
+      // SVD of Q1' * Q2
+      const cross = matmul(transpose(Q1), Q2);
+      const { U: Ucrs, s: rArr, V: Vcrs } = svd(cross);
+      const k = Math.min(qxCols, qyCols);
+      const rVec = rArr.slice(0, k).map((v) => Math.min(1, Math.max(0, v)));
+      // Canonical coefficients: A = inv(R_x) * U, B = inv(R_y) * V
+      const Rx_sq = mat(qxCols, qxCols, new Float64Array(qxCols * qxCols));
+      for (let r = 0; r < qxCols; r++) for (let c = 0; c < qxCols; c++) Rx_sq.data[r + c * qxCols] = Rx.data[r + c * Rx.rows];
+      const Ry_sq = mat(qyCols, qyCols, new Float64Array(qyCols * qyCols));
+      for (let r = 0; r < qyCols; r++) for (let c = 0; c < qyCols; c++) Ry_sq.data[r + c * qyCols] = Ry.data[r + c * Ry.rows];
+      const UcrsK = extractQ(Ucrs, k), VcrsK = extractQ(Vcrs, k);
+      const A = matmul(inv(Rx_sq), UcrsK);  // px × k
+      const B = matmul(inv(Ry_sq), VcrsK);  // py × k
+      // Canonical variates: U = Xc * A, V = Yc * B
+      const Uvar = matmul(Xc, A);
+      const Vvar = matmul(Yc, B);
+      const rMat = rowVec(rVec);
+      return Promise.resolve([A, B, rMat, Uvar, Vvar].slice(0, Math.max(1, nargout)));
+    },
+
+    // ── nnmf(A,k): nonnegative matrix factorization via multiplicative updates ──
+    nnmf: (a, nargout) => {
+      const A = m(a[0]); const k = Math.round(asScalar(a[1]));
+      const n = A.rows, mCols = A.cols;
+      // Random init (use local deterministic PRNG for reproducibility)
+      const W = mat(n, k, new Float64Array(n * k));
+      const H = mat(k, mCols, new Float64Array(k * mCols));
+      for (let i = 0; i < n * k; i++) W.data[i] = rand() + 1e-10;
+      for (let i = 0; i < k * mCols; i++) H.data[i] = rand() + 1e-10;
+      const EPS_NMF = 1e-16;
+      // Multiplicative update rules: Lee & Seung (2001)
+      for (let iter = 0; iter < 200; iter++) {
+        // H ← H * (W'A) / (W'WH)
+        const WtA = matmul(transpose(W), A);    // k × mCols
+        const WtW = matmul(transpose(W), W);    // k × k
+        const WtWH = matmul(WtW, H);            // k × mCols
+        for (let i = 0; i < k * mCols; i++) H.data[i] = Math.max(EPS_NMF, H.data[i] * (WtA.data[i] + EPS_NMF) / (WtWH.data[i] + EPS_NMF));
+        // W ← W * (AH') / (WHH')
+        const AHt = matmul(A, transpose(H));    // n × k
+        const HHt = matmul(H, transpose(H));    // k × k
+        const WHHt = matmul(W, HHt);            // n × k
+        for (let i = 0; i < n * k; i++) W.data[i] = Math.max(EPS_NMF, W.data[i] * (AHt.data[i] + EPS_NMF) / (WHHt.data[i] + EPS_NMF));
+      }
+      if (nargout < 3) return Promise.resolve([W, H]);
+      // D = rms residual
+      const WH = matmul(W, H);
+      let sse = 0; for (let i = 0; i < n * mCols; i++) { const d = A.data[i] - WH.data[i]; sse += d * d; }
+      const D = Math.sqrt(sse / (n * mCols));
+      return Promise.resolve([W, H, scalar(D)]);
+    },
   },
   help: {
     ttest: { summary: 'Returns a test decision for the null hypothesis that the data in x comes from a normal distribution with mean equal to zero and unknown variance, using the one-sample t-test.', syntax: ['h = ttest(x)', 'h = ttest(x,y)', 'h = ttest(x,y,Name,Value)', 'h = ttest(x,m)'], seealso: ['ztest', 'ttest2', 'sampsizepwr'] },
@@ -2281,6 +2576,12 @@ export const STATS: ToolboxModule = {
     makedist: { summary: 'Creates a probability distribution object for the distribution distname, using the default parameter values.', syntax: ['pd = makedist(distname)', 'pd = makedist(distname,Name,Value)', 'list = makedist', 'makedist -reset'], seealso: ['fitdist'] },
     confusionmat: { summary: 'Returns the confusion matrix C determined by the known and predicted groups in group and grouphat, respectively.', syntax: ['C = confusionmat(group,grouphat)', 'C = confusionmat(group,grouphat,\'Order\',grouporder)', '[C,order] = confusionmat( ___ )'], seealso: ['categories', 'crosstab', 'confusionchart'] },
     mahal: { summary: 'Returns the squared Mahalanobis distance of each observation in Y to the reference samples in X.', syntax: ['d2 = mahal(Y,X)'], seealso: ['pdist', 'pdist2', 'mahal', 'mahal', 'robustcov'] },
+    pcares: { summary: 'Returns the residuals from a principal components analysis of X using ndim principal components.', syntax: ['residuals = pcares(X,ndim)', '[residuals,reconstructed] = pcares(X,ndim)'], seealso: ['pca', 'pcacov', 'ppca', 'biplot'] },
+    ksdensity: { summary: 'Computes a probability density estimate of the sample in data vector x.', syntax: ['[f,xi] = ksdensity(x)', 'f = ksdensity(x,pts)', '[f,xi] = ksdensity(x,Name,Value)'], seealso: ['histogram', 'ecdf', 'fitdist'] },
+    nlinfit: { summary: 'Estimates coefficients of a nonlinear regression function using least squares.', syntax: ['beta = nlinfit(X,y,modelfun,beta0)', '[beta,R] = nlinfit(X,y,modelfun,beta0)', '[beta,R,J,CovB,MSE] = nlinfit(X,y,modelfun,beta0)'], seealso: ['lsqcurvefit', 'nlpredci', 'nlintool', 'regress', 'robustfit'] },
+    procrustes: { summary: 'Compares two shapes using a Procrustes analysis.', syntax: ['d = procrustes(X,Y)', '[d,Z] = procrustes(X,Y)', '[d,Z,transform] = procrustes(X,Y)'], seealso: ['cmdscale'] },
+    canoncorr: { summary: 'Computes sample canonical correlations between the columns of X and Y.', syntax: ['[A,B,r] = canoncorr(X,Y)', '[A,B,r,U,V] = canoncorr(X,Y)'], seealso: ['corr', 'partialcorr', 'manova1'] },
+    nnmf: { summary: 'Factors matrix A into nonneg matrices W (n-by-k) and H (k-by-m) by alternating least squares.', syntax: ['[W,H] = nnmf(A,k)', '[W,H,D] = nnmf(A,k)'], seealso: ['pca', 'svd', 'factoran'] },
   },
 };
 
