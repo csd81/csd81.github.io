@@ -78,6 +78,10 @@ export interface Panel {
   colormap?: string;
   xScale?: 'linear' | 'log';
   yScale?: 'linear' | 'log';
+  xticks?: number[];
+  yticks?: number[];
+  xticklabels?: string[];
+  yticklabels?: string[];
   subtitle?: string;
 }
 export interface FigureSpec {
@@ -165,6 +169,16 @@ function isPropName(v: Value): boolean {
   if (!isMat(v) || !(v as Mat).isChar) return false;
   return ['color', 'linewidth', 'linestyle', 'marker', 'markersize', 'markerfacecolor', 'markeredgecolor', 'displayname',
     'markerindices', 'durationtickformat', 'datetimetickformat', 'meshdensity', 'seriesindex', 'linejoin'].includes(asString(v).toLowerCase());
+}
+
+/** Coerce a tick-label argument (cell of char, string array, or char row) into a string list.
+ *  Returns undefined to restore automatic labels (e.g. xticklabels('auto')). */
+function tickLabelList(value: Value): string[] | undefined {
+  const v = value as { kind?: string; items?: unknown[] };
+  if (v.kind === 'cell') return (v.items as Value[]).map((it) => (isMat(it) && it.isChar ? asString(it) : asString(it as Mat)));
+  if (v.kind === 'str') return [...(v.items as string[])];
+  if (isMat(value) && value.isChar) { const s = asString(value); return s.toLowerCase() === 'auto' || s.toLowerCase() === 'manual' ? undefined : [s]; }
+  return undefined;
 }
 
 const emptyPanel = (): Panel => ({ series: [] });
@@ -434,6 +448,10 @@ export class Graphics {
       case 'ylim': this.cur().yRange = range(); break;
       case 'xaxislocation': this.cur().xOrigin = isMat(value) && value.isChar ? asString(value) === 'origin' : false; break;
       case 'yaxislocation': this.cur().yOrigin = isMat(value) && value.isChar ? asString(value) === 'origin' : false; break;
+      case 'xtick': this.setTicks('x', isMat(value) ? toArray(value) : undefined); break;
+      case 'ytick': this.setTicks('y', isMat(value) ? toArray(value) : undefined); break;
+      case 'xticklabel': this.setTickLabels('x', tickLabelList(value)); break;
+      case 'yticklabel': this.setTickLabels('y', tickLabelList(value)); break;
       case 'title': if (isMat(value) && value.isChar) this.cur().title = asString(value); break;
       default: break; // ignore unknown axes properties
     }
@@ -453,6 +471,13 @@ export class Graphics {
   getYLim(): [number, number] { return this.cur().yRange ?? this.dataRange('y'); }
   setXLim(r?: [number, number]) { this.cur().xRange = r; this.touch(); }
   setYLim(r?: [number, number]) { this.cur().yRange = r; this.touch(); }
+
+  // ── Tick marks (xticks/yticks/xticklabels/yticklabels and ax.XTick/YTick) ──
+  /** Set explicit tick locations; undefined restores Plotly's automatic ticking. */
+  setTicks(which: 'x' | 'y', vals?: number[]) { if (which === 'x') this.cur().xticks = vals; else this.cur().yticks = vals; this.touch(); }
+  getTicks(which: 'x' | 'y'): number[] | undefined { return which === 'x' ? this.cur().xticks : this.cur().yticks; }
+  setTickLabels(which: 'x' | 'y', labels?: string[]) { if (which === 'x') this.cur().xticklabels = labels; else this.cur().yticklabels = labels; this.touch(); }
+  getTickLabels(which: 'x' | 'y'): string[] | undefined { return which === 'x' ? this.cur().xticklabels : this.cur().yticklabels; }
 
   command(name: string, args: Value[]) {
     args = normSpec(args);

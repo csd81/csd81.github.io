@@ -4683,8 +4683,16 @@ export const BUILTINS: Record<string, Builtin> = {
     env.graphics.chart2d([rowVec(centers), rowVec(N)], 'bar'); return gret(hn);
   },
   zlim: async (a, _n, env) => { if (a.length && isMat(a[0]) && !(a[0] as Mat).isChar) env.graphics.command('zlim', a); return []; },
-  xticks: async () => [],
-  yticks: async () => [],
+  xticks: async (a, _n, env) => {
+    if (!a.length) return ret(rowVec(env.graphics.getTicks('x') ?? []));
+    if (isMat(a[0]) && (a[0] as Mat).isChar) { const s = asString(a[0]).toLowerCase(); if (s === 'auto' || s === 'manual') env.graphics.setTicks('x', undefined); return []; }
+    env.graphics.setTicks('x', toArray(m(a[0]))); return [];
+  },
+  yticks: async (a, _n, env) => {
+    if (!a.length) return ret(rowVec(env.graphics.getTicks('y') ?? []));
+    if (isMat(a[0]) && (a[0] as Mat).isChar) { const s = asString(a[0]).toLowerCase(); if (s === 'auto' || s === 'manual') env.graphics.setTicks('y', undefined); return []; }
+    env.graphics.setTicks('y', toArray(m(a[0]))); return [];
+  },
   zticks: async () => [],
   text: async () => [],
   xline: async (a, _n, env) => { const vals = toArray(m(a[0])); const spec = a.length >= 2 && isMat(a[1]) && (a[1] as Mat).isChar ? asString(a[1]) : undefined; const label = a.length >= 3 && isMat(a[2]) && (a[2] as Mat).isChar ? asString(a[2]) : undefined; env.graphics.refline('x', vals, spec, label); return []; },
@@ -4970,7 +4978,15 @@ export const BUILTINS: Record<string, Builtin> = {
   caxis: async () => [], clim: async () => [], colororder: async () => [], daspect: async () => [], pbaspect: async () => [],
   xtickangle: async () => [], ytickangle: async () => [], ztickangle: async () => [],
   xtickformat: async () => [], ytickformat: async () => [], ztickformat: async () => [],
-  xticklabels: async () => [], yticklabels: async () => [], zticklabels: async () => [],
+  xticklabels: async (a, _n, env) => {
+    if (!a.length) { const l = env.graphics.getTickLabels('x') ?? []; return ret(makeCell(l.length, 1, l.map((s) => str(s)))); }
+    env.graphics.setAxesProp('XTickLabel', a[0]); return [];
+  },
+  yticklabels: async (a, _n, env) => {
+    if (!a.length) { const l = env.graphics.getTickLabels('y') ?? []; return ret(makeCell(l.length, 1, l.map((s) => str(s)))); }
+    env.graphics.setAxesProp('YTickLabel', a[0]); return [];
+  },
+  zticklabels: async () => [],
   fontname: async () => [], fontsize: async () => [], gtext: async () => [], annotation: async () => [], line: async () => [], rectangle: async () => [],
   // renderable plot variants
   imagesc: async (a, n, env) => { env.graphics.surface([m(a[a.length - 1])], 'contour'); env.graphics.command('colorbar', []); return gret(n); },

@@ -19,10 +19,12 @@ export default function PlotlyFigure({ fig, dark }: { fig: FigureSpec; dark: boo
   const single = panels.length <= 1 && fig.rows === 1 && fig.cols === 1;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const axisStyle = (range?: [number, number], origin?: boolean, title?: string, scale?: string): any => ({
+  const axisStyle = (range?: [number, number], origin?: boolean, title?: string, scale?: string, ticks?: number[], ticklabels?: string[]): any => ({
     range, title: title ? { text: title } : undefined,
     gridcolor: grid, zeroline: true, zerolinecolor: origin ? fg : zero, zerolinewidth: origin ? 2 : 1,
     showline: !origin, linecolor: grid, color: fg, automargin: true, ...(scale === 'log' ? { type: 'log' } : {}),
+    // Explicit tick locations/labels from xticks/yticks/ax.XTick (Plotly tickmode 'array').
+    ...(ticks ? { tickmode: 'array', tickvals: ticks, ...(ticklabels ? { ticktext: ticklabels } : {}) } : {}),
   });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -105,8 +107,8 @@ export default function PlotlyFigure({ fig, dark }: { fig: FigureSpec; dark: boo
         data.push({ type: 'scatter', ...ax, x: s.x, y: s.y, mode: s.mode, line: { ...line, shape: s.type === 'stairs' ? 'hv' : 'linear' }, marker, name, ...(s.type === 'area' ? { fill: 'tozeroy' } : {}), ...(s.error ? { error_y: { type: 'data', array: s.error, visible: true } } : {}) });
       });
       for (const s of p.surfaces ?? []) if (s.kind === 'contour') data.push({ type: 'contour', xaxis: xa, yaxis: ya, x: s.x, y: s.y, z: s.z, colorscale, showscale: !!p.colorbar, contours: { coloring: 'fill' } });
-      layout['xaxis' + suf] = { ...axisStyle(p.xRange, p.xOrigin, p.xlabel, p.xScale), anchor: ya, ...(single ? {} : { domain: xdom }) };
-      layout['yaxis' + suf] = { ...axisStyle(p.yRange, p.yOrigin, p.ylabel, p.yScale), anchor: xa, ...(single ? {} : { domain: ydom }) };
+      layout['xaxis' + suf] = { ...axisStyle(p.xRange, p.xOrigin, p.xlabel, p.xScale, p.xticks, p.xticklabels), anchor: ya, ...(single ? {} : { domain: xdom }) };
+      layout['yaxis' + suf] = { ...axisStyle(p.yRange, p.yOrigin, p.ylabel, p.yScale, p.yticks, p.yticklabels), anchor: xa, ...(single ? {} : { domain: ydom }) };
       if (p.reflines?.length) {
         layout.shapes = (layout.shapes ?? []).concat(p.reflines.map((rf) => (rf.axis === 'x'
           ? { type: 'line', xref: xa, x0: rf.value, x1: rf.value, yref: ya + ' domain', y0: 0, y1: 1, line: { color: rf.color ?? fg, dash: rf.dash, width: 1.5 } }
