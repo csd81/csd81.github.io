@@ -444,7 +444,10 @@ function subDims(srcDims: number[], nsub: number): number[] {
 export function indexGetND(m: Mat, subs: Sub[]): Mat {
   const D = subDims(ndSize(m), subs.length);
   const lists = subs.map((s, d) => subToList(s, D[d]));
-  for (let d = 0; d < D.length; d++) for (const idx of lists[d]) if (idx < 1 || idx > D[d]) throw new MatError(`index ${idx} out of bounds (dim ${d + 1} size ${D[d]})`);
+  for (let d = 0; d < D.length; d++) for (const idx of lists[d]) {
+    if (idx < 1) throw new MatError('Array indices must be positive integers or logical values.');
+    if (idx > D[d]) throw new MatError(`Index in position ${d + 1} exceeds array bounds. Index must not exceed ${D[d]}.`);
+  }
   const outDims = lists.map((l) => l.length);
   const total = prod(outDims);
   const stride = [1]; for (let d = 1; d < D.length; d++) stride[d] = stride[d - 1] * D[d - 1];
@@ -504,7 +507,8 @@ export function indexGet(m: Mat, subs: Sub[]): Mat {
     const vals = new Float64Array(s.length); const im = m.idata ? new Float64Array(s.length) : null;
     for (let i = 0; i < s.length; i++) {
       const li = s[i] - 1;
-      if (li < 0 || li >= numel(m)) throw new MatError(`index ${s[i]} out of bounds (numel=${numel(m)})`);
+      if (li < 0) throw new MatError('Array indices must be positive integers or logical values.');
+      if (li >= numel(m)) throw new MatError(`Index exceeds the number of array elements. Index must not exceed ${numel(m)}.`);
       vals[i] = m.data[li]; if (im) im[i] = m.idata![li];
     }
     // MATLAB result-orientation rule: logical mask → A's orientation if A is a vector, else a column;
@@ -524,7 +528,9 @@ export function indexGet(m: Mat, subs: Sub[]): Mat {
     const out = zeros(rs.length, cs.length); const im = m.idata ? new Float64Array(rs.length * cs.length) : null;
     for (let cc = 0; cc < cs.length; cc++) for (let rr = 0; rr < rs.length; rr++) {
       const r = rs[rr] - 1, c = cs[cc] - 1;
-      if (r < 0 || r >= m.rows || c < 0 || c >= m.cols) throw new MatError(`index (${rs[rr]},${cs[cc]}) out of bounds (${m.rows}×${m.cols})`);
+      if (r < 0 || c < 0) throw new MatError('Array indices must be positive integers or logical values.');
+      if (r >= m.rows) throw new MatError(`Index in position 1 exceeds array bounds. Index must not exceed ${m.rows}.`);
+      if (c >= m.cols) throw new MatError(`Index in position 2 exceeds array bounds. Index must not exceed ${m.cols}.`);
       out.data[rr + cc * out.rows] = m.data[r + c * m.rows]; if (im) im[rr + cc * out.rows] = m.idata![r + c * m.rows];
     }
     if (im) out.idata = im;
@@ -586,6 +592,7 @@ export function indexDelete(m: Mat, subs: Sub[]): Mat {
   if (subs.length === 1) {
     const s = subs[0];
     if (s === 'colon') return empty();
+    for (const x of s) if (x > numel(m)) throw new MatError('Matrix index is out of range for deletion.');
     const drop = new Set(s.map((x) => x - 1));
     const keep: number[] = [];
     for (let i = 0; i < numel(m); i++) if (!drop.has(i)) keep.push(m.data[i]);
@@ -597,6 +604,7 @@ export function indexDelete(m: Mat, subs: Sub[]): Mat {
     const [rs, cs] = subs;
     if (rs === 'colon' && cs === 'colon') return empty();
     if (rs === 'colon' && cs !== 'colon') {
+      for (const x of cs) if (x > m.cols) throw new MatError('Matrix index is out of range for deletion.');
       const drop = new Set(cs.map((x) => x - 1));
       const cols: number[] = [];
       for (let c = 0; c < m.cols; c++) if (!drop.has(c)) cols.push(c);
@@ -606,6 +614,7 @@ export function indexDelete(m: Mat, subs: Sub[]): Mat {
       return out;
     }
     if (cs === 'colon' && rs !== 'colon') {
+      for (const x of rs) if (x > m.rows) throw new MatError('Matrix index is out of range for deletion.');
       const drop = new Set(rs.map((x) => x - 1));
       const rows: number[] = [];
       for (let r = 0; r < m.rows; r++) if (!drop.has(r)) rows.push(r);

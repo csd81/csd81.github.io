@@ -599,12 +599,20 @@ export class Interpreter implements Env {
         idx.srcRows = mv.rows; idx.srcCols = mv.cols; idx.srcLogical = true;
         subs.push(idx);
       } else {
-        const idx: IdxList = toArray(mv).map((x) => { if (!Number.isInteger(x)) throw new MatError('Array indices must be positive integers or logical values.'); return x; });
+        const idx: IdxList = toArray(mv).map((x) => { if (!Number.isInteger(x) || x < 1) throw new MatError('Array indices must be positive integers or logical values.'); return x; });
         idx.srcRows = mv.rows; idx.srcCols = mv.cols; idx.srcLogical = false;
         subs.push(idx);
       }
     }
     return subs;
+  }
+
+  /** Like cellLinear, but for READ paths: rejects indices past the end (MATLAB grows
+   *  only on assignment, so this guard must not be used on the write paths). */
+  private cellLinearRead(subs: Sub[], rows: number, cols: number, total: number): number[] {
+    const lin = this.cellLinear(subs, rows, cols, total);
+    for (const i of lin) if (i > total) throw new MatError(`Index exceeds the number of array elements. Index must not exceed ${total}.`);
+    return lin;
   }
 
   /** Linear 1-based indices selected from a cell/struct by subscripts. */
@@ -746,7 +754,7 @@ export class Interpreter implements Env {
     if (isCell(base)) {
       // c(...) → a sub-cell
       const subs = await this.evalSubsN(e.args, base.rows, base.cols, base.items.length, scope);
-      const lin = this.cellLinear(subs, base.rows, base.cols, base.items.length);
+      const lin = this.cellLinearRead(subs, base.rows, base.cols, base.items.length);
       const items = lin.map((i) => base.items[i - 1]);
       const r = subs.length === 2 && subs[0] !== 'colon' ? (subs[0] as number[]).length : (base.cols === 1 ? items.length : 1);
       const c = items.length / (r || 1);
@@ -755,7 +763,7 @@ export class Interpreter implements Env {
     if (isStr(base)) {
       // s(...) → a sub-string-array (same column-major linear-index logic as cells)
       const subs = await this.evalSubsN(e.args, base.rows, base.cols, base.items.length, scope);
-      const lin = this.cellLinear(subs, base.rows, base.cols, base.items.length);
+      const lin = this.cellLinearRead(subs, base.rows, base.cols, base.items.length);
       const items = lin.map((i) => base.items[i - 1]);
       const r = subs.length === 2 && subs[0] !== 'colon' ? (subs[0] as number[]).length : (base.cols === 1 ? items.length : 1);
       return [makeStrArr(r, items.length / (r || 1), items)];
@@ -770,7 +778,7 @@ export class Interpreter implements Env {
     if (isSym(base)) {
       // S(...) → a sub-sym (column-major linear-index logic, like cells)
       const subs = await this.evalSubsN(e.args, base.rows, base.cols, base.exprs.length, scope);
-      const lin = this.cellLinear(subs, base.rows, base.cols, base.exprs.length);
+      const lin = this.cellLinearRead(subs, base.rows, base.cols, base.exprs.length);
       const exprs = lin.map((i) => base.exprs[i - 1]);
       const r = subs.length === 2 && subs[0] !== 'colon' ? (subs[0] as number[]).length : (base.cols === 1 ? exprs.length : 1);
       return [makeSym(r, exprs.length / (r || 1), exprs)];
@@ -778,7 +786,7 @@ export class Interpreter implements Env {
     if (base.kind === 'categorical') {
       // C(...) → a sub-categorical (same column-major linear-index logic), preserving categories.
       const subs = await this.evalSubsN(e.args, base.rows, base.cols, base.codes.length, scope);
-      const lin = this.cellLinear(subs, base.rows, base.cols, base.codes.length);
+      const lin = this.cellLinearRead(subs, base.rows, base.cols, base.codes.length);
       const codes = Int32Array.from(lin, (i) => base.codes[i - 1]);
       const r = subs.length === 2 && subs[0] !== 'colon' ? (subs[0] as number[]).length : (base.cols === 1 ? codes.length : 1);
       return [makeCategorical(r, codes.length / (r || 1), codes, base.categories, base.ordinal)];
@@ -787,7 +795,7 @@ export class Interpreter implements Env {
       // S(...) on a struct array → a sub-struct-array (same column-major linear-index logic as cells)
       const total = base.rows * base.cols;
       const subs = await this.evalSubsN(e.args, base.rows, base.cols, total, scope);
-      const lin = this.cellLinear(subs, base.rows, base.cols, total);
+      const lin = this.cellLinearRead(subs, base.rows, base.cols, total);
       const fields = new Map<string, Value[]>();
       for (const [k, vals] of base.fields) fields.set(k, lin.map((i) => vals[i - 1]));
       const r = subs.length === 2 && subs[0] !== 'colon' ? (subs[0] as number[]).length : (base.cols === 1 ? lin.length : 1);
