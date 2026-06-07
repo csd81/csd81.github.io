@@ -74,8 +74,8 @@ function isBusday(n: number): boolean {
 function days360one(d1: number, d2: number): number {
   let [y1, m1, dd1] = ymd(d1);
   let [y2, m2, dd2] = ymd(d2);
-  const leap1 = y1 % 4 === 0;
-  const leap2 = y2 % 4 === 0;
+  const leap1 = isLeap(y1);   // proper Gregorian rule (century years); see isLeap helper
+  const leap2 = isLeap(y2);
   const febEnd1 = m1 === 2 && ((!leap1 && dd1 === 28) || (leap1 && dd1 === 29));
   const febEnd2 = m2 === 2 && ((!leap2 && dd2 === 28) || (leap2 && dd2 === 29));
   if (febEnd1 && febEnd2) dd2 = 30;

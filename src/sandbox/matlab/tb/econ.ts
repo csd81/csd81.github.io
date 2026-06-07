@@ -161,12 +161,14 @@ function colCumul(M: Mat, s0: number, step: (prev: number, r: number) => number)
   const o = new Float64Array((R + 1) * C); for (let c = 0; c < C; c++) { o[c * (R + 1)] = s0; for (let r = 0; r < R; r++) o[(r + 1) + c * (R + 1)] = step(o[r + c * (R + 1)], M.data[r + c * R]); } return mat(R + 1, C, o);
 }
 const startVal = (a: Value[]): number => (a.length > 1 && isMat(a[1]) && !(a[1] as Mat).isChar && (a[1] as Mat).rows ? asScalar(a[1]) : 1);
-/** price2ret(P): continuous (log) returns log(Pₜ/Pₜ₋₁), column-wise for a price matrix. */
-const price2ret: Builtin = (a) => Promise.resolve([colReturns(m(a[0]), (p, c) => Math.log(c / p))]);
+// Number of return rows: length-1 for a vector (either orientation), rows-1 for a price matrix.
+const retCount = (M: Mat): number => (M.rows === 1 || M.cols === 1 ? Math.max(0, M.rows * M.cols - 1) : Math.max(0, M.rows - 1));
+/** [Returns,intervals] = price2ret(P): continuous (log) returns log(Pₜ/Pₜ₋₁), column-wise. */
+const price2ret: Builtin = (a, nargout) => { const M = m(a[0]); const res: Value[] = [colReturns(M, (p, c) => Math.log(c / p))]; if ((nargout ?? 1) >= 2) res.push(colVec(new Array(retCount(M)).fill(1))); return Promise.resolve(res); };
 /** ret2price(R[,S0]): inverse of price2ret (continuous); default start price 1. */
 const ret2price: Builtin = (a) => Promise.resolve([colCumul(m(a[0]), startVal(a), (prev, r) => prev * Math.exp(r))]);
 /** tick2ret(P): simple returns Pₜ/Pₜ₋₁−1 (+ unit intervals), column-wise. */
-const tick2ret: Builtin = (a, nargout) => { const out = colReturns(m(a[0]), (p, c) => c / p - 1); const res: Value[] = [out]; if (nargout >= 2) res.push(colVec(new Array(Math.max(0, m(a[0]).rows - 1)).fill(1))); return Promise.resolve(res); };
+const tick2ret: Builtin = (a, nargout) => { const M = m(a[0]); const res: Value[] = [colReturns(M, (p, c) => c / p - 1)]; if ((nargout ?? 1) >= 2) res.push(colVec(new Array(retCount(M)).fill(1))); return Promise.resolve(res); };
 /** ret2tick(R[,S0]): inverse of tick2ret (simple); default start price 1. */
 const ret2tick: Builtin = (a) => Promise.resolve([colCumul(m(a[0]), startVal(a), (prev, r) => prev * (1 + r))]);
 /** lagmatrix(Y,lags): lagged series, NaN-filled (column j shifts down by lags(j)). */

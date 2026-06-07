@@ -1253,7 +1253,9 @@ export const CONTROL: ToolboxModule = {
       if (T.length === 0 || T.length !== T[0].length) throw new Error('ss2ss: T must be a square matrix');
       const Ti = matInv(T);
       const An = mmul(mmul(T, A), Ti); const Bn = mmul(T, B); const Cn = mmul(C, Ti);
-      return ret(makeObject('ss', { A: fromRows(An), B: fromRows(Bn), C: fromRows(Cn), D }));
+      const props: Record<string, Value> = { A: fromRows(An), B: fromRows(Bn), C: fromRows(Cn), D };
+      if (sys.props.has('Ts')) props.Ts = sys.props.get('Ts') as Value;   // preserve sample time (discrete models)
+      return ret(makeObject('ss', props));
     },
     /** c2d(sys,Ts[,method]) — continuous→discrete. method: 'zoh' (default) | 'tustin'/'bilinear'. */
     c2d: (a) => {

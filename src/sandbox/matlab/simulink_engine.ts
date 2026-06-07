@@ -91,7 +91,7 @@ export class Gain extends Block {
     }
 
     public computeOutputs(t: number, x: number[], xd: number[], u: number[]): number[] {
-        const k = Number(this.parameters['Gain']) || 1;
+        const k = this.parameters['Gain'] !== undefined ? Number(this.parameters['Gain']) : 1;
         return [u[0] * k];
     }
 }
@@ -138,7 +138,7 @@ export class Constant extends Block {
     }
 
     public computeOutputs(t: number, x: number[], xd: number[], u: number[]): number[] {
-        return [Number(this.parameters['Value']) || 1];
+        return [this.parameters['Value'] !== undefined ? Number(this.parameters['Value']) : 1];
     }
 }
 
@@ -388,9 +388,9 @@ export class Step extends Block {
     }
 
     public computeOutputs(t: number, x: number[], xd: number[], u: number[]): number[] {
-        const stepTime = Number(this.parameters['Time']) || 1;
-        const initialValue = Number(this.parameters['Before']) || 0;
-        const finalValue = Number(this.parameters['After']) || 1;
+        const stepTime = this.parameters['Time'] !== undefined ? Number(this.parameters['Time']) : 1;
+        const initialValue = this.parameters['Before'] !== undefined ? Number(this.parameters['Before']) : 0;
+        const finalValue = this.parameters['After'] !== undefined ? Number(this.parameters['After']) : 1;
         return [t >= stepTime ? finalValue : initialValue];
     }
 }
@@ -622,7 +622,7 @@ export class ZeroOrderHold extends Block {
     }
 
     public updateDiscrete(t: number, xd: number[], u: number[]): number[] {
-        const Ts = Number(this.parameters['SampleTime']) || 1;
+        const Ts = this.parameters['SampleTime'] !== undefined ? Number(this.parameters['SampleTime']) : 1;
         if (t >= this.nextSampleTime - 1e-9) {
             this.nextSampleTime += Ts;
             return [u[0]];

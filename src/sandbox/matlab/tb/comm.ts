@@ -30,8 +30,14 @@ const bitWidth = (v: number) => Math.max(1, Math.floor(Math.log2(Math.max(1, v))
 const bin2gray = (v: number) => v ^ (v >>> 1);
 const gray2bin = (v: number) => { let b = 0; for (let t = v; t > 0; t >>>= 1) b ^= t; return b; };
 /** Build a complex Mat (re+im) matching the orientation of src. */
-function cplx(src: Mat, re: number[], im: number[]): Mat { const col = src.cols === 1 && src.rows !== 1; const n = re.length; const o = { kind: 'num' as const, rows: col ? n : 1, cols: col ? 1 : n, data: Float64Array.from(re), idata: Float64Array.from(im) }; return o as Mat; }
-function sameShape(src: Mat, vals: number[]): Mat { const col = src.cols === 1 && src.rows !== 1; const n = vals.length; return { kind: 'num' as const, rows: col ? n : 1, cols: col ? 1 : n, data: Float64Array.from(vals) } as Mat; }
+// Shape the output like the input: preserve a general r×c matrix for element-wise (length-preserving)
+// mapping; otherwise fall back to row/column-vector orientation (e.g. bit-grouping mod/demod).
+function shapeOf(src: Mat, n: number): { rows: number; cols: number } {
+  if (n === src.rows * src.cols && src.rows > 1 && src.cols > 1) return { rows: src.rows, cols: src.cols };
+  const col = src.cols === 1 && src.rows !== 1; return { rows: col ? n : 1, cols: col ? 1 : n };
+}
+function cplx(src: Mat, re: number[], im: number[]): Mat { const { rows, cols } = shapeOf(src, re.length); return { kind: 'num' as const, rows, cols, data: Float64Array.from(re), idata: Float64Array.from(im) } as Mat; }
+function sameShape(src: Mat, vals: number[]): Mat { const { rows, cols } = shapeOf(src, vals.length); return { kind: 'num' as const, rows, cols, data: Float64Array.from(vals) } as Mat; }
 /** Square-QAM constellation point (I,Q) for symbol s (MATLAB Gray, no UnitAveragePower). */
 function qamPoint(s: number, side: number, kHalf: number): [number, number] { const iIdx = s >>> kHalf, qIdx = s & (side - 1); return [-(side - 1) + 2 * bin2gray(iIdx), (side - 1) - 2 * bin2gray(qIdx)]; }
 /** Modified Bessel I0 (series). */

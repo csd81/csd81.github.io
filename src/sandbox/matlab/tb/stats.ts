@@ -223,7 +223,7 @@ interface DistSpec { display: string; params: string[]; defaults: number[]; pdf:
 const DISTS: Record<string, DistSpec> = {
   normal: { display: 'Normal', params: ['mu', 'sigma'], defaults: [0, 1], pdf: (x, mu, s) => Math.exp(-0.5 * ((x - mu) / s) ** 2) / (s * Math.sqrt(2 * Math.PI)), cdf: (x, mu, s) => 0.5 * erfc(-(x - mu) / (s * Math.SQRT2)), inv: (p, mu, s) => mu + s * norminvStd(p) },
   exponential: { display: 'Exponential', params: ['mu'], defaults: [1], pdf: (x, mu) => x < 0 ? 0 : Math.exp(-x / mu) / mu, cdf: (x, mu) => x < 0 ? 0 : 1 - Math.exp(-x / mu), inv: (p, mu) => -mu * Math.log(1 - p) },
-  poisson: { display: 'Poisson', params: ['lambda'], defaults: [1], pdf: (k, lam) => { k = Math.round(k); return k < 0 ? 0 : Math.exp(k * Math.log(lam) - lam - logGamma(k + 1)); }, cdf: (k, lam) => { k = Math.floor(k); return k < 0 ? 0 : k === Infinity ? 1 : 1 - gammainc(lam, k + 1); }, inv: (pr, lam) => { let c = 0, k = 0; for (; k < 1e6; k++) { c += Math.exp(k * Math.log(lam) - lam - logGamma(k + 1)); if (c >= pr - 1e-12) return k; } return k; } },
+  poisson: { display: 'Poisson', params: ['lambda'], defaults: [1], pdf: (k, lam) => (k !== Math.round(k) || k < 0) ? 0 : Math.exp(k * Math.log(lam) - lam - logGamma(k + 1)), cdf: (k, lam) => { k = Math.floor(k); return k < 0 ? 0 : k === Infinity ? 1 : 1 - gammainc(lam, k + 1); }, inv: (pr, lam) => { let c = 0, k = 0; for (; k < 1e6; k++) { c += Math.exp(k * Math.log(lam) - lam - logGamma(k + 1)); if (c >= pr - 1e-12) return k; } return k; } },
   uniform: { display: 'Uniform', params: ['lower', 'upper'], defaults: [0, 1], pdf: (x, lo, hi) => x >= lo && x <= hi ? 1 / (hi - lo) : 0, cdf: (x, lo, hi) => x < lo ? 0 : x > hi ? 1 : (x - lo) / (hi - lo), inv: (p, lo, hi) => lo + p * (hi - lo) },
   gamma: { display: 'Gamma', params: ['a', 'b'], defaults: [1, 1], pdf: (x, k, th) => x < 0 ? 0 : Math.exp((k - 1) * Math.log(x) - x / th - k * Math.log(th) - logGamma(k)), cdf: (x, k, th) => gammainc(x / th, k), inv: (p, k, th) => invCdf(p, (x) => gammainc(x / th, k), 0, Infinity) },
   lognormal: { display: 'Lognormal', params: ['mu', 'sigma'], defaults: [0, 1], pdf: (x, mu, s) => x <= 0 ? 0 : Math.exp(-0.5 * ((Math.log(x) - mu) / s) ** 2) / (x * s * Math.sqrt(2 * Math.PI)), cdf: (x, mu, s) => x <= 0 ? 0 : 0.5 * erfc(-(Math.log(x) - mu) / (s * Math.SQRT2)), inv: (p, mu, s) => Math.exp(mu + s * norminvStd(p)) },
@@ -1410,11 +1410,11 @@ export const STATS: ToolboxModule = {
     logncdf: (a) => dist(a, [0, 1], (x, mu, s) => s > 0 ? (x <= 0 ? 0 : 0.5 * erfc(-(Math.log(x) - mu) / (s * Math.SQRT2))) : NaN),
     logninv: (a) => dist(a, [0, 1], (p, mu, s) => s > 0 ? Math.exp(mu + s * norminvStd(p)) : NaN),
     // ── Binomial ──
-    binopdf: (a) => dist(a, [1, 0.5], (k, n, p) => { k = Math.round(k); if (k < 0 || k > n) return 0; return nCk(n, k) * p ** k * (1 - p) ** (n - k); }),
+    binopdf: (a) => dist(a, [1, 0.5], (k, n, p) => { if (k !== Math.round(k) || k < 0 || k > n) return 0; return nCk(n, k) * p ** k * (1 - p) ** (n - k); }),
     binocdf: (a) => dist(a, [1, 0.5], (k, n, p) => { k = Math.floor(k); if (k < 0) return 0; if (k >= n) return 1; return 1 - betainc(p, k + 1, n - k); }),
     binoinv: (a) => dist(a, [1, 0.5], (pr, n, p) => { let c = 0; for (let k = 0; k <= n; k++) { c += nCk(n, k) * p ** k * (1 - p) ** (n - k); if (c >= pr - 1e-12) return k; } return n; }),
     // ── Poisson ──
-    poisspdf: (a) => dist(a, [1], (k, lam) => { k = Math.round(k); if (k < 0) return 0; return Math.exp(k * Math.log(lam) - lam - logGamma(k + 1)); }),
+    poisspdf: (a) => dist(a, [1], (k, lam) => { if (k !== Math.round(k) || k < 0) return 0; return Math.exp(k * Math.log(lam) - lam - logGamma(k + 1)); }),
     poisscdf: (a) => dist(a, [1], (k, lam) => { k = Math.floor(k); return k < 0 ? 0 : k === Infinity ? 1 : 1 - gammainc(lam, k + 1); }),
     poissinv: (a) => dist(a, [1], (pr, lam) => { if (!(lam >= 0) || pr < 0 || pr > 1) return NaN; if (pr === 1) return Infinity; let c = 0, k = 0; for (; k < 1e6; k++) { c += Math.exp(k * Math.log(lam) - lam - logGamma(k + 1)); if (c >= pr - 1e-12) return k; } return k; }),
     // ── Exponential negative log-likelihood: nlogL + inverse-observed-information avar ──
@@ -1438,7 +1438,7 @@ export const STATS: ToolboxModule = {
       return Promise.resolve(nargout >= 2 ? [M, V] : [M]);
     },
     // ── Geometric (# failures before first success) ──
-    geopdf: (a) => dist(a, [0.5], (k, p) => { k = Math.round(k); return k < 0 ? 0 : p * (1 - p) ** k; }),
+    geopdf: (a) => dist(a, [0.5], (k, p) => (k !== Math.round(k) || k < 0) ? 0 : p * (1 - p) ** k),
     geocdf: (a) => dist(a, [0.5], (k, p) => { k = Math.floor(k); return k < 0 ? 0 : 1 - (1 - p) ** (k + 1); }),
     // ── Weibull (scale a, shape b) ──
     wblpdf: (a) => dist(a, [1, 1], (x, A, B) => x < 0 ? 0 : (B / A) * (x / A) ** (B - 1) * Math.exp(-((x / A) ** B))),
@@ -1526,7 +1526,7 @@ export const STATS: ToolboxModule = {
     nbinstat: (a, n) => { const r = asScalar(a[0]), p = asScalar(a[1]); return statRet(n, r * (1 - p) / p, r * (1 - p) / (p * p)); },
 
     // ── hypergeometric: hygepdf(x,M,K,N) — M pop, K successes, N draws ──
-    hygepdf: (a) => dist(a, [10, 5, 5], (x, M, K, N) => { x = Math.round(x); if (x < Math.max(0, N - (M - K)) || x > Math.min(K, N)) return 0; return Math.exp(lchoose(K, x) + lchoose(M - K, N - x) - lchoose(M, N)); }),
+    hygepdf: (a) => dist(a, [10, 5, 5], (x, M, K, N) => { if (x !== Math.round(x) || x < Math.max(0, N - (M - K)) || x > Math.min(K, N)) return 0; return Math.exp(lchoose(K, x) + lchoose(M - K, N - x) - lchoose(M, N)); }),
     hygecdf: (a) => dist(a, [10, 5, 5], (x, M, K, N) => { x = Math.floor(x); const lo = Math.max(0, N - (M - K)), hi = Math.min(K, N); if (x < lo) return 0; if (x >= hi) return 1; let s = 0; for (let i = lo; i <= x; i++) s += Math.exp(lchoose(K, i) + lchoose(M - K, N - i) - lchoose(M, N)); return Math.min(1, s); }),
     hygeinv: (a) => dist(a, [10, 5, 5], (pr, M, K, N) => { const lo = Math.max(0, N - (M - K)), hi = Math.min(K, N); if (pr <= 0) return lo; let s = 0; for (let x = lo; x <= hi; x++) { s += Math.exp(lchoose(K, x) + lchoose(M - K, N - x) - lchoose(M, N)); if (s >= pr - 1e-12) return x; } return hi; }),
     hygestat: (a, n) => { const M = asScalar(a[0]), K = asScalar(a[1]), N = asScalar(a[2]); return statRet(n, N * K / M, N * (K / M) * ((M - K) / M) * ((M - N) / (M - 1))); },

@@ -433,9 +433,10 @@ async function trainNetwork(args: Value[]): Promise<Value[]> {
     if (op.has('Verbose')) verbose = asScalar(m(op.get('Verbose')!)) !== 0;
   }
 
-  // Data: make X [features × N], Y [classes × N]
-  let X: M2 = { rows: Xm.rows, cols: Xm.cols, d: Float64Array.from(Xm.data) };
-  let Y: M2 = { rows: Ym.rows, cols: Ym.cols, d: Float64Array.from(Ym.data) };
+  // Data: make X [features × N], Y [classes × N]. Use toM2 (column-major Mat → row-major M2);
+  // building M2 directly from Mat.data would transpose/scramble any non-vector matrix.
+  let X: M2 = toM2(Xm);
+  let Y: M2 = toM2(Ym);
   // If X is [N × features], transpose
   if (X.rows === Y.cols && X.cols !== Y.cols) { X = mT(X); }
 
@@ -518,7 +519,7 @@ async function predict_fn(args: Value[]): Promise<Value[]> {
   if (args.length < 2) throw new MatError('predict: requires network and X');
   const net = unpackNet(args[0]);
   const Xm = m(args[1]);
-  let X: M2 = { rows: Xm.rows, cols: Xm.cols, d: Float64Array.from(Xm.data) };
+  let X: M2 = toM2(Xm);   // column-major → row-major (direct M2 build would scramble a matrix)
   if (X.rows !== net.inputSize && X.cols === net.inputSize) X = mT(X);
   const { output } = forward(net, X, false);
   return [fromM2(output)];

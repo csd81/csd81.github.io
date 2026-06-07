@@ -3097,9 +3097,13 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   interp1: async (a) => {
     const x = toArray(m(a[0])); const Vm = m(a[1]); const xq = m(a[2]); const L = x.length - 1; const x0 = x[0], xL = x[L];
-    const method = (a.length >= 4 && (isStr(a[3]) || (isMat(a[3]) && (a[3] as Mat).isChar)) ? asString(a[3]) : 'linear').toLowerCase();
     // Extrapolation: 'extrap' → use the method; a numeric value → that value outside the domain.
+    let method = 'linear';
     let extrap: 'default' | 'extrap' | number = 'default';
+    if (a.length >= 4 && (isStr(a[3]) || (isMat(a[3]) && (a[3] as Mat).isChar))) {
+      const s = asString(a[3]).toLowerCase();
+      if (s === 'extrap') extrap = 'extrap'; else method = s;   // interp1(x,y,xq,'extrap') = linear + extrapolation
+    }
     if (a.length >= 5) extrap = (isStr(a[4]) || (isMat(a[4]) && (a[4] as Mat).isChar)) ? (asString(a[4]).toLowerCase() === 'extrap' ? 'extrap' : 'default') : asScalar(a[4]);
     // spline/pchip/makima/cubic extrapolate by default; linear/nearest/previous/next return NaN outside.
     const selfExtrap = method === 'spline' || method === 'pchip' || method === 'cubic' || method === 'makima';

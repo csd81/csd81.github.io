@@ -104,10 +104,10 @@ async function linprog(args: Value[]): Promise<Value[]> {
 
   // Parse arguments: linprog(f,A,b,Aeq,beq,lb,ub)
   const A_ub: number[][] = args.length > 2 && isMat(args[1]) && (args[1] as any).rows > 0
-    ? (() => { const M = args[1] as any; return Array.from({ length: M.rows }, (_,i) => Array.from({ length: M.cols }, (__,j) => M.data[i*M.cols+j])); })() : [];
+    ? (() => { const M = args[1] as any; return Array.from({ length: M.rows }, (_,i) => Array.from({ length: M.cols }, (__,j) => M.data[i + j*M.rows])); })() : [];
   const b_ub = args.length > 2 && isMat(args[2]) ? toArray(m(args[2])) : [];
   const A_eq: number[][] = args.length > 4 && isMat(args[3]) && (args[3] as any).rows > 0
-    ? (() => { const M = args[3] as any; return Array.from({ length: M.rows }, (_,i) => Array.from({ length: M.cols }, (__,j) => M.data[i*M.cols+j])); })() : [];
+    ? (() => { const M = args[3] as any; return Array.from({ length: M.rows }, (_,i) => Array.from({ length: M.cols }, (__,j) => M.data[i + j*M.rows])); })() : [];
   const b_eq = args.length > 4 && isMat(args[4]) ? toArray(m(args[4])) : [];
   const lb = args.length > 5 && isMat(args[5]) ? toArray(m(args[5])) : Array(n).fill(0);
   const ub = args.length > 6 && isMat(args[6]) ? toArray(m(args[6])) : Array(n).fill(Infinity);
@@ -124,7 +124,7 @@ async function linprog(args: Value[]): Promise<Value[]> {
   const mEq = A_eq.length;
   const mIneq = A_ub.length;
   const nVars = n + mIneq; // y + slacks
-  const nArt = mEq + mIneq.toString().length; // artificials for Phase I (one per eq + neg-slack rows)
+  const nArt = mEq + mIneq; // artificials for Phase I (one per equality + negative-slack row)
 
   // Build rows: equality + inequality
   const rows: number[][] = [];
@@ -250,13 +250,13 @@ async function quadprog(args: Value[]): Promise<Value[]> {
   const Hm = args[0] as any;
   if (!isMat(Hm)) throw new MatError('quadprog: H must be a matrix');
   const n = Hm.rows;
-  const H: number[][] = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (__, j) => Hm.data[i * n + j]));
+  const H: number[][] = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (__, j) => Hm.data[i + j * n]));
   const f = args.length > 1 && isMat(args[1]) ? toArray(m(args[1])) : zeros1(n);
   const A_ub: number[][] = args.length > 3 && isMat(args[2]) && (args[2] as any).rows > 0
-    ? (() => { const M = args[2] as any; return Array.from({ length: M.rows }, (_,i) => Array.from({ length: M.cols }, (__,j) => M.data[i*M.cols+j])); })() : [];
+    ? (() => { const M = args[2] as any; return Array.from({ length: M.rows }, (_,i) => Array.from({ length: M.cols }, (__,j) => M.data[i + j*M.rows])); })() : [];
   const b_ub = args.length > 3 && isMat(args[3]) ? toArray(m(args[3])) : [];
   const A_eq: number[][] = args.length > 5 && isMat(args[4]) && (args[4] as any).rows > 0
-    ? (() => { const M = args[4] as any; return Array.from({ length: M.rows }, (_,i) => Array.from({ length: M.cols }, (__,j) => M.data[i*M.cols+j])); })() : [];
+    ? (() => { const M = args[4] as any; return Array.from({ length: M.rows }, (_,i) => Array.from({ length: M.cols }, (__,j) => M.data[i + j*M.rows])); })() : [];
   const b_eq = args.length > 5 && isMat(args[5]) ? toArray(m(args[5])) : [];
   const lb = args.length > 6 && isMat(args[6]) ? toArray(m(args[6])) : Array(n).fill(-Infinity);
   const ub = args.length > 7 && isMat(args[7]) ? toArray(m(args[7])) : Array(n).fill(Infinity);
@@ -380,10 +380,10 @@ async function fmincon(args: Value[]): Promise<Value[]> {
   const n = x.length;
 
   const A_ub: number[][] = args.length > 3 && isMat(args[2]) && (args[2] as any).rows > 0
-    ? (() => { const M = args[2] as any; return Array.from({ length: M.rows }, (_,i) => Array.from({ length: M.cols }, (__,j) => M.data[i*M.cols+j])); })() : [];
+    ? (() => { const M = args[2] as any; return Array.from({ length: M.rows }, (_,i) => Array.from({ length: M.cols }, (__,j) => M.data[i + j*M.rows])); })() : [];
   const b_ub = args.length > 3 && isMat(args[3]) ? toArray(m(args[3])) : [];
   const A_eq: number[][] = args.length > 5 && isMat(args[4]) && (args[4] as any).rows > 0
-    ? (() => { const M = args[4] as any; return Array.from({ length: M.rows }, (_,i) => Array.from({ length: M.cols }, (__,j) => M.data[i*M.cols+j])); })() : [];
+    ? (() => { const M = args[4] as any; return Array.from({ length: M.rows }, (_,i) => Array.from({ length: M.cols }, (__,j) => M.data[i + j*M.rows])); })() : [];
   const b_eq = args.length > 5 && isMat(args[5]) ? toArray(m(args[5])) : [];
   const lb = args.length > 6 && isMat(args[6]) ? toArray(m(args[6])) : Array(n).fill(-Infinity);
   const ub = args.length > 7 && isMat(args[7]) ? toArray(m(args[7])) : Array(n).fill(Infinity);
@@ -556,7 +556,7 @@ async function lsqlin(args: Value[]): Promise<Value[]> {
   if (!isMat(Cm)) throw new MatError('lsqlin: C must be a matrix');
   const nrows = Cm.rows, ncols = Cm.cols;
   const C: number[][] = Array.from({ length: nrows }, (_, i) =>
-    Array.from({ length: ncols }, (__, j) => Cm.data[i * ncols + j]));
+    Array.from({ length: ncols }, (__, j) => Cm.data[i + j * nrows]));
 
   // Normal equations: (C'C)*x = C'd, augmented with constraints handled via quadprog
   const H = matmul(matT(C), C);

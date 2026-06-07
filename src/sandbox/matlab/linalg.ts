@@ -265,8 +265,10 @@ export function schurEig(T: Mat): { re: number[]; im: number[] } {
   for (let i = 0; i < n; ) {
     if (i < n - 1 && Math.abs(T.data[(i + 1) + i * n]) > 1e-300) {
       const a = T.data[i + i * n], b = T.data[i + (i + 1) * n], c = T.data[(i + 1) + i * n], d = T.data[(i + 1) + (i + 1) * n];
-      const tr = a + d, disc = tr * tr - 4 * (a * d - b * c), s = Math.sqrt(-disc) / 2;
-      re.push(tr / 2, tr / 2); im.push(s, -s); i += 2;
+      const tr = a + d, disc = tr * tr - 4 * (a * d - b * c);
+      if (disc >= 0) { const r = Math.sqrt(disc); re.push((tr + r) / 2, (tr - r) / 2); im.push(0, 0); }   // unreduced 2×2 with real eigenvalues
+      else { const s = Math.sqrt(-disc) / 2; re.push(tr / 2, tr / 2); im.push(s, -s); }
+      i += 2;
     } else { re.push(T.data[i + i * n]); im.push(0); i += 1; }
   }
   return { re, im };

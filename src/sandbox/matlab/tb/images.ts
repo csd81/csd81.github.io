@@ -888,7 +888,16 @@ function regionprops(args: Value[]): StructV {
   }
   if (!listed) req = ['Area', 'Centroid', 'BoundingBox'];
 
-  const regions = bwLabel8(BW, R, C);
+  // A logical/binary image is labeled by 8-connectivity; a numeric LABEL matrix L groups pixels by
+  // label value (region k = all pixels equal to k, 1..max(L), keeping empty labels — MATLAB behavior).
+  let regions: number[][];
+  if ((BWm as Mat).isBool !== true && bwData.some((v) => v !== 0 && v !== 1)) {
+    let maxL = 0; for (const v of bwData) if (Number.isInteger(v) && v > maxL) maxL = v;
+    regions = Array.from({ length: maxL }, () => [] as number[]);
+    for (let c = 0; c < C; c++) for (let r = 0; r < R; r++) { const v = bwData[r + c * R]; if (Number.isInteger(v) && v >= 1) regions[v - 1].push(r + c * R); }
+  } else {
+    regions = bwLabel8(BW, R, C);
+  }
   const N = regions.length;
 
   // Build each field as a per-region Value[].
