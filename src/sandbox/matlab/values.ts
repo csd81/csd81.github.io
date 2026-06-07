@@ -540,6 +540,8 @@ export function indexSet(m: Mat, subs: Sub[], rhs: Mat): Mat {
   if (subs.length === 1) {
     const s = subs[0];
     const idx = s === 'colon' ? subToList('colon', numel(m)) : s;
+    for (const ix of idx) if (ix < 1 || !Number.isInteger(ix)) throw new MatError('Array indices must be positive integers or logical values.');
+    if (rhs.data.length !== 1 && rhs.data.length !== idx.length) throw new MatError('Unable to perform assignment because the left and right sides have a different number of elements.');
     const need = idx.length ? Math.max(...idx) : 0;
     if (need > numel(m)) {
       // grow a vector (default to row when target is empty/row)
@@ -559,12 +561,15 @@ export function indexSet(m: Mat, subs: Sub[], rhs: Mat): Mat {
   }
   if (subs.length === 2) {
     const rsRaw = subs[0], csRaw = subs[1];
+    const checkSub = (s: Sub) => { if (s !== 'colon') for (const ix of s) if (ix < 1 || !Number.isInteger(ix)) throw new MatError('Array indices must be positive integers or logical values.'); };
+    checkSub(rsRaw); checkSub(csRaw);
     const maxR = rsRaw === 'colon' ? m.rows : (rsRaw.length ? Math.max(...rsRaw) : 0);
     const maxC = csRaw === 'colon' ? m.cols : (csRaw.length ? Math.max(...csRaw) : 0);
     if (maxR > m.rows || maxC > m.cols) m = growTo(m, Math.max(m.rows, maxR), Math.max(m.cols, maxC));
     if (rhs.idata && !m.idata) m.idata = new Float64Array(m.data.length);
     const rs = subToList(rsRaw, m.rows);
     const cs = subToList(csRaw, m.cols);
+    if (rhs.data.length !== 1 && rhs.data.length !== rs.length * cs.length) throw new MatError('Unable to perform assignment because the left and right sides have a different number of elements.');
     const scalarRhs = rhs.data.length === 1;
     for (let cc = 0; cc < cs.length; cc++) for (let rr = 0; rr < rs.length; rr++) {
       const si = rr + cc * rhs.rows;

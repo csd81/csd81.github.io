@@ -525,8 +525,14 @@ function sizeOf(args: Value[], nargout: number): Value[] {
 }
 /** zeros/ones/rand argument handling extended to N-D: (), (n), (r,c,...), ([d1 d2 ...]). */
 function dimsN(args: Value[]): number[] {
-  // Drop a trailing class-name argument like zeros(2,3,'uint32') / ones(2,'single').
-  const dims = args.filter((a) => isMat(a) && !(a as Mat).isChar);
+  // Drop a trailing class-name (zeros(2,3,'uint32')) AND the prototype after 'like'
+  // (zeros(2,'like',proto)) — proto is not a dimension.
+  const dims: Value[] = [];
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (isStr(a) || (isMat(a) && (a as Mat).isChar)) { if (asString(a).toLowerCase() === 'like') i++; continue; }
+    dims.push(a);
+  }
   if (dims.length === 0) return [1, 1];
   if (dims.length === 1) { const a = m(dims[0]); if (numel(a) >= 2) return toArray(a).map((x) => Math.round(x)); const n = Math.round(asScalar(a)); return [n, n]; }
   return dims.map((x) => Math.round(asScalar(x)));
@@ -1102,8 +1108,11 @@ export const BUILTINS: Record<string, Builtin> = {
     let dims: number[];
     if (a.length === 2 && numelOf(a[1]) >= 2) dims = toArray(m(a[1])).map((x) => Math.round(x));
     else dims = a.slice(1).map((v) => (isMat(v) && numel(v) === 0 ? NaN : Math.round(asScalar(v))));
+    if (dims.filter((d) => Number.isNaN(d)).length > 1) throw new MatError('reshape: can only specify one unknown dimension ([]).');
     const known = dims.filter((d) => !Number.isNaN(d)).reduce((p, x) => p * x, 1);
     dims = dims.map((d) => (Number.isNaN(d) ? numel(A) / (known || 1) : d));
+    // The inferred [] dim must come out to a nonnegative integer (e.g. reshape(5-elem,2,[]) is invalid).
+    if (dims.some((d) => !Number.isInteger(d) || d < 0)) throw new MatError('reshape: the unknown dimension is not consistent with the number of elements.');
     if (dims.reduce((p, x) => p * x, 1) !== numel(A)) throw new MatError('reshape: element count must not change');
     return ret(makeND(dims, Float64Array.from(A.data), { idata: A.idata ? Float64Array.from(A.idata) : null, isChar: A.isChar }));
   },
