@@ -53,9 +53,13 @@ function [x, k] = dfp_robust(f, grad, x0, tol, max_iter)
                 break;
             end
         end
-        
+        if t < 1e-15   % a vonalkeresés elbukott -> ne rontsuk el H-t egy zajos lépéssel
+            warning('A vonalkeresés nem talált csökkenő lépést (%d. iteráció).', k);
+            return;
+        end
+
         % --- Változók frissítése ---
-        s = t * d; 
+        s = t * d;
         x_new = x + s; 
         g_new = grad(x_new); 
         
