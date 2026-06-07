@@ -4,7 +4,7 @@
 // MATLAB's quaternion-to-DCM map is the coordinate-transformation (transposed) form, quatnorm is
 // the SUM of squares (not its root), and quatdivide(q,r) = r⁻¹⊗q. See aerospace.VALIDATION.md.
 import type { Builtin } from '../builtins';
-import { type Value, type Mat, mat, map, toMat as m, asScalar, asString, scalar, colVec, makeND, fromRows, MatError } from '../values';
+import { type Value, type Mat, mat, map, toMat as m, asScalar, asString, scalar, colVec, makeND, fromRows, matRows as rowsOf, MatError } from '../values';
 import type { ToolboxModule } from './types';
 import { WGS84_A, WGS84_F } from '../physconst';
 import { HELP_AEROSPACE } from './help-aerospace';
@@ -28,12 +28,7 @@ function ew3(A: Mat, B: Mat, C: Mat, f: (a: number, b: number, c: number) => num
   return mat(src.rows, src.cols, out);
 }
 
-// ---- small matrix helpers ----------------------------------------------------------------------
-function rowsOf(M: Mat): number[][] {
-  const out: number[][] = [];
-  for (let i = 0; i < M.rows; i++) { const r: number[] = []; for (let j = 0; j < M.cols; j++) r.push(M.data[i + j * M.rows]); out.push(r); }
-  return out;
-}
+// ---- small matrix helpers (rowsOf = canonical matRows from values.ts) ---------------------------
 /** 3×3 row-major number[][] → column-major Mat. */
 function mat3(C: number[][]): Mat {
   const d = new Float64Array(9);

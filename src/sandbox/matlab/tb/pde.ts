@@ -15,18 +15,12 @@
 import type { Builtin } from '../builtins';
 import {
   type Value, type Mat, isMat, rowVec, colVec, MatError,
-  zeros, mat, toArray, asString, asScalar, toMat as m, sparseFromTriplets,
+  zeros, mat, toArray, asString, asScalar, toMat as m, sparseFromTriplets, matRows as rowsOf,
 } from '../values';
 import type { ToolboxModule } from './types';
 import { HELP_PDE } from './help-pde';
 
-// ── small Mat<->rows helpers (Mat is column-major: M.data[r + c*rows]) ──────
-/** Read a Mat as an array of its rows. */
-function rowsOf(M: Mat): number[][] {
-  const R = M.rows, C = M.cols, out: number[][] = [];
-  for (let r = 0; r < R; r++) { const row = new Array<number>(C); for (let c = 0; c < C; c++) row[c] = M.data[r + c * R]; out.push(row); }
-  return out;
-}
+// ── small Mat<->rows helpers (rowsOf = canonical matRows from values.ts) ─────
 /** Build a Mat from an array of rows. */
 function matFromRows(rws: number[][]): Mat {
   const R = rws.length, C = R ? rws[0].length : 0, data = new Float64Array(R * C);
