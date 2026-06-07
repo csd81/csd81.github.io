@@ -19,6 +19,7 @@ function reduceCols(M: Mat, f: (x: number[]) => number): Value {
 // ── pulse-metric engine (shared/measure): histogram state levels + mid-reference crossings ──
 /** Two-state levels by histogram mode method (signal.internal.getLevelsByHistogram). */
 function stateLevelsOf(x: number[]): [number, number] {
+  if (x.length === 0) throw new Error('signal must be a nonempty vector');   // empty ⇒ Math.min/max give ±Infinity
   const nbins = 100, ymin = Math.min(...x), ymax = Math.max(...x), dy = (ymax - ymin) / nbins;
   if (!(dy > 0)) return [ymin, ymax];
   const hist = new Array(nbins).fill(0);
@@ -248,6 +249,215 @@ function rowsToMat(rows: number[][]): Mat {
   for (let i = 0; i < r; i++) for (let j = 0; j < c; j++) d[i + j * r] = rows[i][j];
   return mat(r, c, d);
 }
+// ── Tier-3 module-level helpers (all prefixed t3_ to avoid collisions) ──
+
+/** t3_burgCoeffs: Burg method AR(p) coefficients from signal x. Returns {a, e}.
+ *  Based on the lattice formulation: minimize forward+backward prediction error. */
+function t3_burgCoeffs(x: number[], p: number): { a: number[]; e: number } {
+  const N = x.length;
+  let f = x.slice(), b = x.slice();
+  let e = x.reduce((s, v) => s + v * v, 0) / N;
+  const a: number[] = [1];
+  for (let mm = 0; mm < p; mm++) {
+    let num = 0, den = 0;
+    for (let n = mm + 1; n < N; n++) { num += f[n] * b[n - 1]; den += f[n] * f[n] + b[n - 1] * b[n - 1]; }
+    const k = (den > 0) ? -2 * num / den : 0;
+    const fNew = new Array(N).fill(0), bNew = new Array(N).fill(0);
+    for (let n = mm + 1; n < N; n++) { fNew[n] = f[n] + k * b[n - 1]; bNew[n] = b[n - 1] + k * f[n]; }
+    f = fNew; b = bNew;
+    const aNew = a.slice(); aNew.push(0);
+    for (let j = 1; j <= mm; j++) aNew[j] = a[j] + k * a[mm + 1 - j];
+    aNew[mm + 1] = k;
+    a.length = 0; a.push(...aNew);
+    e *= (1 - k * k);
+  }
+  return { a, e };
+}
+
+/** t3_autocorr: biased autocorrelation r[0..p] of x. */
+function t3_autocorr(x: number[], p: number): number[] {
+  const N = x.length, r: number[] = [];
+  for (let lag = 0; lag <= p; lag++) {
+    let s = 0; for (let n = lag; n < N; n++) s += x[n] * x[n - lag];
+    r.push(s / N);
+  }
+  return r;
+}
+
+/** t3_arPSD: one-sided AR PSD from AR poly a + noise variance e, nfft points. [Pxx, w] where w in rad. */
+function t3_arPSD(a: number[], e: number, nfft: number): { Pxx: number[]; w: number[] } {
+  const half = Math.floor(nfft / 2);
+  const Pxx: number[] = [], w: number[] = [];
+  for (let k2 = 0; k2 <= half; k2++) {
+    const wk = k2 * Math.PI / half;
+    let re = 0, im = 0;
+    for (let i = 0; i < a.length; i++) { re += a[i] * Math.cos(i * wk); im -= a[i] * Math.sin(i * wk); }
+    const A2 = re * re + im * im;
+    let p = e / Math.max(A2, 1e-300) / (2 * Math.PI);
+    if (k2 > 0 && (k2 < half || nfft % 2 !== 0)) p *= 2;
+    Pxx.push(p); w.push(wk);
+  }
+  return { Pxx, w };
+}
+
+/** t3_welchCross: Welch cross-spectrum and auto-spectra. Returns {Pxy_re, Pxy_im, Pxx, Pyy, f}. */
+function t3_welchCross(xv: number[], yv: number[], wlen: number, noverlap: number, nfft: number, fs: number | null): {
+  Pxy_re: number[]; Pxy_im: number[]; Pxx: number[]; Pyy: number[]; f: number[];
+} {
+  const N = xv.length, step = wlen - noverlap, half = Math.floor(nfft / 2);
+  const Fs = fs ?? (2 * Math.PI), ww = hammingWin(wlen);
+  const sw2 = ww.reduce((s, v) => s + v * v, 0);
+  const Pxy_re = new Array(half + 1).fill(0), Pxy_im = new Array(half + 1).fill(0);
+  const Pxx = new Array(half + 1).fill(0), Pyy = new Array(half + 1).fill(0);
+  let nseg = 0;
+  for (let start = 0; start + wlen <= N; start += step) {
+    nseg++;
+    const Xr: number[] = [], Xi: number[] = [], Yr: number[] = [], Yi: number[] = [];
+    for (let n = 0; n < wlen; n++) { Xr.push(xv[start + n] * ww[n]); Xi.push(0); Yr.push(yv[start + n] * ww[n]); Yi.push(0); }
+    const dX = dftCol(Xr, Xi, nfft), dY = dftCol(Yr, Yi, nfft);
+    const sc = 1 / (Fs * sw2);
+    for (let k2 = 0; k2 <= half; k2++) {
+      const xr = dX.re[k2], xi = dX.im[k2], yr = dY.re[k2], yi = dY.im[k2];
+      const scaling = (k2 > 0 && k2 < half) ? 2 : 1;
+      Pxy_re[k2] += (xr * yr + xi * yi) * sc * scaling;
+      Pxy_im[k2] += (xr * yi - xi * yr) * sc * scaling;
+      Pxx[k2] += (xr * xr + xi * xi) * sc * scaling;
+      Pyy[k2] += (yr * yr + yi * yi) * sc * scaling;
+    }
+  }
+  const n = Math.max(1, nseg);
+  const f = Array.from({ length: half + 1 }, (_, k2) => (fs ? k2 * fs / nfft : k2 * 2 * Math.PI / nfft));
+  return {
+    Pxy_re: Pxy_re.map((v) => v / n), Pxy_im: Pxy_im.map((v) => v / n),
+    Pxx: Pxx.map((v) => v / n), Pyy: Pyy.map((v) => v / n), f,
+  };
+}
+
+/** t3_welchParams: extract Welch segment parameters from a Value[] arg list starting at argStart. */
+function t3_welchParams(xv: number[], a: Value[], argStart: number): { wlen: number; noverlap: number; nfft: number; fs: number | null } {
+  const has = (i: number) => a.length > i && isMat(a[i]) && m(a[i]).rows * m(a[i]).cols > 0;
+  const N = xv.length;
+  let wlen: number;
+  if (has(argStart) && m(a[argStart]).rows * m(a[argStart]).cols > 1) {
+    wlen = toArray(m(a[argStart])).length;
+  } else if (has(argStart)) {
+    wlen = Math.round(asScalar(a[argStart]));
+  } else {
+    wlen = Math.max(1, Math.floor(N / 4.5));
+  }
+  const noverlap = has(argStart + 1) ? Math.round(asScalar(a[argStart + 1])) : Math.floor(wlen / 2);
+  const nfft = has(argStart + 2) ? Math.round(asScalar(a[argStart + 2])) : Math.max(256, 2 ** Math.ceil(Math.log2(wlen)));
+  const fs = has(argStart + 3) ? asScalar(a[argStart + 3]) : null;
+  return { wlen, noverlap, nfft, fs };
+}
+
+/** t3_rlevinson: compute rlevinson upper-triangular matrix U for AR poly a (length M, a[0]=1).
+ *  U[i][j] = i-th coeff of the (j+1)-th order predictor (1-indexed internally). */
+function t3_rlevinson(a: number[]): number[][] {
+  const M = a.length;
+  const U: number[][] = Array.from({ length: M }, () => new Array(M).fill(0));
+  // Last column: fliplr(a)
+  for (let i = 0; i < M; i++) U[i][M - 1] = a[M - 1 - i];
+  // Step down to lower-order polys
+  let cur = a.slice();
+  for (let col = M - 2; col >= 0; col--) {
+    const p = cur.length - 1;
+    const kp = cur[p];
+    const prev = new Array(p).fill(0); prev[0] = 1;
+    for (let j = 1; j < p; j++) prev[j] = (cur[j] - kp * cur[p - j]) / (1 - kp * kp);
+    for (let i = 0; i <= col; i++) U[i][col] = prev[col - i];
+    cur = prev;
+  }
+  return U;
+}
+
+/** t3_rcosdesignImpl: rcosdesign algorithm from MATLAB rcosdesign.m. */
+function t3_rcosdesignImpl(beta: number, span: number, sps: number, shape: 'normal' | 'sqrt'): number[] {
+  const filterOrder = sps * span, delay = filterOrder / 2, N = filterOrder + 1;
+  const t2 = Array.from({ length: N }, (_, i) => (i - delay) / sps);
+  const b = new Array(N), EPS = Math.sqrt(2.220446049250313e-16);
+  const be = beta === 0 ? 1e-300 : beta;
+  if (shape === 'normal') {
+    const constVal = be * Math.sin(Math.PI / (2 * be)) / (2 * sps);
+    for (let i = 0; i < N; i++) {
+      const ti = t2[i], denom = 1 - (2 * be * ti) * (2 * be * ti);
+      if (Math.abs(denom) > EPS) {
+        const sc = ti === 0 ? 1 : Math.sin(Math.PI * ti) / (Math.PI * ti);
+        b[i] = sc * Math.cos(Math.PI * be * ti) / denom / sps;
+      } else { b[i] = constVal; }
+    }
+  } else {
+    const constVal1 = 1 / (2 * Math.PI * sps) * (
+      Math.PI * (be + 1) * Math.sin(Math.PI * (be + 1) / (4 * be))
+      - 4 * be * Math.sin(Math.PI * (be - 1) / (4 * be))
+      + Math.PI * (be - 1) * Math.cos(Math.PI * (be - 1) / (4 * be))
+    );
+    for (let i = 0; i < N; i++) {
+      const ti = t2[i];
+      if (ti === 0) {
+        b[i] = -1 / (Math.PI * sps) * (Math.PI * (be - 1) - 4 * be);
+      } else if (Math.abs(Math.abs(4 * be * ti) - 1) < EPS) {
+        b[i] = constVal1;
+      } else {
+        b[i] = -4 * be / sps * (Math.cos(Math.PI * (1 + be) * ti) + Math.sin(Math.PI * (1 - be) * ti) / (4 * be * ti))
+          / (Math.PI * ((4 * be * ti) * (4 * be * ti) - 1));
+      }
+    }
+  }
+  const energy = Math.sqrt(b.reduce((s, v) => s + v * v, 0));
+  return energy > 0 ? b.map((v) => v / energy) : b;
+}
+
+/** t3_gaussLS: solve real overdetermined LS: A*x = b via normal equations with Gaussian elimination. */
+function t3_gaussLS(A: number[][], rhs: number[]): number[] {
+  const nr = A.length, nc = A[0].length;
+  // Normal equations: (A'A) x = A'b
+  const AtA: number[][] = Array.from({ length: nc }, () => new Array(nc).fill(0));
+  const Atb: number[] = new Array(nc).fill(0);
+  for (let i = 0; i < nc; i++) {
+    for (let j = 0; j < nc; j++) { let s = 0; for (let k2 = 0; k2 < nr; k2++) s += A[k2][i] * A[k2][j]; AtA[i][j] = s; }
+    let s = 0; for (let k2 = 0; k2 < nr; k2++) s += A[k2][i] * rhs[k2]; Atb[i] = s;
+  }
+  // Augmented matrix
+  const Aug: number[][] = AtA.map((row, r) => [...row, Atb[r]]);
+  for (let col = 0; col < nc; col++) {
+    let piv = col; for (let r = col + 1; r < nc; r++) if (Math.abs(Aug[r][col]) > Math.abs(Aug[piv][col])) piv = r;
+    [Aug[col], Aug[piv]] = [Aug[piv], Aug[col]];
+    const d = Aug[col][col]; if (Math.abs(d) < 1e-300) continue;
+    for (let r = 0; r < nc; r++) { if (r === col) continue; const f = Aug[r][col] / d; for (let c = col; c <= nc; c++) Aug[r][c] -= f * Aug[col][c]; }
+  }
+  return Aug.map((row, i) => row[nc] / row[i]);
+}
+
+/** t3_latcFIR: FIR lattice filter — standard FIR lattice (k reflection coefficients). Returns {f, g} = forward and backward outputs. */
+function t3_latcFIR(k2: number[], x: number[]): { f: number[]; g: number[] } {
+  const N = x.length, M = k2.length;
+  const fSt: number[][] = [x.slice()], gSt: number[][] = [x.slice()];
+  for (let stage = 0; stage < M; stage++) {
+    const km = k2[stage];
+    const fn = new Array(N), gn = new Array(N);
+    for (let n = 0; n < N; n++) {
+      const gPrev = n > 0 ? gSt[stage][n - 1] : 0;
+      fn[n] = fSt[stage][n] + km * gPrev;
+      gn[n] = km * fSt[stage][n] + gPrev;
+    }
+    fSt.push(fn); gSt.push(gn);
+  }
+  return { f: fSt[M], g: gSt[M] };
+}
+
+/** t3_latcIIR: IIR lattice-ladder filter: latcfilt(k, v, x) via tf conversion and direct filter. */
+function t3_latcIIR(k2: number[], v: number[], x: number[]): number[] {
+  // a = rc2poly(k) = stepUp(k); b = U * v
+  const a = stepUp(k2);
+  const M = a.length;
+  const U = t3_rlevinson(a);
+  const vp = v.slice(); while (vp.length < M) vp.push(0);
+  const b: number[] = new Array(M).fill(0);
+  for (let i = 0; i < M; i++) for (let j = 0; j < M; j++) b[i] += U[i][j] * vp[j];
+  return filterDf2t(b, a, x).y;
+}
+
 /** kaiserBeta(atten): Kaiser β for a stopband attenuation atten (dB) — signal.internal.kaiserBeta. */
 function kaiserBeta(atten: number): number {
   return 0.1102 * (atten - 8.7) * (atten > 50 ? 1 : 0)
@@ -530,6 +740,176 @@ function window(a: Value[], optIdx: number, g: (n: number, N: number) => number)
   return ret(colVec(w));
 }
 
+// ── t1_ helpers (TIER 1, prefixed to avoid collisions) ───────────────────────
+/** Naive DFT of real+imag input of length nfft. */
+function t1_naiveDFT(re: number[], im: number[], nfft: number): { re: number[]; im: number[] } {
+  const or: number[] = new Array(nfft).fill(0), oi: number[] = new Array(nfft).fill(0);
+  for (let k = 0; k < nfft; k++) for (let n = 0; n < nfft; n++) { const ang = -2 * Math.PI * k * n / nfft, c = Math.cos(ang), s = Math.sin(ang); or[k] += re[n] * c - im[n] * s; oi[k] += re[n] * s + im[n] * c; }
+  return { re: or, im: oi };
+}
+/** Naive IDFT. */
+function t1_naiveIDFT(re: number[], im: number[], nfft: number): { re: number[]; im: number[] } {
+  const or: number[] = new Array(nfft).fill(0), oi: number[] = new Array(nfft).fill(0);
+  for (let n = 0; n < nfft; n++) for (let k = 0; k < nfft; k++) { const ang = 2 * Math.PI * k * n / nfft, c = Math.cos(ang), s = Math.sin(ang); or[n] += re[k] * c - im[k] * s; oi[n] += re[k] * s + im[k] * c; }
+  for (let n = 0; n < nfft; n++) { or[n] /= nfft; oi[n] /= nfft; }
+  return { re: or, im: oi };
+}
+/** Companion-matrix eigenvalue roots of polynomial p (descending coefficients). */
+function t1_polyRoots(p: number[]): Cx[] {
+  // trim leading zeros
+  let start = 0; while (start < p.length - 1 && p[start] === 0) start++;
+  const q = p.slice(start);
+  const n = q.length - 1;  // degree
+  if (n <= 0) return [];
+  if (n === 1) return [[-q[1] / q[0], 0]];
+  if (n === 2) {
+    const a = q[0], b = q[1], c2 = q[2], disc = b * b - 4 * a * c2;
+    if (disc >= 0) return [[ (-b + Math.sqrt(disc)) / (2 * a), 0], [(-b - Math.sqrt(disc)) / (2 * a), 0]];
+    const re = -b / (2 * a), im = Math.sqrt(-disc) / (2 * a);
+    return [[re, im], [re, -im]];
+  }
+  // General: companion matrix power iteration (QR-like via Hessenberg). For small n use naive.
+  // Build companion matrix C of size n×n (Frobenius companion)
+  const a0 = q[0];
+  const C: number[][] = Array.from({ length: n }, (_, i) => new Array(n).fill(0));
+  for (let j = 0; j < n - 1; j++) C[j + 1][j] = 1;
+  for (let j = 0; j < n; j++) C[0][j] = -q[j + 1] / a0;
+  // Francis double-shift QR iteration (simplified: use basic QR for small n)
+  // Use basic power deflation for robustness on small matrices
+  return t1_qrEigenvalues(C, n);
+}
+/** QR iteration eigenvalues of an n×n real matrix M (simplified, up to 200 iters). */
+function t1_qrEigenvalues(M: number[][], n: number): Cx[] {
+  // Reduce to upper Hessenberg via Householder, then QR iterate with shifts
+  // For simplicity: use the existing cplxpairSort-compatible method (modified QR)
+  // Copy M
+  let A = M.map((r) => r.slice());
+  // Hessenberg reduction
+  for (let k = 0; k < n - 2; k++) {
+    // Build Householder reflector for column k, rows k+1..n-1
+    const v: number[] = []; for (let i = k + 1; i < n; i++) v.push(A[i][k]);
+    const sigma = Math.sqrt(v.reduce((s, x) => s + x * x, 0)) * Math.sign(v[0] || 1);
+    if (sigma === 0) continue;
+    v[0] += sigma;
+    const vn2 = v.reduce((s, x) => s + x * x, 0);
+    // Apply H = I - 2vv'/v'v from left (rows k+1..n) and from right (cols k..n)
+    for (let j = k; j < n; j++) {
+      let dot = 0; for (let i = 0; i < v.length; i++) dot += A[k + 1 + i][j] * v[i];
+      dot = 2 * dot / vn2;
+      for (let i = 0; i < v.length; i++) A[k + 1 + i][j] -= dot * v[i];
+    }
+    for (let i = 0; i < n; i++) {
+      let dot = 0; for (let j = 0; j < v.length; j++) dot += A[i][k + 1 + j] * v[j];
+      dot = 2 * dot / vn2;
+      for (let j = 0; j < v.length; j++) A[i][k + 1 + j] -= dot * v[j];
+    }
+  }
+  // QR iteration with double-shift (Francis)
+  const roots: Cx[] = [];
+  let size = n;
+  for (let iters = 0; size > 1 && iters < 300 * n; iters++) {
+    // Wilkinson shift
+    const a11 = A[size - 2][size - 2], a12 = A[size - 2][size - 1], a21 = A[size - 1][size - 2], a22 = A[size - 1][size - 1];
+    const tr = a11 + a22, det = a11 * a22 - a12 * a21;
+    // deflation check
+    if (Math.abs(a21) < 1e-12 * (Math.abs(a11) + Math.abs(a22))) {
+      roots.push([a22, 0]); size--;
+      A = A.slice(0, size).map((r) => r.slice(0, size)); continue;
+    }
+    // double-shift QR: M = A - s1*I; A = Q1'*M; M = A - s2*I; A = Q2'*M
+    // Use simplified: single shift with conjugate pair
+    const disc = tr * tr / 4 - det;
+    let s1r: number, s1i: number;
+    if (disc >= 0) { s1r = tr / 2 + Math.sqrt(disc); s1i = 0; }
+    else { s1r = tr / 2; s1i = Math.sqrt(-disc); }
+    // Apply single-shift QR step
+    for (let j = 0; j < size - 1; j++) {
+      const cr = A[j][j] - s1r, ci = -s1i;
+      const mag = Math.hypot(cr, A[j + 1][j]);
+      if (mag === 0) continue;
+      const cos = cr / mag, sin = A[j + 1][j] / mag;
+      // Apply Givens rotation: G = [cos sin; -sin cos] from left (rows j, j+1)
+      for (let col = j; col < size; col++) {
+        const t0 = cos * A[j][col] + sin * A[j + 1][col];
+        const t1 = -sin * A[j][col] + cos * A[j + 1][col];
+        A[j][col] = t0; A[j + 1][col] = t1;
+      }
+      // Apply G' from right (cols j, j+1)
+      for (let row = 0; row <= Math.min(j + 2, size - 1); row++) {
+        const t0 = cos * A[row][j] + (-sin) * A[row][j + 1];
+        const t1 = sin * A[row][j] + cos * A[row][j + 1];
+        A[row][j] = t0; A[row][j + 1] = t1;
+      }
+    }
+  }
+  // Remaining 1x1 or 2x2 blocks
+  if (size === 2) {
+    const a11 = A[0][0], a12 = A[0][1], a21 = A[1][0], a22 = A[1][1];
+    const tr2 = a11 + a22, det2 = a11 * a22 - a12 * a21, disc2 = tr2 * tr2 / 4 - det2;
+    if (disc2 >= 0) { roots.push([tr2 / 2 + Math.sqrt(disc2), 0]); roots.push([tr2 / 2 - Math.sqrt(disc2), 0]); }
+    else { roots.push([tr2 / 2, Math.sqrt(-disc2)]); roots.push([tr2 / 2, -Math.sqrt(-disc2)]); }
+  } else if (size === 1) roots.push([A[0][0], 0]);
+  return roots;
+}
+/** Complex z^p (real z). */
+function t1_cpow(re: number, im: number, p: number): [number, number] {
+  if (p === 0) return [1, 0]; if (p < 0) { const [r, i] = t1_cpow(re, im, -p); const d = r * r + i * i; return d === 0 ? [0, 0] : [r / d, -i / d]; }
+  const mag = Math.hypot(re, im), ang = Math.atan2(im, re), magP = mag ** p, angP = ang * p;
+  return [magP * Math.cos(angP), magP * Math.sin(angP)];
+}
+/** Convert Cx[] to a column-vector Mat (complex if needed). */
+function t1_cxToMat(cx: Cx[], _colVecForm: boolean): Mat {
+  const n = cx.length;
+  if (n === 0) return zeros(0, 1);
+  const re = new Float64Array(n), im = new Float64Array(n);
+  let anyIm = false;
+  for (let i = 0; i < n; i++) { re[i] = cx[i][0]; im[i] = cx[i][1]; if (cx[i][1] !== 0) anyIm = true; }
+  const out = mat(n, 1, re);
+  if (anyIm) out.idata = im;
+  return out;
+}
+/** Convert a Mat to Cx[] (real+imag). */
+function t1_matToCx(M: Mat): Cx[] {
+  const n = M.rows * M.cols;
+  const out: Cx[] = [];
+  for (let i = 0; i < n; i++) out.push([M.data[i], M.idata ? M.idata[i] : 0]);
+  return out;
+}
+/** Trim trailing zeros and return degree. */
+function t1_trimDeg(c: number[]): number {
+  let i = c.length - 1; while (i > 0 && c[i] === 0) i--;
+  return i;
+}
+/** Design FIR interpolation filter equivalent to r * fir1(2*r*n, 2*cutoff/r, 'hamming').
+ *  Default cutoff=0.5 → Wn = 1/r (normalized 0..1 Nyquist). Length = 2*r*n+1.
+ *  b[k] = 2*cutoff * sinc(2*cutoff*(k-RN)/r) * hamming[k] where RN=r*n.
+ *  Center tap ≈ 1; b applied to upsampled (sparse) signal gives correct interpolation. */
+function t1_designInterpFilter(r: number, n: number, cutoff: number): number[] {
+  const RN = r * n;
+  const Wn = 2 * cutoff / r;  // fir1 Wn (0..1 normalized to Nyquist)
+  const b: number[] = [];
+  for (let k = 0; k <= 2 * RN; k++) {
+    const x = Wn * (k - RN);  // = 2*cutoff*(k-RN)/r
+    const sincVal = x === 0 ? 1 : Math.sin(Math.PI * x) / (Math.PI * x);
+    const w = 0.54 + 0.46 * Math.cos(Math.PI * (k - RN) / RN);
+    b.push(r * Wn * sincVal * w);  // r * fir1
+  }
+  return b;
+}
+/** Filter a signal with b (FIR/IIR), returning output and final state. */
+function t1_filterWithZi(b: number[], x: number[], zi: number[]): { y: number[]; zf: number[] } {
+  return filterDf2t(b, [1], x, zi);
+}
+/** Get filter initial state zi for input x using filterDf2t. */
+function t1_filterGetZi(b: number[], x: number[]): number[] {
+  // Run filter on x, extract final state
+  return filterDf2t(b, [1], x).zf;
+}
+/** Filter with a known state vector (as final state from previous run). */
+function t1_filterWithState(b: number[], x: number[], zi: number[]): number[] {
+  return filterDf2t(b, [1], x, zi).y;
+}
+
 /** frexp: x = f·2^e with f ∈ [0.5,1). Matches MATLAB [f,e] = log2(x). */
 function frexp(x: number): [number, number] {
   if (x === 0) return [0, 0];
@@ -755,6 +1135,7 @@ export const SIGNAL: ToolboxModule = {
       const x = toArray(m(a[0])), N = x.length;
       const hasArg = (i: number) => a.length > i && isMat(a[i]) && m(a[i]).rows * m(a[i]).cols > 0;
       const w = hasArg(1) ? toArray(m(a[1])) : new Array(N).fill(1);
+      if (w.length !== N) throw new Error('periodogram: the window length must equal the signal length');   // mismatched window ⇒ undefined w[n] → NaN PSD
       const nfft = hasArg(2) ? Math.round(asScalar(a[2])) : Math.max(256, 2 ** Math.ceil(Math.log2(N)));
       const fs = hasArg(3) ? asScalar(a[3]) : null, Fs = fs ?? 2 * Math.PI;
       const half = Math.floor(nfft / 2), sumw2 = w.reduce((s, v) => s + v * v, 0);
@@ -786,6 +1167,7 @@ export const SIGNAL: ToolboxModule = {
       else if (centeredArg !== undefined) range = asScalar(centeredArg) ? 'centered' : 'twosided';
       if (noverlap < 0 || noverlap >= nwin) throw new Error('stft: OverlapLength must be nonnegative and less than the window length');   // hop>0 ⇒ no infinite/invalid frame loop
       if (nfft < nwin) throw new Error('stft: FFTLength must be at least the window length');
+      if (nx < nwin) throw new Error('stft: signal length must be at least the window length');
       const hop = nwin - noverlap, nCol = Math.floor((nx - noverlap) / hop);
       const cols: { re: number[]; im: number[] }[] = [], offs: number[] = [];
       for (let c = 0; c < nCol; c++) { const off = c * hop; offs.push(off); const re: number[] = [], im: number[] = []; for (let i = 0; i < nwin; i++) { re.push(x[off + i] * win[i]); im.push((xIm ? xIm[off + i] : 0) * win[i]); } cols.push(dftCol(re, im, nfft)); }
@@ -871,6 +1253,8 @@ export const SIGNAL: ToolboxModule = {
       const Fs = fs ?? 2 * Math.PI;
       const range = isRealX ? 'onesided' : 'twosided';
       if (noverlap < 0 || noverlap >= nwin) throw new Error('spectrogram: noverlap must be nonnegative and less than the window length');   // hop>0 ⇒ no infinite/invalid frame loop
+      if (nfft < nwin) throw new Error('spectrogram: nfft must be at least the window length');   // avoid DFT time-domain wrapping
+      if (nx < nwin) throw new Error('spectrogram: signal length must be at least the window length');
       const hop = nwin - noverlap, nCol = Math.floor((nx - noverlap) / hop);
       const cols: { re: number[]; im: number[] }[] = [], offs: number[] = [];
       for (let c = 0; c < nCol; c++) { const off = c * hop; offs.push(off); const re: number[] = [], im: number[] = []; for (let i = 0; i < nwin; i++) { re.push(x[off + i] * win[i]); im.push((xIm ? xIm[off + i] : 0) * win[i]); } cols.push(dftCol(re, im, nfft)); }
@@ -1127,9 +1511,16 @@ export const SIGNAL: ToolboxModule = {
     /** [h,w] = freqz(b[,a][,n]) — digital filter frequency response over w∈[0,π), n points (def 512). */
     freqz: (a, nargout) => {
       const b = toArray(m(a[0])); const den = a.length >= 2 && isMat(a[1]) && (a[1] as Mat).rows * (a[1] as Mat).cols ? toArray(m(a[1])) : [1];
-      const N = a.length >= 3 ? Math.round(asScalar(a[2])) : 512;
-      const hre = new Float64Array(N), him = new Float64Array(N), w = new Array(N);
-      for (let k = 0; k < N; k++) { const wk = (k * Math.PI) / N; w[k] = wk; const nz = cpoly(b, wk), dz = cpoly(den, wk); const dn = dz[0] * dz[0] + dz[1] * dz[1]; hre[k] = (nz[0] * dz[0] + nz[1] * dz[1]) / dn; him[k] = (nz[1] * dz[0] - nz[0] * dz[1]) / dn; }
+      // 3rd arg: scalar N (num freq pts) or vector w (freq points in rad)
+      let wVec: number[] | null = null;
+      let N = 512;
+      if (a.length >= 3 && isMat(a[2])) {
+        const M3 = m(a[2]), sz = M3.rows * M3.cols;
+        if (sz === 1) { N = Math.round(asScalar(a[2])); }
+        else if (sz > 1) { wVec = toArray(M3); N = sz; }
+      }
+      const hre = new Float64Array(N), him = new Float64Array(N), w = wVec ?? Array.from({ length: N }, (_, k) => (k * Math.PI) / N);
+      for (let k = 0; k < N; k++) { const wk = w[k]; const nz = cpoly(b, wk), dz = cpoly(den, wk); const dn = dz[0] * dz[0] + dz[1] * dz[1]; hre[k] = (nz[0] * dz[0] + nz[1] * dz[1]) / dn; him[k] = (nz[1] * dz[0] - nz[0] * dz[1]) / dn; }
       const h = colVec(Array.from(hre)); h.idata = him;
       return nargout >= 2 ? Promise.resolve([h, colVec(w)]) : ret(h);
     },
@@ -1556,6 +1947,1257 @@ export const SIGNAL: ToolboxModule = {
       const order = Math.ceil((capk * capk1p) / (capkp * capk1));
       return Promise.resolve(nargout >= 2 ? [scalar(order), scalar(wp)] : [scalar(order)]);
     },
+
+    // ── TIER 1 additions ─────────────────────────────────────────────────────
+
+    // fftfilt(b,x[,nfft]): FIR filtering via overlap-add FFT.
+    fftfilt: (a) => {
+      const b = toArray(m(a[0])), X = m(a[1]), x = toArray(X), Lb = b.length, Lx = x.length;
+      // choose nfft: next power of 2 covering Lb, with block size heuristic
+      const nfft = a.length >= 3 ? Math.max(Math.round(asScalar(a[2])), 2 ** Math.ceil(Math.log2(Lb))) : (() => {
+        const blk = Math.max(1, 8 * Lb);
+        return 2 ** Math.ceil(Math.log2(Lb + blk - 1));
+      })();
+      // DFT of zero-padded b
+      const Br: number[] = new Array(nfft).fill(0);
+      for (let i = 0; i < Lb; i++) Br[i] = b[i];
+      const Bfft = t1_naiveDFT(Br, new Array(nfft).fill(0), nfft);
+      const step = nfft - Lb + 1;
+      const out: number[] = new Array(Lx).fill(0);
+      for (let pos = 0; pos < Lx; pos += step) {
+        const end = Math.min(pos + step, Lx);
+        const xr: number[] = new Array(nfft).fill(0);
+        for (let i = pos; i < end; i++) xr[i - pos] = x[i];
+        const Xfft = t1_naiveDFT(xr, new Array(nfft).fill(0), nfft);
+        const Yr: number[] = new Array(nfft), Yi: number[] = new Array(nfft);
+        for (let k = 0; k < nfft; k++) { Yr[k] = Bfft.re[k] * Xfft.re[k] - Bfft.im[k] * Xfft.im[k]; Yi[k] = Bfft.re[k] * Xfft.im[k] + Bfft.im[k] * Xfft.re[k]; }
+        const y = t1_naiveIDFT(Yr, Yi, nfft).re;
+        for (let i = 0; i < nfft && pos + i < Lx; i++) out[pos + i] += y[i];
+      }
+      return ret(X.rows === 1 ? rowVec(out) : colVec(out));
+    },
+
+    // phasez(b,a[,n]): unwrapped phase response [phi,w] over n points in [0,pi).
+    phasez: (a, nargout) => {
+      const b = toArray(m(a[0]));
+      const den = a.length >= 2 && isMat(a[1]) ? toArray(m(a[1])) : [1];
+      const N = a.length >= 3 ? Math.round(asScalar(a[2])) : 512;
+      const phi: number[] = [], w: number[] = [];
+      for (let k = 0; k < N; k++) {
+        const wk = (k * Math.PI) / N; w.push(wk);
+        const nz = cpoly(b, wk), dz = cpoly(den, wk);
+        const dn = dz[0] * dz[0] + dz[1] * dz[1];
+        const hr = (nz[0] * dz[0] + nz[1] * dz[1]) / dn, hi = (nz[1] * dz[0] - nz[0] * dz[1]) / dn;
+        phi.push(Math.atan2(hi, hr));
+      }
+      // unwrap
+      const phiU = phi.slice();
+      for (let k = 1; k < N; k++) { let d = phiU[k] - phiU[k - 1]; d -= 2 * Math.PI * Math.round(d / (2 * Math.PI)); phiU[k] = phiU[k - 1] + d; }
+      return nargout >= 2 ? Promise.resolve([colVec(phiU), colVec(w)]) : ret(colVec(phiU));
+    },
+
+    // phasedelay(b,a[,n]): -unwrapped_phase(H(e^jw))/w; NaN at w=0.
+    // Uses unwrapped phase (same as phasez) then divides by w, matching MATLAB's implementation.
+    phasedelay: (a, nargout) => {
+      const b = toArray(m(a[0]));
+      const den = a.length >= 2 && isMat(a[1]) ? toArray(m(a[1])) : [1];
+      const N = a.length >= 3 ? Math.round(asScalar(a[2])) : 512;
+      const phiRaw: number[] = [], w: number[] = [];
+      for (let k = 0; k < N; k++) {
+        const wk = (k * Math.PI) / N; w.push(wk);
+        const nz = cpoly(b, wk), dz = cpoly(den, wk);
+        const dn = dz[0] * dz[0] + dz[1] * dz[1];
+        const hr = (nz[0] * dz[0] + nz[1] * dz[1]) / dn, hi = (nz[1] * dz[0] - nz[0] * dz[1]) / dn;
+        phiRaw.push(Math.atan2(hi, hr));
+      }
+      // Unwrap phase (same as phasez)
+      const phiU = phiRaw.slice();
+      for (let k = 1; k < N; k++) { let d = phiU[k] - phiU[k - 1]; d -= 2 * Math.PI * Math.round(d / (2 * Math.PI)); phiU[k] = phiU[k - 1] + d; }
+      // Phase delay = -phi/w; NaN at w=0
+      const pd = phiU.map((phi, k) => w[k] === 0 ? NaN : -phi / w[k]);
+      return nargout >= 2 ? Promise.resolve([colVec(pd), colVec(w)]) : ret(colVec(pd));
+    },
+
+    // zerophase(b,a[,n]): real zero-phase amplitude response Hr(w).
+    // FIR (a=1): use exact formula from zerophase.m: Hz = real(H * exp(-j*phi)) where
+    //   phi = P - w*(N+nzeros)/2, P=0 for sym (type1/2), P=pi/2 for antisym (type3/4).
+    // IIR: compute |H| and determine sign from phase sign changes (simplified approach).
+    zerophase: (a, nargout) => {
+      const b = toArray(m(a[0]));
+      const den = a.length >= 2 && isMat(a[1]) ? toArray(m(a[1])) : [1];
+      const N = a.length >= 3 ? Math.round(asScalar(a[2])) : 512;
+      const isFIR = den.length === 1 || (Math.abs(den[0]) > 0 && den.slice(1).every((v) => v === 0));
+      const Hr: number[] = [], w: number[] = [];
+      if (isFIR) {
+        // Exact FIR zerophase: Hz = real(H * exp(-j*phi))
+        // Remove trailing zeros and count leading zeros (nzeros)
+        let lastNonZero = b.length - 1; while (lastNonZero > 0 && b[lastNonZero] === 0) lastNonZero--;
+        const bTrim = b.slice(0, lastNonZero + 1);
+        const nzeros = bTrim.findIndex((v) => v !== 0); // leading zeros
+        const bNonZ = bTrim.slice(nzeros);
+        const M = bNonZ.length - 1;  // filter order after trimming
+        // Check symmetry
+        let isSym = true, isAntisym = true;
+        for (let i = 0; i < Math.floor((M + 1) / 2); i++) {
+          if (Math.abs(bNonZ[i] - bNonZ[M - i]) > 1e-10 * Math.max(1, Math.abs(bNonZ[i]))) isSym = false;
+          if (Math.abs(bNonZ[i] + bNonZ[M - i]) > 1e-10 * Math.max(1, Math.abs(bNonZ[i]))) isAntisym = false;
+        }
+        const P = isAntisym ? Math.PI / 2 : 0;
+        const delay = (M + nzeros) / 2;
+        for (let k = 0; k < N; k++) {
+          const wk = (k * Math.PI) / N; w.push(wk);
+          const nz = cpoly(b, wk), dz = cpoly(den, wk);
+          const dn = dz[0] * dz[0] + dz[1] * dz[1];
+          const hr = (nz[0] * dz[0] + nz[1] * dz[1]) / dn, hi = (nz[1] * dz[0] - nz[0] * dz[1]) / dn;
+          const phi = P - wk * delay;
+          const cr = Math.cos(-phi), sr = Math.sin(-phi);
+          Hr.push(hr * cr - hi * sr);
+        }
+      } else {
+        // IIR: compute |H| and determine sign from phase discontinuities
+        const hRe: number[] = [], hIm: number[] = [], wArr: number[] = [];
+        for (let k = 0; k < N; k++) {
+          const wk = (k * Math.PI) / N; wArr.push(wk);
+          const nz = cpoly(b, wk), dz = cpoly(den, wk);
+          const dn = dz[0] * dz[0] + dz[1] * dz[1];
+          hRe.push((nz[0] * dz[0] + nz[1] * dz[1]) / dn);
+          hIm.push((nz[1] * dz[0] - nz[0] * dz[1]) / dn);
+          w.push(wk);
+        }
+        // Compute unwrapped phase
+        const phi: number[] = [Math.atan2(hIm[0], hRe[0])];
+        for (let k = 1; k < N; k++) { let d = Math.atan2(hIm[k], hRe[k]) - phi[k - 1]; d -= 2 * Math.PI * Math.round(d / (2 * Math.PI)); phi.push(phi[k - 1] + d); }
+        // Determine sign: sum(b)/sum(a) gives sign at w=0
+        const sumB = b.reduce((s, v) => s + v, 0), sumA = den.reduce((s, v) => s + v, 0);
+        let sign = (sumA !== 0 && sumB / sumA < 0) ? -1 : 1;
+        for (let k = 0; k < N; k++) Hr.push(sign * Math.hypot(hRe[k], hIm[k]));
+        // flip sign at phase jumps (discontinuities of pi)
+        for (let k = 1; k < N; k++) {
+          const jump = phi[k] - phi[k - 1];
+          if (Math.abs(Math.abs(jump) - Math.PI) < 0.5) sign = -sign;
+          if (sign !== Math.sign(Hr[k] || 1)) Hr[k] = -Math.abs(Hr[k]);
+        }
+      }
+      return nargout >= 2 ? Promise.resolve([colVec(Hr), colVec(w)]) : ret(colVec(Hr));
+    },
+
+    // zplane(z,p) or zplane(b,a): return [z,p] (no plotting in sandbox).
+    // Row vectors → treat as b,a → compute roots; column vectors → treat as z,p directly.
+    zplane: (a, nargout) => {
+      const A = m(a[0]); const B = a.length >= 2 ? m(a[1]) : mat(0, 1, new Float64Array(0));
+      const isRowA = A.rows === 1 && A.cols > 1;
+      const isRowB = B.rows === 1 && B.cols > 1;
+      let zout: Cx[], pout: Cx[];
+      if (isRowA || isRowB) {
+        // b,a → roots
+        zout = t1_polyRoots(toArray(A));
+        pout = t1_polyRoots(toArray(B));
+      } else {
+        zout = t1_matToCx(A); pout = t1_matToCx(B);
+      }
+      const zMat = t1_cxToMat(zout, true); const pMat = t1_cxToMat(pout, true);
+      return nargout >= 2 ? Promise.resolve([zMat, pMat]) : ret(zMat);
+    },
+
+    // impzlength(b,a): effective impulse-response length.
+    // FIR (a=[1]): length(b). IIR: floor(log(5e-5)/log(max_abs_pole)) + length(b) - deg(a).
+    impzlength: (a) => {
+      const b = toArray(m(a[0]));
+      const den = a.length >= 2 && isMat(a[1]) ? toArray(m(a[1])) : [1];
+      const isFIR = den.length === 1 || (Math.abs(den[0]) > 0 && den.slice(1).every((v) => v === 0));
+      if (isFIR) return ret(scalar(b.length));
+      const poles = t1_polyRoots(den);
+      const maxAbsPole = poles.reduce((mx, p) => Math.max(mx, Math.hypot(p[0], p[1])), 0);
+      if (maxAbsPole === 0 || maxAbsPole >= 1) return ret(scalar(b.length));
+      const tol = 5e-5;
+      const n = Math.floor(Math.log(tol) / Math.log(maxAbsPole));
+      return ret(scalar(Math.max(n, b.length)));
+    },
+
+    // filtord(b,a): filter order = max(degree(b), degree(a)) after trimming trailing zeros.
+    filtord: (a) => {
+      const b = toArray(m(a[0]));
+      const den = a.length >= 2 && isMat(a[1]) ? toArray(m(a[1])) : [1];
+      return ret(scalar(Math.max(t1_trimDeg(b), t1_trimDeg(den))));
+    },
+
+    // firtype(b): linear-phase FIR type 1..4.
+    // Type 1: symmetric, odd length. Type 2: symmetric, even length.
+    // Type 3: antisymmetric, odd length. Type 4: antisymmetric, even length.
+    firtype: (a) => {
+      const b = toArray(m(a[0])), N = b.length;
+      if (N === 0) throw new Error('firtype: filter must be non-empty');
+      let isSym = true, isAntisym = true;
+      for (let i = 0; i < Math.floor(N / 2); i++) {
+        if (Math.abs(b[i] - b[N - 1 - i]) > 1e-10 * Math.max(1, Math.abs(b[i]))) isSym = false;
+        if (Math.abs(b[i] + b[N - 1 - i]) > 1e-10 * Math.max(1, Math.abs(b[i]))) isAntisym = false;
+      }
+      if (N % 2 === 1 && isAntisym && Math.abs(b[Math.floor(N / 2)]) > 1e-10) isAntisym = false;
+      if (!isSym && !isAntisym) throw new Error('firtype: filter is not linear phase (not symmetric or antisymmetric)');
+      if (isSym) return ret(scalar(N % 2 === 1 ? 1 : 2));
+      return ret(scalar(N % 2 === 1 ? 3 : 4));
+    },
+
+    // islinphase(b,a[,tol]): true if FIR with symmetric or antisymmetric b.
+    islinphase: (a) => {
+      const b = toArray(m(a[0]));
+      const den = a.length >= 2 && isMat(a[1]) ? toArray(m(a[1])) : [1];
+      const tol = a.length >= 3 && isMat(a[2]) ? asScalar(a[2]) : 1e-10;
+      const isFIR = den.length === 1 || den.slice(1).every((v) => Math.abs(v) < tol);
+      if (!isFIR) return ret(scalar(0));
+      const N = b.length;
+      let isSym = true, isAntisym = true;
+      for (let i = 0; i < Math.floor(N / 2); i++) {
+        const scale = Math.max(1, Math.abs(b[i]));
+        if (Math.abs(b[i] - b[N - 1 - i]) > tol * scale) isSym = false;
+        if (Math.abs(b[i] + b[N - 1 - i]) > tol * scale) isAntisym = false;
+      }
+      if (N % 2 === 1 && isAntisym && Math.abs(b[Math.floor(N / 2)]) > tol) isAntisym = false;
+      return ret(scalar(isSym || isAntisym ? 1 : 0));
+    },
+
+    // isminphase(b,a[,tol]): true if all zeros AND poles are inside or on the unit circle
+    // within tolerance. MATLAB uses eps^(2/3) as default tol and checks |r| <= 1+tol.
+    isminphase: (a) => {
+      const b = toArray(m(a[0]));
+      const den = a.length >= 2 && isMat(a[1]) ? toArray(m(a[1])) : [1];
+      const tol = a.length >= 3 && isMat(a[2]) ? asScalar(a[2]) : Math.pow(2.220446049250313e-16, 2 / 3);
+      const inside = (roots: Cx[]) => roots.every((r) => Math.hypot(r[0], r[1]) <= 1 + tol);
+      return ret(scalar(inside(t1_polyRoots(b)) && inside(t1_polyRoots(den)) ? 1 : 0));
+    },
+
+    // isallpass(b,a[,tol]): |H(e^jw)|==const.
+    // Condition (for real): b/b[0] ≈ fliplr(a)/a[end], i.e. b * a[end] ≈ fliplr(a) * b[0].
+    isallpass: (a) => {
+      const b = toArray(m(a[0]));
+      const den = a.length >= 2 && isMat(a[1]) ? toArray(m(a[1])) : [1];
+      const tol = a.length >= 3 && isMat(a[2]) ? asScalar(a[2]) : 1e-10;
+      if (b.length !== den.length) return ret(scalar(0));
+      const N = b.length, b0 = b[0], aEnd = den[N - 1];
+      if (b0 === 0 || aEnd === 0) return ret(scalar(0));
+      // Check: b/b[0] ≈ fliplr(a)/a[end]  i.e.  b[k]*a[end] ≈ a[N-1-k]*b[0]
+      for (let k = 0; k < N; k++) {
+        if (Math.abs(b[k] * aEnd - den[N - 1 - k] * b0) > tol * Math.max(1, Math.abs(b[k] * aEnd))) return ret(scalar(0));
+      }
+      return ret(scalar(1));
+    },
+
+    // tf2zpk(b,a): alias for tf2zp → [z,p,k].
+    tf2zpk: (a, nargout) => {
+      const b = toArray(m(a[0])), den = toArray(m(a[1]));
+      const z = t1_polyRoots(b), p = t1_polyRoots(den);
+      const k = (den[0] !== 0) ? b[0] / den[0] : NaN;
+      const zMat = t1_cxToMat(z, false); const pMat = t1_cxToMat(p, false);
+      if (nargout >= 3) return Promise.resolve([zMat, pMat, scalar(k)]);
+      if (nargout >= 2) return Promise.resolve([zMat, pMat]);
+      return ret(zMat);
+    },
+
+    // sos2zp(sos[,g]): L×6 SOS matrix → [z,p,k].
+    sos2zp: (a, nargout) => {
+      const S = m(a[0]); const K = S.rows;
+      const g = a.length >= 2 && isMat(a[1]) ? asScalar(a[1]) : 1;
+      const allZ: Cx[] = [], allP: Cx[] = [];
+      let kGain = g;
+      for (let i = 0; i < K; i++) {
+        const b0 = S.data[i], b1 = S.data[i + K], b2 = S.data[i + 2 * K];
+        const a0 = S.data[i + 3 * K], a1 = S.data[i + 4 * K], a2 = S.data[i + 5 * K];
+        allZ.push(...t1_polyRoots([b0, b1, b2]));
+        allP.push(...t1_polyRoots([a0, a1, a2]));
+        kGain *= (a0 !== 0 ? b0 / a0 : 1);
+      }
+      const zMat = t1_cxToMat(allZ, false); const pMat = t1_cxToMat(allP, false);
+      if (nargout >= 3) return Promise.resolve([zMat, pMat, scalar(kGain)]);
+      if (nargout >= 2) return Promise.resolve([zMat, pMat]);
+      return ret(zMat);
+    },
+
+    // eqtflength(b,a): pad shorter of b,a with trailing zeros to equal length → [b,a].
+    eqtflength: (a, nargout) => {
+      const b = toArray(m(a[0])), den = toArray(m(a[1]));
+      const L = Math.max(b.length, den.length);
+      const bOut = b.slice(); while (bOut.length < L) bOut.push(0);
+      const aOut = den.slice(); while (aOut.length < L) aOut.push(0);
+      if (nargout >= 2) return Promise.resolve([rowVec(bOut), rowVec(aOut)]);
+      return ret(rowVec(bOut));
+    },
+
+    // residuez(b,a): z-transform partial-fraction expansion → [r,p,k].
+    // H(z) = B(z)/A(z) = k[0] + k[1]z^{-1} + ... + sum_i r_i / (1 - p_i * z^{-1}).
+    // Uses MATLAB's algorithm: deconv(fliplr(b),fliplr(a)) for direct terms,
+    // then filter-based least-squares for residues.
+    residuez: (a, nargout) => {
+      let b = toArray(m(a[0])), den = toArray(m(a[1]));
+      if (!den.length || den[0] === 0) throw new Error('residuez: a(1) must be nonzero');
+      const a0 = den[0];
+      b = b.map((v) => v / a0); den = den.map((v) => v / a0);
+      const LB = b.length, LA = den.length;
+      if (LA === 1) {
+        // No poles: k = b
+        if (nargout >= 3) return Promise.resolve([zeros(0, 1), zeros(0, 1), rowVec(b)]);
+        if (nargout >= 2) return Promise.resolve([zeros(0, 1), zeros(0, 1)]);
+        return ret(zeros(0, 1));
+      }
+      const Nres = LA - 1;
+      const LK = Math.max(0, LB - Nres);
+      let kCoeffs: number[] = [];
+      let rem = b.slice();
+      if (LK > 0) {
+        // deconv(fliplr(b), fliplr(a)) → k, remainder
+        // Polynomial long division in z domain (flip coefficients)
+        const bf = b.slice().reverse();
+        const af = den.slice().reverse();
+        const kf: number[] = [];
+        const remf = bf.slice();
+        for (let i = 0; i <= LB - LA; i++) {
+          const c = remf[i] / af[0]; kf.push(c);
+          for (let j = 0; j < LA; j++) remf[i + j] -= c * af[j];
+        }
+        kCoeffs = kf.slice().reverse();  // fliplr(k)
+        // remainder: remf[LK..LB-1] = the non-zero tail; then flip
+        const remPart = remf.slice(LK);
+        rem = remPart.slice().reverse();
+      }
+      // Pad rem to length Nres
+      while (rem.length < Nres) rem.push(0);
+      rem = rem.slice(0, Nres);
+      // Compute poles
+      const poles = t1_polyRoots(den);
+      const np = poles.length;
+      if (np === 0) {
+        const kOut = kCoeffs.length > 0 ? rowVec(kCoeffs) : zeros(0, 0);
+        if (nargout >= 3) return Promise.resolve([zeros(0, 1), zeros(0, 1), kOut]);
+        if (nargout >= 2) return Promise.resolve([zeros(0, 1), zeros(0, 1)]);
+        return ret(zeros(0, 1));
+      }
+      // Residues via impulse response matching (MATLAB's filter-based approach):
+      // h = filter(rem, den, imp) → column vector of length np+1
+      // S[:,j] = filter(1, [1 -pj], imp) → Vandermonde columns
+      // Solve S*r = h via least-squares (direct for distinct poles)
+      const impLen = np + 1;
+      // Compute h = filter(rem, den, [1, zeros(np)])
+      const imp = new Array(impLen).fill(0); imp[0] = 1;
+      const h = filterDf2t(rem, den, imp).y;
+      // Build S: S[:,j] = filter(1, [1 -p_j], imp)
+      const S: number[][] = [];
+      for (let j = 0; j < np; j++) {
+        // For complex pole: S_j(n) = p_j^n (each column is powers of p_j)
+        const col: number[] = [];
+        const pj = poles[j];
+        for (let n = 0; n < impLen; n++) {
+          const [cr, ci] = t1_cpow(pj[0], pj[1], n);
+          col.push(cr);
+        }
+        S.push(col);
+      }
+      // Solve for residues: r_j = [h - sum_{k!=j} S[:,k]*r_k] / S[:,j]
+      // For distinct poles: use direct Vandermonde solve
+      // r_j = h(j+1) / (p_j^0 * prod_{k!=j} (1 - p_k/p_j)) or directly via MATLAB approach
+      // Simpler: use partial fraction formula r_j = limit_{z->p_j} (1-p_j*z^{-1})*H(z)
+      // = num(1/p_j) / den'(1/p_j) * (something) — complex to get right
+      // Use MATLAB approach: evaluate H at Nres points near poles
+      const rRe: number[] = new Array(np).fill(0), rIm: number[] = new Array(np).fill(0);
+      // For distinct poles: r_j = h_hat where h_hat is from impulse response matching
+      // Use the Vandermonde approach: P matrix (np x np), solve P*r = h[0..np-1]
+      if (np <= 20) {
+        // Build Vandermonde: P[n][j] = p_j^n (complex)
+        const Pr: number[][] = [], Pi: number[][] = [];
+        for (let n = 0; n < np; n++) {
+          Pr.push([]); Pi.push([]);
+          for (let j = 0; j < np; j++) {
+            const [cr, ci] = t1_cpow(poles[j][0], poles[j][1], n);
+            Pr[n].push(cr); Pi[n].push(ci);
+          }
+        }
+        // Solve complex linear system Pr*r_re - Pi*r_im = h[0..np-1]
+        // Use direct formula for residues: r_j = h[j] for poles at unique positions
+        // Actually use: evaluate h_j = num(p_j) / prod_{k!=j}(p_j - p_k) * (1/p_j)
+        // (from partial fraction theory in z^{-1} domain)
+        for (let j = 0; j < np; j++) {
+          const pj = poles[j];
+          // Evaluate numerator polynomial (rem in z^{-1} powers) at z^{-1} = 1/pj:
+          // rem = [r0, r1, ..., r_{np-1}] where H_rem(z) = sum rem[k] z^{-k}
+          // Evaluate at z=pj: sum rem[k] / pj^k
+          let nr = 0, ni_val = 0;
+          for (let kk = 0; kk < rem.length; kk++) {
+            if (rem[kk] === 0) continue;
+            const [cr2, ci2] = t1_cpow(pj[0], pj[1], -kk);
+            nr += rem[kk] * cr2; ni_val += rem[kk] * ci2;
+          }
+          // Divide by A'(z)|z=pj * (-z^{-2}) * (-pj^2) ... actually use:
+          // r_j = lim_{z->pj} (z - pj) * H(z) / z^{-1}  (in z domain)
+          // = lim_{z->pj} (z - pj) * Brem(z)/A(z)
+          // = Brem(pj) / A'(pj) where A'(z) = dA/dz
+          // But we're in z^{-1} domain... Use product formula:
+          // r_j = Rem(1/pj) / A'(1/pj) * (-1/pj^2) ... complex
+          // Simpler: divide nr+j*ni_val by prod(pj - pk for k!=j) in z domain
+          // But z and z^{-1} domain poles are reciprocals? No, poles are same.
+          let dr = 1, di = 0;
+          for (let kk = 0; kk < np; kk++) {
+            if (kk === j) continue;
+            const drf = pj[0] - poles[kk][0], dif = pj[1] - poles[kk][1];
+            const tmpr = dr * drf - di * dif; const tmpi = dr * dif + di * drf;
+            dr = tmpr; di = tmpi;
+          }
+          const dd = dr * dr + di * di;
+          if (dd === 0) { rRe[j] = NaN; rIm[j] = NaN; }
+          else { rRe[j] = (nr * dr + ni_val * di) / dd; rIm[j] = (ni_val * dr - nr * di) / dd; }
+        }
+      }
+      const rMat = colVec(rRe); if (rIm.some((v) => v !== 0)) rMat.idata = Float64Array.from(rIm);
+      const pMat = t1_cxToMat(poles, false);
+      const kOut = kCoeffs.length > 0 ? rowVec(kCoeffs) : zeros(0, 0);
+      if (nargout >= 3) return Promise.resolve([rMat, pMat, kOut]);
+      if (nargout >= 2) return Promise.resolve([rMat, pMat]);
+      return ret(rMat);
+    },
+
+    // interp(x,r[,n[,cutoff]]): FIR interpolation, upsample by integer r.
+    // Uses signal/interp.m algorithm: Hamming sinc filter + edge-reflection initial conditions.
+    interp: (a) => {
+      const X = m(a[0]); const x = toArray(X); const r = Math.round(asScalar(a[1]));
+      const n = a.length >= 3 ? Math.round(asScalar(a[2])) : 4;
+      const cutoff = a.length >= 4 ? asScalar(a[3]) : 0.5;
+      if (2 * n + 1 > x.length) throw new Error('interp: Length of data sequence must be at least ' + (2 * n + 1));
+      const Lx = x.length, RL = r * Lx, RN = r * n;
+      // Design filter: Hamming-windowed sinc, length 2*r*n+1
+      const b = t1_designInterpFilter(r, n, cutoff);
+      // Upsample: insert r-1 zeros between samples
+      const yCol: number[] = new Array(RL).fill(0);
+      for (let i = 0; i < Lx; i++) yCol[i * r] = x[i];
+      // Initial conditions: reflect start (MATLAB: od(1:r:2RN,1)=2*x[0]-x[(2n+1):-1:2])
+      const od: number[] = new Array(2 * RN).fill(0);
+      for (let i = 0; i < 2 * n; i++) {
+        const srcIdx = 2 * n - i;  // x[(2n+1):-1:2] (1-indexed) = x[2n], x[2n-1], ..., x[1]
+        od[i * r] = 2 * x[0] - (srcIdx < Lx ? x[srcIdx] : x[0]);
+      }
+      const zi = t1_filterGetZi(b, od);
+      const { y: yFilt, zf } = t1_filterWithZi(b, yCol, zi);
+      // Shift: take from RN for (Lx-n)*r samples
+      for (let i = 0; i < (Lx - n) * r; i++) yCol[i] = yFilt[RN + i];
+      // Right edge: reflect end (MATLAB: od(1:r:2RN,1)=2*x[Lx-1]-x[(Lx-1):-1:(Lx-2n)])
+      const od2: number[] = new Array(2 * RN).fill(0);
+      for (let i = 0; i < 2 * n; i++) {
+        const srcIdx = Lx - 1 - i;  // x[(Lx-1):-1:(Lx-2n)] 0-indexed
+        od2[i * r] = 2 * x[Lx - 1] - (srcIdx >= 0 ? x[srcIdx] : x[0]);
+      }
+      const od2Filt = t1_filterWithState(b, od2, zf);
+      for (let i = 0; i < RN; i++) yCol[RL - RN + i] = od2Filt[i];
+      return ret(X.rows === 1 ? rowVec(yCol) : colVec(yCol));
+    },
+
+    // buffer(x,n[,p]): frame signal into n×nframes matrix (overlap p, default 0).
+    // Zero-pads last frame if needed. Overlap p < n; zero initial overlap when p > 0.
+    buffer: (a) => {
+      const X = m(a[0]); const x = toArray(X), L = x.length;
+      const n = Math.round(asScalar(a[1]));
+      const p = a.length >= 3 ? Math.round(asScalar(a[2])) : 0;
+      if (n <= 0) throw new Error('buffer: n must be positive');
+      const hop = n - p;
+      if (hop <= 0) throw new Error('buffer: overlap p must be less than frame length n');
+      // Number of frames to cover all input
+      // When p > 0: initial frame starts with p zeros then first hop samples
+      // Position of sample i: it appears in frame col = ceil((i+p+1-n)/hop) for col >= 0
+      // nframes = ceil((L + p) / hop) when p > 0, else ceil(L / hop)
+      const nframes = p > 0 ? Math.ceil((L + p) / hop) : Math.ceil(L / hop);
+      const data = new Float64Array(n * nframes);
+      for (let col = 0; col < nframes; col++) {
+        const frameStart = col * hop - p;  // 0-indexed position of first sample in frame
+        for (let row = 0; row < n; row++) {
+          const xi = frameStart + row;
+          data[row + col * n] = (xi >= 0 && xi < L) ? x[xi] : 0;
+        }
+      }
+      return ret(mat(n, nframes, data));
+    },
+
+    // ── [z,p,k] = cheb1ap(n,Rp) — Chebyshev Type I analog lowpass prototype ──
+    cheb1ap: (a, nargout) => {
+      const n = Math.round(asScalar(a[0])), rp = asScalar(a[1]);
+      const { z, p, k } = cheb1ap(n, rp);
+      const pCol = colVec(p.map((c) => c[0])); pCol.idata = Float64Array.from(p.map((c) => c[1]));
+      return Promise.resolve(nargout >= 3 ? [zeros(0, 1), pCol, scalar(k)] : nargout >= 2 ? [zeros(0, 1), pCol] : [zeros(0, 1)]);
+    },
+
+    // ── [z,p,k] = cheb2ap(n,Rs) — Chebyshev Type II analog lowpass prototype ──
+    cheb2ap: (a, nargout) => {
+      const n = Math.round(asScalar(a[0])), rs = asScalar(a[1]);
+      const { z, p, k } = cheb2ap(n, rs);
+      const zCol = colVec(z.map((c) => c[0])); zCol.idata = Float64Array.from(z.map((c) => c[1]));
+      const pCol = colVec(p.map((c) => c[0])); pCol.idata = Float64Array.from(p.map((c) => c[1]));
+      return Promise.resolve(nargout >= 3 ? [zCol, pCol, scalar(k)] : nargout >= 2 ? [zCol, pCol] : [zCol]);
+    },
+
+    // ── [z,p,k] = ellipap(n,Rp,Rs) — elliptic analog lowpass prototype ──
+    ellipap: (a, nargout) => {
+      const n = Math.round(asScalar(a[0])), rp = asScalar(a[1]), rs = asScalar(a[2]);
+      const { z, p, k } = ellipap(n, rp, rs);
+      const zCol = colVec(z.map((c) => c[0])); zCol.idata = Float64Array.from(z.map((c) => c[1]));
+      const pCol = colVec(p.map((c) => c[0])); pCol.idata = Float64Array.from(p.map((c) => c[1]));
+      return Promise.resolve(nargout >= 3 ? [zCol, pCol, scalar(k)] : nargout >= 2 ? [zCol, pCol] : [zCol]);
+    },
+
+    // ── [z,p,k] = besselap(n) — Bessel analog lowpass prototype (table n=1..10) ──
+    besselap: (a, nargout) => {
+      const n = Math.round(asScalar(a[0]));
+      const BESSEL_POLES: { [key: number]: Cx[] } = {
+        1: [[-1, 0]],
+        2: [[-0.8660254037844386467637229, 0.4999999999999999999999996], [-0.8660254037844386467637229, -0.4999999999999999999999996]],
+        3: [[-0.9416000265332067855971980, 0], [-0.7456403858480766441810907, -0.7113666249728352680992154], [-0.7456403858480766441810907, 0.7113666249728352680992154]],
+        4: [[-0.6572111716718829545787781, -0.8301614350048733772399715], [-0.6572111716718829545787788, 0.8301614350048733772399715], [-0.9047587967882449459642637, -0.2709187330038746636700923], [-0.9047587967882449459642624, 0.2709187330038746636700926]],
+        5: [[-0.9264420773877602247196260, 0], [-0.8515536193688395541722677, -0.4427174639443327209850002], [-0.8515536193688395541722677, 0.4427174639443327209850002], [-0.5905759446119191779319432, -0.9072067564574549539291747], [-0.5905759446119191779319432, 0.9072067564574549539291747]],
+        6: [[-0.9093906830472271808050953, -0.1856964396793046769246397], [-0.9093906830472271808050953, 0.1856964396793046769246397], [-0.7996541858328288520243325, -0.5621717346937317988594118], [-0.7996541858328288520243325, 0.5621717346937317988594118], [-0.5385526816693109683073792, -0.9616876881954277199245657], [-0.5385526816693109683073792, 0.9616876881954277199245657]],
+        7: [[-0.9194871556490290014311619, 0], [-0.8800029341523374639772340, -0.3216652762307739398381830], [-0.8800029341523374639772340, 0.3216652762307739398381830], [-0.7527355434093214462291616, -0.6504696305522550699212995], [-0.7527355434093214462291616, 0.6504696305522550699212995], [-0.4966917256672316755024763, -1.002508508454420401230220], [-0.4966917256672316755024763, 1.002508508454420401230220]],
+        8: [[-0.9096831546652910216327629, -0.1412437976671422927888150], [-0.9096831546652910216327629, 0.1412437976671422927888150], [-0.8473250802359334320103023, -0.4259017538272934994996429], [-0.8473250802359334320103023, 0.4259017538272934994996429], [-0.7111381808485399250796172, -0.7186517314108401705762571], [-0.7111381808485399250796172, 0.7186517314108401705762571], [-0.4621740412532122027072175, -1.034388681126901058116589], [-0.4621740412532122027072175, 1.034388681126901058116589]],
+        9: [[-0.9154957797499037686769223, 0], [-0.8911217017079759323183848, -0.2526580934582164192308115], [-0.8911217017079759323183848, 0.2526580934582164192308115], [-0.8148021112269012975514135, -0.5085815689631499483745341], [-0.8148021112269012975514135, 0.5085815689631499483745341], [-0.6743622686854761980403401, -0.7730546212691183706919682], [-0.6743622686854761980403401, 0.7730546212691183706919682], [-0.4331415561553618854685942, -1.060073670135929666774323], [-0.4331415561553618854685942, 1.060073670135929666774323]],
+        10: [[-0.9091347320900502436826431, -0.1139583137335511169927714], [-0.9091347320900502436826431, 0.1139583137335511169927714], [-0.8688459641284764527921864, -0.3430008233766309973110589], [-0.8688459641284764527921864, 0.3430008233766309973110589], [-0.7837694413101441082655890, -0.5759147538499947070009852], [-0.7837694413101441082655890, 0.5759147538499947070009852], [-0.6417513866988316136190854, -0.8175836167191017226233947], [-0.6417513866988316136190854, 0.8175836167191017226233947], [-0.4083220732868861566219785, -1.081274842819124562037210], [-0.4083220732868861566219785, 1.081274842819124562037210]],
+      };
+      if (n < 1 || n > 10) throw new Error(`besselap: order must be 1..10 (got ${n})`);
+      const p = BESSEL_POLES[n];
+      const pCol = colVec(p.map((c) => c[0])); pCol.idata = Float64Array.from(p.map((c) => c[1]));
+      return Promise.resolve(nargout >= 3 ? [zeros(0, 1), pCol, scalar(1)] : nargout >= 2 ? [zeros(0, 1), pCol] : [zeros(0, 1)]);
+    },
+
+    // ── [bt,at] = lp2lp(b,a,Wo) — analog LP→LP via frequency scaling s→s/Wo ──
+    lp2lp: (a, nargout) => {
+      const b = toArray(m(a[0])), den = toArray(m(a[1])), wo = asScalar(a[2]);
+      const nb = b.length, na = den.length;
+      // H(s/Wo): B(s/Wo)/A(s/Wo). Standard LP→LP transformation:
+      //   at[i] = a[i] * Wo^i  (multiply every a-coeff by ascending power of Wo)
+      //   bt[i] = b[i] * Wo^i * Wo^(na-nb)   (extra Wo^(na-nb) gain for order mismatch)
+      // Verify: a=[1,1],Wo=3,na=2: at=[1*1,1*3]=[1,3] ✓  b=[1],nb=1: bt=[1*1*3^1]=[3] ✓
+      const at: number[] = den.map((v, i) => v * wo ** i);
+      const kFactor = wo ** (na - nb);
+      const bt: number[] = b.map((v, i) => v * wo ** i * kFactor);
+      const sc = den[0] / at[0]; // at[0]=den[0]*Wo^0=den[0], so sc=1 when den[0]=1
+      return Promise.resolve(nargout >= 2 ? [rowVec(bt.map((v) => v * sc)), rowVec(at.map((v) => v * sc))] : [rowVec(bt.map((v) => v * sc))]);
+    },
+
+    // ── [bt,at] = lp2hp(b,a,Wo) — analog LP→HP via s→Wo/s substitution ──
+    lp2hp: (a, nargout) => {
+      const b = toArray(m(a[0])), den = toArray(m(a[1])), wo = asScalar(a[2]);
+      const nb = b.length, na = den.length;
+      // H_hp(s) = H_lp(Wo/s). Clear denominators by multiplying by s^(na-1):
+      // A(Wo/s)*s^(na-1) = sum_k a[k]*Wo^(na-1-k)*s^k  → coeff of s^k = a[k]*Wo^(na-1-k)
+      // In descending order (index i = na-1-k): at[i] = a[na-1-i]*Wo^i
+      // Verify: a=[1,1],Wo=2,na=2: at[0]=a[1]*1=1, at[1]=a[0]*2=2 → [1,2] ✓
+      const at: number[] = Array.from({ length: na }, (_, i) => den[na - 1 - i] * wo ** i);
+      // B(Wo/s)*s^(na-1) = sum_k b[k]*Wo^(nb-1-k)*s^(na-nb+k)
+      //   coeff of s^(na-nb+k) = b[k]*Wo^(nb-1-k), at descending index nb-1-k
+      // bt[nb-1-k] = b[k]*Wo^(nb-1-k), trailing na-nb zeros
+      // Verify: b=[1],nb=1,na=2: bt[0]=b[0]*Wo^0=1, bt[1]=0 → [1,0] ✓
+      const bt_part: number[] = Array.from({ length: nb }, (_, k) => b[k] * wo ** (nb - 1 - k));
+      const bt: number[] = [...bt_part, ...new Array(na - nb).fill(0)];
+      const scaleHP = den[0] / at[0];
+      return Promise.resolve(nargout >= 2 ? [rowVec(bt.map((v) => v * scaleHP)), rowVec(at.map((v) => v * scaleHP))] : [rowVec(bt.map((v) => v * scaleHP))]);
+    },
+
+    // ── [bt,at] = lp2bp(b,a,Wo,Bw) — analog LP→BP: s → (s^2+Wo^2)/(Bw*s) ──
+    lp2bp: (a, nargout) => {
+      const b = toArray(m(a[0])), den = toArray(m(a[1])), wo = asScalar(a[2]), bw = asScalar(a[3]);
+      const nb = b.length, na = den.length, n = na - 1;
+      const wo2 = wo * wo;
+      const t2_pMul = (p1: number[], p2: number[]): number[] => { const out = new Array(p1.length + p2.length - 1).fill(0); for (let i = 0; i < p1.length; i++) for (let j = 0; j < p2.length; j++) out[i + j] += p1[i] * p2[j]; return out; };
+      const t2_pAdd = (p1: number[], p2: number[]): number[] => { const L = Math.max(p1.length, p2.length), out = new Array(L).fill(0); for (let i = 0; i < p1.length; i++) out[i + L - p1.length] += p1[i]; for (let i = 0; i < p2.length; i++) out[i + L - p2.length] += p2[i]; return out; };
+      const t2_pPow = (p: number[], exp: number): number[] => { let r = [1]; for (let i = 0; i < exp; i++) r = t2_pMul(r, p); return r; };
+      // at = sum_k a[na-1-k] * (s^2+wo^2)^k * (Bw*s)^(n-k)
+      let at_full = [0];
+      for (let k = 0; k <= n; k++) {
+        const aK = den[na - 1 - k], p2: number[] = [bw ** (n - k), ...new Array(n - k).fill(0)];
+        at_full = t2_pAdd(at_full, t2_pMul(t2_pPow([1, 0, wo2], k), p2).map((v) => v * aK));
+      }
+      const nB = nb - 1; let bt_full = [0];
+      for (let k = 0; k <= nB; k++) {
+        const bK = b[nB - k], p2: number[] = [bw ** (n - k), ...new Array(n - k).fill(0)];
+        bt_full = t2_pAdd(bt_full, t2_pMul(t2_pPow([1, 0, wo2], k), p2).map((v) => v * bK));
+      }
+      while (bt_full.length > 1 && bt_full[0] === 0) bt_full.shift();
+      while (at_full.length > 1 && at_full[0] === 0) at_full.shift();
+      const sc = at_full[0];
+      return Promise.resolve(nargout >= 2 ? [rowVec(bt_full.map((v) => v / sc)), rowVec(at_full.map((v) => v / sc))] : [rowVec(bt_full.map((v) => v / sc))]);
+    },
+
+    // ── [bt,at] = lp2bs(b,a,Wo,Bw) — analog LP→BS: s → Bw*s/(s^2+Wo^2) ──
+    lp2bs: (a, nargout) => {
+      const b = toArray(m(a[0])), den = toArray(m(a[1])), wo = asScalar(a[2]), bw = asScalar(a[3]);
+      const nb = b.length, na = den.length, n = na - 1;
+      const wo2 = wo * wo;
+      const t2_pMulBS = (p1: number[], p2: number[]): number[] => { const out = new Array(p1.length + p2.length - 1).fill(0); for (let i = 0; i < p1.length; i++) for (let j = 0; j < p2.length; j++) out[i + j] += p1[i] * p2[j]; return out; };
+      const t2_pAddBS = (p1: number[], p2: number[]): number[] => { const L = Math.max(p1.length, p2.length), out = new Array(L).fill(0); for (let i = 0; i < p1.length; i++) out[i + L - p1.length] += p1[i]; for (let i = 0; i < p2.length; i++) out[i + L - p2.length] += p2[i]; return out; };
+      const t2_pPowBS = (p: number[], exp: number): number[] => { let r = [1]; for (let i = 0; i < exp; i++) r = t2_pMulBS(r, p); return r; };
+      // at = sum_k a[na-1-k] * (Bw*s)^k * (s^2+wo^2)^(n-k)
+      let at_full = [0];
+      for (let k = 0; k <= n; k++) {
+        const aK = den[na - 1 - k], p2: number[] = [bw ** k, ...new Array(k).fill(0)];
+        at_full = t2_pAddBS(at_full, t2_pMulBS(t2_pPowBS([1, 0, wo2], n - k), p2).map((v) => v * aK));
+      }
+      const nB = nb - 1; let bt_full = [0];
+      for (let k = 0; k <= nB; k++) {
+        const bK = b[nB - k], p2: number[] = [bw ** k, ...new Array(k).fill(0)];
+        bt_full = t2_pAddBS(bt_full, t2_pMulBS(t2_pPowBS([1, 0, wo2], n - k), p2).map((v) => v * bK));
+      }
+      while (bt_full.length > 1 && bt_full[0] === 0) bt_full.shift();
+      while (at_full.length > 1 && at_full[0] === 0) at_full.shift();
+      const sc = at_full[0];
+      return Promise.resolve(nargout >= 2 ? [rowVec(bt_full.map((v) => v / sc)), rowVec(at_full.map((v) => v / sc))] : [rowVec(bt_full.map((v) => v / sc))]);
+    },
+
+    // ── [bz,az] = impinvar(b,a,Fs) — impulse-invariance method: analog → digital ──
+    impinvar: (a, nargout) => {
+      const b = toArray(m(a[0])), den = toArray(m(a[1]));
+      const Fs = a.length >= 3 && isMat(a[2]) ? asScalar(a[2]) : 1;
+      const apoly = den.map((v) => v / den[0]);
+      const n_order = apoly.length - 1;
+      if (n_order === 0) {
+        const gain = b[0] / den[0] / Fs;
+        return Promise.resolve(nargout >= 2 ? [rowVec([gain]), rowVec([1])] : [rowVec([gain])]);
+      }
+      // Complex polynomial evaluation via Horner
+      const t2_pValCx = (c: number[], s: Cx): Cx => { let val: Cx = [0, 0]; for (let i = 0; i < c.length; i++) val = cAdd(cMul(val, s), [c[i], 0]); return val; };
+      const t2_pDeriv = (c: number[]): number[] => c.slice(0, -1).map((v, i) => v * (c.length - 1 - i));
+      // Find roots of denominator via companion matrix + QR
+      const t2_qrEig = (A0: number[][], sz: number): Cx[] => {
+        const H: number[][] = A0.map((r) => r.slice());
+        const evals: Cx[] = [];
+        let n2 = sz;
+        while (n2 > 0) {
+          if (n2 === 1) { evals.push([H[0][0], 0]); break; }
+          if (n2 === 2) { const tr = H[0][0] + H[1][1], det = H[0][0] * H[1][1] - H[0][1] * H[1][0], disc = tr * tr - 4 * det; if (disc >= 0) { evals.push([(tr + Math.sqrt(disc)) / 2, 0], [(tr - Math.sqrt(disc)) / 2, 0]); } else { evals.push([tr / 2, Math.sqrt(-disc) / 2], [tr / 2, -Math.sqrt(-disc) / 2]); } break; }
+          let iter = 0, deflated = false;
+          while (iter++ < 3000 && !deflated) {
+            let small = -1; for (let i = n2 - 2; i >= 0; i--) if (Math.abs(H[i + 1][i]) < 1e-12 * (Math.abs(H[i][i]) + Math.abs(H[i + 1][i + 1]))) { small = i; break; }
+            if (small >= 0) {
+              H[small + 1][small] = 0;
+              const up = H.slice(0, small + 1).map((r) => r.slice(0, small + 1));
+              const lo = H.slice(small + 1, n2).map((r) => r.slice(small + 1, n2));
+              evals.push(...t2_qrEig(up, small + 1), ...t2_qrEig(lo, n2 - small - 1));
+              n2 = 0; deflated = true; break;
+            }
+            const n1 = n2 - 1, s22 = H[n1 - 1][n1 - 1] + H[n1][n1], t22 = H[n1 - 1][n1 - 1] * H[n1][n1] - H[n1 - 1][n1] * H[n1][n1 - 1];
+            let x0 = H[0][0] * H[0][0] + H[0][1] * H[1][0] - s22 * H[0][0] + t22, x1 = H[1][0] * (H[0][0] + H[1][1] - s22), x2 = n2 > 2 ? H[2][1] * H[1][0] : 0;
+            for (let k = 0; k < n2 - 1; k++) {
+              const m3 = Math.min(k + 2, n2 - 1), cols3 = m3 - k + 1;
+              const v: number[] = k === 0 ? [x0, x1, ...(n2 > 2 ? [x2] : [])].slice(0, cols3) : Array.from({ length: cols3 }, (_, j) => j === 0 ? H[k][k - 1] : H[k + j][k - 1]);
+              const vn = Math.hypot(...v); if (vn < 1e-15) continue;
+              v[0] += Math.sign(v[0] || 1) * vn;
+              const vn2sq = v.reduce((s, vv) => s + vv * vv, 0); if (vn2sq < 1e-28) continue;
+              for (let col = k > 0 ? k - 1 : 0; col < n2; col++) { let dot = 0; for (let r = 0; r < cols3; r++) dot += v[r] * H[k + r][col]; const fac = 2 * dot / vn2sq; for (let r = 0; r < cols3; r++) H[k + r][col] -= fac * v[r]; }
+              for (let row = 0; row <= Math.min(k + 3, n2 - 1); row++) { let dot = 0; for (let r = 0; r < cols3; r++) dot += H[row][k + r] * v[r]; const fac = 2 * dot / vn2sq; for (let r = 0; r < cols3; r++) H[row][k + r] -= fac * v[r]; }
+            }
+          }
+          if (!deflated && n2 > 0) { evals.push([H[n2 - 1][n2 - 1], 0]); n2--; }
+        }
+        return evals;
+      };
+      const t2_compEig = (coeffs: number[]): Cx[] => {
+        const nn = coeffs.length - 1;
+        if (nn === 0) return []; if (nn === 1) return [[-coeffs[1], 0]];
+        if (nn === 2) { const disc = coeffs[1] * coeffs[1] - 4 * coeffs[2]; if (disc >= 0) return [[(-coeffs[1] + Math.sqrt(disc)) / 2, 0], [(-coeffs[1] - Math.sqrt(disc)) / 2, 0]]; const rd = Math.sqrt(-disc) / 2; return [[(-coeffs[1]) / 2, rd], [(-coeffs[1]) / 2, -rd]]; }
+        const nn2 = nn;
+        const C: number[][] = Array.from({ length: nn2 }, (_, i) => { const row = new Array(nn2).fill(0); if (i < nn2 - 1) row[i + 1] = 1; else for (let j = 0; j < nn2; j++) row[j] = -coeffs[nn2 - j]; return row; });
+        return t2_qrEig(C, nn2);
+      };
+      const poles_cx = t2_compEig(apoly);
+      const Np = poles_cx.length;
+      const aprime = t2_pDeriv(apoly);
+      const res: Cx[] = [];
+      for (let i = 0; i < Np; i++) {
+        const pole = poles_cx[i];
+        const bval = t2_pValCx(b.map((v) => v / den[0]), pole);
+        const apval = t2_pValCx(aprime, pole);
+        res.push(cDiv(bval, apval));
+      }
+      const dpoles = poles_cx.map((pp): Cx => { const mag = Math.exp(pp[0] / Fs), ang = pp[1] / Fs; return [mag * Math.cos(ang), mag * Math.sin(ang)]; });
+      const az_cx = polyFromRoots(dpoles);
+      const az = az_cx.map((c) => c[0]);
+      const hlen = Np + 1;
+      const h = new Array(hlen).fill(0);
+      for (let nn = 0; nn < hlen; nn++) {
+        let val = 0;
+        for (let i = 0; i < Np; i++) {
+          const logMag = nn * (poles_cx[i][0] / Fs), ang2 = nn * (poles_cx[i][1] / Fs);
+          val += Math.exp(logMag) * (res[i][0] * Math.cos(ang2) - res[i][1] * Math.sin(ang2));
+        }
+        h[nn] = val;
+      }
+      const bz_full = filterDf2t(az, [1], h).y;
+      const bz = bz_full.slice(0, Np).map((v) => v / Fs);
+      return Promise.resolve(nargout >= 2 ? [rowVec(bz), rowVec(az)] : [rowVec(bz)]);
+    },
+
+    // ── [a,e] = lpc(x,p) — LP coefficients via autocorrelation + Levinson-Durbin ──
+    lpc: (a, nargout) => {
+      const x = toArray(m(a[0])), p = Math.round(asScalar(a[1])), N = x.length;
+      // lpc uses biased autocorrelation normalized by N (same as aryule)
+      const r = new Array(p + 1).fill(0);
+      for (let lag = 0; lag <= p; lag++) { for (let i = 0; i < N - lag; i++) r[lag] += x[i] * x[i + lag]; r[lag] /= N; }
+      const { a: aCoeffs, e } = levinsonDurbin(r, p);
+      return Promise.resolve(nargout >= 2 ? [rowVec(aCoeffs), scalar(e)] : [rowVec(aCoeffs)]);
+    },
+
+    // ── [a,e,k] = aryule(x,p) — Yule-Walker AR estimation (autocorrelation, biased) ──
+    aryule: (a, nargout) => {
+      const x = toArray(m(a[0])), p = Math.round(asScalar(a[1])), N = x.length;
+      const r = new Array(p + 1).fill(0);
+      for (let lag = 0; lag <= p; lag++) { for (let i = 0; i < N - lag; i++) r[lag] += x[i] * x[i + lag]; r[lag] /= N; }
+      const { a: aCoeffs, e, k: ks } = levinsonDurbin(r, p);
+      return Promise.resolve(nargout >= 3 ? [rowVec(aCoeffs), scalar(e), colVec(ks)] : nargout >= 2 ? [rowVec(aCoeffs), scalar(e)] : [rowVec(aCoeffs)]);
+    },
+
+    // ── [a,e,k] = arburg(x,p) — Burg method AR estimation ──
+    arburg: (a, nargout) => {
+      const x = toArray(m(a[0])), p = Math.round(asScalar(a[1])), N = x.length;
+      let efp = x.slice(1), ebp = x.slice(0, N - 1);
+      let E = x.reduce((s, v) => s + v * v, 0) / N;
+      let aCoeffs = [1];
+      const ks: number[] = [];
+      for (let mm = 1; mm <= p; mm++) {
+        const len = N - mm;
+        let num = 0, den1 = 0, den2 = 0;
+        for (let i = 0; i < len; i++) { num -= 2 * ebp[i] * efp[i]; den1 += efp[i] * efp[i]; den2 += ebp[i] * ebp[i]; }
+        const k = num / (den1 + den2);
+        ks.push(k);
+        const ef = new Array(len - 1);
+        for (let i = 0; i < len - 1; i++) { ef[i] = efp[i + 1] + k * ebp[i + 1]; ebp[i] = ebp[i] + k * efp[i]; }
+        for (let i = 0; i < len - 1; i++) efp[i] = ef[i];
+        const newA = aCoeffs.slice(); newA.push(0);
+        for (let j = 1; j <= mm; j++) newA[j] = aCoeffs[j] + k * (j <= mm - 1 ? aCoeffs[mm - j] : 0);
+        newA[mm] = k; aCoeffs = newA;
+        E = (1 - k * k) * E;
+      }
+      return Promise.resolve(nargout >= 3 ? [rowVec(aCoeffs), scalar(E), colVec(ks)] : nargout >= 2 ? [rowVec(aCoeffs), scalar(E)] : [rowVec(aCoeffs)]);
+    },
+
+    // ── [a,e] = arcov(x,p) — covariance method AR estimation ──
+    arcov: (a, nargout) => {
+      const x = toArray(m(a[0])), p = Math.round(asScalar(a[1])), N = x.length;
+      const M = N - p;
+      if (M <= 0) throw new Error('arcov: signal too short for model order');
+      const X1 = x.slice(p);   // length M: x[p], x[p+1], ..., x[N-1]
+      const Xc: number[][] = Array.from({ length: M }, (_, i) => Array.from({ length: p }, (__, j) => x[p + i - j - 1]));
+      const XtX: number[][] = Array.from({ length: p }, () => new Array(p).fill(0));
+      const XtY: number[] = new Array(p).fill(0);
+      for (let i = 0; i < M; i++) { for (let j = 0; j < p; j++) { XtY[j] -= Xc[i][j] * X1[i]; for (let k = 0; k < p; k++) XtX[j][k] += Xc[i][j] * Xc[i][k]; } }
+      const alpha = matInv(XtX).map((row) => row.reduce((s, v, k) => s + v * XtY[k], 0));
+      const aCoeffs = [1, ...alpha];
+      let e = X1.reduce((s, v) => s + v * v, 0);
+      for (let j = 0; j < p; j++) { let cz = 0; for (let i = 0; i < M; i++) cz += X1[i] * Xc[i][j]; e += cz * alpha[j]; }
+      return Promise.resolve(nargout >= 2 ? [rowVec(aCoeffs), scalar(Math.abs(e))] : [rowVec(aCoeffs)]);
+    },
+
+    // ── [a,e] = armcov(x,p) — modified covariance method AR estimation ──
+    armcov: (a, nargout) => {
+      const x = toArray(m(a[0])), p = Math.round(asScalar(a[1])), N = x.length;
+      const M = N - p; // number of covariance rows
+      if (M <= 0) throw new Error('armcov: signal too short for model order');
+      // Modified covariance: stack [X_fwd; X_bwd]/sqrt(2) then solve LS.
+      // X_fwd[i, j] (j=0..p): x[p+i-j], i=0..M-1   → col 0 is y_fwd=x[p+i], cols 1..p are lag-1..lag-p
+      // X_bwd is col-reversed X_fwd: X_bwd[i,j] = X_fwd[i, p-j] = x[p+i-(p-j)] = x[i+j]
+      //   → col 0 is y_bwd=x[i], cols 1..p are x[i+1]..x[i+p]
+      // Normal equations for -a[1..p]: (Xc' Xc) a = -Xc' y
+      // where Xc has cols 1..p and y = col 0 (halved factor cancels)
+      const XtX: number[][] = Array.from({ length: p }, () => new Array(p).fill(0));
+      const XtY: number[] = new Array(p).fill(0);
+      for (let i = 0; i < M; i++) {
+        // Forward part: y_f = x[p+i], X_f[i,j] = x[p+i-j-1] for j=1..p (predictor cols)
+        const yf = x[p + i];
+        for (let j = 0; j < p; j++) {
+          const xfj = x[p + i - j - 1];
+          XtY[j] -= xfj * yf;
+          for (let k = 0; k < p; k++) XtX[j][k] += xfj * x[p + i - k - 1];
+        }
+        // Backward part: y_b = x[i], X_b[i,j] = x[i+j+1] for j=1..p (predictor cols)
+        const yb = x[i];
+        for (let j = 0; j < p; j++) {
+          const xbj = x[i + j + 1];
+          XtY[j] -= xbj * yb;
+          for (let k = 0; k < p; k++) XtX[j][k] += xbj * x[i + k + 1];
+        }
+      }
+      const alpha = matInv(XtX).map((row) => row.reduce((s, v, k) => s + v * XtY[k], 0));
+      const aCoeffs = [1, ...alpha];
+      // Error: mean of squared forward+backward residuals
+      let eF = 0, eB = 0;
+      for (let i = 0; i < M; i++) {
+        let vF = x[p + i]; for (let j = 0; j < p; j++) vF += alpha[j] * x[p + i - j - 1]; eF += vF * vF;
+        let vB = x[i]; for (let j = 0; j < p; j++) vB += alpha[j] * x[i + j + 1]; eB += vB * vB;
+      }
+      const e = (eF + eB) / (2 * M);
+      return Promise.resolve(nargout >= 2 ? [rowVec(aCoeffs), scalar(Math.abs(e))] : [rowVec(aCoeffs)]);
+    },
+
+    // ── snr(x[,Fs]) — SNR in dB: fundamental / noise (harmonics excluded from noise) ──
+    snr: (a) => {
+      // MATLAB snr: finds fundamental peak, excludes all harmonics AND their neighbors from noise.
+      // SNR = P_fundamental / P_noise   where P_noise = P_total - P_fundamental - P_harmonics - P_DC
+      const x = toArray(m(a[0])), N = x.length, half = Math.floor(N / 2);
+      const Pxx: number[] = [];
+      for (let k = 0; k <= half; k++) { let re = 0, im = 0; for (let n = 0; n < N; n++) { const ang = -2 * Math.PI * k * n / N; re += x[n] * Math.cos(ang); im += x[n] * Math.sin(ang); } let p = (re * re + im * im) / N; if (k > 0 && (k < half || N % 2 !== 0)) p *= 2; Pxx.push(p); }
+      // Find fundamental (highest power bin, excluding DC)
+      let iMax = 1; for (let k = 2; k <= half; k++) if (Pxx[k] > Pxx[iMax]) iMax = k;
+      // Collect all bins to exclude: DC (k=0), fundamental ±1, and all harmonics ±1
+      const excl = new Set<number>(); excl.add(0);
+      for (let h = 1; h <= 6; h++) { const ib = iMax * h; if (ib > half) break; for (let dk = -1; dk <= 1; dk++) { const kk = ib + dk; if (kk >= 0 && kk <= half) excl.add(kk); } }
+      // Fundamental power: sum of fundamental ±1
+      let pFund = 0; for (let dk = -1; dk <= 1; dk++) { const kk = iMax + dk; if (kk >= 0 && kk <= half) pFund += Pxx[kk]; }
+      // Noise power: total - all excluded
+      let pTot = 0; for (let k = 0; k <= half; k++) pTot += Pxx[k];
+      let pExcl = 0; for (const k of excl) pExcl += Pxx[k];
+      const pNoise = pTot - pExcl;
+      return ret(scalar(10 * Math.log10(Math.max(pFund, 1e-300) / Math.max(pNoise, 1e-300))));
+    },
+
+    // ── sinad(x) — SINAD in dB: fundamental / (noise + distortion, i.e. all non-fundamental) ──
+    sinad: (a) => {
+      // SINAD = fundamental / (everything else including harmonics)
+      const x = toArray(m(a[0])), N = x.length, half = Math.floor(N / 2);
+      const Pxx: number[] = [];
+      for (let k = 0; k <= half; k++) { let re = 0, im = 0; for (let n = 0; n < N; n++) { const ang = -2 * Math.PI * k * n / N; re += x[n] * Math.cos(ang); im += x[n] * Math.sin(ang); } let p = (re * re + im * im) / N; if (k > 0 && (k < half || N % 2 !== 0)) p *= 2; Pxx.push(p); }
+      let iMax = 1; for (let k = 2; k <= half; k++) if (Pxx[k] > Pxx[iMax]) iMax = k;
+      let pSig = 0; for (let k = Math.max(0, iMax - 1); k <= Math.min(half, iMax + 1); k++) pSig += Pxx[k];
+      let pTot = 0; for (let k = 0; k <= half; k++) pTot += Pxx[k];
+      return ret(scalar(10 * Math.log10(Math.max(pSig, 1e-300) / Math.max(pTot - pSig, 1e-300))));
+    },
+
+    // ── thd(x[,Fs][,n]) — THD in dB: ratio of harmonic power to fundamental ──
+    thd: (a) => {
+      const x = toArray(m(a[0])), N = x.length, half = Math.floor(N / 2);
+      const nHarmonics = a.length >= 3 && isMat(a[2]) ? Math.round(asScalar(a[2])) : 6;
+      const Pxx: number[] = [];
+      for (let k = 0; k <= half; k++) { let re = 0, im = 0; for (let n = 0; n < N; n++) { const ang = -2 * Math.PI * k * n / N; re += x[n] * Math.cos(ang); im += x[n] * Math.sin(ang); } let p = (re * re + im * im) / N; if (k > 0 && (k < half || N % 2 !== 0)) p *= 2; Pxx.push(p); }
+      let iMax = 1; for (let k = 2; k <= half; k++) if (Pxx[k] > Pxx[iMax]) iMax = k;
+      const pFund = Pxx[iMax];
+      let pHarm = 0;
+      for (let h = 2; h <= nHarmonics; h++) {
+        const iBin = iMax * h; if (iBin > half) break;
+        let iPeak = iBin; for (let k = Math.max(1, iBin - 2); k <= Math.min(half, iBin + 2); k++) if (Pxx[k] > Pxx[iPeak]) iPeak = k;
+        pHarm += Pxx[iPeak];
+      }
+      return ret(scalar(10 * Math.log10(Math.max(pHarm, 1e-300) / Math.max(pFund, 1e-300))));
+    },
+
+    // ── sfdr(x) — SFDR in dB: fundamental power / highest spur power ──
+    sfdr: (a) => {
+      const x = toArray(m(a[0])), N = x.length, half = Math.floor(N / 2);
+      const Pxx: number[] = [];
+      for (let k = 0; k <= half; k++) { let re = 0, im = 0; for (let n = 0; n < N; n++) { const ang = -2 * Math.PI * k * n / N; re += x[n] * Math.cos(ang); im += x[n] * Math.sin(ang); } let p = (re * re + im * im) / N; if (k > 0 && (k < half || N % 2 !== 0)) p *= 2; Pxx.push(p); }
+      let iMax = 1; for (let k = 2; k <= half; k++) if (Pxx[k] > Pxx[iMax]) iMax = k;
+      const pFund = Pxx[iMax];
+      const excl = Math.max(2, Math.floor(half / 50));
+      let pSpur = 0;
+      for (let k = 1; k <= half; k++) {
+        if (Math.abs(k - iMax) <= excl) continue;
+        if (k > 1 && k < half && Pxx[k] > Pxx[k - 1] && Pxx[k] >= Pxx[k + 1]) pSpur = Math.max(pSpur, Pxx[k]);
+      }
+      if (pSpur === 0) pSpur = 1e-300;
+      return ret(scalar(10 * Math.log10(Math.max(pFund, 1e-300) / pSpur)));
+    },
+
+    // ── Tier-3: Parametric PSD estimators ──
+    // pburg(x,order[,nfft]) — Burg AR PSD; [pxx,w] one-sided, w in rad/sample.
+    pburg: (a, nargout) => {
+      const x = toArray(m(a[0])), p = Math.round(asScalar(a[1]));
+      const nfft = a.length >= 3 && isMat(a[2]) && m(a[2]).rows * m(a[2]).cols > 0 ? Math.round(asScalar(a[2])) : Math.max(256, 2 ** Math.ceil(Math.log2(x.length)));
+      const { a: ar, e } = t3_burgCoeffs(x, p);
+      const { Pxx, w } = t3_arPSD(ar, e, nfft);
+      return Promise.resolve(nargout >= 2 ? [colVec(Pxx), colVec(w)] : [colVec(Pxx)]);
+    },
+    // pyulear(x,order[,nfft]) — Yule-Walker AR PSD (autocorrelation method).
+    pyulear: (a, nargout) => {
+      const x = toArray(m(a[0])), p = Math.round(asScalar(a[1]));
+      const nfft = a.length >= 3 && isMat(a[2]) && m(a[2]).rows * m(a[2]).cols > 0 ? Math.round(asScalar(a[2])) : Math.max(256, 2 ** Math.ceil(Math.log2(x.length)));
+      const r = t3_autocorr(x, p);
+      const { a: ar, e } = levinsonDurbin(r, p);
+      const { Pxx, w } = t3_arPSD(ar, e, nfft);
+      return Promise.resolve(nargout >= 2 ? [colVec(Pxx), colVec(w)] : [colVec(Pxx)]);
+    },
+    // pcov(x,order[,nfft]) — covariance AR PSD (forward prediction error, modified autocorrelation).
+    // Uses the forward covariance method: minimize Σ|x[n] + a1*x[n-1]+...|^2 over n=p..N-1.
+    pcov: (a, nargout) => {
+      const x = toArray(m(a[0])), p = Math.round(asScalar(a[1]));
+      const nfft = a.length >= 3 && isMat(a[2]) && m(a[2]).rows * m(a[2]).cols > 0 ? Math.round(asScalar(a[2])) : Math.max(256, 2 ** Math.ceil(Math.log2(x.length)));
+      const N = x.length;
+      // Build covariance matrix: C[i][j] = (1/(N-p)) * sum_{n=p}^{N-1} x[n-i]*x[n-j]
+      const C: number[][] = Array.from({ length: p }, () => new Array(p).fill(0));
+      const cv: number[] = new Array(p).fill(0);
+      const sc = 1 / (N - p);
+      for (let n = p; n < N; n++) {
+        for (let i = 0; i < p; i++) { for (let j = 0; j < p; j++) C[i][j] += x[n - 1 - i] * x[n - 1 - j] * sc; cv[i] += x[n] * x[n - 1 - i] * sc; }
+      }
+      // Solve C * a1 = -cv (Levinson or Gaussian elim)
+      const aug: number[][] = C.map((row, r) => [...row, -cv[r]]);
+      for (let col = 0; col < p; col++) {
+        let piv = col; for (let r = col + 1; r < p; r++) if (Math.abs(aug[r][col]) > Math.abs(aug[piv][col])) piv = r;
+        [aug[col], aug[piv]] = [aug[piv], aug[col]];
+        const d = aug[col][col]; if (Math.abs(d) < 1e-300) continue;
+        for (let r = 0; r < p; r++) { if (r === col) continue; const f = aug[r][col] / d; for (let c = col; c <= p; c++) aug[r][c] -= f * aug[col][c]; }
+      }
+      const aCoeffs = aug.map((row, i) => row[p] / row[i]);
+      const ar = [1, ...aCoeffs];
+      let e = 0; for (let n = p; n < N; n++) { let pred = x[n]; for (let i = 0; i < p; i++) pred += aCoeffs[i] * x[n - 1 - i]; e += pred * pred; }
+      e /= (N - p);
+      const { Pxx, w } = t3_arPSD(ar, e, nfft);
+      return Promise.resolve(nargout >= 2 ? [colVec(Pxx), colVec(w)] : [colVec(Pxx)]);
+    },
+    // pmcov(x,order[,nfft]) — modified covariance AR PSD (forward+backward prediction error average).
+    pmcov: (a, nargout) => {
+      const x = toArray(m(a[0])), p = Math.round(asScalar(a[1]));
+      const nfft = a.length >= 3 && isMat(a[2]) && m(a[2]).rows * m(a[2]).cols > 0 ? Math.round(asScalar(a[2])) : Math.max(256, 2 ** Math.ceil(Math.log2(x.length)));
+      const N = x.length;
+      // Modified covariance: average of forward and backward covariance matrices
+      const C: number[][] = Array.from({ length: p }, () => new Array(p).fill(0));
+      const cv: number[] = new Array(p).fill(0);
+      const sc = 1 / (2 * (N - p));
+      for (let n = p; n < N; n++) {
+        // Forward part
+        for (let i = 0; i < p; i++) { for (let j = 0; j < p; j++) C[i][j] += x[n - 1 - i] * x[n - 1 - j] * sc; cv[i] += x[n] * x[n - 1 - i] * sc; }
+        // Backward part (predict x[n-p] from x[n-p+1]...x[n])
+        for (let i = 0; i < p; i++) { for (let j = 0; j < p; j++) C[i][j] += x[n - p + i] * x[n - p + j] * sc; cv[i] += x[n - p] * x[n - p + 1 + i] * sc; }
+      }
+      const aug: number[][] = C.map((row, r) => [...row, -cv[r]]);
+      for (let col = 0; col < p; col++) {
+        let piv = col; for (let r = col + 1; r < p; r++) if (Math.abs(aug[r][col]) > Math.abs(aug[piv][col])) piv = r;
+        [aug[col], aug[piv]] = [aug[piv], aug[col]];
+        const d = aug[col][col]; if (Math.abs(d) < 1e-300) continue;
+        for (let r = 0; r < p; r++) { if (r === col) continue; const f = aug[r][col] / d; for (let c = col; c <= p; c++) aug[r][c] -= f * aug[col][c]; }
+      }
+      const aCoeffs = aug.map((row, i) => row[p] / row[i]);
+      const ar = [1, ...aCoeffs];
+      let e = 0; for (let n = p; n < N; n++) { let pred = x[n]; for (let i = 0; i < p; i++) pred += aCoeffs[i] * x[n - 1 - i]; e += pred * pred; }
+      e /= (N - p);
+      const { Pxx, w } = t3_arPSD(ar, e, nfft);
+      return Promise.resolve(nargout >= 2 ? [colVec(Pxx), colVec(w)] : [colVec(Pxx)]);
+    },
+
+    // ── Tier-3: Cross-spectral functions (Welch method) ──
+    // cpsd(x,y[,window,noverlap,nfft,fs]) — cross power spectral density (complex). [Pxy, f].
+    cpsd: (a, nargout) => {
+      const x = toArray(m(a[0])), y = toArray(m(a[1]));
+      if (x.length !== y.length) throw new Error('cpsd: x and y must have the same length');
+      const p = t3_welchParams(x, a, 2);
+      const { Pxy_re, Pxy_im, f } = t3_welchCross(x, y, p.wlen, p.noverlap, p.nfft, p.fs);
+      const Pxy = colVec(Pxy_re); Pxy.idata = Float64Array.from(Pxy_im);
+      return Promise.resolve(nargout >= 2 ? [Pxy, colVec(f)] : [Pxy]);
+    },
+    // mscohere(x,y[,...]) — magnitude-squared coherence = |Pxy|^2 / (Pxx * Pyy). [Cxy, f].
+    mscohere: (a, nargout) => {
+      const x = toArray(m(a[0])), y = toArray(m(a[1]));
+      if (x.length !== y.length) throw new Error('mscohere: x and y must have the same length');
+      const p = t3_welchParams(x, a, 2);
+      const { Pxy_re, Pxy_im, Pxx, Pyy, f } = t3_welchCross(x, y, p.wlen, p.noverlap, p.nfft, p.fs);
+      const Cxy = Pxy_re.map((re, k2) => {
+        const num = re * re + Pxy_im[k2] * Pxy_im[k2];
+        const den = Pxx[k2] * Pyy[k2];
+        return den > 0 ? num / den : 0;
+      });
+      return Promise.resolve(nargout >= 2 ? [colVec(Cxy), colVec(f)] : [colVec(Cxy)]);
+    },
+    // tfestimate(x,y[,...]) — H1 transfer function estimate = Pxy / Pxx. Complex. [Txy, f].
+    tfestimate: (a, nargout) => {
+      const x = toArray(m(a[0])), y = toArray(m(a[1]));
+      if (x.length !== y.length) throw new Error('tfestimate: x and y must have the same length');
+      const p = t3_welchParams(x, a, 2);
+      const { Pxy_re, Pxy_im, Pxx, f } = t3_welchCross(x, y, p.wlen, p.noverlap, p.nfft, p.fs);
+      const Tre = Pxy_re.map((re, k2) => Pxx[k2] > 0 ? re / Pxx[k2] : 0);
+      const Tim = Pxy_im.map((im, k2) => Pxx[k2] > 0 ? im / Pxx[k2] : 0);
+      const Txy = colVec(Tre); Txy.idata = Float64Array.from(Tim);
+      return Promise.resolve(nargout >= 2 ? [Txy, colVec(f)] : [Txy]);
+    },
+
+    // ── Tier-3: Lomb-Scargle periodogram ──
+    // plomb(x,t[,f]) — Lomb-Scargle PSD for nonuniform samples. [pxx, f] or [pxx, f, pth].
+    plomb: (a, nargout) => {
+      const x = toArray(m(a[0])), t2 = toArray(m(a[1]));
+      const N = x.length;
+      if (t2.length !== N) throw new Error('plomb: x and t must have the same length');
+      const xmean = x.reduce((s, v) => s + v, 0) / N;
+      const xc = x.map((v) => v - xmean);
+      const xvar = xc.reduce((s, v) => s + v * v, 0) / N;
+      // Frequency vector: default ofac=4 oversampling, or user-supplied
+      let fvec: number[];
+      if (a.length >= 3 && isMat(a[2]) && m(a[2]).rows * m(a[2]).cols > 0) {
+        fvec = toArray(m(a[2]));
+      } else {
+        // Default: [1/T_span, ..., f_Nyquist*ofac] with ofac=4
+        const tspan = Math.max(...t2) - Math.min(...t2);
+        const fmin = tspan > 0 ? 1 / tspan : 1;
+        const dt_avg = tspan / Math.max(N - 1, 1);
+        const fmax = dt_avg > 0 ? 0.5 / dt_avg : N / 2;
+        const nf = Math.round(4 * (fmax - fmin) / fmin);
+        const nf2 = Math.max(nf, N);
+        fvec = Array.from({ length: nf2 }, (_, i) => fmin + i * (fmax - fmin) / Math.max(nf2 - 1, 1));
+      }
+      const Pxx: number[] = fvec.map((ff) => {
+        const w2pi = 2 * Math.PI * ff;
+        // tau: offset to orthogonalize sin/cos terms
+        let s2wt = 0, c2wt = 0;
+        for (let n = 0; n < N; n++) { s2wt += Math.sin(2 * w2pi * t2[n]); c2wt += Math.cos(2 * w2pi * t2[n]); }
+        const tau = ff > 0 ? Math.atan2(s2wt, c2wt) / (2 * w2pi) : 0;
+        let cc = 0, ss = 0, cs = 0;
+        let xcc = 0, xss = 0;
+        for (let n = 0; n < N; n++) {
+          const ph = w2pi * (t2[n] - tau);
+          const co = Math.cos(ph), si = Math.sin(ph);
+          cc += co * co; ss += si * si;
+          xcc += xc[n] * co; xss += xc[n] * si;
+        }
+        const p1 = cc > 0 ? xcc * xcc / cc : 0;
+        const p2 = ss > 0 ? xss * xss / ss : 0;
+        return xvar > 0 ? (p1 + p2) / (2 * xvar) : 0;
+      });
+      return Promise.resolve(nargout >= 2 ? [colVec(Pxx), colVec(fvec)] : [colVec(Pxx)]);
+    },
+
+    // ── Tier-3: Pulse shaping filters ──
+    // rcosdesign(beta,span,sps[,shape]) — raised-cosine or root-raised-cosine FIR.
+    rcosdesign: (a) => {
+      const beta = asScalar(a[0]), span = Math.round(asScalar(a[1])), sps = Math.round(asScalar(a[2]));
+      const shape = a.length >= 4 && (isStr(a[3]) || (isMat(a[3]) && (a[3] as Mat).isChar))
+        ? (asString(a[3]).toLowerCase().startsWith('n') ? 'normal' : 'sqrt') : 'sqrt';
+      if (beta < 0 || beta > 1) throw new Error('rcosdesign: BETA must be in [0, 1]');
+      if ((sps * span) % 2 !== 0) throw new Error('rcosdesign: filter order (sps*span) must be even');
+      return ret(rowVec(t3_rcosdesignImpl(beta, span, sps, shape)));
+    },
+    // gaussdesign(bt,span,sps) — Gaussian pulse-shaping FIR (BT product, span, samples/symbol).
+    gaussdesign: (a) => {
+      const bt = asScalar(a[0]);
+      const span = a.length >= 2 && isMat(a[1]) ? Math.round(asScalar(a[1])) : 3;
+      const sps = a.length >= 3 && isMat(a[2]) ? Math.round(asScalar(a[2])) : 2;
+      if ((sps * span) % 2 !== 0) throw new Error('gaussdesign: filter order (sps*span) must be even');
+      const filtLen = sps * span + 1;
+      const t2 = Array.from({ length: filtLen }, (_, i) => -span / 2 + i * span / (filtLen - 1));
+      const alpha = Math.sqrt(Math.log(2) / 2) / bt;
+      const h = t2.map((ti) => { const x2 = ti * Math.PI / alpha; return Math.sqrt(Math.PI) / alpha * Math.exp(-(x2 * x2)); });
+      const sum = h.reduce((s, v) => s + v, 0);
+      return ret(rowVec(sum > 0 ? h.map((v) => v / sum) : h));
+    },
+
+    // ── Tier-3: Frequency-domain system ID ──
+    // invfreqz(h,w,nb,na) — LS fit [b,a] from complex H(e^jw) samples.
+    invfreqz: (a, nargout) => {
+      const M = m(a[0]);
+      const Hr = toArray(M), Hi = M.idata ? Array.from(M.idata) : new Array(Hr.length).fill(0);
+      const w2 = toArray(m(a[1])), nb = Math.round(asScalar(a[2])), na = Math.round(asScalar(a[3]));
+      const nw = Hr.length, nk = 0, T = 1;
+      const nm = Math.max(na, nb + nk);
+      // Build OM matrix: rows are freq points, cols are powers e^{-jwk}
+      // D = [Dva, Dvb] where Dva[i,m] = OM[m+1, i] * g[i], Dvb[i,m] = -OM[m, i]
+      // OM[m, i] = e^{-j*m*w[i]*T}
+      const Dva_re: number[][] = [], Dva_im: number[][] = [], Dvb_re: number[][] = [], Dvb_im: number[][] = [];
+      for (let i = 0; i < nw; i++) {
+        const gr = Hr[i], gi = Hi[i];
+        const rDva: number[] = [], iDva: number[] = [], rDvb: number[] = [], iDvb: number[] = [];
+        for (let mn = 1; mn <= na; mn++) {
+          const ang = -mn * w2[i] * T;
+          const cr = Math.cos(ang), si = Math.sin(ang);
+          // Dva[i,m] = OM[m+1,i] * g[i]
+          rDva.push(cr * gr - si * gi); iDva.push(cr * gi + si * gr);
+        }
+        for (let mn = nk; mn <= nk + nb; mn++) {
+          const ang = -mn * w2[i] * T;
+          const cr = Math.cos(ang), si = Math.sin(ang);
+          rDvb.push(-cr); iDvb.push(-si);
+        }
+        Dva_re.push(rDva); Dva_im.push(iDva); Dvb_re.push(rDvb); Dvb_im.push(iDvb);
+      }
+      // D_real = [real(Dva) real(Dvb); imag(Dva) imag(Dvb)]
+      // Vd_real = [real(-g); imag(-g)]  (RHS)
+      const nc = na + nb + 1;
+      const D_re: number[][] = [];
+      const Vd_re: number[] = [];
+      for (let i = 0; i < nw; i++) {
+        D_re.push([...Dva_re[i], ...Dvb_re[i]]);
+        D_re.push([...Dva_im[i], ...Dvb_im[i]]);
+        Vd_re.push(-Hr[i]); Vd_re.push(-Hi[i]);
+      }
+      const th = t3_gaussLS(D_re, Vd_re);
+      const a1 = [1, ...th.slice(0, na)];
+      const b1 = th.slice(na, na + nb + 1);
+      return Promise.resolve(nargout >= 2 ? [rowVec(b1), rowVec(a1)] : [rowVec(b1)]);
+    },
+
+    // ── Tier-3: Prony and Steiglitz-McBride system ID ──
+    // prony(h,nb,na) — Prony's method: [b,a] from impulse response h (length ≥ nb+na+1).
+    prony: (a, nargout) => {
+      // Prony's method: fit H(z)=B(z)/A(z) of orders nb/na to impulse response h.
+      // 1. Pad h to length >= na+nb+1.
+      // 2. Build LS system: h[i] + a1*h[i-1] + ... + a_na*h[i-na] = 0, i = na..K-1.
+      // 3. Solve for a[1..na].
+      // 4. b = first nb+1 samples of conv(a, h).
+      const h = toArray(m(a[0])), nb = Math.round(asScalar(a[1])), na = Math.round(asScalar(a[2]));
+      const hPad = h.slice();
+      while (hPad.length < na + nb + 1) hPad.push(0);
+      const K = hPad.length;
+      // Step 2-3: solve for denominator coefficients
+      let aCoeffs: number[] = [];
+      if (na > 0) {
+        const A2: number[][] = [], rhs2: number[] = [];
+        for (let i = na; i < K; i++) {
+          const row: number[] = [];
+          for (let j = 1; j <= na; j++) row.push(i - j >= 0 ? hPad[i - j] : 0);
+          A2.push(row); rhs2.push(-hPad[i]);
+        }
+        if (A2.length > 0) aCoeffs = t3_gaussLS(A2, rhs2);
+      }
+      const aFull = [1, ...aCoeffs];
+      // Step 4: b = conv(aFull, hPad)[0..nb]
+      const bFull: number[] = new Array(nb + 1).fill(0);
+      for (let j = 0; j <= nb; j++) {
+        let s = 0;
+        for (let l = 0; l < aFull.length && l <= j; l++) s += aFull[l] * hPad[j - l];
+        bFull[j] = s;
+      }
+      return Promise.resolve(nargout >= 2 ? [rowVec(bFull), rowVec(aFull)] : [rowVec(bFull)]);
+    },
+    // stmcb(h[,u],nb,na[,niter,aInit]) — Steiglitz-McBride iteration.
+    // stmcb(h,nb,na) — impulse-response form: u = delta.
+    stmcb: (a, nargout) => {
+      // Parse args: stmcb(h,nb,na) or stmcb(h,u,nb,na)
+      let h: number[], u0: number[], nb: number, na: number, niter: number;
+      // Distinguish: if a[1] is scalar-compatible → stmcb(h,nb,na)
+      const a1 = m(a[1]), a1sz = a1.rows * a1.cols;
+      if (a1sz === 1) {
+        // stmcb(h, nb, na)
+        h = toArray(m(a[0])); nb = Math.round(asScalar(a[1])); na = Math.round(asScalar(a[2]));
+        niter = a.length >= 4 && isMat(a[3]) ? Math.round(asScalar(a[3])) : 5;
+        u0 = new Array(h.length).fill(0); if (u0.length > 0) u0[0] = 1;
+      } else {
+        // stmcb(h, u, nb, na)
+        h = toArray(m(a[0])); u0 = toArray(m(a[1])); nb = Math.round(asScalar(a[2])); na = Math.round(asScalar(a[3]));
+        niter = a.length >= 5 && isMat(a[4]) ? Math.round(asScalar(a[4])) : 5;
+      }
+      const N2 = h.length;
+      // Initialize aFull from Prony (denominator-only LS on h)
+      const hP = h.slice(); while (hP.length < na + nb + 1) hP.push(0);
+      let aCoeffs: number[] = [];
+      if (na > 0) {
+        const A2: number[][] = [], rhs2: number[] = [];
+        for (let i = na; i < hP.length; i++) {
+          const row: number[] = [];
+          for (let j = 1; j <= na; j++) row.push(i - j >= 0 ? hP[i - j] : 0);
+          A2.push(row); rhs2.push(-hP[i]);
+        }
+        if (A2.length > 0) aCoeffs = t3_gaussLS(A2, rhs2);
+      }
+      let aFull: number[] = [1, ...aCoeffs];
+      // Steiglitz-McBride iterations: build [Ub | -Hb_lag] * [b; a_coeff]' = hFilt
+      // where Ub[n,k] = uFilt[n-k] for k=0..nb, Hb_lag[n,k] = hFilt[n-k] for k=1..na
+      // Column for a_coeff[k] stores -hFilt[n-k], so c[nb+1+k-1] = a_coeff[k] (positive, not negated).
+      for (let iter = 0; iter < niter; iter++) {
+        const hFilt = filterDf2t([1], aFull, h).y;
+        const uFilt = filterDf2t([1], aFull, u0.slice(0, N2)).y;
+        const T: number[][] = [];
+        for (let n = 0; n < N2; n++) {
+          const row: number[] = [];
+          for (let mm = 0; mm <= nb; mm++) row.push(n >= mm ? uFilt[n - mm] : 0);   // b cols
+          for (let mm = 1; mm <= na; mm++) row.push(-(n >= mm ? hFilt[n - mm] : 0)); // -a cols
+          T.push(row);
+        }
+        const c = t3_gaussLS(T, hFilt);  // RHS = hFilt (filtered h)
+        // c = [b0..bnb, a1..ana] where a cols stored as negatives → a_coeff direct
+        aFull = [1, ...c.slice(nb + 1, nb + 1 + na)];
+      }
+      // Final b: b = filter(a, 1, h)(0..nb) = conv(a, h)(0..nb)
+      const bFull: number[] = new Array(nb + 1).fill(0);
+      for (let j = 0; j <= nb; j++) {
+        let s = 0;
+        for (let l = 0; l < aFull.length && l <= j; l++) s += aFull[l] * h[j - l];
+        bFull[j] = s;
+      }
+      return Promise.resolve(nargout >= 2 ? [rowVec(bFull), rowVec(aFull)] : [rowVec(bFull)]);
+    },
+
+    // ── Tier-3: Lattice filters ──
+    // tf2latc(b[,a]) — TF to lattice. For IIR: K=poly2rc(a), V from rlevinson recursion.
+    tf2latc: (a, nargout) => {
+      const b = toArray(m(a[0]));
+      const isFIR = a.length < 2 || !isMat(a[1]) || m(a[1]).rows * m(a[1]).cols === 0 || toArray(m(a[1])).every((v) => v === 0);
+      if (isFIR) {
+        // FIR case: K = poly2rc(b), V = b (if nargout>=2, V=b, K=zeros)
+        if (nargout >= 2) {
+          const K = rowVec(new Array(b.length - 1).fill(0));
+          return Promise.resolve([K, colVec(b)]);
+        }
+        // nargout=1: k = poly2rc(b) (step-down)
+        const k = stepDown(b).k;
+        return Promise.resolve([colVec(k)]);
+      }
+      const den = toArray(m(a[1]));
+      // Normalize
+      const d0 = den[0];
+      const bn = b.map((v) => v / d0), dn = den.map((v) => v / d0);
+      if (bn.length === 1) {
+        // All-pole: K = poly2rc(dn), V = [bn[0]; zeros(M-1)]
+        const k = stepDown(dn).k;
+        const V = [bn[0], ...new Array(k.length).fill(0)];
+        return Promise.resolve(nargout >= 2 ? [colVec(k), colVec(V)] : [colVec(k)]);
+      }
+      // IIR case: K = poly2rc(dn), V from rlevinson recursion
+      const k = stepDown(dn).k;
+      // Equalize lengths
+      while (bn.length < dn.length) bn.push(0);
+      const M = dn.length;
+      // Compute V: V[m] = bn[m] - sum(V[j] * U[m][j]) for j=m+1..M-1
+      // where U = rlevinson matrix of dn (M×M)
+      const U = t3_rlevinson(dn);
+      const V = new Array(M).fill(0);
+      for (let idx = M - 1; idx >= 0; idx--) {
+        let subterm = 0;
+        for (let j = idx + 1; j < M; j++) subterm += U[idx][j] * V[j];
+        V[idx] = bn[idx] - subterm;
+      }
+      return Promise.resolve(nargout >= 2 ? [colVec(k), colVec(V)] : [colVec(k)]);
+    },
+    // latc2tf(k[,v]) — Lattice to TF. FIR if no v (or v='fir'); IIR if v is numeric.
+    latc2tf: (a, nargout) => {
+      const k = toArray(m(a[0]));
+      const hasDen = a.length >= 2 && isMat(a[1]) && m(a[1]).rows * m(a[1]).cols > 0;
+      if (!hasDen) {
+        // FIR: num = rc2poly(k), den = 1
+        const num = stepUp(k);   // rc2poly
+        return Promise.resolve(nargout >= 2 ? [rowVec(num), rowVec([1])] : [rowVec(num)]);
+      }
+      // IIR: den = rc2poly(k), num = U * V
+      const den = stepUp(k);  // rc2poly
+      const M = den.length;
+      const U = t3_rlevinson(den);
+      const v = toArray(m(a[1]));
+      const vp = v.slice(); while (vp.length < M) vp.push(0);
+      const num: number[] = new Array(M).fill(0);
+      for (let i = 0; i < M; i++) for (let j = 0; j < M; j++) num[i] += U[i][j] * vp[j];
+      return Promise.resolve(nargout >= 2 ? [rowVec(num), rowVec(den)] : [rowVec(num)]);
+    },
+    // latcfilt(k[,v],x) — Lattice filter: FIR if k only, IIR if v also supplied.
+    latcfilt: (a, nargout) => {
+      // Detect args: latcfilt(k, x) or latcfilt(k, v, x)
+      const k = toArray(m(a[0]));
+      let v: number[] | null = null, xIn: number[], xMat: Mat;
+      if (a.length >= 3) {
+        // latcfilt(k, v, x)
+        v = toArray(m(a[1])); xMat = m(a[2]); xIn = toArray(xMat);
+      } else {
+        // latcfilt(k, x)
+        xMat = m(a[1]); xIn = toArray(xMat);
+      }
+      const isCol = xMat.cols === 1 && xMat.rows > 1;
+      if (v === null) {
+        // FIR lattice
+        const { f, g } = t3_latcFIR(k, xIn);
+        const fOut = isCol ? colVec(f) : rowVec(f);
+        const gOut = isCol ? colVec(g) : rowVec(g);
+        return Promise.resolve(nargout >= 2 ? [fOut, gOut] : [fOut]);
+      } else {
+        // IIR lattice-ladder
+        const y = t3_latcIIR(k, v, xIn);
+        // Second output (g) would be the all-pole output; compute it as filter(1, rc2poly(k), x)
+        if (nargout >= 2) {
+          const den = stepUp(k);
+          const g = filterDf2t([1], den, xIn).y;
+          return Promise.resolve([isCol ? colVec(y) : rowVec(y), isCol ? colVec(g) : rowVec(g)]);
+        }
+        return ret(isCol ? colVec(y) : rowVec(y));
+      }
+    },
   },
   help: {
     cheby2: { summary: 'Designs an order n lowpass digital Chebyshev Type II filter with normalized stopband edge frequency Ws and stopband attenuation Rs dB.', syntax: ['[b,a] = cheby2(n,Rs,Ws)', '[b,a] = cheby2(n,Rs,Ws,ftype)'], seealso: ['cheb2ap', 'cheb2ord', 'butter', 'cheby1', 'ellip'] },
@@ -1607,5 +3249,56 @@ export const SIGNAL: ToolboxModule = {
     buttap: { summary: 'Returns the poles and gain of an order n Butterworth analog lowpass filter prototype.', syntax: ['[z,p,k] = buttap(n)'], seealso: ['besselap', 'butter', 'cheb1ap', 'cheb2ap', 'ellipap'] },
     filtfilt: { summary: 'Performs zero-phase digital filtering by processing the input data x in both the forward and reverse directions.', syntax: ['y = filtfilt(b,a,x)', 'y = filtfilt(sos,g,x)', 'y = filtfilt(d,x)', 'y = filtfilt(B,A,x,"ctf")'], seealso: ['ctffilt', 'designfilt', 'digitalFilter', 'fftfilt', 'filter'] },
     cconv: { summary: 'Circularly convolves vectors a and b.', syntax: ['c = cconv(a,b)', 'c = cconv(a,b,n)'], seealso: ['conv', 'xcorr'] },
+    fftfilt: { summary: 'FIR filter b applied to x via overlap-add FFT; result equals filter(b,1,x) to ~1e-10.', syntax: ['y = fftfilt(b,x)', 'y = fftfilt(b,x,nfft)'], seealso: ['filter', 'filtfilt', 'upfirdn'] },
+    phasez: { summary: 'Unwrapped phase response of digital filter B/A over n points in [0,pi).', syntax: ['[phi,w] = phasez(b,a)', '[phi,w] = phasez(b,a,n)'], seealso: ['freqz', 'phasedelay', 'zerophase'] },
+    phasedelay: { summary: 'Phase delay -angle(H(e^jw))/w of digital filter B/A over n points.', syntax: ['[phi,w] = phasedelay(b,a)', '[phi,w] = phasedelay(b,a,n)'], seealso: ['grpdelay', 'phasez', 'freqz'] },
+    zerophase: { summary: 'Real zero-phase amplitude response of digital filter B/A over n points.', syntax: ['[Hr,w] = zerophase(b,a)', '[Hr,w] = zerophase(b,a,n)'], seealso: ['freqz', 'phasez', 'filtfilt'] },
+    zplane: { summary: 'Pole-zero plot; with row-vector inputs (b,a) computes roots; with column-vector inputs (z,p) uses them directly. Returns [z,p] in sandbox (no plot).', syntax: ['zplane(b,a)', 'zplane(z,p)', '[z,p] = zplane(b,a)'], seealso: ['freqz', 'tf2zp', 'roots'] },
+    impzlength: { summary: 'Effective impulse-response length: length(b) for FIR, or floor(log(5e-5)/log(max_pole_mag)) for IIR.', syntax: ['n = impzlength(b,a)', 'n = impzlength(b,a,tol)'], seealso: ['impz', 'filtord'] },
+    filtord: { summary: 'Filter order: max(degree(b), degree(a)) after trimming trailing zeros.', syntax: ['n = filtord(b,a)'], seealso: ['impzlength', 'firtype'] },
+    firtype: { summary: 'Linear-phase FIR type (1–4) from symmetry and length of b.', syntax: ['type = firtype(b)'], seealso: ['islinphase', 'filtord'] },
+    islinphase: { summary: 'True if b/a is a linear-phase FIR (a=[1], b symmetric or antisymmetric).', syntax: ['tf = islinphase(b,a)', 'tf = islinphase(b,a,tol)'], seealso: ['firtype', 'isminphase', 'isallpass'] },
+    isminphase: { summary: 'True if all zeros and poles of B/A are strictly inside the unit circle.', syntax: ['tf = isminphase(b,a)', 'tf = isminphase(b,a,tol)'], seealso: ['islinphase', 'isallpass'] },
+    isallpass: { summary: 'True if B/A is an allpass filter (b = fliplr(a)/a(1) for real coefficients).', syntax: ['tf = isallpass(b,a)', 'tf = isallpass(b,a,tol)'], seealso: ['islinphase', 'isminphase'] },
+    tf2zpk: { summary: 'Transfer-function to zero-pole-gain: same as tf2zp.', syntax: ['[z,p,k] = tf2zpk(b,a)'], seealso: ['tf2zp', 'zpk2tf', 'sos2zp'] },
+    sos2zp: { summary: 'Second-order-sections matrix to zeros, poles, and gain.', syntax: ['[z,p,k] = sos2zp(sos)', '[z,p,k] = sos2zp(sos,g)'], seealso: ['tf2zpk', 'zp2sos', 'sosfilt'] },
+    eqtflength: { summary: 'Pad shorter of b or a with trailing zeros so they have equal length.', syntax: ['[b,a] = eqtflength(b,a)'], seealso: ['filtord', 'tf2zpk'] },
+    residuez: { summary: 'Partial-fraction expansion of z-transform B(z)/A(z): H = k + sum r_i/(1-p_i*z^{-1}).', syntax: ['[r,p,k] = residuez(b,a)'], seealso: ['residue', 'tf2zpk', 'zp2tf'] },
+    interp: { summary: 'FIR interpolation: upsample x by integer r using a Hamming-windowed sinc lowpass filter.', syntax: ['y = interp(x,r)', 'y = interp(x,r,n)', 'y = interp(x,r,n,cutoff)'], seealso: ['decimate', 'resample', 'upsample', 'upfirdn'] },
+    buffer: { summary: 'Partition signal vector x into non-overlapping (or overlapping) frames of length n, with optional overlap p.', syntax: ['y = buffer(x,n)', 'y = buffer(x,n,p)'], seealso: ['reshape', 'spectrogram'] },
+    cheb1ap: { summary: 'Returns the poles and gain of an order N Chebyshev Type I analog lowpass filter prototype with Rp dB of passband ripple.', syntax: ['[z,p,k] = cheb1ap(n,Rp)'], seealso: ['besselap', 'buttap', 'cheb2ap', 'ellipap', 'cheby1'] },
+    cheb2ap: { summary: 'Returns the zeros, poles, and gain of an order N Chebyshev Type II analog lowpass filter prototype with Rs dB of stopband attenuation.', syntax: ['[z,p,k] = cheb2ap(n,Rs)'], seealso: ['besselap', 'buttap', 'cheb1ap', 'ellipap', 'cheby2'] },
+    ellipap: { summary: 'Returns the zeros, poles, and gain of an order N elliptic analog lowpass filter prototype with Rp dB passband ripple and Rs dB stopband attenuation.', syntax: ['[z,p,k] = ellipap(n,Rp,Rs)'], seealso: ['besselap', 'buttap', 'cheb1ap', 'cheb2ap', 'ellip'] },
+    besselap: { summary: 'Returns the poles and gain of an order N Bessel analog lowpass filter prototype (maximally flat group delay). Supported orders: 1–10.', syntax: ['[z,p,k] = besselap(n)'], seealso: ['buttap', 'cheb1ap', 'cheb2ap', 'ellipap'] },
+    lp2lp: { summary: 'Transforms a lowpass analog filter prototype with a cutoff frequency of 1 rad/s to a lowpass filter with a cutoff frequency of Wo rad/s.', syntax: ['[bt,at] = lp2lp(b,a,Wo)'], seealso: ['lp2hp', 'lp2bp', 'lp2bs', 'bilinear'] },
+    lp2hp: { summary: 'Transforms a lowpass analog filter prototype with a cutoff frequency of 1 rad/s to a highpass filter with a cutoff frequency of Wo rad/s.', syntax: ['[bt,at] = lp2hp(b,a,Wo)'], seealso: ['lp2lp', 'lp2bp', 'lp2bs', 'bilinear'] },
+    lp2bp: { summary: 'Transforms a lowpass analog filter prototype with a cutoff frequency of 1 rad/s to a bandpass filter with center frequency Wo rad/s and bandwidth Bw.', syntax: ['[bt,at] = lp2bp(b,a,Wo,Bw)'], seealso: ['lp2lp', 'lp2hp', 'lp2bs', 'bilinear'] },
+    lp2bs: { summary: 'Transforms a lowpass analog filter prototype with a cutoff frequency of 1 rad/s to a bandstop filter with center frequency Wo rad/s and bandwidth Bw.', syntax: ['[bt,at] = lp2bs(b,a,Wo,Bw)'], seealso: ['lp2lp', 'lp2hp', 'lp2bp', 'bilinear'] },
+    impinvar: { summary: 'Converts the analog filter with transfer function B(s)/A(s) to the digital filter B(z)/A(z) using the impulse invariance method with sample rate Fs (default 1).', syntax: ['[bz,az] = impinvar(b,a,Fs)'], seealso: ['bilinear', 'butter', 'cheby1'] },
+    lpc: { summary: 'Returns the linear prediction filter coefficients a and the prediction error power e for the input signal x using a p-th order forward linear predictor.', syntax: ['a = lpc(x,p)', '[a,e] = lpc(x,p)'], seealso: ['aryule', 'arburg', 'levinson', 'ac2poly'] },
+    aryule: { summary: 'Returns the AR model parameters for a given input signal x using the Yule-Walker method (autocorrelation/Levinson-Durbin).', syntax: ['a = aryule(x,p)', '[a,e,k] = aryule(x,p)'], seealso: ['arburg', 'arcov', 'armcov', 'lpc'] },
+    arburg: { summary: 'Returns the AR model parameters for a given input signal x using the Burg method.', syntax: ['a = arburg(x,p)', '[a,e,k] = arburg(x,p)'], seealso: ['aryule', 'arcov', 'armcov', 'lpc'] },
+    arcov: { summary: 'Returns the AR model parameters for a given input signal x using the covariance method.', syntax: ['a = arcov(x,p)', '[a,e] = arcov(x,p)'], seealso: ['arburg', 'aryule', 'armcov', 'lpc'] },
+    armcov: { summary: 'Returns the AR model parameters for a given input signal x using the modified covariance method.', syntax: ['a = armcov(x,p)', '[a,e] = armcov(x,p)'], seealso: ['arburg', 'arcov', 'aryule', 'lpc'] },
+    snr: { summary: 'Returns the signal-to-noise ratio (SNR) in decibels of the fundamental signal component relative to all other spectral components.', syntax: ['r = snr(x)', 'r = snr(x,Fs)'], seealso: ['sinad', 'thd', 'sfdr'] },
+    sinad: { summary: 'Returns the signal-to-noise-and-distortion ratio (SINAD) in decibels of the fundamental signal component relative to all other spectral components including harmonics.', syntax: ['r = sinad(x)', 'r = sinad(x,Fs)'], seealso: ['snr', 'thd', 'sfdr'] },
+    thd: { summary: 'Returns the total harmonic distortion (THD) in decibels of the first n harmonics relative to the fundamental.', syntax: ['r = thd(x)', 'r = thd(x,Fs)', 'r = thd(x,Fs,n)'], seealso: ['snr', 'sinad', 'sfdr'] },
+    sfdr: { summary: 'Returns the spurious-free dynamic range (SFDR) in decibels, the ratio of the fundamental component to the largest spurious spectral component.', syntax: ['r = sfdr(x)', 'r = sfdr(x,Fs)'], seealso: ['snr', 'sinad', 'thd'] },
+    pburg: { summary: 'Estimates the power spectral density of x using the Burg method, returning the PSD pxx and corresponding frequency vector w (in rad/sample).', syntax: ['[pxx,w] = pburg(x,order)', '[pxx,w] = pburg(x,order,nfft)'], seealso: ['pyulear', 'pcov', 'pmcov', 'pwelch', 'periodogram'] },
+    pyulear: { summary: 'Estimates the power spectral density of x using the Yule-Walker (autocorrelation) AR method.', syntax: ['[pxx,w] = pyulear(x,order)', '[pxx,w] = pyulear(x,order,nfft)'], seealso: ['pburg', 'pcov', 'pmcov', 'pwelch'] },
+    pcov: { summary: 'Estimates the power spectral density of x using the covariance AR method (forward prediction error minimization).', syntax: ['[pxx,w] = pcov(x,order)', '[pxx,w] = pcov(x,order,nfft)'], seealso: ['pburg', 'pyulear', 'pmcov'] },
+    pmcov: { summary: 'Estimates the power spectral density of x using the modified covariance AR method (average of forward and backward prediction errors).', syntax: ['[pxx,w] = pmcov(x,order)', '[pxx,w] = pmcov(x,order,nfft)'], seealso: ['pburg', 'pyulear', 'pcov'] },
+    cpsd: { summary: 'Estimates the cross power spectral density of signals x and y using Welch\'s averaged, modified periodogram method.', syntax: ['[pxy,f] = cpsd(x,y)', '[pxy,f] = cpsd(x,y,window,noverlap,nfft,fs)'], seealso: ['mscohere', 'tfestimate', 'pwelch'] },
+    mscohere: { summary: 'Estimates the magnitude-squared coherence of signals x and y using Welch\'s overlapped averaged periodogram method.', syntax: ['[cxy,f] = mscohere(x,y)', '[cxy,f] = mscohere(x,y,window,noverlap,nfft,fs)'], seealso: ['cpsd', 'tfestimate', 'pwelch'] },
+    tfestimate: { summary: 'Estimates the transfer function H(f) = Pxy(f)/Pxx(f) between input x and output y using the Welch H1 method.', syntax: ['[txy,f] = tfestimate(x,y)', '[txy,f] = tfestimate(x,y,window,noverlap,nfft,fs)'], seealso: ['cpsd', 'mscohere', 'pwelch'] },
+    plomb: { summary: 'Computes the Lomb-Scargle periodogram of signal x sampled at times t (possibly nonuniform).', syntax: ['[pxx,f] = plomb(x,t)', '[pxx,f] = plomb(x,t,fvec)'], seealso: ['periodogram', 'pwelch', 'pburg'] },
+    rcosdesign: { summary: 'Designs a raised-cosine (normal) or root-raised-cosine (sqrt) FIR pulse-shaping filter of length span*sps+1, normalized to unit energy.', syntax: ['b = rcosdesign(beta,span,sps)', 'b = rcosdesign(beta,span,sps,shape)'], seealso: ['gaussdesign', 'fir1', 'fir2'] },
+    gaussdesign: { summary: 'Designs a Gaussian FIR pulse-shaping filter with BT product bt, symbol span span, and sps samples per symbol.', syntax: ['h = gaussdesign(bt,span,sps)'], seealso: ['rcosdesign', 'fir1'] },
+    invfreqz: { summary: 'Identifies a digital IIR filter [b,a] by least-squares fitting to complex frequency response samples h at angular frequencies w.', syntax: ['[b,a] = invfreqz(h,w,nb,na)'], seealso: ['freqz', 'invfreqs', 'prony', 'stmcb'] },
+    prony: { summary: 'Uses Prony\'s method to fit an IIR transfer function [b,a] of orders nb and na to the impulse response sequence h.', syntax: ['[b,a] = prony(h,nb,na)'], seealso: ['invfreqz', 'stmcb', 'levinson'] },
+    stmcb: { summary: 'Uses the iterative Steiglitz-McBride method to fit an IIR transfer function [b,a] of orders nb and na to the impulse response h.', syntax: ['[b,a] = stmcb(h,nb,na)', '[b,a] = stmcb(h,nb,na,niter)'], seealso: ['prony', 'invfreqz', 'levinson'] },
+    tf2latc: { summary: 'Converts a digital transfer function [b,a] to lattice or lattice-ladder form, returning reflection coefficients K (and optional ladder coefficients V).', syntax: ['K = tf2latc(b,a)', '[K,V] = tf2latc(b,a)'], seealso: ['latc2tf', 'latcfilt', 'poly2rc', 'rc2poly'] },
+    latc2tf: { summary: 'Converts lattice filter coefficients K (and optional ladder coefficients V) back to a transfer function [b,a].', syntax: ['[b,a] = latc2tf(K)', '[b,a] = latc2tf(K,V)'], seealso: ['tf2latc', 'latcfilt', 'rc2poly'] },
+    latcfilt: { summary: 'Filters signal x using the lattice structure defined by reflection coefficients K (and optional ladder V for IIR), returning the forward output f and backward output g.', syntax: ['[f,g] = latcfilt(K,x)', '[f,g] = latcfilt(K,V,x)'], seealso: ['tf2latc', 'latc2tf', 'filter'] },
   },
 };
