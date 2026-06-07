@@ -128,6 +128,7 @@ export default function CommandWindow({
   const [value, setValue] = useState('');
   const [history, setHistory] = useState<string[]>([]);
   const [hIdx, setHIdx] = useState(-1);
+  const draftRef = useRef('');   // stashes the unsubmitted input while navigating history
   const [menu, setMenu] = useState<{ items: string[]; sel: number; word: string; start: number } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -192,13 +193,14 @@ export default function CommandWindow({
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (!history.length) return;
+      if (hIdx < 0) draftRef.current = value;   // entering history: stash the unsubmitted draft
       const ni = hIdx < 0 ? history.length - 1 : Math.max(0, hIdx - 1);
       setHIdx(ni); setValue(history[ni]);
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
       if (hIdx < 0) return;
       const ni = hIdx + 1;
-      if (ni >= history.length) { setHIdx(-1); setValue(''); } else { setHIdx(ni); setValue(history[ni]); }
+      if (ni >= history.length) { setHIdx(-1); setValue(draftRef.current); } else { setHIdx(ni); setValue(history[ni]); }  // restore the stashed draft past the newest entry
     }
   };
 

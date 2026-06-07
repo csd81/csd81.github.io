@@ -81,9 +81,8 @@ const GROUP_ORDER: Record<MFolder['group'], number> = { course: 0, chapter: 1 };
 export const FOLDERS: MFolder[] = [...folderMap.values()].sort((a, b) => {
   if (a.group !== b.group) return GROUP_ORDER[a.group] - GROUP_ORDER[b.group];
   if (a.group === 'course') {
-    const ai = COURSE_ORDER.indexOf(a.id.replace('course/', ''));
-    const bi = COURSE_ORDER.indexOf(b.id.replace('course/', ''));
-    return ai - bi;
+    const rank = (id: string) => { const i = COURSE_ORDER.indexOf(id.replace('course/', '')); return i < 0 ? Infinity : i; };  // unknown → bottom, not top
+    return rank(a.id) - rank(b.id);
   }
   return a.label.localeCompare(b.label);
 });

@@ -154,7 +154,7 @@ export function useSandbox(folderId: string) {
     worker.postMessage({ type: 'reset', preload: folderSources(folderId) });
     replayFiles(worker);
     workerRef.current = worker;
-    return () => { clearFileWaiters(); worker.terminate(); workerRef.current = null; };
+    return () => { clearFileWaiters(); worker.terminate(); workerRef.current = null; didMount.current = false; };  // reset so a StrictMode remount doesn't fire the folder effect redundantly
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attach, replayFiles]);
 

@@ -32,7 +32,9 @@ function ChapterRunner({ folderId, files }: { folderId: string; files: MFile[] }
   const [openId, setOpenId] = useState(files[0].id);
   const [editor, setEditor] = useState(lf(files[0].source));
   const { lines, fig, busy, prompt, completions, runSource, submit, clearConsole } = useSandbox(folderId);
-  useEffect(() => { const f = files.find((x) => x.id === openId); if (f) setEditor(lf(f.source)); }, [openId, files]);
+  // Fall back to the first file if openId is stale (e.g. navigating to a chapter whose files
+  // don't contain the previously-open id) so the editor never gets stuck on the old chapter.
+  useEffect(() => { const f = files.find((x) => x.id === openId) ?? files[0]; if (f.id !== openId) setOpenId(f.id); setEditor(lf(f.source)); }, [openId, files]);
   const t = (en: string, hu: string) => (lang === 'hu' ? hu : en);
 
   return (
