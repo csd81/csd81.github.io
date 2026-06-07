@@ -6,23 +6,11 @@ import type { Builtin } from '../builtins';
 import {
   type Value, type Mat, type StructV, isMat, scalar, colVec, rowVec, zeros, toArray, asScalar, asString, toMat as m, map, mat,
 } from '../values';
+import { erf, erfc, erfinv } from '../specfun';
 import type { ToolboxModule } from './types';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
-// ── special functions for the Q-function (Numerical Recipes erfcc ~1.2e-7; erfinv via Newton) ──
-function erfc(x: number): number {
-  const z = Math.abs(x), t = 1 / (1 + 0.5 * z);
-  const ans = t * Math.exp(-z * z - 1.26551223 + t * (1.00002368 + t * (0.37409196 + t * (0.09678418 + t * (-0.18628806 + t * (0.27886807 + t * (-1.13520398 + t * (1.48851587 + t * (-0.82215223 + t * 0.17087277)))))))));
-  return x >= 0 ? ans : 2 - ans;
-}
-const erf = (x: number) => 1 - erfc(x);
-function erfinv(y: number): number {
-  if (y <= -1) return -Infinity; if (y >= 1) return Infinity; if (y === 0) return 0;
-  const a = 0.147, ln = Math.log(1 - y * y), t1 = 2 / (Math.PI * a) + ln / 2;
-  let w = Math.sign(y) * Math.sqrt(Math.sqrt(t1 * t1 - ln / a) - t1);
-  for (let i = 0; i < 4; i++) w -= (erf(w) - y) / (2 / Math.sqrt(Math.PI) * Math.exp(-w * w)); // Newton refine
-  return w;
-}
+// special functions for the Q-function — erf/erfc/erfinv from the shared specfun module
 const SQRT2 = Math.sqrt(2);
 /** Rows of a matrix as number[][]. */
 function rows(M: Mat): number[][] { const o: number[][] = []; for (let r = 0; r < M.rows; r++) { const row: number[] = []; for (let c = 0; c < M.cols; c++) row.push(M.data[r + c * M.rows]); o.push(row); } return o; }

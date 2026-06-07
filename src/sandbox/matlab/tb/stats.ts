@@ -9,6 +9,7 @@ import {
 } from '../values';
 import type { ToolboxModule } from './types';
 import { inv, det, schur, svd, qr } from '../linalg';
+import { erf, erfc } from '../specfun';
 import { matmul, transpose } from '../values';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
@@ -74,8 +75,6 @@ function betainc(x: number, a: number, b: number): number {
   const bt = Math.exp(logGamma(a + b) - logGamma(a) - logGamma(b) + a * Math.log(x) + b * Math.log(1 - x));
   return x < (a + 1) / (a + b + 2) ? bt * betacf(x, a, b) / a : 1 - bt * betacf(1 - x, b, a) / b;
 }
-function erf(x: number): number { return x < 0 ? -gammainc(x * x, 0.5) : gammainc(x * x, 0.5); }
-function erfc(x: number): number { return 1 - erf(x); }
 function nCk(n: number, k: number): number { if (k < 0 || k > n) return 0; return Math.exp(logGamma(n + 1) - logGamma(k + 1) - logGamma(n - k + 1)); }
 /** log of n-choose-k (log-domain, safe for large populations). */
 function lchoose(n: number, k: number): number { return logGamma(n + 1) - logGamma(k + 1) - logGamma(n - k + 1); }

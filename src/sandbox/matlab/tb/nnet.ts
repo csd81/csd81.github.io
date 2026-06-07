@@ -5,6 +5,7 @@ import {
   type Value, type Cell, type Str, scalar, rowVec, colVec, toArray, asScalar, toMat as m, isMat, isStr, isCell, makeStrArr, makeCell, MatError,
   mat, zeros, makeObject, fromRows, str, bool,
 } from '../values';
+import { erf } from '../specfun';
 import type { ToolboxModule } from './types';
 
 // ── tiny matrix helpers (column-major [rows×cols]) ────────────────────────────────────
@@ -102,13 +103,7 @@ function tanhBwd(dA: M2, A: M2): M2 { return ewMul(dA, ewApply(A, v => 1 - v * v
 function leakyReluFwd(Z: M2, alpha = 0.01): M2 { return ewApply(Z, v => v > 0 ? v : alpha * v); }
 function leakyReluBwd(dA: M2, Z: M2, alpha = 0.01): M2 { return ewMul(dA, ewApply(Z, v => v > 0 ? 1 : alpha)); }
 
-// Exact GELU: 0.5*x*(1 + erf(x/sqrt(2))) — matches MATLAB R2026a.
-function erf(x: number): number {
-  // Abramowitz & Stegun 7.1.26 — max abs error ~1.5e-7, well within 1e-4.
-  const t = 1 / (1 + 0.3275911 * Math.abs(x));
-  const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
-  return x >= 0 ? y : -y;
-}
+// Exact GELU: 0.5*x*(1 + erf(x/sqrt(2))) — erf from shared specfun (full precision).
 function geluFwd(Z: M2): M2 {
   return ewApply(Z, v => 0.5 * v * (1 + erf(v / Math.SQRT2)));
 }

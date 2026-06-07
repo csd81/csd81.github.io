@@ -4,17 +4,12 @@ import {
   type Value, scalar, rowVec, colVec, toArray, asScalar, toMat as m, isMat, isStruct, isStr, MatError,
   mat, zeros, makeObject, str,
 } from '../values';
+import { erf } from '../specfun';
 import type { ToolboxModule } from './types';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
 
-// ── Standard-normal helpers ─────────────────────────────────────────────────────────────
-function erf(x: number): number {
-  const s = x < 0 ? -1 : 1; x = Math.abs(x);
-  const t = 1 / (1 + 0.3275911 * x);
-  const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
-  return s * y;
-}
+// ── Standard-normal helpers (erf from shared specfun) ────────────────────────────────────
 const N = (x: number) => 0.5 * (1 + erf(x / Math.SQRT2));
 
 // ── Date utilities ──────────────────────────────────────────────────────────────────────

@@ -20,29 +20,12 @@ import type { Builtin } from '../builtins';
 import {
   type Value, type StructV, scalar, rowVec, colVec, toArray, asScalar, toMat as m, isMat, isStr, MatError, mat,
 } from '../values';
+import { erf } from '../specfun';
 import type { ToolboxModule } from './types';
 
 const ret = (...vs: Value[]): Promise<Value[]> => Promise.resolve(vs);
 
-// ── Normal distribution helpers ──────────────────────────────────────────────────────────
-// High-precision erf via Taylor series (converges to ~1e-17 for |x|<6, exact for |x|>=6).
-function erf(x: number): number {
-  const ax = Math.abs(x);
-  let r: number;
-  if (ax >= 6) {
-    r = 1;
-  } else {
-    let sum = ax, term = ax;
-    for (let k = 1; k <= 60; k++) {
-      term *= -ax * ax / k;
-      const contrib = term / (2 * k + 1);
-      sum += contrib;
-      if (Math.abs(contrib) < 1e-17) break;
-    }
-    r = (2 / Math.sqrt(Math.PI)) * sum;
-  }
-  return x < 0 ? -r : r;
-}
+// ── Normal distribution helpers (erf from shared specfun) ────────────────────────────────
 const normcdf = (x: number) => 0.5 * (1 + erf(x / Math.SQRT2));
 const normpdf = (x: number) => Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
 

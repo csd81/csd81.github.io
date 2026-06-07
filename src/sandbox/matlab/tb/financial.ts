@@ -5,19 +5,13 @@ import type { Builtin } from '../builtins';
 import {
   type Value, type Mat, scalar, colVec, rowVec, toArray, asScalar, toMat as m, isMat, isStr, MatError, mat,
 } from '../values';
+import { erf } from '../specfun';
 import type { ToolboxModule } from './types';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
 const arg = (a: Value[], i: number, d: number) => (a.length > i && isMat(a[i]) && a[i].kind === 'num' && (a[i] as { rows: number }).rows ? asScalar(a[i]) : d);
 
-// Standard normal CDF via Abramowitz-Stegun 7.1.26 erf (≈1.5e-7, ample for option prices).
-function erf(x: number): number {
-  const s = x < 0 ? -1 : 1; x = Math.abs(x);
-  const t = 1 / (1 + 0.3275911 * x);
-  const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
-  return s * y;
-}
-const normcdf = (x: number) => 0.5 * (1 + erf(x / Math.SQRT2));
+const normcdf = (x: number) => 0.5 * (1 + erf(x / Math.SQRT2));   // erf from shared specfun (full precision)
 
 /** Net present value: CF(1) at t=0 (undiscounted), CF(k) at t=k-1. */
 function npv(rate: number, cf: number[]): number { return cf.reduce((s, c, t) => s + c / (1 + rate) ** t, 0); }
