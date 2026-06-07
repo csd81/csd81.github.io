@@ -24,7 +24,7 @@ import { type SymExpr, sN, sV, sAdd, sSub, sMul, sPow, sFn, sNeg, sDiv, simplify
 import {
   det, inv, mldivide, illConditionWarning, diag, norm, eye,
   qr as qrDecomp, chol as cholFn, luOutputs, jacobiEigSym, svd as svdReal,
-  rankOf, cond as condFn, pinv as pinvFn, orth as orthFn, nullspace, rref as rrefFn, vecnorm as vecnormFn, isSymmetric, cDet, svdC as svdCplx,
+  rankOf, cond as condFn, pinv as pinvFn, orth as orthFn, nullspace, nullspaceRational, rref as rrefFn, vecnorm as vecnormFn, isSymmetric, cDet, svdC as svdCplx,
   generalEig, durandKerner, hess as hessFn, schur as schurFn, expm as expmFn, logm as logmFn, sqrtm as sqrtmFn, ldl as ldlFn, lsqnonneg as lsqnonnegFn,
   balance as balanceFn, rsf2csf as rsf2csfFn, qz as qzFn, ordschur as ordschurFn, ordqz as ordqzFn, schurEig as schurEigFn,
   hermiteFormInt, smithFormInt,
@@ -1390,7 +1390,10 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   rcond: async (a) => { const c = condFn(m(a[0])); return ret(scalar(c === Infinity ? 0 : 1 / c)); },
   orth: async (a) => ret(orthFn(m(a[0]))),
-  null: async (a) => ret(nullspace(m(a[0]))),
+  null: async (a) => {
+    const opt = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar)) ? asString(a[1]).toLowerCase() : '';
+    return ret(opt === 'r' || opt === 'rational' ? nullspaceRational(m(a[0])) : nullspace(m(a[0])));
+  },
   vecnorm: async (a) => {
     const p = a.length >= 2 ? asScalar(a[1]) : 2; const dim = a.length >= 3 ? Math.round(asScalar(a[2])) : 1;
     return ret(vecnormFn(m(a[0]), p === Infinity ? 'inf' : p, dim));

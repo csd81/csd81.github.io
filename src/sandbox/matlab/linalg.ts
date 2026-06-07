@@ -854,6 +854,25 @@ export function nullspace(A: Mat): Mat {
   return N;
 }
 
+/** Rational null-space basis (MATLAB `null(A,'rational')`): from rref, one basis
+ *  vector per free column with 1 in the free position and -R(pivot,free) elsewhere. */
+export function nullspaceRational(A: Mat): Mat {
+  const R = rref(A); const m = R.rows, n = R.cols;
+  const pivotCol: number[] = []; const isPivot = new Array<boolean>(n).fill(false);
+  for (let r = 0; r < m; r++) {
+    let lead = -1;
+    for (let c = 0; c < n; c++) if (Math.abs(R.data[r + c * m]) > 1e-10) { lead = c; break; }
+    if (lead >= 0) { pivotCol.push(lead); isPivot[lead] = true; }
+  }
+  const free: number[] = []; for (let c = 0; c < n; c++) if (!isPivot[c]) free.push(c);
+  const N = zeros(n, free.length);
+  free.forEach((f, dst) => {
+    N.data[f + dst * n] = 1;
+    pivotCol.forEach((p, ri) => { N.data[p + dst * n] = -R.data[ri + f * m]; });
+  });
+  return N;
+}
+
 /** Reduced row echelon form (Gauss-Jordan, partial pivoting). */
 export function rref(A0: Mat): Mat {
   const A = mat(A0.rows, A0.cols, Float64Array.from(A0.data));
