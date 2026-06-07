@@ -86,6 +86,63 @@ function albersheim(args: Value[]): Promise<Value[]> {
   return ret(scalar(snr));
 }
 
+// ── ROC curves (rocsnr / rocpfa) — Gaussian Q-function helpers ────────────────────────────
+// Numerical-Recipes erfc (|err| < 1.2e-7) → Q(x) = 0.5*erfc(x/√2) = P(N(0,1) > x).
+function erfcApprox(x: number): number {
+  const z = Math.abs(x), t = 1 / (1 + 0.5 * z);
+  const ans = t * Math.exp(-z * z - 1.26551223 + t * (1.00002368 + t * (0.37409196 + t * (0.09678418 + t * (-0.18628806 + t * (0.27886807 + t * (-1.13520398 + t * (1.48851587 + t * (-0.82215223 + t * 0.17087277)))))))));
+  return x >= 0 ? ans : 2 - ans;
+}
+const qfn = (x: number): number => 0.5 * erfcApprox(x / Math.SQRT2);
+// Acklam inverse normal CDF (|err| ~1.15e-9). qinv(p) solves Q(qinv(p)) = p.
+function norminvAcklam(p: number): number {
+  if (p <= 0) return -Infinity; if (p >= 1) return Infinity;
+  const a = [-3.969683028665376e1, 2.209460984245205e2, -2.759285104469687e2, 1.383577518672690e2, -3.066479806614716e1, 2.506628277459239];
+  const b = [-5.447609879822406e1, 1.615858368580409e2, -1.556989798598866e2, 6.680131188771972e1, -1.328068155288572e1];
+  const c = [-7.784894002430293e-3, -3.223964580411365e-1, -2.400758277161838, -2.549732539343734, 4.374664141464968, 2.938163982698783];
+  const d = [7.784695709041462e-3, 3.224671290700398e-1, 2.445134137142996, 3.754408661907416];
+  const pl = 0.02425, ph = 1 - pl; let q: number, r: number;
+  if (p < pl) { q = Math.sqrt(-2 * Math.log(p)); return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1); }
+  if (p <= ph) { q = p - 0.5; r = q * q; return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1); }
+  q = Math.sqrt(-2 * Math.log(1 - p)); return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1);
+}
+const qinv = (p: number): number => norminvAcklam(1 - p);
+// NonfluctuatingCoherent detection probability for N coherently integrated pulses.
+const pdCoherent = (snrLin: number, pfa: number, N: number): number => qfn(qinv(pfa) - Math.sqrt(2 * N * snrLin));
+function rocOpts(args: Value[], start: number): Map<string, Value> {
+  const o = new Map<string, Value>();
+  for (let i = start; i + 1 < args.length; i += 2) o.set(asString(args[i]).toLowerCase(), args[i + 1]);
+  return o;
+}
+const optNum = (o: Map<string, Value>, k: string, dflt: number): number => (o.has(k) ? asScalar(m(o.get(k)!, k)) : dflt);
+
+// rocsnr(SNRdB, ...): [Pd,Pfa] ROC over a log-spaced Pfa grid (rows) for each input SNR (cols).
+function rocsnr(args: Value[]): Promise<Value[]> {
+  const snrDb = Array.from(m(args[0], 'SNR').data);
+  const o = rocOpts(args, 1);
+  const sig = o.has('signaltype') ? asString(o.get('signaltype')!).toLowerCase() : 'nonfluctuatingcoherent';
+  if (sig !== 'nonfluctuatingcoherent') throw new MatError('rocsnr: only SignalType "NonfluctuatingCoherent" is supported');
+  const N = optNum(o, 'numpulses', 1), npts = Math.round(optNum(o, 'numpoints', 101));
+  const lo = Math.log10(optNum(o, 'minpfa', 1e-10)), hi = Math.log10(optNum(o, 'maxpfa', 1));
+  const pfa = Array.from({ length: npts }, (_, i) => (npts === 1 ? 10 ** lo : 10 ** (lo + ((hi - lo) * i) / (npts - 1))));
+  const cols = snrDb.length, pd = new Float64Array(npts * cols);
+  for (let j = 0; j < cols; j++) { const lin = 10 ** (snrDb[j] / 10); for (let i = 0; i < npts; i++) pd[i + j * npts] = pdCoherent(lin, pfa[i], N); }
+  return Promise.resolve([{ kind: 'num', rows: npts, cols, data: pd } as Mat, { kind: 'num', rows: npts, cols: 1, data: Float64Array.from(pfa) } as Mat]);
+}
+// rocpfa(Pfa, ...): [Pd,SNR] ROC over a linear SNR(dB) grid (rows) for each input Pfa (cols).
+function rocpfa(args: Value[]): Promise<Value[]> {
+  const pfa = Array.from(m(args[0], 'Pfa').data);
+  const o = rocOpts(args, 1);
+  const sig = o.has('signaltype') ? asString(o.get('signaltype')!).toLowerCase() : 'nonfluctuatingcoherent';
+  if (sig !== 'nonfluctuatingcoherent') throw new MatError('rocpfa: only SignalType "NonfluctuatingCoherent" is supported');
+  const N = optNum(o, 'numpulses', 1), npts = Math.round(optNum(o, 'numpoints', 101));
+  const mn = optNum(o, 'minsnr', -10), mx = optNum(o, 'maxsnr', 10);
+  const snrDb = Array.from({ length: npts }, (_, i) => (npts === 1 ? mn : mn + ((mx - mn) * i) / (npts - 1)));
+  const cols = pfa.length, pd = new Float64Array(npts * cols);
+  for (let j = 0; j < cols; j++) for (let i = 0; i < npts; i++) pd[i + j * npts] = pdCoherent(10 ** (snrDb[i] / 10), pfa[j], N);
+  return Promise.resolve([{ kind: 'num', rows: npts, cols, data: pd } as Mat, { kind: 'num', rows: npts, cols: 1, data: Float64Array.from(snrDb) } as Mat]);
+}
+
 // ── aperture2gain(A,lambda): G(dBi) = 10*log10(4*pi*A/lambda^2) ──────────────────────────
 // (Also owned by radar, which wins the default pick; reach this one via phased.aperture2gain
 //  or useToolbox('phased').)
@@ -267,6 +324,8 @@ export const PHASED: ToolboxModule = {
     wavelen2freq,
     gain2aperture,
     albersheim,
+    rocsnr,
+    rocpfa,
   },
   help: {
     az2broadside: {
@@ -390,6 +449,27 @@ export const PHASED: ToolboxModule = {
         'for a nonfluctuating target in white Gaussian noise (linear detector). Albersheim approximation.',
       ],
       seealso: ['shnidman', 'rocsnr'],
+    },
+    rocsnr: {
+      summary: 'Receiver operating characteristic curves by SNR',
+      syntax: ["[Pd,Pfa] = rocsnr(SNRdB)", "[Pd,Pfa] = rocsnr(SNRdB,Name,Value)"],
+      description: [
+        'Computes the detection probability Pd over a log-spaced grid of false-alarm probabilities Pfa for each',
+        'input SNR (dB). Pfa is returned as a column; Pd has one column per SNR value.',
+        "Supported signal type: 'NonfluctuatingCoherent' (default). Name-Value: NumPulses, MinPfa, MaxPfa, NumPoints.",
+        'NonfluctuatingCoherent model: Pd = Q(Qinv(Pfa) - sqrt(2*NumPulses*SNRlinear)).',
+      ],
+      seealso: ['rocpfa', 'albersheim', 'shnidman'],
+    },
+    rocpfa: {
+      summary: 'Receiver operating characteristic curves by false-alarm probability',
+      syntax: ["[Pd,SNR] = rocpfa(Pfa)", "[Pd,SNR] = rocpfa(Pfa,Name,Value)"],
+      description: [
+        'Computes the detection probability Pd over a linear grid of SNR (dB) for each input false-alarm',
+        'probability Pfa. SNR is returned as a column; Pd has one column per Pfa value.',
+        "Supported signal type: 'NonfluctuatingCoherent' (default). Name-Value: NumPulses, MinSNR, MaxSNR, NumPoints.",
+      ],
+      seealso: ['rocsnr', 'albersheim', 'shnidman'],
     },
   },
 };
