@@ -782,6 +782,50 @@ function placeK(A: number[][], B: number[][], poles: { re: number[]; im: number[
   }
   throw new Error('place: (A,B) is not controllable');
 }
+const dotv = (a: number[], b: number[]): number => a.reduce((s, x, i) => s + x * b[i], 0);
+const vecTimesMat = (v: number[], A: number[][]): number[] => A[0].map((_, j) => v.reduce((s, vi, i) => s + vi * A[i][j], 0));
+const colsOf = (M: number[][]): number[][] => { const cN = M[0]?.length ?? 0, out: number[][] = []; for (let j = 0; j < cN; j++) out.push(M.map((r) => r[j])); return out; };
+// Orthonormal set (modified Gram-Schmidt) spanning the given vectors; vectors have length n.
+function orthBasis(vecs: number[][], n: number): number[][] {
+  const basis: number[][] = [];
+  for (const c of vecs) { const v = c.slice(); for (const b of basis) { const d = dotv(v, b); for (let i = 0; i < n; i++) v[i] -= d * b[i]; } const nrm = Math.sqrt(dotv(v, v)); if (nrm > 1e-9) { for (let i = 0; i < n; i++) v[i] /= nrm; basis.push(v); } }
+  return basis;
+}
+// Extend an orthonormal partial basis to a full orthonormal basis of R^n (appends complement).
+function completeBasis(part: number[][], n: number): number[][] {
+  const full = part.map((r) => r.slice());
+  for (let i = 0; i < n && full.length < n; i++) { const v = new Array(n).fill(0); v[i] = 1; for (const b of full) { const d = dotv(v, b); for (let k = 0; k < n; k++) v[k] -= d * b[k]; } const nrm = Math.sqrt(dotv(v, v)); if (nrm > 1e-9) { for (let k = 0; k < n; k++) v[k] /= nrm; full.push(v); } }
+  return full;
+}
+// A null-space vector of M (one solution of M x = 0), normalized. Assumes a nontrivial kernel.
+function nullVec(M: number[][]): number[] {
+  const n = M.length, A = M.map((r) => r.slice()), piv: number[] = []; let row = 0;
+  for (let col = 0; col < n && row < n; col++) {
+    let p = row; for (let r = row + 1; r < n; r++) if (Math.abs(A[r][col]) > Math.abs(A[p][col])) p = r;
+    if (Math.abs(A[p][col]) < 1e-8) continue;
+    [A[row], A[p]] = [A[p], A[row]]; const d = A[row][col]; for (let j = 0; j < n; j++) A[row][j] /= d;
+    for (let r = 0; r < n; r++) if (r !== row) { const f = A[r][col]; for (let j = 0; j < n; j++) A[r][j] -= f * A[row][j]; }
+    piv.push(col); row++;
+  }
+  const free = [...Array(n).keys()].find((c) => !piv.includes(c)) ?? n - 1;
+  const v = new Array(n).fill(0); v[free] = 1; for (let i = 0; i < piv.length; i++) v[piv[i]] = -A[i][free];
+  const nrm = Math.sqrt(dotv(v, v)) || 1; return v.map((x) => x / nrm);
+}
+// Kalman controllability/observability decomposition: orthogonal T with the (un)controllable or
+// (un)observable part separated into the upper-left block. Returns [Abar,Bbar,Cbar,T,r].
+function staircase(A: number[][], B: number[][], C: number[][], obs: boolean): { Abar: number[][]; Bbar: number[][]; Cbar: number[][]; T: number[][]; r: number } {
+  const N = A.length;
+  const span = obs ? obsvRows(A, C) : colsOf(ctrbMat(A, B));   // observable row-space vs controllable col-space
+  const good = orthBasis(span, N), r = good.length;
+  const comp = completeBasis(good, N).slice(r);                // (un)controllable / (un)observable complement first
+  const T = [...comp, ...good]; const Tp = matT(T);
+  return { Abar: smul(smul(T, A), Tp), Bbar: smul(T, B), Cbar: smul(C, Tp), T, r };
+}
+function obsvRows(A: number[][], C: number[][]): number[][] {
+  const N = A.length, rows: number[][] = C.map((r) => r.slice()); let cur = C;
+  for (let i = 1; i < N; i++) { cur = smul(cur, A); for (const rr of cur) rows.push(rr.slice()); }
+  return rows;
+}
 
 export const CONTROL: ToolboxModule = {
   id: 'control',
@@ -968,6 +1012,47 @@ export const CONTROL: ToolboxModule = {
       const A = matRows(m(a[0])), Gm = matRows(m(a[1])), C = matRows(m(a[2])), Q = matRows(m(a[3])); const R = a.length >= 5 ? matRows(m(a[4])) : eye(C.length);
       const Ri = matInv(R); const P = care(matT(A), matT(C), smul(smul(Gm, Q), matT(Gm)), Ri); const L = smul(smul(P, matT(C)), Ri); const E = sortRoots(eigOfMat(matSub(A, smul(L, C))));
       return n >= 3 ? Promise.resolve([fromRows(L), fromRows(P), rootsValue(E)]) : n >= 2 ? Promise.resolve([fromRows(L), fromRows(P)]) : ret(fromRows(L));
+    },
+    /** [csys,T] = canon(sys,type) — modal (diagonal) or companion (controllable canonical) form. */
+    canon: (a, n) => {
+      const s = toSS(a[0]); const N = s.A.length; const type = a.length >= 2 ? asString(a[1]).toLowerCase() : 'modal';
+      if (type.startsWith('comp')) {
+        if ((s.B[0]?.length ?? 0) !== 1) throw new Error('canon: companion form requires a single-input system');
+        let Mi: number[][]; try { Mi = matInv(ctrbMat(s.A, s.B)); } catch { throw new Error('canon: system is not controllable'); }
+        const q = Mi[N - 1]; const T: number[][] = []; let qa = q.slice(); for (let i = 0; i < N; i++) { T.push(qa.slice()); qa = vecTimesMat(qa, s.A); }
+        const Ti = matInv(T); const sys = mkSS({ A: smul(smul(T, s.A), Ti), B: smul(T, s.B), C: smul(s.C, Ti), D: s.D, Ts: s.Ts });
+        return n >= 2 ? Promise.resolve([sys, fromRows(T)]) : ret(sys);
+      }
+      const ev = eigOfMat(s.A); if (ev.im.some((x) => Math.abs(x) > 1e-9)) throw new Error("canon: 'modal' form requires real eigenvalues here; use 'companion'");
+      const V = ev.re.map((lam) => nullVec(s.A.map((row, i) => row.map((x, j) => x - (i === j ? lam : 0)))));
+      const Vm = Array.from({ length: N }, (_, i) => V.map((vec) => vec[i])); const Vi = matInv(Vm);
+      const sys = mkSS({ A: smul(smul(Vi, s.A), Vm), B: smul(Vi, s.B), C: smul(s.C, Vm), D: s.D, Ts: s.Ts });
+      return n >= 2 ? Promise.resolve([sys, fromRows(Vi)]) : ret(sys);
+    },
+    /** [Abar,Bbar,Cbar,T,k] = ctrbf(A,B,C) — controllability staircase (Kalman) decomposition. */
+    ctrbf: (a, n) => {
+      const A = matRows(m(a[0])), B = matRows(m(a[1])), C = a.length >= 3 ? matRows(m(a[2])) : [new Array(A.length).fill(0)];
+      const { Abar, Bbar, Cbar, T, r } = staircase(A, B, C, false);
+      const out = [fromRows(Abar), fromRows(Bbar), fromRows(Cbar), fromRows(T), rowVec([r])];
+      return n >= 5 ? Promise.resolve(out) : n >= 1 ? Promise.resolve(out.slice(0, Math.max(1, n))) : ret(out[0]);
+    },
+    /** [Abar,Bbar,Cbar,T,k] = obsvf(A,B,C) — observability staircase (Kalman) decomposition. */
+    obsvf: (a, n) => {
+      const A = matRows(m(a[0])), B = matRows(m(a[1])), C = matRows(m(a[2]));
+      const { Abar, Bbar, Cbar, T, r } = staircase(A, B, C, true);
+      const out = [fromRows(Abar), fromRows(Bbar), fromRows(Cbar), fromRows(T), rowVec([r])];
+      return n >= 5 ? Promise.resolve(out) : n >= 1 ? Promise.resolve(out.slice(0, Math.max(1, n))) : ret(out[0]);
+    },
+    /** [kest,L,P] = kalman(sys,Qn,Rn) — steady-state Kalman filter (process noise on all states). */
+    kalman: (a, n) => {
+      const s = toSS(a[0]); const A = s.A, C = s.C, nx = A.length, nu = s.B[0]?.length ?? 0, ny = C.length;
+      const Qn = matRows(m(a[1])), Rn = matRows(m(a[2])); const Ri = matInv(Rn);
+      const P = care(matT(A), matT(C), Qn, Ri); const L = smul(smul(P, matT(C)), Ri);
+      const Ae = matSub(A, smul(L, C)); const Be = A.map((_, i) => [...s.B[i], ...L[i]]);
+      const Ce = [...C.map((r) => r.slice()), ...eye(nx)];
+      const De = [...s.D.map((r, i) => [...r, ...new Array(ny).fill(0)]), ...Array.from({ length: nx }, () => new Array(nu + ny).fill(0))];
+      const kest = mkSS({ A: Ae, B: Be, C: Ce, D: De, Ts: s.Ts });
+      return n >= 3 ? Promise.resolve([kest, fromRows(L), fromRows(P)]) : n >= 2 ? Promise.resolve([kest, fromRows(L)]) : ret(kest);
     },
     /** [mag,phase,wout] = bode(sys[,w]) — Bode frequency response data. mag in absolute units,
      *  phase in degrees (unwrapped). With no output args, returns mag only (no plotting here). */
@@ -1298,6 +1383,10 @@ export const CONTROL: ToolboxModule = {
     care: { summary: 'Continuous-time algebraic Riccati equation solver', syntax: ['[X,L,G] = care(A,B,Q)', '[X,L,G] = care(A,B,Q,R)'], description: ["[X,L,G] = care(A,B,Q,R) solves A'X + XA - XBR^-1B'X + Q = 0.", "Returns the stabilizing solution X, the gain G = R^-1 B'X, and the closed-loop eigenvalues L = eig(A-BG)."], seealso: ['dare', 'lqr', 'lyap', 'icare'] },
     dare: { summary: 'Discrete-time algebraic Riccati equation solver', syntax: ['[X,L,G] = dare(A,B,Q)', '[X,L,G] = dare(A,B,Q,R)'], description: ["[X,L,G] = dare(A,B,Q,R) solves X = A'XA - (A'XB)(R+B'XB)^-1(B'XA) + Q.", "Returns X, the gain G = (R+B'XB)^-1 B'XA, and the closed-loop eigenvalues L = eig(A-BG)."], seealso: ['care', 'dlqr', 'dlyap', 'idare'] },
     lqe: { summary: 'Kalman estimator (observer) gain design', syntax: ['[L,P,E] = lqe(A,G,C,Q,R)'], description: ["[L,P,E] = lqe(A,G,C,Q,R) computes the steady-state Kalman estimator gain L for the plant x'=Ax+Bu+Gw, y=Cx+v with process-noise covariance Q and measurement-noise covariance R.", 'P solves the filter Riccati equation; E = eig(A-L*C) are the estimator error-dynamics eigenvalues. Dual of lqr.'], seealso: ['kalman', 'care', 'place', 'reg'] },
+    canon: { summary: 'Canonical state-space realization', syntax: ["csys = canon(sys,'modal')", "csys = canon(sys,'companion')", '[csys,T] = canon(...)'], description: ["csys = canon(sys,'modal') returns the diagonal (modal) realization with the eigenvalues on the diagonal (real-eigenvalue systems).", "csys = canon(sys,'companion') returns the companion (controllability-canonical) form. T is the state-transformation xbar = T*x."], seealso: ['ss2ss', 'ctrbf', 'obsvf', 'ss'] },
+    ctrbf: { summary: 'Controllability staircase form', syntax: ['[Abar,Bbar,Cbar,T,k] = ctrbf(A,B,C)'], description: ['[Abar,Bbar,Cbar,T,k] = ctrbf(A,B,C) computes an orthogonal transformation T that separates the controllable part of the system into the lower-right block (Abar = T*A*T\', Bbar = T*B, Cbar = C*T\'). k reports the number of controllable states.'], seealso: ['obsvf', 'ctrb', 'minreal', 'canon'] },
+    obsvf: { summary: 'Observability staircase form', syntax: ['[Abar,Bbar,Cbar,T,k] = obsvf(A,B,C)'], description: ['[Abar,Bbar,Cbar,T,k] = obsvf(A,B,C) computes an orthogonal transformation T that separates the observable part of the system (Abar = T*A*T\', Bbar = T*B, Cbar = C*T\'). k reports the number of observable states. Dual of ctrbf.'], seealso: ['ctrbf', 'obsv', 'minreal', 'canon'] },
+    kalman: { summary: 'Kalman filter design for state estimation', syntax: ['[kest,L,P] = kalman(sys,Qn,Rn)'], description: ['[kest,L,P] = kalman(sys,Qn,Rn) designs the steady-state Kalman filter for the continuous plant sys with process-noise covariance Qn (entering all states) and measurement-noise covariance Rn.', 'kest is the estimator state-space model with inputs [u;y] and outputs [yhat;xhat]; L is the filter gain and P the error covariance.'], seealso: ['lqe', 'estim', 'care', 'lqg'] },
     dlqr: { summary: 'Linear-quadratic regulator design (discrete time)', syntax: ['[K,S,e] = dlqr(A,B,Q,R)', '[K,S,e] = dlqr(A,B,Q,R,N)'], description: ['[K,S,e] = dlqr(A,B,Q,R) computes the optimal discrete-time LQR gain K minimizing sum(x\'Qx + u\'Ru) subject to x(k+1)=Ax(k)+Bu(k).', 'N adds a cross-term in the cost; S is the solution of the discrete algebraic Riccati equation; e are closed-loop eigenvalues.'], seealso: ['lqr', 'place', 'dare'] },
     bode: { summary: 'Bode frequency response of dynamic systems', syntax: ['bode(sys)', '[mag,phase,wout] = bode(sys)'], seealso: ['bodemag', 'nyquist', 'margin'] },
     bodemag: { summary: 'Bode magnitude response of dynamic systems', syntax: ['bodemag(sys)', '[mag,wout] = bodemag(sys)'], description: ['bodemag(sys) plots the magnitude (in dB) of the frequency response of sys without the phase panel.', '[mag,wout] = bodemag(sys) returns the magnitude and frequency vector without plotting.'], seealso: ['bode', 'nyquist', 'margin'] },
