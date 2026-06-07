@@ -25,7 +25,11 @@ function fillRgba(color: string | undefined, alpha: number): string {
   return c;   // named colour — Plotly handles it (opaque)
 }
 
-export default function PlotlyFigure({ fig, dark }: { fig: FigureSpec; dark: boolean }) {
+export type ScaleOverride = 'auto' | 'linear' | 'log';
+
+export default function PlotlyFigure({ fig, dark, xScale = 'auto', yScale = 'auto' }: { fig: FigureSpec; dark: boolean; xScale?: ScaleOverride; yScale?: ScaleOverride }) {
+  // GUI override wins over the figure spec; 'auto' keeps whatever the code set (xScale/semilogx/…).
+  const effScale = (override: ScaleOverride, specScale?: string) => (override === 'auto' ? specScale : override);
   const fg = dark ? '#d8dee9' : '#1f2733';
   const grid = dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.10)';
   const zero = dark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)';
@@ -34,7 +38,9 @@ export default function PlotlyFigure({ fig, dark }: { fig: FigureSpec; dark: boo
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const axisStyle = (range?: [number, number], origin?: boolean, title?: string, scale?: string, ticks?: number[], ticklabels?: string[]): any => ({
-    range, title: title ? { text: title } : undefined,
+    // Plotly log axes expect range in log10 units; data-unit limits (xlim/ylim) convert here.
+    range: range && scale === 'log' ? [Math.log10(Math.max(range[0], 1e-12)), Math.log10(Math.max(range[1], 1e-12))] : range,
+    title: title ? { text: title } : undefined,
     gridcolor: grid, zeroline: true, zerolinecolor: origin ? fg : zero, zerolinewidth: origin ? 2 : 1,
     showline: !origin, linecolor: grid, color: fg, automargin: true, ...(scale === 'log' ? { type: 'log' } : {}),
     // Explicit tick locations/labels from xticks/yticks/ax.XTick (Plotly tickmode 'array').
@@ -122,8 +128,8 @@ export default function PlotlyFigure({ fig, dark }: { fig: FigureSpec; dark: boo
         data.push({ type: 'scatter', ...ax, x: s.x, y: s.y, mode: s.mode, line: { ...line, shape: s.type === 'stairs' ? 'hv' : 'linear' }, marker, name, ...(s.type === 'area' ? { fill: 'tozeroy' } : {}), ...(s.fillMode ? { fill: s.fillMode, fillcolor: fillRgba(s.color, 0.35) } : {}), ...(s.error ? { error_y: { type: 'data', array: s.error, visible: true } } : {}) });
       });
       for (const s of p.surfaces ?? []) if (s.kind === 'contour') data.push({ type: 'contour', xaxis: xa, yaxis: ya, x: s.x, y: s.y, z: s.z, colorscale, showscale: !!p.colorbar, contours: { coloring: 'fill' } });
-      layout['xaxis' + suf] = { ...axisStyle(p.xRange, p.xOrigin, p.xlabel, p.xScale, p.xticks, p.xticklabels), anchor: ya, ...(single ? {} : { domain: xdom }) };
-      layout['yaxis' + suf] = { ...axisStyle(p.yRange, p.yOrigin, p.ylabel, p.yScale, p.yticks, p.yticklabels), anchor: xa, ...(single ? {} : { domain: ydom }) };
+      layout['xaxis' + suf] = { ...axisStyle(p.xRange, p.xOrigin, p.xlabel, effScale(xScale, p.xScale), p.xticks, p.xticklabels), anchor: ya, ...(single ? {} : { domain: xdom }) };
+      layout['yaxis' + suf] = { ...axisStyle(p.yRange, p.yOrigin, p.ylabel, effScale(yScale, p.yScale), p.yticks, p.yticklabels), anchor: xa, ...(single ? {} : { domain: ydom }) };
       if (p.reflines?.length) {
         layout.shapes = (layout.shapes ?? []).concat(p.reflines.map((rf) => (rf.axis === 'x'
           ? { type: 'line', xref: xa, x0: rf.value, x1: rf.value, yref: ya + ' domain', y0: 0, y1: 1, line: { color: rf.color ?? fg, dash: rf.dash, width: 1.5 } }
