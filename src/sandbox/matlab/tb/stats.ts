@@ -413,10 +413,11 @@ function solveLin(A: number[][], b: number[]): number[] {
   for (let col = 0; col < n; col++) {
     let piv = col; for (let r = col + 1; r < n; r++) if (Math.abs(M[r][col]) > Math.abs(M[piv][col])) piv = r;
     [M[col], M[piv]] = [M[piv], M[col]];
-    const d = M[col][col]; if (d === 0) continue;
+    const d = M[col][col];
+    if (Math.abs(d) < 1e-12) throw new MatError('matrix is singular or rank deficient');   // fail loudly instead of returning bogus zeros
     for (let r = 0; r < n; r++) { if (r === col) continue; const f = M[r][col] / d; for (let c = col; c <= n; c++) M[r][c] -= f * M[col][c]; }
   }
-  return M.map((row, i) => (M[i][i] === 0 ? 0 : row[n] / M[i][i]));
+  return M.map((row, i) => row[n] / M[i][i]);
 }
 /** Upper-tail of the F distribution = fpval(x,df1,df2); df2=Inf → chi²(df1) scaling. */
 function fUpperTail(x: number, df1: number, df2: number): number {
@@ -1301,7 +1302,7 @@ export const STATS: ToolboxModule = {
     hmmestimate: (a, nargout) => {
       // Resolve a sequence value to integer codes; numeric → as-is, string/cell → unique mapping.
       const toCodes = (v: Value): { codes: number[]; uniq: number; numeric: boolean; labels?: string[] } => {
-        if (isMat(v) && !(v as Mat).isChar) { const arr = toArray(m(v)); return { codes: arr, uniq: Math.max(...arr), numeric: true }; }
+        if (isMat(v) && !(v as Mat).isChar) { const arr = toArray(m(v)); if (!arr.length || arr.some((x) => !Number.isInteger(x) || x < 1)) throw new MatError('hmmestimate: numeric symbols/states must be positive integers'); return { codes: arr, uniq: Math.max(...arr), numeric: true }; }
         let items: string[];
         if (isCell(v)) items = v.items.map((it) => asString(it));
         else if (isStr(v)) items = v.items.slice();
@@ -1768,7 +1769,9 @@ export const STATS: ToolboxModule = {
     squareform: (a) => {
       const A = m(a[0]);
       if (A.rows === 1 || A.cols === 1) {
-        const v = toArray(A); const n = Math.round((1 + Math.sqrt(1 + 8 * v.length)) / 2); const D = zeros(n, n); let k = 0;
+        const v = toArray(A); const n = Math.round((1 + Math.sqrt(1 + 8 * v.length)) / 2);
+        if (n * (n - 1) / 2 !== v.length) throw new MatError('squareform: input is not a valid condensed distance vector');
+        const D = zeros(n, n); let k = 0;
         for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) { D.data[i + j * n] = v[k]; D.data[j + i * n] = v[k]; k++; }
         return ret(D);
       }
@@ -1779,7 +1782,7 @@ export const STATS: ToolboxModule = {
     /** linkage(Y[,method]) → (m-1)×3 agglomerative linkage matrix (single/complete/average). */
     linkage: (a) => {
       const A = m(a[0]); let n: number, D: number[][];
-      if (A.rows === 1 || A.cols === 1) { const v = toArray(A); n = Math.round((1 + Math.sqrt(1 + 8 * v.length)) / 2); D = Array.from({ length: n }, () => new Array(n).fill(0)); let k = 0; for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) { D[i][j] = v[k]; D[j][i] = v[k]; k++; } }
+      if (A.rows === 1 || A.cols === 1) { const v = toArray(A); n = Math.round((1 + Math.sqrt(1 + 8 * v.length)) / 2); if (n * (n - 1) / 2 !== v.length) throw new MatError('linkage: input is not a valid condensed distance vector'); D = Array.from({ length: n }, () => new Array(n).fill(0)); let k = 0; for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) { D[i][j] = v[k]; D[j][i] = v[k]; k++; } }
       else { const X = matRows(A); n = X.length; D = Array.from({ length: n }, () => new Array(n).fill(0)); for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) { const d = METRICS.euclidean(X[i], X[j]); D[i][j] = d; D[j][i] = d; } }
       const method = a.length >= 2 ? asString(a[1]).toLowerCase() : 'single';
       const id = Array.from({ length: n }, (_, i) => i); const size = new Array(n).fill(1);
@@ -1805,6 +1808,8 @@ export const STATS: ToolboxModule = {
     /** kmeans(X,k) → [idx, C, sumd]. Lloyd's algorithm, k-means++ init (labels may permute vs MATLAB; sizes match). */
     kmeans: (a, nargout) => {
       const X = matRows(m(a[0])); const k = Math.round(asScalar(a[1])); const n = X.length, dim = X[0]?.length ?? 0;
+      if (n === 0) throw new MatError('kmeans: X must contain at least one observation');
+      if (!Number.isFinite(k) || k < 1 || k > n) throw new MatError('kmeans: the number of clusters must be a positive integer no greater than the number of observations');
       const cen: number[][] = []; cen.push(X[Math.floor(rand() * n)].slice());
       while (cen.length < k) { const d2 = X.map((p) => Math.min(...cen.map((c) => METRICS.squaredeuclidean(p, c)))); const tot = d2.reduce((s, x) => s + x, 0); let r = rand() * tot, idx = 0; while (idx < n - 1 && (r -= d2[idx]) > 0) idx++; cen.push(X[idx].slice()); }
       const idx = new Array(n).fill(0);
@@ -2127,7 +2132,7 @@ export const STATS: ToolboxModule = {
     /** d=mahal(Y,X) — squared Mahalanobis distance of each row of Y to the distribution of X:
      *  d_i = (y_i-mu)·inv(cov(X))·(y_i-mu)'. */
     mahal: (a) => {
-      const X = matRows(m(a[0])); const Y = matRows(m(a[1]));
+      const Y = matRows(m(a[0])); const X = matRows(m(a[1]));   // d2 = mahal(Y,X): Y query points, X reference sample
       const n = X.length, p = X[0]?.length ?? 0;
       const mu = new Array<number>(p).fill(0);
       for (const row of X) for (let j = 0; j < p; j++) mu[j] += row[j] / n;

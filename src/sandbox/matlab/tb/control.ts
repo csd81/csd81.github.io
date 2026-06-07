@@ -83,7 +83,9 @@ function polyValJw(coeffs: number[], w: number): { re: number; im: number } {
 function getNumDenAny(v: Value): { num: number[]; den: number[] } {
   if (isObject(v) && v.className === 'tf') return getNumDen(v);
   if (isObject(v) && v.className === 'ss') {
-    const A = matRows(m(v.props.get('A') as Mat)), B = matRows(m(v.props.get('B') as Mat)), C = matRows(m(v.props.get('C') as Mat));
+    const Bmat = m(v.props.get('B') as Mat), Cmat = m(v.props.get('C') as Mat);
+    if (Bmat.cols !== 1 || Cmat.rows !== 1) throw new Error('this operation requires a SISO state-space model (use tfdata/ssdata to select a channel)');
+    const A = matRows(m(v.props.get('A') as Mat)), B = matRows(Bmat), C = matRows(Cmat);
     const D = v.props.has('D') ? asScalar(v.props.get('D') as Value) : 0; const N = A.length;
     if (N === 0) return { num: [D], den: [1] };
     const p = [1]; let M = eye(N); const Ms = [eye(N)];

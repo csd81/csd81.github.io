@@ -2029,7 +2029,7 @@ export const BUILTINS: Record<string, Builtin> = {
   // ── distances ──
   pdist: async (a) => { const X = m(a[0]); const out: number[] = []; for (let i = 0; i < X.rows; i++) for (let j = i + 1; j < X.rows; j++) { let s = 0; for (let c = 0; c < X.cols; c++) s += (X.data[i + c * X.rows] - X.data[j + c * X.rows]) ** 2; out.push(Math.sqrt(s)); } return ret(rowVec(out)); },
   pdist2: async (a) => { const X = m(a[0]), Y = m(a[1]); const o = zeros(X.rows, Y.rows); for (let i = 0; i < X.rows; i++) for (let j = 0; j < Y.rows; j++) { let s = 0; for (let c = 0; c < X.cols; c++) s += (X.data[i + c * X.rows] - Y.data[j + c * Y.rows]) ** 2; o.data[i + j * X.rows] = Math.sqrt(s); } return ret(o); },
-  squareform: async (a) => { const V = m(a[0]); if (V.rows === 1 || V.cols === 1) { const v = toArray(V); const n = Math.round((1 + Math.sqrt(1 + 8 * v.length)) / 2); const o = zeros(n, n); let k = 0; for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) { o.data[i + j * n] = v[k]; o.data[j + i * n] = v[k]; k++; } return ret(o); } const n = V.rows; const out: number[] = []; for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) out.push(V.data[i + j * n]); return ret(rowVec(out)); },
+  squareform: async (a) => { const V = m(a[0]); if (V.rows === 1 || V.cols === 1) { const v = toArray(V); const n = Math.round((1 + Math.sqrt(1 + 8 * v.length)) / 2); if (v.length > 1 && n * (n - 1) / 2 !== v.length) throw new MatError('squareform: input is not a valid condensed distance vector'); const o = zeros(n, n); let k = 0; for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) { o.data[i + j * n] = v[k]; o.data[j + i * n] = v[k]; k++; } return ret(o); } const n = V.rows; const out: number[] = []; for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) out.push(V.data[i + j * n]); return ret(rowVec(out)); },
   // ── residue ──
   residue: async (a, n) => {
     const b = toArray(m(a[0])), aa = toArray(m(a[1]));
@@ -2045,8 +2045,11 @@ export const BUILTINS: Record<string, Builtin> = {
   sparse: async (a) => {
     if (a.length === 1) return ret(isSparse(a[0]) ? a[0] : denseToSparse(m(a[0])));
     if (a.length === 2) return ret(sparseFromMap(Math.round(asScalar(a[0])), Math.round(asScalar(a[1])), new Map())); // all-zero m×n
-    const ii = toArray(m(a[0])).map((x) => Math.round(x)), jj = toArray(m(a[1])).map((x) => Math.round(x)), vv = toArray(m(a[2]));
-    const rows = a.length >= 4 ? Math.round(asScalar(a[3])) : Math.max(...ii), cols = a.length >= 5 ? Math.round(asScalar(a[4])) : Math.max(...jj);
+    const ii = toArray(m(a[0])).map((x) => Math.round(x)), jj = toArray(m(a[1])).map((x) => Math.round(x)), vv0 = toArray(m(a[2]));
+    if (ii.length !== jj.length) throw new MatError('sparse: vectors i and j must have the same length');
+    const vv = vv0.length === 1 ? new Array(ii.length).fill(vv0[0]) : vv0;   // scalar v broadcasts
+    if (vv.length !== ii.length) throw new MatError('sparse: vectors i, j, and v must have the same length');
+    const rows = a.length >= 4 ? Math.round(asScalar(a[3])) : (ii.length ? Math.max(...ii) : 0), cols = a.length >= 5 ? Math.round(asScalar(a[4])) : (jj.length ? Math.max(...jj) : 0);   // empty triplets ⇒ 0×0, not -Infinity
     return ret(sparseFromTriplets(rows, cols, ii, jj, vv));
   },
   full: async (a) => ret(m(a[0])),

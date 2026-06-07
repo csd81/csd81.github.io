@@ -57,6 +57,7 @@ function runReg(y: number[], T: number, lags: number, model: string): AdfReg {
   const Xty = Array.from({ length: p }, (_, i) => { let s = 0; for (let r = 0; r < X.length; r++) s += X[r][i] * Y[r]; return s; });
   const { x: coeff, inv } = solveSym(XtX, Xty);
   let SSE = 0; for (let r = 0; r < X.length; r++) { let yh = 0; for (let j = 0; j < p; j++) yh += X[r][j] * coeff[j]; SSE += (Y[r] - yh) ** 2; }
+  if (T - p <= 0) throw new MatError('adftest: not enough observations for the requested number of lags');
   const MSE = SSE / (T - p);
   const se = inv.map((rr, i) => Math.sqrt(rr[i] * MSE));
   return { coeff, se, numNonDelta, lags };
@@ -76,7 +77,7 @@ const adftest: Builtin = async (args, nargout) => {
   for (let i = 1; i + 1 < args.length; i += 2) {
     const key = asString(args[i]).toLowerCase(); const val = args[i + 1];
     if (key === 'model') model = asString(val).toUpperCase();
-    else if (key === 'lags') lags = Math.round(asScalar(val));
+    else if (key === 'lags') { const lv = asScalar(val); if (!Number.isInteger(lv) || lv < 0) throw new MatError('Lags must be a nonnegative integer'); lags = lv; }
     else if (key === 'test') test = asString(val).toUpperCase();
     else if (key === 'alpha') alpha = asScalar(val);
     else throw new MatError(`adftest: unknown option '${asString(args[i])}'`);
@@ -109,7 +110,7 @@ const pptest: Builtin = async (args, nargout) => {
   for (let i = 1; i + 1 < args.length; i += 2) {
     const key = asString(args[i]).toLowerCase(); const val = args[i + 1];
     if (key === 'model') model = asString(val).toUpperCase();
-    else if (key === 'lags') lags = Math.round(asScalar(val));
+    else if (key === 'lags') { const lv = asScalar(val); if (!Number.isInteger(lv) || lv < 0) throw new MatError('Lags must be a nonnegative integer'); lags = lv; }
     else if (key === 'test') test = asString(val).toUpperCase();
     else if (key === 'alpha') alpha = asScalar(val);
     else throw new MatError(`pptest: unknown option '${asString(args[i])}'`);
@@ -128,6 +129,7 @@ const pptest: Builtin = async (args, nargout) => {
   const Xty = Array.from({ length: p }, (_, i) => { let s = 0; for (let r = 0; r < X.length; r++) s += X[r][i] * Y[r]; return s; });
   const { x: coeff, inv } = solveSym(XtX, Xty);
   const res = Y.map((yr, r) => { let yh = 0; for (let j = 0; j < p; j++) yh += X[r][j] * coeff[j]; return yr - yh; });
+  if (T - p <= 0) throw new MatError('pptest: not enough observations for the requested number of lags');
   const SSE = res.reduce((s, e) => s + e * e, 0); const MSE = SSE / (T - p);
   const ai = numNonDelta - 1; const a = coeff[ai], se_a = Math.sqrt(inv[ai][ai] * MSE);
   // Newey-West long-run variance: gamma_j autocovariances of the residuals
@@ -178,7 +180,7 @@ const lagmatrix: Builtin = (a) => {
 const autocorr: Builtin = (a) => {
   const y = toArray(m(a[0])), N = y.length;
   let nlags = Math.min(20, N - 1);
-  for (let i = 1; i < a.length; i++) if (isMat(a[i]) && !(a[i] as Mat).isChar && (a[i] as Mat).rows) { nlags = Math.round(asScalar(a[i])); break; }
+  for (let i = 1; i < a.length; i++) if (isMat(a[i]) && !(a[i] as Mat).isChar && (a[i] as Mat).rows) { const lv = asScalar(a[i]); if (!Number.isInteger(lv) || lv < 0) throw new MatError('lags must be a nonnegative integer'); nlags = lv; break; }
   const mean = y.reduce((s, v) => s + v, 0) / N, d = y.map((v) => v - mean), c0 = d.reduce((s, v) => s + v * v, 0);
   const acf: number[] = []; for (let k = 0; k <= nlags; k++) { let s = 0; for (let t = 0; t < N - k; t++) s += d[t] * d[t + k]; acf.push(s / c0); }
   return Promise.resolve([colVec(acf)]);
