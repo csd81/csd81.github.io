@@ -248,7 +248,9 @@ export function parseMlx(bytes: Uint8Array): string {
   for (const p of xml.match(/<w:p\b[\s\S]*?<\/w:p>/g) ?? []) {
     const style = p.match(/<w:pStyle[^>]*w:val="([^"]+)"/);
     if (!style || style[1] !== 'code') continue;
-    const text = [...p.matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/g)].map((m) => xmlEntities(m[1])).join('');   // w:t holds plain text (no nested tags) → linear [^<]*
+    // Lazy [\s\S]*? (not [^<]*) so a <w:t> whose text is wrapped in <![CDATA[ … ]]> — whose
+    // payload may contain '<' — is captured whole; the CDATA wrapper is then stripped below.
+    const text = [...p.matchAll(/<w:t[^>]*>([\s\S]*?)<\/w:t>/g)].map((m) => xmlEntities(m[1])).join('');
     lines.push(text.replace(/^<!\[CDATA\[/, '').replace(/\]\]>$/, ''));
   }
   return lines.join('\n');
