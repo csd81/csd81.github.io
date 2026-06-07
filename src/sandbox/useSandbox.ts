@@ -56,6 +56,7 @@ export function useSandbox(folderId: string) {
   const workerRef = useRef<Worker | null>(null);
   const awaitingInput = useRef(false);
   const runId = useRef(0);
+  const didMount = useRef(false);   // gate the folder-change effect so it doesn't double-reset on mount
   const vfsRef = useRef<Map<string, Uint8Array>>(loadVfs());
   const pendingRef = useRef<Set<string>>(new Set());   // locally-added files not yet seen in a worker manifest
   const getFileWaiters = useRef(new Map<number, (b: Uint8Array | null) => void>());
@@ -93,7 +94,8 @@ export function useSandbox(folderId: string) {
     }
     // Mirror worker deletions — but never drop a file added locally that the worker's (possibly
     // stale) manifest hasn't acknowledged yet, or we'd lose a just-uploaded file (race).
-    for (const k of [...vfsRef.current.keys()]) if (!names.includes(k) && !pendingRef.current.has(k)) { vfsRef.current.delete(k); changed = true; }
+    const nameSet = new Set(names);
+    for (const k of [...vfsRef.current.keys()]) if (!nameSet.has(k) && !pendingRef.current.has(k)) { vfsRef.current.delete(k); changed = true; }
     if (changed && pending === 0) saveVfs(vfsRef.current);
   }, []);
 
@@ -155,6 +157,9 @@ export function useSandbox(folderId: string) {
   }, [attach, replayFiles]);
 
   useEffect(() => {
+    // Skip the first render: the mount effect above already did reset+replay for the initial
+    // folderId, so running here too would double the preload + VFS replay on the fresh worker.
+    if (!didMount.current) { didMount.current = true; return; }
     clearFileWaiters();   // a folder-change reset rebuilds the session — drop any pending file waiters
     workerRef.current?.postMessage({ type: 'reset', preload: folderSources(folderId) });
     if (workerRef.current) replayFiles(workerRef.current);
@@ -189,8 +194,11 @@ export function useSandbox(folderId: string) {
 
   const abort = useCallback(() => {
     if (!busy) return;
+    runId.current++;   // invalidate the current run so its eventual (or never-arriving) 'done' is ignored
     workerRef.current?.postMessage({ type: 'abort' });
     if (awaitingInput.current) { awaitingInput.current = false; workerRef.current?.postMessage({ type: 'inputReply', value: '' }); }
+    // Free the UI immediately: with cooperative abort a stuck synchronous builtin might never post 'done'.
+    setPrompt(null); setBusy(false);
   }, [busy]);
 
   const clearConsole = useCallback(() => setLines([]), []);
