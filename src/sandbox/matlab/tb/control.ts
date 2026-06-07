@@ -748,6 +748,41 @@ function tfChannelsAny(sys: Value): { ny: number; nu: number; num: number[][][];
 }
 const isVflag = (v: Value | undefined): boolean => { if (!v) return false; try { return asString(v).toLowerCase() === 'v'; } catch { return false; } };
 
+// ── pole placement / Riccati-based design (place/acker/care/dare/lqe) ──
+function ctrbMat(A: number[][], B: number[][]): number[][] {
+  const n = A.length; const cols: number[][] = B.map((r) => r.slice()); let cur = B;
+  for (let i = 1; i < n; i++) { cur = smul(A, cur); for (let r = 0; r < n; r++) cols[r].push(...cur[r]); }
+  return cols;
+}
+// Eigenvalues of a raw matrix (characteristic polynomial via Faddeev-LeVerrier → roots).
+function eigOfMat(A: number[][]): { re: number[]; im: number[] } {
+  const N = A.length; if (N === 0) return { re: [], im: [] };
+  const p = [1]; let Mk = eye(N); for (let k = 1; k <= N; k++) { const AM = smul(A, Mk); p[k] = -traceM(AM) / k; Mk = AM.map((row, i) => row.map((vv, j) => vv + (i === j ? p[k] : 0))); }
+  return polyRoots(p);
+}
+const polesArg = (v: Value): { re: number[]; im: number[] } => { const M = m(v); return { re: Array.from(M.data), im: M.idata ? Array.from(M.idata) : Array.from(M.data, () => 0) }; };
+// Ackermann single-input pole placement: K = e_n' · inv(ctrb(A,B)) · φ(A), φ = desired char poly.
+function ackerK(A: number[][], B: number[][], poles: { re: number[]; im: number[] }): number[][] {
+  const n = A.length; const Cm = ctrbMat(A, B); if (Cm[0].length !== n) throw new Error('acker: requires a single-input system');
+  const Cinv = matInv(Cm); const phi = polyFromRoots(poles.re, poles.im);
+  const pows = [eye(n)]; for (let i = 1; i <= n; i++) pows.push(smul(A, pows[i - 1]));
+  let phiA = zeros2(n, n); for (let k = 0; k <= n; k++) phiA = matAddT(phiA, pows[n - k].map((row) => row.map((x) => x * phi[k])));
+  const lastRow = Cinv[n - 1];
+  return [phiA[0].map((_, j) => lastRow.reduce((s, _u, i) => s + lastRow[i] * phiA[i][j], 0))];
+}
+// Pole placement. Single input → Ackermann. Multi-input → reduce along an input direction v with
+// (A,Bv) controllable, place with Ackermann, return K = v·k (a valid placement: eig(A−BK)=poles).
+function placeK(A: number[][], B: number[][], poles: { re: number[]; im: number[] }): number[][] {
+  const mIn = B[0]?.length ?? 0;
+  if (mIn === 1) return ackerK(A, B, poles);
+  for (let attempt = 0; attempt < 60; attempt++) {
+    const v = new Array(mIn).fill(0); if (attempt === 0) v[0] = 1; else for (let i = 0; i < mIn; i++) v[i] = Math.random() * 2 - 1;
+    const Bv = A.map((_, i) => [B[i].reduce((s, bij, j) => s + bij * v[j], 0)]);
+    try { const k = ackerK(A, Bv, poles); return v.map((vi) => k[0].map((kj) => vi * kj)); } catch { /* singular ⇒ try another v */ }
+  }
+  throw new Error('place: (A,B) is not controllable');
+}
+
 export const CONTROL: ToolboxModule = {
   id: 'control',
   name: 'Control System Toolbox',
@@ -908,6 +943,31 @@ export const CONTROL: ToolboxModule = {
       const K = mmul(RBSB, BSA);
       const Acl = matSub(A, mmul(B, K));
       return lqrResult(K, S, Acl, n);
+    },
+    /** K = place(A,B,p) — state-feedback gain so that eig(A−B·K) = p (pole placement). */
+    place: (a) => ret(fromRows(placeK(matRows(m(a[0])), matRows(m(a[1])), polesArg(a[2])))),
+    /** k = acker(A,b,p) — single-input pole placement via Ackermann's formula. */
+    acker: (a) => ret(rowVec(ackerK(matRows(m(a[0])), matRows(m(a[1])), polesArg(a[2]))[0])),
+    /** [X,L,G] = care(A,B,Q[,R]) — continuous algebraic Riccati: A'X+XA−XBR⁻¹B'X+Q=0,
+     *  G=R⁻¹B'X, L=eig(A−BG). */
+    care: (a, n) => {
+      const A = matRows(m(a[0])), B = matRows(m(a[1])), Q = matRows(m(a[2])); const R = a.length >= 4 ? matRows(m(a[3])) : [[1]]; const Ri = matInv(R);
+      const X = care(A, B, Q, Ri); const G = smul(Ri, smul(matT(B), X)); const E = sortRoots(eigOfMat(matSub(A, smul(B, G))));
+      return n >= 3 ? Promise.resolve([fromRows(X), rootsValue(E), fromRows(G)]) : n >= 2 ? Promise.resolve([fromRows(X), rootsValue(E)]) : ret(fromRows(X));
+    },
+    /** [X,L,G] = dare(A,B,Q[,R]) — discrete algebraic Riccati: X=A'XA−(A'XB)(R+B'XB)⁻¹(B'XA)+Q,
+     *  G=(R+B'XB)⁻¹B'XA, L=eig(A−BG). */
+    dare: (a, n) => {
+      const A = matRows(m(a[0])), B = matRows(m(a[1])), Q = matRows(m(a[2])); const R = a.length >= 4 ? matRows(m(a[3])) : [[1]];
+      const { X, K } = dareN(A, B, Q, R, zeros2(A.length, B[0].length)); const E = sortRoots(eigOfMat(matSub(A, smul(B, K))));
+      return n >= 3 ? Promise.resolve([fromRows(X), rootsValue(E), fromRows(K)]) : n >= 2 ? Promise.resolve([fromRows(X), rootsValue(E)]) : ret(fromRows(X));
+    },
+    /** [L,P,E] = lqe(A,G,C,Q[,R]) — Kalman estimator gain. Solves the filter Riccati on the dual
+     *  pair (A',C'); L=P·C'·R⁻¹, E=eig(A−L·C). */
+    lqe: (a, n) => {
+      const A = matRows(m(a[0])), Gm = matRows(m(a[1])), C = matRows(m(a[2])), Q = matRows(m(a[3])); const R = a.length >= 5 ? matRows(m(a[4])) : eye(C.length);
+      const Ri = matInv(R); const P = care(matT(A), matT(C), smul(smul(Gm, Q), matT(Gm)), Ri); const L = smul(smul(P, matT(C)), Ri); const E = sortRoots(eigOfMat(matSub(A, smul(L, C))));
+      return n >= 3 ? Promise.resolve([fromRows(L), fromRows(P), rootsValue(E)]) : n >= 2 ? Promise.resolve([fromRows(L), fromRows(P)]) : ret(fromRows(L));
     },
     /** [mag,phase,wout] = bode(sys[,w]) — Bode frequency response data. mag in absolute units,
      *  phase in degrees (unwrapped). With no output args, returns mag only (no plotting here). */
@@ -1233,6 +1293,11 @@ export const CONTROL: ToolboxModule = {
     series: { summary: 'Series (cascade) connection of two dynamic systems', syntax: ['sys = series(sys1,sys2)'], description: ['sys = series(sys1,sys2) connects sys1 and sys2 in series: the output of sys1 feeds the input of sys2.', 'Equivalent to sys1 * sys2 for LTI models.'], seealso: ['parallel', 'feedback', 'connect'] },
     ss2ss: { summary: 'State coordinate transformation for state-space models', syntax: ['sys2 = ss2ss(sys,T)'], seealso: ['ss', 'canon', 'balreal'] },
     lqr: { summary: 'Linear-quadratic regulator design (continuous time)', syntax: ['[K,S,e] = lqr(sys,Q,R)', '[K,S,e] = lqr(A,B,Q,R)'], seealso: ['dlqr', 'lqe', 'place'] },
+    place: { summary: 'Pole placement design', syntax: ['K = place(A,B,p)'], description: ['K = place(A,B,p) computes a state-feedback gain K such that the eigenvalues of A-B*K are the entries of the vector p (the desired closed-loop poles).', 'Works for single- and multi-input systems; p may contain complex-conjugate pairs.'], seealso: ['acker', 'lqr', 'reg', 'estim'] },
+    acker: { summary: "Pole placement using Ackermann's formula (single input)", syntax: ['k = acker(A,b,p)'], description: ["k = acker(A,b,p) uses Ackermann's formula to compute the state-feedback gain placing the closed-loop poles of the single-input pair (A,b) at p.", 'For multi-input systems use place.'], seealso: ['place', 'lqr'] },
+    care: { summary: 'Continuous-time algebraic Riccati equation solver', syntax: ['[X,L,G] = care(A,B,Q)', '[X,L,G] = care(A,B,Q,R)'], description: ["[X,L,G] = care(A,B,Q,R) solves A'X + XA - XBR^-1B'X + Q = 0.", "Returns the stabilizing solution X, the gain G = R^-1 B'X, and the closed-loop eigenvalues L = eig(A-BG)."], seealso: ['dare', 'lqr', 'lyap', 'icare'] },
+    dare: { summary: 'Discrete-time algebraic Riccati equation solver', syntax: ['[X,L,G] = dare(A,B,Q)', '[X,L,G] = dare(A,B,Q,R)'], description: ["[X,L,G] = dare(A,B,Q,R) solves X = A'XA - (A'XB)(R+B'XB)^-1(B'XA) + Q.", "Returns X, the gain G = (R+B'XB)^-1 B'XA, and the closed-loop eigenvalues L = eig(A-BG)."], seealso: ['care', 'dlqr', 'dlyap', 'idare'] },
+    lqe: { summary: 'Kalman estimator (observer) gain design', syntax: ['[L,P,E] = lqe(A,G,C,Q,R)'], description: ["[L,P,E] = lqe(A,G,C,Q,R) computes the steady-state Kalman estimator gain L for the plant x'=Ax+Bu+Gw, y=Cx+v with process-noise covariance Q and measurement-noise covariance R.", 'P solves the filter Riccati equation; E = eig(A-L*C) are the estimator error-dynamics eigenvalues. Dual of lqr.'], seealso: ['kalman', 'care', 'place', 'reg'] },
     dlqr: { summary: 'Linear-quadratic regulator design (discrete time)', syntax: ['[K,S,e] = dlqr(A,B,Q,R)', '[K,S,e] = dlqr(A,B,Q,R,N)'], description: ['[K,S,e] = dlqr(A,B,Q,R) computes the optimal discrete-time LQR gain K minimizing sum(x\'Qx + u\'Ru) subject to x(k+1)=Ax(k)+Bu(k).', 'N adds a cross-term in the cost; S is the solution of the discrete algebraic Riccati equation; e are closed-loop eigenvalues.'], seealso: ['lqr', 'place', 'dare'] },
     bode: { summary: 'Bode frequency response of dynamic systems', syntax: ['bode(sys)', '[mag,phase,wout] = bode(sys)'], seealso: ['bodemag', 'nyquist', 'margin'] },
     bodemag: { summary: 'Bode magnitude response of dynamic systems', syntax: ['bodemag(sys)', '[mag,wout] = bodemag(sys)'], description: ['bodemag(sys) plots the magnitude (in dB) of the frequency response of sys without the phase panel.', '[mag,wout] = bodemag(sys) returns the magnitude and frequency vector without plotting.'], seealso: ['bode', 'nyquist', 'margin'] },
