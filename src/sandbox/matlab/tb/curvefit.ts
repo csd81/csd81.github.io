@@ -7,6 +7,7 @@ import {
   str, toArray, asString, asScalar, toMat as m, MatError,
 } from '../values';
 import type { ToolboxModule } from './types';
+import { HELP_CURVEFIT } from './help-curvefit';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
 
@@ -400,26 +401,6 @@ const SPLINE_BUILTINS: Record<string, Builtin> = {
   },
 };
 
-const SPLINE_HELP: Record<string, string> = {
-  spmak: 'Put together a spline in B-form',
-  spbrk: 'Extract parts of a B-form spline',
-  spval: 'Evaluate a spline in B-form',
-  sp2pp: 'Convert a spline from B-form to piecewise-polynomial form',
-  augknt: 'Augment a knot sequence (end knots of multiplicity k)',
-  aveknt: 'Knot averages (Greville sites)',
-  brk2knt: 'Knot sequence from breaks and multiplicities',
-  knt2brk: 'Breaks and multiplicities from a knot sequence',
-  knt2mlt: 'Knot multiplicities',
-  aptknt: 'Acceptable knot sequence for interpolation',
-  spcol: 'B-spline collocation matrix',
-  spapi: 'Spline interpolation, B-form',
-  fnval: 'Evaluate a spline (pp-form or B-form) at given points',
-  fnder: 'Differentiate a spline',
-  fnint: 'Integrate a spline',
-  fnbrk: 'Extract parts of a spline (breaks/coefs/order/pieces/interval)',
-  csaps: 'Cubic smoothing spline',
-};
-
 /** Moving-average smoothing with MATLAB's shrinking-window edge rule (window halves at the ends). */
 function movingSmooth(y: number[], span: number): number[] {
   if (span % 2 === 0) span -= 1;             // MATLAB forces an odd span
@@ -536,13 +517,5 @@ export const CURVEFIT: ToolboxModule = {
       return ret(scalar(rSquared(y, yfit)));
     },
   },
-  help: {
-    ...SPLINE_HELP,
-    franke: { summary: "Franke's bivariate test function", syntax: ['z = franke(x,y)'], seealso: ['peaks'] },
-    smooth: { summary: 'Smooths the response data in column vector y using a moving average filter.', syntax: ['yy = smooth(y)', 'yy = smooth(y,span)', 'yy = smooth(y,method)', 'yy = smooth(y,span,method)'], seealso: ['smoothdata', 'fit', 'sort'] },
-    datastats: { summary: 'Returns statistics for the column vector x to the structure xds.', syntax: ['xds = datastats(x) [xds,yds] = datastats(x,y)'], seealso: ['excludedata', 'smooth'] },
-    polyfit2: { summary: 'Polynomial curve fit (alias for polyfit with curve-fitting syntax)', syntax: ['p = polyfit2(x,y,n)'], seealso: ['polyfit', 'polyval'] },
-    polyval2: { summary: 'Evaluate polynomial (alias for polyval)', syntax: ['y = polyval2(p,x)'], seealso: ['polyval', 'polyfit'] },
-    rsquared: { summary: 'R-squared (coefficient of determination) of a fit', syntax: ['r2 = rsquared(y,yfit)'], seealso: ['fit', 'smooth'] },
-  },
+  help: HELP_CURVEFIT,
 };

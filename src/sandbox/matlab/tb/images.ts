@@ -7,6 +7,7 @@ import {
   ndSize, makeND, mat, fromRows,
 } from '../values';
 import type { ToolboxModule } from './types';
+import { HELP_IMAGES } from './help-images';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
@@ -293,39 +294,7 @@ export const IMAGES: ToolboxModule = {
     /** ssim(A,ref[,Name,Value]) — Structural Similarity Index. [ssimval,ssimmap]. */
     ssim: (a, nargout) => Promise.resolve(ssimFn(a, nargout ?? 1)),
   },
-  help: {
-    ind2rgb: { summary: 'Converts the indexed image X and corresponding colormap map to RGB (truecolor) format.', syntax: ['RGB = ind2rgb(X,map)'], seealso: ['image', 'imread', 'rgb2ind'] },
-    measerr: { summary: 'Approximation quality metrics (PSNR, MSE, max error, L2 ratio)', syntax: ['[psnr,mse,maxerr,L2rat] = measerr(X,Xapp)', '[...] = measerr(X,Xapp,Bps)'], seealso: ['psnr', 'immse'] },
-    rgb2ntsc: { summary: 'Converts the red, green, and blue values of an RGB image to luminance (Y) and chrominance (I and Q) values of an NTSC image.', syntax: ['YIQ = rgb2ntsc(RGB)'], seealso: ['ntsc2rgb', 'rgb2ycbcr', 'rgb2lab', 'rgb2xyz', 'rgb2hsv'] },
-    xyz2lab: { summary: 'Converts CIE 1931 XYZ values (2° observer) to CIE 1976 L*a*b* values.', syntax: ['lab = xyz2lab(xyz)', 'lab = xyz2lab(xyz,\'WhitePoint\',whitePoint)'], seealso: ['rgb2lab', 'xyz2rgb', 'lab2xyz'] },
-    rgb2xyz: { summary: 'Converts the red, green, and blue values of an sRGB image to CIE 1931 XYZ values (2° observer).', syntax: ['XYZ = rgb2xyz(RGB)', 'XYZ = rgb2xyz(RGB,Name=Value)'], seealso: ['xyz2rgb', 'rgb2lab', 'lab2xyz', 'lin2rgb', 'rgbwide2xyz'] },
-    rgb2lab: { summary: 'Converts sRGB values to CIE 1976 L*a*b* values.', syntax: ['lab = rgb2lab(RGB)', 'lab = rgb2lab(RGB,Name=Value)'], seealso: ['rgb2xyz', 'lab2rgb', 'xyz2lab'] },
-    im2double: { summary: 'Converts the image I to double precision.', syntax: ['I2 = im2double(I)', 'I2 = im2double(I,"indexed")'], seealso: ['double', 'im2single', 'im2int16', 'im2uint8', 'im2uint16'] },
-    mat2gray: { summary: 'Converts the matrix A to a grayscale image I that contains values in the range 0 (black) to 1 (white).', syntax: ['I = mat2gray(A,[amin amax])', 'I = mat2gray(A)'], seealso: ['rescale', 'gray2ind', 'ind2gray', 'im2gray'] },
-    graythresh: { summary: 'Computes a global threshold T from grayscale image I, using Otsu\'s method [1].', syntax: ['T = graythresh(I)'], seealso: ['imbinarize', 'imquantize', 'multithresh', 'rgb2ind'] },
-    rgb2ycbcr: { summary: 'Converts the red, green, and blue values of an RGB image to luminance (Y) and chrominance (Cb and Cr) values of a YCbCr image.', syntax: ['YCBCR = rgb2ycbcr(RGB)'], seealso: ['rgb2lab', 'rgb2xyz', 'rgb2ntsc', 'ycbcr2rgb', 'rgbwide2ycbcr'] },
-    fspecial: { summary: 'Creates a two-dimensional filter h of the specified type.', syntax: ['h = fspecial(type)', 'h = fspecial("average",hsize)', 'h = fspecial("disk",radius)', 'h = fspecial("gaussian",hsize,sigma)'], seealso: ['conv2', 'del2', 'edge', 'imsharpen', 'imfilter'] },
-    stretchlim: { summary: 'Computes the lower and upper limits that can be used for contrast stretching grayscale or RGB image I.', syntax: ['lowhigh = stretchlim(I)', 'lowhigh = stretchlim(I,Tol)'], seealso: ['brighten', 'decorrstretch', 'histeq', 'imadjust'] },
-    im2single: { summary: 'Converts the grayscale, RGB, or binary image I to data type single, rescaling or offsetting the data as necessary.', syntax: ['J = im2single(I)', 'J = im2single(I,"indexed")'], seealso: ['im2double', 'im2int16', 'im2uint8', 'im2uint16', 'single'] },
-    integralImage: { summary: 'Compute 2-D integral image (summed area table)', syntax: ['intImg = integralImage(I)'], seealso: ['integralBoxFilter'] },
-    integralBoxFilter: { summary: 'Box filtering using integral image', syntax: ['J = integralBoxFilter(intImg,[m n])'], seealso: ['integralImage', 'imfilter'] },
-    padarray: { summary: 'Pads array A with an amount of padding in each dimension specified by padsize.', syntax: ['B = padarray(A,padsize)', 'B = padarray(A,padsize,padval)', 'B = padarray( ___ ,direction)'], seealso: ['circshift', 'imfilter', 'paddata'] },
-    regionprops: { summary: 'The regionprops function measures properties such as area, centroid, and bounding box, for each object (connected component) in an image.', syntax: ['stats = regionprops(BW,properties)', 'stats = regionprops(CC,properties)', 'stats = regionprops(L,properties)', 'stats = regionprops(regions,I,properties)'], seealso: ['regionprops3', 'bwpropfilt', 'bwconncomp', 'bwferet', 'watershed'] },
-    bwlabel: { summary: 'Returns the label matrix L that contains labels for the 8-connected objects found in BW.', syntax: ['L = bwlabel(BW)', 'L = bwlabel(BW,conn)'], seealso: ['bwconncomp', 'bwlabeln', 'bwselect', 'labelmatrix', 'label2rgb'] },
-    imerode: { summary: 'Erodes the grayscale, binary, or packed binary image I using the structuring element SE.', syntax: ['J = imerode(I,SE)', 'J = imerode(I,nhood)', 'J = imerode( ___ ,packopt,m)', 'J = imerode( ___ ,shape)'], seealso: ['bwpack', 'bwunpack', 'conv2', 'filter2', 'imclose'] },
-    imdilate: { summary: 'Dilates the grayscale, binary, or packed binary image I using the structuring element SE.', syntax: ['J = imdilate(I,SE)', 'J = imdilate(I,nhood)', 'J = imdilate( ___ ,packopt)', 'J = imdilate( ___ ,shape)'], seealso: ['bwpack', 'bwunpack', 'conv2', 'filter2', 'imclose'] },
-    imopen: { summary: 'Performs morphological opening on the grayscale or binary image I using the structuring element SE.', syntax: ['J = imopen(I,SE)', 'J = imopen(I,nhood)'], seealso: ['imclose', 'imdilate', 'imerode'] },
-    imclose: { summary: 'Performs morphological closing on the grayscale or binary image I, using the structuring element SE.', syntax: ['J = imclose(I,SE)', 'J = imclose(I,nhood)'], seealso: ['imopen', 'imdilate', 'imerode'] },
-    imboxfilt: { summary: 'Filters image A with a 2-D box filter of the given size (default 3).', syntax: ['B = imboxfilt(A)', 'B = imboxfilt(A,filterSize)', 'B = imboxfilt(___,Name,Value)'], seealso: ['imboxfilt3', 'imfilter', 'imgaussfilt', 'integralBoxFilter'] },
-    imboxfilt3: { summary: 'Filters 3-D volumetric image A with a 3-D box filter of the given size (default 3).', syntax: ['B = imboxfilt3(A)', 'B = imboxfilt3(A,filterSize)', 'B = imboxfilt3(___,Name,Value)'], seealso: ['imboxfilt', 'imgaussfilt3', 'integralBoxFilter3'] },
-    imgaussfilt3: { summary: 'Filters 3-D volumetric image A with a 3-D Gaussian smoothing kernel with standard deviation sigma.', syntax: ['B = imgaussfilt3(A)', 'B = imgaussfilt3(A,sigma)', 'B = imgaussfilt3(___,Name,Value)'], seealso: ['imgaussfilt', 'imboxfilt3', 'imfilter'] },
-    medfilt3: { summary: 'Performs median filtering of the 3-D image A in three dimensions. Default neighborhood is [3 3 3].', syntax: ['B = medfilt3(A)', 'B = medfilt3(A,[m n p])', 'B = medfilt3(___,padopt)'], seealso: ['medfilt2', 'modefilt'] },
-    modefilt: { summary: 'Performs mode filtering on the 2-D or 3-D image A, returning the most frequent value in each neighborhood.', syntax: ['B = modefilt(A)', 'B = modefilt(A,filtSize)', 'B = modefilt(___,padopt)'], seealso: ['medfilt2', 'medfilt3', 'mode'] },
-    stdfilt: { summary: 'Returns the array J, where each output pixel contains the standard deviation of the neighborhood around the corresponding pixel in input image I.', syntax: ['J = stdfilt(I)', 'J = stdfilt(I,nhood)'], seealso: ['std2', 'rangefilt', 'entropyfilt'] },
-    rangefilt: { summary: 'Returns the array J, where each output pixel contains the range (max - min) of the neighborhood around the corresponding pixel in input image I.', syntax: ['J = rangefilt(I)', 'J = rangefilt(I,nhood)'], seealso: ['stdfilt', 'entropyfilt'] },
-    entropyfilt: { summary: 'Returns the array J, where each output pixel contains the entropy value of the neighborhood around the corresponding pixel in input image I.', syntax: ['J = entropyfilt(I)', 'J = entropyfilt(I,nhood)'], seealso: ['entropy', 'rangefilt', 'stdfilt', 'imhist'] },
-    ssim: { summary: 'Computes the Structural Similarity Index (SSIM) value for image A using ref as the reference image.', syntax: ['ssimval = ssim(A,ref)', '[ssimval,ssimmap] = ssim(A,ref)', '[___] = ssim(A,ref,Name,Value)'], seealso: ['immse', 'psnr', 'multissim'] },
-  },
+  help: HELP_IMAGES,
 };
 
 /** Connected-component labeling with 4- or 8-connectivity, in MATLAB column-major

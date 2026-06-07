@@ -12,6 +12,7 @@ import {
   type Value, type Mat, isMat, rowVec, colVec, mat, scalar, bool, toArray, asString, asScalar, toMat as m, MatError,
 } from '../values';
 import type { ToolboxModule } from './types';
+import { HELP_ECON } from './help-econ';
 
 // ── linear algebra: OLS via normal equations (solve (X'X)β = X'y) ────────────
 function solveSym(A: number[][], b: number[]): { x: number[]; inv: number[][] } {
@@ -210,14 +211,7 @@ export const ECON: ToolboxModule = {
   name: 'Econometrics Toolbox',
   docBase: 'https://www.mathworks.com/help/econ/ref/',
   builtins: { adftest, pptest, price2ret, ret2price, tick2ret, ret2tick, lagmatrix, aicbic, autocorr, crosscorr },
-  help: {
-    adftest: { summary: 'Returns the rejection decision from conducting an augmented Dickey-Fuller test for a unit root in the input univariate time series.', syntax: ['h = adftest(y)', 'StatTbl = adftest(Tbl)', '[ ___ ] = adftest( ___ ,Name=Value)', '[ ___ ,reg] = adftest( ___ )'], seealso: ['kpsstest', 'lmctest', 'pptest', 'vratiotest', 'i10test'] },
-    pptest: { summary: 'Returns the rejection decision from conducting the Phillips-Perron test for a unit root in the input univariate time series.', syntax: ['h = pptest(y)', 'StatTbl = pptest(Tbl)', '[ ___ ] = pptest( ___ ,Name=Value)', '[ ___ ,reg] = pptest( ___ )'], seealso: ['adftest', 'kpsstest', 'vratiotest', 'lmctest'] },
-    price2ret: { summary: 'Returns the matrix of numVars continuously compounded return series, and corresponding time intervals, from the input matrix of numVars price series.', syntax: ['[Returns,intervals] = price2ret(Prices)', 'ReturnTbl = price2ret(PriceTbl)', '[ ___ ] = price2ret( ___ ,Name=Value)'], seealso: ['ret2price', 'tick2ret'] },
-    tick2ret: { summary: 'Convert tick (price) series to return series', syntax: ['ret = tick2ret(price)', 'ret = tick2ret(price,base)'], seealso: ['ret2tick', 'price2ret'] },
-    lagmatrix: { summary: 'Shifts the input regular series in time by the input vector of lags (positive) or leads (negative), and returns the matrix of shifted series.', syntax: ['YLag = lagmatrix(Y,lags)', '[YLag,TLag] = lagmatrix(Y,lags)', 'LagTbl = lagmatrix(Tbl,lags)', '[ ___ ] = lagmatrix( ___ ,Name=Value)'] },
-    autocorr: { summary: 'Returns the sample autocorrelation function (ACF) and associated lags of the input univariate time series.', syntax: ['[acf,lags] = autocorr(y)', 'ACFTbl = autocorr(Tbl)', '[ ___ ] = autocorr( ___ ,Name=Value)', 'autocorr( ___ )'] },
-  },
+  help: HELP_ECON,
 };
 // Augmented Dickey-Fuller critical-value tables, extracted verbatim from the
 // R2026a econ/adftest.m getCVTable (rows = effective sample sizes, cols = significance levels).
