@@ -6,26 +6,10 @@ dist/
 .env
 .env.local
 
-# legacy per-chapter app build artifacts (kept as migration sources, not built)
-0*/**/node_modules/
-0*/**/dist/
-10/**/node_modules/
-10/**/dist/
 
-# stray source scans / transcripts (not part of the site)
-peldatar_pages/
-linAlgPeldatar.md
-tamop_37_53.md
-tamop_pages/
-la-tamop-wf*.md
 
-# OCR source PDF (not bundled; Vite globs only *.md)
-src/subjects/linalg/content/*.pdf
-src/subjects/linalg/content/book/*.pdf
 
-# Local lecture videos (large; served locally, not shipped to Pages)
-public/videos/
-
-# function-audit scratch harnesses
-/_audit_*.ts
-scratch/
+# scratch oracle/validation files (top-level)
+/_*.ts
+/_*.m
+/_*.py
