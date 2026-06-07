@@ -74,6 +74,15 @@ export const FUNC_TOOLBOX = new Map<string, ToolboxModule>();
 export const TOOLBOX_METHODS = new Map<string, Record<string, Builtin>>();
 /** Set of all method names — a fast guard so the interpreter only type-checks args when relevant. */
 export const METHOD_NAMES = new Set<string>();
+/** Class inheritance chain: childClassName → parentClassName (e.g. 'tf' → 'lti'). */
+export const CLASS_PARENTS = new Map<string, string>();
+/** Resolve a method for a class, walking the inheritance chain (child → parent → …). This is the
+ *  single dispatch entry point used by the interpreter so subclasses inherit base-class methods. */
+export function lookupMethod(className: string, fn: string): Builtin | undefined {
+  let cls: string | undefined = className; const seen = new Set<string>();
+  while (cls && !seen.has(cls)) { seen.add(cls); const table = TOOLBOX_METHODS.get(cls); if (table && fn in table) return table[fn]; cls = CLASS_PARENTS.get(cls); }
+  return undefined;
+}
 /** Toolbox id → module, so a fully-qualified call (e.g. phased.steervec) or useToolbox(id)
  *  can address a specific owner — nothing is discarded on a name collision. */
 export const TOOLBOX_BY_ID = new Map<string, ToolboxModule>();
@@ -93,6 +102,7 @@ for (const tb of TOOLBOXES) {
     for (const [fn, impl] of Object.entries(table)) { if (!(fn in existing)) existing[fn] = impl; METHOD_NAMES.add(fn); if (!FUNC_TOOLBOX.has(fn)) FUNC_TOOLBOX.set(fn, tb); }
     TOOLBOX_METHODS.set(cls, existing);
   }
+  if (tb.parents) for (const [cls, parent] of Object.entries(tb.parents)) if (!CLASS_PARENTS.has(cls)) CLASS_PARENTS.set(cls, parent);
   if (tb.constants) for (const [k, v] of Object.entries(tb.constants)) if (!(k in TOOLBOX_CONSTANTS)) TOOLBOX_CONSTANTS[k] = v;
   for (const [k, h] of Object.entries(tb.help)) if (!(k in TOOLBOX_HELP)) TOOLBOX_HELP[k] = h;
 }

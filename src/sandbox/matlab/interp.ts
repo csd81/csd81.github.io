@@ -19,7 +19,7 @@ import { type SymExpr, sN, sV, sAdd, sSub, sMul, sDiv, sPow, sFn, simplifyExpr, 
 const SYM_ELEMENTARY = new Set(['sin', 'cos', 'tan', 'cot', 'sec', 'csc', 'asin', 'acos', 'atan', 'acot', 'asec', 'acsc', 'sinh', 'cosh', 'tanh', 'coth', 'sech', 'csch', 'asinh', 'acosh', 'atanh', 'exp', 'log', 'log10', 'log2', 'sqrt', 'abs', 'sign', 'cbrt', 'gamma', 'gammaln', 'erf', 'erfc', 'factorial', 'conj', 'real', 'imag', 'zeta', 'psi', 'sinc', 'erfi', 'dawson', 'fresnelc', 'fresnels', 'ei', 'logint', 'sinhint', 'coshint', 'ssinint', 'dilog', 'wrightOmega']);
 import { det, inv, mldivide } from './linalg';
 import { BUILTINS, CONSTANTS, builtinHelp, docUrl, type Env } from './builtins';
-import { TOOLBOX_METHODS, METHOD_NAMES, TOOLBOX_BY_ID, NAME_OWNERS, TOOLBOX_BUILTINS } from './tb';
+import { METHOD_NAMES, TOOLBOX_BY_ID, NAME_OWNERS, TOOLBOX_BUILTINS, lookupMethod } from './tb';
 import { displayValue, dispValue } from './format';
 import { Graphics } from './graphics';
 
@@ -661,7 +661,7 @@ export class Interpreter implements Env {
         }
         if (raw.kind === 'object' && (e.op === '-' || e.op === '+')) {   // class uminus/uplus overload (e.g. -sys)
           if (e.op === '+') return [raw];
-          const meth = TOOLBOX_METHODS.get(raw.className)?.uminus;
+          const meth = lookupMethod(raw.className, 'uminus');
           if (meth) { const r = await meth([raw], 1, this); return [Array.isArray(r) ? r[0] : r]; }
         }
         const v = asMat(raw);
@@ -675,7 +675,7 @@ export class Interpreter implements Env {
         if (isCell(raw)) { const R = raw.rows, C = raw.cols, it = new Array(R * C); for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) it[c + r * C] = raw.items[r + c * R]; return [makeCell(C, R, it)]; }
         if (isStr(raw)) { const R = raw.rows, C = raw.cols, it = new Array(R * C); for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) it[c + r * C] = raw.items[r + c * R]; return [makeStrArr(C, R, it)]; }
         if (raw.kind === 'object') {   // class ctranspose/transpose overload (e.g. sys')
-          const meth = TOOLBOX_METHODS.get(raw.className)?.[e.op === "'" ? 'ctranspose' : 'transpose'];
+          const meth = lookupMethod(raw.className, e.op === "'" ? 'ctranspose' : 'transpose');
           if (meth) { const r = await meth([raw], 1, this); return [Array.isArray(r) ? r[0] : r]; }
         }
         const v = asMat(raw);
@@ -832,7 +832,7 @@ export class Interpreter implements Env {
     // overload (if any), so e.g. `series(tf,…)` → Control while `series(sym,…)` → Symbolic.
     if (args.length > 0 && METHOD_NAMES.has(name)) {
       const a0 = args[0]; const cls = a0.kind === 'object' ? a0.className : a0.kind === 'sym' ? 'sym' : a0.kind === 'graph' ? (a0.directed ? 'digraph' : 'graph') : a0.kind === 'geom' ? a0.gkind : undefined;
-      const meth = cls ? TOOLBOX_METHODS.get(cls)?.[name] : undefined;
+      const meth = cls ? lookupMethod(cls, name) : undefined;
       if (meth) return meth(args, nargout, this);
     }
     // Active-scope toolbox override (useToolbox): only for toolbox-owned names that base did
@@ -928,7 +928,7 @@ export class Interpreter implements Env {
       const mname = OBJ_BINOP[op];
       if (mname) {
         const cls = av.kind === 'object' ? av.className : (bv as { className: string }).className;
-        const meth = TOOLBOX_METHODS.get(cls)?.[mname];
+        const meth = lookupMethod(cls, mname);
         if (meth) { const r = await meth([av, bv], 1, this); return Array.isArray(r) ? r[0] : r; }
       }
     }

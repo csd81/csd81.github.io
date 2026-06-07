@@ -1931,17 +1931,15 @@ export const CONTROL: ToolboxModule = {
     pidtune: { summary: 'Automatic PID controller tuning (heuristic approximation)', syntax: ['C = pidtune(sys,type)', '[C,info] = pidtune(sys,type)', '[C,info] = pidtune(sys,type,wc)'], description: ['C = pidtune(sys,type) designs a PID controller for plant sys using a heuristic loop-shaping algorithm.', 'NOTE: This implementation is a HEURISTIC and does NOT match MATLAB\'s proprietary pidtune algorithm.', 'It aims for ~60° phase margin via gain selection at the estimated crossover frequency.', 'type is \'p\', \'pi\', \'pd\', or \'pid\'. info.Stable reports closed-loop stability. Verify only stability, not exact coefficients.'], seealso: ['pid', 'pidstd', 'margin', 'looptune'] },
   },
   // OOP method dispatch (see tb/types.ts): series(tf,…) routes here; series(sym,…) → Symbolic.
+  // Operator + interconnection overloads (mtimes/plus/minus/inv/series/…) declared ONCE on the
+  // base 'lti' class; every LTI subclass inherits them via `parents` + the dispatch parent-chain.
+  // All implemented on state-space (LTI_OPS), so tf/ss/zpk/frd/pid behave uniformly and MIMO.
   methods: {
-    // Operator + interconnection overloads (mtimes/plus/minus/inv/series/…) for every LTI class.
-    // All implemented once on state-space via LTI_OPS, so tf/ss/zpk behave uniformly and MIMO.
-    tf: { ...LTI_OPS },
-    ss: { ...LTI_OPS },
-    zpk: { ...LTI_OPS },
-    // pid/pid2/pidstd objects support the same LTI arithmetic (routed through toSS via their
-    // toSS() conversion above), so they interoperate with feedback/series/step/etc.
-    pid: { ...LTI_OPS },
-    pid2: { ...LTI_OPS },
-    pidstd: { ...LTI_OPS },
+    lti: { ...LTI_OPS },
+  },
+  parents: {
+    tf: 'lti', ss: 'lti', zpk: 'lti', dss: 'lti',   // all handled by toSS()
+    pid: 'lti', pid2: 'lti', pidstd: 'lti',          // PID objects route through toSS(), so they inherit too
   },
 };
 

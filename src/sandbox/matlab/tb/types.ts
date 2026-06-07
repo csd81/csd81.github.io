@@ -25,4 +25,9 @@ export interface ToolboxModule {
    *  a call whose first argument is of `className` routes here instead of the global builtin —
    *  matching MATLAB's method dispatch. See tb/index.ts (TOOLBOX_METHODS) + interp.ts. */
   methods?: Record<string, Record<string, Builtin>>;
+  /** Class inheritance: childClassName → parentClassName. Method dispatch walks this chain
+   *  (child → parent → …), so shared behaviour is declared once on a base class (e.g. tf/ss/zpk
+   *  → 'lti'; Normal/Poisson → 'distribution') instead of repeated per subclass. See CLASS_PARENTS
+   *  + lookupMethod in tb/index.ts. */
+  parents?: Record<string, string>;
 }
