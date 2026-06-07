@@ -17,7 +17,7 @@ import { type SymExpr, sN, sV, sAdd, sSub, sMul, sDiv, sPow, sFn, simplifyExpr, 
 
 /** Elementary functions that overload to symbolic when given a sym argument. */
 const SYM_ELEMENTARY = new Set(['sin', 'cos', 'tan', 'cot', 'sec', 'csc', 'asin', 'acos', 'atan', 'acot', 'asec', 'acsc', 'sinh', 'cosh', 'tanh', 'coth', 'sech', 'csch', 'asinh', 'acosh', 'atanh', 'exp', 'log', 'log10', 'log2', 'sqrt', 'abs', 'sign', 'cbrt', 'gamma', 'gammaln', 'erf', 'erfc', 'factorial', 'conj', 'real', 'imag', 'zeta', 'psi', 'sinc', 'erfi', 'dawson', 'fresnelc', 'fresnels', 'ei', 'logint', 'sinhint', 'coshint', 'ssinint', 'dilog', 'wrightOmega']);
-import { det, inv, mldivide } from './linalg';
+import { det, inv, mldivide, illConditionWarning } from './linalg';
 import { BUILTINS, CONSTANTS, builtinHelp, docUrl, type Env } from './builtins';
 import { METHOD_NAMES, TOOLBOX_BY_ID, NAME_OWNERS, TOOLBOX_BUILTINS, lookupMethod } from './tb';
 import { displayValue, dispValue } from './format';
@@ -958,7 +958,7 @@ export class Interpreter implements Env {
       case '.^': r = ewPow(a, b); break;
       case '*': r = cmatmul(a, b); break;
       case '/': r = rdivide(a, b); break;
-      case '\\': r = mldivide(a, b); break;
+      case '\\': { r = mldivide(a, b); const w = isMat(a) ? illConditionWarning(a) : null; if (w) this.output('Warning: ' + w + '\n'); break; }
       case '^': r = mpower(a, b); break;
       case '==': r = ewEq(a, b, true); arith = false; break;
       case '~=': r = ewEq(a, b, false); arith = false; break;

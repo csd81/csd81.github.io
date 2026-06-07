@@ -815,6 +815,17 @@ export function rankOf(A: Mat, tol?: number): number {
   return s.filter((x) => x > t).length;
 }
 export function cond(A: Mat): number { const { s } = svd(A); const mn = s[s.length - 1]; return mn === 0 ? Infinity : s[0] / mn; }
+/** MATLAB-style "close to singular" message for a square matrix solved via backslash, or null
+ *  if A is well-conditioned (rcond ≥ eps), not square, or complex (cond here is real-only). */
+export function illConditionWarning(A: Mat): string | null {
+  if (A.rows !== A.cols || A.rows < 1 || A.isChar || A.idata) return null;
+  const c = cond(A);
+  const rc = Number.isFinite(c) && c !== 0 ? 1 / c : 0;
+  if (rc >= Number.EPSILON) return null;
+  return rc === 0
+    ? 'Matrix is singular to working precision.'
+    : `Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND = ${rc.toExponential(6)}.`;
+}
 export function pinv(A: Mat): Mat {
   const { U, s, V } = svd(A); const m = A.rows, n = A.cols;
   const tol = Math.max(m, n) * (s[0] || 0) * 2.220446049250313e-16;

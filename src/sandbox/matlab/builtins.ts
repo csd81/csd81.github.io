@@ -22,7 +22,7 @@ import {
 } from './values';
 import { type SymExpr, sN, sV, sAdd, sSub, sMul, sPow, sFn, sNeg, sDiv, simplifyExpr, diffExpr, subsExpr, evalExpr as symEval, exprToStr, symVars } from './sym';
 import {
-  det, inv, mldivide, diag, norm, eye,
+  det, inv, mldivide, illConditionWarning, diag, norm, eye,
   qr as qrDecomp, chol as cholFn, luOutputs, jacobiEigSym, svd as svdReal,
   rankOf, cond as condFn, pinv as pinvFn, orth as orthFn, nullspace, rref as rrefFn, vecnorm as vecnormFn, isSymmetric, cDet, svdC as svdCplx,
   generalEig, durandKerner, hess as hessFn, schur as schurFn, expm as expmFn, logm as logmFn, sqrtm as sqrtmFn, ldl as ldlFn, lsqnonneg as lsqnonnegFn,
@@ -1318,7 +1318,7 @@ export const BUILTINS: Record<string, Builtin> = {
   harmonic: async (a) => ret(map(m(a[0]), (x) => { let s = 0; for (let k = 1; k <= Math.round(x); k++) s += 1 / k; return s; })),
   heaviside: async (a) => { if (isSym(a[0])) return ret(makeSym(a[0].rows, a[0].cols, a[0].exprs.map((e) => simplifyExpr(sFn('heaviside', e))))); return ret(map(m(a[0]), (x) => (x > 0 ? 1 : x < 0 ? 0 : 0.5))); },
   dirac: async (a) => { if (isSym(a[0])) return ret(makeSym(a[0].rows, a[0].cols, a[0].exprs.map((e) => simplifyExpr(sFn('dirac', e))))); return ret(map(m(a[0]), (x) => (x === 0 ? Infinity : 0))); },
-  mldivide: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
+  mldivide: async (a, _n, env) => { const A = m(a[0]); const x = mldivide(A, m(a[1])); const w = illConditionWarning(A); if (w) env.output('Warning: ' + w + '\n'); return ret(x); },
   diag: async (a) => {
     const A = m(a[0]); const k = a.length >= 2 ? Math.round(asScalar(a[1])) : 0;
     if (k === 0) return ret(diag(A));
@@ -1373,7 +1373,7 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   tril: async (a) => { const A = m(a[0]); const k = a.length >= 2 ? Math.round(asScalar(a[1])) : 0; const o = zeros(A.rows, A.cols); if (A.idata) o.idata = new Float64Array(o.data.length); for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) if (c - r <= k) { o.data[r + c * A.rows] = A.data[r + c * A.rows]; if (A.idata) o.idata![r + c * A.rows] = A.idata[r + c * A.rows]; } o.isChar = A.isChar; return ret(o); },
   triu: async (a) => { const A = m(a[0]); const k = a.length >= 2 ? Math.round(asScalar(a[1])) : 0; const o = zeros(A.rows, A.cols); if (A.idata) o.idata = new Float64Array(o.data.length); for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) if (c - r >= k) { o.data[r + c * A.rows] = A.data[r + c * A.rows]; if (A.idata) o.idata![r + c * A.rows] = A.idata[r + c * A.rows]; } o.isChar = A.isChar; return ret(o); },
-  linsolve: async (a) => ret(mldivide(m(a[0]), m(a[1]))),
+  linsolve: async (a, _n, env) => { const A = m(a[0]); const x = mldivide(A, m(a[1])); const w = illConditionWarning(A); if (w) env.output('Warning: ' + w + '\n'); return ret(x); },
   mrdivide: async (a) => ret(transpose(mldivide(transpose(m(a[1])), transpose(m(a[0]))))),
   pinv: async (a) => ret(pinvFn(m(a[0]))),
   rank: async (a) => ret(scalar(rankOf(m(a[0]), a.length >= 2 ? asScalar(a[1]) : undefined))),
@@ -3065,7 +3065,10 @@ export const BUILTINS: Record<string, Builtin> = {
     if (isSym(a[0])) { const s = a[0]; const vars = a.length >= 2 ? symNames(a[1]) : symVarsOf(s); return ret(makeSym(vars.length, 1, vars.map((vn) => simplifyExpr(diffExpr(s.exprs[0], vn))))); }
     const A = m(a[0]);
     const grad1 = (v: number[], h: number): number[] => { const n = v.length; const g: number[] = []; for (let i = 0; i < n; i++) { if (n === 1) g.push(0); else if (i === 0) g.push((v[1] - v[0]) / h); else if (i === n - 1) g.push((v[n - 1] - v[n - 2]) / h); else g.push((v[i + 1] - v[i - 1]) / (2 * h)); } return g; };
-    if (A.rows === 1 || A.cols === 1) { const y = toArray(A); const g = grad1(y, a.length >= 2 ? asScalar(a[1]) : 1); return ret(A.cols === 1 ? colVec(g) : rowVec(g)); }
+    // gradient(y, x): non-uniform spacing from a coordinate vector — central diff uses actual gaps.
+    const grad1x = (v: number[], x: number[]): number[] => { const n = v.length; const g: number[] = []; for (let i = 0; i < n; i++) { if (n === 1) g.push(0); else if (i === 0) g.push((v[1] - v[0]) / (x[1] - x[0])); else if (i === n - 1) g.push((v[n - 1] - v[n - 2]) / (x[n - 1] - x[n - 2])); else g.push((v[i + 1] - v[i - 1]) / (x[i + 1] - x[i - 1])); } return g; };
+    const spacingVec = a.length >= 2 && isMat(a[1]) && numel(a[1]) > 1 ? toArray(m(a[1])) : null;
+    if (A.rows === 1 || A.cols === 1) { const y = toArray(A); const g = spacingVec ? grad1x(y, spacingVec) : grad1(y, a.length >= 2 ? asScalar(a[1]) : 1); return ret(A.cols === 1 ? colVec(g) : rowVec(g)); }
     // matrix: FX along columns (x, dim 2), FY along rows (y, dim 1)
     const hx = a.length >= 2 ? asScalar(a[1]) : 1; const hy = a.length >= 3 ? asScalar(a[2]) : hx;
     const FX = zeros(A.rows, A.cols), FY = zeros(A.rows, A.cols);
