@@ -116,11 +116,16 @@ export default function PlotlyFigure({ fig, dark, xScale = 'auto', yScale = 'aut
           for (let t = 0; t < mesh.i.length; t++) { const a = mesh.i[t], b = mesh.j[t], cc = mesh.k[t]; lx.push(mesh.x[a], mesh.x[b], mesh.x[cc], mesh.x[a], NaN); ly.push(mesh.y[a], mesh.y[b], mesh.y[cc], mesh.y[a], NaN); lz.push(mesh.z[a], mesh.z[b], mesh.z[cc], mesh.z[a], NaN); }
           data.push({ type: 'scatter3d', scene: sceneKey, x: lx, y: ly, z: lz, mode: 'lines', line: { color: p.series?.[0]?.color ?? '#2f6fed', width: 2 } });
         } else {
-          data.push({ type: 'mesh3d', scene: sceneKey, x: mesh.x, y: mesh.y, z: mesh.z, i: mesh.i, j: mesh.j, k: mesh.k, intensity: mesh.z, colorscale, showscale: !!p.colorbar, opacity: 1, flatshading: true });
+          data.push({ type: 'mesh3d', scene: sceneKey, x: mesh.x, y: mesh.y, z: mesh.z, i: mesh.i, j: mesh.j, k: mesh.k, intensity: mesh.intensity ?? mesh.z, colorscale, showscale: !!p.colorbar, opacity: 1, flatshading: true });
         }
       }
       for (const s of p.series ?? []) if (s.z) data.push({ type: 'scatter3d', scene: sceneKey, x: s.x, y: s.y, z: s.z, mode: s.mode, line: { color: s.color, width: 4 }, marker: { color: s.color, size: s.sizes ?? 4 } });
-      layout[sceneKey] = { domain: { x: xdom, y: ydom }, xaxis: { title: { text: p.xlabel ?? 'x' }, gridcolor: grid, color: fg }, yaxis: { title: { text: p.ylabel ?? 'y' }, gridcolor: grid, color: fg }, zaxis: { title: { text: p.zlabel ?? 'z' }, gridcolor: grid, color: fg } };
+      // A flat (pdeplot) mesh is viewed straight down so it reads as a 2-D filled-patch plot.
+      const flat = p.meshes?.some((mh) => mh.flat);
+      layout[sceneKey] = { domain: { x: xdom, y: ydom }, aspectmode: flat ? 'data' : 'auto',
+        xaxis: { title: { text: p.xlabel ?? 'x' }, gridcolor: grid, color: fg }, yaxis: { title: { text: p.ylabel ?? 'y' }, gridcolor: grid, color: fg },
+        zaxis: { title: { text: flat ? '' : (p.zlabel ?? 'z') }, gridcolor: grid, color: fg, ...(flat ? { showticklabels: false, showgrid: false, zeroline: false } : {}) },
+        ...(flat ? { camera: { eye: { x: 0, y: 0, z: 2.2 }, up: { x: 0, y: 1, z: 0 } } } : {}) };
     } else {
       (p.series ?? []).forEach((s, i) => {
         const name = s.name ?? p.legend?.[i] ?? `data${i + 1}`;

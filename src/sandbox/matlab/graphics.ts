@@ -33,7 +33,9 @@ export interface Mesh3D {
   i: number[];
   j: number[];
   k: number[];
-  wire?: boolean;      // trimesh → wireframe (edges only)
+  wire?: boolean;        // trimesh → wireframe (edges only)
+  intensity?: number[];  // per-node scalar for colour mapping (pdeplot)
+  flat?: boolean;        // render flat, top-down (2-D filled-patch look)
 }
 /** A 3-D gridded surface (surf/mesh/contour). z[r][c] sits at (x[c], y[r]). */
 export interface Surface {
@@ -492,6 +494,13 @@ export class Graphics {
     const cp = this.cur(); cp.meshes = cp.meshes ?? [];
     cp.meshes.push({ x, y, z, i: tri.map((t) => t[0]), j: tri.map((t) => t[1]), k: tri.map((t) => t[2]), wire });
     this.touch();
+  }
+  /** pdeplot: a flat triangulation coloured by a per-node scalar (filled-patch look). */
+  pdeColorMesh(tri: number[][], x: number[], y: number[], u: number[]) {
+    if (!this.holding) this.clearContent();
+    const cp = this.cur(); cp.meshes = cp.meshes ?? [];
+    cp.meshes.push({ x, y, z: new Array(x.length).fill(0), i: tri.map((t) => t[0]), j: tri.map((t) => t[1]), k: tri.map((t) => t[2]), intensity: u, flat: true });
+    cp.colorbar = true; this.touch();
   }
   /** quiver3(x,y,z,u,v,w): 3-D vector field as NaN-separated line segments. */
   quiver3(xs: number[], ys: number[], zs: number[], us: number[], vs: number[], ws: number[], scale = 0.9) {

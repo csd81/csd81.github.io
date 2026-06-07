@@ -14,9 +14,10 @@
 // All MATLAB indices are 1-based; the wrappers translate to/from 0-based here.
 import type { Builtin } from '../builtins';
 import {
-  type Value, type Mat, isMat, rowVec, colVec, MatError,
+  type Value, type Mat, type StructV, isMat, isObject, isHandle, makeObject, scalar, str, rowVec, colVec, MatError,
   zeros, mat, toArray, asString, asScalar, toMat as m, sparseFromTriplets, matRows as rowsOf,
 } from '../values';
+import { mldivide } from '../linalg';
 import type { ToolboxModule } from './types';
 import { HELP_PDE } from './help-pde';
 
@@ -403,6 +404,148 @@ function dstBuiltin(a: Value[], inverse: boolean): Promise<Value[]> {
   return ret(M);
 }
 function matColumns(M: Mat): number[][] { const out: number[][] = []; for (let c = 0; c < M.cols; c++) { const col = new Array<number>(M.rows); for (let r = 0; r < M.rows; r++) col[r] = M.data[r + c * M.rows]; out.push(col); } return out; }
+
+// ════════════════════════════════════════════════════════════════════════════
+//  High-level PDEModel workflow (createpde → solvepde) — v1: stationary scalar
+//  Poisson  −∇·(c∇u) + a·u = f  on the unit disk / unit square, Dirichlet BC.
+//  PDEModel is a ClassV (by-reference), so the helper functions mutate it in place,
+//  matching MATLAB's handle-object semantics.
+// ════════════════════════════════════════════════════════════════════════════
+
+interface Mesh2D { px: number[]; py: number[]; tri: number[][]; bnd: number[] }   // tri rows are 0-based [i1,i2,i3]
+
+/** Structured polar mesh of the unit disk: centre + concentric rings (m points each). */
+function diskMesh(hmax: number): Mesh2D {
+  const nr = Math.max(2, Math.round(1 / Math.max(hmax, 1e-3)));
+  const mm = Math.max(8, Math.round((2 * Math.PI) / Math.max(hmax, 1e-3)));
+  const px: number[] = [0], py: number[] = [0];
+  for (let k = 1; k <= nr; k++) { const r = k / nr; for (let j = 0; j < mm; j++) { const th = (2 * Math.PI * j) / mm; px.push(r * Math.cos(th)); py.push(r * Math.sin(th)); } }
+  const idx = (k: number, j: number) => (k === 0 ? 0 : 1 + (k - 1) * mm + ((j % mm) + mm) % mm);
+  const tri: number[][] = [];
+  for (let j = 0; j < mm; j++) tri.push([0, idx(1, j), idx(1, j + 1)]);                         // centre fan
+  for (let k = 2; k <= nr; k++) for (let j = 0; j < mm; j++) {                                   // annular quads → 2 triangles
+    const a = idx(k - 1, j), b = idx(k - 1, j + 1), c = idx(k, j + 1), d = idx(k, j);
+    tri.push([a, b, c]); tri.push([a, c, d]);
+  }
+  const bnd: number[] = []; for (let j = 0; j < mm; j++) bnd.push(idx(nr, j));
+  return { px, py, tri, bnd };
+}
+
+/** Structured grid mesh of the unit square [0,1]², each cell split into two triangles. */
+function rectMesh(hmax: number): Mesh2D {
+  const n = Math.max(2, Math.round(1 / Math.max(hmax, 1e-3)));
+  const px: number[] = [], py: number[] = [];
+  const node = (i: number, j: number) => j * (n + 1) + i;
+  for (let j = 0; j <= n; j++) for (let i = 0; i <= n; i++) { px.push(i / n); py.push(j / n); }
+  const tri: number[][] = [];
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { const a = node(i, j), b = node(i + 1, j), c = node(i + 1, j + 1), d = node(i, j + 1); tri.push([a, b, c]); tri.push([a, c, d]); }
+  const bnd: number[] = []; for (let j = 0; j <= n; j++) for (let i = 0; i <= n; i++) if (i === 0 || i === n || j === 0 || j === n) bnd.push(node(i, j));
+  return { px, py, tri, bnd };
+}
+
+/** P1 finite-element solve of −∇·(c∇u) + a·u = f with u = g on the boundary nodes. */
+function femPoisson(msh: Mesh2D, c: number, a: number, f: number, g: number): number[] {
+  const np = msh.px.length;
+  const A = zeros(np, np); const F = new Float64Array(np);
+  for (const [i1, i2, i3] of msh.tri) {
+    const x1 = msh.px[i1], y1 = msh.py[i1], x2 = msh.px[i2], y2 = msh.py[i2], x3 = msh.px[i3], y3 = msh.py[i3];
+    const det = (x2 - x1) * (y3 - y1) - (x3 - x1) * (y2 - y1); const area = Math.abs(det) / 2;
+    if (area === 0) continue;
+    const b = [y2 - y3, y3 - y1, y1 - y2], cc = [x3 - x2, x1 - x3, x2 - x1];   // 2A·∇φ components
+    const nodes = [i1, i2, i3];
+    for (let p = 0; p < 3; p++) for (let q = 0; q < 3; q++) {
+      const ke = c * (b[p] * b[q] + cc[p] * cc[q]) / (4 * area);   // stiffness
+      const me = a * area * (p === q ? 2 : 1) / 12;                // consistent mass
+      A.data[nodes[p] + nodes[q] * np] += ke + me;
+    }
+    for (let p = 0; p < 3; p++) F[nodes[p]] += (f * area) / 3;     // consistent load (constant f)
+  }
+  // Dirichlet: u = g on boundary nodes — move known terms to RHS, then zero rows+cols and pin the diagonal.
+  const isB = new Array<boolean>(np).fill(false); for (const nb of msh.bnd) isB[nb] = true;
+  for (let i = 0; i < np; i++) if (!isB[i]) for (const nb of msh.bnd) F[i] -= A.data[i + nb * np] * g;
+  for (const nb of msh.bnd) { for (let j = 0; j < np; j++) { A.data[nb + j * np] = 0; A.data[j + nb * np] = 0; } A.data[nb + nb * np] = 1; F[nb] = g; }
+  const u = mldivide(A, mat(np, 1, F));
+  return Array.from(u.data);
+}
+
+// ── model helpers ──
+function structOf(fields: Record<string, Value>): StructV { return { kind: 'struct', rows: 1, cols: 1, fields: new Map(Object.entries(fields).map(([k, v]) => [k, [v]])) }; }
+function getMesh(model: Value): Mesh2D { if (!isObject(model)) throw new MatError('expected a PDEModel'); const mh = model.props.get('Mesh'); if (!mh || !isObject(mh)) throw new MatError('generateMesh has not been called on this model.'); return (mh.props.get('__mesh') as unknown as { value: Mesh2D }).value; }
+/** Wrap a Mesh2D so it survives in props as an opaque object. */
+function meshObject(msh: Mesh2D): Value {
+  const P = mat(2, msh.px.length, Float64Array.from([...msh.px, ...msh.py]));
+  const T = zeros(4, msh.tri.length); msh.tri.forEach((tr, e) => { T.data[0 + e * 4] = tr[0] + 1; T.data[1 + e * 4] = tr[1] + 1; T.data[2 + e * 4] = tr[2] + 1; });
+  const o = makeObject('pde.FEMesh', { Nodes: P, Elements: T, NumNodes: scalar(msh.px.length) });
+  (o.props as Map<string, unknown>).set('__mesh', { value: msh } as unknown as Value);   // keep the raw mesh for solve/plot
+  return o;
+}
+/** Parse name/value option pairs from `start`, skipping positional/non-string args robustly. */
+function nvOpts(args: Value[], start: number): Map<string, Value> {
+  const o = new Map<string, Value>();
+  for (let i = start; i < args.length; i++) { const k = args[i]; if ((isMat(k) && (k as Mat).isChar) || k.kind === 'str') { if (i + 1 < args.length) { o.set(asString(k).toLowerCase(), args[i + 1]); i++; } } }
+  return o;
+}
+
+const pdeWorkflow: Record<string, Builtin> = {
+  // model = createpde() / createpde("thermal") — v1 ignores the analysis type (scalar Poisson).
+  createpde: async () => [makeObject('pde.PDEModel', { Geometry: structOf({ NumEdges: scalar(0) }), c: scalar(1), a: scalar(0), f: scalar(0), bcVal: scalar(0) })],
+
+  // Geometry functions: return a small descriptor; v1 supports the unit disk and unit square.
+  circleg: async () => [makeObject('pde.geom', { kind: str('disk'), NumEdges: scalar(4) })],
+  squareg: async () => [makeObject('pde.geom', { kind: str('rect'), NumEdges: scalar(4) })],
+
+  geometryFromEdges: async (a, _n, env) => {
+    const model = a[0];
+    // accept @circleg / @squareg (by handle name) or a descriptor object
+    let kind = 'disk';
+    if (isHandle(a[1])) { const nm = (a[1].name ?? '').toLowerCase(); kind = nm.includes('square') || nm.includes('rect') ? 'rect' : 'disk'; const d = await env.callHandle(a[1], [], 1); if (isObject(d[0]) && d[0].props.get('kind')) kind = asString(d[0].props.get('kind')!); }
+    else if (isObject(a[1]) && a[1].props.get('kind')) kind = asString(a[1].props.get('kind')!);
+    if (isObject(model)) { model.props.set('GeometryKind', str(kind)); model.props.set('Geometry', structOf({ NumEdges: scalar(4) })); }
+    return [model];
+  },
+
+  generateMesh: async (a) => {
+    const model = a[0]; const opts = nvOpts(a, 1);
+    const hmax = opts.has('hmax') ? asScalar(opts.get('hmax')!) : 0.1;
+    const kind = isObject(model) ? asString(model.props.get('GeometryKind') ?? str('disk')) : 'disk';
+    const msh = kind === 'rect' ? rectMesh(hmax) : diskMesh(hmax);
+    if (isObject(model)) model.props.set('Mesh', meshObject(msh));
+    return [model];
+  },
+
+  specifyCoefficients: async (a) => {
+    const model = a[0]; const o = nvOpts(a, 1);
+    if (isObject(model)) { if (o.has('c')) model.props.set('c', o.get('c')!); if (o.has('a')) model.props.set('a', o.get('a')!); if (o.has('f')) model.props.set('f', o.get('f')!); }
+    return [model];
+  },
+
+  // applyBoundaryCondition(model,"dirichlet","Edge",edges,"u",val) — v1 applies a uniform Dirichlet value on the whole boundary.
+  applyBoundaryCondition: async (a) => {
+    const model = a[0]; const o = nvOpts(a, 1);
+    if (isObject(model) && o.has('u')) model.props.set('bcVal', o.get('u')!);
+    return [model];
+  },
+
+  solvepde: async (a) => {
+    const model = a[0]; const msh = getMesh(model);
+    const c = isObject(model) ? asScalar(model.props.get('c') ?? scalar(1)) : 1;
+    const aC = isObject(model) ? asScalar(model.props.get('a') ?? scalar(0)) : 0;
+    const f = isObject(model) ? asScalar(model.props.get('f') ?? scalar(0)) : 0;
+    const g = isObject(model) ? asScalar(model.props.get('bcVal') ?? scalar(0)) : 0;
+    const u = femPoisson(msh, c, aC, f, g);
+    return [makeObject('pde.StationaryResults', { NodalSolution: colVec(u), Mesh: (model as { props: Map<string, Value> }).props.get('Mesh')! })];
+  },
+
+  // pdeplot(model,"XYData",u) — filled colour patches over the triangulation.
+  pdeplot: async (a, _n, env) => {
+    const model = a[0]; const o = nvOpts(a, 1);
+    const msh = getMesh(model);
+    const u = o.has('xydata') ? toArray(m(o.get('xydata')!)) : new Array(msh.px.length).fill(0);
+    env.graphics.pdeColorMesh(msh.tri, msh.px, msh.py, u);
+    return [];
+  },
+};
+Object.assign(builtins, pdeWorkflow);
 
 export const Pde: ToolboxModule = {
   id: 'pde',
