@@ -57,9 +57,13 @@ const eye = (n: number): number[][] => Array.from({ length: n }, (_, i) => Array
 /** Dense matrix inverse via Gauss-Jordan with partial pivoting. */
 function matInv(A: number[][]): number[][] {
   const n = A.length; const M = A.map((r, i) => [...r, ...eye(n)[i]]);
+  // singularity tolerance relative to the matrix ∞-norm — a pivot of ~eps·‖A‖ is numerical noise,
+  // not a usable pivot (a hardcoded 1e-300 would divide by noise and produce a garbage inverse).
+  let normInf = 0; for (let i = 0; i < n; i++) { let s = 0; for (let j = 0; j < n; j++) s += Math.abs(A[i][j]); normInf = Math.max(normInf, s); }
+  const tol = Math.max(n * normInf * 2.220446049250313e-16, 1e-300);
   for (let col = 0; col < n; col++) {
     let piv = col; for (let r = col + 1; r < n; r++) if (Math.abs(M[r][col]) > Math.abs(M[piv][col])) piv = r;
-    if (Math.abs(M[piv][col]) < 1e-300) throw new Error('matrix is singular to working precision');
+    if (Math.abs(M[piv][col]) < tol) throw new Error('matrix is singular to working precision');
     [M[col], M[piv]] = [M[piv], M[col]];
     const d = M[col][col]; for (let j = 0; j < 2 * n; j++) M[col][j] /= d;
     for (let r = 0; r < n; r++) if (r !== col) { const f = M[r][col]; for (let j = 0; j < 2 * n; j++) M[r][j] -= f * M[col][j]; }
@@ -311,7 +315,10 @@ function cholUpper(X: number[][]): number[][] {
 
 /** c2d via ZOH: discretise (A,B) of the tf's controllable-canonical realisation using
  *  expm([[A,B];[0,0]])=[[Ad,Bd];[0,I]], then convert (Ad,Bd,C,D) back to tf. */
-function c2dZoh(num: number[], den: number[], Ts: number): { num: number[]; den: number[] } {
+function c2dZoh(numIn: number[], denIn: number[], Ts: number): { num: number[]; den: number[] } {
+  let den = denIn.slice(); while (den.length > 1 && den[0] === 0) den.shift();
+  let num = numIn.slice(); while (num.length > 1 && num[0] === 0) num.shift();
+  if (num.length > den.length) throw new Error('c2d: improper transfer function');
   // controllable-canonical realization (matches tf2ss above)
   const g = den[0] || 1; const d = den.map((v) => v / g); let nm = num.map((v) => v / g);
   while (nm.length < d.length) nm.unshift(0);
@@ -339,7 +346,10 @@ function ss2tfFL(A: number[][], B: number[][], C: number[][], D: number): { num:
   return { num: num.map((v) => (Math.abs(v) < 1e-12 ? 0 : v)), den: den.map((v) => (Math.abs(v) < 1e-12 ? 0 : v)) };
 }
 /** c2d via Tustin (bilinear): s = (2/Ts)(z-1)/(z+1). Substitute into num(s)/den(s). */
-function c2dTustin(num: number[], den: number[], Ts: number): { num: number[]; den: number[] } {
+function c2dTustin(numIn: number[], denIn: number[], Ts: number): { num: number[]; den: number[] } {
+  let den = denIn.slice(); while (den.length > 1 && den[0] === 0) den.shift();
+  let num = numIn.slice(); while (num.length > 1 && num[0] === 0) num.shift();
+  if (num.length > den.length) throw new Error('c2d: improper transfer function');
   // Pad numerator to denominator length so both are degree n.
   const nn = num.slice(), dd = den.slice();
   while (nn.length < dd.length) nn.unshift(0);
@@ -383,8 +393,13 @@ function evalLjw(num: number[], den: number[], w: number): { re: number; im: num
 }
 /** margin: find phase (−180°) and gain (0 dB) crossovers; return [Gm,Pm,Wcg,Wcp]. */
 function marginData(num: number[], den: number[]): { Gm: number; Pm: number; Wcg: number; Wcp: number } {
-  // dense log grid for bracketing
-  const grid: number[] = []; for (let i = 0; i <= 8000; i++) grid.push(10 ** (-4 + (8 * i) / 8000));
+  // Log grid spanning the pole/zero frequencies (±3 decades), so margins of fast (RF/MEMS) or slow
+  // systems aren't missed by a hardcoded 1e-4…1e4 window.
+  const feats: number[] = [];
+  for (const r of [polyRoots(num), polyRoots(den)]) for (let i = 0; i < r.re.length; i++) { const mg = Math.hypot(r.re[i], r.im[i]); if (mg > 1e-12) feats.push(mg); }
+  let lo = -4, hi = 4;
+  if (feats.length) { lo = Math.floor(Math.log10(Math.min(...feats))) - 3; hi = Math.ceil(Math.log10(Math.max(...feats))) + 3; }
+  const N = 8000, grid: number[] = []; for (let i = 0; i <= N; i++) grid.push(10 ** (lo + ((hi - lo) * i) / N));
   const L = grid.map((w) => evalLjw(num, den, w));
   // --- phase crossover: L(jw) real & negative ⇔ Im[L]=0 with Re[L]<0 (phase = ±180°) ---
   let Wcg = NaN, Gm = Infinity;
@@ -430,6 +445,7 @@ function stepInfoFromResp(t: number[], y: number[], yfinal: number, yinit: numbe
   const RiseTime = tHi - tLo;
   // SettlingMin/Max: extrema once response first reaches the rtHi level (direction-aware).
   let iHi = 0; while (iHi < y.length && (dev >= 0 ? y[iHi] < yHi : y[iHi] > yHi)) iHi++;
+  if (iHi >= y.length) iHi = 0;   // never reached the rtHi threshold ⇒ scan the whole response, not none
   let sMin = Infinity, sMax = -Infinity;
   for (let i = iHi; i < y.length; i++) { sMin = Math.min(sMin, y[i]); sMax = Math.max(sMax, y[i]); }
   // SettlingTime: last time |y-yfinal| exits the ±st·|dev| band
@@ -464,7 +480,10 @@ function stepInfoFromResp(t: number[], y: number[], yfinal: number, yinit: numbe
   ]);
 }
 /** Dense step response of a SISO tf on a fine uniform grid via its ss realization + expm steps. */
-function stepResponse(num: number[], den: number[]): { t: number[]; y: number[]; yfinal: number } {
+function stepResponse(numIn: number[], denIn: number[]): { t: number[]; y: number[]; yfinal: number } {
+  let den = denIn.slice(); while (den.length > 1 && den[0] === 0) den.shift();
+  let num = numIn.slice(); while (num.length > 1 && num[0] === 0) num.shift();
+  if (num.length > den.length) throw new Error('step: improper transfer function');
   const g = den[0] || 1; const d = den.map((v) => v / g); let nm = num.map((v) => v / g);
   while (nm.length < d.length) nm.unshift(0);
   const no = d.length - 1; const D = nm[0];
@@ -476,8 +495,9 @@ function stepResponse(num: number[], den: number[]): { t: number[]; y: number[];
   // settle horizon from slowest pole
   const poles = polyRoots(den); let maxReal = -Infinity, minDecay = Infinity;
   for (let i = 0; i < poles.re.length; i++) { if (poles.re[i] < 0) minDecay = Math.min(minDecay, -poles.re[i]); maxReal = Math.max(maxReal, poles.re[i]); }
-  let Tfinal = isFinite(minDecay) && minDecay > 0 ? 8 / minDecay : 40;
-  Tfinal = Math.min(Math.max(Tfinal, 5), 500);
+  // horizon ~ 8 time-constants of the slowest stable pole; generic fallback only for purely
+  // oscillatory / origin poles (no decay). No magic clamp — works across µs and multi-hour scales.
+  const Tfinal = isFinite(minDecay) && minDecay > 0 ? 8 / minDecay : 40;
   const Nsteps = 40000; const h = Tfinal / Nsteps;
   // discretize for fixed-step propagation: x_{k+1}=Ad x_k + Bd u, u=1 step
   const Maug: number[][] = [];
@@ -725,7 +745,9 @@ function ssParallel(s1: SS, s2: SS): SS {
   const n1 = s1.A.length, n2 = s2.A.length, m1 = s1.D[0]?.length ?? 0, p1 = s1.D.length, A = blk(s1.A, s2.A);
   const B = zeros2(n1 + n2, m1); for (let i = 0; i < n1; i++) for (let j = 0; j < m1; j++) B[i][j] = s1.B[i][j]; for (let i = 0; i < n2; i++) for (let j = 0; j < m1; j++) B[n1 + i][j] = s2.B[i][j];
   const C = zeros2(p1, n1 + n2); for (let i = 0; i < p1; i++) for (let j = 0; j < n1; j++) C[i][j] = s1.C[i][j]; for (let i = 0; i < p1; i++) for (let j = 0; j < n2; j++) C[i][n1 + j] = s2.C[i][j];
-  return { A, B, C, D: s1.D.map((r, i) => r.map((x, j) => x + s2.D[i][j])), Ts: combTs(s1, s2) };
+  // D addition with scalar broadcast: a 1×1 static gain (e.g. sys + 2) applies to every channel.
+  const d2 = (i: number, j: number): number => (s2.D.length === 1 && s2.D[0].length === 1 ? s2.D[0][0] : (s2.D[i]?.[j] ?? 0));
+  return { A, B, C, D: s1.D.map((r, i) => r.map((x, j) => x + d2(i, j))), Ts: combTs(s1, s2) };
 }
 function ssInv(s: SS): SS {
   const p = s.D.length, mm = s.D[0]?.length ?? 0; if (p !== mm) throw new Error('inv: system must be square');
@@ -1072,7 +1094,11 @@ export const CONTROL: ToolboxModule = {
     },
     /** [A,B,C,D] = tf2ss(num,den) — controllable canonical state-space realization. */
     tf2ss: (a, n) => {
-      let num = toArray(m(a[0])); const den0 = toArray(m(a[1])); const g = den0[0] || 1; const den = den0.map((v) => v / g); num = num.map((v) => v / g);
+      let num = toArray(m(a[0])); let den = toArray(m(a[1]));
+      while (den.length > 1 && den[0] === 0) den.shift();
+      while (num.length > 1 && num[0] === 0) num.shift();
+      if (num.length > den.length) throw new Error('tf2ss: improper transfer function');
+      const g = den[0] || 1; den = den.map((v) => v / g); num = num.map((v) => v / g);
       while (num.length < den.length) num.unshift(0); const no = den.length - 1;
       const A: number[][] = []; for (let i = 0; i < no; i++) { A[i] = []; for (let j = 0; j < no; j++) A[i][j] = i === 0 ? -den[j + 1] : (i - 1 === j ? 1 : 0); }
       const B = Array.from({ length: no }, (_, i) => [i === 0 ? 1 : 0]); const D = num[0];
@@ -1094,6 +1120,10 @@ export const CONTROL: ToolboxModule = {
     damp: (a, n) => {
       const r = polesOf(a[0]); const wn = r.re.map((re, i) => Math.hypot(re, r.im[i])); const zeta = r.re.map((re, i) => (wn[i] > 0 ? -re / wn[i] : 0));
       const order = wn.map((_, i) => i).sort((x, y) => wn[x] - wn[y]);
+      if (n >= 3) {   // third output: the poles themselves (complex), in the same (ascending-wn) order
+        const pim = order.map((i) => r.im[i]); const pVal = colVec(order.map((i) => r.re[i])); if (pim.some((x) => x !== 0)) pVal.idata = Float64Array.from(pim);
+        return Promise.resolve([colVec(order.map((i) => wn[i])), colVec(order.map((i) => zeta[i])), pVal]);
+      }
       return n >= 2 ? Promise.resolve([colVec(order.map((i) => wn[i])), colVec(order.map((i) => zeta[i]))]) : ret(colVec(order.map((i) => wn[i])));
     },
     /** ctrb(A,B) — controllability matrix [B AB A²B …]. */
@@ -1170,15 +1200,15 @@ export const CONTROL: ToolboxModule = {
     /** [X,L,G] = care(A,B,Q[,R]) — continuous algebraic Riccati: A'X+XA−XBR⁻¹B'X+Q=0,
      *  G=R⁻¹B'X, L=eig(A−BG). */
     care: (a, n) => {
-      const A = matRows(m(a[0])), B = matRows(m(a[1])), Q = matRows(m(a[2])); const R = a.length >= 4 ? matRows(m(a[3])) : [[1]]; const Ri = matInv(R);
+      const A = matRows(m(a[0])), B = matRows(m(a[1])), Q = matRows(m(a[2])); const R = a.length >= 4 ? matRows(m(a[3])) : eye(B[0]?.length ?? 1); const Ri = matInv(R);   // MIMO: default R = I_m, not 1×1
       const X = care(A, B, Q, Ri); const G = smul(Ri, smul(matT(B), X)); const E = sortRoots(eigOfMat(matSub(A, smul(B, G))));
       return n >= 3 ? Promise.resolve([fromRows(X), rootsValue(E), fromRows(G)]) : n >= 2 ? Promise.resolve([fromRows(X), rootsValue(E)]) : ret(fromRows(X));
     },
     /** [X,L,G] = dare(A,B,Q[,R]) — discrete algebraic Riccati: X=A'XA−(A'XB)(R+B'XB)⁻¹(B'XA)+Q,
      *  G=(R+B'XB)⁻¹B'XA, L=eig(A−BG). */
     dare: (a, n) => {
-      const A = matRows(m(a[0])), B = matRows(m(a[1])), Q = matRows(m(a[2])); const R = a.length >= 4 ? matRows(m(a[3])) : [[1]];
-      const { X, K } = dareN(A, B, Q, R, zeros2(A.length, B[0].length)); const E = sortRoots(eigOfMat(matSub(A, smul(B, K))));
+      const A = matRows(m(a[0])), B = matRows(m(a[1])), Q = matRows(m(a[2])); const R = a.length >= 4 ? matRows(m(a[3])) : eye(B[0]?.length ?? 1);   // MIMO: default R = I_m
+      const { X, K } = dareN(A, B, Q, R, zeros2(A.length, B[0]?.length ?? 0)); const E = sortRoots(eigOfMat(matSub(A, smul(B, K))));
       return n >= 3 ? Promise.resolve([fromRows(X), rootsValue(E), fromRows(K)]) : n >= 2 ? Promise.resolve([fromRows(X), rootsValue(E)]) : ret(fromRows(X));
     },
     /** [L,P,E] = lqe(A,G,C,Q[,R]) — Kalman estimator gain. Solves the filter Riccati on the dual
@@ -1199,6 +1229,9 @@ export const CONTROL: ToolboxModule = {
         return n >= 2 ? Promise.resolve([sys, fromRows(T)]) : ret(sys);
       }
       const ev = eigOfMat(s.A); if (ev.im.some((x) => Math.abs(x) > 1e-9)) throw new Error("canon: 'modal' form requires real eigenvalues here; use 'companion'");
+      // Repeated eigenvalues ⇒ nullVec would return the same eigenvector twice → singular modal
+      // matrix. Detect and direct the user to 'companion' rather than crashing in matInv.
+      for (let i = 0; i < ev.re.length; i++) for (let j = i + 1; j < ev.re.length; j++) if (Math.abs(ev.re[i] - ev.re[j]) < 1e-9 * (1 + Math.abs(ev.re[i]))) throw new Error("canon: 'modal' form requires distinct eigenvalues; use 'companion' for repeated poles");
       const V = ev.re.map((lam) => nullVec(s.A.map((row, i) => row.map((x, j) => x - (i === j ? lam : 0)))));
       const Vm = Array.from({ length: N }, (_, i) => V.map((vec) => vec[i])); const Vi = matInv(Vm);
       const sys = mkSS({ A: smul(smul(Vi, s.A), Vm), B: smul(Vi, s.B), C: smul(s.C, Vm), D: s.D, Ts: s.Ts });
@@ -1356,10 +1389,12 @@ export const CONTROL: ToolboxModule = {
       const tau = asScalar(a[1]);
       const Tf = a.length >= 3 && a[2] && !(isMatLike(a[2]) && m(a[2]).data.length === 0) ? asScalar(a[2]) : 5 * tau;
       const Ts = a.length >= 4 ? asScalar(a[3]) : tau / 64;
-      const t: number[] = []; for (let v = 0; v <= Tf + 1e-12; v += Ts) t.push(v);
+      const nT = Math.floor(Tf / Ts + 1e-9) + 1;
+      const t: number[] = []; for (let i = 0; i < nT; i++) t.push(i * Ts);   // index×Ts: no accumulated float drift
       const eps = 2.220446049250313e-16;
       const u = t.map((tv) => {
-        const r = tv - Math.floor(tv / tau) * tau;   // rem(t,tau)
+        let r = tv - Math.floor(tv / tau + 1e-9) * tau;   // rem(t,tau) with snap to avoid r≈tau drift
+        if (r > tau - 1e-9 * tau) r = 0;
         if (type === 'si') return Math.sin((2 * Math.PI / tau) * tv);
         if (type === 'sq') return r >= tau / 2 ? 1 : 0;
         if (type === 'pu') return r < (1 - 1000 * eps) * Ts ? 1 : 0;
@@ -1387,7 +1422,7 @@ export const CONTROL: ToolboxModule = {
         if (iS === ns - 1) return NaN;
         // Ts==0 (continuous): interpolate
         const aa = y[iS] - y[iS + 1], bb = y[iS + 1] - yf;
-        const tau = Math.max((-tol - bb) / aa, (tol - bb) / aa);
+        const tau = Math.abs(aa) < 1e-12 ? 0 : Math.max((-tol - bb) / aa, (tol - bb) / aa);   // flat segment (ZOH/quantized) ⇒ no slope to interpolate
         return t[iS + 1] + tau * (t[iS] - t[iS + 1]);
       };
       let transient: number, settling: number;
@@ -1637,20 +1672,7 @@ export const CONTROL: ToolboxModule = {
       // The control inputs occupy the first nu_ctrl columns of Be
       // The measurement inputs occupy the remaining columns of Be
       const n_y_in = n_kest_in - nu_ctrl;  // measurement inputs to kest
-      if (n_y_in < 0 || n_y_in > n_kest_in) {
-        // Fallback: treat all inputs as measurement (kest with no known u inputs)
-        // In this case lqgreg creates a 1×0 system (no external inputs) - just close the loop
-        // Controller: Ac = Ae - Be_u * K * C_xhat (but Be_u is empty), so Ac = Ae - B_u_K
-        // This matches MATLAB's behavior: A_c = A-BK where B is from kest.B
-        // Actually for single-input kest (only y input): close the feedback u=-K*xhat back
-        // into the estimator: Ac = Ae + Be * (-K * C_xhat)  (state feedback on xhat)
-        const Ac = matAddT(Ae, smul(Be, smul(K.map((r) => r.map((x) => -x)), C_xhat)));
-        const Cc = smul(K.map((r) => r.map((x) => -x)), C_xhat);
-        // No external input (0 columns)
-        const Bc = zeros2(nx, 0);
-        const Dc = zeros2(nu_ctrl, 0);
-        return ret(mkSS({ A: Ac, B: Bc, C: Cc, D: Dc, Ts: 0 }));
-      }
+      if (n_y_in < 0) throw new Error(`lqgreg: the feedback gain K has ${nu_ctrl} control inputs but the estimator kest only accepts ${n_kest_in} inputs — dimensions are incompatible`);
       // Standard case: kest has [u_ctrl; y_meas] inputs
       // Extract B_u (control input columns) and B_y (measurement input columns)
       const B_u = Be.map((r) => r.slice(0, nu_ctrl));
@@ -1770,7 +1792,8 @@ export const CONTROL: ToolboxModule = {
       // For a P controller: C(jwc) = 1/plant_mag, PM = 180 + plant_phase (open-loop phase)
       // PID: add phase lead to achieve ~60° PM
       const targetPM = 60;
-      const currentPM = 180 + plant_phase;
+      let currentPM = 180 + plant_phase;
+      while (currentPM > 180) currentPM -= 360; while (currentPM < -180) currentPM += 360;   // wrap (atan2 ±180 ambiguity, e.g. 1/s^2)
       const phaseNeeded = targetPM - currentPM; // phase lead needed from controller
       // Simple heuristic: choose Ti and Td for phase lead, Kp for gain
       // Kp = 1/(plant_mag) to set unity gain at wc
