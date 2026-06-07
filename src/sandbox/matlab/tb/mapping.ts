@@ -6,6 +6,7 @@
 import type { Builtin } from '../builtins';
 import { type Value, type Mat, map, toMat as m, asScalar, asString, toArray, colVec, rowVec, scalar, str, mat, fromRows, isStr } from '../values';
 import type { ToolboxModule } from './types';
+import { WGS84_A, WGS84_F } from '../physconst';
 import { HELP_MAPPING } from './help-mapping';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
@@ -288,7 +289,7 @@ export const MAPPING: ToolboxModule = {
     // ── reference spheroids ──
     /** wgs84Ellipsoid([lengthUnit]) — [semimajorAxis, eccentricity] of WGS84 (default metres). */
     wgs84Ellipsoid: (a) => {
-      const f = 1 / 298.257223563, ecc = Math.sqrt(f * (2 - f)); let aMeters = 6378137;
+      const f = WGS84_F, ecc = Math.sqrt(f * (2 - f)); let aMeters = WGS84_A;
       if (a.length >= 1) { const u = asString(a[0]).toLowerCase(); const s: Record<string, number> = { meter: 1, meters: 1, metre: 1, m: 1, kilometer: 1e-3, kilometers: 1e-3, km: 1e-3, 'nautical mile': 1 / 1852, 'kilometre': 1e-3 }; aMeters *= (s[u] ?? 1); }
       return ret(rowVec([aMeters, ecc]));
     },

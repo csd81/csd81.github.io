@@ -17,6 +17,7 @@
 //   cbfweights((0:3)*0.5,[30 45]) col2 w(2) = -0.151424966769703+0.19892330039187i
 
 import { type Value, type Mat, scalar, toMat as m, asScalar, asString, MatError } from '../values';
+import { LIGHTSPEED } from '../physconst';
 import type { ToolboxModule } from './types';
 import { HELP_PHASED } from './help-phased';
 
@@ -42,7 +43,6 @@ function ew2(a: Value, b: Value, f: (x: number, y: number) => number): Mat {
   return { kind: 'num', rows: big.rows, cols: big.cols, data: d };
 }
 
-const LIGHTSPEED = 299792458;
 
 // ── physconst(name): physical constants (MATLAB R2026a values) ──────────────────────────
 function physconst(args: Value[]): Promise<Value[]> {

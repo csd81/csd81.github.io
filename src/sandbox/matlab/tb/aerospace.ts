@@ -6,6 +6,7 @@
 import type { Builtin } from '../builtins';
 import { type Value, type Mat, mat, map, toMat as m, asScalar, asString, scalar, colVec, makeND, fromRows, MatError } from '../values';
 import type { ToolboxModule } from './types';
+import { WGS84_A, WGS84_F } from '../physconst';
 import { HELP_AEROSPACE } from './help-aerospace';
 
 const ret = (v: Value | Value[]): Promise<Value[]> => Promise.resolve(Array.isArray(v) ? v : [v]);
@@ -264,7 +265,7 @@ export const AEROSPACE: ToolboxModule = {
   docBase: 'https://www.mathworks.com/help/aerotbx/ug/',
   builtins: {
     // geocradius(latGeocentric_deg): radius of WGS-84 ellipsoid at a geocentric latitude.
-    geocradius: (a) => { const R = 6378137, f = 1 / 298.257223563, k = 1 / ((1 - f) * (1 - f)) - 1; return ret(map(m(a[0]), (lat) => { const s = Math.sin(lat * D2R); return Math.sqrt(R * R / (1 + k * s * s)); })); },
+    geocradius: (a) => { const R = WGS84_A, f = WGS84_F, k = 1 / ((1 - f) * (1 - f)) - 1; return ret(map(m(a[0]), (lat) => { const s = Math.sin(lat * D2R); return Math.sqrt(R * R / (1 + k * s * s)); })); },
     // dcmbody2stability(alpha): body→stability DCM (rotation about y by alpha, radians).
     dcmbody2stability: (a) => {
       const al = Array.from(m(a[0]).data), N = al.length;

@@ -6,6 +6,7 @@
 import type { Builtin } from '../builtins';
 import { type Value, type Mat, rowVec, toMat as m, isMat, mat, makeND } from '../values';
 import type { ToolboxModule } from './types';
+import { WGS84_A, WGS84_F } from '../physconst';
 import { HELP_NAV } from './help-nav';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
@@ -138,9 +139,7 @@ function tform2trvecImpl(args: Value[]): Value {
 const DEG2RAD = Math.PI / 180;
 const RAD2DEG = 180 / Math.PI;
 
-// WGS-84 parameters (MATLAB's referenceEllipsoid('wgs84') convention)
-const WGS84_A = 6378137.0;            // semi-major axis (m)
-const WGS84_F = 1 / 298.257223563;    // flattening
+// WGS-84 parameters (MATLAB's referenceEllipsoid('wgs84') convention); A/F shared via physconst.
 const WGS84_E2 = WGS84_F * (2 - WGS84_F); // first eccentricity squared
 
 // --- core scalar transforms -------------------------------------------------

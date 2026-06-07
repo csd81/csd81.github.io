@@ -27,12 +27,13 @@
 // PropagationFactor=0) since those are the only ones we can validate exactly closed-form.
 
 import { type Value, type Mat, scalar, asScalar, asString, isObject, makeObject, str, toMat as m } from '../values';
+import { LIGHTSPEED } from '../physconst';
 import type { ToolboxModule } from './types';
 import { HELP_RADAR } from './help-radar';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
 
-const C = 299792458;        // physconst('lightspeed'), m/s
+const C = LIGHTSPEED;        // physconst('lightspeed'), m/s
 const K_BOLTZ = 1.380649e-23; // physconst('Boltzmann'), J/K
 const db2pow = (x: number) => 10 ** (x / 10);
 const pow2db = (x: number) => 10 * Math.log10(x);
