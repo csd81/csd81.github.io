@@ -2,7 +2,7 @@
  * Collects `plot`/`fplot`/`hold`/`gca`/axis-property calls into a serialisable
  * figure spec that the React Plotly pane renders.
  */
-import { type Value, type Mat, isMat, isHandle, toArray, asString, numel, MatError, str } from './values';
+import { type Value, type Mat, isMat, isHandle, toArray, asString, asScalar, numel, MatError, str } from './values';
 
 export interface Series {
   x: number[];
@@ -219,7 +219,16 @@ export class Graphics {
   nexttile(p?: number) { this.fig.current = p !== undefined ? p - 1 : this.fig.current + 1; if (this.fig.current >= this.fig.panels.length) this.fig.panels.push(emptyPanel()); if (this.fig.current < 0) this.fig.current = 0; this.colorIdx = 0; this.touch(); }
   sgtitle(s: string) { this.fig.sgtitle = s; this.touch(); }
 
-  private startPlot() { const c = this.cur(); if (!this.holding) { c.series = []; c.surfaces = []; this.colorIdx = 0; c.xScale = undefined; c.yScale = undefined; } }
+  /** Reset every drawable field of the current panel — used by all non-hold plot commands so a
+   *  new plot can't leave a previous heatmap/parcoords/mesh/reflines/annotations shadowing it. */
+  private clearContent() {
+    const c = this.cur();
+    c.series = []; c.surfaces = undefined; c.meshes = undefined; c.reflines = undefined;
+    c.heatmap = undefined; c.parcoords = undefined; c.annotations = undefined;
+    c.xScale = undefined; c.yScale = undefined;
+    this.colorIdx = 0;
+  }
+  private startPlot() { if (!this.holding) this.clearContent(); }
   /** Parse a single (x,y) or (y) chart argument list into plain arrays. */
   private xyVec(args: Value[]): { x: number[]; y: number[] } {
     const mats = args.filter((a): a is Mat => isMat(a) && !(a as Mat).isChar);
@@ -239,8 +248,10 @@ export class Graphics {
   scatter(args: Value[]) {
     this.startPlot(); const mats = args.filter((a): a is Mat => isMat(a) && !(a as Mat).isChar);
     const x = toArray(mats[0]), y = toArray(mats[1]);
+    // scatter(x,y,sz): a vector sz sets per-point sizes; a scalar sz sets a uniform marker size.
     const sizes = mats.length >= 3 && numel(mats[2]) > 1 ? toArray(mats[2]) : undefined;
-    this.cur().series.push({ x, y, mode: 'markers', symbol: 'circle', sizes, color: this.nextColor() });
+    const markerSize = mats.length >= 3 && numel(mats[2]) === 1 ? asScalar(mats[2]) : undefined;
+    this.cur().series.push({ x, y, mode: 'markers', symbol: 'circle', sizes, markerSize, color: this.nextColor() });
     this.touch();
   }
   errorbar(args: Value[]) {
@@ -296,9 +307,10 @@ export class Graphics {
     this.startPlot(); const mats = args.filter((a): a is Mat => isMat(a) && !(a as Mat).isChar);
     const spec = args.find((a) => isMat(a) && (a as Mat).isChar);
     const s = spec ? parseLineSpec(asString(spec as Mat)) : {};
-    // scatter3/bubblechart3(x,y,z,sz): a 4th numeric vector sets per-point marker sizes.
+    // scatter3/bubblechart3(x,y,z,sz): a 4th vector sets per-point sizes; a scalar sets uniform size.
     const sizes = mode === 'markers' && mats.length >= 4 && numel(mats[3]) > 1 ? toArray(mats[3]) : undefined;
-    this.cur().series.push({ x: toArray(mats[0]), y: toArray(mats[1]), z: toArray(mats[2]), sizes, mode: spec ? (s.mode ?? mode) : mode, symbol: s.symbol, dash: s.dash, color: s.color ?? this.nextColor() });
+    const markerSize = mode === 'markers' && mats.length >= 4 && numel(mats[3]) === 1 ? asScalar(mats[3]) : undefined;
+    this.cur().series.push({ x: toArray(mats[0]), y: toArray(mats[1]), z: toArray(mats[2]), sizes, markerSize, mode: spec ? (s.mode ?? mode) : mode, symbol: s.symbol, dash: s.dash, color: s.color ?? this.nextColor() });
     this.touch();
   }
   /** swarmchart(x,y[,sz]) / swarmchart3(x,y,z[,sz]) — scatter with points spread along x to avoid overlap. */
@@ -372,7 +384,7 @@ export class Graphics {
   /** plot(x, y, x2, y2, 'spec', ...) — also plot(y) and plot(x, Ymatrix). */
   plot(args: Value[]) {
     args = normSpec(args);
-    if (!this.holding) { this.cur().series = []; this.colorIdx = 0; this.cur().xScale = undefined; this.cur().yScale = undefined; }
+    if (!this.holding) this.clearContent();
     let i = 0;
     const nums = args.map((a) => (isMat(a) ? a : null));
     const made: Series[] = [];
@@ -420,7 +432,7 @@ export class Graphics {
 
   /** surf/mesh/contour(X,Y,Z) — also surf(Z). X/Y may be meshgrid matrices or vectors. */
   surface(args: Value[], kind: Surface['kind']) {
-    if (!this.holding) { this.cur().series = []; this.cur().surfaces = []; this.colorIdx = 0; }
+    if (!this.holding) this.clearContent();
     const mats = args.filter((a): a is Mat => isMat(a) && !(a as Mat).isChar);
     let X: Mat | null, Y: Mat | null, Z: Mat;
     if (mats.length >= 3) { X = mats[0]; Y = mats[1]; Z = mats[2]; }
@@ -442,7 +454,7 @@ export class Graphics {
 
   /** quiver(x,y,u,v): a 2-D vector field drawn as line segments (NaN-separated). */
   quiver(xs: number[], ys: number[], us: number[], vs: number[], scale = 0.9) {
-    if (!this.holding) { this.cur().series = []; this.cur().surfaces = []; this.colorIdx = 0; }
+    if (!this.holding) this.clearContent();
     const X: number[] = [], Y: number[] = [];
     for (let i = 0; i < xs.length; i++) { X.push(xs[i], xs[i] + scale * us[i], NaN); Y.push(ys[i], ys[i] + scale * vs[i], NaN); }
     this.cur().series.push({ x: X, y: Y, mode: 'lines', color: this.nextColor() });
@@ -451,7 +463,7 @@ export class Graphics {
 
   /** polarplot/polarscatter(theta,r) and polarhistogram/compass — a polar-axes series. */
   polar(args: Value[], mode: 'lines' | 'markers' | 'bar') {
-    if (!this.holding) { this.cur().series = []; this.colorIdx = 0; }
+    if (!this.holding) this.clearContent();
     const c = this.cur(); c.polar = true;
     const mats = args.filter((a): a is Mat => isMat(a) && !(a as Mat).isChar);
     let theta: number[], r: number[];
@@ -468,7 +480,7 @@ export class Graphics {
   }
   /** compass(u,v): arrows from the origin in polar axes. */
   compass(us: number[], vs: number[]) {
-    if (!this.holding) { this.cur().series = []; this.colorIdx = 0; }
+    if (!this.holding) this.clearContent();
     const c = this.cur(); c.polar = true; const theta: number[] = [], r: number[] = [];
     for (let i = 0; i < us.length; i++) { theta.push(Math.atan2(vs[i], us[i]), Math.atan2(vs[i], us[i]), NaN); r.push(0, Math.hypot(us[i], vs[i]), NaN); }
     c.series.push({ x: [], y: [], theta, r, mode: 'lines', color: this.nextColor() });
@@ -476,14 +488,14 @@ export class Graphics {
   }
   /** trisurf/trimesh(T,x,y,z): a triangulated 3-D surface. */
   trimesh(tri: number[][], x: number[], y: number[], z: number[], wire: boolean) {
-    if (!this.holding) { this.cur().series = []; this.cur().surfaces = []; this.cur().meshes = []; this.colorIdx = 0; }
+    if (!this.holding) this.clearContent();
     const cp = this.cur(); cp.meshes = cp.meshes ?? [];
     cp.meshes.push({ x, y, z, i: tri.map((t) => t[0]), j: tri.map((t) => t[1]), k: tri.map((t) => t[2]), wire });
     this.touch();
   }
   /** quiver3(x,y,z,u,v,w): 3-D vector field as NaN-separated line segments. */
   quiver3(xs: number[], ys: number[], zs: number[], us: number[], vs: number[], ws: number[], scale = 0.9) {
-    if (!this.holding) { this.cur().series = []; this.cur().surfaces = []; this.colorIdx = 0; }
+    if (!this.holding) this.clearContent();
     const X: number[] = [], Y: number[] = [], Z: number[] = [];
     for (let i = 0; i < xs.length; i++) { X.push(xs[i], xs[i] + scale * us[i], NaN); Y.push(ys[i], ys[i] + scale * vs[i], NaN); Z.push(zs[i], zs[i] + scale * ws[i], NaN); }
     this.cur().series.push({ x: X, y: Y, z: Z, mode: 'lines', color: this.nextColor() });
@@ -491,7 +503,7 @@ export class Graphics {
   }
   /** bar3(Z)/bar3h(Z): 3-D bars rendered as box meshes. horiz → value runs along x. */
   bar3(Z: number[][], horiz: boolean) {
-    if (!this.holding) { this.cur().series = []; this.cur().surfaces = []; this.cur().meshes = []; this.colorIdx = 0; }
+    if (!this.holding) this.clearContent();
     const x: number[] = [], y: number[] = [], z: number[] = []; const ti: number[] = [], tj: number[] = [], tk: number[] = [];
     const hw = 0.4;
     const box = (cx: number, cy: number, h: number) => {
@@ -510,13 +522,13 @@ export class Graphics {
   }
   /** slice plane: a parametric coloured surface (x,y,z all 2-D + colour field). */
   slicePlane(xm: number[][], ym: number[][], zm: number[][], cdata: number[][]) {
-    if (!this.holding) { this.cur().series = []; this.cur().surfaces = []; this.colorIdx = 0; }
+    if (!this.holding) this.clearContent();
     const cp = this.cur(); cp.surfaces = cp.surfaces ?? []; cp.surfaces.push({ x: [], y: [], z: zm, xm, ym, cdata, kind: 'surf', shading: 'interp' }); cp.colorbar = true;
     this.touch();
   }
   /** histogram2(x,y): bivariate histogram rendered as a filled-contour (heatmap) of bin counts. */
   histogram2(xs: number[], ys: number[], nbx = 10, nby = 10) {
-    if (!this.holding) { this.cur().series = []; this.cur().surfaces = []; this.colorIdx = 0; }
+    if (!this.holding) this.clearContent();
     const xmin = Math.min(...xs), xmax = Math.max(...xs), ymin = Math.min(...ys), ymax = Math.max(...ys);
     const dx = (xmax - xmin) / nbx || 1, dy = (ymax - ymin) / nby || 1;
     const z: number[][] = Array.from({ length: nby }, () => new Array(nbx).fill(0));
@@ -544,7 +556,7 @@ export class Graphics {
 
   /** fplot adds a sampled series; the caller supplies already-sampled points. */
   addSeries(x: number[], y: number[], spec?: string) {
-    if (!this.holding) { this.cur().series = []; this.colorIdx = 0; }
+    if (!this.holding) this.clearContent();
     const s = spec ? parseLineSpec(spec) : {};
     this.cur().series.push({ x, y, mode: s.mode ?? 'lines', symbol: s.symbol, dash: s.dash, color: s.color ?? this.nextColor() });
     this.touch();
