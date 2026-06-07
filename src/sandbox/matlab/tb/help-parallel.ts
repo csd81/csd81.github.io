@@ -94,14 +94,10 @@ export const HELP_PARALLEL: Record<string, HelpEntry | string> = {
       description: ['Returns the NumOutputArguments results stored in a finished parfeval future f.'],
       seealso: ['parfeval', 'parpool'],
     },
-    gputimeit: {
-      summary: 'Time required to run function on GPU',
+    gputimeit: { summary: 'Time required to run function on GPU',
       syntax: ['t = gputimeit(f)', 't = gputimeit(f,n)'],
-      seealso: ['gpuArray', 'timeit'],
-    },
-    validategpu: {
-      summary: 'Validate MATLAB GPU support for current system',
+      seealso: ['gpuArray', 'timeit'], description: ['t = gputimeit(F) measures the typical time, in seconds, required to run the function specified by the function handle F. The function handle accepts no external input arguments, but you can define it with input arguments to its internal function call.', 't = gputimeit(F,numOutputs) calls F with the desired number of output arguments, numOutputs. By default, gputimeit calls the function F with one output argument, or no output arguments if F does not return any output.'] },
+    validategpu: { summary: 'Validate MATLAB GPU support for current system',
       syntax: ['validategpu'],
-      seealso: ['gpuArray', 'gpuDeviceCount'],
-    },
+      seealso: ['gpuArray', 'gpuDeviceCount'], description: ['validateGPU validates the currently selected GPU device. If no GPU device is selected, then the function validates the default device.', 'validateGPU("all") validates all GPU devices detected in your system.', 'validateGPU(ind) validates the GPU devices specified by indices ind.', 'Tip', 'Validating your GPU device is not required. Use the validateGPU function to diagnose problems with your GPU setup.'] },
   };

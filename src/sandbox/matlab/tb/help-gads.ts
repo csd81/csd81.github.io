@@ -75,24 +75,16 @@ export const HELP_GADS: Record<string, HelpEntry | string> = {
       ],
       seealso: ['ga', 'paretosearch', 'particleswarm'],
     },
-    paretosearch: {
-      summary: 'Find Pareto front using pattern search',
+    paretosearch: { summary: 'Find Pareto front using pattern search',
       syntax: ['x = paretosearch(fun,nvars)', '[x,fval] = paretosearch(fun,nvars,A,b,Aeq,beq,lb,ub)'],
-      seealso: ['gamultiobj', 'ga'],
-    },
-    surrogateopt: {
-      summary: 'Surrogate optimization for global minimum',
+      seealso: ['gamultiobj', 'ga'], description: ['x = paretosearch(fun,nvars) finds nondominated points of the multiobjective function fun. The nvars argument is the dimension of the optimization problem (number of decision variables).', 'x = paretosearch(fun,nvars,A,b) finds nondominated points subject to the linear inequalities A*x ≤ b. See Linear Inequality Constraints.', 'x = paretosearch(fun,nvars,A,b,Aeq,beq) finds nondominated points subject to the linear constraints Aeqx = beq and Ax ≤ b. If no linear inequalities exist, set A = [] and b = [].', 'x = paretosearch(fun,nvars,A,b,Aeq,beq,lb,ub) defines a set of lower and upper bounds on the design variables in x, so that x is always in the range lb ≤ x ≤ ub. If no linear equalities exist, set Aeq = [] and beq = []. If x(i) has no lower bound, set lb(i) = -Inf. If x(i) has no upper bound, set ub(i) = Inf.', 'x = paretosearch(fun,nvars,A,b,Aeq,beq,lb,ub,nonlcon) applies the nonlinear inequalities ineqnonlin(x) defined in nonlcon. The paretosearch function finds nondominated points such that ineqnonlin(x) ≤ 0. If no bounds exist, set lb = [], ub = [], or both.'] },
+    surrogateopt: { summary: 'Surrogate optimization for global minimum',
       syntax: ['x = surrogateopt(fun,lb,ub)', '[x,fval,exitflag,output] = surrogateopt(___)'],
-      seealso: ['ga', 'patternsearch'],
-    },
-    globalsearch: {
-      summary: 'Find global minimum using GlobalSearch solver',
+      seealso: ['ga', 'patternsearch'], description: ['surrogateopt is a global solver for time-consuming objective functions.', 'surrogateopt attempts to solve problems of the form', 'minxf(x) such that ⎧⎪⎪⎪⎨⎪⎪⎪⎩lb≤x≤ubA·x≤bAeq·x=beqineqnonlin(x)≤0xi integer, i∈intcon.', 'The solver searches for the global minimum of a real-valued objective function in multiple dimensions, subject to bounds, optional linear constraints, optional integer constraints, and optional nonlinear inequality constraints. surrogateopt is best suited to objective functions that take a long time to evaluate. The objective function can be nonsmooth. The solver requires finite bounds on all variables. The solver can optionally maintain a checkpoint file to enable recovery from crashes or partial execution, or optimization continuation after meeting a stopping condition. The objective function _f_(_x_) can be empty ([]), in which case surrogateopt attempts to find a point satisfying all the constraints.', 'x = surrogateopt(objconstr,lb,ub) searches for a global minimum of objconstr(x) in the region lb <= x <= ub. If objconstr(x) returns a structure, then surrogateopt searches for a minimum of objconstr(x).Fval, subject to objconstr(x).Ineq <= 0.'] },
+    globalsearch: { summary: 'Find global minimum using GlobalSearch solver',
       syntax: ['gs = GlobalSearch', 'gs = GlobalSearch(Name,Value)', '[x,fval] = run(gs,problem)'],
-      seealso: ['MultiStart', 'fmincon'],
-    },
-    multistart: {
-      summary: 'Find multiple local minima',
+      seealso: ['MultiStart', 'fmincon'], description: ['A GlobalSearch object contains properties (options) that affect how run repeatedly runs a local solver to generate a GlobalOptimSolution object. When run, the solver attempts to locate a solution that has the lowest objective function value.'] },
+    multistart: { summary: 'Find multiple local minima',
       syntax: ['ms = MultiStart', '[x,fval] = run(ms,problem,k)'],
-      seealso: ['GlobalSearch', 'fmincon'],
-    },
+      seealso: ['GlobalSearch', 'fmincon'], description: ['A MultiStart object contains properties (options) that affect how run repeatedly runs a local solver to generate a GlobalOptimSolution object. When run, the solver attempts to find multiple local solutions to a problem by starting from various points.'] },
   };
