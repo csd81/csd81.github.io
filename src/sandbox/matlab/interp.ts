@@ -315,7 +315,10 @@ export class Interpreter implements Env {
         return;
       }
       case 'assign': {
-        const val = await this.evalExpr(stmt.e, scope);
+        const raw = await this.evalExpr(stmt.e, scope);
+        // Value semantics: a plain `B = A` must copy, so a later `B(i)=…` can't mutate A.
+        // Indexed targets (`A(i)=…`) keep their in-place fast path (lhs is not a bare ident).
+        const val = stmt.lhs.t === 'ident' ? cloneForSave(raw) : raw;
         await this.assignLValue(stmt.lhs, val, scope);
         if (!stmt.suppressed) this.displayAssigned(stmt.lhs, scope);
         return;
@@ -346,7 +349,8 @@ export class Interpreter implements Env {
             if (!stmt.suppressed) this.displayAssigned({ t: 'ident', name: t.cellName! }, scope);
           } else if (t.lv) {
             if (k >= vals.length) throw new MatError('not enough output arguments');
-            await this.assignLValue(t.lv, vals[k++], scope);
+            const v = vals[k++];
+            await this.assignLValue(t.lv, t.lv.t === 'ident' ? cloneForSave(v) : v, scope);
             if (!stmt.suppressed) this.displayAssigned(t.lv, scope);
           } else k++;
         }
@@ -855,7 +859,8 @@ export class Interpreter implements Env {
     scope.nargout = nargout;
     for (let i = 0; i < def.params.length; i++) {
       if (def.params[i] === '~') continue;
-      if (i < args.length) scope.vars.set(def.params[i], args[i]);
+      // Pass-by-value: clone so a function that does `v(i)=…` can't mutate the caller's array.
+      if (i < args.length) scope.vars.set(def.params[i], cloneForSave(args[i]));
     }
     scope.vars.set('nargin', scalar(args.length));
     scope.vars.set('nargout', scalar(nargout));
@@ -884,7 +889,7 @@ export class Interpreter implements Env {
         const s = new Scope();
         s.vars = new Map(snapshot);
         s.nargin = args.length; s.nargout = nargout;
-        for (let i = 0; i < params.length; i++) if (params[i] !== '~' && i < args.length) s.vars.set(params[i], args[i]);
+        for (let i = 0; i < params.length; i++) if (params[i] !== '~' && i < args.length) s.vars.set(params[i], cloneForSave(args[i]));
         // propagate nargout so `@(...) deal(...)` / multi-output calls work
         return nargout > 1 ? this.evalValues(body, s, nargout) : [await this.evalExpr(body, s)];
       },
