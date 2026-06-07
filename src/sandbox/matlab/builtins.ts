@@ -4703,6 +4703,26 @@ export const BUILTINS: Record<string, Builtin> = {
   },
   violinplot: async (a, n, env) => { env.graphics.violin(a); return gret(n); },
   parallelplot: async (a, n, env) => { env.graphics.parallelcoords(m(a[0])); return gret(n); },
+  stackedplot: async (a, n, env) => {
+    // stackedplot(tbl) / stackedplot(Y) / stackedplot(X,Y): one stacked panel per variable/column.
+    const cols: { label: string; y: number[] }[] = [];
+    let x: number[] | undefined;
+    if (isTable(a[0])) {
+      const t = a[0] as Table;
+      x = t.rowTimes && isMat(t.rowTimes) ? toArray(t.rowTimes) : Array.from({ length: t.nrows }, (_, i) => i + 1);
+      t.cols.forEach((col, j) => { if (isMat(col) && !(col as Mat).isChar) cols.push({ label: t.vars[j], y: toArray(col as Mat) }); });
+    } else {
+      const mats = a.filter((v) => isMat(v) && !(v as Mat).isChar) as Mat[];
+      let Y: Mat;
+      if (mats.length >= 2 && (mats[1].rows > 1 || mats[1].cols > 1)) { x = toArray(mats[0]); Y = mats[1]; } else Y = mats[0];
+      const k = Y.cols > 1 && Y.rows > 1 ? Y.cols : 1;
+      const N = k > 1 ? Y.rows : Math.max(Y.rows, Y.cols);
+      x = x ?? Array.from({ length: N }, (_, i) => i + 1);
+      for (let c = 0; c < k; c++) { const y: number[] = []; for (let r = 0; r < N; r++) y.push(k > 1 ? Y.data[r + c * Y.rows] : Y.data[r]); cols.push({ label: `Var${c + 1}`, y }); }
+    }
+    env.graphics.stackedplot(cols, x ?? (cols[0]?.y.map((_, i) => i + 1) ?? []));
+    return gret(n);
+  },
   errorbar: async (a, n, env) => { env.graphics.errorbar(a); return gret(n); },
   pie: async (a, n, env) => { env.graphics.pie(a); return gret(n); },
   plot3: async (a, n, env) => { env.graphics.line3(a, 'lines'); return gret(n); },

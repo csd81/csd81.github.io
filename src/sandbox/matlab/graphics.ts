@@ -343,6 +343,18 @@ export class Graphics {
     for (let c = 0; c < M.cols; c++) { const v: number[] = []; for (let r = 0; r < M.rows; r++) v.push(M.data[r + c * M.rows]); dims.push({ label: labels?.[c] ?? `Var${c + 1}`, values: v }); }
     this.cur().parcoords = dims; this.touch();
   }
+  /** stackedplot(cols, x) — one line per variable in its own stacked panel, sharing the x-axis. */
+  stackedplot(cols: { label: string; y: number[] }[], x: number[]) {
+    const k = Math.max(1, cols.length);
+    this.fig = { version: this.fig.version + 1, rows: k, cols: 1, current: 0, panels: Array.from({ length: k }, () => emptyPanel()) };
+    cols.forEach((col, c) => {
+      this.fig.current = c;
+      const p = this.cur();
+      p.series = [{ x: x.slice(0, col.y.length), y: col.y, mode: 'lines', color: this.palette[c % this.palette.length] }];
+      p.ylabel = col.label;
+    });
+    this.fig.current = 0; this.holding = false; this.touch();
+  }
   /** binscatter(x,y) — 2-D density: bin points into a grid and render as a heatmap. */
   binscatter(xs: number[], ys: number[], nb = 20) {
     const fin = (v: number) => Number.isFinite(v);
