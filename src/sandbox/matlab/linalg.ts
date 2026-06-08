@@ -472,6 +472,57 @@ function squareSolve(a: Mat, b: Mat): Mat {
   return luSolve(a, b);
 }
 
+export type MldividePlan =
+  | 'scalar'
+  | 'complex-lu'
+  | 'complex-qrcp'
+  | 'diagonal'
+  | 'upper-triangular'
+  | 'lower-triangular'
+  | 'permuted-upper-triangular'
+  | 'permuted-lower-triangular'
+  | 'column-permuted-upper-triangular'
+  | 'column-permuted-lower-triangular'
+  | 'tridiagonal'
+  | 'banded'
+  | 'cholesky'
+  | 'ldl'
+  | 'lu'
+  | 'qrcp'
+  | 'pinv-minnorm';
+
+export function mldividePlan(a: Mat): MldividePlan {
+  if (isScalar(a)) return 'scalar';
+  if (isComplex(a)) return a.rows === a.cols ? 'complex-lu' : 'complex-qrcp';
+  if (a.rows !== a.cols) {
+    if (a.rows < a.cols) {
+      const { rank } = qrPivot(a);
+      if (rank < Math.min(a.rows, a.cols)) return 'pinv-minnorm';
+    }
+    return 'qrcp';
+  }
+
+  const bw = bandwidth(a);
+  if (bw.lower === 0 && bw.upper === 0) return 'diagonal';
+  if (bw.lower === 0) return 'upper-triangular';
+  if (bw.upper === 0) return 'lower-triangular';
+  const permutedTri = findPermutedTriangular(a);
+  if (permutedTri) return permutedTri.kind === 'upper' ? 'permuted-upper-triangular' : 'permuted-lower-triangular';
+  const colPermutedTri = findColPermutedTriangular(a);
+  if (colPermutedTri) return colPermutedTri.kind === 'upper' ? 'column-permuted-upper-triangular' : 'column-permuted-lower-triangular';
+  if (bw.lower <= 1 && bw.upper <= 1 && tridiagonalNoPivotSafe(a)) return 'tridiagonal';
+  if (isNarrowBanded(a.rows, bw)) return 'banded';
+  if (isSymmetric(a, 0)) {
+    try { chol(a); return 'cholesky'; } catch {
+      // Not SPD; try the symmetric-indefinite path next.
+    }
+    try { ldlPivotFactor(a); return 'ldl'; } catch {
+      // Fall through to general LU if symmetric-specific factorization fails.
+    }
+  }
+  return 'lu';
+}
+
 function qrPivot(A: Mat): { Q: Mat; R: Mat; piv: number[]; rank: number; tol: number } {
   const m = A.rows, n = A.cols;
   const R = mat(m, n, Float64Array.from(A.data));
