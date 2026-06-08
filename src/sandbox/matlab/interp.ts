@@ -967,7 +967,14 @@ export class Interpreter implements Env {
       case '*': r = cmatmul(a, b); break;
       case '/': r = rdivide(a, b); break;
       case '\\': { r = mldivide(a, b); const w = isMat(a) ? illConditionWarning(a) : null; if (w) this.output('Warning: ' + w + '\n'); break; }
-      case '^': r = mpower(a, b); break;
+      case '^': {
+        if (isMat(a) && isMat(b) && b.rows === 1 && b.cols === 1 && b.data[0] < 0) {
+          const w = illConditionWarning(a);
+          if (w) this.output('Warning: ' + w + '\n');
+        }
+        r = mpower(a, b);
+        break;
+      }
       case '==': r = ewEq(a, b, true); arith = false; break;
       case '~=': r = ewEq(a, b, false); arith = false; break;
       case '<': r = cmp(a, b, (x, y) => x < y); arith = false; break;

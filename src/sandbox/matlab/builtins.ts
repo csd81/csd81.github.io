@@ -1249,7 +1249,14 @@ export const BUILTINS: Record<string, Builtin> = {
 
   // ═══════════════════════════ LINEAR ALGEBRA ═══════════════════════════
   det: async (a) => { if (isSym(a[0])) return ret(makeSym(1, 1, [simplifyExpr(symDet(a[0].exprs, a[0].rows))])); const A = m(a[0]); if (isComplex(A)) { const [re, im] = cDet(A); return ret(cscalar(re, im)); } return ret(scalar(det(A))); },
-  inv: async (a) => { if (isSym(a[0])) return ret(symInv(a[0])); return ret(inv(m(a[0]))); },
+  inv: async (a, _n, env) => {
+    if (isSym(a[0])) return ret(symInv(a[0]));
+    const A = m(a[0]);
+    const x = inv(A);
+    const w = illConditionWarning(A);
+    if (w) env.output('Warning: ' + w + '\n');
+    return ret(x);
+  },
   charpoly: async (a) => { if (isSym(a[0])) { const c = symCharpolyCoeffs(a[0].exprs, a[0].rows); return ret(makeSym(1, c.length, c)); } const A = m(a[0]); return ret(rowVec(charpolyC(A))); },
   minpoly: async (a) => {
     // Minimal polynomial = monic product over DISTINCT eigenvalues (exact for diagonalizable A).
@@ -4388,10 +4395,20 @@ export const BUILTINS: Record<string, Builtin> = {
   mtimes: async (a) => ret(cmatmul(m(a[0]), m(a[1]))),
   rdivide: async (a) => ret(ewRDiv(m(a[0]), m(a[1]))),
   ldivide: async (a) => ret(ewLDiv(m(a[0]), m(a[1]))),
-  mpower: async (a) => {
+  mpower: async (a, _n, env) => {
     const A = m(a[0]), B = m(a[1]);
     if (isScalar(A) && isScalar(B)) return ret(ewPow(A, B));
-    if (isScalar(B)) { const p = asScalar(B); if (!Number.isInteger(p)) throw new MatError('mpower: non-integer matrix powers are not supported'); if (A.rows !== A.cols) throw new MatError('mpower: matrix must be square'); let base = p < 0 ? inv(A) : A; let acc = eye(A.rows); for (let k = 0; k < Math.abs(p); k++) acc = matmul(acc, base); void base; return ret(acc); }
+    if (isScalar(B)) {
+      const p = asScalar(B);
+      if (!Number.isInteger(p)) throw new MatError('mpower: non-integer matrix powers are not supported');
+      if (A.rows !== A.cols) throw new MatError('mpower: matrix must be square');
+      if (p < 0) { const w = illConditionWarning(A); if (w) env.output('Warning: ' + w + '\n'); }
+      let base = p < 0 ? inv(A) : A;
+      let acc = eye(A.rows);
+      for (let k = 0; k < Math.abs(p); k++) acc = matmul(acc, base);
+      void base;
+      return ret(acc);
+    }
     throw new MatError('mpower: at least one operand must be a scalar');
   },
   ctranspose: async (a) => ret(ctransposeFn(m(a[0]))),

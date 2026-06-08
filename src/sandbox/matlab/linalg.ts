@@ -68,6 +68,39 @@ function luSolve(a: Mat, b: Mat): Mat {
   return X;
 }
 
+/** Solve upper-triangular R x = B for square R. */
+function upperTriSolve(R: Mat, b: Mat): Mat {
+  const n = R.rows;
+  if (R.cols !== n) throw new MatError('upperTriSolve: matrix must be square');
+  if (b.rows !== n) throw new MatError(`upperTriSolve: row dimensions must agree (${n} vs ${b.rows})`);
+  const X = zeros(n, b.cols);
+  for (let col = 0; col < b.cols; col++) {
+    for (let r = n - 1; r >= 0; r--) {
+      let s = b.data[r + col * b.rows];
+      for (let c = r + 1; c < n; c++) s -= R.data[r + c * n] * X.data[c + col * n];
+      X.data[r + col * n] = s / R.data[r + r * n];
+    }
+  }
+  return X;
+}
+
+/** Tall least-squares solve via Householder QR: min ||A*x - B||₂. */
+function qrLeastSquares(a: Mat, b: Mat): Mat {
+  const { Q, R } = qr(a);
+  const n = a.cols;
+  const rhs = zeros(n, b.cols);
+  for (let col = 0; col < b.cols; col++) {
+    for (let r = 0; r < n; r++) {
+      let s = 0;
+      for (let k = 0; k < a.rows; k++) s += Q.data[k + r * Q.rows] * b.data[k + col * b.rows];
+      rhs.data[r + col * n] = s;
+    }
+  }
+  const R11 = zeros(n, n);
+  for (let c = 0; c < n; c++) for (let r = 0; r <= c; r++) R11.data[r + c * n] = R.data[r + c * R.rows];
+  return upperTriSolve(R11, rhs);
+}
+
 export function inv(a: Mat): Mat {
   if (isComplex(a)) { if (a.rows !== a.cols) throw new MatError('inverse requires a square matrix'); return cLuSolve(a, eye(a.rows)); }
   if (isScalar(a)) return scalar(1 / a.data[0]);
@@ -87,8 +120,8 @@ export function mldivide(a: Mat, b: Mat): Mat {
   if (isScalar(a)) return mat(b.rows, b.cols, b.data.map((v) => v / a.data[0]) as Float64Array);
   if (a.rows !== b.rows) throw new MatError(`\\: row dimensions must agree (${a.rows} vs ${b.rows})`);
   if (a.rows === a.cols) return luSolve(a, b);
-  // Overdetermined (rows > cols) → least squares via normal equations (AᵀA) x = Aᵀ b.
-  if (a.rows > a.cols) { const At = transpose(a); return luSolve(matmul(At, a), matmul(At, b)); }
+  // Overdetermined (rows > cols) → least squares via QR, avoiding normal equations.
+  if (a.rows > a.cols) return qrLeastSquares(a, b);
   // Underdetermined (rows < cols) → AᵀA is singular; use pinv for the minimum-norm solution
   // (valid least-squares solution; differs from MATLAB's QR-pivoting basic solution).
   return matmul(pinv(a), b);
