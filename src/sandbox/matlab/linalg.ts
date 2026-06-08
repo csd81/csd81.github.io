@@ -446,8 +446,8 @@ function qrPivot(A: Mat): { Q: Mat; R: Mat; piv: number[]; rank: number; tol: nu
 }
 
 export function qrRankWarning(A: Mat): string | null {
-  if (A.rows === A.cols || A.rows < 1 || A.cols < 1 || A.isChar || A.idata) return null;
-  const { rank, tol } = qrPivot(A);
+  if (A.rows === A.cols || A.rows < 1 || A.cols < 1 || A.isChar) return null;
+  const { rank, tol } = isComplex(A) ? cQrPivotSolve(A, zeros(A.rows, 0)) : qrPivot(A);
   if (rank === Math.min(A.rows, A.cols)) return null;
   return `Rank deficient, rank = ${rank}, tol = ${tol.toExponential(6)}.`;
 }
