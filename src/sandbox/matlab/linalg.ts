@@ -84,21 +84,93 @@ function upperTriSolve(R: Mat, b: Mat): Mat {
   return X;
 }
 
-/** Tall least-squares solve via Householder QR: min ||A*x - B||₂. */
-function qrLeastSquares(a: Mat, b: Mat): Mat {
-  const { Q, R } = qr(a);
-  const n = a.cols;
-  const rhs = zeros(n, b.cols);
-  for (let col = 0; col < b.cols; col++) {
-    for (let r = 0; r < n; r++) {
+function qrPivot(A: Mat): { Q: Mat; R: Mat; piv: number[]; rank: number; tol: number } {
+  const m = A.rows, n = A.cols;
+  const R = mat(m, n, Float64Array.from(A.data));
+  const Q = eye(m);
+  const piv = Array.from({ length: n }, (_, i) => i);
+  const colNorm = new Float64Array(n);
+  let maxColNorm = 0;
+  for (let c = 0; c < n; c++) {
+    let s = 0;
+    for (let r = 0; r < m; r++) s += R.data[r + c * m] ** 2;
+    colNorm[c] = Math.sqrt(s);
+    maxColNorm = Math.max(maxColNorm, colNorm[c]);
+  }
+  const at = (M: Mat, r: number, c: number) => M.data[r + c * M.rows];
+  const steps = Math.min(m, n);
+  for (let k = 0; k < steps; k++) {
+    let pc = k, best = -1;
+    for (let c = k; c < n; c++) {
       let s = 0;
-      for (let k = 0; k < a.rows; k++) s += Q.data[k + r * Q.rows] * b.data[k + col * b.rows];
-      rhs.data[r + col * n] = s;
+      for (let r = k; r < m; r++) s += at(R, r, c) ** 2;
+      colNorm[c] = Math.sqrt(s);
+      if (colNorm[c] > best) { best = colNorm[c]; pc = c; }
+    }
+    if (pc !== k) {
+      for (let r = 0; r < m; r++) {
+        const t = R.data[r + k * m];
+        R.data[r + k * m] = R.data[r + pc * m];
+        R.data[r + pc * m] = t;
+      }
+      const tp = piv[k]; piv[k] = piv[pc]; piv[pc] = tp;
+      const tn = colNorm[k]; colNorm[k] = colNorm[pc]; colNorm[pc] = tn;
+    }
+    let normx = 0; for (let r = k; r < m; r++) normx += at(R, r, k) ** 2; normx = Math.sqrt(normx);
+    if (normx === 0) continue;
+    const alpha = at(R, k, k) >= 0 ? -normx : normx;
+    const v = new Float64Array(m);
+    v[k] = at(R, k, k) - alpha;
+    for (let r = k + 1; r < m; r++) v[r] = at(R, r, k);
+    let vnorm2 = 0; for (let r = k; r < m; r++) vnorm2 += v[r] ** 2;
+    if (vnorm2 === 0) continue;
+    for (let c = k; c < n; c++) {
+      let d = 0; for (let r = k; r < m; r++) d += v[r] * at(R, r, c);
+      d = (2 * d) / vnorm2;
+      for (let r = k; r < m; r++) R.data[r + c * m] -= d * v[r];
+    }
+    for (let r = 0; r < m; r++) {
+      let d = 0; for (let i = k; i < m; i++) d += at(Q, r, i) * v[i];
+      d = (2 * d) / vnorm2;
+      for (let i = k; i < m; i++) Q.data[r + i * m] -= d * v[i];
     }
   }
-  const R11 = zeros(n, n);
-  for (let c = 0; c < n; c++) for (let r = 0; r <= c; r++) R11.data[r + c * n] = R.data[r + c * R.rows];
-  return upperTriSolve(R11, rhs);
+  const tol = Math.max(m, n) * 2.220446049250313e-16 * maxColNorm;
+  let rank = 0;
+  for (let k = 0; k < steps; k++) if (Math.abs(R.data[k + k * m]) > tol) rank++;
+  return { Q, R, piv, rank, tol };
+}
+
+export function qrRankWarning(A: Mat): string | null {
+  if (A.rows === A.cols || A.rows < 1 || A.cols < 1 || A.isChar || A.idata) return null;
+  const { rank, tol } = qrPivot(A);
+  if (rank === Math.min(A.rows, A.cols)) return null;
+  return `Rank deficient, rank = ${rank}, tol = ${tol.toExponential(6)}.`;
+}
+
+function qrPivotSolve(a: Mat, b: Mat): { x: Mat; rank: number; tol: number } {
+  const { Q, R, piv, rank, tol } = qrPivot(a);
+  const z = zeros(a.cols, b.cols);
+  if (rank > 0) {
+    const rhs = zeros(rank, b.cols);
+    for (let col = 0; col < b.cols; col++) {
+      for (let r = 0; r < rank; r++) {
+        let s = 0;
+        for (let k = 0; k < a.rows; k++) s += Q.data[k + r * Q.rows] * b.data[k + col * b.rows];
+        rhs.data[r + col * rank] = s;
+      }
+    }
+    const R11 = zeros(rank, rank);
+    for (let c = 0; c < rank; c++) for (let r = 0; r <= c; r++) R11.data[r + c * rank] = R.data[r + c * R.rows];
+    const y = upperTriSolve(R11, rhs);
+    for (let col = 0; col < b.cols; col++) for (let r = 0; r < rank; r++) z.data[r + col * z.rows] = y.data[r + col * y.rows];
+  }
+  const x = zeros(a.cols, b.cols);
+  for (let c = 0; c < a.cols; c++) {
+    const orig = piv[c];
+    for (let col = 0; col < b.cols; col++) x.data[orig + col * x.rows] = z.data[c + col * z.rows];
+  }
+  return { x, rank, tol };
 }
 
 export function inv(a: Mat): Mat {
@@ -108,7 +180,7 @@ export function inv(a: Mat): Mat {
   return luSolve(a, eye(a.rows));
 }
 
-/** A \ B (mldivide): square → LU solve; non-square → least squares (normal equations). */
+/** A \ B (mldivide): square → LU solve; rectangular → pivoted-QR basic least-squares solve. */
 export function mldivide(a: Mat, b: Mat): Mat {
   if (isComplex(a) || isComplex(b)) {
     if (isScalar(a)) return ewRDiv(b, a);
@@ -120,11 +192,10 @@ export function mldivide(a: Mat, b: Mat): Mat {
   if (isScalar(a)) return mat(b.rows, b.cols, b.data.map((v) => v / a.data[0]) as Float64Array);
   if (a.rows !== b.rows) throw new MatError(`\\: row dimensions must agree (${a.rows} vs ${b.rows})`);
   if (a.rows === a.cols) return luSolve(a, b);
-  // Overdetermined (rows > cols) → least squares via QR, avoiding normal equations.
-  if (a.rows > a.cols) return qrLeastSquares(a, b);
-  // Underdetermined (rows < cols) → AᵀA is singular; use pinv for the minimum-norm solution
-  // (valid least-squares solution; differs from MATLAB's QR-pivoting basic solution).
-  return matmul(pinv(a), b);
+  // Rectangular systems use QR with column pivoting. This avoids normal equations
+  // for tall least-squares problems and gives MATLAB-like basic solutions for
+  // rank-deficient or underdetermined systems.
+  return qrPivotSolve(a, b).x;
 }
 
 // ── Complex LU (partial pivoting), solve, determinant ──────────────────
