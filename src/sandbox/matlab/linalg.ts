@@ -68,6 +68,41 @@ function luSolve(a: Mat, b: Mat): Mat {
   return X;
 }
 
+function isDiagonalMatrix(A: Mat): boolean {
+  const n = A.rows;
+  if (A.cols !== n) return false;
+  for (let c = 0; c < n; c++) {
+    for (let r = 0; r < n; r++) {
+      if (r !== c && A.data[r + c * n] !== 0) return false;
+    }
+  }
+  return true;
+}
+
+function triangularKind(A: Mat): 'upper' | 'lower' | null {
+  const n = A.rows;
+  if (A.cols !== n) return null;
+  let upper = true, lower = true;
+  for (let c = 0; c < n; c++) {
+    for (let r = 0; r < n; r++) {
+      const v = A.data[r + c * n];
+      if (r > c && v !== 0) upper = false;
+      if (r < c && v !== 0) lower = false;
+      if (!upper && !lower) return null;
+    }
+  }
+  return upper ? 'upper' : lower ? 'lower' : null;
+}
+
+function diagonalSolve(A: Mat, b: Mat): Mat {
+  const n = A.rows;
+  const X = zeros(n, b.cols);
+  for (let col = 0; col < b.cols; col++) {
+    for (let r = 0; r < n; r++) X.data[r + col * n] = b.data[r + col * b.rows] / A.data[r + r * n];
+  }
+  return X;
+}
+
 /** Solve upper-triangular R x = B for square R. */
 function upperTriSolve(R: Mat, b: Mat): Mat {
   const n = R.rows;
@@ -82,6 +117,122 @@ function upperTriSolve(R: Mat, b: Mat): Mat {
     }
   }
   return X;
+}
+
+/** Solve lower-triangular L x = B for square L. */
+function lowerTriSolve(L: Mat, b: Mat): Mat {
+  const n = L.rows;
+  if (L.cols !== n) throw new MatError('lowerTriSolve: matrix must be square');
+  if (b.rows !== n) throw new MatError(`lowerTriSolve: row dimensions must agree (${n} vs ${b.rows})`);
+  const X = zeros(n, b.cols);
+  for (let col = 0; col < b.cols; col++) {
+    for (let r = 0; r < n; r++) {
+      let s = b.data[r + col * b.rows];
+      for (let c = 0; c < r; c++) s -= L.data[r + c * n] * X.data[c + col * n];
+      X.data[r + col * n] = s / L.data[r + r * n];
+    }
+  }
+  return X;
+}
+
+function rowPermute(A: Mat, p: number[]): Mat {
+  const out = zeros(A.rows, A.cols);
+  for (let c = 0; c < A.cols; c++) {
+    for (let r = 0; r < A.rows; r++) out.data[r + c * out.rows] = A.data[p[r] + c * A.rows];
+  }
+  return out;
+}
+
+function colPermute(A: Mat, p: number[]): Mat {
+  const out = zeros(A.rows, A.cols);
+  for (let c = 0; c < A.cols; c++) {
+    for (let r = 0; r < A.rows; r++) out.data[r + c * out.rows] = A.data[r + p[c] * A.rows];
+  }
+  return out;
+}
+
+function findPermutedTriangular(A: Mat): { kind: 'upper' | 'lower'; p: number[] } | null {
+  const n = A.rows;
+  const rows = Array.from({ length: n }, (_, r) => {
+    let first = n, last = -1;
+    for (let c = 0; c < n; c++) {
+      if (A.data[r + c * n] !== 0) {
+        first = Math.min(first, c);
+        last = Math.max(last, c);
+      }
+    }
+    return { r, first, last };
+  });
+
+  const upper = [...rows].sort((a, b) => a.first - b.first);
+  if (upper.every((row, pos) => row.first >= pos)) return { kind: 'upper', p: upper.map((row) => row.r) };
+
+  const lower = [...rows].sort((a, b) => a.last - b.last);
+  if (lower.every((row, pos) => row.last <= pos)) return { kind: 'lower', p: lower.map((row) => row.r) };
+
+  return null;
+}
+
+function findColPermutedTriangular(A: Mat): { kind: 'upper' | 'lower'; p: number[] } | null {
+  const n = A.rows;
+  const cols = Array.from({ length: n }, (_, c) => {
+    let first = n, last = -1;
+    for (let r = 0; r < n; r++) {
+      if (A.data[r + c * n] !== 0) {
+        first = Math.min(first, r);
+        last = Math.max(last, r);
+      }
+    }
+    return { c, first, last };
+  });
+
+  const upper = [...cols].sort((a, b) => a.last - b.last);
+  if (upper.every((col, pos) => col.last <= pos)) return { kind: 'upper', p: upper.map((col) => col.c) };
+
+  const lower = [...cols].sort((a, b) => a.first - b.first);
+  if (lower.every((col, pos) => col.first >= pos)) return { kind: 'lower', p: lower.map((col) => col.c) };
+
+  return null;
+}
+
+function permutedTriSolve(A: Mat, b: Mat, info: { kind: 'upper' | 'lower'; p: number[] }): Mat {
+  const PA = rowPermute(A, info.p);
+  const Pb = rowPermute(b, info.p);
+  return info.kind === 'upper' ? upperTriSolve(PA, Pb) : lowerTriSolve(PA, Pb);
+}
+
+function colPermutedTriSolve(A: Mat, b: Mat, info: { kind: 'upper' | 'lower'; p: number[] }): Mat {
+  const TA = colPermute(A, info.p);
+  const y = info.kind === 'upper' ? upperTriSolve(TA, b) : lowerTriSolve(TA, b);
+  const x = zeros(A.cols, b.cols);
+  for (let c = 0; c < A.cols; c++) {
+    const orig = info.p[c];
+    for (let col = 0; col < b.cols; col++) x.data[orig + col * x.rows] = y.data[c + col * y.rows];
+  }
+  return x;
+}
+
+function choleskySolve(A: Mat, b: Mat): Mat {
+  const R = chol(A);
+  const y = lowerTriSolve(transpose(R), b);
+  return upperTriSolve(R, y);
+}
+
+function squareSolve(a: Mat, b: Mat): Mat {
+  if (isDiagonalMatrix(a)) return diagonalSolve(a, b);
+  const tri = triangularKind(a);
+  if (tri === 'upper') return upperTriSolve(a, b);
+  if (tri === 'lower') return lowerTriSolve(a, b);
+  const permutedTri = findPermutedTriangular(a);
+  if (permutedTri) return permutedTriSolve(a, b, permutedTri);
+  const colPermutedTri = findColPermutedTriangular(a);
+  if (colPermutedTri) return colPermutedTriSolve(a, b, colPermutedTri);
+  if (isSymmetric(a, 0)) {
+    try { return choleskySolve(a, b); } catch {
+      // Not SPD; MATLAB continues to a general solver for symmetric indefinite cases.
+    }
+  }
+  return luSolve(a, b);
 }
 
 function qrPivot(A: Mat): { Q: Mat; R: Mat; piv: number[]; rank: number; tol: number } {
@@ -177,10 +328,10 @@ export function inv(a: Mat): Mat {
   if (isComplex(a)) { if (a.rows !== a.cols) throw new MatError('inverse requires a square matrix'); return cLuSolve(a, eye(a.rows)); }
   if (isScalar(a)) return scalar(1 / a.data[0]);
   if (a.rows !== a.cols) throw new MatError('inverse requires a square matrix');
-  return luSolve(a, eye(a.rows));
+  return squareSolve(a, eye(a.rows));
 }
 
-/** A \ B (mldivide): square → LU solve; rectangular → pivoted-QR basic least-squares solve. */
+/** A \ B (mldivide): square dispatch by structure; rectangular → pivoted-QR basic least-squares solve. */
 export function mldivide(a: Mat, b: Mat): Mat {
   if (isComplex(a) || isComplex(b)) {
     if (isScalar(a)) return ewRDiv(b, a);
@@ -191,7 +342,7 @@ export function mldivide(a: Mat, b: Mat): Mat {
   }
   if (isScalar(a)) return mat(b.rows, b.cols, b.data.map((v) => v / a.data[0]) as Float64Array);
   if (a.rows !== b.rows) throw new MatError(`\\: row dimensions must agree (${a.rows} vs ${b.rows})`);
-  if (a.rows === a.cols) return luSolve(a, b);
+  if (a.rows === a.cols) return squareSolve(a, b);
   // Rectangular systems use QR with column pivoting. This avoids normal equations
   // for tall least-squares problems and gives MATLAB-like basic solutions for
   // rank-deficient or underdetermined systems.
