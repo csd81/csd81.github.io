@@ -538,6 +538,9 @@ export function qrRankWarning(A: Mat): string | null {
 
 function qrPivotSolve(a: Mat, b: Mat): { x: Mat; rank: number; tol: number } {
   const { Q, R, piv, rank, tol } = qrPivot(a);
+  if (a.rows < a.cols && rank < Math.min(a.rows, a.cols)) {
+    return { x: matmul(pinv(a), b), rank, tol };
+  }
   const z = zeros(a.cols, b.cols);
   if (rank > 0) {
     const rhs = zeros(rank, b.cols);
