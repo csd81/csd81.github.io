@@ -477,6 +477,130 @@ function qrPivotSolve(a: Mat, b: Mat): { x: Mat; rank: number; tol: number } {
   return { x, rank, tol };
 }
 
+function cUpperTriSolve(R: Mat, b: Mat): Mat {
+  const n = R.rows;
+  if (R.cols !== n) throw new MatError('cUpperTriSolve: matrix must be square');
+  if (b.rows !== n) throw new MatError(`cUpperTriSolve: row dimensions must agree (${n} vs ${b.rows})`);
+  const Rr = R.data, Ri = R.idata ?? new Float64Array(n * n);
+  const br = b.data, bi = b.idata ?? new Float64Array(b.rows * b.cols);
+  const Xr = new Float64Array(n * b.cols), Xi = new Float64Array(n * b.cols);
+  for (let col = 0; col < b.cols; col++) {
+    for (let r = n - 1; r >= 0; r--) {
+      let sr = br[r + col * b.rows], si = bi[r + col * b.rows];
+      for (let c = r + 1; c < n; c++) {
+        const [pr, pi] = cmul(Rr[r + c * n], Ri[r + c * n], Xr[c + col * n], Xi[c + col * n]);
+        sr -= pr; si -= pi;
+      }
+      const [xr, xi] = cdiv(sr, si, Rr[r + r * n], Ri[r + r * n]);
+      Xr[r + col * n] = xr; Xi[r + col * n] = xi;
+    }
+  }
+  return finishComplex(n, b.cols, Xr, Xi);
+}
+
+function cQrPivotSolve(a: Mat, b: Mat): { x: Mat; rank: number; tol: number } {
+  const m = a.rows, n = a.cols, steps = Math.min(m, n);
+  const Vr = Float64Array.from(a.data);
+  const Vi = a.idata ? Float64Array.from(a.idata) : new Float64Array(m * n);
+  const Qr = new Float64Array(m * steps), Qi = new Float64Array(m * steps);
+  const Rr = new Float64Array(steps * n), Ri = new Float64Array(steps * n);
+  const piv = Array.from({ length: n }, (_, i) => i);
+  let maxColNorm = 0;
+  for (let c = 0; c < n; c++) {
+    let s = 0;
+    for (let r = 0; r < m; r++) s += Vr[r + c * m] ** 2 + Vi[r + c * m] ** 2;
+    maxColNorm = Math.max(maxColNorm, Math.sqrt(s));
+  }
+  const tol = Math.max(m, n) * 2.220446049250313e-16 * maxColNorm;
+
+  let rank = 0;
+  for (let k = 0; k < steps; k++) {
+    let pc = k, best = -1;
+    for (let c = k; c < n; c++) {
+      let s = 0;
+      for (let r = 0; r < m; r++) s += Vr[r + c * m] ** 2 + Vi[r + c * m] ** 2;
+      if (s > best) { best = s; pc = c; }
+    }
+    if (pc !== k) {
+      for (let r = 0; r < m; r++) {
+        let t = Vr[r + k * m]; Vr[r + k * m] = Vr[r + pc * m]; Vr[r + pc * m] = t;
+        t = Vi[r + k * m]; Vi[r + k * m] = Vi[r + pc * m]; Vi[r + pc * m] = t;
+      }
+      for (let r = 0; r < k; r++) {
+        let t = Rr[r + k * steps]; Rr[r + k * steps] = Rr[r + pc * steps]; Rr[r + pc * steps] = t;
+        t = Ri[r + k * steps]; Ri[r + k * steps] = Ri[r + pc * steps]; Ri[r + pc * steps] = t;
+      }
+      const tp = piv[k]; piv[k] = piv[pc]; piv[pc] = tp;
+    }
+
+    const norm = Math.sqrt(Math.max(best, 0));
+    if (norm <= tol) break;
+    Rr[k + k * steps] = norm;
+    for (let r = 0; r < m; r++) {
+      Qr[r + k * m] = Vr[r + k * m] / norm;
+      Qi[r + k * m] = Vi[r + k * m] / norm;
+    }
+    for (let c = k + 1; c < n; c++) {
+      let rr = 0, ri = 0;
+      for (let r = 0; r < m; r++) {
+        const qr = Qr[r + k * m], qi = Qi[r + k * m];
+        const vr = Vr[r + c * m], vi = Vi[r + c * m];
+        rr += qr * vr + qi * vi;
+        ri += qr * vi - qi * vr;
+      }
+      Rr[k + c * steps] = rr; Ri[k + c * steps] = ri;
+      for (let r = 0; r < m; r++) {
+        const [pr, pi] = cmul(Qr[r + k * m], Qi[r + k * m], rr, ri);
+        Vr[r + c * m] -= pr; Vi[r + c * m] -= pi;
+      }
+    }
+    rank++;
+  }
+
+  const zr = new Float64Array(n * b.cols), zi = new Float64Array(n * b.cols);
+  if (rank > 0) {
+    const rhsr = new Float64Array(rank * b.cols), rhsi = new Float64Array(rank * b.cols);
+    const br = b.data, bi = b.idata ?? new Float64Array(b.rows * b.cols);
+    for (let col = 0; col < b.cols; col++) {
+      for (let q = 0; q < rank; q++) {
+        let sr = 0, si = 0;
+        for (let r = 0; r < m; r++) {
+          const qr = Qr[r + q * m], qi = Qi[r + q * m];
+          const vr = br[r + col * b.rows], vi = bi[r + col * b.rows];
+          sr += qr * vr + qi * vi;
+          si += qr * vi - qi * vr;
+        }
+        rhsr[q + col * rank] = sr; rhsi[q + col * rank] = si;
+      }
+    }
+    const R11r = new Float64Array(rank * rank), R11i = new Float64Array(rank * rank);
+    for (let c = 0; c < rank; c++) {
+      for (let r = 0; r <= c; r++) {
+        R11r[r + c * rank] = Rr[r + c * steps];
+        R11i[r + c * rank] = Ri[r + c * steps];
+      }
+    }
+    const y = cUpperTriSolve(finishComplex(rank, rank, R11r, R11i), finishComplex(rank, b.cols, rhsr, rhsi));
+    const yr = y.data, yi = y.idata ?? new Float64Array(y.rows * y.cols);
+    for (let col = 0; col < b.cols; col++) {
+      for (let r = 0; r < rank; r++) {
+        zr[r + col * n] = yr[r + col * y.rows];
+        zi[r + col * n] = yi[r + col * y.rows];
+      }
+    }
+  }
+
+  const xr = new Float64Array(n * b.cols), xi = new Float64Array(n * b.cols);
+  for (let c = 0; c < n; c++) {
+    const orig = piv[c];
+    for (let col = 0; col < b.cols; col++) {
+      xr[orig + col * n] = zr[c + col * n];
+      xi[orig + col * n] = zi[c + col * n];
+    }
+  }
+  return { x: finishComplex(n, b.cols, xr, xi), rank, tol };
+}
+
 export function inv(a: Mat): Mat {
   if (isComplex(a)) { if (a.rows !== a.cols) throw new MatError('inverse requires a square matrix'); return cLuSolve(a, eye(a.rows)); }
   if (isScalar(a)) return scalar(1 / a.data[0]);
@@ -490,8 +614,7 @@ export function mldivide(a: Mat, b: Mat): Mat {
     if (isScalar(a)) return ewRDiv(b, a);
     if (a.rows !== b.rows) throw new MatError(`\\: row dimensions must agree (${a.rows} vs ${b.rows})`);
     if (a.rows === a.cols) return cLuSolve(a, b);
-    const At = ctranspose(a);
-    return cLuSolve(cmatmul(At, a), cmatmul(At, b));
+    return cQrPivotSolve(a, b).x;
   }
   if (isScalar(a)) return mat(b.rows, b.cols, b.data.map((v) => v / a.data[0]) as Float64Array);
   if (a.rows !== b.rows) throw new MatError(`\\: row dimensions must agree (${a.rows} vs ${b.rows})`);
