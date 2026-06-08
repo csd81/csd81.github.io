@@ -68,30 +68,18 @@ function luSolve(a: Mat, b: Mat): Mat {
   return X;
 }
 
-function isDiagonalMatrix(A: Mat): boolean {
-  const n = A.rows;
-  if (A.cols !== n) return false;
-  for (let c = 0; c < n; c++) {
-    for (let r = 0; r < n; r++) {
-      if (r !== c && A.data[r + c * n] !== 0) return false;
+export function bandwidth(A: Mat): { lower: number; upper: number } {
+  let lower = 0, upper = 0;
+  for (let c = 0; c < A.cols; c++) {
+    for (let r = 0; r < A.rows; r++) {
+      const i = r + c * A.rows;
+      if (A.data[i] !== 0 || (A.idata != null && A.idata[i] !== 0)) {
+        if (r > c) lower = Math.max(lower, r - c);
+        else if (c > r) upper = Math.max(upper, c - r);
+      }
     }
   }
-  return true;
-}
-
-function triangularKind(A: Mat): 'upper' | 'lower' | null {
-  const n = A.rows;
-  if (A.cols !== n) return null;
-  let upper = true, lower = true;
-  for (let c = 0; c < n; c++) {
-    for (let r = 0; r < n; r++) {
-      const v = A.data[r + c * n];
-      if (r > c && v !== 0) upper = false;
-      if (r < c && v !== 0) lower = false;
-      if (!upper && !lower) return null;
-    }
-  }
-  return upper ? 'upper' : lower ? 'lower' : null;
+  return { lower, upper };
 }
 
 function diagonalSolve(A: Mat, b: Mat): Mat {
@@ -131,6 +119,40 @@ function lowerTriSolve(L: Mat, b: Mat): Mat {
       for (let c = 0; c < r; c++) s -= L.data[r + c * n] * X.data[c + col * n];
       X.data[r + col * n] = s / L.data[r + r * n];
     }
+  }
+  return X;
+}
+
+function tridiagonalSolve(A: Mat, b: Mat): Mat {
+  const n = A.rows;
+  if (A.cols !== n) throw new MatError('tridiagonalSolve: matrix must be square');
+  if (b.rows !== n) throw new MatError(`tridiagonalSolve: row dimensions must agree (${n} vs ${b.rows})`);
+  if (n === 0) return zeros(0, b.cols);
+  const diag = new Float64Array(n);
+  const sub = new Float64Array(Math.max(0, n - 1));
+  const sup = new Float64Array(Math.max(0, n - 1));
+  for (let i = 0; i < n; i++) diag[i] = A.data[i + i * n];
+  for (let i = 0; i < n - 1; i++) {
+    sub[i] = A.data[i + 1 + i * n];
+    sup[i] = A.data[i + (i + 1) * n];
+  }
+
+  const den = new Float64Array(n);
+  const cp = new Float64Array(Math.max(0, n - 1));
+  den[0] = diag[0];
+  if (n > 1) cp[0] = sup[0] / den[0];
+  for (let i = 1; i < n; i++) {
+    den[i] = diag[i] - sub[i - 1] * cp[i - 1];
+    if (i < n - 1) cp[i] = sup[i] / den[i];
+  }
+
+  const X = zeros(n, b.cols);
+  const y = new Float64Array(n);
+  for (let col = 0; col < b.cols; col++) {
+    y[0] = b.data[col * b.rows] / den[0];
+    for (let i = 1; i < n; i++) y[i] = (b.data[i + col * b.rows] - sub[i - 1] * y[i - 1]) / den[i];
+    X.data[n - 1 + col * n] = y[n - 1];
+    for (let i = n - 2; i >= 0; i--) X.data[i + col * n] = y[i] - cp[i] * X.data[i + 1 + col * n];
   }
   return X;
 }
@@ -219,14 +241,15 @@ function choleskySolve(A: Mat, b: Mat): Mat {
 }
 
 function squareSolve(a: Mat, b: Mat): Mat {
-  if (isDiagonalMatrix(a)) return diagonalSolve(a, b);
-  const tri = triangularKind(a);
-  if (tri === 'upper') return upperTriSolve(a, b);
-  if (tri === 'lower') return lowerTriSolve(a, b);
+  const bw = bandwidth(a);
+  if (bw.lower === 0 && bw.upper === 0) return diagonalSolve(a, b);
+  if (bw.lower === 0) return upperTriSolve(a, b);
+  if (bw.upper === 0) return lowerTriSolve(a, b);
   const permutedTri = findPermutedTriangular(a);
   if (permutedTri) return permutedTriSolve(a, b, permutedTri);
   const colPermutedTri = findColPermutedTriangular(a);
   if (colPermutedTri) return colPermutedTriSolve(a, b, colPermutedTri);
+  if (bw.lower <= 1 && bw.upper <= 1) return tridiagonalSolve(a, b);
   if (isSymmetric(a, 0)) {
     try { return choleskySolve(a, b); } catch {
       // Not SPD; MATLAB continues to a general solver for symmetric indefinite cases.
