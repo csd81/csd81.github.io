@@ -131,10 +131,16 @@ export default function CommandWindow({
   const draftRef = useRef('');   // stashes the unsubmitted input while navigating history
   const [menu, setMenu] = useState<{ items: string[]; sel: number; word: string; start: number } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [lines, prompt]);
   useEffect(() => { if (prompt !== null) inputRef.current?.focus(); }, [prompt]);
+  useEffect(() => {
+    const input = inputRef.current;
+    if (!input) return;
+    input.style.height = 'auto';
+    input.style.height = `${input.scrollHeight}px`;
+  }, [value]);
 
   // Replace the word under the cursor with `name`, append "(" for functions if not present.
   const applyCompletion = (name: string, start: number, word: string) => {
@@ -178,9 +184,10 @@ export default function CommandWindow({
     onSubmit(v);
   };
 
-  const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const onKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Tab autocompletion (disabled while answering an input() prompt).
     if (e.key === 'Tab' && prompt === null) { e.preventDefault(); tryComplete(); return; }
+    if (e.key === 'Enter' && e.shiftKey) { setMenu(null); return; }
     // When the completion menu is open, arrows/Enter/Tab navigate & accept it.
     if (menu) {
       if (e.key === 'ArrowDown') { e.preventDefault(); setMenu({ ...menu, sel: (menu.sel + 1) % menu.items.length }); return; }
@@ -235,10 +242,11 @@ export default function CommandWindow({
               ))}
             </ul>
           )}
-          <input
+          <textarea
             ref={inputRef}
             className="mlab__input"
             value={value}
+            rows={1}
             spellCheck={false}
             autoCapitalize="off"
             autoCorrect="off"
@@ -246,16 +254,6 @@ export default function CommandWindow({
             onChange={(e) => { setValue(e.target.value); setMenu(null); }}
             onBlur={() => setMenu(null)}
             onKeyDown={onKey}
-            onPaste={(e) => {
-              // A single-line <input> would flatten pasted code; run multi-line
-              // pastes as a block instead (only when not answering an input() prompt).
-              const text = e.clipboardData.getData('text');
-              if (prompt === null && /\n/.test(text)) {
-                e.preventDefault();
-                const block = text.replace(/\s+$/, '');
-                if (block) { setHistory((h) => [...h, block]); setHIdx(-1); setValue(''); onSubmit(block); }
-              }
-            }}
           />
           </div>
         </div>

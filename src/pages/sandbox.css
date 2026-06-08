@@ -251,7 +251,9 @@
 .mlab__input-wrap { position: relative; flex: 1 1 auto; display: flex; }
 .mlab__input {
   flex: 1 1 auto; background: transparent; border: 0; outline: none;
-  color: #eaf1ff; font-family: inherit; font-size: inherit; min-width: 0;
+  color: #eaf1ff; font-family: inherit; font-size: inherit; line-height: 1.35;
+  min-width: 0; min-height: 1.35em; max-height: 10.8em; padding: 0; resize: none;
+  overflow-y: auto;
 }
 
 /* Tab-completion dropdown (floats above the prompt line). */
