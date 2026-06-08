@@ -23,7 +23,7 @@ import {
 import { type SymExpr, sN, sV, sAdd, sSub, sMul, sPow, sFn, sNeg, sDiv, simplifyExpr, diffExpr, subsExpr, evalExpr as symEval, exprToStr, symVars } from './sym';
 import {
   det, inv, mldivide, illConditionWarning, qrRankWarning, diag, norm, eye,
-  qr as qrDecomp, chol as cholFn, luOutputs, jacobiEigSym, svd as svdReal,
+  qr as qrDecomp, qrPivotOutputs, chol as cholFn, luOutputs, jacobiEigSym, svd as svdReal,
   rankOf, cond as condFn, pinv as pinvFn, orth as orthFn, nullspace, nullspaceRational, rref as rrefFn, vecnorm as vecnormFn, isSymmetric, cDet, svdC as svdCplx,
   generalEig, durandKerner, hess as hessFn, schur as schurFn, expm as expmFn, logm as logmFn, sqrtm as sqrtmFn, ldl as ldlFn, lsqnonneg as lsqnonnegFn,
   balance as balanceFn, rsf2csf as rsf2csfFn, qz as qzFn, ordschur as ordschurFn, ordqz as ordqzFn, schurEig as schurEigFn,
@@ -1440,7 +1440,16 @@ export const BUILTINS: Record<string, Builtin> = {
     const R = cholFn(A);
     return ret(lower ? ctransposeFn(R) : R);
   },
-  qr: async (a, n) => { const { Q, R } = qrDecomp(m(a[0])); for (let c = 0; c < R.cols; c++) for (let r = c + 1; r < R.rows; r++) { R.data[r + c * R.rows] = 0; if (R.idata) R.idata[r + c * R.rows] = 0; } return n >= 2 ? [Q, R] : [R]; },
+  qr: async (a, n) => {
+    const A = m(a[0]);
+    if (n >= 3) {
+      const { Q, R, E } = qrPivotOutputs(A);
+      return [Q, R, E];
+    }
+    const { Q, R } = qrDecomp(A);
+    for (let c = 0; c < R.cols; c++) for (let r = c + 1; r < R.rows; r++) { R.data[r + c * R.rows] = 0; if (R.idata) R.idata[r + c * R.rows] = 0; }
+    return n >= 2 ? [Q, R] : [R];
+  },
   lu: async (a, n) => {
     const { L, U, P } = luOutputs(m(a[0]));
     if (n >= 3) return [L, U, P];

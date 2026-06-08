@@ -10,10 +10,10 @@ const outfile = join(outdir, 'regression.mjs');
 
 const source = String.raw`
 import {
-  bandwidth, mldivide, mldividePlan, qrRankWarning,
+  bandwidth, mldivide, mldividePlan, qrPivotOutputs, qrRankWarning,
 } from './src/sandbox/matlab/linalg';
 import {
-  fromRows, matRows, matmul, sparseToDense, type Mat,
+  cmatmul, fromRows, isComplex, matRows, matmul, sparseToDense, type Mat,
 } from './src/sandbox/matlab/values';
 import { createSession } from './src/sandbox/matlab/index';
 
@@ -27,14 +27,24 @@ function approx(a: number, b: number, tol = 1e-9): boolean {
 
 function maxAbs(M: Mat): number {
   let out = 0;
-  for (const v of M.data) out = Math.max(out, Math.abs(v));
+  for (let i = 0; i < M.data.length; i++) out = Math.max(out, Math.hypot(M.data[i], M.idata ? M.idata[i] : 0));
   return out;
 }
 
 function sub(A: Mat, B: Mat): Mat {
   const C: Mat = { ...A, data: Float64Array.from(A.data) };
   for (let i = 0; i < C.data.length; i++) C.data[i] -= B.data[i];
+  if (A.idata || B.idata) {
+    C.idata = new Float64Array(C.data.length);
+    for (let i = 0; i < C.idata.length; i++) C.idata[i] = (A.idata ? A.idata[i] : 0) - (B.idata ? B.idata[i] : 0);
+  }
   return C;
+}
+
+function complexFromRows(re: number[][], im: number[][]): Mat {
+  const A = fromRows(re);
+  A.idata = fromRows(im).data;
+  return A;
 }
 
 function assertPlan(name: string, rows: number[][], plan: ReturnType<typeof mldividePlan>): Mat {
@@ -46,7 +56,8 @@ function assertPlan(name: string, rows: number[][], plan: ReturnType<typeof mldi
 
 function assertResidual(name: string, A: Mat, B: Mat, tol = 1e-8): Mat {
   const X = mldivide(A, B);
-  const resid = maxAbs(sub(matmul(A, X), B));
+  const AX = isComplex(A) || isComplex(X) ? cmatmul(A, X) : matmul(A, X);
+  const resid = maxAbs(sub(AX, B));
   assert(resid <= tol, name + ': residual ' + resid + ' exceeded ' + tol);
   return X;
 }
@@ -84,6 +95,16 @@ const banded = assertPlan('pentadiagonal', [
 ], 'banded');
 assertResidual('pentadiagonal', banded, fromRows([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12], [13, 14], [15, 16]]));
 
+const hessenberg = assertPlan('upper Hessenberg', [
+  [5, 1, 2, 3, 4, 5],
+  [1, 6, 1, 2, 3, 4],
+  [0, 2, 7, 1, 2, 3],
+  [0, 0, 3, 8, 1, 2],
+  [0, 0, 0, 4, 9, 1],
+  [0, 0, 0, 0, 5, 10],
+], 'hessenberg');
+assertResidual('upper Hessenberg', hessenberg, fromRows([[1], [2], [3], [4], [5], [6]]));
+
 assertPlan('cholesky', [[4, 1, 1], [1, 3, 1], [1, 1, 2]], 'cholesky');
 assertPlan('ldl', [[0, 1, 1], [1, 0, 1], [1, 1, 0]], 'ldl');
 assertPlan('lu', [[1, 2, 3], [4, 7, 5], [6, 8, 10]], 'lu');
@@ -97,9 +118,30 @@ assert(approx(minNormRows[0][0], 1) && approx(minNormRows[1][0], 1) && approx(mi
 assert((qrRankWarning(minNormA) ?? '').startsWith('Rank deficient, rank = 1, tol = '),
   'rank-deficient underdetermined: missing rank warning');
 
-const complexSquare = fromRows([[1, 0], [0, 1]]);
-complexSquare.idata = new Float64Array([0, 1, 0, 0]);
+const pivotQrA = fromRows([[1, 10], [0, 0], [0, 0]]);
+const pivotQr = qrPivotOutputs(pivotQrA);
+assert(maxAbs(sub(matmul(pivotQrA, pivotQr.E), matmul(pivotQr.Q, pivotQr.R))) <= 1e-8,
+  'QRCP should satisfy A*E = Q*R');
+assert(pivotQr.E.data[1] === 1 && pivotQr.E.data[2] === 1, 'QRCP should pivot the larger column first');
+
+const complexDiagonal = complexFromRows([[2, 0], [0, 4]], [[1, 0], [0, -1]]);
+assert(mldividePlan(complexDiagonal) === 'complex-diagonal', 'complex diagonal should use complex-diagonal plan');
+assertResidual('complex diagonal', complexDiagonal, complexFromRows([[3], [5]], [[1], [-2]]));
+
+const complexUpper = complexFromRows([[2, 1], [0, 4]], [[1, -1], [0, 2]]);
+assert(mldividePlan(complexUpper) === 'complex-upper-triangular', 'complex upper should use complex-upper-triangular plan');
+assertResidual('complex upper triangular', complexUpper, complexFromRows([[3], [5]], [[1], [-2]]));
+
+const complexLower = complexFromRows([[2, 0], [1, 4]], [[1, 0], [-1, 2]]);
+assert(mldividePlan(complexLower) === 'complex-lower-triangular', 'complex lower should use complex-lower-triangular plan');
+assertResidual('complex lower triangular', complexLower, complexFromRows([[3], [5]], [[1], [-2]]));
+
+const complexSquare = complexFromRows([[1, 2], [3, 5]], [[0, 1], [-1, 0]]);
 assert(mldividePlan(complexSquare) === 'complex-lu', 'complex square should use complex-lu plan');
+
+const complexMinNormA = complexFromRows([[1, 1, 0], [0, 0, 0]], [[1, -1, 0], [0, 0, 0]]);
+assert(mldividePlan(complexMinNormA) === 'complex-pinv-minnorm', 'complex rank-deficient underdetermined should use complex-pinv-minnorm plan');
+assertResidual('complex rank-deficient underdetermined', complexMinNormA, complexFromRows([[2], [0]], [[0], [0]]));
 
 let out = '';
 const session = createSession({ onOutput: (t: string) => { out += t; } });

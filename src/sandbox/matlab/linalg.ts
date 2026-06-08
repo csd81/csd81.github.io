@@ -91,6 +91,20 @@ function diagonalSolve(A: Mat, b: Mat): Mat {
   return X;
 }
 
+function cDiagonalSolve(A: Mat, b: Mat): Mat {
+  const n = A.rows;
+  const Ar = A.data, Ai = A.idata ?? new Float64Array(n * n);
+  const Br = b.data, Bi = b.idata ?? new Float64Array(b.rows * b.cols);
+  const Xr = new Float64Array(n * b.cols), Xi = new Float64Array(n * b.cols);
+  for (let col = 0; col < b.cols; col++) {
+    for (let r = 0; r < n; r++) {
+      const [xr, xi] = cdiv(Br[r + col * b.rows], Bi[r + col * b.rows], Ar[r + r * n], Ai[r + r * n]);
+      Xr[r + col * n] = xr; Xi[r + col * n] = xi;
+    }
+  }
+  return finishComplex(n, b.cols, Xr, Xi);
+}
+
 /** Solve upper-triangular R x = B for square R. */
 function upperTriSolve(R: Mat, b: Mat): Mat {
   const n = R.rows;
@@ -176,6 +190,10 @@ const MAX_BANDED_DISPATCH_WIDTH = 17;
 function isNarrowBanded(n: number, bw: { lower: number; upper: number }): boolean {
   const width = bw.lower + bw.upper + 1;
   return width < n && width <= MAX_BANDED_DISPATCH_WIDTH;
+}
+
+function isUpperHessenberg(n: number, bw: { lower: number; upper: number }): boolean {
+  return n > 2 && bw.lower <= 1;
 }
 
 function bandedSolve(A0: Mat, b: Mat, bw: { lower: number; upper: number }): Mat {
@@ -461,6 +479,7 @@ function squareSolve(a: Mat, b: Mat): Mat {
   if (colPermutedTri) return colPermutedTriSolve(a, b, colPermutedTri);
   if (bw.lower <= 1 && bw.upper <= 1 && tridiagonalNoPivotSafe(a)) return tridiagonalSolve(a, b);
   if (isNarrowBanded(a.rows, bw)) return bandedSolve(a, b, bw);
+  if (isUpperHessenberg(a.rows, bw)) return bandedSolve(a, b, { lower: 1, upper: a.cols - 1 });
   if (isSymmetric(a, 0)) {
     try { return choleskySolve(a, b); } catch {
       // Not SPD; MATLAB continues to a general solver for symmetric indefinite cases.
@@ -474,8 +493,12 @@ function squareSolve(a: Mat, b: Mat): Mat {
 
 export type MldividePlan =
   | 'scalar'
+  | 'complex-diagonal'
+  | 'complex-upper-triangular'
+  | 'complex-lower-triangular'
   | 'complex-lu'
   | 'complex-qrcp'
+  | 'complex-pinv-minnorm'
   | 'diagonal'
   | 'upper-triangular'
   | 'lower-triangular'
@@ -485,6 +508,7 @@ export type MldividePlan =
   | 'column-permuted-lower-triangular'
   | 'tridiagonal'
   | 'banded'
+  | 'hessenberg'
   | 'cholesky'
   | 'ldl'
   | 'lu'
@@ -493,7 +517,17 @@ export type MldividePlan =
 
 export function mldividePlan(a: Mat): MldividePlan {
   if (isScalar(a)) return 'scalar';
-  if (isComplex(a)) return a.rows === a.cols ? 'complex-lu' : 'complex-qrcp';
+  if (isComplex(a)) {
+    if (a.rows === a.cols) {
+      const bw = bandwidth(a);
+      if (bw.lower === 0 && bw.upper === 0) return 'complex-diagonal';
+      if (bw.lower === 0) return 'complex-upper-triangular';
+      if (bw.upper === 0) return 'complex-lower-triangular';
+      return 'complex-lu';
+    }
+    if (a.rows < a.cols && rankOf(a) < Math.min(a.rows, a.cols)) return 'complex-pinv-minnorm';
+    return 'complex-qrcp';
+  }
   if (a.rows !== a.cols) {
     if (a.rows < a.cols) {
       const { rank } = qrPivot(a);
@@ -512,6 +546,7 @@ export function mldividePlan(a: Mat): MldividePlan {
   if (colPermutedTri) return colPermutedTri.kind === 'upper' ? 'column-permuted-upper-triangular' : 'column-permuted-lower-triangular';
   if (bw.lower <= 1 && bw.upper <= 1 && tridiagonalNoPivotSafe(a)) return 'tridiagonal';
   if (isNarrowBanded(a.rows, bw)) return 'banded';
+  if (isUpperHessenberg(a.rows, bw)) return 'hessenberg';
   if (isSymmetric(a, 0)) {
     try { chol(a); return 'cholesky'; } catch {
       // Not SPD; try the symmetric-indefinite path next.
@@ -580,6 +615,16 @@ function qrPivot(A: Mat): { Q: Mat; R: Mat; piv: number[]; rank: number; tol: nu
   return { Q, R, piv, rank, tol };
 }
 
+export function qrPivotOutputs(A: Mat): { Q: Mat; R: Mat; E: Mat } {
+  const { Q, R, piv } = qrPivot(A);
+  const E = zeros(A.cols, A.cols);
+  for (let c = 0; c < A.cols; c++) E.data[piv[c] + c * A.cols] = 1;
+  for (let c = 0; c < R.cols; c++) {
+    for (let r = c + 1; r < R.rows; r++) R.data[r + c * R.rows] = 0;
+  }
+  return { Q, R, E };
+}
+
 export function qrRankWarning(A: Mat): string | null {
   if (A.rows === A.cols || A.rows < 1 || A.cols < 1 || A.isChar) return null;
   const { rank, tol } = matlabRankInfo(A);
@@ -634,6 +679,35 @@ function cUpperTriSolve(R: Mat, b: Mat): Mat {
     }
   }
   return finishComplex(n, b.cols, Xr, Xi);
+}
+
+function cLowerTriSolve(L: Mat, b: Mat): Mat {
+  const n = L.rows;
+  if (L.cols !== n) throw new MatError('cLowerTriSolve: matrix must be square');
+  if (b.rows !== n) throw new MatError(`cLowerTriSolve: row dimensions must agree (${n} vs ${b.rows})`);
+  const Lr = L.data, Li = L.idata ?? new Float64Array(n * n);
+  const br = b.data, bi = b.idata ?? new Float64Array(b.rows * b.cols);
+  const Xr = new Float64Array(n * b.cols), Xi = new Float64Array(n * b.cols);
+  for (let col = 0; col < b.cols; col++) {
+    for (let r = 0; r < n; r++) {
+      let sr = br[r + col * b.rows], si = bi[r + col * b.rows];
+      for (let c = 0; c < r; c++) {
+        const [pr, pi] = cmul(Lr[r + c * n], Li[r + c * n], Xr[c + col * n], Xi[c + col * n]);
+        sr -= pr; si -= pi;
+      }
+      const [xr, xi] = cdiv(sr, si, Lr[r + r * n], Li[r + r * n]);
+      Xr[r + col * n] = xr; Xi[r + col * n] = xi;
+    }
+  }
+  return finishComplex(n, b.cols, Xr, Xi);
+}
+
+function cSquareSolve(a: Mat, b: Mat): Mat {
+  const bw = bandwidth(a);
+  if (bw.lower === 0 && bw.upper === 0) return cDiagonalSolve(a, b);
+  if (bw.lower === 0) return cUpperTriSolve(a, b);
+  if (bw.upper === 0) return cLowerTriSolve(a, b);
+  return cLuSolve(a, b);
 }
 
 function cQrPivotSolve(a: Mat, b: Mat): { x: Mat; rank: number; tol: number } {
@@ -736,11 +810,22 @@ function cQrPivotSolve(a: Mat, b: Mat): { x: Mat; rank: number; tol: number } {
       xi[orig + col * n] = zi[c + col * n];
     }
   }
+  if (m < n && rank < Math.min(m, n)) return { x: cmatmul(cPinv(a), b), rank, tol };
   return { x: finishComplex(n, b.cols, xr, xi), rank, tol };
 }
 
+function cPinv(A: Mat): Mat {
+  const { U, s, V } = svdC(A);
+  const m = A.rows, n = A.cols;
+  const tol = Math.max(m, n) * (s[0] || 0) * 2.220446049250313e-16;
+  const k = s.length;
+  const Splus = zeros(k, k);
+  for (let j = 0; j < k; j++) if (s[j] > tol) Splus.data[j + j * k] = 1 / s[j];
+  return cmatmul(cmatmul(V, Splus), ctranspose(U));
+}
+
 export function inv(a: Mat): Mat {
-  if (isComplex(a)) { if (a.rows !== a.cols) throw new MatError('inverse requires a square matrix'); return cLuSolve(a, eye(a.rows)); }
+  if (isComplex(a)) { if (a.rows !== a.cols) throw new MatError('inverse requires a square matrix'); return cSquareSolve(a, eye(a.rows)); }
   if (isScalar(a)) return scalar(1 / a.data[0]);
   if (a.rows !== a.cols) throw new MatError('inverse requires a square matrix');
   return squareSolve(a, eye(a.rows));
@@ -751,7 +836,7 @@ export function mldivide(a: Mat, b: Mat): Mat {
   if (isComplex(a) || isComplex(b)) {
     if (isScalar(a)) return ewRDiv(b, a);
     if (a.rows !== b.rows) throw new MatError(`\\: row dimensions must agree (${a.rows} vs ${b.rows})`);
-    if (a.rows === a.cols) return cLuSolve(a, b);
+    if (a.rows === a.cols) return cSquareSolve(a, b);
     return cQrPivotSolve(a, b).x;
   }
   if (isScalar(a)) return mat(b.rows, b.cols, b.data.map((v) => v / a.data[0]) as Float64Array);
