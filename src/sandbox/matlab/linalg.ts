@@ -157,6 +157,89 @@ function tridiagonalSolve(A: Mat, b: Mat): Mat {
   return X;
 }
 
+function tridiagonalNoPivotSafe(A: Mat): boolean {
+  const n = A.rows;
+  if (n === 0) return true;
+  let den = A.data[0];
+  if (den === 0) return false;
+  for (let i = 1; i < n; i++) {
+    const sub = A.data[i + (i - 1) * n];
+    const sup = A.data[(i - 1) + i * n];
+    den = A.data[i + i * n] - sub * (sup / den);
+    if (den === 0) return false;
+  }
+  return true;
+}
+
+const MAX_BANDED_DISPATCH_WIDTH = 17;
+
+function isNarrowBanded(n: number, bw: { lower: number; upper: number }): boolean {
+  const width = bw.lower + bw.upper + 1;
+  return width < n && width <= MAX_BANDED_DISPATCH_WIDTH;
+}
+
+function bandedSolve(A0: Mat, b: Mat, bw: { lower: number; upper: number }): Mat {
+  const n = A0.rows;
+  if (A0.cols !== n) throw new MatError('bandedSolve: matrix must be square');
+  if (b.rows !== n) throw new MatError(`bandedSolve: row dimensions must agree (${n} vs ${b.rows})`);
+
+  const A = Float64Array.from(A0.data);
+  const piv = Array.from({ length: n }, (_, i) => i);
+  const lower = bw.lower;
+  const upperFill = bw.upper + bw.lower;
+  const at = (r: number, c: number) => A[r + c * n];
+  const set = (r: number, c: number, v: number) => { A[r + c * n] = v; };
+
+  for (let k = 0; k < n; k++) {
+    let p = k, max = Math.abs(at(k, k));
+    const lastPivotRow = Math.min(n - 1, k + lower);
+    for (let r = k + 1; r <= lastPivotRow; r++) {
+      const v = Math.abs(at(r, k));
+      if (v > max) { max = v; p = r; }
+    }
+    if (p !== k) {
+      for (let c = 0; c < n; c++) {
+        const t = at(k, c);
+        set(k, c, at(p, c));
+        set(p, c, t);
+      }
+      const tp = piv[k]; piv[k] = piv[p]; piv[p] = tp;
+    }
+
+    const pivot = at(k, k);
+    if (pivot === 0) continue;
+    const lastRow = Math.min(n - 1, k + lower);
+    const lastCol = Math.min(n - 1, k + upperFill);
+    for (let r = k + 1; r <= lastRow; r++) {
+      const f = at(r, k) / pivot;
+      set(r, k, f);
+      for (let c = k + 1; c <= lastCol; c++) set(r, c, at(r, c) - f * at(k, c));
+    }
+  }
+
+  const X = zeros(n, b.cols);
+  for (let col = 0; col < b.cols; col++) {
+    const y = new Float64Array(n);
+    for (let r = 0; r < n; r++) y[r] = b.data[piv[r] + col * b.rows];
+
+    for (let r = 0; r < n; r++) {
+      let s = y[r];
+      const first = Math.max(0, r - lower);
+      for (let c = first; c < r; c++) s -= at(r, c) * y[c];
+      y[r] = s;
+    }
+    for (let r = n - 1; r >= 0; r--) {
+      let s = y[r];
+      const last = Math.min(n - 1, r + upperFill);
+      for (let c = r + 1; c <= last; c++) s -= at(r, c) * y[c];
+      y[r] = s / at(r, r);
+    }
+
+    for (let r = 0; r < n; r++) X.data[r + col * n] = y[r];
+  }
+  return X;
+}
+
 function rowPermute(A: Mat, p: number[]): Mat {
   const out = zeros(A.rows, A.cols);
   for (let c = 0; c < A.cols; c++) {
@@ -376,7 +459,8 @@ function squareSolve(a: Mat, b: Mat): Mat {
   if (permutedTri) return permutedTriSolve(a, b, permutedTri);
   const colPermutedTri = findColPermutedTriangular(a);
   if (colPermutedTri) return colPermutedTriSolve(a, b, colPermutedTri);
-  if (bw.lower <= 1 && bw.upper <= 1) return tridiagonalSolve(a, b);
+  if (bw.lower <= 1 && bw.upper <= 1 && tridiagonalNoPivotSafe(a)) return tridiagonalSolve(a, b);
+  if (isNarrowBanded(a.rows, bw)) return bandedSolve(a, b, bw);
   if (isSymmetric(a, 0)) {
     try { return choleskySolve(a, b); } catch {
       // Not SPD; MATLAB continues to a general solver for symmetric indefinite cases.
