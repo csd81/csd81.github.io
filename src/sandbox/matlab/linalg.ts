@@ -240,6 +240,133 @@ function choleskySolve(A: Mat, b: Mat): Mat {
   return upperTriSolve(R, y);
 }
 
+function symmetricSwap(A: Float64Array, n: number, a: number, b: number): void {
+  if (a === b) return;
+  for (let c = 0; c < n; c++) {
+    const t = A[a + c * n];
+    A[a + c * n] = A[b + c * n];
+    A[b + c * n] = t;
+  }
+  for (let r = 0; r < n; r++) {
+    const t = A[r + a * n];
+    A[r + a * n] = A[r + b * n];
+    A[r + b * n] = t;
+  }
+}
+
+function ldlPivotFactor(A0: Mat): { L: Mat; D: Mat; piv: number[]; blocks: number[] } {
+  const n = A0.rows;
+  const A = Float64Array.from(A0.data);
+  const L = eye(n);
+  const D = zeros(n, n);
+  const piv = Array.from({ length: n }, (_, i) => i);
+  const blocks: number[] = [];
+  let maxAbs = 0;
+  for (const v of A) maxAbs = Math.max(maxAbs, Math.abs(v));
+  const tol = Math.max(n, 1) * 2.220446049250313e-16 * Math.max(maxAbs, 1);
+
+  const swapRowsInL = (a: number, b: number, upto: number) => {
+    if (a === b) return;
+    for (let c = 0; c < upto; c++) {
+      const t = L.data[a + c * n];
+      L.data[a + c * n] = L.data[b + c * n];
+      L.data[b + c * n] = t;
+    }
+  };
+  const swapPiv = (a: number, b: number) => {
+    const t = piv[a]; piv[a] = piv[b]; piv[b] = t;
+  };
+
+  let k = 0;
+  while (k < n) {
+    const akk = A[k + k * n];
+    let off = 0, p = -1;
+    for (let i = k + 1; i < n; i++) {
+      const v = Math.abs(A[i + k * n]);
+      if (v > off) { off = v; p = i; }
+    }
+
+    if (Math.abs(akk) > tol || off <= tol || k === n - 1) {
+      if (Math.abs(akk) <= tol) throw new MatError('ldl: matrix is singular to working precision');
+      D.data[k + k * n] = akk;
+      for (let i = k + 1; i < n; i++) L.data[i + k * n] = A[i + k * n] / akk;
+      for (let j = k + 1; j < n; j++) {
+        const lj = L.data[j + k * n];
+        for (let i = j; i < n; i++) {
+          A[i + j * n] -= L.data[i + k * n] * akk * lj;
+          A[j + i * n] = A[i + j * n];
+        }
+      }
+      blocks.push(1);
+      k++;
+      continue;
+    }
+
+    if (p !== k + 1) {
+      symmetricSwap(A, n, k + 1, p);
+      swapRowsInL(k + 1, p, k);
+      swapPiv(k + 1, p);
+    }
+    const a = A[k + k * n], d = A[(k + 1) + (k + 1) * n], e = A[(k + 1) + k * n];
+    const det2 = a * d - e * e;
+    if (Math.abs(det2) <= tol * Math.max(Math.abs(a), Math.abs(d), Math.abs(e), 1)) throw new MatError('ldl: 2-by-2 pivot is singular to working precision');
+    D.data[k + k * n] = a;
+    D.data[(k + 1) + k * n] = e;
+    D.data[k + (k + 1) * n] = e;
+    D.data[(k + 1) + (k + 1) * n] = d;
+
+    const w1 = new Float64Array(n);
+    const w2 = new Float64Array(n);
+    for (let i = k + 2; i < n; i++) {
+      w1[i] = A[i + k * n];
+      w2[i] = A[i + (k + 1) * n];
+      L.data[i + k * n] = (w1[i] * d - w2[i] * e) / det2;
+      L.data[i + (k + 1) * n] = (-w1[i] * e + w2[i] * a) / det2;
+    }
+    for (let j = k + 2; j < n; j++) {
+      for (let i = j; i < n; i++) {
+        A[i + j * n] -= L.data[i + k * n] * w1[j] + L.data[i + (k + 1) * n] * w2[j];
+        A[j + i * n] = A[i + j * n];
+      }
+    }
+    blocks.push(2);
+    k += 2;
+  }
+
+  return { L, D, piv, blocks };
+}
+
+function ldlSolve(A: Mat, b: Mat): Mat {
+  const { L, D, piv, blocks } = ldlPivotFactor(A);
+  const n = A.rows;
+  const rhs = zeros(n, b.cols);
+  for (let col = 0; col < b.cols; col++) for (let r = 0; r < n; r++) rhs.data[r + col * n] = b.data[piv[r] + col * b.rows];
+  const z = lowerTriSolve(L, rhs);
+  const w = zeros(n, b.cols);
+
+  let k = 0;
+  for (const block of blocks) {
+    if (block === 1) {
+      for (let col = 0; col < b.cols; col++) w.data[k + col * n] = z.data[k + col * n] / D.data[k + k * n];
+      k++;
+    } else {
+      const a = D.data[k + k * n], e = D.data[(k + 1) + k * n], d = D.data[(k + 1) + (k + 1) * n];
+      const det2 = a * d - e * e;
+      for (let col = 0; col < b.cols; col++) {
+        const z1 = z.data[k + col * n], z2 = z.data[k + 1 + col * n];
+        w.data[k + col * n] = (d * z1 - e * z2) / det2;
+        w.data[k + 1 + col * n] = (-e * z1 + a * z2) / det2;
+      }
+      k += 2;
+    }
+  }
+
+  const y = upperTriSolve(transpose(L), w);
+  const x = zeros(n, b.cols);
+  for (let r = 0; r < n; r++) for (let col = 0; col < b.cols; col++) x.data[piv[r] + col * n] = y.data[r + col * n];
+  return x;
+}
+
 function squareSolve(a: Mat, b: Mat): Mat {
   const bw = bandwidth(a);
   if (bw.lower === 0 && bw.upper === 0) return diagonalSolve(a, b);
@@ -253,6 +380,9 @@ function squareSolve(a: Mat, b: Mat): Mat {
   if (isSymmetric(a, 0)) {
     try { return choleskySolve(a, b); } catch {
       // Not SPD; MATLAB continues to a general solver for symmetric indefinite cases.
+    }
+    try { return ldlSolve(a, b); } catch {
+      // Pivoted LDL can still fail on singular cases; LU remains the general fallback.
     }
   }
   return luSolve(a, b);
