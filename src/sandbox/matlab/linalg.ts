@@ -437,6 +437,13 @@ function ldlPivotFactor(A0: Mat): { L: Mat; D: Mat; piv: number[]; blocks: numbe
   return { L, D, piv, blocks };
 }
 
+function pivotMatrix(piv: number[]): Mat {
+  const n = piv.length;
+  const P = zeros(n, n);
+  for (let r = 0; r < n; r++) P.data[r + piv[r] * n] = 1;
+  return P;
+}
+
 function ldlSolve(A: Mat, b: Mat): Mat {
   const { L, D, piv, blocks } = ldlPivotFactor(A);
   const n = A.rows;
@@ -1352,14 +1359,10 @@ function funmViaEig(A: Mat, f: (re: number, im: number) => [number, number]): Ma
 export const sqrtm = (A: Mat): Mat => funmViaEig(A, (re, im) => csqrt(re, im));
 export const logm = (A: Mat): Mat => funmViaEig(A, (re, im) => clog(re, im));
 
-/** LDL' factorisation of a symmetric matrix → unit-lower L and diagonal D. */
-export function ldl(A: Mat): { L: Mat; D: Mat } {
-  const n = A.rows; const L = eye(n); const D = zeros(n, n);
-  for (let j = 0; j < n; j++) {
-    let dj = A.data[j + j * n]; for (let k = 0; k < j; k++) dj -= L.data[j + k * n] ** 2 * D.data[k + k * n]; D.data[j + j * n] = dj;
-    for (let i = j + 1; i < n; i++) { let s = A.data[i + j * n]; for (let k = 0; k < j; k++) s -= L.data[i + k * n] * L.data[j + k * n] * D.data[k + k * n]; L.data[i + j * n] = dj !== 0 ? s / dj : 0; }
-  }
-  return { L, D };
+/** Pivoted block LDL' factorisation: P*A*P' = L*D*L'. */
+export function ldl(A: Mat): { L: Mat; D: Mat; P: Mat; piv: number[] } {
+  const { L, D, piv } = ldlPivotFactor(A);
+  return { L, D, P: pivotMatrix(piv), piv };
 }
 
 /** Nonnegative least squares (Lawson–Hanson active set): min ‖Cx−d‖, x ≥ 0. */

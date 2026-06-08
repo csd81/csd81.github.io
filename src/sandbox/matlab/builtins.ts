@@ -1629,7 +1629,10 @@ export const BUILTINS: Record<string, Builtin> = {
     const U = m(a[0]), T = m(a[1]); const sel = toArray(m(a[2])).map((x) => x !== 0);
     const { U: U2, T: T2 } = ordschurFn(U, T, sel); return n >= 2 ? [U2, T2] : [U2];
   },
-  ldl: async (a, n) => { const { L, D } = ldlFn(m(a[0])); return n >= 2 ? [L, D] : [L]; },
+  ldl: async (a, n) => {
+    const { L, D, P } = ldlFn(m(a[0]));
+    return n >= 3 ? [L, D, P] : n >= 2 ? [L, D] : [L];
+  },
   lsqnonneg: async (a) => ret(lsqnonnegFn(m(a[0]), m(a[1]))),
   'containers.Map': async (a) => ret(buildMap(a)),
   keys: async (a) => { const mp = a[0] as MapV | DictV; if (!isMap(mp) && !isDict(mp)) throw new MatError('keys: expected a containers.Map or dictionary'); const ks = mapKeysSorted(mp); if (isDict(mp)) return ret(mp.keyKind === 'char' ? makeStrArr(ks.length, 1, ks.map((k) => String(k))) : colVec(ks.map((k) => Number(k)))); return ret(makeCell(1, ks.length, ks.map((k) => (mp.keyKind === 'char' ? str(k as string) : scalar(k as number))))); },

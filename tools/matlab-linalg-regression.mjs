@@ -10,7 +10,7 @@ const outfile = join(outdir, 'regression.mjs');
 
 const source = String.raw`
 import {
-  bandwidth, linsolveWithOptions, mldivide, mldividePlan, qrPivotOutputs, qrRankWarning,
+  bandwidth, ldl, linsolveWithOptions, mldivide, mldividePlan, qrPivotOutputs, qrRankWarning,
 } from './src/sandbox/matlab/linalg';
 import {
   cmatmul, ctranspose, fromRows, isComplex, matRows, matmul, sparseToDense, type Mat,
@@ -135,6 +135,13 @@ assertPlan('cholesky', [[4, 1, 1], [1, 3, 1], [1, 1, 2]], 'cholesky');
 assertPlan('ldl', [[0, 1, 1], [1, 0, 1], [1, 1, 0]], 'ldl');
 assertPlan('lu', [[1, 2, 3], [4, 7, 5], [6, 8, 10]], 'lu');
 assertPlan('rectangular qrcp', [[1, 0], [0, 1], [1, 1]], 'qrcp');
+
+const ldlA = fromRows([[0, 0, 2], [0, 3, 1], [2, 1, 4]]);
+const ldlFac = ldl(ldlA);
+assert(maxAbs(sub(matmul(matmul(ldlFac.P, ldlA), ctranspose(ldlFac.P)), matmul(matmul(ldlFac.L, ldlFac.D), ctranspose(ldlFac.L)))) <= 1e-8,
+  'pivoted LDL reconstruction failed');
+assert(maxAbs(sub(ldlFac.P, fromRows([[1, 0, 0], [0, 1, 0], [0, 0, 1]]))) > 0,
+  'pivoted LDL should expose a nontrivial permutation matrix');
 
 const minNormA = assertPlan('rank-deficient underdetermined', [[1, 1, 0], [0, 0, 0]], 'pinv-minnorm');
 const minNormX = mldivide(minNormA, fromRows([[2], [0]]));
