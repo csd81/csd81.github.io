@@ -531,8 +531,8 @@ function qrPivot(A: Mat): { Q: Mat; R: Mat; piv: number[]; rank: number; tol: nu
 
 export function qrRankWarning(A: Mat): string | null {
   if (A.rows === A.cols || A.rows < 1 || A.cols < 1 || A.isChar) return null;
-  const { rank, tol } = isComplex(A) ? cQrPivotSolve(A, zeros(A.rows, 0)) : qrPivot(A);
-  if (rank === Math.min(A.rows, A.cols)) return null;
+  const { rank, tol } = matlabRankInfo(A);
+  if (rank >= Math.min(A.rows, A.cols)) return null;
   return `Rank deficient, rank = ${rank}, tol = ${tol.toExponential(6)}.`;
 }
 
@@ -1430,12 +1430,20 @@ export function rankOf(A: Mat, tol?: number): number {
   return s.filter((x) => x > t).length;
 }
 export function cond(A: Mat): number { const { s } = svd(A); const mn = s[s.length - 1]; return mn === 0 ? Infinity : s[0] / mn; }
+
+function matlabRankInfo(A: Mat): { rank: number; tol: number; smax: number; smin: number } {
+  const { s } = svdC(A);
+  const smax = s[0] ?? 0;
+  const smin = s[s.length - 1] ?? 0;
+  const tol = Math.max(A.rows, A.cols) * smax * 2.220446049250313e-16;
+  return { rank: s.filter((x) => x > tol).length, tol, smax, smin };
+}
+
 /** MATLAB-style "close to singular" message for a square matrix solved via backslash, or null if A is well-conditioned. */
 export function illConditionWarning(A: Mat): string | null {
   if (A.rows !== A.cols || A.rows < 1 || A.isChar) return null;
-  const { s } = svdC(A);
-  const hi = s[0] ?? 0, lo = s[s.length - 1] ?? 0;
-  const rc = hi !== 0 && Number.isFinite(hi) && Number.isFinite(lo) ? lo / hi : 0;
+  const { smax, smin } = matlabRankInfo(A);
+  const rc = smax !== 0 && Number.isFinite(smax) && Number.isFinite(smin) ? smin / smax : 0;
   if (rc >= Number.EPSILON) return null;
   return rc === 0
     ? 'Matrix is singular to working precision.'
