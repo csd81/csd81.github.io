@@ -23,7 +23,7 @@ import {
 import { type SymExpr, sN, sV, sAdd, sSub, sMul, sPow, sFn, sNeg, sDiv, simplifyExpr, diffExpr, subsExpr, evalExpr as symEval, exprToStr, symVars } from './sym';
 import {
   det, inv, mldivide, illConditionWarning, qrRankWarning, diag, norm, eye,
-  qr as qrDecomp, qrPivotOutputs, chol as cholFn, luOutputs, jacobiEigSym, svd as svdReal,
+  qr as qrDecomp, qrPivotOutputs, linsolveWithOptions, type LinsolveOptions, chol as cholFn, luOutputs, jacobiEigSym, svd as svdReal,
   rankOf, cond as condFn, pinv as pinvFn, orth as orthFn, nullspace, nullspaceRational, rref as rrefFn, vecnorm as vecnormFn, isSymmetric, cDet, svdC as svdCplx,
   generalEig, durandKerner, hess as hessFn, schur as schurFn, expm as expmFn, logm as logmFn, sqrtm as sqrtmFn, ldl as ldlFn, lsqnonneg as lsqnonnegFn,
   balance as balanceFn, rsf2csf as rsf2csfFn, qz as qzFn, ordschur as ordschurFn, ordqz as ordqzFn, schurEig as schurEigFn,
@@ -1391,8 +1391,24 @@ export const BUILTINS: Record<string, Builtin> = {
   triu: async (a) => { const A = m(a[0]); const k = a.length >= 2 ? Math.round(asScalar(a[1])) : 0; const o = zeros(A.rows, A.cols); if (A.idata) o.idata = new Float64Array(o.data.length); for (let r = 0; r < A.rows; r++) for (let c = 0; c < A.cols; c++) if (c - r >= k) { o.data[r + c * A.rows] = A.data[r + c * A.rows]; if (A.idata) o.idata![r + c * A.rows] = A.idata[r + c * A.rows]; } o.isChar = A.isChar; return ret(o); },
   linsolve: async (a, _n, env) => {
     const A = m(a[0]);
-    const x = mldivide(A, m(a[1]));
-    const w = illConditionWarning(A) ?? qrRankWarning(A);
+    const opts: LinsolveOptions = {};
+    if (a.length >= 3) {
+      if (!isStruct(a[2])) throw new MatError('linsolve: options argument must be a struct');
+      const S = a[2] as StructV;
+      const optBool = (name: keyof LinsolveOptions): boolean => {
+        const v = S.fields.get(name)?.[0] ?? S.fields.get(name.toLowerCase())?.[0];
+        return v ? truthy(v) : false;
+      };
+      opts.LT = optBool('LT');
+      opts.UT = optBool('UT');
+      opts.UHESS = optBool('UHESS');
+      opts.SYM = optBool('SYM');
+      opts.POSDEF = optBool('POSDEF');
+      opts.TRANSA = optBool('TRANSA');
+    }
+    const x = a.length >= 3 ? linsolveWithOptions(A, m(a[1]), opts) : mldivide(A, m(a[1]));
+    const Awarn = opts.TRANSA ? ctransposeFn(A) : A;
+    const w = illConditionWarning(Awarn) ?? qrRankWarning(Awarn);
     if (w) env.output('Warning: ' + w + '\n');
     return ret(x);
   },

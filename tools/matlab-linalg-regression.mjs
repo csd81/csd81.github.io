@@ -10,10 +10,10 @@ const outfile = join(outdir, 'regression.mjs');
 
 const source = String.raw`
 import {
-  bandwidth, mldivide, mldividePlan, qrPivotOutputs, qrRankWarning,
+  bandwidth, linsolveWithOptions, mldivide, mldividePlan, qrPivotOutputs, qrRankWarning,
 } from './src/sandbox/matlab/linalg';
 import {
-  cmatmul, fromRows, isComplex, matRows, matmul, sparseToDense, type Mat,
+  cmatmul, ctranspose, fromRows, isComplex, matRows, matmul, sparseToDense, type Mat,
 } from './src/sandbox/matlab/values';
 import { createSession } from './src/sandbox/matlab/index';
 
@@ -62,6 +62,12 @@ function assertResidual(name: string, A: Mat, B: Mat, tol = 1e-8): Mat {
   return X;
 }
 
+function assertSolveResidual(name: string, A: Mat, X: Mat, B: Mat, tol = 1e-8): void {
+  const AX = isComplex(A) || isComplex(X) ? cmatmul(A, X) : matmul(A, X);
+  const resid = maxAbs(sub(AX, B));
+  assert(resid <= tol, name + ': residual ' + resid + ' exceeded ' + tol);
+}
+
 assertPlan('diagonal', [[2, 0], [0, 4]], 'diagonal');
 assertPlan('upper triangular', [[2, 1], [0, 4]], 'upper-triangular');
 assertPlan('lower triangular', [[2, 0], [1, 4]], 'lower-triangular');
@@ -104,6 +110,26 @@ const hessenberg = assertPlan('upper Hessenberg', [
   [0, 0, 0, 0, 5, 10],
 ], 'hessenberg');
 assertResidual('upper Hessenberg', hessenberg, fromRows([[1], [2], [3], [4], [5], [6]]));
+
+const lowerForOpts = fromRows([[2, 0, 0], [1, 3, 0], [4, 5, 6]]);
+const lowerB = fromRows([[2], [7], [32]]);
+assertSolveResidual('linsolve LT option', lowerForOpts, linsolveWithOptions(lowerForOpts, lowerB, { LT: true }), lowerB);
+
+const upperForOpts = fromRows([[2, 1, 4], [0, 3, 5], [0, 0, 6]]);
+const upperB = fromRows([[16], [13], [12]]);
+assertSolveResidual('linsolve UT option', upperForOpts, linsolveWithOptions(upperForOpts, upperB, { UT: true }), upperB);
+
+const spdForOpts = fromRows([[4, 1, 1], [1, 3, 1], [1, 1, 2]]);
+const spdB = fromRows([[6], [5], [4]]);
+assertSolveResidual('linsolve POSDEF option', spdForOpts, linsolveWithOptions(spdForOpts, spdB, { POSDEF: true }), spdB);
+
+const symForOpts = fromRows([[0, 1, 1], [1, 0, 1], [1, 1, 0]]);
+const symB = fromRows([[2], [3], [4]]);
+assertSolveResidual('linsolve SYM option', symForOpts, linsolveWithOptions(symForOpts, symB, { SYM: true }), symB);
+
+const transA = fromRows([[2, 1], [0, 3]]);
+const transB = fromRows([[2], [7]]);
+assertSolveResidual('linsolve TRANSA option', ctranspose(transA), linsolveWithOptions(transA, transB, { TRANSA: true }), transB);
 
 assertPlan('cholesky', [[4, 1, 1], [1, 3, 1], [1, 1, 2]], 'cholesky');
 assertPlan('ldl', [[0, 1, 1], [1, 0, 1], [1, 1, 0]], 'ldl');
@@ -148,6 +174,9 @@ const session = createSession({ onOutput: (t: string) => { out += t; } });
 await session.run('S = sparse([2 0; 0 4]); b = [2; 8]; x = S\\b; y = mldivide(S,b);');
 const sparseWarnings = (out.match(/Sparse matrix left division is using a full dense fallback/g) || []).length;
 assert(sparseWarnings === 2, 'expected two sparse fallback warnings, got ' + sparseWarnings + '\n' + out);
+
+const linsolveSmoke = await session.run('A = [2 0 0; 1 3 0; 4 5 6]; b = [2; 7; 32]; opts = struct("LT",true); z = linsolve(A,b,opts);');
+assert(!linsolveSmoke.error, 'linsolve builtin options smoke failed: ' + linsolveSmoke.error);
 
 const denseSparse = sparseToDense({ kind: 'sparse', rows: 2, cols: 2, colptr: new Int32Array([0, 1, 2]), rowind: new Int32Array([0, 1]), values: new Float64Array([2, 4]) });
 assert(mldividePlan(denseSparse) === 'diagonal', 'sparse dense fallback fixture should densify to diagonal plan');

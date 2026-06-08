@@ -848,6 +848,38 @@ export function mldivide(a: Mat, b: Mat): Mat {
   return qrPivotSolve(a, b).x;
 }
 
+export interface LinsolveOptions {
+  LT?: boolean;
+  UT?: boolean;
+  UHESS?: boolean;
+  SYM?: boolean;
+  POSDEF?: boolean;
+  TRANSA?: boolean;
+}
+
+export function linsolveWithOptions(A0: Mat, B: Mat, opts: LinsolveOptions): Mat {
+  const A = opts.TRANSA ? ctranspose(A0) : A0;
+  if (A.rows !== B.rows) throw new MatError(`linsolve: row dimensions must agree (${A.rows} vs ${B.rows})`);
+  if (isComplex(A) || isComplex(B)) {
+    if (opts.LT && !opts.UT) return cLowerTriSolve(A, B);
+    if (opts.UT && !opts.LT) return cUpperTriSolve(A, B);
+    if (opts.LT && opts.UT) return cDiagonalSolve(A, B);
+    return mldivide(A, B);
+  }
+  if (isScalar(A)) return mldivide(A, B);
+  if (opts.LT && opts.UT) return diagonalSolve(A, B);
+  if (opts.LT) return lowerTriSolve(A, B);
+  if (opts.UT) return upperTriSolve(A, B);
+  if (opts.POSDEF) return choleskySolve(A, B);
+  if (opts.SYM) {
+    try { return ldlSolve(A, B); } catch {
+      return luSolve(A, B);
+    }
+  }
+  if (opts.UHESS && A.rows === A.cols) return bandedSolve(A, B, { lower: 1, upper: A.cols - 1 });
+  return mldivide(A, B);
+}
+
 // ── Complex LU (partial pivoting), solve, determinant ──────────────────
 function cFactor(a: Mat): { re: Float64Array; im: Float64Array; piv: number[]; sign: number; n: number } {
   const n = a.rows; if (a.cols !== n) throw new MatError('matrix must be square');
