@@ -29,7 +29,7 @@ import {
   toMat as m, MatError,
 } from '../values';
 import type { ToolboxModule } from './types';
-import { HELP_BIOINFO } from './help-bioinfo';
+import { HELP_BIOINFO } from '../help/help-bioinfo';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
 

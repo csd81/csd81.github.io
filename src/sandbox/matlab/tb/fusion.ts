@@ -4,7 +4,7 @@ import {
   mat, zeros, makeObject, fromRows, bool,
 } from '../values';
 import type { ToolboxModule } from './types';
-import { HELP_FUSION } from './help-fusion';
+import { HELP_FUSION } from '../help/help-fusion';
 
 // ── Munkres (Hungarian) assignment algorithm ────────────────────────────────────────────
 // Returns [assignments (K×2), unassignedRows, unassignedCols]

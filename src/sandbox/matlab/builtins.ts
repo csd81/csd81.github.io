@@ -5285,7 +5285,7 @@ const GENERAL_HELP =
   'Pick a file on the left and press Run, or type commands here.';
 
 
-// Help text, doc links, and the HELP/EXTRA_HELP/EXTRA_SYNTAX tables live in help.ts.
+// Help text, doc links, and the HELP/EXTRA_HELP/EXTRA_SYNTAX tables live in help/.
 export { docUrl, builtinHelp } from './help';
 
 function trimNum(x: number): string {

@@ -19,7 +19,7 @@
 import { type Value, type Mat, scalar, toMat as m, asScalar, asString, MatError } from '../values';
 import { LIGHTSPEED } from '../physconst';
 import type { ToolboxModule } from './types';
-import { HELP_PHASED } from './help-phased';
+import { HELP_PHASED } from '../help/help-phased';
 
 const ret = (v: Value): Promise<Value[]> => Promise.resolve([v]);
 

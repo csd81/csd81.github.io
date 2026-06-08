@@ -9,7 +9,7 @@
 // return placeholder values and would otherwise ship confidently-wrong results + break the build).
 import type { Builtin } from '../builtins';
 import type { Value } from '../values';
-import type { HelpEntry } from '../help';
+import type { HelpEntry } from '../help/types';
 import type { ToolboxModule } from './types';
 import { AEROSPACE } from './aerospace';
 import { ANTENNA } from './antenna';

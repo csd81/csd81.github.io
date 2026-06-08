@@ -8,7 +8,7 @@ import {
   makeObject, toArray, toMat as m,
 } from '../values';
 import type { ToolboxModule } from './types';
-import { HELP_SIMULINK } from './help-simulink';
+import { HELP_SIMULINK } from '../help/help-simulink';
 import {
   new_system as engNewSystem, add_block as engAddBlock, add_line as engAddLine,
   set_param as engSetParam, get_param as engGetParam, sim as engSim,
