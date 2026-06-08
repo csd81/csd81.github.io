@@ -952,6 +952,15 @@ export class Interpreter implements Env {
     // String-class operators: `+` concatenates, `==`/`~=` compare element-wise.
     if ((av.kind === 'categorical' || bv.kind === 'categorical') && ['==', '~=', '<', '>', '<=', '>='].includes(op)) return categoricalBinary(op, av, bv);
     if ((op === '+' || op === '==' || op === '~=') && (isStr(av) || isStr(bv))) return strBinary(op, av, bv);
+    if (op === '\\' && av.kind === 'sparse') {
+      const A = sparseToDense(av);
+      const b = asMat(bv);
+      const r = mldivide(A, b);
+      this.output('Warning: Sparse matrix left division is using a full dense fallback; sparse direct solver routing is not implemented.\n');
+      const w = illConditionWarning(A) ?? qrRankWarning(A);
+      if (w) this.output('Warning: ' + w + '\n');
+      return r;
+    }
     const a = asMat(av);
     const b = asMat(bv);
     // integer/single class propagates through arithmetic (saturating); comparisons → logical.

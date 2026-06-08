@@ -1326,8 +1326,11 @@ export const BUILTINS: Record<string, Builtin> = {
   heaviside: async (a) => { if (isSym(a[0])) return ret(makeSym(a[0].rows, a[0].cols, a[0].exprs.map((e) => simplifyExpr(sFn('heaviside', e))))); return ret(map(m(a[0]), (x) => (x > 0 ? 1 : x < 0 ? 0 : 0.5))); },
   dirac: async (a) => { if (isSym(a[0])) return ret(makeSym(a[0].rows, a[0].cols, a[0].exprs.map((e) => simplifyExpr(sFn('dirac', e))))); return ret(map(m(a[0]), (x) => (x === 0 ? Infinity : 0))); },
   mldivide: async (a, _n, env) => {
-    const A = m(a[0]);
+    const left = a[0];
+    const sparseLeft = isSparse(left);
+    const A = sparseLeft ? sparseToDense(left) : m(left);
     const x = mldivide(A, m(a[1]));
+    if (sparseLeft) env.output('Warning: Sparse matrix left division is using a full dense fallback; sparse direct solver routing is not implemented.\n');
     const w = illConditionWarning(A) ?? qrRankWarning(A);
     if (w) env.output('Warning: ' + w + '\n');
     return ret(x);
