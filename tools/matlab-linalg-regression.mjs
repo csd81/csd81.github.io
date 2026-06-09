@@ -206,6 +206,8 @@ const condestDiag = (await BUILTINS.condest([fromRows([[2, 0], [0, 4]])], 1, {} 
 assert(approx(condestDiag.data[0], 2, 1e-12), 'condest should estimate the 1-norm condition without explicit inverse, got ' + condestDiag.data[0]);
 const condest1Diag = (await BUILTINS.condest1([fromRows([[2, 0], [0, 4]])], 1, {} as any))[0] as Mat;
 assert(approx(condest1Diag.data[0], 2, 1e-12), 'condest1 should share the condest estimator, got ' + condest1Diag.data[0]);
+const rcondOneNorm = (await BUILTINS.rcond([fromRows([[-3, -3], [-3, 3]])], 1, {} as any))[0] as Mat;
+assert(approx(rcondOneNorm.data[0], 0.5, 1e-12), 'rcond should use reciprocal 1-norm condition, got ' + rcondOneNorm.data[0]);
 
 const lowerForOpts = fromRows([[2, 0, 0], [1, 3, 0], [4, 5, 6]]);
 const lowerB = fromRows([[2], [7], [32]]);

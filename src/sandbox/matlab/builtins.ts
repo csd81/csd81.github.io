@@ -1432,7 +1432,12 @@ export const BUILTINS: Record<string, Builtin> = {
     if (pp === 2) return ret(scalar(condFn(A)));                 // 2-norm uses the SVD ratio
     return ret(scalar(norm(A, pp) * norm(inv(A), pp)));          // cond_p(A) = ||A||_p · ||A^{-1}||_p
   },
-  rcond: async (a) => { const c = condFn(m(a[0])); return ret(scalar(c === Infinity ? 0 : 1 / c)); },
+  rcond: async (a) => {
+    const A = m(a[0]);
+    if (A.rows !== A.cols) throw new MatError('rcond: matrix must be square');
+    const c = norm(A, 1) * norm(inv(A), 1);
+    return ret(scalar(!Number.isFinite(c) || c === 0 ? 0 : 1 / c));
+  },
   orth: async (a) => ret(orthFn(m(a[0]))),
   null: async (a) => {
     const opt = a.length >= 2 && (isStr(a[1]) || (isMat(a[1]) && (a[1] as Mat).isChar)) ? asString(a[1]).toLowerCase() : '';
