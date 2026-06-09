@@ -13,7 +13,7 @@ import {
   bandwidth, cond, decomposition, decompositionSolve, expm, generalEig, ldl, linsolveWithOptions, mldivide, mldividePlan, nullspace, orth, pinv, qrPivotOutputs, qrRankWarning, rankOf, svd,
 } from './src/sandbox/matlab/linalg';
 import {
-  cmatmul, ctranspose, finishComplex, fromRows, isComplex, matRows, matmul, sparseToDense, zeros, type Mat, type StructV,
+  cmatmul, ctranspose, finishComplex, fromRows, isComplex, matRows, matmul, scalar, sparseToDense, str, zeros, type Mat, type StructV,
 } from './src/sandbox/matlab/values';
 import { createSession } from './src/sandbox/matlab/index';
 import { BUILTINS } from './src/sandbox/matlab/builtins';
@@ -273,6 +273,20 @@ assert(covStd.rows === covA.cols && covStd.cols === 1 && covMse.data[0] > 0 && c
   'lscov should return stdx, mse, and S diagnostics with MATLAB-compatible shapes');
 for (let i = 0; i < covA.cols; i++) assert(approx(covStd.data[i], Math.sqrt(Math.max(0, covS.data[i + i * covS.rows])), 1e-10),
   'lscov stdx should equal sqrt(diag(S))');
+
+const minNormBuiltin = (await BUILTINS.lsqminnorm([fromRows([[2, 3]]), fromRows([[8]])], 1, { output: () => {} } as any))[0] as Mat;
+assert(approx(minNormBuiltin.data[0], 16 / 13, 1e-10) && approx(minNormBuiltin.data[1], 24 / 13, 1e-10),
+  'lsqminnorm should return the minimum-norm solution for underdetermined systems');
+const tolMinNorm = (await BUILTINS.lsqminnorm([fromRows([[1, 0], [0, 1e-12]]), fromRows([[1], [1]]), fromRows([[1e-8]])], 1, { output: () => {} } as any))[0] as Mat;
+assert(approx(tolMinNorm.data[0], 1, 1e-10) && Math.abs(tolMinNorm.data[1]) <= 1e-10,
+  'lsqminnorm explicit tolerance should discard small singular values');
+const regMinNorm = (await BUILTINS.lsqminnorm([fromRows([[2, 3]]), fromRows([[8]]), str('RegularizationFactor'), scalar(1)], 1, { output: () => {} } as any))[0] as Mat;
+assert(approx(regMinNorm.data[0], 8 / 7, 1e-10) && approx(regMinNorm.data[1], 12 / 7, 1e-10),
+  'lsqminnorm RegularizationFactor should apply Tikhonov damping');
+let minNormWarn = '';
+await BUILTINS.lsqminnorm([fromRows([[1, 1], [1, 1]]), fromRows([[1], [1]]), str('warn')], 1, { output: (t: string) => { minNormWarn += t; } } as any);
+assert(minNormWarn.startsWith('Warning: Rank deficient, rank = 1, tol = '),
+  'lsqminnorm "warn" should emit a rank-deficient warning');
 
 assertPlan('cholesky', [[4, 1, 1], [1, 3, 1], [1, 1, 2]], 'cholesky');
 assertPlan('ldl', [[0, 1, 1], [1, 0, 1], [1, 1, 0]], 'ldl');

@@ -1790,6 +1790,21 @@ export function illConditionWarning(A: Mat): string | null {
 export function pinv(A: Mat): Mat {
   return cPinv(A);
 }
+
+export function lsqminnormSolve(A: Mat, B: Mat, opts: { tol?: number; regularization?: number } = {}): { x: Mat; rank: number; tol: number } {
+  if (A.rows !== B.rows) throw new MatError(`lsqminnorm: row dimensions must agree (${A.rows} vs ${B.rows})`);
+  const info = svdRankInfo(A, opts.tol);
+  if (opts.regularization !== undefined && opts.regularization !== 0) {
+    const alpha = opts.regularization;
+    if (!Number.isFinite(alpha) || alpha < 0) throw new MatError('lsqminnorm: RegularizationFactor must be a nonnegative finite scalar');
+    const { U, s, V } = info;
+    const Sreg = zeros(s.length, s.length);
+    for (let j = 0; j < s.length; j++) Sreg.data[j + j * s.length] = s[j] / (s[j] * s[j] + alpha * alpha);
+    return { x: cmatmul(cmatmul(cmatmul(V, Sreg), ctranspose(U)), B), rank: info.rank, tol: info.tol };
+  }
+  return { x: cmatmul(cPinv(A, info), B), rank: info.rank, tol: info.tol };
+}
+
 /** Orthonormal basis for the range (columns of U for nonzero singular values). */
 export function orth(A: Mat): Mat {
   const { U, s, tol } = svdRankInfo(A); const m = A.rows;

@@ -25,7 +25,7 @@ import {
   det, inv, mldivide, illConditionWarning, qrRankWarning, diag, norm, eye, decomposition as decompositionFn,
   qr as qrDecomp, qrPivotOutputs, linsolveWithOptions, type LinsolveOptions, chol as cholFn, luOutputs, jacobiEigSym, svd as svdReal,
   rankOf, cond as condFn, pinv as pinvFn, orth as orthFn, nullspace, nullspaceRational, rref as rrefFn, vecnorm as vecnormFn, isSymmetric, cDet, svdC as svdCplx,
-  generalEig, durandKerner, hess as hessFn, schur as schurFn, expm as expmFn, logm as logmFn, sqrtm as sqrtmFn, ldl as ldlFn, lsqnonnegDetailed as lsqnonnegDetailedFn,
+  generalEig, durandKerner, hess as hessFn, schur as schurFn, expm as expmFn, logm as logmFn, sqrtm as sqrtmFn, ldl as ldlFn, lsqnonnegDetailed as lsqnonnegDetailedFn, lsqminnormSolve,
   balance as balanceFn, rsf2csf as rsf2csfFn, qz as qzFn, ordschur as ordschurFn, ordqz as ordqzFn, schurEig as schurEigFn,
   hermiteFormInt, smithFormInt,
 } from './linalg';
@@ -3148,7 +3148,24 @@ export const BUILTINS: Record<string, Builtin> = {
 
   // linear algebra / math additions
   sylvester: async (a) => ret(sylvesterSolve(m(a[0]), m(a[1]), m(a[2]))),
-  lsqminnorm: async (a) => ret(matmul(pinvFn(m(a[0])), m(a[1]))),
+  lsqminnorm: async (a, _n, env) => {
+    const A = m(a[0]), B = m(a[1]);
+    let tol: number | undefined; let rankWarn = false; let regularization: number | undefined;
+    for (let i = 2; i < a.length; i++) {
+      if (isStr(a[i]) || (isMat(a[i]) && (a[i] as Mat).isChar)) {
+        const key = asString(a[i]).toLowerCase();
+        if (key === 'warn') rankWarn = true;
+        else if (key === 'nowarn') rankWarn = false;
+        else if (key === 'regularizationfactor' && i + 1 < a.length) regularization = asScalar(a[++i]);
+      } else if (isMat(a[i])) {
+        const mi = m(a[i]);
+        if (numel(mi) === 1) tol = asScalar(mi);
+      }
+    }
+    const { x, rank, tol: usedTol } = lsqminnormSolve(A, B, { tol, regularization });
+    if (rankWarn && rank < A.cols) env.output(`Warning: Rank deficient, rank = ${rank}, tol = ${usedTol.toExponential(6)}.\n`);
+    return ret(x);
+  },
   expmv: async (a) => {
     // expmv(A,b,t) = expm(t*A)*b (t defaults to 1)
     const A = m(a[0]); const b = m(a[1]); const t = a.length >= 3 ? asScalar(a[2]) : 1;
