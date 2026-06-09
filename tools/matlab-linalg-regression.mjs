@@ -13,7 +13,7 @@ import {
   bandwidth, cond, decomposition, decompositionSolve, expm, generalEig, ldl, linsolveWithOptions, mldivide, mldividePlan, nullspace, orth, pinv, qrPivotOutputs, qrRankWarning, rankOf, svd,
 } from './src/sandbox/matlab/linalg';
 import {
-  cmatmul, ctranspose, finishComplex, fromRows, isComplex, matRows, matmul, sparseToDense, zeros, type Mat,
+  cmatmul, ctranspose, finishComplex, fromRows, isComplex, matRows, matmul, sparseToDense, zeros, type Mat, type StructV,
 } from './src/sandbox/matlab/values';
 import { createSession } from './src/sandbox/matlab/index';
 import { BUILTINS } from './src/sandbox/matlab/builtins';
@@ -29,6 +29,12 @@ function approx(a: number, b: number, tol = 1e-9): boolean {
 function maxAbs(M: Mat): number {
   let out = 0;
   for (let i = 0; i < M.data.length; i++) out = Math.max(out, Math.hypot(M.data[i], M.idata ? M.idata[i] : 0));
+  return out;
+}
+
+function sumsq(M: Mat): number {
+  let out = 0;
+  for (let i = 0; i < M.data.length; i++) out += M.data[i] * M.data[i] + (M.idata ? M.idata[i] * M.idata[i] : 0);
   return out;
 }
 
@@ -230,6 +236,23 @@ assert((linsolveBuiltinRectOpt[1] as Mat).data[0] === rankOf(linsolveRectA),
 let linsolveWarnOut = '';
 await BUILTINS.linsolve([fromRows([[1, 1], [1, 1]]), fromRows([[1], [1]])], 2, { output: (t: string) => { linsolveWarnOut += t; } } as any);
 assert(linsolveWarnOut === '', 'linsolve two-output form should suppress condition/rank warnings');
+
+const nnC = fromRows([[0.0372, 0.2869], [0.6861, 0.7071], [0.6233, 0.6245], [0.6344, 0.6170]]);
+const nnd = fromRows([[0.8587], [0.1781], [0.0747], [0.8405]]);
+const nn = await BUILTINS.lsqnonneg([nnC, nnd], 6, { output: () => {} } as any);
+const nnx = nn[0] as Mat, nnresnorm = nn[1] as Mat, nnresidual = nn[2] as Mat;
+const nnexitflag = nn[3] as Mat, nnoutput = nn[4] as StructV, nnlambda = nn[5] as Mat;
+assert(nnx.rows === 2 && nnx.cols === 1 && nnx.data[0] >= -1e-12 && nnx.data[1] >= -1e-12,
+  'lsqnonneg should return a nonnegative solution vector');
+assert(maxAbs(sub(nnresidual, sub(nnd, matmul(nnC, nnx)))) <= 1e-10,
+  'lsqnonneg residual output should equal d-C*x');
+assert(approx(nnresnorm.data[0], sumsq(nnresidual), 1e-10),
+  'lsqnonneg resnorm output should equal squared residual norm');
+assert(nnexitflag.data[0] === 1, 'lsqnonneg exitflag should report convergence');
+assert(nnoutput.fields.has('iterations') && nnoutput.fields.has('algorithm') && nnoutput.fields.has('message'),
+  'lsqnonneg output struct should expose iterations, algorithm, and message');
+assert(nnlambda.rows === 2 && nnlambda.cols === 1 && nnlambda.data[0] < 0 && Math.abs(nnlambda.data[1]) < 1e-8,
+  'lsqnonneg lambda should expose active-set KKT multipliers');
 
 assertPlan('cholesky', [[4, 1, 1], [1, 3, 1], [1, 1, 2]], 'cholesky');
 assertPlan('ldl', [[0, 1, 1], [1, 0, 1], [1, 1, 0]], 'ldl');

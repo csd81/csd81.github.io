@@ -25,7 +25,7 @@ import {
   det, inv, mldivide, illConditionWarning, qrRankWarning, diag, norm, eye, decomposition as decompositionFn,
   qr as qrDecomp, qrPivotOutputs, linsolveWithOptions, type LinsolveOptions, chol as cholFn, luOutputs, jacobiEigSym, svd as svdReal,
   rankOf, cond as condFn, pinv as pinvFn, orth as orthFn, nullspace, nullspaceRational, rref as rrefFn, vecnorm as vecnormFn, isSymmetric, cDet, svdC as svdCplx,
-  generalEig, durandKerner, hess as hessFn, schur as schurFn, expm as expmFn, logm as logmFn, sqrtm as sqrtmFn, ldl as ldlFn, lsqnonneg as lsqnonnegFn,
+  generalEig, durandKerner, hess as hessFn, schur as schurFn, expm as expmFn, logm as logmFn, sqrtm as sqrtmFn, ldl as ldlFn, lsqnonnegDetailed as lsqnonnegDetailedFn,
   balance as balanceFn, rsf2csf as rsf2csfFn, qz as qzFn, ordschur as ordschurFn, ordqz as ordqzFn, schurEig as schurEigFn,
   hermiteFormInt, smithFormInt,
 } from './linalg';
@@ -1638,7 +1638,28 @@ export const BUILTINS: Record<string, Builtin> = {
     const { L, D, P } = ldlFn(m(a[0]));
     return n >= 3 ? [L, D, P] : n >= 2 ? [L, D] : [L];
   },
-  lsqnonneg: async (a) => ret(lsqnonnegFn(m(a[0]), m(a[1]))),
+  lsqnonneg: async (a, n) => {
+    const C = m(a[0]), d = m(a[1]);
+    const { x, iterations } = lsqnonnegDetailedFn(C, d);
+    if (n < 2) return ret(x);
+    const Cx = matmul(C, x);
+    const residual = zeros(d.rows, d.cols);
+    let resnorm = 0;
+    for (let i = 0; i < residual.data.length; i++) {
+      const v = d.data[i] - Cx.data[i];
+      residual.data[i] = v;
+      resnorm += v * v;
+    }
+    if (n < 3) return [x, scalar(resnorm)];
+    if (n < 4) return [x, scalar(resnorm), residual];
+    const output = mkStruct([
+      ['iterations', scalar(iterations)],
+      ['algorithm', str('active-set')],
+      ['message', str('Optimization terminated.')],
+    ]);
+    if (n < 6) return [x, scalar(resnorm), residual, scalar(1), output];
+    return [x, scalar(resnorm), residual, scalar(1), output, matmul(transpose(C), residual)];
+  },
   'containers.Map': async (a) => ret(buildMap(a)),
   keys: async (a) => { const mp = a[0] as MapV | DictV; if (!isMap(mp) && !isDict(mp)) throw new MatError('keys: expected a containers.Map or dictionary'); const ks = mapKeysSorted(mp); if (isDict(mp)) return ret(mp.keyKind === 'char' ? makeStrArr(ks.length, 1, ks.map((k) => String(k))) : colVec(ks.map((k) => Number(k)))); return ret(makeCell(1, ks.length, ks.map((k) => (mp.keyKind === 'char' ? str(k as string) : scalar(k as number))))); },
   values: async (a) => { const mp = a[0] as MapV | DictV; if (!isMap(mp) && !isDict(mp)) throw new MatError('values: expected a containers.Map or dictionary'); const ks = mapKeysSorted(mp); const vals = ks.map((k) => mp.store.get(k)!); if (isDict(mp)) { if (vals.length && vals.every((v) => isMat(v) && !(v as Mat).isChar && numel(v) === 1)) return ret(colVec(vals.map((v) => asScalar(v as Mat)))); if (vals.length && vals.every((v) => isStr(v) || (isMat(v) && (v as Mat).isChar))) return ret(makeStrArr(vals.length, 1, vals.map((v) => asString(v)))); } return ret(makeCell(1, vals.length, vals)); },

@@ -1516,7 +1516,9 @@ export function ldl(A: Mat): { L: Mat; D: Mat; P: Mat; piv: number[] } {
 }
 
 /** Nonnegative least squares (Lawson–Hanson active set): min ‖Cx−d‖, x ≥ 0. */
-export function lsqnonneg(C: Mat, d: Mat): Mat {
+export function lsqnonnegDetailed(C: Mat, d: Mat): { x: Mat; iterations: number } {
+  if (C.rows !== d.rows) throw new MatError('lsqnonneg: row dimensions must agree');
+  if (isComplex(C) || isComplex(d)) throw new MatError('lsqnonneg: inputs must be real');
   const mC = C.rows, n = C.cols; const x = new Float64Array(n);
   const P = new Set<number>(); const Z = new Set<number>(); for (let i = 0; i < n; i++) Z.add(i);
   const Ct = transpose(C);
@@ -1539,7 +1541,12 @@ export function lsqnonneg(C: Mat, d: Mat): Mat {
       for (const c of [...P]) if (Math.abs(x[c]) < 1e-12) { P.delete(c); Z.add(c); }
     }
   }
-  return colVec(Array.from(x));
+  return { x: colVec(Array.from(x)), iterations: outer };
+}
+
+/** Nonnegative least squares (Lawson–Hanson active set): min ‖Cx−d‖, x ≥ 0. */
+export function lsqnonneg(C: Mat, d: Mat): Mat {
+  return lsqnonnegDetailed(C, d).x;
 }
 
 function sortEigenPairs(re: number[], im: number[]): { re: number[]; im: number[] } {
