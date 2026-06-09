@@ -207,6 +207,9 @@ assert(approx((normestDiagTwoOut[0] as Mat).data[0], 4, 1e-8) && (normestDiagTwo
   'normest two-output form should return estimate and iteration count');
 const condestDiag = (await BUILTINS.condest([fromRows([[2, 0], [0, 4]])], 1, {} as any))[0] as Mat;
 assert(approx(condestDiag.data[0], 2, 1e-12), 'condest should estimate the 1-norm condition without explicit inverse, got ' + condestDiag.data[0]);
+const condestTwoOut = await BUILTINS.condest([fromRows([[2, 0], [0, 4]])], 2, {} as any);
+assert(approx((condestTwoOut[0] as Mat).data[0], 2, 1e-12) && (condestTwoOut[1] as Mat).rows === 2 && (condestTwoOut[1] as Mat).cols === 1 && maxAbs(condestTwoOut[1] as Mat) > 0,
+  'condest two-output form should return estimate and vector direction');
 const condest1Diag = (await BUILTINS.condest1([fromRows([[2, 0], [0, 4]])], 1, {} as any))[0] as Mat;
 assert(approx(condest1Diag.data[0], 2, 1e-12), 'condest1 should share the condest estimator, got ' + condest1Diag.data[0]);
 const rcondOneNorm = (await BUILTINS.rcond([fromRows([[-3, -3], [-3, 3]])], 1, {} as any))[0] as Mat;

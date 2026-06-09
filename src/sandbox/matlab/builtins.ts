@@ -1821,7 +1821,11 @@ export const BUILTINS: Record<string, Builtin> = {
     const x = await patternSearchSolve(F, x0, lb, ub); const xo = col ? colVec(x) : rowVec(x);
     return n >= 2 ? [xo, scalar(await base(x))] : [xo];
   },
-  condest: async (a) => { const A = m(a[0]); return ret(scalar(condestOneNorm(A))); },
+  condest: async (a, n) => {
+    const A = m(a[0]);
+    const { est, v } = condestOneNorm(A);
+    return n >= 2 ? [scalar(est), v] : [scalar(est)];
+  },
   lscov: async (a, n) => {
     const A = m(a[0]), b = m(a[1]);
     if (A.rows !== b.rows) throw new MatError('lscov: row dimensions must agree');
@@ -2652,7 +2656,7 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(R);
   },
   qmr: async (a, n) => krylovSolve(a, n),
-  condest1: async (a) => { const A = m(a[0]); return ret(scalar(condestOneNorm(A))); },
+  condest1: async (a) => { const A = m(a[0]); return ret(scalar(condestOneNorm(A).est)); },
   wilkinson: async (a) => {
     const n = Math.round(asScalar(a[0])); const W = zeros(n, n); const mid = (n - 1) / 2;
     for (let i = 0; i < n; i++) { W.data[i + i * n] = Math.abs(mid - i); if (i + 1 < n) { W.data[i + (i + 1) * n] = 1; W.data[(i + 1) + i * n] = 1; } }
@@ -6497,13 +6501,14 @@ function normestPower(A: Mat, maxit = 20, tol = 1e-6): { est: number; count: num
 }
 
 /** Hager-style 1-norm condition estimate without explicitly forming inv(A). */
-function condestOneNorm(A: Mat, maxit = 8): number {
+function condestOneNorm(A: Mat, maxit = 8): { est: number; v: Mat } {
   if (A.rows !== A.cols) throw new MatError('condest: matrix must be square');
   const n = A.rows;
-  if (n === 0) return 0;
+  if (n === 0) return { est: 0, v: zeros(0, 1) };
   let x = zeros(n, 1);
   for (let i = 0; i < n; i++) x.data[i] = 1 / n;
   let invEst = 0;
+  let bestY = zeros(n, 1);
   for (let it = 0; it < maxit; it++) {
     const y = mldivide(A, x);
     let yNorm = 0, pivot = 0, pivotMag = -1;
@@ -6513,7 +6518,7 @@ function condestOneNorm(A: Mat, maxit = 8): number {
       yNorm += mag;
       if (mag > pivotMag) { pivotMag = mag; pivot = i; }
     }
-    invEst = Math.max(invEst, yNorm);
+    if (yNorm >= invEst) { invEst = yNorm; bestY = y; }
     x = zeros(n, 1);
     if (A.idata || y.idata) {
       const mag = pivotMag || 1;
@@ -6524,7 +6529,14 @@ function condestOneNorm(A: Mat, maxit = 8): number {
       x.data[pivot] = Math.sign(y.data[pivot]) || 1;
     }
   }
-  return norm(A, 1) * invEst;
+  const v = zeros(n, 1);
+  if (bestY.idata) v.idata = new Float64Array(n);
+  const scale = norm(bestY, 1) || 1;
+  for (let i = 0; i < n; i++) {
+    v.data[i] = bestY.data[i] / scale;
+    if (v.idata) v.idata[i] = bestY.idata ? bestY.idata[i] / scale : 0;
+  }
+  return { est: norm(A, 1) * invEst, v };
 }
 
 function parseLsqminnormOptions(a: Value[], start: number): { tol?: number; rankWarn: boolean; regularization?: number } {
