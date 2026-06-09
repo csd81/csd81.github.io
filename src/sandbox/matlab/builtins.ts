@@ -1410,7 +1410,12 @@ export const BUILTINS: Record<string, Builtin> = {
     const x = a.length >= 3 ? linsolveWithOptions(A, m(a[1]), opts) : mldivide(A, m(a[1]));
     if (_n >= 2) {
       const Asolved = opts.TRANSA ? ctransposeFn(A) : A;
-      const r = opts.RECT || Asolved.rows !== Asolved.cols ? rankOf(Asolved) : (() => { const c = condFn(Asolved); return c === Infinity ? 0 : 1 / c; })();
+      const r = opts.RECT || Asolved.rows !== Asolved.cols
+        ? rankOf(Asolved)
+        : (() => {
+            const c = norm(Asolved, 1) * norm(inv(Asolved), 1);
+            return !Number.isFinite(c) || c === 0 ? 0 : 1 / c;
+          })();
       return [x, scalar(r)];
     }
     const Awarn = opts.TRANSA ? ctransposeFn(A) : A;

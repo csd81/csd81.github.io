@@ -232,8 +232,10 @@ assertSolveResidual('linsolve TRANSA option', ctranspose(transA), linsolveWithOp
 const linsolveBuiltinSquare = await BUILTINS.linsolve([spdForOpts, spdB], 2, { output: () => {} } as any);
 assert(maxAbs(sub(linsolveBuiltinSquare[0] as Mat, mldivide(spdForOpts, spdB))) <= 1e-10,
   'linsolve two-output square solution should match mldivide');
-assert(approx((linsolveBuiltinSquare[1] as Mat).data[0], 1 / cond(spdForOpts), 1e-12),
-  'linsolve two-output square r should be reciprocal condition number');
+const linsolveRcondA = fromRows([[-3, -3], [-3, 3]]);
+const linsolveRcond = await BUILTINS.linsolve([linsolveRcondA, fromRows([[1], [2]])], 2, { output: () => {} } as any);
+assert(approx((linsolveRcond[1] as Mat).data[0], 0.5, 1e-12),
+  'linsolve two-output square r should use reciprocal 1-norm condition number');
 const linsolveRectA = fromRows([[1, 0], [0, 1], [1, 1]]);
 const linsolveBuiltinRect = await BUILTINS.linsolve([linsolveRectA, fromRows([[1], [2], [3]])], 2, { output: () => {} } as any);
 assert((linsolveBuiltinRect[1] as Mat).data[0] === rankOf(linsolveRectA),
