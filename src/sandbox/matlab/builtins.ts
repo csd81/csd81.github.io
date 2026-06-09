@@ -1419,7 +1419,7 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(x);
   },
   mrdivide: async (a) => ret(ctransposeFn(mldivide(ctransposeFn(m(a[1])), ctransposeFn(m(a[0]))))),
-  pinv: async (a) => ret(pinvFn(m(a[0]))),
+  pinv: async (a) => ret(pinvFn(m(a[0]), a.length >= 2 ? asScalar(a[1]) : undefined)),
   rank: async (a) => ret(scalar(rankOf(m(a[0]), a.length >= 2 ? asScalar(a[1]) : undefined))),
   rref: async (a) => ret(rrefFn(m(a[0]))),
   cond: async (a) => {
@@ -2873,7 +2873,7 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(rest.length ? makeND([k, 1, ...rest], out) : mat(k, 1, out));
   },
   pageinv: async (a) => ret(pageUnary(m(a[0]), (X) => inv(X))),
-  pagepinv: async (a) => ret(pageUnary(m(a[0]), (X) => pinvFn(X))),
+  pagepinv: async (a) => { const tol = a.length >= 2 ? asScalar(a[1]) : undefined; return ret(pageUnary(m(a[0]), (X) => pinvFn(X, tol))); },
   pagenorm: async (a) => { const p = a.length >= 2 ? (isMat(a[1]) ? asScalar(a[1]) : (asString(a[1]) === 'fro' ? 'fro' : 2)) : 2; return ret(pageUnary(m(a[0]), (X) => mat(1, 1, new Float64Array([norm(X, p as number | 'fro')])))); },
   pagelsqminnorm: async (a) => {
     const { tol, regularization } = parseLsqminnormOptions(a, 2);

@@ -1787,8 +1787,8 @@ export function illConditionWarning(A: Mat): string | null {
     ? 'Matrix is singular to working precision.'
     : `Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND = ${rc.toExponential(6)}.`;
 }
-export function pinv(A: Mat): Mat {
-  return cPinv(A);
+export function pinv(A: Mat, tol?: number): Mat {
+  return cPinv(A, svdRankInfo(A, tol));
 }
 
 export function lsqminnormSolve(A: Mat, B: Mat, opts: { tol?: number; regularization?: number } = {}): { x: Mat; rank: number; tol: number } {

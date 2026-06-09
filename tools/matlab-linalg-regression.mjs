@@ -346,6 +346,12 @@ const widePinvX = matmul(pinv(minNormA), fromRows([[2], [0]]));
 const widePinvRows = matRows(widePinvX);
 assert(approx(widePinvRows[0][0], 1) && approx(widePinvRows[1][0], 1) && approx(widePinvRows[2][0], 0),
   'wide rank-deficient pinv: expected [1;1;0], got ' + JSON.stringify(widePinvRows));
+const tolPinv = (await BUILTINS.pinv([fromRows([[1, 0], [0, 1e-12]]), scalar(1e-8)], 1, { output: () => {} } as any))[0] as Mat;
+assert(approx(tolPinv.data[0], 1, 1e-10) && Math.abs(tolPinv.data[3]) <= 1e-10,
+  'pinv(A,tol) should discard singular values at or below the explicit tolerance');
+const pagePinv = (await BUILTINS.pagepinv([makeND([2, 2, 2], Float64Array.from([1, 0, 0, 1e-12, 2, 0, 0, 3])), scalar(1e-8)], 1, { output: () => {} } as any))[0] as Mat;
+assert(approx(pagePinv.data[0], 1, 1e-10) && Math.abs(pagePinv.data[3]) <= 1e-10 && approx(pagePinv.data[4], 0.5, 1e-10) && approx(pagePinv.data[7], 1 / 3, 1e-10),
+  'pagepinv(A,tol) should apply explicit tolerance to each page');
 
 const pivotQrA = fromRows([[1, 10], [0, 0], [0, 0]]);
 const pivotQr = qrPivotOutputs(pivotQrA);
