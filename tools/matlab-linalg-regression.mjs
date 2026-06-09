@@ -215,6 +215,22 @@ const transA = fromRows([[2, 1], [0, 3]]);
 const transB = fromRows([[2], [7]]);
 assertSolveResidual('linsolve TRANSA option', ctranspose(transA), linsolveWithOptions(transA, transB, { TRANSA: true }), transB);
 
+const linsolveBuiltinSquare = await BUILTINS.linsolve([spdForOpts, spdB], 2, { output: () => {} } as any);
+assert(maxAbs(sub(linsolveBuiltinSquare[0] as Mat, mldivide(spdForOpts, spdB))) <= 1e-10,
+  'linsolve two-output square solution should match mldivide');
+assert(approx((linsolveBuiltinSquare[1] as Mat).data[0], 1 / cond(spdForOpts), 1e-12),
+  'linsolve two-output square r should be reciprocal condition number');
+const linsolveRectA = fromRows([[1, 0], [0, 1], [1, 1]]);
+const linsolveBuiltinRect = await BUILTINS.linsolve([linsolveRectA, fromRows([[1], [2], [3]])], 2, { output: () => {} } as any);
+assert((linsolveBuiltinRect[1] as Mat).data[0] === rankOf(linsolveRectA),
+  'linsolve two-output rectangular r should be rank');
+const linsolveBuiltinRectOpt = await BUILTINS.linsolve([linsolveRectA, fromRows([[1], [2], [3]]), { kind: 'struct', rows: 1, cols: 1, fields: new Map([['RECT', [fromRows([[1]])]]]) } as any], 2, { output: () => {} } as any);
+assert((linsolveBuiltinRectOpt[1] as Mat).data[0] === rankOf(linsolveRectA),
+  'linsolve opts.RECT r should be rank');
+let linsolveWarnOut = '';
+await BUILTINS.linsolve([fromRows([[1, 1], [1, 1]]), fromRows([[1], [1]])], 2, { output: (t: string) => { linsolveWarnOut += t; } } as any);
+assert(linsolveWarnOut === '', 'linsolve two-output form should suppress condition/rank warnings');
+
 assertPlan('cholesky', [[4, 1, 1], [1, 3, 1], [1, 1, 2]], 'cholesky');
 assertPlan('ldl', [[0, 1, 1], [1, 0, 1], [1, 1, 0]], 'ldl');
 assertPlan('lu', [[1, 2, 3], [4, 7, 5], [6, 8, 10]], 'lu');

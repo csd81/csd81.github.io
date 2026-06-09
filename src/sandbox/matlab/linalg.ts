@@ -957,6 +957,7 @@ export interface LinsolveOptions {
   UHESS?: boolean;
   SYM?: boolean;
   POSDEF?: boolean;
+  RECT?: boolean;
   TRANSA?: boolean;
 }
 

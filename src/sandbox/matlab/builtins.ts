@@ -1404,9 +1404,15 @@ export const BUILTINS: Record<string, Builtin> = {
       opts.UHESS = optBool('UHESS');
       opts.SYM = optBool('SYM');
       opts.POSDEF = optBool('POSDEF');
+      opts.RECT = optBool('RECT');
       opts.TRANSA = optBool('TRANSA');
     }
     const x = a.length >= 3 ? linsolveWithOptions(A, m(a[1]), opts) : mldivide(A, m(a[1]));
+    if (_n >= 2) {
+      const Asolved = opts.TRANSA ? ctransposeFn(A) : A;
+      const r = opts.RECT || Asolved.rows !== Asolved.cols ? rankOf(Asolved) : (() => { const c = condFn(Asolved); return c === Infinity ? 0 : 1 / c; })();
+      return [x, scalar(r)];
+    }
     const Awarn = opts.TRANSA ? ctransposeFn(A) : A;
     const w = illConditionWarning(Awarn) ?? qrRankWarning(Awarn);
     if (w) env.output('Warning: ' + w + '\n');
