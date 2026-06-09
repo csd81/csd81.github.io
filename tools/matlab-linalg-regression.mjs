@@ -10,7 +10,7 @@ const outfile = join(outdir, 'regression.mjs');
 
 const source = String.raw`
 import {
-  bandwidth, ldl, linsolveWithOptions, mldivide, mldividePlan, qrPivotOutputs, qrRankWarning,
+  bandwidth, cond, ldl, linsolveWithOptions, mldivide, mldividePlan, nullspace, orth, pinv, qrPivotOutputs, qrRankWarning, rankOf,
 } from './src/sandbox/matlab/linalg';
 import {
   cmatmul, ctranspose, fromRows, isComplex, matRows, matmul, sparseToDense, type Mat,
@@ -143,13 +143,31 @@ assert(maxAbs(sub(matmul(matmul(ldlFac.P, ldlA), ctranspose(ldlFac.P)), matmul(m
 assert(maxAbs(sub(ldlFac.P, fromRows([[1, 0, 0], [0, 1, 0], [0, 0, 1]]))) > 0,
   'pivoted LDL should expose a nontrivial permutation matrix');
 
-const minNormA = assertPlan('rank-deficient underdetermined', [[1, 1, 0], [0, 0, 0]], 'pinv-minnorm');
-const minNormX = mldivide(minNormA, fromRows([[2], [0]]));
-const minNormRows = matRows(minNormX);
-assert(approx(minNormRows[0][0], 1) && approx(minNormRows[1][0], 1) && approx(minNormRows[2][0], 0),
-  'rank-deficient underdetermined: expected [1;1;0], got ' + JSON.stringify(minNormRows));
+const minNormA = assertPlan('rank-deficient underdetermined', [[1, 1, 0], [0, 0, 0]], 'qrcp');
+const basicX = mldivide(minNormA, fromRows([[2], [0]]));
+const basicRows = matRows(basicX);
+assert(approx(basicRows[0][0], 2) && approx(basicRows[1][0], 0) && approx(basicRows[2][0], 0),
+  'rank-deficient underdetermined backslash: expected MATLAB basic solution [2;0;0], got ' + JSON.stringify(basicRows));
 assert((qrRankWarning(minNormA) ?? '').startsWith('Rank deficient, rank = 1, tol = '),
   'rank-deficient underdetermined: missing rank warning');
+
+const nearRankDef = fromRows([[1, 1], [1, 1 + Number.EPSILON]]);
+assert(rankOf(nearRankDef) === 1, 'near-rank-deficient matrix should have MATLAB rank 1');
+assert(cond(nearRankDef) > 1e15 && Number.isFinite(cond(nearRankDef)), 'near-rank-deficient cond should be finite and large');
+const nearPinvRows = matRows(pinv(nearRankDef));
+for (const row of nearPinvRows) for (const v of row) assert(approx(v, 0.25, 1e-10), 'near-rank-deficient pinv should be approximately all 0.25, got ' + JSON.stringify(nearPinvRows));
+assert(orth(nearRankDef).cols === 1, 'near-rank-deficient orth should have one basis vector');
+const nearNull = nullspace(nearRankDef);
+assert(nearNull.cols === 1, 'near-rank-deficient null should have one basis vector');
+assert(maxAbs(matmul(nearRankDef, nearNull)) <= 1e-10, 'near-rank-deficient null residual too large');
+
+const wideNull = nullspace(minNormA);
+assert(wideNull.cols === 2, 'wide rank-deficient null should have two basis vectors');
+assert(maxAbs(matmul(minNormA, wideNull)) <= 1e-10, 'wide rank-deficient null residual too large');
+const widePinvX = matmul(pinv(minNormA), fromRows([[2], [0]]));
+const widePinvRows = matRows(widePinvX);
+assert(approx(widePinvRows[0][0], 1) && approx(widePinvRows[1][0], 1) && approx(widePinvRows[2][0], 0),
+  'wide rank-deficient pinv: expected [1;1;0], got ' + JSON.stringify(widePinvRows));
 
 const pivotQrA = fromRows([[1, 10], [0, 0], [0, 0]]);
 const pivotQr = qrPivotOutputs(pivotQrA);
@@ -173,7 +191,7 @@ const complexSquare = complexFromRows([[1, 2], [3, 5]], [[0, 1], [-1, 0]]);
 assert(mldividePlan(complexSquare) === 'complex-lu', 'complex square should use complex-lu plan');
 
 const complexMinNormA = complexFromRows([[1, 1, 0], [0, 0, 0]], [[1, -1, 0], [0, 0, 0]]);
-assert(mldividePlan(complexMinNormA) === 'complex-pinv-minnorm', 'complex rank-deficient underdetermined should use complex-pinv-minnorm plan');
+assert(mldividePlan(complexMinNormA) === 'complex-qrcp', 'complex rank-deficient underdetermined should use complex-qrcp plan');
 assertResidual('complex rank-deficient underdetermined', complexMinNormA, complexFromRows([[2], [0]], [[0], [0]]));
 
 let out = '';

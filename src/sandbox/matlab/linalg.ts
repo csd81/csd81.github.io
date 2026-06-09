@@ -505,7 +505,6 @@ export type MldividePlan =
   | 'complex-lower-triangular'
   | 'complex-lu'
   | 'complex-qrcp'
-  | 'complex-pinv-minnorm'
   | 'diagonal'
   | 'upper-triangular'
   | 'lower-triangular'
@@ -519,8 +518,7 @@ export type MldividePlan =
   | 'cholesky'
   | 'ldl'
   | 'lu'
-  | 'qrcp'
-  | 'pinv-minnorm';
+  | 'qrcp';
 
 export function mldividePlan(a: Mat): MldividePlan {
   if (isScalar(a)) return 'scalar';
@@ -532,14 +530,9 @@ export function mldividePlan(a: Mat): MldividePlan {
       if (bw.upper === 0) return 'complex-lower-triangular';
       return 'complex-lu';
     }
-    if (a.rows < a.cols && rankOf(a) < Math.min(a.rows, a.cols)) return 'complex-pinv-minnorm';
     return 'complex-qrcp';
   }
   if (a.rows !== a.cols) {
-    if (a.rows < a.cols) {
-      const { rank } = qrPivot(a);
-      if (rank < Math.min(a.rows, a.cols)) return 'pinv-minnorm';
-    }
     return 'qrcp';
   }
 
@@ -634,16 +627,13 @@ export function qrPivotOutputs(A: Mat): { Q: Mat; R: Mat; E: Mat } {
 
 export function qrRankWarning(A: Mat): string | null {
   if (A.rows === A.cols || A.rows < 1 || A.cols < 1 || A.isChar) return null;
-  const { rank, tol } = matlabRankInfo(A);
+  const { rank, tol } = svdRankInfo(A);
   if (rank >= Math.min(A.rows, A.cols)) return null;
   return `Rank deficient, rank = ${rank}, tol = ${tol.toExponential(6)}.`;
 }
 
 function qrPivotSolve(a: Mat, b: Mat): { x: Mat; rank: number; tol: number } {
   const { Q, R, piv, rank, tol } = qrPivot(a);
-  if (a.rows < a.cols && rank < Math.min(a.rows, a.cols)) {
-    return { x: matmul(pinv(a), b), rank, tol };
-  }
   const z = zeros(a.cols, b.cols);
   if (rank > 0) {
     const rhs = zeros(rank, b.cols);
@@ -817,14 +807,12 @@ function cQrPivotSolve(a: Mat, b: Mat): { x: Mat; rank: number; tol: number } {
       xi[orig + col * n] = zi[c + col * n];
     }
   }
-  if (m < n && rank < Math.min(m, n)) return { x: cmatmul(cPinv(a), b), rank, tol };
   return { x: finishComplex(n, b.cols, xr, xi), rank, tol };
 }
 
-function cPinv(A: Mat): Mat {
-  const { U, s, V } = svdC(A);
+function cPinv(A: Mat, info = svdRankInfo(A)): Mat {
+  const { U, s, V, tol } = info;
   const m = A.rows, n = A.cols;
-  const tol = Math.max(m, n) * (s[0] || 0) * 2.220446049250313e-16;
   const k = s.length;
   const Splus = zeros(k, k);
   for (let j = 0; j < k; j++) if (s[j] > tol) Splus.data[j + j * k] = 1 / s[j];
@@ -1597,26 +1585,27 @@ function completeOrthoBasis(U: Mat, m: number): void {
 }
 
 export function rankOf(A: Mat, tol?: number): number {
+  return svdRankInfo(A, tol).rank;
+}
+export function cond(A: Mat): number {
+  const { smax, smin } = svdRankInfo(A);
+  return smin === 0 ? Infinity : smax / smin;
+}
+
+function svdRankInfo(A: Mat, explicitTol?: number): { U: Mat; s: number[]; V: Mat; rank: number; tol: number; smax: number; smin: number } {
   // one-sided Jacobi (svdC) resolves tiny singular values with high relative accuracy;
   // the AtA-based svd loses half the digits and overcounts rank for singular matrices (e.g. magic(4)).
-  const { s } = svdC(A);
-  const t = tol ?? (Math.max(A.rows, A.cols) * (s[0] || 0) * 2.220446049250313e-16);
-  return s.filter((x) => x > t).length;
-}
-export function cond(A: Mat): number { const { s } = svd(A); const mn = s[s.length - 1]; return mn === 0 ? Infinity : s[0] / mn; }
-
-function matlabRankInfo(A: Mat): { rank: number; tol: number; smax: number; smin: number } {
-  const { s } = svdC(A);
+  const { U, s, V } = svdC(A);
   const smax = s[0] ?? 0;
   const smin = s[s.length - 1] ?? 0;
-  const tol = Math.max(A.rows, A.cols) * smax * 2.220446049250313e-16;
-  return { rank: s.filter((x) => x > tol).length, tol, smax, smin };
+  const tol = explicitTol ?? (Math.max(A.rows, A.cols) * smax * 2.220446049250313e-16);
+  return { U, s, V, rank: s.filter((x) => x > tol).length, tol, smax, smin };
 }
 
 /** MATLAB-style "close to singular" message for a square matrix solved via backslash, or null if A is well-conditioned. */
 export function illConditionWarning(A: Mat): string | null {
   if (A.rows !== A.cols || A.rows < 1 || A.isChar) return null;
-  const { smax, smin } = matlabRankInfo(A);
+  const { smax, smin } = svdRankInfo(A);
   const rc = smax !== 0 && Number.isFinite(smax) && Number.isFinite(smin) ? smin / smax : 0;
   if (rc >= Number.EPSILON) return null;
   return rc === 0
@@ -1624,31 +1613,84 @@ export function illConditionWarning(A: Mat): string | null {
     : `Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND = ${rc.toExponential(6)}.`;
 }
 export function pinv(A: Mat): Mat {
-  const { U, s, V } = svd(A); const m = A.rows, n = A.cols;
-  const tol = Math.max(m, n) * (s[0] || 0) * 2.220446049250313e-16;
-  const P = zeros(n, m);
-  for (let j = 0; j < Math.min(m, n); j++) if (s[j] > tol) {
-    for (let r = 0; r < n; r++) for (let c = 0; c < m; c++) P.data[r + c * n] += (V.data[r + j * n] * U.data[c + j * m]) / s[j];
-  }
-  return P;
+  return cPinv(A);
 }
 /** Orthonormal basis for the range (columns of U for nonzero singular values). */
 export function orth(A: Mat): Mat {
-  const { U, s } = svd(A); const m = A.rows;
-  const tol = Math.max(A.rows, A.cols) * (s[0] || 0) * 2.220446049250313e-16;
-  const cols: number[] = []; for (let j = 0; j < Math.min(m, A.cols); j++) if (s[j] > tol) cols.push(j);
-  const O = zeros(m, cols.length);
-  cols.forEach((j, dst) => { for (let r = 0; r < m; r++) O.data[r + dst * m] = U.data[r + j * m]; });
-  return O;
+  const { U, s, tol } = svdRankInfo(A); const m = A.rows;
+  const cols: number[] = []; for (let j = 0; j < s.length; j++) if (s[j] > tol) cols.push(j);
+  const Or = new Float64Array(m * cols.length), Oi = new Float64Array(m * cols.length);
+  const Ui = U.idata ?? new Float64Array(U.rows * U.cols);
+  cols.forEach((j, dst) => {
+    for (let r = 0; r < m; r++) {
+      Or[r + dst * m] = U.data[r + j * U.rows];
+      Oi[r + dst * m] = Ui[r + j * U.rows];
+    }
+  });
+  return finishComplex(m, cols.length, Or, Oi);
 }
 /** Orthonormal basis for the null space (V columns for ~zero singular values). */
 export function nullspace(A: Mat): Mat {
-  const { s, V } = svd(A); const n = A.cols;
-  const tol = Math.max(A.rows, A.cols) * (s[0] || 0) * 2.220446049250313e-16;
-  const cols: number[] = []; for (let j = 0; j < n; j++) if ((s[j] ?? 0) <= tol) cols.push(j);
-  const N = zeros(n, cols.length);
-  cols.forEach((j, dst) => { for (let r = 0; r < n; r++) N.data[r + dst * n] = V.data[r + j * n]; });
-  return N;
+  return rightNullBasis(svdRankInfo(A), A.cols);
+}
+
+function rightNullBasis(info: { s: number[]; V: Mat; rank: number; tol: number }, n: number): Mat {
+  const desired = Math.max(0, n - info.rank);
+  const cols: { re: Float64Array; im: Float64Array }[] = [];
+  const constraints: { re: Float64Array; im: Float64Array }[] = [];
+  const Vi = info.V.idata ?? new Float64Array(info.V.rows * info.V.cols);
+
+  const addFromV = (j: number, asNull: boolean) => {
+    const re = new Float64Array(n), im = new Float64Array(n);
+    for (let r = 0; r < n; r++) {
+      re[r] = info.V.data[r + j * info.V.rows];
+      im[r] = Vi[r + j * info.V.rows];
+    }
+    if (asNull) cols.push({ re, im });
+    constraints.push({ re, im });
+  };
+
+  for (let j = 0; j < info.s.length; j++) addFromV(j, info.s[j] <= info.tol);
+
+  const basis = () => constraints.concat(cols.filter((c) => !constraints.includes(c)));
+  for (let e = 0; cols.length < desired && e < n; e++) {
+    const re = new Float64Array(n), im = new Float64Array(n);
+    re[e] = 1;
+    orthogonalize(re, im, basis());
+    const nrm = complexNorm(re, im);
+    if (nrm <= 1e-10) continue;
+    for (let r = 0; r < n; r++) { re[r] /= nrm; im[r] /= nrm; }
+    cols.push({ re, im });
+  }
+
+  const outR = new Float64Array(n * cols.length), outI = new Float64Array(n * cols.length);
+  cols.forEach((col, j) => {
+    for (let r = 0; r < n; r++) {
+      outR[r + j * n] = col.re[r];
+      outI[r + j * n] = col.im[r];
+    }
+  });
+  return finishComplex(n, cols.length, outR, outI);
+}
+
+function orthogonalize(re: Float64Array, im: Float64Array, against: { re: Float64Array; im: Float64Array }[]): void {
+  for (const q of against) {
+    let dotR = 0, dotI = 0;
+    for (let i = 0; i < re.length; i++) {
+      dotR += q.re[i] * re[i] + q.im[i] * im[i];
+      dotI += q.re[i] * im[i] - q.im[i] * re[i];
+    }
+    for (let i = 0; i < re.length; i++) {
+      re[i] -= q.re[i] * dotR - q.im[i] * dotI;
+      im[i] -= q.re[i] * dotI + q.im[i] * dotR;
+    }
+  }
+}
+
+function complexNorm(re: Float64Array, im: Float64Array): number {
+  let s = 0;
+  for (let i = 0; i < re.length; i++) s += re[i] * re[i] + im[i] * im[i];
+  return Math.sqrt(s);
 }
 
 /** Rational null-space basis (MATLAB `null(A,'rational')`): from rref, one basis
