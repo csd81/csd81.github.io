@@ -208,6 +208,13 @@ const condest1Diag = (await BUILTINS.condest1([fromRows([[2, 0], [0, 4]])], 1, {
 assert(approx(condest1Diag.data[0], 2, 1e-12), 'condest1 should share the condest estimator, got ' + condest1Diag.data[0]);
 const rcondOneNorm = (await BUILTINS.rcond([fromRows([[-3, -3], [-3, 3]])], 1, {} as any))[0] as Mat;
 assert(approx(rcondOneNorm.data[0], 0.5, 1e-12), 'rcond should use reciprocal 1-norm condition, got ' + rcondOneNorm.data[0]);
+const sylvesterComplex = (await BUILTINS.sylvester([
+  complexFromRows([[1]], [[1]]),
+  fromRows([[2]]),
+  complexFromRows([[3]], [[4]]),
+], 1, { output: () => {} } as any))[0] as Mat;
+assert(approx(sylvesterComplex.data[0], 1.3, 1e-12) && approx(sylvesterComplex.idata?.[0] ?? 0, 0.9, 1e-12),
+  'sylvester should preserve complex inputs, got ' + sylvesterComplex.data[0] + '+' + (sylvesterComplex.idata?.[0] ?? 0) + 'i');
 
 const lowerForOpts = fromRows([[2, 0, 0], [1, 3, 0], [4, 5, 6]]);
 const lowerB = fromRows([[2], [7], [32]]);

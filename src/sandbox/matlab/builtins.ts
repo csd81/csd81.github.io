@@ -6522,15 +6522,31 @@ function parseLsqminnormOptions(a: Value[], start: number): { tol?: number; rank
 
 /** Solve the Sylvester equation A X + X B = C via the Kronecker system. */
 function sylvesterSolve(A: Mat, B: Mat, C: Mat): Mat {
-  const p = A.rows, q = B.cols, pq = p * q;
+  if (A.rows !== A.cols) throw new MatError('sylvester: A must be square');
+  if (B.rows !== B.cols) throw new MatError('sylvester: B must be square');
+  if (C.rows !== A.rows || C.cols !== B.rows) throw new MatError('sylvester: C must be size rows(A)-by-rows(B)');
+  const p = A.rows, q = B.rows, pq = p * q;
+  const complex = isComplex(A) || isComplex(B) || isComplex(C);
   const K = zeros(pq, pq); const rhs = zeros(pq, 1);
+  if (complex) { K.idata = new Float64Array(pq * pq); rhs.idata = new Float64Array(pq); }
+  const Ai = A.idata, Bi = B.idata, Ci = C.idata;
   for (let k = 0; k < q; k++) for (let i = 0; i < p; i++) {
-    const row = i + k * p; rhs.data[row] = C.data[i + k * p];
-    for (let ii = 0; ii < p; ii++) K.data[row + (ii + k * p) * pq] += A.data[i + ii * p];      // (I⊗A)
-    for (let kk = 0; kk < q; kk++) K.data[row + (i + kk * p) * pq] += B.data[kk + k * q];       // (Bᵀ⊗I)
+    const row = i + k * p; rhs.data[row] = C.data[i + k * p]; if (rhs.idata) rhs.idata[row] = Ci ? Ci[i + k * p] : 0;
+    for (let ii = 0; ii < p; ii++) {
+      const idx = row + (ii + k * p) * pq;
+      K.data[idx] += A.data[i + ii * p]; if (K.idata) K.idata[idx] += Ai ? Ai[i + ii * p] : 0;  // (I⊗A)
+    }
+    for (let kk = 0; kk < q; kk++) {
+      const idx = row + (i + kk * p) * pq;
+      K.data[idx] += B.data[kk + k * q]; if (K.idata) K.idata[idx] += Bi ? Bi[kk + k * q] : 0;  // (Bᵀ⊗I)
+    }
   }
   const x = mldivide(K, rhs); const X = zeros(p, q);
-  for (let k = 0; k < q; k++) for (let i = 0; i < p; i++) X.data[i + k * p] = x.data[i + k * p];
+  if (x.idata) X.idata = new Float64Array(p * q);
+  for (let k = 0; k < q; k++) for (let i = 0; i < p; i++) {
+    X.data[i + k * p] = x.data[i + k * p];
+    if (X.idata) X.idata[i + k * p] = x.idata ? x.idata[i + k * p] : 0;
+  }
   return X;
 }
 /** Map/dictionary keys in MATLAB's sorted order (ascending numbers / lexicographic chars). */
