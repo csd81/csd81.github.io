@@ -22,7 +22,7 @@ import {
 } from './values';
 import { type SymExpr, sN, sV, sAdd, sSub, sMul, sPow, sFn, sNeg, sDiv, simplifyExpr, diffExpr, subsExpr, evalExpr as symEval, exprToStr, symVars } from './sym';
 import {
-  det, inv, mldivide, illConditionWarning, qrRankWarning, diag, norm, eye,
+  det, inv, mldivide, illConditionWarning, qrRankWarning, diag, norm, eye, decomposition as decompositionFn,
   qr as qrDecomp, qrPivotOutputs, linsolveWithOptions, type LinsolveOptions, chol as cholFn, luOutputs, jacobiEigSym, svd as svdReal,
   rankOf, cond as condFn, pinv as pinvFn, orth as orthFn, nullspace, nullspaceRational, rref as rrefFn, vecnorm as vecnormFn, isSymmetric, cDet, svdC as svdCplx,
   generalEig, durandKerner, hess as hessFn, schur as schurFn, expm as expmFn, logm as logmFn, sqrtm as sqrtmFn, ldl as ldlFn, lsqnonneg as lsqnonnegFn,
@@ -2198,7 +2198,7 @@ export const BUILTINS: Record<string, Builtin> = {
   treelayout: async (a, n) => { const par = toArray(m(a[0])).map((x) => Math.round(x)); const { x, y, h } = treeLayout(par); return n >= 3 ? [rowVec(x), rowVec(y), scalar(h)] : n >= 2 ? [rowVec(x), rowVec(y)] : [rowVec(x)]; },
   treeplot: async (a, _n, env) => { const par = toArray(m(a[0])).map((x) => Math.round(x)); const { x, y } = treeLayout(par); const px: number[] = [], py: number[] = []; par.forEach((p, i) => { if (p > 0) { px.push(x[i], x[p - 1], NaN); py.push(y[i], y[p - 1], NaN); } }); env.graphics.addSeries(px, py); env.graphics.hold(true); env.graphics.scatter([rowVec(x), rowVec(y)]); env.graphics.hold(false); return []; },
   etreeplot: async (a, _n, env) => { const par = etreeOf(asSparse(a[0])); const { x, y } = treeLayout(par); const px: number[] = [], py: number[] = []; par.forEach((p, i) => { if (p > 0) { px.push(x[i], x[p - 1], NaN); py.push(y[i], y[p - 1], NaN); } }); env.graphics.addSeries(px, py); env.graphics.hold(true); env.graphics.scatter([rowVec(x), rowVec(y)]); env.graphics.hold(false); return []; },
-  decomposition: async (a) => ret(mat(m(a[0]).rows, m(a[0]).cols, new Float64Array(m(a[0]).data))),
+  decomposition: async (a) => ret(decompositionFn(isSparse(a[0]) ? sparseToDense(a[0]) : m(a[0]), a.length >= 2 ? asString(a[1]) : undefined)),
   RandStream: async (a) => { const type = a.length ? asString(a[0]) : 'mt19937ar'; const seed = a.length >= 3 && isMat(a[2]) ? asScalar(a[2]) : (a.length >= 2 && isMat(a[1]) ? asScalar(a[1]) : 0); return ret({ kind: 'struct', rows: 1, cols: 1, fields: new Map<string, Value[]>([['Type', [str(type)]], ['Seed', [scalar(seed)]], ['NormalTransform', [str('Ziggurat')]]]) } as StructV); },
   GraphPlot: async () => [], layout: async () => [], layoutcoords: async () => [],
   // ── more scalar math / reductions ──

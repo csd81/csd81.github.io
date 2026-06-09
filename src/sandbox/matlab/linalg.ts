@@ -1,5 +1,5 @@
 /** Dense linear algebra: det, inv, `\` (square solve + least squares), norm, diag, eye. */
-import { type Mat, MatError, mat, zeros, scalar, isScalar, numel, transpose, matmul, isComplex, cmul, cdiv, finishComplex, ctranspose, cmatmul, ewRDiv, csqrt, clog, colVec } from './values';
+import { type Mat, type ClassV, MatError, mat, zeros, scalar, isScalar, numel, transpose, matmul, isComplex, cmul, cdiv, finishComplex, ctranspose, cmatmul, ewRDiv, csqrt, clog, colVec, rowVec, str, makeObject } from './values';
 
 export function eye(n: number, m = n): Mat {
   const out = zeros(n, m);
@@ -841,6 +841,114 @@ export function mldivide(a: Mat, b: Mat): Mat {
   // for tall least-squares problems and gives MATLAB-like basic solutions for
   // rank-deficient or underdetermined systems.
   return qrPivotSolve(a, b).x;
+}
+
+function cloneMat(A: Mat): Mat {
+  return { ...A, data: Float64Array.from(A.data), idata: A.idata ? Float64Array.from(A.idata) : undefined };
+}
+
+function decompositionPlan(A: Mat, requested?: string): MldividePlan {
+  const kind = (requested ?? 'auto').toLowerCase();
+  if (kind === 'auto') return mldividePlan(A);
+  if (kind === 'lu') return 'lu';
+  if (kind === 'qr') return 'qrcp';
+  if (kind === 'chol' || kind === 'cholesky') return 'cholesky';
+  if (kind === 'ldl') return 'ldl';
+  if (kind === 'triangular') {
+    const bw = bandwidth(A);
+    if (bw.lower === 0 && bw.upper === 0) return isComplex(A) ? 'complex-diagonal' : 'diagonal';
+    if (bw.lower === 0) return isComplex(A) ? 'complex-upper-triangular' : 'upper-triangular';
+    if (bw.upper === 0) return isComplex(A) ? 'complex-lower-triangular' : 'lower-triangular';
+    throw new MatError('decomposition: matrix is not triangular');
+  }
+  throw new MatError(`decomposition: unknown decomposition type '${requested}'`);
+}
+
+export function decomposition(A: Mat, requested?: string): ClassV {
+  const plan = decompositionPlan(A, requested);
+  const props = new Map<string, Mat | ReturnType<typeof str>>();
+  props.set('Type', str(plan));
+  props.set('MatrixSize', rowVec([A.rows, A.cols]));
+  props.set('A', cloneMat(A));
+
+  if (!isComplex(A)) {
+    if (plan === 'cholesky') {
+      props.set('R', chol(A));
+    } else if (plan === 'ldl') {
+      const { L, D, P } = ldl(A);
+      props.set('L', L); props.set('D', D); props.set('P', P);
+    } else if (plan === 'lu') {
+      const { L, U, P } = luOutputs(A);
+      props.set('L', L); props.set('U', U); props.set('P', P);
+    } else if (plan === 'qrcp') {
+      const { Q, R, E } = qrPivotOutputs(A);
+      props.set('Q', Q); props.set('R', R); props.set('E', E);
+    }
+  }
+
+  return makeObject('decomposition', props, 1, 1);
+}
+
+function decompMat(D: ClassV, name: string): Mat {
+  const v = D.props.get(name);
+  if (!v || v.kind !== 'num') throw new MatError(`decomposition: missing ${name} factor`);
+  return v;
+}
+
+function decompType(D: ClassV): string {
+  const v = decompMat(D, 'Type');
+  return String.fromCharCode(...Array.from(v.data));
+}
+
+function qrcpFactorSolve(Q: Mat, R: Mat, E: Mat, B: Mat): Mat {
+  const m = Q.rows, n = R.cols;
+  const maxDiag = Math.max(0, ...Array.from({ length: Math.min(R.rows, R.cols) }, (_, i) => Math.abs(R.data[i + i * R.rows])));
+  const tol = Math.max(m, n) * 2.220446049250313e-16 * maxDiag;
+  let rank = 0;
+  for (let i = 0; i < Math.min(R.rows, R.cols); i++) if (Math.abs(R.data[i + i * R.rows]) > tol) rank++;
+
+  const z = zeros(n, B.cols);
+  if (rank > 0) {
+    const rhs = zeros(rank, B.cols);
+    for (let col = 0; col < B.cols; col++) {
+      for (let r = 0; r < rank; r++) {
+        let s = 0;
+        for (let k = 0; k < Q.rows; k++) s += Q.data[k + r * Q.rows] * B.data[k + col * B.rows];
+        rhs.data[r + col * rank] = s;
+      }
+    }
+    const R11 = zeros(rank, rank);
+    for (let c = 0; c < rank; c++) for (let r = 0; r <= c; r++) R11.data[r + c * rank] = R.data[r + c * R.rows];
+    const y = upperTriSolve(R11, rhs);
+    for (let col = 0; col < B.cols; col++) for (let r = 0; r < rank; r++) z.data[r + col * z.rows] = y.data[r + col * y.rows];
+  }
+  return matmul(E, z);
+}
+
+export function decompositionSolve(D: ClassV, B: Mat): Mat {
+  if (D.className !== 'decomposition') throw new MatError('mldivide: expected decomposition object');
+  const type = decompType(D);
+  if (type === 'cholesky') {
+    const R = decompMat(D, 'R');
+    return upperTriSolve(R, lowerTriSolve(ctranspose(R), B));
+  }
+  if (type === 'ldl') {
+    const L = decompMat(D, 'L'), M = decompMat(D, 'D'), P = decompMat(D, 'P');
+    const pb = matmul(P, B);
+    const y = lowerTriSolve(L, pb);
+    const z = mldivide(M, y);
+    return matmul(ctranspose(P), upperTriSolve(ctranspose(L), z));
+  }
+  if (type === 'lu') {
+    const L = decompMat(D, 'L'), U = decompMat(D, 'U'), P = decompMat(D, 'P');
+    return upperTriSolve(U, lowerTriSolve(L, matmul(P, B)));
+  }
+  if (type === 'qrcp') return qrcpFactorSolve(decompMat(D, 'Q'), decompMat(D, 'R'), decompMat(D, 'E'), B);
+  return mldivide(decompMat(D, 'A'), B);
+}
+
+export function decompositionRightSolve(B: Mat, D: ClassV): Mat {
+  return ctranspose(decompositionSolve(decomposition(ctranspose(decompMat(D, 'A')), decompType(D)), ctranspose(B)));
 }
 
 export interface LinsolveOptions {

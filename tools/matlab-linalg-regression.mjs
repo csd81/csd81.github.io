@@ -10,7 +10,7 @@ const outfile = join(outdir, 'regression.mjs');
 
 const source = String.raw`
 import {
-  bandwidth, cond, expm, generalEig, ldl, linsolveWithOptions, mldivide, mldividePlan, nullspace, orth, pinv, qrPivotOutputs, qrRankWarning, rankOf, svd,
+  bandwidth, cond, decomposition, decompositionSolve, expm, generalEig, ldl, linsolveWithOptions, mldivide, mldividePlan, nullspace, orth, pinv, qrPivotOutputs, qrRankWarning, rankOf, svd,
 } from './src/sandbox/matlab/linalg';
 import {
   cmatmul, ctranspose, finishComplex, fromRows, isComplex, matRows, matmul, sparseToDense, zeros, type Mat,
@@ -219,6 +219,17 @@ assert(maxAbs(sub(matmul(matmul(ldlFac.P, ldlA), ctranspose(ldlFac.P)), matmul(m
 assert(maxAbs(sub(ldlFac.P, fromRows([[1, 0, 0], [0, 1, 0], [0, 0, 1]]))) > 0,
   'pivoted LDL should expose a nontrivial permutation matrix');
 
+const decompLuA = fromRows([[1, 2, 3], [4, 7, 5], [6, 8, 10]]);
+const decompLuB = fromRows([[1, 2], [3, 4], [5, 6]]);
+assert(maxAbs(sub(decompositionSolve(decomposition(decompLuA, 'lu'), decompLuB), mldivide(decompLuA, decompLuB))) <= 1e-10,
+  'decomposition(A,"lu") should reuse LU factors for left division');
+assert(maxAbs(sub(decompositionSolve(decomposition(spdForOpts), spdB), mldivide(spdForOpts, spdB))) <= 1e-10,
+  'decomposition(A) should reuse Cholesky factors for SPD left division');
+assert(maxAbs(sub(decompositionSolve(decomposition(symForOpts), symB), mldivide(symForOpts, symB))) <= 1e-10,
+  'decomposition(A) should reuse LDL factors for symmetric-indefinite left division');
+assert(maxAbs(sub(decompositionSolve(decomposition(fromRows([[1, 0], [0, 1], [1, 1]]), 'qr'), fromRows([[1], [2], [3]])), mldivide(fromRows([[1, 0], [0, 1], [1, 1]]), fromRows([[1], [2], [3]])))) <= 1e-10,
+  'decomposition(A,"qr") should reuse QRCP factors for rectangular left division');
+
 const minNormA = assertPlan('rank-deficient underdetermined', [[1, 1, 0], [0, 0, 0]], 'qrcp');
 const basicX = mldivide(minNormA, fromRows([[2], [0]]));
 const basicRows = matRows(basicX);
@@ -278,6 +289,9 @@ assert(sparseWarnings === 2, 'expected two sparse fallback warnings, got ' + spa
 
 const linsolveSmoke = await session.run('A = [2 0 0; 1 3 0; 4 5 6]; b = [2; 7; 32]; opts = struct("LT",true); z = linsolve(A,b,opts);');
 assert(!linsolveSmoke.error, 'linsolve builtin options smoke failed: ' + linsolveSmoke.error);
+
+const decompositionSmoke = await session.run('A = [4 1; 1 3]; b = [1; 2]; dA = decomposition(A); z = dA\\b; w = A\\b;');
+assert(!decompositionSmoke.error, 'decomposition object mldivide smoke failed: ' + decompositionSmoke.error);
 
 const denseSparse = sparseToDense({ kind: 'sparse', rows: 2, cols: 2, colptr: new Int32Array([0, 1, 2]), rowind: new Int32Array([0, 1]), values: new Float64Array([2, 4]) });
 assert(mldividePlan(denseSparse) === 'diagonal', 'sparse dense fallback fixture should densify to diagonal plan');
