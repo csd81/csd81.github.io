@@ -16,6 +16,7 @@ import {
   cmatmul, ctranspose, finishComplex, fromRows, isComplex, matRows, matmul, sparseToDense, zeros, type Mat,
 } from './src/sandbox/matlab/values';
 import { createSession } from './src/sandbox/matlab/index';
+import { BUILTINS } from './src/sandbox/matlab/builtins';
 
 function assert(cond: boolean, msg: string): void {
   if (!cond) throw new Error(msg);
@@ -186,6 +187,13 @@ assert(maxAbs(sub(cmatmul(cmatmul(svdWideRankDef.U, svdSigma(2, 3, svdWideRankDe
   'full svd should reconstruct a wide rank-deficient matrix');
 assertOrthonormal('full svd U for wide rank-deficient matrix', svdWideRankDef.U);
 assertOrthonormal('full svd V for wide rank-deficient matrix', svdWideRankDef.V);
+
+const normestDiag = (await BUILTINS.normest([fromRows([[3, 0], [0, 4]])], 1, {} as any))[0] as Mat;
+assert(approx(normestDiag.data[0], 4, 1e-8), 'normest should estimate the dominant 2-norm without exact SVD, got ' + normestDiag.data[0]);
+const condestDiag = (await BUILTINS.condest([fromRows([[2, 0], [0, 4]])], 1, {} as any))[0] as Mat;
+assert(approx(condestDiag.data[0], 2, 1e-12), 'condest should estimate the 1-norm condition without explicit inverse, got ' + condestDiag.data[0]);
+const condest1Diag = (await BUILTINS.condest1([fromRows([[2, 0], [0, 4]])], 1, {} as any))[0] as Mat;
+assert(approx(condest1Diag.data[0], 2, 1e-12), 'condest1 should share the condest estimator, got ' + condest1Diag.data[0]);
 
 const lowerForOpts = fromRows([[2, 0, 0], [1, 3, 0], [4, 5, 6]]);
 const lowerB = fromRows([[2], [7], [32]]);

@@ -1768,7 +1768,7 @@ export const BUILTINS: Record<string, Builtin> = {
     const x = await patternSearchSolve(F, x0, lb, ub); const xo = col ? colVec(x) : rowVec(x);
     return n >= 2 ? [xo, scalar(await base(x))] : [xo];
   },
-  condest: async (a) => { const A = m(a[0]); return ret(scalar(norm(A, 1) * norm(inv(A), 1))); },
+  condest: async (a) => { const A = m(a[0]); return ret(scalar(condestOneNorm(A))); },
   lscov: async (a) => { const A = m(a[0]), b = m(a[1]); if (a.length >= 3) { const W = inv(m(a[2])); const At = transpose(A); return ret(mldivide(matmul(At, matmul(W, A)), matmul(At, matmul(W, b)))); } return ret(mldivide(A, b)); },
   subspace: async (a) => {
     let Qa = orthFn(m(a[0])), Qb = orthFn(m(a[1])); if (Qa.cols < Qb.cols) { const t = Qa; Qa = Qb; Qb = t; }
@@ -2223,7 +2223,7 @@ export const BUILTINS: Record<string, Builtin> = {
     if (dir === 'monotonic') { let asc = true, desc = true; for (let i = 1; i < v.length; i++) { if (v[i] < v[i - 1]) asc = false; if (v[i] > v[i - 1]) desc = false; } ok = asc || desc; }
     return ret(bool(ok));
   },
-  normest: async (a) => ret(scalar(norm(m(a[0]), 2))),
+  normest: async (a) => ret(scalar(normestPower(m(a[0])))),
   // ── type predicates ──
   islogical: async (a) => ret(bool(isMat(a[0]) && !!(a[0] as Mat).isBool)),
   isinteger: async (a) => ret(bool(isMat(a[0]) && !!(a[0] as Mat).itype && (a[0] as Mat).itype !== 'single')),
@@ -2546,7 +2546,7 @@ export const BUILTINS: Record<string, Builtin> = {
     return ret(R);
   },
   qmr: async (a, n) => krylovSolve(a, n),
-  condest1: async (a) => { const A = m(a[0]); return ret(scalar(norm(A, 1) * norm(inv(A), 1))); },
+  condest1: async (a) => { const A = m(a[0]); return ret(scalar(condestOneNorm(A))); },
   wilkinson: async (a) => {
     const n = Math.round(asScalar(a[0])); const W = zeros(n, n); const mid = (n - 1) / 2;
     for (let i = 0; i < n; i++) { W.data[i + i * n] = Math.abs(mid - i); if (i + 1 < n) { W.data[i + (i + 1) * n] = 1; W.data[(i + 1) + i * n] = 1; } }
@@ -6348,6 +6348,57 @@ function polyDivide(u: number[], v: number[]): [number[], number[]] {
   for (let k = 0; k < nq; k++) { const c = r[k] / v[0]; q[k] = c; for (let j = 0; j < v.length; j++) r[k + j] -= c * v[j]; }
   return [q, r.slice(nq)];
 }
+/** Power-iteration estimate of the matrix 2-norm for normest. */
+function normestPower(A: Mat, maxit = 20): number {
+  if (A.rows === 0 || A.cols === 0) return 0;
+  let x = zeros(A.cols, 1);
+  const scale0 = 1 / Math.sqrt(A.cols);
+  for (let i = 0; i < A.cols; i++) x.data[i] = scale0;
+  let est = 0;
+  for (let it = 0; it < maxit; it++) {
+    const y = isComplex(A) || isComplex(x) ? cmatmul(A, x) : matmul(A, x);
+    est = norm(y, 2);
+    const z = isComplex(A) || isComplex(y) ? cmatmul(ctransposeFn(A), y) : matmul(transpose(A), y);
+    const zn = norm(z, 2);
+    if (!Number.isFinite(zn) || zn === 0) break;
+    x = z;
+    for (let i = 0; i < x.data.length; i++) x.data[i] /= zn;
+    if (x.idata) for (let i = 0; i < x.idata.length; i++) x.idata[i] /= zn;
+  }
+  return est;
+}
+
+/** Hager-style 1-norm condition estimate without explicitly forming inv(A). */
+function condestOneNorm(A: Mat, maxit = 8): number {
+  if (A.rows !== A.cols) throw new MatError('condest: matrix must be square');
+  const n = A.rows;
+  if (n === 0) return 0;
+  let x = zeros(n, 1);
+  for (let i = 0; i < n; i++) x.data[i] = 1 / n;
+  let invEst = 0;
+  for (let it = 0; it < maxit; it++) {
+    const y = mldivide(A, x);
+    let yNorm = 0, pivot = 0, pivotMag = -1;
+    const yi = y.idata ?? new Float64Array(y.data.length);
+    for (let i = 0; i < n; i++) {
+      const mag = Math.hypot(y.data[i], yi[i]);
+      yNorm += mag;
+      if (mag > pivotMag) { pivotMag = mag; pivot = i; }
+    }
+    invEst = Math.max(invEst, yNorm);
+    x = zeros(n, 1);
+    if (A.idata || y.idata) {
+      const mag = pivotMag || 1;
+      x.idata = new Float64Array(n);
+      x.data[pivot] = y.data[pivot] / mag;
+      x.idata[pivot] = yi[pivot] / mag;
+    } else {
+      x.data[pivot] = Math.sign(y.data[pivot]) || 1;
+    }
+  }
+  return norm(A, 1) * invEst;
+}
+
 /** Solve the Sylvester equation A X + X B = C via the Kronecker system. */
 function sylvesterSolve(A: Mat, B: Mat, C: Mat): Mat {
   const p = A.rows, q = B.cols, pq = p * q;
