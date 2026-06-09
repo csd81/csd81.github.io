@@ -1606,39 +1606,41 @@ export function svdC(A: Mat): { U: Mat; s: number[]; V: Mat } {
   return { U: finishComplex(mm, nn, Ur, Ui), s, V: finishComplex(nn, nn, Vr, Vi) };
 }
 export function svd(A: Mat): { U: Mat; s: number[]; V: Mat } {
-  const m = A.rows, n = A.cols;
-  const AtA = matmul(transpose(A), A); // n×n symmetric PSD
-  const { values, V } = jacobiEigSym(AtA);
-  const order = values.map((v, i) => i).sort((a, b) => values[b] - values[a]);
-  const k = Math.min(m, n);
-  const s = order.slice(0, k).map((i) => Math.sqrt(Math.max(0, values[i])));   // exactly min(m,n) singular values
-  const Vs = zeros(n, n);
-  order.forEach((src, dst) => { for (let r = 0; r < n; r++) Vs.data[r + dst * n] = V.data[r + src * n]; });
-  // U columns = A v_i / s_i for s_i > 0
-  const U = zeros(m, m);
-  const tol = 1e-12 * (s[0] || 1);
-  for (let j = 0; j < k; j++) {
-    if (s[j] > tol) for (let r = 0; r < m; r++) { let d = 0; for (let c = 0; c < n; c++) d += A.data[r + c * m] * Vs.data[c + j * n]; U.data[r + j * m] = d / s[j]; }
-  }
-  completeOrthoBasis(U, m);   // fill zero/missing columns (left null space) so U is a valid orthogonal matrix
-  return { U, s, V: Vs };
+  const { U, s, V } = svdC(A);
+  return { U: completeUnitaryColumns(U, A.rows), s, V: completeUnitaryColumns(V, A.cols) };
 }
-/** Fill any (near-)zero columns of an m×m matrix with vectors that complete an
- *  orthonormal basis (modified Gram-Schmidt against the existing columns). */
-function completeOrthoBasis(U: Mat, m: number): void {
-  const cols: number[][] = [];
-  const colOf = (j: number) => { const c: number[] = []; for (let r = 0; r < m; r++) c.push(U.data[r + j * m]); return c; };
-  const norm2 = (v: number[]) => Math.sqrt(v.reduce((a, x) => a + x * x, 0));
-  for (let j = 0; j < m; j++) { const c = colOf(j); if (norm2(c) > 1e-10) cols.push(c); }
-  for (let j = 0; j < m; j++) {
-    if (norm2(colOf(j)) > 1e-10) continue;   // already a real column
-    for (let e = 0; e < m; e++) {
-      const v = new Array(m).fill(0); v[e] = 1;
-      for (const c of cols) { let dot = 0; for (let r = 0; r < m; r++) dot += v[r] * c[r]; for (let r = 0; r < m; r++) v[r] -= dot * c[r]; }
-      const nrm = norm2(v);
-      if (nrm > 1e-8) { for (let r = 0; r < m; r++) { v[r] /= nrm; U.data[r + j * m] = v[r]; } cols.push(v); break; }
-    }
+
+function completeUnitaryColumns(A: Mat, targetCols: number): Mat {
+  const rows = A.rows;
+  const accepted: { re: Float64Array; im: Float64Array }[] = [];
+  const Ai = A.idata ?? new Float64Array(A.rows * A.cols);
+  const tryAdd = (re: Float64Array, im: Float64Array) => {
+    orthogonalize(re, im, accepted);
+    const nrm = complexNorm(re, im);
+    if (nrm <= 1e-10) return;
+    for (let r = 0; r < rows; r++) { re[r] /= nrm; im[r] /= nrm; }
+    accepted.push({ re, im });
+  };
+
+  for (let c = 0; c < A.cols && accepted.length < targetCols; c++) {
+    const re = new Float64Array(rows), im = new Float64Array(rows);
+    for (let r = 0; r < rows; r++) { re[r] = A.data[r + c * A.rows]; im[r] = Ai[r + c * A.rows]; }
+    tryAdd(re, im);
   }
+  for (let e = 0; e < rows && accepted.length < targetCols; e++) {
+    const re = new Float64Array(rows), im = new Float64Array(rows);
+    re[e] = 1;
+    tryAdd(re, im);
+  }
+
+  const outR = new Float64Array(rows * targetCols), outI = new Float64Array(rows * targetCols);
+  accepted.forEach((col, c) => {
+    for (let r = 0; r < rows; r++) {
+      outR[r + c * rows] = col.re[r];
+      outI[r + c * rows] = col.im[r];
+    }
+  });
+  return finishComplex(rows, targetCols, outR, outI);
 }
 
 export function rankOf(A: Mat, tol?: number): number {

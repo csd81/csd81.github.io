@@ -10,10 +10,10 @@ const outfile = join(outdir, 'regression.mjs');
 
 const source = String.raw`
 import {
-  bandwidth, cond, expm, generalEig, ldl, linsolveWithOptions, mldivide, mldividePlan, nullspace, orth, pinv, qrPivotOutputs, qrRankWarning, rankOf,
+  bandwidth, cond, expm, generalEig, ldl, linsolveWithOptions, mldivide, mldividePlan, nullspace, orth, pinv, qrPivotOutputs, qrRankWarning, rankOf, svd,
 } from './src/sandbox/matlab/linalg';
 import {
-  cmatmul, ctranspose, finishComplex, fromRows, isComplex, matRows, matmul, sparseToDense, type Mat,
+  cmatmul, ctranspose, finishComplex, fromRows, isComplex, matRows, matmul, sparseToDense, zeros, type Mat,
 } from './src/sandbox/matlab/values';
 import { createSession } from './src/sandbox/matlab/index';
 
@@ -73,6 +73,20 @@ function assertSolveResidual(name: string, A: Mat, X: Mat, B: Mat, tol = 1e-8): 
   const AX = isComplex(A) || isComplex(X) ? cmatmul(A, X) : matmul(A, X);
   const resid = maxAbs(sub(AX, B));
   assert(resid <= tol, name + ': residual ' + resid + ' exceeded ' + tol);
+}
+
+function svdSigma(rows: number, cols: number, s: number[]): Mat {
+  const S = zeros(rows, cols);
+  for (let i = 0; i < Math.min(rows, cols, s.length); i++) S.data[i + i * rows] = s[i];
+  return S;
+}
+
+function assertOrthonormal(name: string, Q: Mat, tol = 1e-9): void {
+  const I = zeros(Q.cols, Q.cols);
+  for (let i = 0; i < Q.cols; i++) I.data[i + i * Q.cols] = 1;
+  const gram = isComplex(Q) ? cmatmul(ctranspose(Q), Q) : matmul(ctranspose(Q), Q);
+  const err = maxAbs(sub(gram, I));
+  assert(err <= tol, name + ': orthogonality error ' + err + ' exceeded ' + tol);
 }
 
 assertPlan('diagonal', [[2, 0], [0, 4]], 'diagonal');
@@ -152,6 +166,26 @@ assert(maxAbs(sub(cmatmul(eigDocA, eigDoc.V!), cmatmul(eigDoc.V!, complexDiag(ei
 const eigDefective = generalEig(fromRows([[1, -2, 1], [0, 1, 4], [0, 0, 3]]), false);
 assert(eigDefective.D.re.filter((x) => approx(x, 1, 1e-10)).length === 2 && eigDefective.D.re.some((x) => approx(x, 3, 1e-10)),
   'general eig should preserve repeated eigenvalues in the defective triangular example');
+
+const svdDocA = fromRows([[9, 4], [6, 8], [2, 7]]);
+const svdDoc = svd(svdDocA);
+assert(svdDoc.U.rows === 3 && svdDoc.U.cols === 3 && svdDoc.V.rows === 2 && svdDoc.V.cols === 2,
+  'full svd should return full-sized U and V for the MathWorks 3-by-2 example');
+assert(approx(svdDoc.s[0], 14.9359163991338, 1e-10) && approx(svdDoc.s[1], 5.1882946444941, 1e-10),
+  'full svd singular values should match the MathWorks 3-by-2 example, got ' + JSON.stringify(svdDoc.s));
+assert(maxAbs(sub(cmatmul(cmatmul(svdDoc.U, svdSigma(3, 2, svdDoc.s)), ctranspose(svdDoc.V)), svdDocA)) <= 1e-9,
+  'full svd should reconstruct the MathWorks 3-by-2 example');
+assertOrthonormal('full svd U for MathWorks 3-by-2 example', svdDoc.U);
+assertOrthonormal('full svd V for MathWorks 3-by-2 example', svdDoc.V);
+
+const svdWideRankDefA = fromRows([[1, 1, 0], [0, 0, 0]]);
+const svdWideRankDef = svd(svdWideRankDefA);
+assert(svdWideRankDef.U.rows === 2 && svdWideRankDef.U.cols === 2 && svdWideRankDef.V.rows === 3 && svdWideRankDef.V.cols === 3,
+  'full svd should return full-sized U and V for a wide rank-deficient matrix');
+assert(maxAbs(sub(cmatmul(cmatmul(svdWideRankDef.U, svdSigma(2, 3, svdWideRankDef.s)), ctranspose(svdWideRankDef.V)), svdWideRankDefA)) <= 1e-9,
+  'full svd should reconstruct a wide rank-deficient matrix');
+assertOrthonormal('full svd U for wide rank-deficient matrix', svdWideRankDef.U);
+assertOrthonormal('full svd V for wide rank-deficient matrix', svdWideRankDef.V);
 
 const lowerForOpts = fromRows([[2, 0, 0], [1, 3, 0], [4, 5, 6]]);
 const lowerB = fromRows([[2], [7], [32]]);

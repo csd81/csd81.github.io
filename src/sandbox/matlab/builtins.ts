@@ -1477,8 +1477,7 @@ export const BUILTINS: Record<string, Builtin> = {
     // singular-VALUES path: one-sided Jacobi (svdCplx) resolves tiny σ accurately; the AtA-based
     // svdReal loses ~half the digits (e.g. svd(magic(4)) smallest σ → 1.97e-7 instead of ~0).
     if (n < 3) { const { s } = svdCplx(A); return [colVec(s)]; }
-    // [U,S,V] form keeps svdReal: real orthogonal U/V with full m×m / n×n dimensions (svdCplx
-    // can return a complex factorization for real input, which would break realness of U/V).
+    // [U,S,V] form keeps svdReal: real full m×m / n×n factors built from the Jacobi SVD core.
     const { U, s, V } = svdReal(A);
     const S = zeros(A.rows, A.cols); for (let i = 0; i < Math.min(A.rows, A.cols); i++) S.data[i + i * A.rows] = s[i] ?? 0; return [U, S, V];
   },
