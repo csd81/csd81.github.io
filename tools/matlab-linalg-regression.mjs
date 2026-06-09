@@ -48,6 +48,12 @@ function sub(A: Mat, B: Mat): Mat {
   return C;
 }
 
+function scaleRows(M: Mat, scale: number[]): Mat {
+  const out = zeros(M.rows, M.cols);
+  for (let c = 0; c < M.cols; c++) for (let r = 0; r < M.rows; r++) out.data[r + c * M.rows] = M.data[r + c * M.rows] * scale[r];
+  return out;
+}
+
 function complexFromRows(re: number[][], im: number[][]): Mat {
   const A = fromRows(re);
   A.idata = fromRows(im).data;
@@ -253,6 +259,20 @@ assert(nnoutput.fields.has('iterations') && nnoutput.fields.has('algorithm') && 
   'lsqnonneg output struct should expose iterations, algorithm, and message');
 assert(nnlambda.rows === 2 && nnlambda.cols === 1 && nnlambda.data[0] < 0 && Math.abs(nnlambda.data[1]) < 1e-8,
   'lsqnonneg lambda should expose active-set KKT multipliers');
+
+const covA = fromRows([[1, 0.2, 0.1], [1, 0.5, 0.3], [1, 0.6, 0.4], [1, 0.8, 0.9], [1, 1.0, 1.1], [1, 1.1, 1.4]]);
+const covb = fromRows([[0.17], [0.26], [0.28], [0.23], [0.27], [0.34]]);
+const covw = fromRows([[1], [1], [1], [1], [1], [0.1]]);
+const covScaledA = scaleRows(covA, [1, 1, 1, 1, 1, Math.sqrt(0.1)]);
+const covScaledB = scaleRows(covb, [1, 1, 1, 1, 1, Math.sqrt(0.1)]);
+const covOut = await BUILTINS.lscov([covA, covb, covw], 4, { output: () => {} } as any);
+const covX = covOut[0] as Mat, covStd = covOut[1] as Mat, covMse = covOut[2] as Mat, covS = covOut[3] as Mat;
+assert(maxAbs(sub(covX, mldivide(covScaledA, covScaledB))) <= 1e-10,
+  'lscov weighted-vector form should match row-scaled least squares');
+assert(covStd.rows === covA.cols && covStd.cols === 1 && covMse.data[0] > 0 && covS.rows === covA.cols && covS.cols === covA.cols,
+  'lscov should return stdx, mse, and S diagnostics with MATLAB-compatible shapes');
+for (let i = 0; i < covA.cols; i++) assert(approx(covStd.data[i], Math.sqrt(Math.max(0, covS.data[i + i * covS.rows])), 1e-10),
+  'lscov stdx should equal sqrt(diag(S))');
 
 assertPlan('cholesky', [[4, 1, 1], [1, 3, 1], [1, 1, 2]], 'cholesky');
 assertPlan('ldl', [[0, 1, 1], [1, 0, 1], [1, 1, 0]], 'ldl');

@@ -1796,7 +1796,56 @@ export const BUILTINS: Record<string, Builtin> = {
     return n >= 2 ? [xo, scalar(await base(x))] : [xo];
   },
   condest: async (a) => { const A = m(a[0]); return ret(scalar(condestOneNorm(A))); },
-  lscov: async (a) => { const A = m(a[0]), b = m(a[1]); if (a.length >= 3) { const W = inv(m(a[2])); const At = transpose(A); return ret(mldivide(matmul(At, matmul(W, A)), matmul(At, matmul(W, b)))); } return ret(mldivide(A, b)); },
+  lscov: async (a, n) => {
+    const A = m(a[0]), b = m(a[1]);
+    if (A.rows !== b.rows) throw new MatError('lscov: row dimensions must agree');
+    let x: Mat, covBase: Mat, mseWeight: Mat | null = null;
+    const scaleRows = (M: Mat, scale: number[]): Mat => {
+      const out = zeros(M.rows, M.cols);
+      for (let c = 0; c < M.cols; c++) for (let r = 0; r < M.rows; r++) out.data[r + c * M.rows] = M.data[r + c * M.rows] * scale[r];
+      return out;
+    };
+    if (a.length >= 3 && isMat(a[2]) && (m(a[2]).rows === 1 || m(a[2]).cols === 1) && numel(m(a[2])) === A.rows) {
+      const w = toArray(m(a[2]));
+      if (w.some((v) => v < 0 || !Number.isFinite(v))) throw new MatError('lscov: weights must be nonnegative finite values');
+      const s = w.map((v) => Math.sqrt(v));
+      const Aw = scaleRows(A, s), bw = scaleRows(b, s);
+      x = mldivide(Aw, bw);
+      covBase = pinvFn(matmul(transpose(Aw), Aw));
+      mseWeight = m(a[2]);
+    } else if (a.length >= 3) {
+      const C = m(a[2]);
+      if (C.rows !== A.rows || C.cols !== A.rows) throw new MatError('lscov: covariance matrix size must match rows of A');
+      const W = inv(C); const At = transpose(A);
+      x = mldivide(matmul(At, matmul(W, A)), matmul(At, matmul(W, b)));
+      covBase = pinvFn(matmul(At, matmul(W, A)));
+      mseWeight = W;
+    } else {
+      x = mldivide(A, b);
+      covBase = pinvFn(matmul(transpose(A), A));
+    }
+    if (n < 2) return ret(x);
+    const residual = ewSub(b, matmul(A, x));
+    let sse = 0;
+    if (!mseWeight) for (let i = 0; i < residual.data.length; i++) sse += residual.data[i] * residual.data[i];
+    else if (mseWeight.rows === 1 || mseWeight.cols === 1) {
+      const w = toArray(mseWeight);
+      for (let c = 0; c < residual.cols; c++) for (let r = 0; r < residual.rows; r++) {
+        const v = residual.data[r + c * residual.rows]; sse += w[r] * v * v;
+      }
+    } else {
+      const Wr = matmul(mseWeight, residual);
+      for (let i = 0; i < residual.data.length; i++) sse += residual.data[i] * Wr.data[i];
+    }
+    const dof = Math.max(0, A.rows - A.cols);
+    const mse = dof > 0 ? sse / dof : 0;
+    const S = map(covBase, (v) => v * mse);
+    const stdx = zeros(A.cols, 1);
+    for (let i = 0; i < A.cols; i++) stdx.data[i] = Math.sqrt(Math.max(0, S.data[i + i * S.rows]));
+    if (n < 3) return [x, stdx];
+    if (n < 4) return [x, stdx, scalar(mse)];
+    return [x, stdx, scalar(mse), S];
+  },
   subspace: async (a) => {
     let Qa = orthFn(m(a[0])), Qb = orthFn(m(a[1])); if (Qa.cols < Qb.cols) { const t = Qa; Qa = Qb; Qb = t; }
     const proj = matmul(Qa, matmul(transpose(Qa), Qb)); const diff = zeros(Qb.rows, Qb.cols); for (let i = 0; i < diff.data.length; i++) diff.data[i] = Qb.data[i] - proj.data[i];
