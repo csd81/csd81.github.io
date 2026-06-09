@@ -368,6 +368,18 @@ assertResidual('complex lower triangular', complexLower, complexFromRows([[3], [
 const complexSquare = complexFromRows([[1, 2], [3, 5]], [[0, 1], [-1, 0]]);
 assert(mldividePlan(complexSquare) === 'complex-lu', 'complex square should use complex-lu plan');
 
+const rightB = complexFromRows([[3, 5]], [[1, -2]]);
+const rightA = complexFromRows([[2, 1], [0, 4]], [[1, -1], [0, 2]]);
+const rightDiv = (await BUILTINS.mrdivide([rightB, rightA], 1, { output: () => {} } as any))[0] as Mat;
+const rightExpected = ctranspose(mldivide(ctranspose(rightA), ctranspose(rightB)));
+assert(maxAbs(sub(rightDiv, rightExpected)) <= 1e-10,
+  "complex mrdivide should use conjugate-transpose identity (B/A = (A'\\B')')");
+const pageRightB = makeND([1, 2, 1], rightB.data, { idata: rightB.idata });
+const pageRightA = makeND([2, 2, 1], rightA.data, { idata: rightA.idata });
+const pageRightDiv = (await BUILTINS.pagemrdivide([pageRightB, pageRightA], 1, { output: () => {} } as any))[0] as Mat;
+assert(maxAbs(sub(pageRightDiv, rightExpected)) <= 1e-10,
+  'complex pagemrdivide should use conjugate-transpose identity per page');
+
 const complexMinNormA = complexFromRows([[1, 1, 0], [0, 0, 0]], [[1, -1, 0], [0, 0, 0]]);
 assert(mldividePlan(complexMinNormA) === 'complex-qrcp', 'complex rank-deficient underdetermined should use complex-qrcp plan');
 assertResidual('complex rank-deficient underdetermined', complexMinNormA, complexFromRows([[2], [0]], [[0], [0]]));

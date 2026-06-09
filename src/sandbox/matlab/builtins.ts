@@ -1418,7 +1418,7 @@ export const BUILTINS: Record<string, Builtin> = {
     if (w) env.output('Warning: ' + w + '\n');
     return ret(x);
   },
-  mrdivide: async (a) => ret(transpose(mldivide(transpose(m(a[1])), transpose(m(a[0]))))),
+  mrdivide: async (a) => ret(ctransposeFn(mldivide(ctransposeFn(m(a[1])), ctransposeFn(m(a[0]))))),
   pinv: async (a) => ret(pinvFn(m(a[0]))),
   rank: async (a) => ret(scalar(rankOf(m(a[0]), a.length >= 2 ? asScalar(a[1]) : undefined))),
   rref: async (a) => ret(rrefFn(m(a[0]))),
@@ -2852,7 +2852,7 @@ export const BUILTINS: Record<string, Builtin> = {
   pagectranspose: async (a) => ret(pageTranspose(m(a[0]), true)),
   pagemtimes: async (a) => ret(pageBinary(m(a[0]), m(a[1]), (X, Y) => matmul(X, Y))),
   pagemldivide: async (a) => ret(pageBinary(m(a[0]), m(a[1]), (X, Y) => mldivide(X, Y))),
-  pagemrdivide: async (a) => ret(pageBinary(m(a[0]), m(a[1]), (X, Y) => transpose(mldivide(transpose(Y), transpose(X))))),
+  pagemrdivide: async (a) => ret(pageBinary(m(a[0]), m(a[1]), (X, Y) => ctransposeFn(mldivide(ctransposeFn(Y), ctransposeFn(X))))),
   pagesvd: async (a, n) => {
     const A = m(a[0]); const dims = ndSize(A); const d0 = dims[0], d1 = dims[1], psz = d0 * d1; const np = A.data.length / psz; const k = Math.min(d0, d1);
     const rest = dims.slice(2);
@@ -6185,11 +6185,17 @@ function pageTranspose(A: Mat, conj: boolean): Mat {
 function pageUnary(A: Mat, op: (X: Mat) => Mat): Mat {
   const dims = ndSize(A); const d0 = dims[0], d1 = dims[1], psz = d0 * d1; const np = A.data.length / psz;
   const pages: Mat[] = [];
-  for (let p = 0; p < np; p++) pages.push(op(mat(d0, d1, A.data.slice(p * psz, p * psz + psz))));
+  for (let p = 0; p < np; p++) {
+    const X = mat(d0, d1, A.data.slice(p * psz, p * psz + psz));
+    if (A.idata) X.idata = A.idata.slice(p * psz, p * psz + psz);
+    pages.push(op(X));
+  }
   const r = pages[0].rows, c = pages[0].cols; const out = new Float64Array(r * c * np);
-  pages.forEach((pg, p) => out.set(pg.data, p * r * c));
+  const anyComplex = pages.some((pg) => pg.idata);
+  const oi = anyComplex ? new Float64Array(r * c * np) : null;
+  pages.forEach((pg, p) => { out.set(pg.data, p * r * c); if (oi && pg.idata) oi.set(pg.idata, p * r * c); });
   const rest = dims.slice(2);
-  return rest.length ? makeND([r, c, ...rest], out) : mat(r, c, out);
+  return rest.length ? makeND([r, c, ...rest], out, { idata: oi }) : (oi ? finishComplex(r, c, out, oi) : mat(r, c, out));
 }
 /** Apply a 2-D matrix op page-by-page across two N-D arrays (broadcasting a single page). */
 function pageBinary(A: Mat, B: Mat, op: (X: Mat, Y: Mat) => Mat): Mat {
@@ -6200,12 +6206,16 @@ function pageBinary(A: Mat, B: Mat, op: (X: Mat, Y: Mat) => Mat): Mat {
   for (let p = 0; p < np; p++) {
     const X = mat(da[0], da[1], A.data.slice((p % na) * ap, (p % na) * ap + ap));
     const Y = mat(db[0], db[1], B.data.slice((p % nb) * bp, (p % nb) * bp + bp));
+    if (A.idata) X.idata = A.idata.slice((p % na) * ap, (p % na) * ap + ap);
+    if (B.idata) Y.idata = B.idata.slice((p % nb) * bp, (p % nb) * bp + bp);
     pages.push(op(X, Y));
   }
   const r = pages[0].rows, c = pages[0].cols; const out = new Float64Array(r * c * np);
-  pages.forEach((pg, p) => out.set(pg.data, p * r * c));
+  const anyComplex = pages.some((pg) => pg.idata);
+  const oi = anyComplex ? new Float64Array(r * c * np) : null;
+  pages.forEach((pg, p) => { out.set(pg.data, p * r * c); if (oi && pg.idata) oi.set(pg.idata, p * r * c); });
   const rest = (na >= nb ? da : db).slice(2);
-  return rest.length ? makeND([r, c, ...rest], out) : mat(r, c, out);
+  return rest.length ? makeND([r, c, ...rest], out, { idata: oi }) : (oi ? finishComplex(r, c, out, oi) : mat(r, c, out));
 }
 function rgb2hsvFn(r: number, g: number, b: number): [number, number, number] {
   const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
