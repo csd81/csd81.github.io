@@ -1571,7 +1571,23 @@ export const BUILTINS: Record<string, Builtin> = {
   // ── more decompositions / matrix functions ──
   expm: async (a) => { const A = m(a[0]); return ret(isComplex(A) ? expmComplexMat(A) : expmFn(A)); },
   logm: async (a) => ret(logmFn(m(a[0]))),
-  sqrtm: async (a) => ret(sqrtmFn(m(a[0]))),
+  sqrtm: async (a, n) => {
+    const A = m(a[0]);
+    const X = sqrtmFn(A);
+    if (n < 2) return ret(X);
+    const X2 = isComplex(X) ? cmatmul(X, X) : matmul(X, X);
+    const R = zeros(A.rows, A.cols);
+    if (A.idata || X2.idata) R.idata = new Float64Array(A.rows * A.cols);
+    for (let i = 0; i < R.data.length; i++) {
+      R.data[i] = A.data[i] - X2.data[i];
+      if (R.idata) R.idata[i] = (A.idata ? A.idata[i] : 0) - (X2.idata ? X2.idata[i] : 0);
+    }
+    const denom = norm(A, 1);
+    const residual = denom === 0 ? (norm(R, 1) === 0 ? 0 : Infinity) : norm(R, 1) / denom;
+    if (n < 3) return [X, scalar(residual)];
+    const alpha = residual / (Math.max(A.rows, A.cols, 1) * Number.EPSILON);
+    return [X, scalar(alpha), scalar(condFn(X))];
+  },
   hess: async (a, n) => { const { P, H } = hessFn(m(a[0])); return n >= 2 ? [P, H] : [H]; },
   schur: async (a, n) => {
     const A = m(a[0]);

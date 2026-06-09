@@ -215,6 +215,10 @@ const sylvesterComplex = (await BUILTINS.sylvester([
 ], 1, { output: () => {} } as any))[0] as Mat;
 assert(approx(sylvesterComplex.data[0], 1.3, 1e-12) && approx(sylvesterComplex.idata?.[0] ?? 0, 0.9, 1e-12),
   'sylvester should preserve complex inputs, got ' + sylvesterComplex.data[0] + '+' + (sylvesterComplex.idata?.[0] ?? 0) + 'i');
+const sqrtmDiag = await BUILTINS.sqrtm([fromRows([[4, 0], [0, 9]])], 2, { output: () => {} } as any);
+const sqrtmDiagX = sqrtmDiag[0] as Mat, sqrtmDiagResidual = sqrtmDiag[1] as Mat;
+assert(maxAbs(sub(sqrtmDiagX, fromRows([[2, 0], [0, 3]]))) <= 1e-12 && sqrtmDiagResidual.data[0] <= 1e-14,
+  'sqrtm two-output form should return matrix square root and residual');
 
 const lowerForOpts = fromRows([[2, 0, 0], [1, 3, 0], [4, 5, 6]]);
 const lowerB = fromRows([[2], [7], [32]]);
