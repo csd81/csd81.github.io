@@ -13,7 +13,7 @@ import {
   bandwidth, cond, decomposition, decompositionSolve, expm, generalEig, ldl, linsolveWithOptions, mldivide, mldividePlan, nullspace, orth, pinv, qrPivotOutputs, qrRankWarning, rankOf, svd,
 } from './src/sandbox/matlab/linalg';
 import {
-  cmatmul, ctranspose, finishComplex, fromRows, isComplex, matRows, matmul, scalar, sparseToDense, str, zeros, type Mat, type StructV,
+  cmatmul, ctranspose, finishComplex, fromRows, isComplex, makeND, matRows, matmul, scalar, sparseToDense, str, zeros, type Mat, type StructV,
 } from './src/sandbox/matlab/values';
 import { createSession } from './src/sandbox/matlab/index';
 import { BUILTINS } from './src/sandbox/matlab/builtins';
@@ -287,6 +287,16 @@ let minNormWarn = '';
 await BUILTINS.lsqminnorm([fromRows([[1, 1], [1, 1]]), fromRows([[1], [1]]), str('warn')], 1, { output: (t: string) => { minNormWarn += t; } } as any);
 assert(minNormWarn.startsWith('Warning: Rank deficient, rank = 1, tol = '),
   'lsqminnorm "warn" should emit a rank-deficient warning');
+const pageA = makeND([2, 2, 2], Float64Array.from([1, 0, 0, 1e-12, 2, 0, 0, 3]));
+const pageB = makeND([2, 1, 2], Float64Array.from([1, 1, 4, 9]));
+const pageTol = (await BUILTINS.pagelsqminnorm([pageA, pageB, scalar(1e-8)], 1, { output: () => {} } as any))[0] as Mat;
+assert(pageTol.rows === 2 && pageTol.cols === 2 && pageTol.data.length === 4,
+  'pagelsqminnorm should preserve page-wise output shape');
+assert(approx(pageTol.data[0], 1, 1e-10) && Math.abs(pageTol.data[1]) <= 1e-10 && approx(pageTol.data[2], 2, 1e-10) && approx(pageTol.data[3], 3, 1e-10),
+  'pagelsqminnorm should apply explicit tolerance to each page');
+const pageReg = (await BUILTINS.pagelsqminnorm([makeND([1, 2, 1], Float64Array.from([2, 3])), makeND([1, 1, 1], Float64Array.from([8])), str('RegularizationFactor'), scalar(1)], 1, { output: () => {} } as any))[0] as Mat;
+assert(approx(pageReg.data[0], 8 / 7, 1e-10) && approx(pageReg.data[1], 12 / 7, 1e-10),
+  'pagelsqminnorm should apply RegularizationFactor page-wise');
 
 assertPlan('cholesky', [[4, 1, 1], [1, 3, 1], [1, 1, 2]], 'cholesky');
 assertPlan('ldl', [[0, 1, 1], [1, 0, 1], [1, 1, 0]], 'ldl');

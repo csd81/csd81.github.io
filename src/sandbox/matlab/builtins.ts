@@ -2875,7 +2875,10 @@ export const BUILTINS: Record<string, Builtin> = {
   pageinv: async (a) => ret(pageUnary(m(a[0]), (X) => inv(X))),
   pagepinv: async (a) => ret(pageUnary(m(a[0]), (X) => pinvFn(X))),
   pagenorm: async (a) => { const p = a.length >= 2 ? (isMat(a[1]) ? asScalar(a[1]) : (asString(a[1]) === 'fro' ? 'fro' : 2)) : 2; return ret(pageUnary(m(a[0]), (X) => mat(1, 1, new Float64Array([norm(X, p as number | 'fro')])))); },
-  pagelsqminnorm: async (a) => ret(pageBinary(m(a[0]), m(a[1]), (X, Y) => matmul(pinvFn(X), Y))),
+  pagelsqminnorm: async (a) => {
+    const { tol, regularization } = parseLsqminnormOptions(a, 2);
+    return ret(pageBinary(m(a[0]), m(a[1]), (X, Y) => lsqminnormSolve(X, Y, { tol, regularization }).x));
+  },
   linkaxes: async () => [], alpha: async () => [], alphamap: async () => [],
   // string edits
   insertAfter: async (a) => { const p = asString(a[1]), ins = asString(a[2]); return ret(mapStrArr(a[0], (x) => (p === '' ? x : x.split(p).join(p + ins)))); },
@@ -3150,18 +3153,7 @@ export const BUILTINS: Record<string, Builtin> = {
   sylvester: async (a) => ret(sylvesterSolve(m(a[0]), m(a[1]), m(a[2]))),
   lsqminnorm: async (a, _n, env) => {
     const A = m(a[0]), B = m(a[1]);
-    let tol: number | undefined; let rankWarn = false; let regularization: number | undefined;
-    for (let i = 2; i < a.length; i++) {
-      if (isStr(a[i]) || (isMat(a[i]) && (a[i] as Mat).isChar)) {
-        const key = asString(a[i]).toLowerCase();
-        if (key === 'warn') rankWarn = true;
-        else if (key === 'nowarn') rankWarn = false;
-        else if (key === 'regularizationfactor' && i + 1 < a.length) regularization = asScalar(a[++i]);
-      } else if (isMat(a[i])) {
-        const mi = m(a[i]);
-        if (numel(mi) === 1) tol = asScalar(mi);
-      }
-    }
+    const { tol, rankWarn, regularization } = parseLsqminnormOptions(a, 2);
     const { x, rank, tol: usedTol } = lsqminnormSolve(A, B, { tol, regularization });
     if (rankWarn && rank < A.cols) env.output(`Warning: Rank deficient, rank = ${rank}, tol = ${usedTol.toExponential(6)}.\n`);
     return ret(x);
@@ -6490,6 +6482,22 @@ function condestOneNorm(A: Mat, maxit = 8): number {
     }
   }
   return norm(A, 1) * invEst;
+}
+
+function parseLsqminnormOptions(a: Value[], start: number): { tol?: number; rankWarn: boolean; regularization?: number } {
+  let tol: number | undefined; let rankWarn = false; let regularization: number | undefined;
+  for (let i = start; i < a.length; i++) {
+    if (isStr(a[i]) || (isMat(a[i]) && (a[i] as Mat).isChar)) {
+      const key = asString(a[i]).toLowerCase();
+      if (key === 'warn') rankWarn = true;
+      else if (key === 'nowarn') rankWarn = false;
+      else if (key === 'regularizationfactor' && i + 1 < a.length) regularization = asScalar(a[++i]);
+    } else if (isMat(a[i])) {
+      const mi = m(a[i]);
+      if (numel(mi) === 1) tol = asScalar(mi);
+    }
+  }
+  return { tol, rankWarn, regularization };
 }
 
 /** Solve the Sylvester equation A X + X B = C via the Kronecker system. */
