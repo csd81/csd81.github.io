@@ -202,6 +202,9 @@ assertOrthonormal('full svd V for wide rank-deficient matrix', svdWideRankDef.V)
 
 const normestDiag = (await BUILTINS.normest([fromRows([[3, 0], [0, 4]])], 1, {} as any))[0] as Mat;
 assert(approx(normestDiag.data[0], 4, 1e-8), 'normest should estimate the dominant 2-norm without exact SVD, got ' + normestDiag.data[0]);
+const normestDiagTwoOut = await BUILTINS.normest([fromRows([[3, 0], [0, 4]]), scalar(1e-8)], 2, {} as any);
+assert(approx((normestDiagTwoOut[0] as Mat).data[0], 4, 1e-8) && (normestDiagTwoOut[1] as Mat).data[0] >= 1,
+  'normest two-output form should return estimate and iteration count');
 const condestDiag = (await BUILTINS.condest([fromRows([[2, 0], [0, 4]])], 1, {} as any))[0] as Mat;
 assert(approx(condestDiag.data[0], 2, 1e-12), 'condest should estimate the 1-norm condition without explicit inverse, got ' + condestDiag.data[0]);
 const condest1Diag = (await BUILTINS.condest1([fromRows([[2, 0], [0, 4]])], 1, {} as any))[0] as Mat;

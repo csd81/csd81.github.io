@@ -2325,7 +2325,11 @@ export const BUILTINS: Record<string, Builtin> = {
     if (dir === 'monotonic') { let asc = true, desc = true; for (let i = 1; i < v.length; i++) { if (v[i] < v[i - 1]) asc = false; if (v[i] > v[i - 1]) desc = false; } ok = asc || desc; }
     return ret(bool(ok));
   },
-  normest: async (a) => ret(scalar(normestPower(m(a[0])))),
+  normest: async (a, n) => {
+    const tol = a.length >= 2 ? asScalar(a[1]) : 0;
+    const { est, count } = normestPower(m(a[0]), 20, tol);
+    return n >= 2 ? [scalar(est), scalar(count)] : [scalar(est)];
+  },
   // ── type predicates ──
   islogical: async (a) => ret(bool(isMat(a[0]) && !!(a[0] as Mat).isBool)),
   isinteger: async (a) => ret(bool(isMat(a[0]) && !!(a[0] as Mat).itype && (a[0] as Mat).itype !== 'single')),
@@ -6470,15 +6474,18 @@ function polyDivide(u: number[], v: number[]): [number[], number[]] {
   return [q, r.slice(nq)];
 }
 /** Power-iteration estimate of the matrix 2-norm for normest. */
-function normestPower(A: Mat, maxit = 20): number {
-  if (A.rows === 0 || A.cols === 0) return 0;
+function normestPower(A: Mat, maxit = 20, tol = 1e-6): { est: number; count: number } {
+  if (A.rows === 0 || A.cols === 0) return { est: 0, count: 0 };
   let x = zeros(A.cols, 1);
   const scale0 = 1 / Math.sqrt(A.cols);
   for (let i = 0; i < A.cols; i++) x.data[i] = scale0;
-  let est = 0;
+  let est = 0, count = 0;
   for (let it = 0; it < maxit; it++) {
+    const prev = est;
     const y = isComplex(A) || isComplex(x) ? cmatmul(A, x) : matmul(A, x);
     est = norm(y, 2);
+    count = it + 1;
+    if (it >= 7 && prev > 0 && Math.abs(est - prev) <= Math.max(tol, 0) * Math.max(est, prev)) break;
     const z = isComplex(A) || isComplex(y) ? cmatmul(ctransposeFn(A), y) : matmul(transpose(A), y);
     const zn = norm(z, 2);
     if (!Number.isFinite(zn) || zn === 0) break;
@@ -6486,7 +6493,7 @@ function normestPower(A: Mat, maxit = 20): number {
     for (let i = 0; i < x.data.length; i++) x.data[i] /= zn;
     if (x.idata) for (let i = 0; i < x.idata.length; i++) x.idata[i] /= zn;
   }
-  return est;
+  return { est, count };
 }
 
 /** Hager-style 1-norm condition estimate without explicitly forming inv(A). */
