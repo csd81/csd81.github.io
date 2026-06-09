@@ -10,10 +10,10 @@ const outfile = join(outdir, 'regression.mjs');
 
 const source = String.raw`
 import {
-  bandwidth, cond, expm, ldl, linsolveWithOptions, mldivide, mldividePlan, nullspace, orth, pinv, qrPivotOutputs, qrRankWarning, rankOf,
+  bandwidth, cond, expm, generalEig, ldl, linsolveWithOptions, mldivide, mldividePlan, nullspace, orth, pinv, qrPivotOutputs, qrRankWarning, rankOf,
 } from './src/sandbox/matlab/linalg';
 import {
-  cmatmul, ctranspose, fromRows, isComplex, matRows, matmul, sparseToDense, type Mat,
+  cmatmul, ctranspose, finishComplex, fromRows, isComplex, matRows, matmul, sparseToDense, type Mat,
 } from './src/sandbox/matlab/values';
 import { createSession } from './src/sandbox/matlab/index';
 
@@ -45,6 +45,13 @@ function complexFromRows(re: number[][], im: number[][]): Mat {
   const A = fromRows(re);
   A.idata = fromRows(im).data;
   return A;
+}
+
+function complexDiag(re: number[], im: number[]): Mat {
+  const n = re.length;
+  const dr = new Float64Array(n * n), di = new Float64Array(n * n);
+  for (let i = 0; i < n; i++) { dr[i + i * n] = re[i]; di[i + i * n] = im[i]; }
+  return finishComplex(n, n, dr, di);
 }
 
 function assertPlan(name: string, rows: number[][], plan: ReturnType<typeof mldividePlan>): Mat {
@@ -129,6 +136,22 @@ assert(maxAbs(sub(expmDocSample, fromRows([
   [2.80879009040734, 2.88451554134857, 3.19301443695256],
   [5.17374600197406, 4.00120301823993, 5.71317557585436],
 ]))) <= 1e-12, 'expm Pade should match the MathWorks 3-by-3 sample');
+
+const eigDocA = fromRows([[0, -6, -1], [6, 2, -16], [-5, 20, -10]]);
+const eigDoc = generalEig(eigDocA, true);
+const eigDocVals = eigDoc.D.re.map((re, i) => [re, eigDoc.D.im[i]]);
+assert(eigDocVals.some(([re, im]) => approx(re, -3.07095035124829, 1e-8) && approx(im, 0, 1e-8)),
+  'general eig should find the real eigenvalue in the MathWorks example');
+assert(eigDocVals.some(([re, im]) => approx(re, -2.46452482437585, 1e-8) && approx(im, 17.600830964471, 1e-8)),
+  'general eig should find the positive complex eigenvalue in the MathWorks example');
+assert(eigDocVals.some(([re, im]) => approx(re, -2.46452482437585, 1e-8) && approx(im, -17.600830964471, 1e-8)),
+  'general eig should find the negative complex eigenvalue in the MathWorks example');
+assert(maxAbs(sub(cmatmul(eigDocA, eigDoc.V!), cmatmul(eigDoc.V!, complexDiag(eigDoc.D.re, eigDoc.D.im)))) <= 1e-6,
+  'general eig eigenvectors should satisfy A*V = V*D for the MathWorks example');
+
+const eigDefective = generalEig(fromRows([[1, -2, 1], [0, 1, 4], [0, 0, 3]]), false);
+assert(eigDefective.D.re.filter((x) => approx(x, 1, 1e-10)).length === 2 && eigDefective.D.re.some((x) => approx(x, 3, 1e-10)),
+  'general eig should preserve repeated eigenvalues in the defective triangular example');
 
 const lowerForOpts = fromRows([[2, 0, 0], [1, 3, 0], [4, 5, 6]]);
 const lowerB = fromRows([[2], [7], [32]]);

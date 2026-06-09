@@ -1433,11 +1433,15 @@ export function lsqnonneg(C: Mat, d: Mat): Mat {
   return colVec(Array.from(x));
 }
 
-/** General eigenvalues (+ optional eigenvectors) via charpoly + Durand–Kerner. */
-export function generalEig(A: Mat, wantVec: boolean): { D: { re: number[]; im: number[] }; V?: Mat } {
-  const { re, im } = durandKerner(charpoly(A));
+function sortEigenPairs(re: number[], im: number[]): { re: number[]; im: number[] } {
   const order = re.map((_, i) => i).sort((i, j) => re[i] - re[j] || im[i] - im[j]);
-  const er = order.map((i) => re[i]), ei = order.map((i) => im[i]);
+  return { re: order.map((i) => re[i]), im: order.map((i) => im[i]) };
+}
+
+/** General eigenvalues (+ optional eigenvectors) via balancing + real Schur decomposition. */
+export function generalEig(A: Mat, wantVec: boolean): { D: { re: number[]; im: number[] }; V?: Mat } {
+  const raw = isComplex(A) ? durandKerner(charpoly(A)) : schurEig(schur(balance(A).B).T);
+  const { re: er, im: ei } = sortEigenPairs(raw.re, raw.im);
   if (!wantVec) return { D: { re: er, im: ei } };
   const n = A.rows; const Vre = new Float64Array(n * n), Vim = new Float64Array(n * n);
   for (let c = 0; c < n; c++) { const v = eigVec(A, er[c], ei[c]); for (let r = 0; r < n; r++) { Vre[r + c * n] = v.re[r]; Vim[r + c * n] = v.im[r]; } }
