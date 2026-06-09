@@ -10,7 +10,7 @@ const outfile = join(outdir, 'regression.mjs');
 
 const source = String.raw`
 import {
-  bandwidth, cond, ldl, linsolveWithOptions, mldivide, mldividePlan, nullspace, orth, pinv, qrPivotOutputs, qrRankWarning, rankOf,
+  bandwidth, cond, expm, ldl, linsolveWithOptions, mldivide, mldividePlan, nullspace, orth, pinv, qrPivotOutputs, qrRankWarning, rankOf,
 } from './src/sandbox/matlab/linalg';
 import {
   cmatmul, ctranspose, fromRows, isComplex, matRows, matmul, sparseToDense, type Mat,
@@ -110,6 +110,25 @@ const hessenberg = assertPlan('upper Hessenberg', [
   [0, 0, 0, 0, 5, 10],
 ], 'hessenberg');
 assertResidual('upper Hessenberg', hessenberg, fromRows([[1], [2], [3], [4], [5], [6]]));
+
+const expmTaylorFailure = expm(fromRows([[-147, 72], [-192, 93]]));
+assert(maxAbs(sub(expmTaylorFailure, fromRows([
+  [-0.0995741367357243, 0.0746806025517932],
+  [-0.199148273471448, 0.149361205103586],
+]))) <= 1e-11, 'expm Pade should handle the MathWorks Taylor-failure example');
+
+const expmDefective = expm(fromRows([[-1, 1], [0, -1]]));
+assert(maxAbs(sub(expmDefective, fromRows([
+  [0.367879441171442, 0.367879441171442],
+  [0, 0.367879441171442],
+]))) <= 1e-13, 'expm Pade should handle the defective Jordan example');
+
+const expmDocSample = expm(fromRows([[0, 1, 2], [0.5, 0, 1], [2, 1, 0]]));
+assert(maxAbs(sub(expmDocSample, fromRows([
+  [5.30908128521068, 4.00120301823993, 5.57784029261775],
+  [2.80879009040734, 2.88451554134857, 3.19301443695256],
+  [5.17374600197406, 4.00120301823993, 5.71317557585436],
+]))) <= 1e-12, 'expm Pade should match the MathWorks 3-by-3 sample');
 
 const lowerForOpts = fromRows([[2, 0, 0], [1, 3, 0], [4, 5, 6]]);
 const lowerB = fromRows([[2], [7], [32]]);

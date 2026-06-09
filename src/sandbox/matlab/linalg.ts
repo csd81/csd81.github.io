@@ -1290,12 +1290,65 @@ export function smithFormInt(A: Mat): { U: Mat; S: Mat; V: Mat } {
   return { U: rowsToMat(U), S: rowsToMat(S), V: rowsToMat(V) };
 }
 
-/** Matrix exponential via scaling and squaring (Taylor). */
+function matScale(A: Mat, alpha: number): Mat {
+  const out = zeros(A.rows, A.cols);
+  for (let i = 0; i < A.data.length; i++) out.data[i] = A.data[i] * alpha;
+  return out;
+}
+
+function matAddScaled(...terms: Array<[Mat, number]>): Mat {
+  const rows = terms[0][0].rows, cols = terms[0][0].cols;
+  const out = zeros(rows, cols);
+  for (const [A, alpha] of terms) {
+    for (let i = 0; i < out.data.length; i++) out.data[i] += alpha * A.data[i];
+  }
+  return out;
+}
+
+function matSub(A: Mat, B: Mat): Mat {
+  const out = zeros(A.rows, A.cols);
+  for (let i = 0; i < out.data.length; i++) out.data[i] = A.data[i] - B.data[i];
+  return out;
+}
+
+/** Matrix exponential via Higham scaling-and-squaring with the [13/13] Pade approximant. */
 export function expm(A: Mat): Mat {
-  const n = A.rows; const nrm = norm(A, 'inf') || 1; const sgrid = Math.max(0, Math.ceil(Math.log2(nrm)));
-  const sc = Math.pow(2, sgrid); const B = mat(n, n, A.data.map((v) => v / sc) as Float64Array);
-  let E = eye(n); let term = eye(n);
-  for (let k = 1; k <= 18; k++) { term = matmul(term, B); for (let i = 0; i < term.data.length; i++) term.data[i] /= k; for (let i = 0; i < E.data.length; i++) E.data[i] += term.data[i]; }
+  if (A.rows !== A.cols) throw new MatError('expm: input must be a square matrix');
+  const n = A.rows;
+  if (n === 0) return A;
+  const theta13 = 5.371920351148152;
+  const nrm = norm(A, 1);
+  const sgrid = Math.max(0, Math.ceil(Math.log2(nrm / theta13)));
+  const B = matScale(A, 1 / Math.pow(2, sgrid));
+  const I = eye(n);
+  const b = [
+    64764752532480000, 32382376266240000, 7771770303897600,
+    1187353796428800, 129060195264000, 10559470521600,
+    670442572800, 33522128640, 1323241920, 40840800,
+    960960, 16380, 182, 1,
+  ];
+
+  const A2 = matmul(B, B);
+  const A4 = matmul(A2, A2);
+  const A6 = matmul(A4, A2);
+
+  const Uinner = matAddScaled(
+    [matmul(A6, matAddScaled([A6, b[13]], [A4, b[11]], [A2, b[9]])), 1],
+    [A6, b[7]],
+    [A4, b[5]],
+    [A2, b[3]],
+    [I, b[1]],
+  );
+  const U = matmul(B, Uinner);
+  const V = matAddScaled(
+    [matmul(A6, matAddScaled([A6, b[12]], [A4, b[10]], [A2, b[8]])), 1],
+    [A6, b[6]],
+    [A4, b[4]],
+    [A2, b[2]],
+    [I, b[0]],
+  );
+
+  let E = mldivide(matSub(V, U), matAddScaled([V, 1], [U, 1]));
   for (let t = 0; t < sgrid; t++) E = matmul(E, E);
   return E;
 }
